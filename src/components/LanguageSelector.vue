@@ -8,9 +8,10 @@ const showDropdown = ref(false)
 const buttonRef = ref<HTMLElement | null>(null)
 const dropdownStyle = ref({})
 
-const currentLocale = computed(() =>
-  availableLocales.find(l => l.code === locale.value) || availableLocales[0]
-)
+const currentLocale = computed(() => {
+  const found = availableLocales.find(l => l.code === locale.value)
+  return found ?? availableLocales[0] ?? { code: 'en', name: 'English', flag: '🇺🇸' }
+})
 
 function updateDropdownPosition() {
   const button = document.querySelector('.language-button') as HTMLElement

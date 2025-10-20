@@ -19,11 +19,11 @@ let touchEndX = 0
 const tabs: Array<'calendar' | 'categories' | 'stats'> = ['calendar', 'categories', 'stats']
 
 function handleTouchStart(e: TouchEvent) {
-  touchStartX = e.changedTouches[0].screenX
+  touchStartX = e.changedTouches[0]?.screenX ?? 0
 }
 
 function handleTouchEnd(e: TouchEvent) {
-  touchEndX = e.changedTouches[0].screenX
+  touchEndX = e.changedTouches[0]?.screenX ?? 0
   handleSwipe()
 }
 
@@ -33,12 +33,14 @@ function handleSwipe() {
 
   // Swipe left - go to next tab
   if (touchStartX - touchEndX > swipeThreshold && currentIndex < tabs.length - 1) {
-    activeTab.value = tabs[currentIndex + 1]
+    const nextTab = tabs[currentIndex + 1]
+    if (nextTab) activeTab.value = nextTab
   }
 
   // Swipe right - go to previous tab
   if (touchEndX - touchStartX > swipeThreshold && currentIndex > 0) {
-    activeTab.value = tabs[currentIndex - 1]
+    const prevTab = tabs[currentIndex - 1]
+    if (prevTab) activeTab.value = prevTab
   }
 }
 

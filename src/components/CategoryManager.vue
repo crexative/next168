@@ -342,7 +342,7 @@ function generateRandomColor(): string {
 
 // Generate random emoji
 function getRandomEmoji(): string {
-  return commonIcons[Math.floor(Math.random() * commonIcons.length)]
+  return commonIcons[Math.floor(Math.random() * commonIcons.length)] ?? '📁'
 }
 
 // Suggest emoji based on category name

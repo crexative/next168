@@ -74,11 +74,12 @@ export const useWeekStore = defineStore('week', () => {
     updates: Partial<Omit<Category, 'id'>>
   ): { success: boolean; error?: string } {
     const index = categories.value.findIndex((c) => c.id === id)
-    if (index === -1) {
+    const existingCategory = categories.value[index]
+    if (index === -1 || !existingCategory) {
       return { success: false, error: 'Category not found' }
     }
 
-    const updatedCategory = { ...categories.value[index], ...updates }
+    const updatedCategory = { ...existingCategory, ...updates }
     const validation = validationService.validateCategory(updatedCategory)
     if (!validation.isValid) {
       return { success: false, error: validation.errors.join(', ') }
@@ -160,11 +161,11 @@ export const useWeekStore = defineStore('week', () => {
     updates: Partial<Omit<TimeBlock, 'id' | 'durationMinutes'>>
   ): { success: boolean; error?: string } {
     const index = timeBlocks.value.findIndex((b) => b.id === id)
-    if (index === -1) {
+    const existingBlock = timeBlocks.value[index]
+    if (index === -1 || !existingBlock) {
       return { success: false, error: 'Time block not found' }
     }
 
-    const existingBlock = timeBlocks.value[index]
     const updatedBlock = { ...existingBlock, ...updates }
 
     // Recalculate duration if times changed
@@ -266,7 +267,7 @@ export const useWeekStore = defineStore('week', () => {
     const sampleBlocks: TimeBlock[] = [
       {
         id: generateId(),
-        categoryId: sampleCategories[0].id,
+        categoryId: sampleCategories[0]!.id,
         title: 'Morning Stand-up',
         description: 'Daily team sync',
         dayOfWeek: 1,
@@ -276,7 +277,7 @@ export const useWeekStore = defineStore('week', () => {
       },
       {
         id: generateId(),
-        categoryId: sampleCategories[0].id,
+        categoryId: sampleCategories[0]!.id,
         title: 'Deep Work Session',
         description: 'Focus time for coding',
         dayOfWeek: 1,
@@ -286,7 +287,7 @@ export const useWeekStore = defineStore('week', () => {
       },
       {
         id: generateId(),
-        categoryId: sampleCategories[1].id,
+        categoryId: sampleCategories[1]!.id,
         title: 'Morning Run',
         description: '5K run',
         dayOfWeek: 1,
@@ -296,7 +297,7 @@ export const useWeekStore = defineStore('week', () => {
       },
       {
         id: generateId(),
-        categoryId: sampleCategories[2].id,
+        categoryId: sampleCategories[2]!.id,
         title: 'Online Course',
         description: 'Vue.js Advanced Patterns',
         dayOfWeek: 2,

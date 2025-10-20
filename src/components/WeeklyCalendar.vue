@@ -157,11 +157,11 @@ const visibleDaysForTablet = computed(() => {
 
 // Navigate tablet view
 function navigateTabletPrev() {
-  tabletCenterDay.value = tabletCenterDay.value === 0 ? 6 : tabletCenterDay.value - 1
+  tabletCenterDay.value = (tabletCenterDay.value === 0 ? 6 : tabletCenterDay.value - 1) as 0 | 1 | 2 | 3 | 4 | 5 | 6
 }
 
 function navigateTabletNext() {
-  tabletCenterDay.value = tabletCenterDay.value === 6 ? 0 : tabletCenterDay.value + 1
+  tabletCenterDay.value = (tabletCenterDay.value === 6 ? 0 : tabletCenterDay.value + 1) as 0 | 1 | 2 | 3 | 4 | 5 | 6
 }
 </script>
 
@@ -283,7 +283,7 @@ function navigateTabletNext() {
       <div class="tablet-nav-header">
         <button
           class="btn-nav"
-          @click="selectedDay = selectedDay === 0 ? 6 : selectedDay - 1"
+          @click="selectedDay = (selectedDay === 0 ? 6 : selectedDay - 1) as 0 | 1 | 2 | 3 | 4 | 5 | 6"
           aria-label="Previous day"
         >
           ‹
@@ -303,7 +303,7 @@ function navigateTabletNext() {
         </div>
         <button
           class="btn-nav"
-          @click="selectedDay = selectedDay === 6 ? 0 : selectedDay + 1"
+          @click="selectedDay = (selectedDay === 6 ? 0 : selectedDay + 1) as 0 | 1 | 2 | 3 | 4 | 5 | 6"
           aria-label="Next day"
         >
           ›
