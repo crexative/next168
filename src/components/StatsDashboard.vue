@@ -122,7 +122,7 @@ const chartOptions = computed(() => ({
         text: t('common.hours')
       },
       ticks: {
-        callback: (value: number) => value + 'h'
+        callback: (value: string | number) => value + 'h'
       }
     }
   },
@@ -220,17 +220,15 @@ const chartOptions = computed(() => ({
       <h3 class="section-title">{{ t('statistics.weekUtilization') }}</h3>
       <div class="utilization-chart">
         <div class="summary-text">
-          <p>
-            {{ t('statistics.utilizationText', {
+          <p v-html="t('statistics.utilizationText', {
               scheduled: store.totalScheduledHours.toFixed(1),
               total: TOTAL_WEEK_HOURS,
               percentage: Math.round(weekUtilization.scheduled)
-            }) }}
+            })">
           </p>
-          <p v-if="store.unscheduledHours > 0">
-            {{ t('statistics.availableText', {
+          <p v-if="store.unscheduledHours > 0" v-html="t('statistics.availableText', {
               available: store.unscheduledHours.toFixed(1)
-            }) }}
+            })">
           </p>
         </div>
         <div class="utilization-bars">
