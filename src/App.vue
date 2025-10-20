@@ -6,11 +6,13 @@ import CategoryManager from '@/components/CategoryManager.vue'
 import WeeklyCalendar from '@/components/WeeklyCalendar.vue'
 import StatsDashboard from '@/components/StatsDashboard.vue'
 import LanguageSelector from '@/components/LanguageSelector.vue'
+import WelcomeTutorial from '@/components/WelcomeTutorial.vue'
 
 const { t } = useI18n()
 
 const weekStore = useWeekStore()
 const activeTab = ref<'calendar' | 'categories' | 'stats'>('calendar')
+const showTutorial = ref(false)
 
 // Swipe gesture handling
 let touchStartX = 0
@@ -44,8 +46,19 @@ function handleSwipe() {
   }
 }
 
+function completeTutorial() {
+  localStorage.setItem('next168-tutorial-completed', 'true')
+  showTutorial.value = false
+}
+
 onMounted(() => {
   weekStore.loadFromStorage()
+
+  // Check if this is the first visit
+  const tutorialCompleted = localStorage.getItem('next168-tutorial-completed')
+  if (!tutorialCompleted) {
+    showTutorial.value = true
+  }
 })
 </script>
 
@@ -95,6 +108,12 @@ onMounted(() => {
     <footer class="app-footer">
       <p>{{ t('footer.text') }}</p>
     </footer>
+
+    <!-- Welcome Tutorial -->
+    <WelcomeTutorial
+      v-model="showTutorial"
+      @complete="completeTutorial"
+    />
   </div>
 </template>
 

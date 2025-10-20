@@ -5,6 +5,7 @@ import { TOTAL_WEEK_HOURS } from '@/types'
 import { validationService } from '@/services/ValidationService'
 import { storageService } from '@/services/StorageService'
 import { calculateDurationMinutes, minutesToHours } from '@/utils/timeCalculator'
+import { i18n } from '@/i18n'
 
 const STORAGE_KEY = 'next168-data'
 
@@ -20,7 +21,11 @@ export const useWeekStore = defineStore('week', () => {
         (block) => block.categoryId === category.id
       )
       const totalMinutes = categoryBlocks.reduce(
-        (sum, block) => sum + block.durationMinutes,
+        (sum, block) => {
+          // Count main day + all repeat days
+          const multiplier = 1 + (block.repeatDays?.length || 0)
+          return sum + (block.durationMinutes * multiplier)
+        },
         0
       )
       const totalHours = minutesToHours(totalMinutes)
@@ -42,7 +47,11 @@ export const useWeekStore = defineStore('week', () => {
 
   const totalScheduledHours = computed<number>(() => {
     const totalMinutes = timeBlocks.value.reduce(
-      (sum, block) => sum + block.durationMinutes,
+      (sum, block) => {
+        // Count main day + all repeat days
+        const multiplier = 1 + (block.repeatDays?.length || 0)
+        return sum + (block.durationMinutes * multiplier)
+      },
       0
     )
     return minutesToHours(totalMinutes)
@@ -145,7 +154,9 @@ export const useWeekStore = defineStore('week', () => {
       block.categoryId,
       durationMinutes,
       categories.value,
-      timeBlocks.value
+      timeBlocks.value,
+      undefined,
+      block.repeatDays
     )
     if (!categoryValidation.isValid) {
       return { success: false, error: categoryValidation.errors.join(', ') }
@@ -182,14 +193,15 @@ export const useWeekStore = defineStore('week', () => {
       return { success: false, error: blockValidation.errors.join(', ') }
     }
 
-    // Check category limit if category or duration changed
-    if (updates.categoryId !== undefined || updates.startTime !== undefined || updates.endTime !== undefined) {
+    // Check category limit if category, duration, or repeatDays changed
+    if (updates.categoryId !== undefined || updates.startTime !== undefined || updates.endTime !== undefined || updates.repeatDays !== undefined) {
       const categoryValidation = validationService.canAddTimeToCategory(
         updatedBlock.categoryId,
         updatedBlock.durationMinutes,
         categories.value,
         timeBlocks.value,
-        id
+        id,
+        updatedBlock.repeatDays
       )
       if (!categoryValidation.isValid) {
         return { success: false, error: categoryValidation.errors.join(', ') }
@@ -209,7 +221,10 @@ export const useWeekStore = defineStore('week', () => {
 
   function getTimeBlocksForDay(dayOfWeek: number): TimeBlock[] {
     return timeBlocks.value
-      .filter((block) => block.dayOfWeek === dayOfWeek)
+      .filter((block) => {
+        // Include block if it's on this day OR if repeatDays includes this day
+        return block.dayOfWeek === dayOfWeek || (block.repeatDays && block.repeatDays.includes(dayOfWeek))
+      })
       .sort((a, b) => a.startTime.localeCompare(b.startTime))
   }
 
@@ -233,82 +248,48 @@ export const useWeekStore = defineStore('week', () => {
   }
 
   function initializeSampleData(): void {
+    const t = i18n.global.t
+
     const sampleCategories: Category[] = [
       {
         id: generateId(),
-        name: 'Work',
+        name: t('defaultCategories.sleep'),
+        color: '#6366f1',
+        weeklyHourLimit: 56,
+        icon: '😴'
+      },
+      {
+        id: generateId(),
+        name: t('defaultCategories.work'),
         color: '#3b82f6',
         weeklyHourLimit: 40,
         icon: '💼'
       },
       {
         id: generateId(),
-        name: 'Exercise',
+        name: t('defaultCategories.exercise'),
         color: '#10b981',
         weeklyHourLimit: 7,
         icon: '🏃'
       },
       {
         id: generateId(),
-        name: 'Learning',
+        name: t('defaultCategories.learning'),
         color: '#f59e0b',
         weeklyHourLimit: 10,
         icon: '📚'
       },
       {
         id: generateId(),
-        name: 'Personal Projects',
+        name: t('defaultCategories.personalProjects'),
         color: '#8b5cf6',
         weeklyHourLimit: 15,
         icon: '🚀'
       }
     ]
 
-    const sampleBlocks: TimeBlock[] = [
-      {
-        id: generateId(),
-        categoryId: sampleCategories[0]!.id,
-        title: 'Morning Stand-up',
-        description: 'Daily team sync',
-        dayOfWeek: 1,
-        startTime: '09:00',
-        endTime: '09:30',
-        durationMinutes: 30
-      },
-      {
-        id: generateId(),
-        categoryId: sampleCategories[0]!.id,
-        title: 'Deep Work Session',
-        description: 'Focus time for coding',
-        dayOfWeek: 1,
-        startTime: '10:00',
-        endTime: '12:00',
-        durationMinutes: 120
-      },
-      {
-        id: generateId(),
-        categoryId: sampleCategories[1]!.id,
-        title: 'Morning Run',
-        description: '5K run',
-        dayOfWeek: 1,
-        startTime: '06:30',
-        endTime: '07:30',
-        durationMinutes: 60
-      },
-      {
-        id: generateId(),
-        categoryId: sampleCategories[2]!.id,
-        title: 'Online Course',
-        description: 'Vue.js Advanced Patterns',
-        dayOfWeek: 2,
-        startTime: '19:00',
-        endTime: '21:00',
-        durationMinutes: 120
-      }
-    ]
-
     categories.value = sampleCategories
-    timeBlocks.value = sampleBlocks
+    timeBlocks.value = []
     saveToStorage()
   }
 

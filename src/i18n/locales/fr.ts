@@ -41,7 +41,9 @@ export default {
       categoryPlaceholder: 'Sélectionnez une catégorie',
       day: 'Jour',
       startTime: 'Heure de Début',
-      endTime: 'Heure de Fin'
+      endTime: 'Heure de Fin',
+      repeatDays: 'Répéter les Jours',
+      repeatDaysHint: 'Sélectionnez plusieurs jours pour ce bloc'
     },
     days: {
       sunday: 'Dimanche',
@@ -108,5 +110,46 @@ export default {
     invalidTime: 'Format d\'heure invalide',
     overlapDetected: 'Le bloc de temps chevauche un bloc existant',
     categoryLimitExceeded: 'L\'ajout de ce bloc dépasserait la limite de la catégorie'
+  },
+  defaultCategories: {
+    sleep: 'Sommeil',
+    work: 'Travail',
+    exercise: 'Exercice',
+    learning: 'Apprentissage',
+    personalProjects: 'Projets Personnels'
+  },
+  tutorial: {
+    skip: 'Passer',
+    next: 'Suivant',
+    previous: 'Précédent',
+    getStarted: 'Commencer',
+    step1: {
+      title: 'Maîtrisez Vos 168 Heures',
+      description: 'Chaque semaine compte exactement 168 heures. Next168 vous aide à visualiser et planifier comment les utiliser efficacement.',
+      feature1: 'Voyez toute votre semaine en un coup d\'œil',
+      feature2: 'Suivez le temps dans tous les domaines de votre vie',
+      feature3: 'Ne vous demandez plus jamais où est passé votre temps'
+    },
+    step2: {
+      title: 'Créez des Catégories Intelligentes',
+      description: 'Organisez votre temps avec des catégories personnalisées. Définissez des limites d\'heures hebdomadaires et suivez vos progrès.',
+      feature1: 'Travail, Exercice, Apprentissage, Sommeil et plus',
+      feature2: 'Définissez des limites d\'heures réalistes pour chaque catégorie',
+      feature3: 'De belles icônes et couleurs pour rester organisé'
+    },
+    step3: {
+      title: 'Planifiez des Blocs de Temps',
+      description: 'Ajoutez des blocs de temps à votre semaine et regardez votre emploi du temps prendre vie. Répétez les blocs sur plusieurs jours en un clic.',
+      feature1: 'Création rapide et facile de blocs de temps',
+      feature2: 'Répétez les blocs sur plusieurs jours (Lun-Ven)',
+      feature3: 'Détection automatique des chevauchements'
+    },
+    step4: {
+      title: 'Visualisez Votre Semaine',
+      description: 'Obtenez des informations avec de beaux graphiques et statistiques. Voyez comment vous utilisez vos 168 heures.',
+      feature1: 'Graphiques et tableaux interactifs',
+      feature2: 'Répartition par catégorie et barres de progression',
+      feature3: 'Métriques d\'utilisation hebdomadaire'
+    }
   }
 }

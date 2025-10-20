@@ -15,6 +15,7 @@ export interface TimeBlock {
   startTime: string
   endTime: string
   durationMinutes: number
+  repeatDays?: number[] // Array of day indexes (0-6) where this block repeats
 }
 
 export interface CategoryStats {

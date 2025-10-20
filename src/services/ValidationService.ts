@@ -18,7 +18,8 @@ export interface IValidationService {
     durationMinutes: number,
     categories: Category[],
     timeBlocks: TimeBlock[],
-    excludeBlockId?: string
+    excludeBlockId?: string,
+    repeatDays?: number[]
   ): ValidationResult
 }
 
@@ -63,7 +64,29 @@ export class ValidationService implements IValidationService {
 
       const overlapping = existingBlocks.find((block) => {
         if (block.id === timeBlock.id) return false
-        if (block.dayOfWeek !== timeBlock.dayOfWeek) return false
+
+        // Check if blocks overlap on any day
+        const daysToCheck = new Set<number>()
+
+        // Add the main day of the new block
+        if (timeBlock.dayOfWeek !== undefined) {
+          daysToCheck.add(timeBlock.dayOfWeek)
+        }
+
+        // Add all repeat days of the new block
+        if (timeBlock.repeatDays && timeBlock.repeatDays.length > 0) {
+          timeBlock.repeatDays.forEach(day => daysToCheck.add(day))
+        }
+
+        // Check if existing block occurs on any of these days
+        let hasOverlappingDay = false
+        daysToCheck.forEach(day => {
+          if (block.dayOfWeek === day || (block.repeatDays && block.repeatDays.includes(day))) {
+            hasOverlappingDay = true
+          }
+        })
+
+        if (!hasOverlappingDay) return false
 
         return this.checkTimeOverlap(
           timeBlock.startTime!,
@@ -114,7 +137,8 @@ export class ValidationService implements IValidationService {
     durationMinutes: number,
     categories: Category[],
     timeBlocks: TimeBlock[],
-    excludeBlockId?: string
+    excludeBlockId?: string,
+    repeatDays?: number[]
   ): ValidationResult {
     const errors: string[] = []
 
@@ -126,9 +150,17 @@ export class ValidationService implements IValidationService {
 
     const currentUsageMinutes = timeBlocks
       .filter((block) => block.categoryId === categoryId && block.id !== excludeBlockId)
-      .reduce((total, block) => total + block.durationMinutes, 0)
+      .reduce((total, block) => {
+        // Count main day + all repeat days
+        const multiplier = 1 + (block.repeatDays?.length || 0)
+        return total + (block.durationMinutes * multiplier)
+      }, 0)
 
-    const totalUsageMinutes = currentUsageMinutes + durationMinutes
+    // For new block, count main day + all repeat days
+    const newBlockMultiplier = 1 + (repeatDays?.length || 0)
+    const totalNewBlockMinutes = durationMinutes * newBlockMultiplier
+
+    const totalUsageMinutes = currentUsageMinutes + totalNewBlockMinutes
     const limitMinutes = category.weeklyHourLimit * 60
 
     if (totalUsageMinutes > limitMinutes) {

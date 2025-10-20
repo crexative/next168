@@ -9,6 +9,7 @@ import dayjs from 'dayjs'
 import BaseModal from '@/components/BaseModal.vue'
 import BaseBottomSheet from '@/components/BaseBottomSheet.vue'
 import TimePicker from '@/components/ui/TimePicker.vue'
+import ConfirmDialog from '@/components/ui/ConfirmDialog.vue'
 
 const { t } = useI18n()
 const store = useWeekStore()
@@ -31,6 +32,7 @@ const tabletCenterDay = ref(currentDayOfWeek.value)
 
 // Modal state
 const showModal = ref(false)
+const showDeleteDialog = ref(false)
 const editingBlock = ref<TimeBlock | null>(null)
 const formData = ref({
   title: '',
@@ -38,7 +40,8 @@ const formData = ref({
   categoryId: '',
   dayOfWeek: 0,
   startTime: '09:00',
-  endTime: '10:00'
+  endTime: '10:00',
+  repeatDays: [] as number[]
 })
 const errorMessage = ref('')
 
@@ -50,7 +53,8 @@ function openAddModal(dayOfWeek: number) {
     categoryId: store.categories[0]?.id || '',
     dayOfWeek,
     startTime: '09:00',
-    endTime: '10:00'
+    endTime: '10:00',
+    repeatDays: []
   }
   errorMessage.value = ''
   showModal.value = true
@@ -64,7 +68,8 @@ function openEditModal(block: TimeBlock) {
     categoryId: block.categoryId,
     dayOfWeek: block.dayOfWeek,
     startTime: block.startTime,
-    endTime: block.endTime
+    endTime: block.endTime,
+    repeatDays: block.repeatDays || []
   }
   errorMessage.value = ''
   showModal.value = true
@@ -85,7 +90,8 @@ function saveTimeBlock() {
     categoryId: formData.value.categoryId,
     dayOfWeek: formData.value.dayOfWeek,
     startTime: formData.value.startTime,
-    endTime: formData.value.endTime
+    endTime: formData.value.endTime,
+    repeatDays: formData.value.repeatDays.length > 0 ? formData.value.repeatDays : undefined
   }
 
   let result
@@ -98,14 +104,44 @@ function saveTimeBlock() {
   if (result.success) {
     closeModal()
   } else {
-    errorMessage.value = result.error || 'An error occurred'
+    // Translate error messages
+    const error = result.error || 'An error occurred'
+    if (error.includes('overlaps')) {
+      errorMessage.value = t('errors.overlapDetected')
+    } else if (error.includes('exceed')) {
+      errorMessage.value = t('errors.categoryLimitExceeded')
+    } else if (error.includes('Invalid time')) {
+      errorMessage.value = t('errors.invalidTime')
+    } else if (error.includes('not found')) {
+      errorMessage.value = t('errors.categoryNotFound')
+    } else {
+      errorMessage.value = error
+    }
   }
 }
 
-function deleteTimeBlock() {
-  if (editingBlock.value && confirm(t('calendar.deleteConfirm', { title: editingBlock.value.title }))) {
+function openDeleteDialog() {
+  showDeleteDialog.value = true
+}
+
+function confirmDelete() {
+  if (editingBlock.value) {
     store.deleteTimeBlock(editingBlock.value.id)
+    showDeleteDialog.value = false
     closeModal()
+  }
+}
+
+function cancelDelete() {
+  showDeleteDialog.value = false
+}
+
+function toggleRepeatDay(dayIndex: number) {
+  const index = formData.value.repeatDays.indexOf(dayIndex)
+  if (index > -1) {
+    formData.value.repeatDays.splice(index, 1)
+  } else {
+    formData.value.repeatDays.push(dayIndex)
   }
 }
 
@@ -414,6 +450,24 @@ function navigateTabletNext() {
             id="block-end"
           />
         </div>
+
+        <!-- Repeat Days Selector -->
+        <div class="form-group repeat-days-section">
+          <label>{{ t('calendar.fields.repeatDays') }}</label>
+          <p class="field-hint">{{ t('calendar.fields.repeatDaysHint') }}</p>
+          <div class="repeat-days-selector">
+            <button
+              v-for="(day, index) in translatedDays"
+              :key="index"
+              type="button"
+              class="day-chip"
+              :class="{ active: formData.repeatDays.includes(index) }"
+              @click="toggleRepeatDay(index)"
+            >
+              {{ day.substring(0, 3) }}
+            </button>
+          </div>
+        </div>
       </template>
 
       <template #footer>
@@ -421,7 +475,7 @@ function navigateTabletNext() {
           <button
             v-if="editingBlock"
             class="btn btn-danger"
-            @click="deleteTimeBlock"
+            @click="openDeleteDialog"
           >
             {{ t('common.delete') }}
           </button>
@@ -510,6 +564,24 @@ function navigateTabletNext() {
             id="block-end-mobile"
           />
         </div>
+
+        <!-- Repeat Days Selector -->
+        <div class="form-group repeat-days-section">
+          <label>{{ t('calendar.fields.repeatDays') }}</label>
+          <p class="field-hint">{{ t('calendar.fields.repeatDaysHint') }}</p>
+          <div class="repeat-days-selector">
+            <button
+              v-for="(day, index) in translatedDays"
+              :key="index"
+              type="button"
+              class="day-chip"
+              :class="{ active: formData.repeatDays.includes(index) }"
+              @click="toggleRepeatDay(index)"
+            >
+              {{ day.substring(0, 3) }}
+            </button>
+          </div>
+        </div>
       </template>
 
       <template #footer>
@@ -517,7 +589,7 @@ function navigateTabletNext() {
           <button
             v-if="editingBlock"
             class="btn btn-danger"
-            @click="deleteTimeBlock"
+            @click="openDeleteDialog"
           >
             {{ t('common.delete') }}
           </button>
@@ -532,6 +604,18 @@ function navigateTabletNext() {
         </div>
       </template>
     </BaseBottomSheet>
+
+    <!-- Delete Confirmation Dialog -->
+    <ConfirmDialog
+      v-model="showDeleteDialog"
+      :title="t('common.delete')"
+      :message="t('calendar.deleteConfirm', { title: editingBlock?.title || '' })"
+      :confirm-text="t('common.delete')"
+      :cancel-text="t('common.cancel')"
+      type="danger"
+      @confirm="confirmDelete"
+      @cancel="cancelDelete"
+    />
   </div>
 </template>
 
@@ -920,10 +1004,72 @@ function navigateTabletNext() {
   align-items: start;
 }
 
+.field-hint {
+  margin: -0.25rem 0 1rem 0;
+  font-size: 0.75rem;
+  color: #6b7280;
+}
+
+/* Repeat Days Selector */
+.repeat-days-selector {
+  display: flex;
+  gap: 0.625rem;
+  flex-wrap: wrap;
+  margin-top: 0.25rem;
+}
+
+.day-chip {
+  padding: 0.75rem 1rem;
+  border: 1px solid #d1d5db;
+  border-radius: 0.5rem;
+  background: white;
+  color: #374151;
+  font-size: 0.9375rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+  min-width: 3.5rem;
+  text-align: center;
+}
+
+.day-chip:hover {
+  background: #f3f4f6;
+  border-color: #9ca3af;
+}
+
+.day-chip.active {
+  background: linear-gradient(135deg, #0D9B6E 0%, #30E6A5 100%);
+  border-color: #0D9B6E;
+  color: white;
+  font-weight: 600;
+  box-shadow: 0 2px 8px rgba(13, 155, 110, 0.25);
+}
+
+.day-chip:focus {
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(13, 155, 110, 0.2);
+}
+
+.repeat-days-section {
+  margin-top: 1.5rem;
+  padding-top: 1.5rem;
+  border-top: 1px solid #e5e7eb;
+}
+
 /* Stack time pickers vertically on mobile for better layout */
 @media (max-width: 768px) {
   .form-row {
     grid-template-columns: 1fr;
+  }
+
+  .repeat-days-selector {
+    gap: 0.5rem;
+  }
+
+  .day-chip {
+    padding: 0.625rem 0.75rem;
+    min-width: 3rem;
+    font-size: 0.875rem;
   }
 }
 

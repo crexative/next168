@@ -41,7 +41,9 @@ export default {
       categoryPlaceholder: 'Wählen Sie eine Kategorie',
       day: 'Tag',
       startTime: 'Startzeit',
-      endTime: 'Endzeit'
+      endTime: 'Endzeit',
+      repeatDays: 'An Tagen Wiederholen',
+      repeatDaysHint: 'Wählen Sie mehrere Tage für diesen Block'
     },
     days: {
       sunday: 'Sonntag',
@@ -108,5 +110,46 @@ export default {
     invalidTime: 'Ungültiges Zeitformat',
     overlapDetected: 'Zeitblock überlappt mit bestehendem Block',
     categoryLimitExceeded: 'Das Hinzufügen dieses Blocks würde das Kategorienlimit überschreiten'
+  },
+  defaultCategories: {
+    sleep: 'Schlaf',
+    work: 'Arbeit',
+    exercise: 'Bewegung',
+    learning: 'Lernen',
+    personalProjects: 'Persönliche Projekte'
+  },
+  tutorial: {
+    skip: 'Überspringen',
+    next: 'Weiter',
+    previous: 'Zurück',
+    getStarted: 'Loslegen',
+    step1: {
+      title: 'Meistern Sie Ihre 168 Stunden',
+      description: 'Jede Woche hat genau 168 Stunden. Next168 hilft Ihnen, zu visualisieren und zu planen, wie Sie diese effektiv nutzen.',
+      feature1: 'Sehen Sie Ihre ganze Woche auf einen Blick',
+      feature2: 'Verfolgen Sie die Zeit in allen Lebensbereichen',
+      feature3: 'Fragen Sie sich nie wieder, wo Ihre Zeit geblieben ist'
+    },
+    step2: {
+      title: 'Erstellen Sie Intelligente Kategorien',
+      description: 'Organisieren Sie Ihre Zeit mit benutzerdefinierten Kategorien. Legen Sie wöchentliche Stundenlimits fest und verfolgen Sie Ihren Fortschritt.',
+      feature1: 'Arbeit, Bewegung, Lernen, Schlaf und mehr',
+      feature2: 'Setzen Sie realistische Stundenlimits für jede Kategorie',
+      feature3: 'Schöne Symbole und Farben für Organisation'
+    },
+    step3: {
+      title: 'Planen Sie Zeitblöcke',
+      description: 'Fügen Sie Zeitblöcke zu Ihrer Woche hinzu und sehen Sie, wie Ihr Zeitplan zum Leben erwacht. Wiederholen Sie Blöcke über mehrere Tage mit einem Klick.',
+      feature1: 'Schnelle und einfache Zeitblockerstellung',
+      feature2: 'Wiederholen Sie Blöcke an mehreren Tagen (Mo-Fr)',
+      feature3: 'Automatische Überschneidungserkennung'
+    },
+    step4: {
+      title: 'Visualisieren Sie Ihre Woche',
+      description: 'Erhalten Sie Einblicke mit schönen Diagrammen und Statistiken. Sehen Sie, wie Sie Ihre 168 Stunden nutzen.',
+      feature1: 'Interaktive Diagramme und Grafiken',
+      feature2: 'Kategorieaufschlüsselung und Fortschrittsbalken',
+      feature3: 'Wöchentliche Nutzungsmetriken'
+    }
   }
 }

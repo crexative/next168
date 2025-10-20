@@ -41,7 +41,9 @@ export default {
       categoryPlaceholder: 'Selecione uma categoria',
       day: 'Dia',
       startTime: 'Hora de Início',
-      endTime: 'Hora de Término'
+      endTime: 'Hora de Término',
+      repeatDays: 'Repetir nos Dias',
+      repeatDaysHint: 'Selecione vários dias para este bloco'
     },
     days: {
       sunday: 'Domingo',
@@ -108,5 +110,46 @@ export default {
     invalidTime: 'Formato de hora inválido',
     overlapDetected: 'O bloco de tempo se sobrepõe a um bloco existente',
     categoryLimitExceeded: 'Adicionar este bloco excederia o limite da categoria'
+  },
+  defaultCategories: {
+    sleep: 'Sono',
+    work: 'Trabalho',
+    exercise: 'Exercício',
+    learning: 'Aprendizado',
+    personalProjects: 'Projetos Pessoais'
+  },
+  tutorial: {
+    skip: 'Pular',
+    next: 'Próximo',
+    previous: 'Anterior',
+    getStarted: 'Começar',
+    step1: {
+      title: 'Domine Suas 168 Horas',
+      description: 'Toda semana tem exatamente 168 horas. Next168 ajuda você a visualizar e planejar como usá-las efetivamente.',
+      feature1: 'Veja toda a sua semana de relance',
+      feature2: 'Rastreie o tempo em todas as áreas da sua vida',
+      feature3: 'Nunca se pergunte para onde foi seu tempo'
+    },
+    step2: {
+      title: 'Crie Categorias Inteligentes',
+      description: 'Organize seu tempo com categorias personalizadas. Defina limites de horas semanais e acompanhe seu progresso.',
+      feature1: 'Trabalho, Exercício, Aprendizado, Sono e mais',
+      feature2: 'Defina limites de horas realistas para cada categoria',
+      feature3: 'Belos ícones e cores para manter a organização'
+    },
+    step3: {
+      title: 'Agende Blocos de Tempo',
+      description: 'Adicione blocos de tempo à sua semana e veja sua agenda ganhar vida. Repita blocos em vários dias com um clique.',
+      feature1: 'Criação rápida e fácil de blocos de tempo',
+      feature2: 'Repita blocos em vários dias (Seg-Sex)',
+      feature3: 'Detecção automática de sobreposições'
+    },
+    step4: {
+      title: 'Visualize Sua Semana',
+      description: 'Obtenha insights com belos gráficos e estatísticas. Veja como você está usando suas 168 horas.',
+      feature1: 'Gráficos e tabelas interativos',
+      feature2: 'Detalhamento por categoria e barras de progresso',
+      feature3: 'Métricas de utilização semanal'
+    }
   }
 }

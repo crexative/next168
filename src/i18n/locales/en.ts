@@ -41,7 +41,9 @@ export default {
       categoryPlaceholder: 'Select a category',
       day: 'Day',
       startTime: 'Start Time',
-      endTime: 'End Time'
+      endTime: 'End Time',
+      repeatDays: 'Repeat on Days',
+      repeatDaysHint: 'Select multiple days for this time block'
     },
     days: {
       sunday: 'Sunday',
@@ -108,5 +110,46 @@ export default {
     invalidTime: 'Invalid time format',
     overlapDetected: 'Time block overlaps with existing block',
     categoryLimitExceeded: 'Adding this block would exceed category limit'
+  },
+  defaultCategories: {
+    sleep: 'Sleep',
+    work: 'Work',
+    exercise: 'Exercise',
+    learning: 'Learning',
+    personalProjects: 'Personal Projects'
+  },
+  tutorial: {
+    skip: 'Skip',
+    next: 'Next',
+    previous: 'Previous',
+    getStarted: 'Get Started',
+    step1: {
+      title: 'Master Your 168 Hours',
+      description: 'Every week has exactly 168 hours. Next168 helps you visualize and plan how to use them effectively.',
+      feature1: 'See your entire week at a glance',
+      feature2: 'Track time across all areas of your life',
+      feature3: 'Never wonder where your time went'
+    },
+    step2: {
+      title: 'Create Smart Categories',
+      description: 'Organize your time with custom categories. Set weekly hour limits and track your progress.',
+      feature1: 'Work, Exercise, Learning, Sleep, and more',
+      feature2: 'Set realistic hour limits for each category',
+      feature3: 'Beautiful icons and colors to stay organized'
+    },
+    step3: {
+      title: 'Schedule Time Blocks',
+      description: 'Add time blocks to your week and watch your schedule come to life. Repeat blocks across multiple days with one click.',
+      feature1: 'Quick and easy time block creation',
+      feature2: 'Repeat blocks on multiple days (Mon-Fri)',
+      feature3: 'Automatic overlap detection'
+    },
+    step4: {
+      title: 'Visualize Your Week',
+      description: 'Get insights with beautiful charts and statistics. See how you\'re using your 168 hours.',
+      feature1: 'Interactive charts and graphs',
+      feature2: 'Category breakdown and progress bars',
+      feature3: 'Weekly utilization metrics'
+    }
   }
 }

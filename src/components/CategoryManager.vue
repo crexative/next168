@@ -431,7 +431,18 @@ function saveCategory() {
   if (result.success) {
     closeModal()
   } else {
-    errorMessage.value = result.error || 'An error occurred'
+    // Translate error messages
+    const error = result.error || 'An error occurred'
+    if (error.includes('below current usage')) {
+      // Extract hours from error message like "Cannot reduce limit below current usage (X hours scheduled)"
+      const hoursMatch = error.match(/\((\d+\.?\d*) hours/)
+      const hours = hoursMatch ? hoursMatch[1] : '0'
+      errorMessage.value = t('errors.cannotReduceLimit', { hours })
+    } else if (error.includes('not found')) {
+      errorMessage.value = t('errors.categoryNotFound')
+    } else {
+      errorMessage.value = error
+    }
   }
 }
 
@@ -444,7 +455,16 @@ function confirmDelete() {
   if (categoryToDelete.value) {
     const result = store.deleteCategory(categoryToDelete.value.id)
     if (!result.success) {
-      errorMessage.value = result.error || 'Failed to delete category'
+      // Translate error messages
+      const error = result.error || 'Failed to delete category'
+      if (error.includes('Cannot delete category with')) {
+        // Extract count from error message like "Cannot delete category with X scheduled time blocks"
+        const countMatch = error.match(/with (\d+) scheduled/)
+        const count = countMatch ? countMatch[1] : '0'
+        errorMessage.value = t('errors.cannotDeleteCategory', { count })
+      } else {
+        errorMessage.value = error
+      }
     }
     categoryToDelete.value = null
   }
