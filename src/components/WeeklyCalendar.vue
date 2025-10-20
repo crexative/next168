@@ -137,6 +137,11 @@ function cancelDelete() {
 }
 
 function toggleRepeatDay(dayIndex: number) {
+  // Prevent selecting the same day as dayOfWeek
+  if (dayIndex === formData.value.dayOfWeek) {
+    return
+  }
+
   const index = formData.value.repeatDays.indexOf(dayIndex)
   if (index > -1) {
     formData.value.repeatDays.splice(index, 1)
@@ -461,7 +466,11 @@ function navigateTabletNext() {
               :key="index"
               type="button"
               class="day-chip"
-              :class="{ active: formData.repeatDays.includes(index) }"
+              :class="{
+                active: formData.repeatDays.includes(index),
+                disabled: index === formData.dayOfWeek
+              }"
+              :disabled="index === formData.dayOfWeek"
               @click="toggleRepeatDay(index)"
             >
               {{ day.substring(0, 3) }}
@@ -575,7 +584,11 @@ function navigateTabletNext() {
               :key="index"
               type="button"
               class="day-chip"
-              :class="{ active: formData.repeatDays.includes(index) }"
+              :class="{
+                active: formData.repeatDays.includes(index),
+                disabled: index === formData.dayOfWeek
+              }"
+              :disabled="index === formData.dayOfWeek"
               @click="toggleRepeatDay(index)"
             >
               {{ day.substring(0, 3) }}
@@ -1048,6 +1061,19 @@ function navigateTabletNext() {
 .day-chip:focus {
   outline: none;
   box-shadow: 0 0 0 3px rgba(13, 155, 110, 0.2);
+}
+
+.day-chip.disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+  background: #f3f4f6;
+  border-color: #d1d5db;
+  color: #9ca3af;
+}
+
+.day-chip.disabled:hover {
+  background: #f3f4f6;
+  border-color: #d1d5db;
 }
 
 .repeat-days-section {

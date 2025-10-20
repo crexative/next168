@@ -19,7 +19,8 @@ export interface IValidationService {
     categories: Category[],
     timeBlocks: TimeBlock[],
     excludeBlockId?: string,
-    repeatDays?: number[]
+    repeatDays?: number[],
+    dayOfWeek?: number
   ): ValidationResult
 }
 
@@ -138,7 +139,8 @@ export class ValidationService implements IValidationService {
     categories: Category[],
     timeBlocks: TimeBlock[],
     excludeBlockId?: string,
-    repeatDays?: number[]
+    repeatDays?: number[],
+    dayOfWeek?: number
   ): ValidationResult {
     const errors: string[] = []
 
@@ -151,14 +153,21 @@ export class ValidationService implements IValidationService {
     const currentUsageMinutes = timeBlocks
       .filter((block) => block.categoryId === categoryId && block.id !== excludeBlockId)
       .reduce((total, block) => {
-        // Count main day + all repeat days
-        const multiplier = 1 + (block.repeatDays?.length || 0)
-        return total + (block.durationMinutes * multiplier)
+        // Count unique days: main day + repeat days (excluding duplicates)
+        const uniqueDays = this.countUniqueDays(block.dayOfWeek, block.repeatDays)
+        return total + (block.durationMinutes * uniqueDays)
       }, 0)
 
-    // For new block, count main day + all repeat days
-    const newBlockMultiplier = 1 + (repeatDays?.length || 0)
-    const totalNewBlockMinutes = durationMinutes * newBlockMultiplier
+    // For new block, count unique days
+    // If dayOfWeek is provided, use countUniqueDays to handle duplicates
+    // Otherwise, count repeatDays as additional days (backward compatibility)
+    let uniqueDaysForNewBlock: number
+    if (dayOfWeek !== undefined) {
+      uniqueDaysForNewBlock = this.countUniqueDays(dayOfWeek, repeatDays)
+    } else {
+      uniqueDaysForNewBlock = 1 + (repeatDays?.length || 0)
+    }
+    const totalNewBlockMinutes = durationMinutes * uniqueDaysForNewBlock
 
     const totalUsageMinutes = currentUsageMinutes + totalNewBlockMinutes
     const limitMinutes = category.weeklyHourLimit * 60
@@ -175,6 +184,23 @@ export class ValidationService implements IValidationService {
       isValid: errors.length === 0,
       errors
     }
+  }
+
+  /**
+   * Counts unique days a time block occurs on
+   * @param dayOfWeek The main day (0-6)
+   * @param repeatDays Optional array of additional days (0-6)
+   * @returns Number of unique days
+   */
+  private countUniqueDays(dayOfWeek: number, repeatDays?: number[]): number {
+    const uniqueDays = new Set<number>()
+    uniqueDays.add(dayOfWeek)
+
+    if (repeatDays) {
+      repeatDays.forEach(day => uniqueDays.add(day))
+    }
+
+    return uniqueDays.size
   }
 
   private checkTimeOverlap(

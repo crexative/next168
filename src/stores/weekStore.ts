@@ -3,11 +3,10 @@ import { ref, computed } from 'vue'
 import type { Category, TimeBlock, CategoryStats, WeekData } from '@/types'
 import { TOTAL_WEEK_HOURS } from '@/types'
 import { validationService } from '@/services/ValidationService'
-import { storageService } from '@/services/StorageService'
+import { weekDataRepository } from '@/repositories/repositoryFactory'
 import { calculateDurationMinutes, minutesToHours } from '@/utils/timeCalculator'
+import { countBlockUniqueDays } from '@/utils/timeBlockUtils'
 import { i18n } from '@/i18n'
-
-const STORAGE_KEY = 'next168-data'
 
 export const useWeekStore = defineStore('week', () => {
   // State
@@ -22,9 +21,9 @@ export const useWeekStore = defineStore('week', () => {
       )
       const totalMinutes = categoryBlocks.reduce(
         (sum, block) => {
-          // Count main day + all repeat days
-          const multiplier = 1 + (block.repeatDays?.length || 0)
-          return sum + (block.durationMinutes * multiplier)
+          // Count unique days (handles duplicate days in repeatDays)
+          const uniqueDays = countBlockUniqueDays(block)
+          return sum + (block.durationMinutes * uniqueDays)
         },
         0
       )
@@ -48,9 +47,9 @@ export const useWeekStore = defineStore('week', () => {
   const totalScheduledHours = computed<number>(() => {
     const totalMinutes = timeBlocks.value.reduce(
       (sum, block) => {
-        // Count main day + all repeat days
-        const multiplier = 1 + (block.repeatDays?.length || 0)
-        return sum + (block.durationMinutes * multiplier)
+        // Count unique days (handles duplicate days in repeatDays)
+        const uniqueDays = countBlockUniqueDays(block)
+        return sum + (block.durationMinutes * uniqueDays)
       },
       0
     )
@@ -156,7 +155,8 @@ export const useWeekStore = defineStore('week', () => {
       categories.value,
       timeBlocks.value,
       undefined,
-      block.repeatDays
+      block.repeatDays,
+      block.dayOfWeek
     )
     if (!categoryValidation.isValid) {
       return { success: false, error: categoryValidation.errors.join(', ') }
@@ -201,7 +201,8 @@ export const useWeekStore = defineStore('week', () => {
         categories.value,
         timeBlocks.value,
         id,
-        updatedBlock.repeatDays
+        updatedBlock.repeatDays,
+        updatedBlock.dayOfWeek
       )
       if (!categoryValidation.isValid) {
         return { success: false, error: categoryValidation.errors.join(', ') }
@@ -229,16 +230,19 @@ export const useWeekStore = defineStore('week', () => {
   }
 
   // Storage
-  function saveToStorage(): void {
+  async function saveToStorage(): Promise<void> {
     const data: WeekData = {
       categories: categories.value,
       timeBlocks: timeBlocks.value
     }
-    storageService.set(STORAGE_KEY, data)
+    const success = await weekDataRepository.save(data)
+    if (!success) {
+      console.error('[WeekStore] Failed to save data')
+    }
   }
 
-  function loadFromStorage(): void {
-    const data = storageService.get<WeekData>(STORAGE_KEY)
+  async function loadFromStorage(): Promise<void> {
+    const data = await weekDataRepository.load()
     if (data) {
       categories.value = data.categories || []
       timeBlocks.value = data.timeBlocks || []
