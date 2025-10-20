@@ -110,3 +110,19 @@ body {
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
+
+/* Prevent iOS Safari zoom on input focus */
+input,
+textarea,
+select {
+  font-size: 16px !important;
+}
+
+/* Allow smaller font size on larger screens */
+@media (min-width: 768px) {
+  input,
+  textarea,
+  select {
+    font-size: 15px !important;
+  }
+}

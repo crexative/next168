@@ -920,6 +920,13 @@ function navigateTabletNext() {
   align-items: start;
 }
 
+/* Stack time pickers vertically on mobile for better layout */
+@media (max-width: 768px) {
+  .form-row {
+    grid-template-columns: 1fr;
+  }
+}
+
 /* Responsive */
 @media (min-width: 769px) and (max-width: 1024px) {
   .header {
