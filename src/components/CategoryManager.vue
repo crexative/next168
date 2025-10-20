@@ -502,12 +502,12 @@ function getCategoryStats(categoryId: string) {
         <div class="category-stats">
           <div class="stat-row">
             <span class="stat-label">{{ t('categories.stats.weeklyLimit') }}</span>
-            <span class="stat-value">{{ category.weeklyHourLimit }}{{ t('common.hours') }}</span>
+            <span class="stat-value">{{ category.weeklyHourLimit.toFixed(1) }}h</span>
           </div>
           <div class="stat-row">
             <span class="stat-label">{{ t('categories.stats.used') }}</span>
             <span class="stat-value">
-              {{ getCategoryStats(category.id)?.totalHours.toFixed(2) || '0.00' }}{{ t('common.hours') }}
+              {{ (getCategoryStats(category.id)?.totalHours || 0).toFixed(1) }}h
             </span>
           </div>
           <div class="stat-row">
@@ -516,7 +516,7 @@ function getCategoryStats(categoryId: string) {
               'stat-warning': (getCategoryStats(category.id)?.remainingHours || 0) < 0,
               'stat-success': (getCategoryStats(category.id)?.remainingHours || 0) >= 0
             }">
-              {{ getCategoryStats(category.id)?.remainingHours.toFixed(2) || category.weeklyHourLimit.toFixed(2) }}{{ t('common.hours') }}
+              {{ (getCategoryStats(category.id)?.remainingHours || category.weeklyHourLimit).toFixed(1) }}h
             </span>
           </div>
         </div>
