@@ -13,6 +13,9 @@ export const useWeekStore = defineStore('week', () => {
   const categories = ref<Category[]>([])
   const timeBlocks = ref<TimeBlock[]>([])
 
+  const storageError = ref('')
+  const storageBlocked = ref(false)
+
   // Computed
   const categoryStats = computed<CategoryStats[]>(() => {
     return categories.value.map((category) => {
@@ -62,6 +65,7 @@ export const useWeekStore = defineStore('week', () => {
 
   // Actions - Categories
   function addCategory(category: Omit<Category, 'id'>): { success: boolean; error?: string } {
+    if (storageBlocked.value) return { success: false, error: storageError.value }
     const validation = validationService.validateCategory(category)
     if (!validation.isValid) {
       return { success: false, error: validation.errors.join(', ') }
@@ -81,6 +85,7 @@ export const useWeekStore = defineStore('week', () => {
     id: string,
     updates: Partial<Omit<Category, 'id'>>
   ): { success: boolean; error?: string } {
+    if (storageBlocked.value) return { success: false, error: storageError.value }
     const index = categories.value.findIndex((c) => c.id === id)
     const existingCategory = categories.value[index]
     if (index === -1 || !existingCategory) {
@@ -113,6 +118,7 @@ export const useWeekStore = defineStore('week', () => {
   }
 
   function deleteCategory(id: string): { success: boolean; error?: string } {
+    if (storageBlocked.value) return { success: false, error: storageError.value }
     const categoryBlocks = timeBlocks.value.filter((block) => block.categoryId === id)
     if (categoryBlocks.length > 0) {
       return {
@@ -134,6 +140,7 @@ export const useWeekStore = defineStore('week', () => {
   function addTimeBlock(
     block: Omit<TimeBlock, 'id' | 'durationMinutes'>
   ): { success: boolean; error?: string } {
+    if (storageBlocked.value) return { success: false, error: storageError.value }
     const durationMinutes = calculateDurationMinutes(block.startTime, block.endTime)
 
     const newBlock: TimeBlock = {
@@ -171,6 +178,7 @@ export const useWeekStore = defineStore('week', () => {
     id: string,
     updates: Partial<Omit<TimeBlock, 'id' | 'durationMinutes'>>
   ): { success: boolean; error?: string } {
+    if (storageBlocked.value) return { success: false, error: storageError.value }
     const index = timeBlocks.value.findIndex((b) => b.id === id)
     const existingBlock = timeBlocks.value[index]
     if (index === -1 || !existingBlock) {
@@ -215,6 +223,7 @@ export const useWeekStore = defineStore('week', () => {
   }
 
   function deleteTimeBlock(id: string): { success: boolean; error?: string } {
+    if (storageBlocked.value) return { success: false, error: storageError.value }
     timeBlocks.value = timeBlocks.value.filter((b) => b.id !== id)
     saveToStorage()
     return { success: true }
@@ -235,19 +244,29 @@ export const useWeekStore = defineStore('week', () => {
       categories: categories.value,
       timeBlocks: timeBlocks.value
     }
+    if (storageBlocked.value) return
     const success = await weekDataRepository.save(data)
     if (!success) {
-      console.error('[WeekStore] Failed to save data')
+      storageError.value = 'Routine changes are not saved. Download a backup before leaving.'
+    } else {
+      storageError.value = ''
     }
   }
 
   async function loadFromStorage(): Promise<void> {
-    const data = await weekDataRepository.load()
-    if (data) {
-      categories.value = data.categories || []
-      timeBlocks.value = data.timeBlocks || []
-    } else {
-      initializeSampleData()
+    try {
+      const data = await weekDataRepository.load()
+      storageBlocked.value = false
+      storageError.value = ''
+      if (data) {
+        categories.value = data.categories
+        timeBlocks.value = data.timeBlocks
+      } else {
+        initializeSampleData()
+      }
+    } catch {
+      storageBlocked.value = true
+      storageError.value = 'Routine data could not be read. Existing storage is preserved; restore a valid backup.'
     }
   }
 
@@ -309,6 +328,8 @@ export const useWeekStore = defineStore('week', () => {
     // State
     categories,
     timeBlocks,
+    storageError,
+    storageBlocked,
     // Computed
     categoryStats,
     totalScheduledHours,

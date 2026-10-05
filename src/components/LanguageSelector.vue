@@ -5,7 +5,6 @@ import { availableLocales, setLocale } from '@/i18n'
 
 const { locale } = useI18n()
 const showDropdown = ref(false)
-const buttonRef = ref<HTMLElement | null>(null)
 const dropdownStyle = ref({})
 
 const currentLocale = computed(() => {

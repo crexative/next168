@@ -30,6 +30,7 @@ export class ValidationService implements IValidationService {
     existingBlocks: TimeBlock[],
     category?: Category
   ): ValidationResult {
+    void category
     const errors: string[] = []
 
     if (!timeBlock.title?.trim()) {

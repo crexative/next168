@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import type { TooltipItem } from 'chart.js'
 import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { Bar } from 'vue-chartjs'
@@ -133,8 +134,8 @@ const chartOptions = computed(() => ({
     },
     tooltip: {
       callbacks: {
-        label: (context: any) => {
-          return `${context.dataset.label}: ${context.parsed.y.toFixed(1)}h`
+        label: (context: TooltipItem<'bar'>) => {
+          return `${context.dataset.label}: ${(context.parsed.y ?? 0).toFixed(1)}h`
         }
       }
     }

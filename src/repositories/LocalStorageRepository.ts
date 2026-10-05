@@ -1,3 +1,4 @@
+import { decodeWeekData } from '@/services/WeekDataCodec'
 import type { WeekData } from '@/types'
 import type { IWeekDataRepository } from './IWeekDataRepository'
 
@@ -7,6 +8,7 @@ import type { IWeekDataRepository } from './IWeekDataRepository'
  */
 export class LocalStorageRepository implements IWeekDataRepository {
   private readonly storageKey: string
+  private observed: string | null | undefined
 
   constructor(storageKey: string) {
     this.storageKey = storageKey
@@ -14,8 +16,15 @@ export class LocalStorageRepository implements IWeekDataRepository {
 
   async save(data: WeekData): Promise<boolean> {
     try {
-      const json = JSON.stringify(data)
+      const json = JSON.stringify(decodeWeekData(data))
+      const previous = localStorage.getItem(this.storageKey)
+      if (this.observed === undefined || previous !== this.observed) throw new Error('Routine changed in another tab; reload before saving')
+      if (previous !== null) {
+        decodeWeekData(JSON.parse(previous))
+        localStorage.setItem(`${this.storageKey}-backup`, previous)
+      }
       localStorage.setItem(this.storageKey, json)
+      this.observed = json
       return true
     } catch (error) {
       console.error('[LocalStorageRepository] Error saving data:', error)
@@ -26,13 +35,13 @@ export class LocalStorageRepository implements IWeekDataRepository {
   async load(): Promise<WeekData | null> {
     try {
       const json = localStorage.getItem(this.storageKey)
-      if (!json) {
+      this.observed = json
+      if (json === null) {
         return null
       }
-      return JSON.parse(json) as WeekData
-    } catch (error) {
-      console.error('[LocalStorageRepository] Error loading data:', error)
-      return null
+      return decodeWeekData(JSON.parse(json))
+    } catch {
+      throw new Error('Routine data could not be read. Existing storage is preserved.')
     }
   }
 

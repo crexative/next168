@@ -4,6 +4,7 @@ import { useI18n } from 'vue-i18n'
 import { useWeekStore } from '@/stores/weekStore'
 import CategoryManager from '@/components/CategoryManager.vue'
 import WeeklyCalendar from '@/components/WeeklyCalendar.vue'
+import FlexibleAgenda from '@/components/FlexibleAgenda.vue'
 import StatsDashboard from '@/components/StatsDashboard.vue'
 import LanguageSelector from '@/components/LanguageSelector.vue'
 import WelcomeTutorial from '@/components/WelcomeTutorial.vue'
@@ -11,14 +12,14 @@ import WelcomeTutorial from '@/components/WelcomeTutorial.vue'
 const { t } = useI18n()
 
 const weekStore = useWeekStore()
-const activeTab = ref<'calendar' | 'categories' | 'stats'>('calendar')
+const activeTab = ref<'calendar' | 'agenda' | 'categories' | 'stats'>('calendar')
 const showTutorial = ref(false)
 
 // Swipe gesture handling
 let touchStartX = 0
 let touchEndX = 0
 
-const tabs: Array<'calendar' | 'categories' | 'stats'> = ['calendar', 'categories', 'stats']
+const tabs: Array<'calendar' | 'agenda' | 'categories' | 'stats'> = ['calendar', 'agenda', 'categories', 'stats']
 
 function handleTouchStart(e: TouchEvent) {
   touchStartX = e.changedTouches[0]?.screenX ?? 0
@@ -52,7 +53,6 @@ function completeTutorial() {
 }
 
 onMounted(() => {
-  weekStore.loadFromStorage()
 
   // Check if this is the first visit
   const tutorialCompleted = localStorage.getItem('next168-tutorial-completed')
@@ -79,8 +79,9 @@ onMounted(() => {
         @click="activeTab = 'calendar'"
         :class="['nav-btn', { active: activeTab === 'calendar' }]"
       >
-        📅 {{ t('nav.calendar') }}
+        📅 {{ t('agenda.routineTab') }}
       </button>
+      <button @click="activeTab = 'agenda'" :class="['nav-btn', { active: activeTab === 'agenda' }]">↗ {{ t('agenda.nav') }}</button>
       <button
         @click="activeTab = 'categories'"
         :class="['nav-btn', { active: activeTab === 'categories' }]"
@@ -100,6 +101,8 @@ onMounted(() => {
       @touchstart="handleTouchStart"
       @touchend="handleTouchEnd"
     >
+      <p v-if="weekStore.storageError" role="alert" class="storage-alert">{{ weekStore.storageError }}</p>
+      <FlexibleAgenda v-show="activeTab === 'agenda'" />
       <WeeklyCalendar v-show="activeTab === 'calendar'" />
       <CategoryManager v-show="activeTab === 'categories'" />
       <StatsDashboard v-show="activeTab === 'stats'" />
@@ -336,4 +339,8 @@ body {
     font-size: 0.75rem;
   }
 }
+</style>
+
+<style scoped>
+.storage-alert { padding: 1rem; color: #991b1b; background: #fef2f2; }
 </style>
