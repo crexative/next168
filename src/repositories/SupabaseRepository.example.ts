@@ -23,6 +23,7 @@ export class SupabaseRepository implements IWeekDataRepository {
   }
 
   async save(data: WeekData): Promise<boolean> {
+    void data
     try {
       // const { error } = await this.supabase
       //   .from('week_data')

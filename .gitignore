@@ -28,3 +28,8 @@ coverage
 *.sw?
 
 *.tsbuildinfo
+
+# Isolated headless browser binaries and reports
+.browser-cache/
+playwright-report/
+test-results/

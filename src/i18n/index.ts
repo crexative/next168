@@ -1,5 +1,6 @@
 import { createI18n } from 'vue-i18n'
 import en from './locales/en'
+import { agendaEnglish, agendaSpanish } from './agenda'
 import es from './locales/es'
 import fr from './locales/fr'
 import pt from './locales/pt'
@@ -9,9 +10,9 @@ import de from './locales/de'
 const savedLanguage = localStorage.getItem('next168-language')
 const browserLanguage = navigator.language.split('-')[0] ?? 'en'
 const supportedLanguages = ['en', 'es', 'fr', 'pt', 'de'] as const
-const defaultLanguage: typeof supportedLanguages[number] = savedLanguage && supportedLanguages.includes(savedLanguage as any)
+const defaultLanguage: typeof supportedLanguages[number] = savedLanguage && supportedLanguages.includes(savedLanguage as typeof supportedLanguages[number])
   ? savedLanguage as typeof supportedLanguages[number]
-  : supportedLanguages.includes(browserLanguage as any)
+  : supportedLanguages.includes(browserLanguage as typeof supportedLanguages[number])
     ? browserLanguage as typeof supportedLanguages[number]
     : 'en'
 
@@ -20,8 +21,8 @@ export const i18n = createI18n({
   locale: defaultLanguage,
   fallbackLocale: 'en',
   messages: {
-    en,
-    es,
+    en: { ...en, agenda: agendaEnglish },
+    es: { ...es, agenda: agendaSpanish },
     fr,
     pt,
     de
