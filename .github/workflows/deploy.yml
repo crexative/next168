@@ -4,6 +4,8 @@ on:
   push:
     branches:
       - main
+  pull_request:
+    branches: [main]
   workflow_dispatch:
 
 permissions:
@@ -12,21 +14,66 @@ permissions:
   id-token: write
 
 concurrency:
-  group: "pages"
-  cancel-in-progress: false
+  group: pages-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   build:
-    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    runs-on: ${{ fromJSON(vars.CI_RUNNER_LABELS || '["ubuntu-latest"]') }}
+    defaults:
+      run:
+        shell: bash
     steps:
+      - name: Isolate runner HOME and host tools
+        env:
+          HOME: ${{ runner.temp }}/${{ github.event.repository.name }}-${{ github.run_id }}-${{ github.run_attempt }}-${{ github.job }}/home
+          XDG_CONFIG_HOME: ${{ runner.temp }}/${{ github.event.repository.name }}-${{ github.run_id }}-${{ github.run_attempt }}-${{ github.job }}/home/config
+          XDG_CACHE_HOME: ${{ runner.temp }}/${{ github.event.repository.name }}-${{ github.run_id }}-${{ github.run_attempt }}-${{ github.job }}/home/cache
+          XDG_DATA_HOME: ${{ runner.temp }}/${{ github.event.repository.name }}-${{ github.run_id }}-${{ github.run_attempt }}-${{ github.job }}/home/data
+          CODEX_HOME: ${{ runner.temp }}/${{ github.event.repository.name }}-${{ github.run_id }}-${{ github.run_attempt }}-${{ github.job }}/home/codex
+          GH_CONFIG_DIR: ${{ runner.temp }}/${{ github.event.repository.name }}-${{ github.run_id }}-${{ github.run_attempt }}-${{ github.job }}/home/gh
+        run: |
+          umask 077
+          mkdir -p "$HOME/stub-bin" "$XDG_CONFIG_HOME" "$XDG_CACHE_HOME" "$XDG_DATA_HOME" "$CODEX_HOME" "$GH_CONFIG_DIR"
+          export CI_BLOCKED_TOOLS_LOG="$HOME/blocked-tools.log"
+          for tool in orca orca-ide orca-dev gh codex; do
+            cat > "$HOME/stub-bin/$tool" <<'STUB'
+          #!/bin/sh
+          message="CI blocked host tool: ${0##*/}"
+          printf '%s\n' "$message" >> "$CI_BLOCKED_TOOLS_LOG"
+          printf '%s\n' "$message" >&2
+          exit 127
+          STUB
+            chmod +x "$HOME/stub-bin/$tool"
+          done
+          for variable in HOME XDG_CONFIG_HOME XDG_CACHE_HOME XDG_DATA_HOME CODEX_HOME GH_CONFIG_DIR; do
+            echo "$variable=${!variable}" >> "$GITHUB_ENV"
+          done
+          echo "CI_BLOCKED_TOOLS_LOG=$CI_BLOCKED_TOOLS_LOG" >> "$GITHUB_ENV"
+          echo "ORCA_CLI_COMMAND=$HOME/stub-bin/orca" >> "$GITHUB_ENV"
+          echo "$HOME/stub-bin" >> "$GITHUB_PATH"
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          persist-credentials: false
 
       - name: Setup Node
         uses: actions/setup-node@v4
+        if: runner.environment == 'github-hosted'
         with:
           node-version: '20'
           cache: 'npm'
+
+      - name: Verify runner and local Node
+        env:
+          RUNNER_NAME: ${{ runner.name }}
+          RUNNER_ENVIRONMENT: ${{ runner.environment }}
+        run: |
+          echo "runner=$RUNNER_NAME environment=$RUNNER_ENVIRONMENT"
+          node --version
+          npm --version
+          node -e 'const [major, minor] = process.versions.node.split(".").map(Number); if (!(major === 20 && minor >= 19 || major === 22 && minor >= 12 || major > 22)) process.exit(1)'
 
       - name: Install dependencies
         run: npm ci
@@ -35,18 +82,39 @@ jobs:
         run: npm run build
 
       - name: Setup Pages
+        if: github.event_name != 'pull_request'
         uses: actions/configure-pages@v4
 
       - name: Upload artifact
+        if: github.event_name != 'pull_request'
         uses: actions/upload-pages-artifact@v3
         with:
           path: './dist'
 
+      - name: Verify fail-closed host tool isolation
+        if: always()
+        run: |
+          for tool in orca orca-ide orca-dev gh codex; do
+            resolved=$(command -v "$tool")
+            test "$resolved" = "$HOME/stub-bin/$tool"
+            echo "$tool resolves to isolated stub: $resolved"
+            if "$tool"; then
+              echo "Host tool did not fail closed: $tool" >&2
+              exit 1
+            else
+              test "$?" -eq 127
+            fi
+          done
+          echo "Blocked tool calls (stubs log names only, never arguments):"
+          sort "$CI_BLOCKED_TOOLS_LOG" | uniq -c
+
   deploy:
+    if: github.event_name != 'pull_request'
+    timeout-minutes: 15
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
-    runs-on: ubuntu-latest
+    runs-on: ${{ fromJSON(vars.CI_RUNNER_LABELS || '["ubuntu-latest"]') }}
     needs: build
     steps:
       - name: Deploy to GitHub Pages
