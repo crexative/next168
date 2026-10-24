@@ -87,6 +87,16 @@ describe('commit', () => {
     expect(storage.data.size).toBe(0)
   })
 
+  it('rejects semantic violations without publishing or persisting the draft', async () => {
+    const { store, storage } = setup()
+    await store.load()
+    const before = store.document
+    expect(await store.commit((draft) => { draft.appliedProposalIds = ['duplicate', 'duplicate'] }))
+      .toEqual({ ok: false, reason: 'invalid-document' })
+    expect(store.document).toBe(before)
+    expect(storage.data.size).toBe(0)
+  })
+
   it('reports a conflict and reloads the winner after a stale commit', async () => {
     const { store, planner } = setup()
     await store.load()

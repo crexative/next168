@@ -1,7 +1,7 @@
 import {
   STORAGE_KEYS, type LoadResult, type PlannerDocument, type PlannerRepository, type SaveResult,
 } from '@/core/model'
-import { migrateToCurrent, parseDocument } from './core'
+import { migrateToCurrent, parseDocument, validateDocument } from './core'
 import {
   failureReason, isValidDocumentText, readStoredDocument, writeWithBackup,
   type RunExclusive, type StorageLike,
@@ -37,16 +37,20 @@ export class LocalStorageRepository implements PlannerRepository {
   async save(document: PlannerDocument, expectedRevision: number): Promise<SaveResult> {
     const { runExclusive, storage } = this.deps
     if (!runExclusive) return { kind: 'error', reason: NO_WEB_LOCKS }
-    const checked = parseDocument(document)
-    if (!checked.ok) return { kind: 'error', reason: 'invalid-document' }
+    let checked: PlannerDocument
+    try {
+      checked = validateDocument(document)
+    } catch {
+      return { kind: 'error', reason: 'invalid-document' }
+    }
     try {
       return await runExclusive(async () => {
         const stored = readStoredDocument(storage)
         if (stored.kind === 'corrupt' || stored.kind === 'unsupported') return { kind: 'error', reason: 'stored-document-unreadable' }
         const currentRevision = stored.kind === 'ok' ? stored.document.revision : 0
         if (currentRevision !== expectedRevision) return { kind: 'conflict', currentRevision }
-        writeWithBackup(storage, checked.document)
-        return { kind: 'ok', revision: checked.document.revision }
+        writeWithBackup(storage, checked)
+        return { kind: 'ok', revision: checked.revision }
       })
     } catch (error) {
       return { kind: 'error', reason: failureReason(error) }
@@ -83,12 +87,8 @@ export class LocalStorageRepository implements PlannerRepository {
   async peekBackup(): Promise<PlannerDocument | undefined> {
     const raw = this.deps.storage.getItem(STORAGE_KEYS.backup)
     if (raw === null) return undefined
-    try {
-      const parsed = parseDocument(JSON.parse(raw))
-      return parsed.ok ? parsed.document : undefined
-    } catch {
-      return undefined
-    }
+    const parsed = parseDocument(raw)
+    return parsed.kind === 'ok' ? parsed.document : undefined
   }
 
   async restoreBackup(): Promise<SaveResult> {
@@ -99,8 +99,8 @@ export class LocalStorageRepository implements PlannerRepository {
         const stored = readStoredDocument(storage)
         if (stored.kind === 'ok' || stored.kind === 'unsupported') return { kind: 'error', reason: 'data-is-not-corrupt' }
         const backup = storage.getItem(STORAGE_KEYS.backup)
-        const parsed = parseDocument(backup === null ? undefined : JSON.parse(backup))
-        if (backup === null || !parsed.ok) return { kind: 'error', reason: 'no-valid-backup' }
+        const parsed = parseDocument(backup)
+        if (backup === null || parsed.kind !== 'ok') return { kind: 'error', reason: 'no-valid-backup' }
         storage.setItem(STORAGE_KEYS.document, backup)
         return { kind: 'ok', revision: parsed.document.revision }
       })
@@ -116,26 +116,15 @@ export class LocalStorageRepository implements PlannerRepository {
     const legacyRaw = storage.getItem(STORAGE_KEYS.legacyV1)
     if (legacyRaw === null) return { kind: 'empty' }
 
-    let legacy: unknown
-    try {
-      legacy = JSON.parse(legacyRaw)
-    } catch {
-      return { kind: 'corrupt', raw: legacyRaw, reason: 'legacy-invalid-json' }
-    }
-    let document: PlannerDocument
-    try {
-      document = migrateToCurrent(legacy, {
-        now: this.deps.now(),
-        locale: this.deps.locale(),
-        timeZone: this.deps.timeZone(),
-        tutorialCompleted: storage.getItem('next168-tutorial-completed') !== null,
-        newId: this.deps.newId,
-      })
-    } catch (error) {
-      return { kind: 'corrupt', raw: legacyRaw, reason: failureReason(error) }
-    }
-    if (this.writable) storage.setItem(STORAGE_KEYS.document, JSON.stringify(document))
-    return { kind: 'ok', document, migratedFrom: 1 }
+    const result = migrateToCurrent(legacyRaw, {
+      now: this.deps.now(),
+      locale: this.deps.locale(),
+      timeZone: this.deps.timeZone(),
+      tutorialCompleted: storage.getItem('next168-tutorial-completed') !== null,
+      idGen: this.deps.newId,
+    })
+    if (result.kind === 'ok' && this.writable) storage.setItem(STORAGE_KEYS.document, JSON.stringify(result.document))
+    return result
   }
 
   private listenToKey(key: string, callback: () => void): () => void {

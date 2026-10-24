@@ -1,4 +1,4 @@
-import { SCHEMA_VERSION, STORAGE_KEYS, type LoadResult, type PlannerDocument } from '@/core/model'
+import { STORAGE_KEYS, type LoadResult, type PlannerDocument } from '@/core/model'
 import { parseDocument } from './core'
 
 export interface StorageLike {
@@ -19,25 +19,11 @@ export function webLockRunner(locks: LockManager | undefined): RunExclusive | un
 export function readStoredDocument(storage: StorageLike): StoredDocument {
   const raw = storage.getItem(STORAGE_KEYS.document)
   if (raw === null) return { kind: 'absent' }
-  let json: unknown
-  try {
-    json = JSON.parse(raw)
-  } catch {
-    return { kind: 'corrupt', raw, reason: 'invalid-json' }
-  }
-  const version = typeof json === 'object' && json !== null ? (json as { schemaVersion?: unknown }).schemaVersion : undefined
-  if (typeof version === 'number' && version > SCHEMA_VERSION) return { kind: 'unsupported', schemaVersion: version }
-  const parsed = parseDocument(json)
-  return parsed.ok ? { kind: 'ok', document: parsed.document } : { kind: 'corrupt', raw, reason: parsed.reason }
+  return parseDocument(raw)
 }
 
 export function isValidDocumentText(text: string | null): boolean {
-  if (text === null) return false
-  try {
-    return parseDocument(JSON.parse(text)).ok
-  } catch {
-    return false
-  }
+  return parseDocument(text).kind === 'ok'
 }
 
 // Backup of the previous bytes first, then the new document. Each setItem is atomic, so a failure in

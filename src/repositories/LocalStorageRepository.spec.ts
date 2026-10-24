@@ -12,7 +12,7 @@ describe('load', () => {
     const { planner, storage } = createTestRepositories()
     const legacy = JSON.stringify({
       categories: [{ id: 'c1', name: 'Work', color: '#3b82f6', weeklyHourLimit: 40 }],
-      timeBlocks: [{ id: 'b1', categoryId: 'c1', title: 'Focus', description: 'notes', dayOfWeek: 1, startTime: '22:00', endTime: '06:00', repeatDays: [1, 2, 2] }],
+      timeBlocks: [{ id: 'b1', categoryId: 'c1', title: 'Focus', description: 'notes', dayOfWeek: 1, startTime: '22:00', endTime: '06:00', durationMinutes: 480, repeatDays: [1, 2, 2] }],
     })
     storage.data.set(KEYS.legacyV1, legacy)
 
@@ -31,6 +31,25 @@ describe('load', () => {
     storage.data.set(KEYS.legacyV1, '{broken')
     expect(await planner.load()).toMatchObject({ kind: 'corrupt', raw: '{broken' })
     expect(storage.data.has(KEYS.document)).toBe(false)
+  })
+
+  it('preserves an unrepresentable legacy document for recovery instead of dropping blocks', async () => {
+    const { planner, storage } = createTestRepositories()
+    const raw = JSON.stringify({ categories: [], timeBlocks: [
+      { id: 'orphan', categoryId: 'missing', title: 'Focus', dayOfWeek: 1, startTime: '09:00', endTime: '10:00', durationMinutes: 60 },
+    ] })
+    storage.data.set(KEYS.legacyV1, raw)
+    expect(await planner.load()).toMatchObject({ kind: 'corrupt', raw })
+    expect(storage.data.get(KEYS.legacyV1)).toBe(raw)
+    expect(storage.data.has(KEYS.document)).toBe(false)
+  })
+
+  it('retains the exact raw text for semantically invalid v2 data', async () => {
+    const { planner, storage } = createTestRepositories()
+    const raw = JSON.stringify(testDocument({ appliedProposalIds: ['duplicate', 'duplicate'] }), null, 2)
+    storage.data.set(KEYS.document, raw)
+    expect(await planner.load()).toMatchObject({ kind: 'corrupt', raw })
+    expect(storage.data.get(KEYS.document)).toBe(raw)
   })
 
   it('reports corrupt v2 data and leaves it byte-identical', async () => {
@@ -103,6 +122,13 @@ describe('save', () => {
     expect(await planner.save({ ...saved(1), revision: -5 }, 0)).toEqual({ kind: 'error', reason: 'invalid-document' })
     const readOnly = createTestRepositories(new MemoryStorage(), false).planner
     expect(await readOnly.save(saved(1), 0)).toEqual({ kind: 'error', reason: 'no-web-locks' })
+  })
+
+  it('refuses semantic violations before writing the document', async () => {
+    const { planner, storage } = createTestRepositories()
+    expect(await planner.save(saved(1, { appliedProposalIds: ['duplicate', 'duplicate'] }), 0))
+      .toEqual({ kind: 'error', reason: 'invalid-document' })
+    expect(storage.data.size).toBe(0)
   })
 })
 

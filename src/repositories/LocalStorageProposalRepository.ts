@@ -1,43 +1,27 @@
 import { z } from 'zod'
 import {
   STORAGE_KEYS, changeProposalSchema, proposalInputSchema,
-  type ChangeProposal, type PlannerDocument, type ProposalDecision, type ProposalInput, type ProposalRepository,
+  type ChangeProposal, type ProposalDecision, type ProposalInput, type ProposalRepository,
 } from '@/core/model'
-import { applyProposal } from './core'
+import type { Hasher } from '@/core/canonical'
+import { applyProposal, buildProposal } from './core'
 import { NO_WEB_LOCKS } from './LocalStorageRepository'
 import { readStoredDocument, writeWithBackup, type RunExclusive, type StorageLike } from './storageCommit'
 
 export const PROPOSALS_KEY = STORAGE_KEYS.proposals
-const MAX_APPLIED_IDS = 200
 
 export interface ProposalRepositoryDeps {
   storage: StorageLike
   runExclusive: RunExclusive | undefined
   now: () => Date
   newId: () => string
+  hash?: Hasher
 }
 
 export class ProposalError extends Error {
   constructor(readonly code: string) {
     super(code)
   }
-}
-
-function canonicalJson(value: unknown): string {
-  if (Array.isArray(value)) return `[${value.map(canonicalJson).join(',')}]`
-  if (value !== null && typeof value === 'object') {
-    const entries = Object.entries(value as Record<string, unknown>)
-      .filter(([, entry]) => entry !== undefined)
-      .sort(([left], [right]) => (left < right ? -1 : 1))
-    return `{${entries.map(([key, entry]) => `${JSON.stringify(key)}:${canonicalJson(entry)}`).join(',')}}`
-  }
-  return JSON.stringify(value)
-}
-
-export async function hashOps(ops: ProposalInput['ops']): Promise<string> {
-  const bytes = new TextEncoder().encode(canonicalJson(ops))
-  const digest = await crypto.subtle.digest('SHA-256', bytes)
-  return Array.from(new Uint8Array(digest), (byte) => byte.toString(16).padStart(2, '0')).join('')
 }
 
 export class LocalStorageProposalRepository implements ProposalRepository {
@@ -51,23 +35,12 @@ export class LocalStorageProposalRepository implements ProposalRepository {
   async create(input: ProposalInput, source: ChangeProposal['source'], clientName?: string): Promise<ChangeProposal> {
     const parsed = proposalInputSchema.safeParse(input)
     if (!parsed.success) throw new ProposalError('proposal-invalid')
-    const contentHash = await hashOps(parsed.data.ops)
     return this.exclusive(async () => {
       const stored = readStoredDocument(this.deps.storage)
       if (stored.kind !== 'ok') throw new ProposalError('no-document')
       if (stored.document.workspaceId !== parsed.data.workspaceId) throw new ProposalError('workspace-mismatch')
-      const proposal: ChangeProposal = {
-        id: this.deps.newId(),
-        workspaceId: parsed.data.workspaceId,
-        source,
-        ...(clientName ? { clientName } : {}),
-        baseRevision: parsed.data.baseRevision,
-        contentHash,
-        summary: parsed.data.summary,
-        ops: parsed.data.ops,
-        status: 'pending',
-        createdAt: this.deps.now().toISOString(),
-      }
+      const built = await buildProposal(parsed.data, stored.document, source, this.deps, this.deps.newId, this.deps.hash)
+      const proposal: ChangeProposal = { ...built, ...(clientName ? { clientName } : {}) }
       this.writeAll([...this.readAll(), proposal])
       return proposal
     })
@@ -86,26 +59,20 @@ export class LocalStorageProposalRepository implements ProposalRepository {
       if (stored.kind !== 'ok') throw new ProposalError('no-document')
       const document = stored.document
 
-      if (document.appliedProposalIds.includes(id)) {
-        this.updateProposal(proposals, { ...proposal, status: 'applied', appliedRevision: document.revision, decidedAt: this.deps.now().toISOString() })
-        return { kind: 'applied', revision: document.revision }
-      }
-      if (document.revision !== baseRevision || document.revision !== proposal.baseRevision) {
+      if (!document.appliedProposalIds.includes(id) && (document.revision !== baseRevision || document.revision !== proposal.baseRevision)) {
         this.updateProposal(proposals, { ...proposal, status: 'stale', decidedAt: this.deps.now().toISOString() })
         return { kind: 'stale', currentRevision: document.revision }
       }
 
-      const applied = applyProposal(document, proposal, this.deps.newId, this.deps.now())
-      if (!applied.ok) throw new ProposalError(applied.reason)
-      const next: PlannerDocument = {
-        ...applied.document,
-        revision: document.revision + 1,
-        updatedAt: this.deps.now().toISOString(),
-        appliedProposalIds: [...document.appliedProposalIds, id].slice(-MAX_APPLIED_IDS),
+      const applied = await applyProposal(document, proposal, this.deps.newId, this.deps, this.deps.hash)
+      if (applied.kind === 'rejected') throw new ProposalError(applied.reason)
+      if (applied.kind === 'already-applied') {
+        this.updateProposal(proposals, { ...proposal, status: 'applied', appliedRevision: applied.document.revision, decidedAt: this.deps.now().toISOString() })
+        return { kind: 'applied', revision: applied.document.revision }
       }
-      writeWithBackup(this.deps.storage, next)
-      this.updateProposal(proposals, { ...proposal, status: 'applied', appliedRevision: next.revision, decidedAt: this.deps.now().toISOString() })
-      return { kind: 'applied', revision: next.revision }
+      writeWithBackup(this.deps.storage, applied.document)
+      this.updateProposal(proposals, applied.proposal)
+      return { kind: 'applied', revision: applied.document.revision }
     })
   }
 

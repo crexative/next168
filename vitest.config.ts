@@ -9,7 +9,7 @@ export default defineConfig({
   },
   test: {
     environment: 'happy-dom',
-    include: ['src/**/*.spec.ts'],
+    include: ['src/**/*.spec.ts', 'src/**/*.test.ts'],
     root: fileURLToPath(new URL('./', import.meta.url)),
   },
 })

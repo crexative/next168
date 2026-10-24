@@ -1,7 +1,7 @@
 import { computed, ref, shallowRef } from 'vue'
 import { defineStore } from 'pinia'
-import { plannerDocumentSchema, type PlannerDocument, type PlannerRepository, type SaveResult } from '@/core/model'
-import { createEmptyDocument } from '@/repositories/core'
+import type { PlannerDocument, PlannerRepository, SaveResult } from '@/core/model'
+import { createEmptyDocument, nextRevision } from '@/repositories/core'
 
 export type PlannerStatus = 'loading' | 'ready' | 'readonly' | 'corrupt' | 'unsupported' | 'error'
 
@@ -78,7 +78,7 @@ export const usePlannerStore = defineStore('planner', () => {
         error.value = repository.writable === false ? 'no-web-locks' : null
         break
       case 'empty':
-        document.value = createEmptyDocument({ now: now(), locale: locale(), timeZone: timeZone(), workspaceId: newId() })
+        document.value = createEmptyDocument({ now: now(), locale: locale(), timeZone: timeZone(), idGen: newId })
         status.value = repository.writable === false ? 'readonly' : 'ready'
         error.value = repository.writable === false ? 'no-web-locks' : null
         break
@@ -120,11 +120,12 @@ export const usePlannerStore = defineStore('planner', () => {
       try {
         const draft = structuredClone(base)
         mutator(draft)
-        draft.revision = base.revision + 1
-        draft.updatedAt = now().toISOString()
-        const checked = plannerDocumentSchema.safeParse(draft)
-        if (!checked.success) throw new Error('invalid-document')
-        candidate = checked.data
+        draft.revision = base.revision
+        try {
+          candidate = nextRevision(draft, { now })
+        } catch {
+          throw new Error('invalid-document')
+        }
       } catch (failure) {
         error.value = failure instanceof Error ? failure.message : 'commit-failed'
         return { ok: false, reason: error.value }
@@ -162,7 +163,7 @@ export const usePlannerStore = defineStore('planner', () => {
     return serialized(async () => {
       const { repository, now, newId, locale, timeZone } = requireEnvironment()
       if (status.value !== 'corrupt' || !repository.replaceCorrupt) return { ok: false, reason: status.value }
-      const fresh = createEmptyDocument({ now: now(), locale: locale(), timeZone: timeZone(), workspaceId: newId() })
+      const fresh = createEmptyDocument({ now: now(), locale: locale(), timeZone: timeZone(), idGen: newId })
       const saved = await repository.replaceCorrupt(fresh)
       if (saved.kind !== 'ok') {
         error.value = saved.kind === 'error' ? saved.reason : 'conflict'

@@ -37,7 +37,7 @@ export const newTestId = () => `id-${++counter}`
 export const fixedNow = () => new Date('2026-10-24T12:00:00.000Z')
 
 export function testDocument(overrides: Partial<ReturnType<typeof createEmptyDocument>> = {}) {
-  return { ...createEmptyDocument({ now: fixedNow(), locale: 'en', timeZone: 'UTC', workspaceId: 'workspace-1' }), ...overrides }
+  return { ...createEmptyDocument({ now: fixedNow(), locale: 'en', timeZone: 'UTC', idGen: () => 'workspace-1' }), ...overrides }
 }
 
 export function createTestRepositories(storage = new MemoryStorage(), withLocks = true) {
