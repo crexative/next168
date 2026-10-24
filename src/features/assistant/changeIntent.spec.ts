@@ -178,16 +178,22 @@ describe('move_block and delete_block', () => {
     })).toEqual({ kind: 'message', message: expected })
   })
 
-  it.each([
-    ['en', '"Review" is already scheduled there at that time. Nothing needs changing.'],
-    ['es', '"Review" ya está programado ahí a esa hora. No hace falta cambiar nada.'],
-    ['de', '„Review“ ist dort bereits zu dieser Zeit eingeplant. Sie müssen nichts ändern.'],
-    ['fr', '« Review » est déjà prévu ce jour-là à cette heure. Vous n’avez rien à modifier.'],
-    ['pt', '"Review" já está agendado nesse dia e horário. Não é preciso mudar nada.'],
-  ])('localizes the already-there message in %s', (locale, expected) => {
-    expect(proposalFromIntent(parseIntent({ intent: 'move_block', title: 'Review', day: 'friday' }), {
-      ...environment, locale, translate: translatorFor(locale),
-    })).toEqual({ kind: 'message', message: expected })
+  describe.each([
+    ['no day named on a repeating block', { title: 'Deep work', start: '09:00', end: '13:00' }],
+    ['no day named on a single-day block', { title: 'Review', start: '15:00', end: '16:00' }],
+    ['an explicit day on a repeating block', { title: 'Deep work', fromDay: 'tuesday', day: 'tuesday', start: '09:00', end: '13:00' }],
+  ])('no-op move with %s', (_label, fields) => {
+    it.each([
+      ['en', '"{title}" is already scheduled there at that time. Nothing needs changing.'],
+      ['es', '"{title}" ya está programado ahí a esa hora. No hace falta cambiar nada.'],
+      ['de', '„{title}“ ist dort bereits zu dieser Zeit eingeplant. Sie müssen nichts ändern.'],
+      ['fr', '« {title} » est déjà prévu ce jour-là à cette heure. Vous n’avez rien à modifier.'],
+      ['pt', '"{title}" já está agendado nesse dia e horário. Não é preciso mudar nada.'],
+    ])('returns only the localized already-there message in %s', (locale, expected) => {
+      expect(proposalFromIntent(parseIntent({ intent: 'move_block', ...fields }), {
+        ...environment, locale, translate: translatorFor(locale),
+      })).toEqual({ kind: 'message', message: expected.replace('{title}', fields.title) })
+    })
   })
 
   it('reports a block that does not exist', () => {

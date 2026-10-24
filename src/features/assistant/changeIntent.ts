@@ -242,7 +242,6 @@ export function proposalFromIntent(intent: ChangeIntent, { request, document, lo
       const end = intent.end === undefined ? (start + length) % MINUTES_PER_DAY : parseClock(intent.end)
       if (end === undefined || end === start) return message('needsDetails')
       const target = day ?? sourceDay ?? found.days[0]!
-      if (target === sourceDay && start === found.start && end === found.end) return message('alreadyThere', { title: found.title })
       const ops: ProposalOp[] = sourceDay !== undefined && found.days.length > 1
         ? [
           { op: 'update_block', id: found.id, patch: { days: found.days.filter((existing) => existing !== sourceDay) } },
@@ -252,6 +251,16 @@ export function proposalFromIntent(intent: ChangeIntent, { request, document, lo
           } },
         ]
         : [{ op: 'update_block', id: found.id, patch: { days: sourceDay === undefined ? found.days : [target], start, end } }]
+      const [update, addition] = ops
+      if (update?.op === 'update_block') {
+        const split = addition?.op === 'add_block'
+        const previousDays = split ? found.days.filter((day) => !update.patch.days?.includes(day)) : found.days
+        const moved = split ? addition.block : { ...found, ...update.patch }
+        if (moved.start === found.start && moved.end === found.end
+          && moved.days.length === previousDays.length && moved.days.every((day) => previousDays.includes(day))) {
+          return message('alreadyThere', { title: found.title })
+        }
+      }
       return proposal(
         ops,
         t('assistant.intent.summary.move_block', { title: found.title, day: weekdayName(target, locale), ...describeTimes(start, end) }),
