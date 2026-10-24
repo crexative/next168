@@ -27,7 +27,7 @@
   "add": {
     "title": "Añadir tarea",
     "titleLabel": "Tarea",
-    "titlePlaceholder": "Añadir tarea…",
+    "titlePlaceholder": "Tarea…",
     "duration": "Duración",
     "category": "Categoría",
     "dueDate": "Fecha límite (opcional)",

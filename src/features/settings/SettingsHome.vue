@@ -38,6 +38,6 @@ const page = useSettingsPage()
 .more-link:active { background: var(--surface-2); }
 /* The card clips its row, so the row draws its focus ring inside itself, rounded like the card. */
 .more-link:focus-visible { outline-offset: -2px; border-radius: var(--radius-card); }
-.more-text { display: flex; flex: 1; flex-direction: column; min-width: 0; }
+.more-text { display: flex; flex: 1; flex-direction: column; min-width: 0; overflow-wrap: anywhere; }
 .more-chevron { color: var(--label-3); }
 </style>

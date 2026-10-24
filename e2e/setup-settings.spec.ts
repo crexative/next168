@@ -141,7 +141,7 @@ for (const size of SIZES) {
       await start(page, size, theme, planned())
       await page.goto('./#/tasks')
       await expect(page.getByRole('heading', { level: 1, name: 'Tareas' })).toBeVisible()
-      const field = page.getByPlaceholder('Añadir tarea…')
+      const field = page.getByPlaceholder('Tarea…')
       await expect(field).toBeVisible()
       await expect(page.getByTestId('task-details')).toHaveCount(0)
       expect(await boxes(page, 'form.add input, form.add select, form.add button')).toHaveLength(1)
@@ -159,7 +159,7 @@ for (const size of SIZES) {
       await expect(field).toHaveValue('')
       await expect(page.getByTestId('task-details')).toHaveCount(0)
       await page.reload()
-      await page.getByPlaceholder('Añadir tarea…').fill('Otra más')
+      await page.getByPlaceholder('Tarea…').fill('Otra más')
       await expect(page.getByTestId('task-details').getByLabel('Categoría')).toHaveValue('c-study')
     })
 
