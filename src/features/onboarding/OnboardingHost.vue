@@ -229,7 +229,7 @@ const stepTitle = computed(() => (finished.value ? t('onboarding.done.title') : 
               <legend class="visually-hidden">{{ t('onboarding.categoryColor') }}</legend>
               <div class="swatches">
                 <label v-for="color in COLOR_KEYS" :key="color" class="swatch-choice">
-                  <input v-model="choice.colorKey" class="visually-hidden" type="radio" :name="`color-${choice.templateId}`" :value="color" :disabled="colorTakenByOther(choice, color)">
+                  <input v-model="choice.colorKey" class="swatch-input" type="radio" :name="`color-${choice.templateId}`" :value="color" :disabled="colorTakenByOther(choice, color)">
                   <span class="swatch-dot" :style="{ background: `var(--cat-${color})` }" />
                   <span class="visually-hidden">{{ t(`categories.colors.${color}`) }}</span>
                 </label>
@@ -333,6 +333,9 @@ const stepTitle = computed(() => (finished.value ? t('onboarding.done.title') : 
 .colors { margin: 0; padding: 0; border: 0; }
 .swatches { display: flex; flex-wrap: wrap; gap: var(--space-1); }
 .swatch-choice { position: relative; display: inline-flex; align-items: center; justify-content: center; width: var(--tap-target); height: var(--tap-target); }
+/* The radio covers the whole 44 px swatch: a tap anywhere on it chooses the colour, and pointer tools hit the real control. */
+.swatch-input { position: absolute; inset: 0; z-index: 1; width: 100%; height: 100%; margin: 0; opacity: 0; cursor: pointer; }
+.swatch-input:disabled { cursor: not-allowed; }
 .swatch-dot { width: 28px; height: 28px; border-radius: 50%; border: 3px solid transparent; background-clip: padding-box; box-shadow: 0 0 0 1px var(--separator); }
 .swatch-choice:has(input:checked) .swatch-dot { box-shadow: 0 0 0 2px var(--label); }
 .swatch-choice:has(input:focus-visible) .swatch-dot { outline: 2px solid var(--tint); outline-offset: 3px; }

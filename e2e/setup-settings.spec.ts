@@ -67,9 +67,9 @@ for (const size of SIZES) {
       await expect(dialog.getByRole('checkbox', { name: 'Usar Trabajo' })).toBeChecked()
       await expect(dialog.getByRole('checkbox', { name: 'Usar Ejercicio' })).not.toBeChecked()
       await expect(dialog.getByTestId('week-counter')).toContainText('96 de 168 h planificadas')
-      await dialog.getByRole('checkbox', { name: 'Usar Ejercicio' }).check({ force: true })
+      await dialog.getByRole('checkbox', { name: 'Usar Ejercicio' }).check()
       await expect(dialog.getByTestId('week-counter')).toContainText('99 de 168 h planificadas')
-      await dialog.getByRole('checkbox', { name: 'Usar Ejercicio' }).uncheck({ force: true })
+      await dialog.getByRole('checkbox', { name: 'Usar Ejercicio' }).uncheck()
 
       // Unticked rows look and act disabled; every target is at least 44 px.
       const off = dialog.locator('[data-template=familia], [data-template=family]').first()
@@ -86,16 +86,16 @@ for (const size of SIZES) {
       // Rename and recolour through Edit.
       await dialog.getByRole('button', { name: 'Editar Trabajo' }).click()
       await dialog.locator('input.name').fill('Empleo')
-      await dialog.getByRole('radio', { name: 'Rojo' }).check({ force: true })
+      await dialog.getByRole('radio', { name: 'Rojo' }).check()
       expect(await visualIntegrityViolations(page)).toEqual([])
       await expect(dialog.getByRole('checkbox', { name: 'Usar Empleo' })).toBeChecked()
 
       // "Siguiente" needs a category.
-      await dialog.getByRole('checkbox', { name: 'Usar Sueño' }).uncheck({ force: true })
-      await dialog.getByRole('checkbox', { name: 'Usar Empleo' }).uncheck({ force: true })
+      await dialog.getByRole('checkbox', { name: 'Usar Sueño' }).uncheck()
+      await dialog.getByRole('checkbox', { name: 'Usar Empleo' }).uncheck()
       await expect(dialog.getByRole('button', { name: 'Siguiente' })).toBeDisabled()
-      await dialog.getByRole('checkbox', { name: 'Usar Sueño' }).check({ force: true })
-      await dialog.getByRole('checkbox', { name: 'Usar Empleo' }).check({ force: true })
+      await dialog.getByRole('checkbox', { name: 'Usar Sueño' }).check()
+      await dialog.getByRole('checkbox', { name: 'Usar Empleo' }).check()
       await expect(dialog.getByRole('button', { name: 'Ahora no' })).toHaveCount(1)
       await dialog.getByRole('button', { name: 'Siguiente' }).click()
 

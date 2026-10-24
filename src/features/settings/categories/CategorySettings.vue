@@ -185,7 +185,7 @@ async function remove(): Promise<void> {
           <legend class="t-footnote t-secondary">{{ t('categories.color') }}</legend>
           <div class="swatches">
             <label v-for="color in COLOR_KEYS" :key="color" class="swatch-choice">
-              <input v-model="form.colorKey" class="visually-hidden" type="radio" name="category-color" :value="color">
+              <input v-model="form.colorKey" class="swatch-input" type="radio" name="category-color" :value="color">
               <span class="swatch-dot" :style="{ background: `var(--cat-${color})` }" />
               <span class="visually-hidden">{{ t(`categories.colors.${color}`) }}</span>
             </label>
@@ -243,6 +243,9 @@ async function remove(): Promise<void> {
 .color-hint { margin: var(--space-1) 0 0; }
 .swatches { display: flex; flex-wrap: wrap; gap: var(--space-1); }
 .swatch-choice { position: relative; display: inline-flex; align-items: center; justify-content: center; width: var(--tap-target); height: var(--tap-target); }
+/* The radio covers the whole 44 px swatch: a tap anywhere on it chooses the colour, and pointer tools hit the real control. */
+.swatch-input { position: absolute; inset: 0; z-index: 1; width: 100%; height: 100%; margin: 0; opacity: 0; cursor: pointer; }
+.swatch-input:disabled { cursor: not-allowed; }
 .swatch-dot { width: 28px; height: 28px; border-radius: 50%; border: 3px solid transparent; background-clip: padding-box; box-shadow: 0 0 0 1px var(--separator); }
 .swatch-choice:has(input:checked) .swatch-dot { box-shadow: 0 0 0 2px var(--label); }
 .swatch-choice:has(input:focus-visible) .swatch-dot { outline: 2px solid var(--tint); outline-offset: 3px; }

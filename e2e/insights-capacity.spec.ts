@@ -145,7 +145,7 @@ test.describe('category colours', () => {
     await expect(dialog.getByRole('radio', { name: 'Orange' })).toBeChecked()
     await expect(dialog.getByTestId('color-in-use')).toHaveCount(0)
 
-    await dialog.getByRole('radio', { name: 'Blue' }).check({ force: true })
+    await dialog.getByRole('radio', { name: 'Blue' }).check()
     await expect(dialog.getByTestId('color-in-use')).toContainText('Sleep already uses this colour')
 
     await dialog.getByRole('textbox', { name: 'Name' }).fill('Reading')
