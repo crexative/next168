@@ -18,6 +18,9 @@ const { current } = useHashRoute(() => new Set(views.keys()))
 const currentView = computed(() => views.get(current.value) ?? views.get('today'))
 const settingsView = computed(() => views.get('settings'))
 
+// Readable measure on wide screens: planning grids and charts get a wider column than lists and forms.
+const WIDE_VIEWS: ReadonlySet<string> = new Set(['week', 'insights'])
+
 // A tab opens at its top: the previous view's offset would otherwise be clamped to whatever the new view allows.
 function scrollToTop(): void { window.scrollTo({ top: 0, behavior: 'instant' }) }
 </script>
@@ -50,7 +53,7 @@ function scrollToTop(): void { window.scrollTo({ top: 0, behavior: 'instant' }) 
       <main id="main" class="main" tabindex="-1">
         <RecoveryScreen v-if="planner.status === 'corrupt'" />
         <Transition v-else name="view" mode="out-in" @after-leave="scrollToTop">
-          <div v-if="currentView" :key="currentView.id" class="view">
+          <div v-if="currentView" :key="currentView.id" class="view" :data-measure="WIDE_VIEWS.has(currentView.id) ? 'wide' : 'readable'">
             <LargeTitle :title="t(currentView.titleKey)">
               <template #actions>
                 <a
@@ -90,13 +93,17 @@ function scrollToTop(): void { window.scrollTo({ top: 0, behavior: 'instant' }) 
 .shell { min-height: 100dvh; padding-inline: var(--safe-left) var(--safe-right); }
 /* --banners-height is the height of the fixed bottom notices (StatusBanners), so none of them covers the end of a page. */
 .content { padding-bottom: calc(var(--tabbar-height) + var(--safe-bottom) + var(--space-4) + var(--banners-height, 0px)); }
-.main { max-width: 1200px; margin-inline: auto; outline: none; }
+.main { outline: none; }
+.view { margin-inline: auto; }
+.view[data-measure='readable'] { max-width: 44rem; }
+.view[data-measure='wide'] { max-width: 64rem; }
 
 .tabbar {
   position: fixed;
   inset: auto 0 0;
   z-index: 20;
   display: flex;
+  justify-content: center;
   height: calc(var(--tabbar-height) + var(--safe-bottom));
   padding: 0 var(--safe-right) var(--safe-bottom) var(--safe-left);
   background: var(--material);
@@ -112,6 +119,8 @@ function scrollToTop(): void { window.scrollTo({ top: 0, behavior: 'instant' }) 
   align-items: center;
   justify-content: center;
   gap: 2px;
+  /* On a tablet the items gather in the middle instead of spreading to the screen edges. */
+  max-width: 7.5rem;
   min-height: var(--tap-target);
   color: var(--label-2);
   text-decoration: none;

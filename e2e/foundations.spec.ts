@@ -249,3 +249,26 @@ test.describe('colour is never alone', () => {
     expect(ring.color).not.toBe('rgba(0, 0, 0, 0)')
   })
 })
+
+test.describe('readable measure', () => {
+  test('content keeps a readable width on wide screens and the tab bar gathers in the middle', async ({ page }, testInfo) => {
+    await startWith(page)
+    const viewport = page.viewportSize()!
+    const rem = 16
+    for (const [view, limit] of [['today', 44], ['tasks', 44], ['settings', 44], ['week', 64], ['insights', 64]] as const) {
+      await openView(page, view)
+      const box = (await page.locator('.view').boundingBox())!
+      const main = (await page.locator('#main').boundingBox())!
+      expect.soft(box.width, `${view} width`).toBeLessThanOrEqual(limit * rem + 1)
+      // Centered in the space beside the sidebar.
+      expect.soft(Math.abs((box.x - main.x) - (main.x + main.width - box.x - box.width)), `${view} centered`).toBeLessThanOrEqual(1)
+    }
+    if (testInfo.project.name === 'tablet') {
+      const items = await page.locator('.tabbar-item').evaluateAll((elements) => elements.map((element) => element.getBoundingClientRect().toJSON() as DOMRect))
+      const left = items[0]!.left
+      const right = viewport.width - items[items.length - 1]!.right
+      expect(Math.abs(left - right)).toBeLessThanOrEqual(1)
+      expect(left).toBeGreaterThan(viewport.width / 6)
+    }
+  })
+})
