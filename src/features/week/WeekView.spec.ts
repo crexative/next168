@@ -8,6 +8,7 @@ import WeekView from './WeekView.vue'
 import UndoToast from '@/ui/UndoToast.vue'
 import { useUndoToast } from '@/ui/undoToast'
 import { resetPlacementMemory } from './taskPlacement'
+import { setupRequest } from '@/features/onboarding/reopen'
 
 let cleanup = () => undefined as void
 const realMatchMedia = window.matchMedia
@@ -391,9 +392,14 @@ describe('WeekView wiring', () => {
     const prompt = host.querySelector<HTMLButtonElement>('[data-testid="setup-week"]')!
     expect(prompt.textContent).toBe('Set up my week · 1 min')
     expect([...host.querySelectorAll('button')].some((button) => button.textContent?.trim() === 'Add a block')).toBe(true)
+    const revision = store.document!.revision
+    const requests = setupRequest.value
     prompt.click()
     await store.settled()
-    expect(store.document!.settings.onboardingDone).toBe(false)
+    // Opening the guided setup writes nothing: it only asks the setup to open.
+    expect(setupRequest.value).toBe(requests + 1)
+    expect(store.document!.revision).toBe(revision)
+    expect(store.document!.settings.onboardingDone).toBe(true)
   })
 
   it('offers "Set up my week" instead of the Settings link when there are no categories', async () => {

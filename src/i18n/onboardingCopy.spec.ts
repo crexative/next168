@@ -33,7 +33,8 @@ describe.each(SUPPORTED_LOCALES)('%s onboarding copy', (locale) => {
   })
 
   it('never calls the setup hours "free": they are assigned or unassigned', () => {
-    for (const key of ['assigned', 'unassigned', 'counterOver']) expect(onboarding(locale)[key] as string, `${locale}:${key}`).not.toMatch(LIVE_FREE_WORD)
+    const summary = onboarding(locale).summary as Record<string, string>
+    for (const key of ['assigned', 'unassigned']) expect(summary[key], `${locale}:summary.${key}`).not.toMatch(LIVE_FREE_WORD)
   })
 
   it('shows hours only as whole numbers: no hour string carries a decimal', () => {
@@ -43,7 +44,8 @@ describe.each(SUPPORTED_LOCALES)('%s onboarding copy', (locale) => {
 
 describe('Spanish onboarding copy', () => {
   it('says "asignadas" for the routine and "sin asignar" for what is left, and nothing about "libres"', () => {
-    expect(onboarding('es').assigned).toBe('{hours} asignadas')
-    expect(onboarding('es').unassigned).toBe('{hours} sin asignar')
+    const summary = onboarding('es').summary as Record<string, string>
+    expect(summary.assigned).toBe('{hours} asignadas')
+    expect(summary.unassigned).toBe('{hours} sin asignar')
   })
 })

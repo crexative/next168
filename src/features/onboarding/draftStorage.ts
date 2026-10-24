@@ -1,7 +1,7 @@
 import type { PlannerDocument } from '@/core/model'
 import { isKnownScreen } from './setupFlow'
 import type { Answers, CategoryDraft, RangeDraft, SetupState } from './setupModel'
-import { MAX_NAME_LENGTH } from './setupModel'
+import { cloneState, MAX_NAME_LENGTH } from './setupModel'
 import { TOPIC_IDS } from './setupTopics'
 
 // The unfinished setup survives a reload of the tab (sessionStorage). A draft belongs to the exact stored content it was
@@ -135,7 +135,7 @@ export function idsMatchBaseline(draft: SetupState, document: PlannerDocument | 
 // ---------- Storage ----------
 
 export function draftOf(state: SetupState, binding: DraftBinding, open: boolean): SetupDraft {
-  return { ...structuredClone(state), version: 2, binding, open }
+  return { ...cloneState(state), version: 2, binding, open }
 }
 
 // False when the browser would not keep it (unavailable or full): the flow works on and says so once.

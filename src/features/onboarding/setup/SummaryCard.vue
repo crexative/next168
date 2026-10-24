@@ -3,7 +3,7 @@ import { computed } from 'vue'
 import Button from '@/ui/Button.vue'
 import Icon from '@/ui/Icon.vue'
 import { formatWholeHours } from '@/ui/format'
-import { categoryMinutes, type CategoryDraft, type Issue, type SetupState } from '../setupModel'
+import { categoryMinutes, renameDraft, type CategoryDraft, type Issue, type SetupState } from '../setupModel'
 import RangeList from './RangeList.vue'
 import { useSetupFormat } from './useSetupFormat'
 
@@ -15,6 +15,11 @@ const minutes = computed(() => categoryMinutes(props.state, props.category))
 // Whole hours from ten hours up, "h min" below: a figure a child can read.
 const amount = computed(() => (minutes.value >= 600 ? formatWholeHours(Math.round(minutes.value / 60)) : duration(minutes.value)))
 const nameIssue = computed(() => props.issues.find((issue) => issue.categoryKey === props.category.key && (issue.code === 'nameRequired' || issue.code === 'nameDuplicate')))
+
+function onName(event: Event): void {
+  renameDraft(props.category, (event.target as HTMLInputElement).value)
+  emit('edited')
+}
 </script>
 
 <template>
@@ -31,7 +36,7 @@ const nameIssue = computed(() => props.issues.find((issue) => issue.categoryKey 
     <div v-if="expanded" class="body">
       <label class="field">
         <span class="t-body">{{ t('onboarding.summary.name') }}</span>
-        <input v-model="category.name" class="input" type="text" maxlength="60" autocomplete="off" :aria-invalid="nameIssue ? true : undefined" data-testid="card-name" @input="emit('edited')">
+        <input :value="category.name" class="input" type="text" maxlength="60" autocomplete="off" :aria-invalid="nameIssue ? true : undefined" data-testid="card-name" @input="onName">
       </label>
       <p v-if="nameIssue" class="error t-body" role="alert">{{ t(`onboarding.guided.errors.${nameIssue.code}`) }}</p>
       <RangeList :state="state" :category="category" :labels="{ there: t('onboarding.guided.commuteRanges.there'), back: t('onboarding.guided.commuteRanges.back'), bed: t('onboarding.guided.sleep.bed'), wake: t('onboarding.guided.sleep.wake'), weeknights: t('onboarding.guided.sleep.weeknights'), weekend: t('onboarding.guided.sleep.weekend') }" :sleep="category.topic === 'sleep'" />

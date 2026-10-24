@@ -77,7 +77,7 @@ describe('check-in form after the workspace is replaced', () => {
 describe('other forms after the workspace is replaced', () => {
   it('does not let a category editor opened in the old workspace write into the new one', async () => {
     const { store } = await setup(CategorySettings, { ...workspace('ws-a'), revision: 1, categories: [{ id: 'c-old', name: 'Old', colorKey: 'blue', goal: { type: 'none', hoursPerWeek: 0 } }] })
-    host.querySelector<HTMLButtonElement>('.category-button')!.click()
+    host.querySelector<HTMLButtonElement>('[data-testid=category-c-old] .category-button')!.click()
     await nextTick()
     expect(document.body.querySelector('[role=dialog]')).not.toBeNull()
     const imported = { ...workspace('ws-b'), revision: 1, categories: [] }
@@ -140,7 +140,7 @@ describe('content replaced under the same workspace id (restored backup)', () =>
   it('does not let a category editor save into content restored under the same id', async () => {
     const old = { id: 'c-old', name: 'Old', colorKey: 'blue' as const, goal: { type: 'none' as const, hoursPerWeek: 0 } }
     const { store } = await setup(CategorySettings, { ...workspace('ws-a'), revision: 1, categories: [old] })
-    host.querySelector<HTMLButtonElement>('.category-button')!.click()
+    host.querySelector<HTMLButtonElement>('[data-testid=category-c-old] .category-button')!.click()
     await nextTick()
     store.document = { ...workspace('ws-a'), revision: 1, categories: [{ ...old, name: 'Restored' }] }
     document.body.querySelector('form.editor')!.dispatchEvent(new Event('submit', { cancelable: true }))

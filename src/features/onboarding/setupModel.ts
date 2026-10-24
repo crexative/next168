@@ -66,6 +66,11 @@ export function emptyState(): SetupState {
   return { screen: 'sleep', answers: { sleep: 'unanswered', workStudy: 'unanswered', commute: 'unanswered', exercise: 'unanswered', more: null }, sleepSplit: false, categories: [], counter: 0 }
 }
 
+// The draft is plain JSON; cloning through JSON also strips any reactive proxy the screens wrapped it in.
+export function cloneState<T extends SetupState>(state: T): T {
+  return JSON.parse(JSON.stringify(state)) as T
+}
+
 export function nextKey(state: SetupState, prefix: string): string {
   state.counter += 1
   return `${prefix}${state.counter}`
@@ -413,6 +418,49 @@ export function addOwnCategory(state: SetupState, name: string): { category: Cat
   if (same) return { category: same, duplicate: true }
   const category = ensureCategory(state, nextKey(state, 'custom:'), undefined, trimmed)
   return { category, duplicate: false }
+}
+
+export function setAnswer<K extends keyof Answers>(state: SetupState, key: K, value: Answers[K]): void {
+  state.answers[key] = value
+}
+
+// "No fixed time": the category stays, with no ranges, and its defaults are not offered again.
+export function clearRanges(category: CategoryDraft): void {
+  category.ranges = []
+  category.suggested = true
+}
+
+export function renameDraft(category: CategoryDraft, name: string): void {
+  category.name = name.slice(0, MAX_NAME_LENGTH)
+}
+
+export function setRemoved(state: SetupState, key: string, removed: boolean): void {
+  const category = categoryOf(state, key)
+  if (!category) return
+  category.removed = removed
+  // "Undo" on a stored category an answer had removed: the person's undo outranks the answer.
+  if (!removed && category.categoryId !== undefined) category.keepOverride = true
+}
+
+// What the "more" chips show: the answer once given, otherwise the extras and own categories already stored.
+export function moreSelection(state: SetupState): string[] {
+  return state.answers.more ?? state.categories
+    .filter((category) => category.categoryId !== undefined && !category.removed && (category.topic === undefined || EXTRA_TOPICS.includes(category.topic)))
+    .map((category) => category.key)
+}
+
+export function toggleMore(state: SetupState, key: string, env: SetupEnv): void {
+  const selected = moreSelection(state)
+  if ((EXTRA_TOPICS as string[]).includes(key)) ensureCategory(state, key, key as TopicId, env.topicName(key as TopicId))
+  state.answers.more = selected.includes(key) ? selected.filter((item) => item !== key) : [...selected, key]
+}
+
+// "Something else" on the "more" screen, or "Add something else" in the summary (with an empty name to type).
+export function addOwnToMore(state: SetupState, name: string): { category: CategoryDraft; duplicate: boolean } {
+  const selected = moreSelection(state)
+  const result = addOwnCategory(state, name)
+  if (!selected.includes(result.category.key)) state.answers.more = [...selected, result.category.key]
+  return result
 }
 
 export { EXTRA_TOPICS }

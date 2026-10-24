@@ -1,12 +1,12 @@
 <script setup lang="ts">
-import { computed, nextTick, ref } from 'vue'
+import { computed, nextTick } from 'vue'
 import type { PlannerDocument } from '@/core/model'
 import { categoryColor } from '@/features/insights/categoryColor'
 import { formatWholeHours, wholeHourParts } from '@/ui/format'
 import Button from '@/ui/Button.vue'
 import Icon from '@/ui/Icon.vue'
 import { partOf, previousScreen } from '../setupFlow'
-import { addOwnCategory, statusOf, weekTotals, type Issue, type SetupState } from '../setupModel'
+import { addOwnToMore, clearRanges, setRemoved, statusOf, weekTotals, type Issue, type SetupState } from '../setupModel'
 import { TOPICS } from '../setupTopics'
 import SetupScreen from './SetupScreen.vue'
 import SummaryCard from './SummaryCard.vue'
@@ -50,24 +50,19 @@ function toggle(key: string): void {
 }
 
 function remove(key: string): void {
-  const category = props.state.categories.find((candidate) => candidate.key === key)!
-  category.removed = true
+  setRemoved(props.state, key, true)
   expanded.value = null
   emit('edited')
 }
 
 function undo(key: string): void {
-  const category = props.state.categories.find((candidate) => candidate.key === key)!
-  category.removed = false
-  // An answer had removed it: the person's "undo" outranks the answer.
-  if (category.categoryId !== undefined) category.keepOverride = true
+  setRemoved(props.state, key, false)
   emit('edited')
 }
 
 async function addMore(): Promise<void> {
-  const { category } = addOwnCategory(props.state, '')
-  props.state.answers.more = [...(props.state.answers.more ?? props.state.categories.filter((candidate) => candidate.categoryId !== undefined && candidate.key !== category.key).map((candidate) => candidate.key)), category.key]
-  category.suggested = true
+  const { category } = addOwnToMore(props.state, '')
+  clearRanges(category)
   expanded.value = category.key
   emit('edited')
   await nextTick()

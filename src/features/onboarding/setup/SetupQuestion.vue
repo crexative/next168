@@ -2,7 +2,8 @@
 import { computed, ref } from 'vue'
 import { partOf, previousScreen } from '../setupFlow'
 import {
-  acceptRanges, addOwnCategory, categoryOf, ensureCategory, setSleepSplit, statusOf, type CategoryDraft, type ScreenId, type SetupState, type Tri, type WorkStudy,
+  acceptRanges, addOwnToMore, categoryOf, clearRanges, moreSelection, setAnswer, setSleepSplit, statusOf, toggleMore,
+  type CategoryDraft, type ScreenId, type SetupState, type Tri, type WorkStudy,
 } from '../setupModel'
 import { EXTRA_TOPICS, TOPICS, type TopicId } from '../setupTopics'
 import ChoiceChips from './ChoiceChips.vue'
@@ -56,20 +57,16 @@ function done(): void {
 }
 
 function onPrimary(): void {
-  if (screen.value === 'sleep') props.state.answers.sleep = 'yes'
-  if (screen.value === 'more') props.state.answers.more = moreSelection.value
+  if (screen.value === 'sleep') setAnswer(props.state, 'sleep', 'yes')
+  if (screen.value === 'more') setAnswer(props.state, 'more', selection.value)
   if (category.value) acceptRanges(category.value)
   done()
 }
 
 function onSecondary(): void {
   const current = screen.value
-  if (current === 'more') props.state.answers.more = null
-  else if (category.value && isRangeScreen.value && current !== 'sleep') {
-    // "No fixed time": the category stays, with no ranges.
-    category.value.ranges = []
-    category.value.suggested = true
-  }
+  if (current === 'more') setAnswer(props.state, 'more', null)
+  else if (category.value && isRangeScreen.value && current !== 'sleep') clearRanges(category.value)
   done()
 }
 
@@ -77,12 +74,12 @@ const triOptions = computed(() => [{ value: 'yes', label: t('onboarding.guided.y
 const workOptions = computed(() => (['work', 'study', 'both', 'neither'] as const).map((value) => ({ value, label: t(`onboarding.guided.workStudy.${value}`) })))
 
 function answerTri(key: 'commute' | 'exercise', value: string): void {
-  props.state.answers[key] = value as Tri
+  setAnswer(props.state, key, value as Tri)
   done()
 }
 
 function answerWorkStudy(value: string): void {
-  props.state.answers.workStudy = value as WorkStudy
+  setAnswer(props.state, 'workStudy', value as WorkStudy)
   done()
 }
 
@@ -97,24 +94,19 @@ const chips = computed(() => [
   ...EXTRA_TOPICS.map((topic) => ({ value: topic as string, label: t(`onboarding.guided.more.${topic}`) })),
   ...customs.value.map((custom) => ({ value: custom.key, label: custom.name })),
 ])
-// What the chips show before the person has touched them: the extras and own categories that are already stored.
-const moreSelection = computed<string[]>(() => answers.value.more ?? props.state.categories
-  .filter((candidate) => candidate.categoryId !== undefined && !candidate.removed && (candidate.topic === undefined || EXTRA_TOPICS.includes(candidate.topic)))
-  .map((candidate) => candidate.key))
+const selection = computed<string[]>(() => moreSelection(props.state))
+const env = { topicName: (topic: TopicId) => t(`onboarding.templates.${TOPICS[topic].nameKey}`) }
 
 function toggleChip(value: string): void {
-  const selected = moreSelection.value
-  if ((EXTRA_TOPICS as string[]).includes(value)) ensureCategory(props.state, value, value as TopicId, t(`onboarding.templates.${TOPICS[value as TopicId].nameKey}`))
-  props.state.answers.more = selected.includes(value) ? selected.filter((key) => key !== value) : [...selected, value]
+  toggleMore(props.state, value, env)
   emit('edited')
 }
 
 function addOther(): void {
   const name = otherName.value.trim()
   if (name === '') return
-  const { category: added, duplicate: already } = addOwnCategory(props.state, name)
+  const { duplicate: already } = addOwnToMore(props.state, name)
   duplicate.value = already
-  if (!moreSelection.value.includes(added.key)) props.state.answers.more = [...moreSelection.value, added.key]
   otherName.value = ''
   if (!already) otherOpen.value = false
   emit('edited')
@@ -150,7 +142,7 @@ const sleepLabels = computed(() => ({
     <QuickReplies v-else-if="screen === 'exercise'" :options="triOptions" :current="answers.exercise === 'unanswered' ? undefined : answers.exercise" :current-label="t('onboarding.guided.current')" :group-label="title" @answer="answerTri('exercise', $event)" />
 
     <template v-else-if="screen === 'more'">
-      <ChoiceChips :chips="chips" :selected="moreSelection" :group-label="title" @toggle="toggleChip" />
+      <ChoiceChips :chips="chips" :selected="selection" :group-label="title" @toggle="toggleChip" />
       <button v-if="!otherOpen" class="other t-body" type="button" data-testid="more-other" @click="otherOpen = true">{{ t('onboarding.guided.more.other') }}</button>
       <form v-else class="other-form" @submit.prevent="addOther">
         <label class="field">

@@ -15,7 +15,7 @@ import {
 import { setupRequest } from '../reopen'
 import { applySetupPlan, planSetupCommit } from '../setupCommit'
 import { nextScreen, previousScreen } from '../setupFlow'
-import { createState, prepareScreen, type Issue, type ScreenId, type SetupEnv, type SetupState } from '../setupModel'
+import { cloneState, createState, prepareScreen, type Issue, type ScreenId, type SetupEnv, type SetupState } from '../setupModel'
 import { TOPICS } from '../setupTopics'
 import SetupQuestion from './SetupQuestion.vue'
 import SetupSummary from './SetupSummary.vue'
@@ -216,7 +216,7 @@ function finishSaved(): void {
 async function submit(): Promise<void> {
   if (locked.value || !flow.value || !baseline.value) return
   const from = baseline.value
-  const snapshot = structuredClone(toRaw(flow.value))
+  const snapshot = cloneState(flow.value)
   const planned = planSetupCommit(snapshot, from.document, () => crypto.randomUUID())
   if (planned.kind === 'invalid') {
     issues.value = planned.issues

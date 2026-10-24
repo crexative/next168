@@ -35,7 +35,7 @@ describe.each(SUPPORTED_LOCALES)('%s setup copy', (locale) => {
 
   it('keeps the same placeholders as English in every new string', () => {
     const names = (value: string) => [...value.matchAll(/\{(\w+)\}/g)].map((match) => match[1]).sort().filter((name, index, all) => all.indexOf(name) === index)
-    for (const path of ['onboarding.assigned', 'onboarding.unassigned', 'onboarding.counterOver', 'onboarding.editRoutine', 'onboarding.done.task', 'settings.exportNudge.overdue', 'setup.backTo', 'assistant.status.line', 'categories.inUse']) {
+    for (const path of ['onboarding.summary.assigned', 'onboarding.summary.unassigned', 'onboarding.summary.remove', 'onboarding.summary.hasTasks', 'onboarding.guided.extra.custom', 'onboarding.guided.errors.overlap', 'settings.exportNudge.overdue', 'setup.backTo', 'assistant.status.line', 'categories.inUse']) {
       expect(names(get(locale, path)), `${locale}:${path}`).toEqual(names(get('en', path)))
     }
   })

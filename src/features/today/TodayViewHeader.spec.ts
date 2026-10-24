@@ -9,6 +9,7 @@ import { createTestRepositories, newTestId, testDocument } from '@/repositories/
 import { setExternalOccurrenceSource } from '@/features/week/externalOccurrences'
 import { useUndoToast } from '@/ui/undoToast'
 import TodayView from './TodayView.vue'
+import { setupRequest } from '@/features/onboarding/reopen'
 
 // Saturday 2026-10-24. Family 10:00–14:00, Reading 15:00–16:00, Sleep 22:00–06:00, plus one task inside Family.
 const base: PlannerDocument = {
@@ -175,14 +176,18 @@ describe('Today status questions', () => {
 describe('Today wiring', () => {
   const empty: PlannerDocument = { ...base, blocks: [], tasks: [], settings: { ...base.settings, onboardingDone: true } }
 
-  it('offers "Set up my week" on an empty Today instead of the link to Week, and it reopens the wizard', async () => {
+  it('offers "Set up my week" on an empty Today instead of the link to Week, and opening it writes nothing', async () => {
     const store = await mount('2026-10-24T12:00:00Z', empty)
     const prompt = host.querySelector<HTMLButtonElement>('[data-testid="setup-week"]')!
     expect(prompt.textContent).toBe('Set up my week · 1 min')
     expect(host.querySelector('a[href="#/week"]')).toBeNull()
+    const revision = store.document!.revision
+    const requests = setupRequest.value
     prompt.click()
     await store.settled()
-    expect(store.document!.settings.onboardingDone).toBe(false)
+    expect(setupRequest.value).toBe(requests + 1)
+    expect(store.document!.revision).toBe(revision)
+    expect(store.document!.settings.onboardingDone).toBe(true)
   })
 
   it('keeps the link to Week when the planner is read-only and the wizard cannot be offered', async () => {
