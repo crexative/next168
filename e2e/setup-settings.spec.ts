@@ -93,18 +93,19 @@ for (const size of SIZES) {
       await expect(dialog.getByRole('button', { name: 'Ahora no' })).toHaveCount(1)
       await dialog.getByRole('button', { name: 'Siguiente' }).click()
 
-      // Step 2: goal chips are editable.
-      await expect(dialog.getByRole('button', { name: 'Cambiar la meta de Empleo' })).toContainText('Máx. 40 h')
-      await dialog.getByRole('button', { name: 'Cambiar la meta de Empleo' }).click()
-      await dialog.locator('[data-template=work] input[type=number]').fill('30')
-      await expect(dialog.getByRole('button', { name: 'Cambiar la meta de Empleo' })).toContainText('Máx. 30 h')
+      // Step 2: goal chips are editable (the sheet's title changes with the step).
+      const step = page.getByTestId('onboarding')
+      await expect(step.getByRole('button', { name: 'Cambiar la meta de Empleo' })).toContainText('Máx. 40 h')
+      await step.getByRole('button', { name: 'Cambiar la meta de Empleo' }).click()
+      await step.locator('[data-template=work] input[type=number]').fill('30')
+      await expect(step.getByRole('button', { name: 'Cambiar la meta de Empleo' })).toContainText('Máx. 30 h')
       for (const box of await boxes(page, '.onboarding .goal-chip')) expect(box.height).toBeGreaterThanOrEqual(44)
       expect(await visualIntegrityViolations(page)).toEqual([])
-      await dialog.getByRole('button', { name: 'Siguiente' }).click()
+      await step.getByRole('button', { name: 'Siguiente' }).click()
 
       // Step 3 and the confirmation.
-      await dialog.getByLabel('Tarea', { exact: true }).fill('Llamar al banco')
-      await dialog.getByRole('button', { name: 'Terminar' }).click()
+      await step.getByLabel('Tarea', { exact: true }).fill('Llamar al banco')
+      await step.getByRole('button', { name: 'Terminar' }).click()
       await expect(page.getByRole('dialog', { name: 'Tu semana está lista' })).toBeVisible()
       await expect(page.getByTestId('onboarding-summary')).toContainText('2 categorías y 2 bloques')
       await calm(page)
@@ -260,6 +261,8 @@ test('onboarding does not ask the browser to protect storage; the first check-in
   await page.getByRole('dialog').getByRole('button', { name: 'Terminar' }).click()
   await expect(page.getByRole('dialog', { name: 'Tu semana está lista' })).toBeVisible()
   expect(await page.evaluate(() => (window as unknown as { __persistCalls: number[] }).__persistCalls.length)).toBe(0)
+  await page.getByRole('button', { name: 'Cerrar' }).click()
+  await expect(page.getByRole('dialog')).toHaveCount(0)
 
   await page.goto('./#/checkin')
   await page.getByRole('button', { name: /Guardar/ }).first().click()
@@ -282,6 +285,8 @@ for (const theme of THEMES) {
 
     // On a long page the last row clears the pill when scrolled to the end.
     await page.goto('./#/settings')
+    await expect(page.getByTestId('proposal-badge')).toBeVisible()
+    await expect(page.locator('main h2').first()).toBeVisible()
     await page.evaluate(() => window.scrollTo(0, document.documentElement.scrollHeight))
     await calm(page)
     const clearance = await page.evaluate(() => {
