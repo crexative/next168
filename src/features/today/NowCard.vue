@@ -5,10 +5,11 @@ import type { BlockActual, Category } from '@/core/model'
 import { addLocalDays, localDateOf, type DatedOccurrence } from '@/core/time'
 import { categoryColor } from '@/features/week/categoryColor'
 import { formatDate, formatTime } from '@/features/week/localTime'
-import ActualChoices from './ActualChoices.vue'
+import ItemStatusControl from './ItemStatusControl.vue'
 import { actualFor, type ActualStatus } from './actuals'
-import { formatSpan } from './duration'
+import { untilClock } from './clockPhrase'
 import type { NextUp } from './nextUp'
+import { isReportable } from './statusWindow'
 import { displayLocale, formatDuration } from '@/ui/format'
 
 type CurrentOccurrence = DatedOccurrence & { minutesLeft: number; progress: number }
@@ -42,10 +43,14 @@ const minutesLeft = computed(() => {
   return t('common.duration.left', { duration: formatDuration(minutes) })
 })
 
-// A free moment says how long it lasts, but only when the next thing starts today (otherwise "Después" names the day).
-const freeFor = computed(() => {
-  if (props.current || !props.next || localDateOf(props.next.start, props.timeZone) !== props.today) return ''
-  return t('today.now.freeFor', { duration: formatSpan((Date.parse(props.next.start) - props.now.getTime()) / 60000) })
+// Mid-block the card only tells the time left; the question comes in the block's last minutes, or stays once answered.
+const currentActual = computed(() => props.current ? actualFor(props.actuals, props.current) : undefined)
+const asksNow = computed(() => props.current !== null && props.askable && (isReportable(props.current, props.now) || currentActual.value !== undefined))
+
+// A free moment says when it ends, but only when the next thing starts today (otherwise "Después" names the day).
+const freeTitle = computed(() => {
+  if (!props.next || localDateOf(props.next.start, props.timeZone) !== props.today) return t('today.now.free')
+  return untilClock(t, 'today.now.freeUntil', time(props.next.start))
 })
 
 const nextWhen = computed(() => {
@@ -64,9 +69,23 @@ function time(instant: string): string {
 
 <template>
   <section class="now-card" :style="{ '--block-color': color }" :aria-label="t('today.now.label')" data-testid="now-card">
-    <p class="t-footnote now-eyebrow">{{ current ? t('today.now.eyebrow') : t('today.now.freeEyebrow') }}</p>
+    <p class="t-footnote now-eyebrow" data-testid="now-eyebrow">{{ t('today.now.eyebrow') }}</p>
     <template v-if="current">
-      <h2 class="t-title-2 now-title" data-testid="now-title">{{ current.title }}</h2>
+      <div class="now-head">
+        <h2 class="t-title-2 now-title" data-testid="now-title">{{ current.title }}</h2>
+        <ItemStatusControl
+          v-if="asksNow"
+          class="now-status"
+          :item-key="`${current.blockId}@${current.start}`"
+          :title="current.title"
+          :status="currentActual?.status"
+          :actual-minutes="currentActual?.actualMinutes"
+          :planned-minutes="current.plannedMinutes"
+          :writable="writable"
+          @record="(status, minutes) => emit('record', current!, status, minutes)"
+          @clear="emit('clear', current!)"
+        />
+      </div>
       <p class="now-meta t-subhead">
         <span class="tabular">{{ range }}</span>
         <span class="tabular now-left" data-testid="now-left">{{ minutesLeft }}</span>
@@ -81,19 +100,8 @@ function time(instant: string): string {
       >
         <span class="progress-fill" :style="{ width: `${progressPercent}%` }" />
       </div>
-      <ActualChoices
-        v-if="askable"
-        :occurrence="current"
-        :actual="actualFor(actuals, current)"
-        :writable="writable"
-        @record="(status, minutes) => emit('record', current!, status, minutes)"
-        @clear="emit('clear', current!)"
-      />
     </template>
-    <template v-else>
-      <h2 class="t-title-2 now-title" data-testid="now-title">{{ t('today.now.free') }}</h2>
-      <p v-if="freeFor" class="now-meta tabular t-subhead now-left" data-testid="now-free-for">{{ freeFor }}</p>
-    </template>
+    <h2 v-else class="t-title-2 now-title" data-testid="now-title">{{ freeTitle }}</h2>
     <p class="now-next t-subhead" data-testid="now-next">
       <template v-if="next">
         <span class="now-next-label">{{ t('today.now.next') }}</span>
@@ -116,7 +124,11 @@ function time(instant: string): string {
   background: var(--surface);
 }
 .now-eyebrow { margin: 0; color: var(--label-2); font-weight: 600; text-transform: uppercase; letter-spacing: 0.02em; }
-.now-title { margin: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.now-head { display: flex; align-items: center; justify-content: space-between; gap: var(--space-2); }
+/* The title wraps instead of being cut: "Tiempo libre hasta las 11:00 p. m." is longer than a phone line. */
+.now-title { min-width: 0; margin: 0; overflow-wrap: anywhere; }
+/* The 44 px circle borrows the card's padding so the title keeps its line height. */
+.now-status { margin: calc(var(--space-3) * -1) calc(var(--space-2) * -1); }
 .now-meta { display: flex; flex-wrap: wrap; justify-content: space-between; gap: var(--space-2); margin: 0; }
 .now-left { font-weight: 600; }
 .tabular { font-variant-numeric: tabular-nums; }

@@ -7,9 +7,10 @@ import { localDateOf, type DatedOccurrence } from '@/core/time'
 import { usePlannerStore } from '@/stores/plannerStore'
 import Button from '@/ui/Button.vue'
 import EmptyState from '@/ui/EmptyState.vue'
+import { formatWholeHours } from '@/ui/format'
 import { useUndoToast } from '@/ui/undoToast'
 import AssistantEntryButton from '@/features/assistant/AssistantEntryButton.vue'
-import FreeHoursBadge from '@/features/capacity/FreeHoursBadge.vue'
+import { weekSplit, weekSplitHours } from '@/features/capacity/freeHours'
 import CheckInCard from '@/features/checkin/CheckInCard.vue'
 import { consumeSavedFlag } from '@/features/checkin/checkinFlash'
 import SetupWeekPrompt from '@/features/onboarding/SetupWeekPrompt.vue'
@@ -19,12 +20,13 @@ import { formatDate } from '@/features/week/localTime'
 import { useNow } from '@/features/week/useNow'
 import NowCard from './NowCard.vue'
 import TodayTimeline from './TodayTimeline.vue'
-import { clearActual, recordActual, type ActualStatus } from './actuals'
-import { dayProgress } from './dayProgress'
+import type { ActualStatus } from './actuals'
 import { nextUp } from './nextUp'
+import { placementClock } from './placementClock'
 import { isAskable, planSince, readPlanSince, stampPlanSince } from './planSince'
 import { completeTask, reopenTask } from './taskCompletion'
 import { buildTimeline } from './todayTimeline'
+import { useBlockStatus } from './useBlockStatus'
 
 const { t, locale } = useI18n()
 const planner = usePlannerStore()
@@ -37,10 +39,16 @@ const dateLabel = computed(() => formatDate(today.value, locale.value, { weekday
 const external = useExternalOccurrences(() => document.value ? { fromDate: today.value, days: 7, timeZone: timeZone.value } : null)
 
 const nowAndNext = computed(() => document.value ? currentAndNext(document.value, now.value, timeZone.value) : { current: null, next: null })
+// Free hours from now to the end of the week, in whole hours: the one figure Today keeps from the old header card.
+const freeHours = computed(() => document.value ? weekSplitHours(weekSplit(document.value, now.value, timeZone.value)).freeAhead : 0)
+const subtitle = computed(() => t('today.header.subtitle', { date: dateLabel.value, hours: formatWholeHours(freeHours.value) }))
+
+// Tasks are re-fitted on five-minute steps, so the plan does not shift every minute and starts on tidy times.
+const fitFrom = computed(() => placementClock(now.value).getTime())
 const timeline = computed(() => {
   if (!document.value) return { items: [], allDay: [] }
   const busy = external.value.filter((item) => item.busy && !item.allDay).map((item) => ({ start: item.start, end: item.end }))
-  const placements = scheduleTasks({ document: document.value, busy, now: now.value, timeZone: timeZone.value })
+  const placements = scheduleTasks({ document: document.value, busy, now: new Date(fitFrom.value), timeZone: timeZone.value })
   return buildTimeline({ document: document.value, today: today.value, timeZone: timeZone.value, external: external.value, placements })
 })
 // Blocks, placed tasks, events and calendar occurrences all count as planned content.
@@ -55,7 +63,6 @@ const since = computed(() => document.value ? planSince(document.value, stamped.
 
 const currentKey = computed(() => nowAndNext.value.current ? `block:${nowAndNext.value.current.blockId}@${nowAndNext.value.current.start}` : undefined)
 const upNext = computed(() => nextUp(nowAndNext.value.next, timeline.value.items, now.value))
-const progress = computed(() => document.value ? dayProgress(document.value, timeline.value.items, today.value, since.value) : { done: 0, total: 0 })
 
 const toast = useUndoToast()
 const checkInCard = ref<InstanceType<typeof CheckInCard> | null>(null)
@@ -82,26 +89,20 @@ async function complete(taskId: string, title: string): Promise<void> {
   })
 }
 
+const blockStatus = useBlockStatus()
+
 function record(occurrence: DatedOccurrence, status: ActualStatus, actualMinutes?: number): void {
-  void planner.commit((draft) => recordActual(draft, occurrence, status, actualMinutes))
+  void blockStatus.record(occurrence, status, actualMinutes)
 }
 
 function clear(occurrence: DatedOccurrence): void {
-  void planner.commit((draft) => clearActual(draft, occurrence))
+  void blockStatus.clear(occurrence)
 }
 </script>
 
 <template>
   <div v-if="document" class="today-view">
-    <header class="today-header">
-      <p class="date-label t-headline t-secondary" data-testid="today-date">{{ dateLabel }}</p>
-      <div class="today-stats">
-        <FreeHoursBadge class="stat" :document="document" :now="now" :framed="false" />
-        <p v-if="progress.total > 0" class="stat day-progress t-subhead" data-testid="day-progress">
-          {{ t('today.header.progress', { done: progress.done, total: progress.total }) }}
-        </p>
-      </div>
-    </header>
+    <p class="today-subtitle t-subhead t-secondary" data-testid="today-subtitle">{{ subtitle }}</p>
     <AssistantEntryButton />
     <EmptyState v-if="!hasContent" icon="sun" :title="t('today.empty.title')" :description="t('today.empty.description')">
       <!-- The setup wizard is the quick way in; when it cannot be offered, the link to Week remains. -->
@@ -147,11 +148,5 @@ function clear(occurrence: DatedOccurrence): void {
 
 <style scoped>
 .today-view { padding-bottom: var(--space-6); }
-.today-header { margin: calc(var(--space-2) * -1) var(--space-4) var(--space-4); }
-.date-label { margin: 0 0 var(--space-2); }
-/* The two figures share one card, like a short list group. */
-.today-stats { overflow: hidden; border-radius: var(--radius-card); background: var(--surface); }
-.stat { padding: var(--space-3) var(--space-4); }
-.stat + .stat { border-top: 0.5px solid var(--separator); }
-.day-progress { margin: 0; font-variant-numeric: tabular-nums; }
+.today-subtitle { margin: calc(var(--space-2) * -1) var(--space-4) var(--space-4); font-variant-numeric: tabular-nums; text-wrap: balance; }
 </style>

@@ -2,24 +2,21 @@
   "now": {
     "label": "Agora",
     "eyebrow": "Agora",
-    "freeEyebrow": "Neste momento",
-    "free": "Sem planejamento",
-    "minutesLeft": "Faltam {minutes} min",
-    "hoursMinutesLeft": "Faltam {hours} h {minutes} min",
-    "progress": "Progresso do bloco atual",
+    "free": "Tempo livre",
+    "freeUntil": "Tempo livre até à {time} | Tempo livre até às {time}",
+    "progress": "Progresso",
     "next": "A seguir",
     "nothingNext": "Nada mais planejado nesta semana",
     "tomorrowAt": "Amanhã, {time}",
-    "dayAt": "{day}, {time}",
-    "freeFor": "em {duration}"
+    "dayAt": "{day}, {time}"
   },
   "timeline": {
-    "label": "Linha do tempo de hoje",
-    "title": "Linha do tempo",
+    "label": "Seu dia",
+    "title": "Seu dia",
     "allDay": "Dia inteiro",
-    "conflict": "Conflito",
+    "overlaps": "Coincide com {titles}",
     "sinceYesterday": "Desde ontem",
-    "untilTomorrow": "Até amanhã",
+    "untilTime": "Até à {time} | Até às {time}",
     "sinceDate": "Desde {date}",
     "untilDate": "Até {date}",
     "late": "Atrasada",
@@ -29,28 +26,35 @@
       "external": "Calendário"
     },
     "carryOver": "Desde ontem · até {time}",
-    "completeTask": "Concluir {title}",
     "taskDone": "Tarefa feita: {title}"
   },
-  "actual": {
-    "question": "Como foi {title}?",
+  "status": {
+    "markDone": "Marcar {title} como feito",
+    "stateDone": "{title}: feito. Toque para remover a resposta",
+    "statePartial": "{title}: pela metade. Toque para marcar como feito",
+    "stateSkipped": "{title}: não. Toque para marcar como feito",
+    "hint": "Mantenha pressionado para escolher Pela metade ou Não",
+    "menuLabel": "Como foi {title}?",
     "done": "Feito",
-    "partial": "Parcial",
-    "skipped": "Pulado",
+    "partial": "Pela metade",
+    "skipped": "Não",
+    "clear": "Remover resposta",
     "minutesLabel": "Minutos dedicados (planejados {planned})",
-    "savePartial": "Salvar"
+    "save": "Salvar",
+    "marked": "{title}: {status}",
+    "cleared": "Resposta removida: {title}"
   },
   "empty": {
     "title": "Nada planejado ainda",
-    "description": "Adicione blocos de tempo à sua semana e Hoje mostrará o que acontece agora e a seguir.",
+    "description": "Adicione rotinas à sua semana e Hoje mostrará o que acontece agora e a seguir.",
     "action": "Planejar a semana"
   },
   "emptyDay": {
     "title": "Um dia livre",
-    "description": "Nenhum bloco, tarefa ou evento hoje.",
+    "description": "Hoje não há rotinas, tarefas nem eventos.",
     "action": "Abrir a semana"
   },
   "header": {
-    "progress": "{done} de {total} feitos hoje"
+    "subtitle": "{date} · {hours} livres nesta semana"
   }
 }

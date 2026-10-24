@@ -1,4 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
+import { nextTick } from 'vue'
+import { i18n } from '@/i18n'
 import { currentAndNext } from '@/core/now'
 import { deepWork, plannerDocument, sleep } from '@/features/week/testDocument'
 import { mountForTest } from '@/features/week/mountForTest'
@@ -6,7 +8,7 @@ import NowCard from './NowCard.vue'
 
 const document = plannerDocument({ blocks: [deepWork, sleep] })
 let unmount = () => undefined as void
-afterEach(() => unmount())
+afterEach(() => { unmount(); i18n.global.locale.value = 'en' })
 
 async function render(now: string, extra: Record<string, unknown> = {}) {
   const { current, next } = currentAndNext(document, new Date(now), 'UTC')
@@ -42,54 +44,78 @@ describe('NowCard', () => {
     expect(text('now-next')).toMatch(/^Next Deep work Tomorrow, 9:00\sAM$/)
   })
 
-  it('says "Unplanned" and how long it lasts when nothing is running', async () => {
+  it('says when the free time ends, in one title, when the next block starts later today', async () => {
     const { host, text } = await render('2026-10-24T12:00:00Z')
-    expect(text('now-title')).toBe('Unplanned')
-    expect(text('now-free-for')).toBe('in 10 h')
-    expect(host.querySelector('.choices')).toBeNull()
+    expect(text('now-title').replace(/\s/g, ' ')).toBe('Free time until 10:00 PM')
+    expect(text('now-eyebrow')).toBe('Now')
+    expect(host.querySelector('[data-testid="now-free-for"]')).toBeNull()
+    expect(host.querySelector('[data-testid="status-control"]')).toBeNull()
     expect(host.querySelector('[role="progressbar"]')).toBeNull()
     expect(text('now-next')).toMatch(/^Next Sleep 10:00\sPM$/)
   })
 
-  it('shows "in 1 h 30 min" when the next block starts later today', async () => {
-    const { text } = await render('2026-10-21T20:30:00Z')
-    expect(text('now-title')).toBe('Unplanned')
-    expect(text('now-free-for')).toBe('in 1 h 30 min')
+  it('does not ask how a block went while most of it is still ahead', async () => {
+    const { host } = await render('2026-10-21T10:15:00Z')
+    expect(host.querySelector('[data-testid="status-control"]')).toBeNull()
+    expect(host.querySelector('[data-testid="now-left"]')).not.toBeNull()
+    expect(host.querySelector('[data-testid="now-next"]')).not.toBeNull()
+    expect(host.querySelector('[role="progressbar"]')).not.toBeNull()
   })
 
-  it('asks Done / Partial / Skipped inside the card for the current block, filled with an icon and aria-pressed', async () => {
+  it('asks in the last ten minutes of the block, and not a minute earlier', async () => {
+    const early = await render('2026-10-21T10:49:30Z')
+    expect(early.host.querySelector('[data-testid="status-control"]')).toBeNull()
+    unmount()
+    const { host } = await render('2026-10-21T10:50:00Z')
+    expect(host.querySelector('[data-testid="status-control"]')?.getAttribute('aria-label')).toBe('Mark Deep work as done')
+  })
+
+  it('keeps showing an answer that was already given mid-block', async () => {
     const { host } = await render('2026-10-21T10:15:00Z', { actuals: [{
       date: '2026-10-21', blockId: 'deep', categoryId: 'work', plannedStartAt: '2026-10-21T09:00:00.000Z',
       plannedEndAt: '2026-10-21T11:00:00.000Z', plannedMinutes: 120, status: 'partial', actualMinutes: 30,
     }] })
-    const group = host.querySelector('.now-card [role="group"]')!
-    expect(group.getAttribute('aria-label')).toBe('How did Deep work go?')
-    const buttons = [...group.querySelectorAll<HTMLButtonElement>('button')]
-    expect(buttons.map((button) => button.textContent?.trim())).toEqual(['Done', 'Partial', 'Skipped'])
-    expect(buttons.map((button) => button.getAttribute('aria-pressed'))).toEqual(['false', 'true', 'false'])
+    expect(host.querySelector('[data-testid="status-control"]')?.getAttribute('data-status')).toBe('partial')
   })
 
   it('does not ask about a block that started before the plan existed', async () => {
-    const { host } = await render('2026-10-21T10:15:00Z', { askable: false })
-    expect(host.querySelector('[role="group"]')).toBeNull()
+    const { host } = await render('2026-10-21T10:55:00Z', { askable: false })
+    expect(host.querySelector('[data-testid="status-control"]')).toBeNull()
     expect(host.querySelector('[data-testid="now-title"]')?.textContent).toBe('Deep work')
   })
 
   it('emits the chosen status for the current block', async () => {
     const onRecord = vi.fn()
-    const { host } = await render('2026-10-21T10:15:00Z', { onRecord })
-    host.querySelector<HTMLButtonElement>('.choice.is-done')!.click()
+    const { host } = await render('2026-10-21T10:55:00Z', { onRecord })
+    host.querySelector<HTMLButtonElement>('[data-testid="status-control"]')!.click()
     expect(onRecord).toHaveBeenCalledWith(expect.objectContaining({ blockId: 'deep', title: 'Deep work' }), 'done', undefined)
   })
 
-  it('does not promise a free duration when the next block starts on another day', async () => {
+  it('agrees the Spanish article with the hour the free time ends at', async () => {
+    const early = plannerDocument({ blocks: [{ id: 'early', categoryId: 'work', title: 'Early', days: [3], start: 60, end: 120 }] })
+    const now = new Date('2026-10-20T23:00:00Z')
+    const { current, next } = currentAndNext(early, now, 'UTC')
+    const mounted = await mountForTest(NowCard, { current, next, categories: early.categories, actuals: [], askable: true, writable: true, now, today: '2026-10-20', timeZone: 'UTC' })
+    unmount = mounted.unmount
+    // Wednesday 2026-10-21 01:00 is the next start, but it is tomorrow for 2026-10-20: no end is named.
+    expect(mounted.host.querySelector('[data-testid="now-title"]')?.textContent).toBe('Free time')
+    unmount()
+    const sameDay = new Date('2026-10-21T00:10:00Z')
+    const again = currentAndNext(early, sameDay, 'UTC')
+    const second = await mountForTest(NowCard, { current: again.current, next: again.next, categories: early.categories, actuals: [], askable: true, writable: true, now: sameDay, today: '2026-10-21', timeZone: 'UTC' })
+    unmount = second.unmount
+    i18n.global.locale.value = 'es'
+    await nextTick()
+    expect(second.host.querySelector('[data-testid="now-title"]')?.textContent?.replace(/\s/g, ' ')).toBe('Tiempo libre hasta la 1:00')
+  })
+
+  it('names no end for the free time when the next block starts on another day', async () => {
     const onlyWork = plannerDocument({ blocks: [deepWork] })
     const now = new Date('2026-10-21T12:00:00Z')
     const { current, next } = currentAndNext(onlyWork, now, 'UTC')
     const mounted = await mountForTest(NowCard, { current, next, categories: onlyWork.categories, actuals: [], askable: true, writable: true, now, today: '2026-10-21', timeZone: 'UTC' })
     unmount = mounted.unmount
-    expect(mounted.host.querySelector('[data-testid="now-title"]')?.textContent).toBe('Unplanned')
-    expect(mounted.host.querySelector('[data-testid="now-free-for"]')).toBeNull()
+    expect(mounted.host.querySelector('[data-testid="now-title"]')?.textContent).toBe('Free time')
   })
 
   it('writes exactly one hour in the shared duration format, without "0 min"', async () => {

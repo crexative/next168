@@ -2,24 +2,21 @@
   "now": {
     "label": "Jetzt",
     "eyebrow": "Jetzt",
-    "freeEyebrow": "Gerade",
-    "free": "Ungeplant",
-    "minutesLeft": "Noch {minutes} Min.",
-    "hoursMinutesLeft": "Noch {hours} Std. {minutes} Min.",
-    "progress": "Fortschritt des aktuellen Blocks",
+    "free": "Freie Zeit",
+    "freeUntil": "Freie Zeit bis {time}",
+    "progress": "Fortschritt",
     "next": "Danach",
     "nothingNext": "Diese Woche ist nichts weiter geplant",
     "tomorrowAt": "Morgen, {time}",
-    "dayAt": "{day}, {time}",
-    "freeFor": "in {duration}"
+    "dayAt": "{day}, {time}"
   },
   "timeline": {
-    "label": "Heutiger Zeitverlauf",
-    "title": "Zeitverlauf",
+    "label": "Dein Tag",
+    "title": "Dein Tag",
     "allDay": "Ganztägig",
-    "conflict": "Konflikt",
+    "overlaps": "Überschneidet sich mit {titles}",
     "sinceYesterday": "Seit gestern",
-    "untilTomorrow": "Bis morgen",
+    "untilTime": "Bis {time}",
     "sinceDate": "Seit {date}",
     "untilDate": "Bis {date}",
     "late": "Verspätet",
@@ -29,28 +26,35 @@
       "external": "Kalender"
     },
     "carryOver": "Seit gestern · bis {time}",
-    "completeTask": "{title} abschließen",
     "taskDone": "Aufgabe erledigt: {title}"
   },
-  "actual": {
-    "question": "Wie lief {title}?",
+  "status": {
+    "markDone": "{title} als erledigt markieren",
+    "stateDone": "{title}: erledigt. Tippen, um die Antwort zu entfernen",
+    "statePartial": "{title}: teilweise. Tippen, um es als erledigt zu markieren",
+    "stateSkipped": "{title}: nein. Tippen, um es als erledigt zu markieren",
+    "hint": "Gedrückt halten für Teilweise oder Nein",
+    "menuLabel": "Wie lief {title}?",
     "done": "Erledigt",
     "partial": "Teilweise",
-    "skipped": "Ausgelassen",
+    "skipped": "Nein",
+    "clear": "Antwort entfernen",
     "minutesLabel": "Aufgewendete Minuten (geplant {planned})",
-    "savePartial": "Sichern"
+    "save": "Sichern",
+    "marked": "{title}: {status}",
+    "cleared": "Antwort entfernt: {title}"
   },
   "empty": {
     "title": "Noch nichts geplant",
-    "description": "Füge deiner Woche Zeitblöcke hinzu, dann zeigt Heute, was jetzt und als Nächstes ansteht.",
+    "description": "Füge deiner Woche Routinen hinzu, dann zeigt Heute, was jetzt und als Nächstes ansteht.",
     "action": "Woche planen"
   },
   "emptyDay": {
     "title": "Ein freier Tag",
-    "description": "Heute keine Blöcke, Aufgaben oder Termine.",
+    "description": "Heute keine Routinen, Aufgaben oder Termine.",
     "action": "Woche öffnen"
   },
   "header": {
-    "progress": "{done} von {total} heute erledigt"
+    "subtitle": "{date} · {hours} frei diese Woche"
   }
 }
