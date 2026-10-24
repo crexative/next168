@@ -20,6 +20,9 @@ const percent = computed(() => Math.round((assistant.progress.value?.fraction ??
 const modelState = computed(() => assistant.availability.webllm)
 const failureMessage = computed(() => assistant.failure.value ? t(`assistant.failures.${assistant.failure.value}`) : null)
 
+// A download that failed (network error or offline) can be tried again; the opt-in card is hidden while it runs.
+const canRetry = computed(() => (assistant.failure.value === 'network' || assistant.failure.value === 'offline') && modelState.value === 'downloadable' && !assistant.busy.value)
+
 onMounted(() => { void assistant.refresh() })
 
 async function submit(): Promise<void> {
@@ -66,7 +69,10 @@ async function submit(): Promise<void> {
           <ProposalCard v-if="message.proposal" :input="message.proposal" />
         </li>
       </ol>
-      <p v-if="failureMessage" class="t-subhead failure" role="alert" data-testid="assistant-failure">{{ failureMessage }}</p>
+      <div v-if="failureMessage" class="failure-row">
+        <p class="t-subhead failure" role="alert" data-testid="assistant-failure">{{ failureMessage }}</p>
+        <Button v-if="canRetry" variant="tinted" data-testid="assistant-retry" @click="assistant.prepareModel()">{{ t('assistant.retry') }}</Button>
+      </div>
       <p v-if="assistant.busy.value === 'asking'" class="t-footnote t-secondary" role="status">{{ t('assistant.chat.thinking') }}</p>
       <form class="composer" @submit.prevent="submit">
         <label class="sr-only" for="assistant-question">{{ t('assistant.chat.label') }}</label>
@@ -89,6 +95,7 @@ progress { width: 100%; accent-color: var(--tint); }
 .message.is-user { align-self: flex-end; }
 .bubble { margin: 0; padding: var(--space-2) var(--space-3); border-radius: var(--radius-card); background: var(--surface); white-space: pre-line; }
 .is-user .bubble { background: var(--tint); color: var(--tint-text); }
+.failure-row { display: flex; flex-direction: column; align-items: flex-start; gap: var(--space-2); }
 .failure { margin: 0; color: var(--danger-label); }
 .composer { display: flex; gap: var(--space-2); }
 .field { flex: 1; min-width: 0; min-height: var(--tap-target); padding: 0 var(--space-3); border: 0; border-radius: var(--radius-control); background: var(--surface); color: var(--label); }

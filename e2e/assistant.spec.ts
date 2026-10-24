@@ -46,6 +46,9 @@ test.describe('assistant without WebGPU', () => {
     await openAssistant(page)
     await ask(page, 'Add a gym block on Thursday')
     await expect(page.locator('[data-role=assistant]').last()).toContainText('on-device model')
+    // The model is "Not available" here, so the reply must not tell the user to turn it on.
+    await expect(page.locator('[data-role=assistant]').last()).not.toContainText(/turn it on/i)
+    await expect(page.locator('[data-role=assistant]').last()).toContainText('cannot run')
     await expect(page.getByTestId('proposal-card')).toHaveCount(0)
   })
 

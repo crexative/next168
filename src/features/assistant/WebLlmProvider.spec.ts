@@ -110,8 +110,16 @@ describe('WebLlmProvider prepare and ask', () => {
   })
 
   it('a download offline reports offline without ending the session', async () => {
+    vi.spyOn(navigator, 'onLine', 'get').mockReturnValue(false)
     const { provider } = setup({ create: async () => { throw new TypeError('Failed to fetch') } })
     await expect(provider.prepare(vi.fn(), signal())).rejects.toMatchObject({ code: 'offline' })
+    expect(await provider.availability()).toBe('downloadable')
+  })
+
+  it('a failed download while online is a network error, not offline, and can be retried', async () => {
+    vi.spyOn(navigator, 'onLine', 'get').mockReturnValue(true)
+    const { provider } = setup({ create: async () => { throw new TypeError('Failed to fetch') } })
+    await expect(provider.prepare(vi.fn(), signal())).rejects.toMatchObject({ code: 'network' })
     expect(await provider.availability()).toBe('downloadable')
   })
 
@@ -153,6 +161,15 @@ describe('WebLlmProvider prepare and ask', () => {
     expect(request.response_format.type).toBe('json_object')
     expect(typeof request.response_format.schema).toBe('string')
     expect(request.temperature).toBe(0)
+  })
+
+  it('constrains the answer template to a sentence so no bare number follows the computed facts', async () => {
+    const { provider, engine } = setup()
+    await provider.prepare(vi.fn(), signal())
+    await provider.ask('How many hours of work this week?', context(), signal())
+    const request = engine.engine.create.mock.calls[0]![0] as { messages: { content: string }[]; response_format: { schema: string } }
+    expect(JSON.parse(request.response_format.schema).properties.answer.minLength).toBeGreaterThan(10)
+    expect(request.messages[0]!.content).toContain('Never reply with only a number')
   })
 
   it('passes the computed total to the model and quotes it when the model omits it', async () => {
@@ -321,7 +338,7 @@ describe('failure classification and fact quoting', () => {
     [new Error('Out of memory'), 'out-of-memory'],
     [Object.assign(new Error('x'), { name: 'QuotaExceededError' }), 'out-of-memory'],
     [new Error('Device was lost'), 'device-lost'],
-    [new TypeError('Failed to fetch'), 'offline'],
+    [new TypeError('Failed to fetch'), 'network'],
     [Object.assign(new Error('x'), { name: 'AbortError' }), 'cancelled'],
     [new AssistantError('invalid-output'), 'invalid-output'],
     [new Error('boom'), 'unknown'],

@@ -91,7 +91,10 @@ export class RulesProvider implements AssistantProvider {
   async prepare(): Promise<void> {}
 
   async ask(question: string, context: AskContext): Promise<AssistantAnswer> {
-    if (isChangeRequest(question)) return { answer: context.translate('assistant.answers.rulesCannotChange') }
+    if (isChangeRequest(question)) {
+      const key = context.modelAvailability === 'unavailable' ? 'rulesCannotChangeHere' : 'rulesCannotChange'
+      return { answer: context.translate(`assistant.answers.${key}`) }
+    }
     return { answer: answerFromStats(question, context) ?? context.translate('assistant.answers.rulesUnknown') }
   }
 

@@ -90,7 +90,7 @@ function createAssistant(providers: Record<ProviderChoice, AssistantProvider>) {
     controller = new AbortController()
     busy.value = 'asking'
     try {
-      const reply = await providers[active.value].ask(text, context, controller.signal)
+      const reply = await providers[active.value].ask(text, { ...context, modelAvailability: availability.webllm }, controller.signal)
       push('assistant', reply.answer, reply.proposal)
     } catch (error) {
       failure.value = error instanceof AssistantError ? error.code : 'unknown'

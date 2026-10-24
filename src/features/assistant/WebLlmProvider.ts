@@ -47,7 +47,9 @@ export function classifyFailure(error: unknown): AssistantFailureCode {
   if (name === 'AbortError') return 'cancelled'
   if (name === 'QuotaExceededError' || /out of memory|\boom\b|allocation|maxbuffersize|quota/.test(message)) return 'out-of-memory'
   if (/device.{0,12}lost|gpudevicelost/.test(message)) return 'device-lost'
-  if (/failed to fetch|networkerror|network error|load failed/.test(message) || (typeof navigator !== 'undefined' && navigator.onLine === false)) return 'offline'
+  // Offline means the browser says so; a failed fetch while online is a network or download error worth retrying.
+  if (typeof navigator !== 'undefined' && navigator.onLine === false) return 'offline'
+  if (/failed to fetch|networkerror|network error|load failed/.test(message)) return 'network'
   return 'unknown'
 }
 
@@ -59,7 +61,10 @@ function traceModelReply(kind: 'answer' | 'proposal', content: string): void {
 
 const SESSION_ENDING = new Set<AssistantFailureCode>(['out-of-memory', 'device-lost'])
 
-const ANSWER_SCHEMA = { type: 'object', properties: { answer: { type: 'string' } }, required: ['answer'], additionalProperties: false }
+// The answer is a sentence, never a bare figure: the schema forbids very short strings, so the model cannot
+// append a lone number under the computed facts.
+export const MIN_ANSWER_CHARS = 24
+const ANSWER_SCHEMA = { type: 'object', properties: { answer: { type: 'string', minLength: MIN_ANSWER_CHARS, maxLength: 600 } }, required: ['answer'], additionalProperties: false }
 
 // The model explains; the numbers are the app's. The computed facts always come first, as their own block,
 // whatever the model wrote: the model's prose follows on a separate paragraph and is never matched against them.
@@ -193,7 +198,7 @@ export class WebLlmProvider implements AssistantProvider {
       'Never calculate totals yourself: quote the computed figures below exactly.',
     ]
     if (facts) lines.push(`Computed facts (authoritative):\n${facts}`)
-    lines.push('Reply with JSON of the form {"answer": "..."} using at most three sentences.', `Planner data: ${assistantContext(context.document)}`)
+    lines.push('Reply with JSON of the form {"answer": "..."} using one to three full sentences of plain words. Never reply with only a number.', `Planner data: ${assistantContext(context.document)}`)
     return lines.join('\n')
   }
 }

@@ -40,6 +40,7 @@
   "failures": {
     "cancelled": "Cancelled.",
     "offline": "You are offline and the model is not downloaded yet. Connect once to download it.",
+    "network": "The model could not be downloaded. Check your connection and try again.",
     "out-of-memory": "This device ran out of memory loading the model. Quick answers are used instead.",
     "device-lost": "The graphics device was lost. Quick answers are used instead; reload to try the model again.",
     "invalid-output": "The model's reply could not be used. Please try asking in other words.",
@@ -95,6 +96,8 @@
     "unassigned": "{amount} of the week are unassigned ({planned} planned of 168 h).",
     "totalPlanned": "{planned} planned this week out of 168 h.",
     "rulesCannotChange": "Changing the plan needs the on-device model. Turn it on in Settings, under Assistant.",
+    "rulesCannotChangeHere": "Changing the plan needs the on-device model, which this device or browser cannot run. Quick answers about your hours still work.",
     "rulesUnknown": "I can tell you the hours of a category this week, what is left to reach a goal, unassigned hours, your next block and which tasks do not fit."
-  }
+  },
+  "retry": "Try again"
 }

@@ -40,6 +40,7 @@
   "failures": {
     "cancelled": "Cancelado.",
     "offline": "Estás sin conexión y el modelo aún no está descargado. Conéctate una vez para descargarlo.",
+    "network": "No se pudo descargar el modelo. Revisa tu conexión e inténtalo de nuevo.",
     "out-of-memory": "Este dispositivo se quedó sin memoria al cargar el modelo. Se usan las respuestas rápidas.",
     "device-lost": "Se perdió el dispositivo gráfico. Se usan las respuestas rápidas; recarga para volver a probar el modelo.",
     "invalid-output": "No se pudo usar la respuesta del modelo. Prueba a preguntar con otras palabras.",
@@ -95,6 +96,8 @@
     "unassigned": "{amount} de la semana están sin asignar ({planned} planificadas de 168 h).",
     "totalPlanned": "{planned} planificadas esta semana de 168 h.",
     "rulesCannotChange": "Cambiar el plan requiere el modelo en el dispositivo. Actívalo en Ajustes, en Asistente.",
+    "rulesCannotChangeHere": "Cambiar el plan requiere el modelo en el dispositivo, que este dispositivo o navegador no puede ejecutar. Las respuestas rápidas sobre tus horas siguen funcionando.",
     "rulesUnknown": "Puedo decirte las horas de una categoría esta semana, lo que falta para una meta, las horas sin asignar, tu próximo bloque y qué tareas no caben."
-  }
+  },
+  "retry": "Reintentar"
 }

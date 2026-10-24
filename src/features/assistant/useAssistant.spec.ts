@@ -54,6 +54,14 @@ describe('assistant state', () => {
     expect(assistant.preference.value).toBe('rules')
   })
 
+  it('tells the quick answers when the model is unavailable on this device', async () => {
+    const { model } = fakeModel('unavailable')
+    const assistant = createAssistant({ rules: new RulesProvider(), webllm: model })
+    await assistant.refresh()
+    await assistant.ask('Add a gym block on Thursday', context())
+    expect(assistant.messages.value.at(-1)?.text).not.toMatch(/turn it on/i)
+  })
+
   it('invalid model output surfaces a retryable failure and the chat stays usable', async () => {
     const { model } = fakeModel('available')
     model.ask = vi.fn()

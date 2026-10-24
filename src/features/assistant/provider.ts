@@ -9,6 +9,8 @@ export interface AskContext {
   locale: string
   timeZone: string
   translate: Translate
+  // How the on-device model stands on this device; lets the quick answers say whether turning it on is possible.
+  modelAvailability?: Availability | 'checking'
 }
 
 export interface AssistantAnswer {
@@ -34,6 +36,7 @@ export interface AssistantProvider {
 export type AssistantFailureCode =
   | 'cancelled'
   | 'offline'
+  | 'network'
   | 'out-of-memory'
   | 'device-lost'
   | 'invalid-output'

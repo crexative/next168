@@ -77,4 +77,13 @@ describe('RulesProvider', () => {
   it('lists what it can answer for an unknown question', async () => {
     expect((await ask('Tell me a joke')).answer).toContain('next block')
   })
+
+  it('does not tell the user to turn on a model this device cannot run', async () => {
+    const document = plannerWithBlocks()
+    const turnOn = await rules.ask('Add a gym block on Thursday', contextFor(document), signal)
+    expect(turnOn.answer).toContain('Turn it on in Settings')
+    const unavailable = await rules.ask('Add a gym block on Thursday', { ...contextFor(document), modelAvailability: 'unavailable' }, signal)
+    expect(unavailable.answer).not.toMatch(/turn it on/i)
+    expect(unavailable.answer).toContain('cannot run')
+  })
 })
