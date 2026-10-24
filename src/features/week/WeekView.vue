@@ -9,6 +9,7 @@ import EmptyState from '@/ui/EmptyState.vue'
 import Icon from '@/ui/Icon.vue'
 import { useUndoToast } from '@/ui/undoToast'
 import { useMediaQuery } from '@/ui/useMediaQuery'
+import { defaultTaskCategoryId } from '@/features/onboarding/templates'
 import BlockEditorSheet from './BlockEditorSheet.vue'
 import DayPager from './DayPager.vue'
 import WeekGrid from './WeekGrid.vue'
@@ -65,7 +66,7 @@ function openNew(date: string, start: number): void {
   if (!document.value || !planner.writable || !hasCategories.value) return
   saveError.value = null
   draft.value = {
-    title: '', categoryId: document.value.categories[0]!.id,
+    title: '', categoryId: defaultTaskCategoryId(document.value.categories, ''),
     start, end: (start + DEFAULT_BLOCK_MINUTES) % 1440, days: [dayIndexOf(date)],
   }
   editorOpen.value = true

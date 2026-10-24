@@ -53,6 +53,15 @@ async function isTopmost(locator: Locator): Promise<boolean> {
   })
 }
 
+test('the New block sheet from Week "+" preselects the first category that is not Sleep', async ({ page }) => {
+  await seed(page)
+  await openTab(page, 'week')
+  await page.getByRole('button', { name: 'Add block' }).click()
+  const dialog = page.getByRole('dialog', { name: 'New block' })
+  await expect(dialog).toBeVisible()
+  await expect(dialog.getByLabel('Category')).toHaveValue('c-work')
+})
+
 test.describe('update notice on a phone', () => {
   test.beforeEach(onlyProject('phone'))
 

@@ -58,4 +58,30 @@ describe('WeekView saving', () => {
 
     expect(store.document?.blocks.map((block) => block.title)).toEqual(['Focus'])
   })
+
+  it('preselects the first category that is not Sleep in the New block sheet', async () => {
+    const { planner } = createTestRepositories()
+    configurePlannerStore({ repository: planner, now: fixedNow, newId: newTestId, locale: () => 'en', timeZone: () => 'UTC' })
+    const pinia = createPinia()
+    setActivePinia(pinia)
+    const store = usePlannerStore()
+    await store.load()
+    await store.commit((draft) => {
+      draft.categories.push(
+        { id: 'sleep', name: 'Sleep', colorKey: 'purple', goal: { type: 'min', hoursPerWeek: 49 } },
+        { id: 'work', name: 'Work', colorKey: 'blue', goal: { type: 'none', hoursPerWeek: 0 } },
+      )
+    })
+    i18n.global.locale.value = 'en'
+    const host = globalThis.document.createElement('div')
+    globalThis.document.body.append(host)
+    const app = createApp(WeekView)
+    app.use(pinia).use(i18n).mount(host)
+    cleanup = () => { app.unmount(); host.remove() }
+    await tick()
+
+    globalThis.document.querySelector<HTMLElement>('#toolbar-actions button')!.click()
+    await tick()
+    expect(globalThis.document.querySelector<HTMLSelectElement>('[role="dialog"] select')!.value).toBe('work')
+  })
 })
