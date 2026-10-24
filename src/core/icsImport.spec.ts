@@ -44,7 +44,7 @@ describe('ICS range expansion', () => {
     expect(() => icsImport('é'.repeat(3 * 1024 * 1024), 's', range, 'UTC')).toThrow('size')
     const manyEvents = Array.from({ length: 5001 }, (_, index) => event('').replace('UID:test', `UID:event-${index}`)).join('\r\n')
     expect(() => icsImport(calendar(manyEvents), 's', range, 'UTC')).toThrow('occurrences')
-    expect(() => icsImport(calendar(event('RRULE:FREQ=HOURLY')).replace(/20261019/g, '20000101'), 's', range, 'UTC')).toThrow('iterations')
+    expect(() => parse('pathological')).toThrow('iterations')
   })
   it('rejects malformed calendars, reversed ranges and nonpositive event intervals', () => {
     expect(() => icsImport('not a calendar', 's', range, 'UTC')).toThrow()
@@ -54,6 +54,85 @@ describe('ICS range expansion', () => {
 })
 
 describe('recurrence edge cases', () => {
+  it('expands several long-running series within the requested week without charging their history to the source', () => {
+    const events = parse('long-running')
+    const starts = (uid: string) => events.filter(event => event.uid === `${uid}@example.invalid`).map(event => event.start)
+    expect(starts('weekly')).toEqual(['2026-10-19T14:00:00.000Z'])
+    expect(starts('weekly-friday')).toEqual(['2026-10-23T16:00:00.000Z'])
+    expect(starts('fortnightly')).toEqual([])
+    expect(starts('daily')).toEqual(Array.from({ length: 7 }, (_, day) => `2026-10-${19 + day}T17:00:00.000Z`))
+    expect(starts('daily-count')).toEqual(Array.from({ length: 7 }, (_, day) => `2026-10-${19 + day}T18:00:00.000Z`))
+    expect(starts('daily-interval')).toEqual([19, 21, 23, 25].map(day => `2026-10-${day}T19:00:00.000Z`))
+    expect(starts('weekly-count')).toEqual([19, 21, 23].map(day => `2026-10-${day}T08:00:00.000Z`))
+    expect(starts('expired-count')).toEqual([])
+    expect(starts('expired-until')).toEqual([])
+  })
+  it('preserves weekly BYDAY and INTERVAL phase after seeking to another week', () => {
+    const events = icsImport(fixture('long-running'), 's', { start: '2026-10-26', end: '2026-11-02' }, 'America/Bogota')
+    expect(events.filter(event => event.uid === 'fortnightly@example.invalid').map(event => event.start)).toEqual([
+      '2026-10-26T15:00:00.000Z', '2026-10-28T15:00:00.000Z', '2026-10-30T15:00:00.000Z',
+    ])
+  })
+  it('does not restart COUNT after skipping historical occurrences', () => {
+    const events = icsImport(fixture('long-running').replace('COUNT=3000', 'COUNT=2851'), 's', range, 'America/Bogota')
+    expect(events.filter(event => event.uid === 'daily-count@example.invalid').map(event => event.start)).toEqual([
+      '2026-10-19T18:00:00.000Z', '2026-10-20T18:00:00.000Z', '2026-10-21T18:00:00.000Z',
+    ])
+  })
+  it('seeks ancient hourly series even with a large COUNT, but rejects unsafe COUNT values', () => {
+    const text = fixture('pathological').replace(';INTERVAL=50000;BYMONTH=2;BYMONTHDAY=30', '')
+    const events = icsImport(text, 's', range, 'UTC')
+    expect(events).toHaveLength(168)
+    expect(events[0]?.start).toBe('2026-10-19T00:00:00.000Z')
+    expect(events[167]?.start).toBe('2026-10-25T23:00:00.000Z')
+    expect(() => icsImport(text.replace('COUNT=2147483647', 'COUNT=9007199254740992'), 's', range, 'UTC')).toThrow('iterations')
+  })
+  it('still shares the work limit across series inside the requested range', () => {
+    const master = fixture('pathological').match(/BEGIN:VEVENT[\s\S]*?END:VEVENT/)![0]
+      .replace(';INTERVAL=50000;BYMONTH=2;BYMONTHDAY=30', '')
+    const text = calendar(Array.from({ length: 24 }, (_, index) => master.replace('UID:pathological', `UID:hourly-${index}`)).join('\n'))
+    expect(() => icsImport(text, 's', range, 'UTC')).toThrow('iterations')
+  })
+  it('keeps recurring instances spanning the range start when seeking', () => {
+    const text = fixture('long-running').replace('20150102T113000', '20150105T113000')
+    const events = icsImport(text, 's', { start: '2026-10-18', end: '2026-10-19' }, 'America/Bogota')
+    expect(events.filter(event => event.uid === 'weekly-friday@example.invalid')).toEqual([
+      expect.objectContaining({ start: '2026-10-16T16:00:00.000Z', end: '2026-10-19T16:30:00.000Z' }),
+    ])
+  })
+  it('preserves daily wall times across DST after skipping years of history', () => {
+    const text = fixture('dst').replace(/20261019/g, '20150101').replace(';COUNT=7', '')
+    const events = icsImport(text, 's', range, 'Europe/Madrid')
+    expect(events.map(event => event.start)).toEqual([
+      ...[19, 20, 21, 22, 23, 24].map(day => `2026-10-${day}T07:00:00.000Z`),
+      '2026-10-25T08:00:00.000Z',
+    ])
+  })
+  it('matches UTC Google EXDATE values to TZID occurrences and RDATE periods by instant', () => {
+    expect(parse('google-utc-exdate').map(event => event.start)).toEqual([
+      '2026-10-19T14:00:00.000Z', '2026-10-21T14:00:00.000Z',
+    ])
+  })
+  it('emits UTC Outlook overrides once and suppresses UTC cancellations of TZID instances', () => {
+    expect(parse('outlook-utc-override').map(event => [event.start, event.end])).toEqual([
+      ['2026-10-19T14:00:00.000Z', '2026-10-19T15:00:00.000Z'],
+      ['2026-10-20T16:00:00.000Z', '2026-10-20T17:00:00.000Z'],
+    ])
+  })
+  it('uses embedded VTIMEZONE offsets when matching UTC exclusions', () => {
+    const timezone = fixture('embedded').match(/BEGIN:VTIMEZONE[\s\S]*?END:VTIMEZONE/)![0]
+    const text = fixture('google-utc-exdate').replace('BEGIN:VEVENT', `${timezone}\nBEGIN:VEVENT`).replace(/T140000Z/g, 'T060000Z')
+    expect(icsImport(text, 'source', range, 'UTC').map(event => event.start)).toEqual([
+      '2026-10-19T06:00:00.000Z', '2026-10-21T06:00:00.000Z',
+    ])
+  })
+  it('matches all-day DATE exclusions by local date regardless of viewer zone', () => {
+    for (const zone of ['America/Bogota', 'Pacific/Auckland']) {
+      expect(parse('all-day-exdate', zone).map(event => [event.start, event.end])).toEqual([
+        ['2026-10-19', '2026-10-20'], ['2026-10-21', '2026-10-22'],
+      ])
+    }
+  })
   it('deduplicates DTSTART/RRULE/RDATE and excludes EXDATE for non-RRULE sets', () => {
     const text = calendar(event('RRULE:FREQ=DAILY;COUNT=2\r\nRDATE:20261020T090000Z,20261022T090000Z\r\nEXDATE:20261020T090000Z'))
     expect(icsImport(text, 's', range, 'UTC').map(e => e.start)).toEqual(['2026-10-19T09:00:00.000Z', '2026-10-22T09:00:00.000Z'])

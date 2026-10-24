@@ -20,6 +20,22 @@ export class CalendarImportError extends Error {
   constructor(public readonly code: string) { super(`calendars.${code}`) }
 }
 
+const recurrenceKey = (time: ICAL.Time): string => time.isDate ? time.toString() : String(time.toUnixTime())
+
+function recurrenceSeed(rule: ICAL.Recur, start: ICAL.Time, from: number): { start: ICAL.Time; skipped: number } {
+  const periodHours: Record<string, number> = { HOURLY: 1, DAILY: 24, WEEKLY: 168 }
+  const hours = periodHours[rule.freq]
+  // COUNT with BY-parts needs an exact bounded replay; changing DTSTART would reset its count.
+  if (!hours || (rule.count && Object.keys(rule.parts).length)) return { start, skipped: 0 }
+  const target = ICAL.Time.fromJSDate(new Date(from), true).convertToZone(start.zone)
+  const step = hours * rule.interval
+  const skipped = Math.max(0, Math.floor(target.subtractDate(start).toSeconds() / (step * 3600)) - 1)
+  const seed = start.clone()
+  // Whole wall-time periods retain DTSTART's defaults and INTERVAL/WKST phase across DST.
+  seed.adjust(0, skipped * step, 0, 0)
+  return { start: seed, skipped }
+}
+
 // ICAL keeps recurrence arithmetic in wall time; Intl supplies offsets for zones without VTIMEZONE.
 class IntlTimezone extends ICAL.Timezone {
   constructor(private readonly iana: string) { super({ tzid: iana }) }
@@ -54,12 +70,17 @@ export function icsImport(text: string, sourceId: string, range: CalendarRange, 
   const from = boundary(range.start), until = boundary(range.end)
   if (!Number.isFinite(from) || !Number.isFinite(until) || until <= from) throw new CalendarImportError('range')
   let iterations = 0
-  const tick = (work = 1) => { if ((iterations += work) > 50000) throw new CalendarImportError('iterations') }
+  let historyIterations: number | null = null
+  const tick = (work = 1) => {
+    const used = historyIterations === null ? (iterations += work) : (historyIterations += work)
+    if (used > 50000) throw new CalendarImportError('iterations')
+  }
   const budgetRules = (component: ICAL.Component): void => {
     for (const property of component.getAllProperties('rrule')) {
       const rule = property.getFirstValue() as ICAL.Recur
       if (!Number.isSafeInteger(rule.interval) || rule.interval < 1) throw new CalendarImportError('invalid')
       if (rule.interval > 50000) throw new CalendarImportError('iterations')
+      if (rule.count !== null && (!Number.isSafeInteger(rule.count) || rule.count < 1)) throw new CalendarImportError('iterations')
       // A next() call can skip unbounded invalid candidates internally. Budget its input reads,
       // including VTIMEZONE rules, without patching ICAL's implementation or global prototypes.
       property.setValue(new Proxy(rule, { get(target, key, receiver) {
@@ -122,30 +143,52 @@ export function icsImport(text: string, sourceId: string, range: CalendarRange, 
     const active = related.filter(exception => !cancelled(exception) && exception.hasProperty('dtstart'))
     const event = new ICAL.Event(component, { exceptions: active })
     if (!event.isRecurring()) { emit(event, event.startDate, event.endDate); continue }
-    const excluded = new Set(component.getAllProperties('exdate').flatMap(property => property.getValues().map(value => (value as ICAL.Time).toString())))
-    const overridden = new Set(related.map(exception => (exception.getFirstPropertyValue('recurrence-id') as ICAL.Time).toString()))
+    const excluded = new Set(component.getAllProperties('exdate').flatMap(property => property.getValues().map(value => recurrenceKey(value as ICAL.Time))))
+    const overridden = new Set(related.map(exception => recurrenceKey(exception.getFirstPropertyValue('recurrence-id') as ICAL.Time)))
     const visit = (time: ICAL.Time) => {
-      if (excluded.has(time.toString()) || overridden.has(time.toString())) return
+      const key = recurrenceKey(time)
+      if (excluded.has(key) || overridden.has(key)) return
       const details = event.getOccurrenceDetails(time)
       emit(details.item, details.startDate, details.endDate, time.toString())
     }
     visit(event.startDate)
+    // Include overlapping instances and forward range shifts, with a margin for offset transitions.
+    const lookback = Math.max(0, event.duration.toSeconds(), ...active.filter(exception =>
+      exception.getFirstProperty('recurrence-id')?.getParameter('range') === 'THISANDFUTURE',
+    ).map(exception => {
+      const override = new ICAL.Event(exception)
+      return override.startDate.toUnixTime() - override.recurrenceId.toUnixTime() + override.duration.toSeconds()
+    }))
+    const nearFrom = from - (lookback + 2 * 86400) * 1000
     for (const property of component.getAllProperties('rrule')) {
-      const iterator = (property.getFirstValue() as ICAL.Recur).iterator(event.startDate)
-      for (;;) {
-        tick()
-        const next = iterator.next()
-        if (!next) break
-        if ((next.isDate ? boundary(next.toString()) : next.toJSDate().getTime()) >= until) break
-        visit(next)
-      }
+      const rule = property.getFirstValue() as ICAL.Recur
+      const seed = recurrenceSeed(rule, event.startDate, nearFrom)
+      if (rule.count && seed.skipped >= rule.count) continue
+      // Rules requiring replay have a separate bounded skip, never spending another series' range budget.
+      historyIterations = seed.start.toUnixTime() * 1000 < nearFrom ? 0 : null
+      try {
+        const iterator = rule.iterator(seed.start)
+        let first = true
+        for (;;) {
+          tick()
+          const next = iterator.next()
+          if (!next) break
+          if (first && rule.count) iterator.occurrence_number += seed.skipped
+          first = false
+          const instant = next.isDate ? boundary(next.toString()) : next.toJSDate().getTime()
+          if (instant < nearFrom) continue
+          historyIterations = null
+          if (instant >= until) break
+          visit(next)
+        }
+      } finally { historyIterations = null }
     }
     for (const property of component.getAllProperties('rdate')) for (const value of property.getValues()) {
       tick()
       if (value instanceof ICAL.Time) visit(value)
       else if (value instanceof ICAL.Period) {
-        const identity = value.start.toString()
-        if (!excluded.has(identity) && !overridden.has(identity)) emit(event, value.start, value.getEnd(), identity)
+        const key = recurrenceKey(value.start)
+        if (!excluded.has(key) && !overridden.has(key)) emit(event, value.start, value.getEnd(), value.start.toString())
       } else throw new CalendarImportError('invalid')
     }
   }
