@@ -1,6 +1,7 @@
 import { expect, test, type Page } from '@playwright/test'
 import { legacyData, seedKey, V2_KEY } from './fixtures'
 import { visualIntegrityViolations } from './support/visualIntegrity'
+import { addFromMenu } from './support/week'
 
 // Every tab and every sheet, at the three project widths (1440 / 768 / 375 px) and in both themes:
 // no control, focus ring or text is clipped, select chevrons sit inside their padding and controls in a
@@ -184,7 +185,7 @@ for (const theme of THEMES) {
     test('week block editor and the day sheets', async ({ page }) => {
       await start(page, theme, plannedDocument)
       await open(page, 'week')
-      await page.getByRole('button', { name: 'Add block' }).click()
+      await addFromMenu(page, 'Block')
       await auditSheet(page, `${theme}/new block`)
       await page.keyboard.press('Escape')
       await expect(page.getByRole('dialog')).toHaveCount(0)

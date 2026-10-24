@@ -2,6 +2,7 @@ import AxeBuilder from '@axe-core/playwright'
 import { expect, test, type Locator, type Page } from '@playwright/test'
 import { V2_KEY, openTab, seedKey, storedValue } from './fixtures'
 import { installTransformRecorder } from './support/transformRecorder'
+import { addFromMenu } from './support/week'
 
 // Wednesday 2026-10-21 10:15 UTC; the browser and the document both use UTC.
 const NOW = new Date('2026-10-21T10:15:00.000Z')
@@ -187,7 +188,7 @@ test.describe('week', () => {
 
   test('an overlapping block shows an inline error and cannot be saved', async ({ page }) => {
     await openSeeded(page, 'week')
-    await page.getByRole('button', { name: 'Add block' }).click()
+    await addFromMenu(page, 'Block')
     const dialog = page.getByRole('dialog', { name: 'New block' })
     await dialog.getByLabel('Title').fill('Standup')
     await dialog.getByLabel('Starts').fill('09:30')
@@ -206,7 +207,7 @@ test.describe('week', () => {
   test('an overnight end is shown as +1 day and a goal overrun only warns', async ({ page }, testInfo) => {
     test.skip(testInfo.project.name !== 'desktop')
     await openSeeded(page, 'week')
-    await page.getByRole('button', { name: 'Add block' }).click()
+    await addFromMenu(page, 'Block')
     const dialog = page.getByRole('dialog', { name: 'New block' })
     await dialog.getByLabel('Title').fill('Long ride')
     await dialog.getByLabel('Category').selectOption({ label: 'Exercise' })
