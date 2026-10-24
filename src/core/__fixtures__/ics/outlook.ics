@@ -1,0 +1,10 @@
+BEGIN:VCALENDAR
+VERSION:2.0
+PRODID:-//Next168//Synthetic provider fixture//EN
+BEGIN:VEVENT
+UID:outlook@example.invalid
+DTSTART;TZID=Eastern Standard Time:20261020T090000
+DTEND;TZID=Eastern Standard Time:20261020T100000
+SUMMARY:Team meeting
+END:VEVENT
+END:VCALENDAR
