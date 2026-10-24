@@ -74,7 +74,7 @@ function isPast(item: TimelineItem): boolean {
 }
 
 function asksStatus(item: TimelineItem): item is TimelineItem & { kind: 'block' } {
-  return item.kind === 'block' && !isCarryOver(item) && item.key !== props.currentKey && hasStarted(item) && isAskable(item.start, props.planSince)
+  return item.kind === 'block' && item.key !== props.currentKey && hasStarted(item) && isAskable(item.start, props.planSince)
 }
 </script>
 

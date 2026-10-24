@@ -111,8 +111,8 @@ for (const size of SIZES) {
         await chips.nth(0).click()
         await expect(chips.nth(0)).toHaveAttribute('aria-pressed', 'true')
         await expect(chips.nth(1)).toHaveAttribute('aria-pressed', 'false')
-        // The filled state differs from the idle chip by more than the label weight.
-        expect(await chips.nth(0).evaluate((element) => getComputedStyle(element).backgroundColor)).not.toBe(idle)
+        // The filled state differs from the idle chip by more than the label weight (the fill eases in over 100 ms).
+        await expect.poll(() => chips.nth(0).evaluate((element) => getComputedStyle(element).backgroundColor)).not.toBe(idle)
         await expect.poll(async () => (await stored(page)).actuals).toMatchObject([{ blockId: 'b-work', status: 'done' }])
         // Tapping the filled chip again takes the answer back.
         await chips.nth(0).click()
