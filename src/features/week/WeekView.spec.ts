@@ -111,7 +111,7 @@ describe('WeekView saving', () => {
     expect(globalThis.document.querySelector('[data-testid="busy-details"]')).toBeNull()
     const dialogs = globalThis.document.querySelectorAll<HTMLElement>('[role="dialog"]')
     expect(dialogs).toHaveLength(1)
-    expect(dialogs[0]!.querySelector('h2')?.textContent).toBe('Edit block')
+    expect(dialogs[0]!.querySelector('h2')?.textContent).toBe('Edit routine')
     expect(dialogs[0]!.querySelector<HTMLInputElement>('input[type="text"]')!.value).toBe('Focus')
     expect(dialogs[0]!.querySelector<HTMLInputElement>('input[type="time"]')!.value).toBe('09:15')
   })
@@ -183,10 +183,11 @@ describe('WeekView saving', () => {
     await tick()
 
     await addBlockFromMenu()
-    expect(globalThis.document.querySelector<HTMLSelectElement>('[role="dialog"] select')!.value).toBe('work')
+    // The category is a chip, selected for the first one that is not Sleep.
+    expect(globalThis.document.querySelector<HTMLElement>('[role="dialog"] [role="radio"][aria-checked="true"]')!.dataset.categoryId).toBe('work')
   })
 
-  it('offers Block and Event from "+", and the Event entry opens the event sheet', async () => {
+  it('offers Task, Event and Routine from "+" with a one-line hint each, and each entry opens its own sheet', async () => {
     const { planner } = createTestRepositories()
     configurePlannerStore({ repository: planner, now: fixedNow, newId: newTestId, locale: () => 'en', timeZone: () => 'UTC' })
     const pinia = createPinia()
@@ -215,8 +216,10 @@ describe('WeekView saving', () => {
     expect(globalThis.document.querySelector('[role="menu"]')).toBeNull()
     trigger.click()
     await tick()
-    const entries = [...globalThis.document.querySelectorAll('[role="menuitem"]')].map((item) => item.textContent?.trim())
-    expect(entries).toEqual(['Block', 'Event'])
+    const items = [...globalThis.document.querySelectorAll('[role="menuitem"]')]
+    expect(items.map((item) => item.getAttribute('aria-label'))).toEqual(['Task', 'Event', 'Routine'])
+    const hint = (item: Element) => globalThis.document.getElementById(item.getAttribute('aria-describedby')!)?.textContent
+    expect(items.map(hint)).toEqual(['Something to do; finds its own free slot', 'An appointment on a day and time', 'Repeats every week'])
     globalThis.document.querySelector<HTMLElement>('[data-testid="add-event"]')!.click()
     await tick()
     expect(globalThis.document.querySelector('[role="dialog"] h2')?.textContent).toBe('New event')
@@ -282,18 +285,20 @@ describe('WeekView saving', () => {
     const range = () => host.querySelector('[data-testid="week-range"]')!.textContent!.replace(/\s/g, ' ')
     const click = async (id: string) => { host.querySelector<HTMLElement>(`[data-testid="${id}"]`)!.click(); await tick() }
     expect(range()).toBe('Oct 19 – 25')
-    expect(host.querySelector<HTMLButtonElement>('[data-testid="week-today"]')!.disabled).toBe(true)
+    // "Today" appears only once another week is shown.
+    expect(host.querySelector('[data-testid="week-today"]')).toBeNull()
     expect(host.querySelector('[data-date="2026-10-19"]')).not.toBeNull()
     await click('week-next')
     expect(range()).toBe('Oct 26 – Nov 1')
     expect(host.querySelector('[data-date="2026-10-26"]')).not.toBeNull()
     expect(host.querySelector('[data-date="2026-10-19"]')).toBeNull()
-    expect(host.querySelector<HTMLButtonElement>('[data-testid="week-today"]')!.disabled).toBe(false)
+    expect(host.querySelector('[data-testid="week-today"]')).not.toBeNull()
     await click('week-previous')
     await click('week-previous')
     expect(range()).toBe('Oct 12 – 18')
     await click('week-today')
     expect(range()).toBe('Oct 19 – 25')
+    expect(host.querySelector('[data-testid="week-today"]')).toBeNull()
     expect(host.querySelector('[data-testid="now-line"]')).not.toBeNull()
   })
 
@@ -326,10 +331,13 @@ describe('WeekView saving', () => {
     // The thumb-zone "+" replaces the toolbar one on a phone.
     expect(host.querySelector('.fab-anchor [data-testid="week-add"]')).not.toBeNull()
     expect(globalThis.document.querySelector('#toolbar-actions [data-testid="week-add"]')).toBeNull()
-    const modes = [...host.querySelectorAll<HTMLElement>('[role="radio"]')]
-    expect(modes.map((mode) => mode.textContent?.trim())).toEqual(['Day', 'Week'])
-    modes[1]!.click()
+    // One toolbar button switches between a day and the whole week; its name says what it will show.
+    const toggle = () => host.querySelector<HTMLElement>('[data-testid="week-view-toggle"]')!
+    expect(host.querySelectorAll('[role="radio"]')).toHaveLength(0)
+    expect(toggle().getAttribute('aria-label')).toBe('Show the whole week')
+    toggle().click()
     await tick()
+    expect(toggle().getAttribute('aria-label')).toBe('Show one day')
     expect(host.querySelector('.pager')).toBeNull()
     expect(host.querySelectorAll('[data-testid="week-overview"] .day-column')).toHaveLength(7)
     expect(host.querySelector('[data-testid="week-overview"] .legend')?.textContent).toContain('Work')
@@ -390,7 +398,7 @@ describe('WeekView wiring', () => {
     const { host, store } = await mountWeek((draft) => { draft.categories.push(work) })
     const prompt = host.querySelector<HTMLButtonElement>('[data-testid="setup-week"]')!
     expect(prompt.textContent).toBe('Set up my week · 1 min')
-    expect([...host.querySelectorAll('button')].some((button) => button.textContent?.trim() === 'Add a block')).toBe(true)
+    expect([...host.querySelectorAll('button')].some((button) => button.textContent?.trim() === 'Add a routine')).toBe(true)
     prompt.click()
     await store.settled()
     expect(store.document!.settings.onboardingDone).toBe(false)
@@ -400,5 +408,52 @@ describe('WeekView wiring', () => {
     const { host } = await mountWeek(() => undefined)
     expect(host.querySelector('[data-testid="setup-week"]')).not.toBeNull()
     expect(host.querySelector('a[href="#/settings"]')).toBeNull()
+  })
+
+  it('adds a task from "+" without choosing a category: it appears in a free slot, outside the routine blocks', async () => {
+    const { host, store } = await mountWeek((draft) => {
+      draft.categories.push(work)
+      // Work covers Wednesday 10:00-13:00; now is 10:15, so the first free time is 13:00.
+      draft.blocks.push({ id: 'focus', categoryId: 'work', title: 'Focus', start: 600, end: 780, days: [3] })
+    })
+    globalThis.document.querySelector<HTMLElement>('[data-testid="week-add"]')!.click()
+    await tick()
+    globalThis.document.querySelector<HTMLElement>('[data-testid="add-task"]')!.click()
+    await tick()
+    const title = globalThis.document.querySelector<HTMLInputElement>('[role="dialog"] [data-testid="task-title"]')!
+    title.value = 'Buy a gift for mum'
+    title.dispatchEvent(new Event('input'))
+    await tick()
+    globalThis.document.querySelector<HTMLButtonElement>('[role="dialog"] button[type="submit"]')!.click()
+    await store.settled()
+    await tick()
+    expect(store.document!.tasks).toMatchObject([{ title: 'Buy a gift for mum', durationMin: 60 }])
+    expect(store.document!.tasks[0]).not.toHaveProperty('categoryId')
+    const chunk = host.querySelector<HTMLElement>('[data-date="2026-10-21"] [data-testid="week-task"]')!
+    expect(chunk.dataset.startMinute).toBe('780')
+    expect(chunk.getAttribute('aria-label')).toContain('Buy a gift for mum')
+    await vi.waitFor(() => expect(globalThis.document.querySelector('[role="dialog"]')).toBeNull())
+  })
+
+  it('opens the task sheet when a placed task is tapped, and a change made there moves it', async () => {
+    const { host, store } = await mountWeek((draft) => {
+      draft.categories.push(work)
+      draft.blocks.push({ id: 'focus', categoryId: 'work', title: 'Focus', start: 600, end: 840, days: [3] })
+      draft.tasks.push({ id: 'report', title: 'Report', categoryId: 'work', durationMin: 60, priority: 1, createdAt: '2026-10-20T08:00:00.000Z' })
+    })
+    host.querySelector<HTMLElement>('[data-testid="week-task"]')!.click()
+    await tick()
+    const dialog = globalThis.document.querySelector<HTMLElement>('[role="dialog"]')!
+    expect(dialog.querySelector('h2')?.textContent).toBe('Edit task')
+    const title = dialog.querySelector<HTMLInputElement>('[data-testid="task-title"]')!
+    expect(title.value).toBe('Report')
+    title.value = 'Final report'
+    title.dispatchEvent(new Event('input'))
+    await tick()
+    dialog.querySelector<HTMLButtonElement>('button[type="submit"]')!.click()
+    await store.settled()
+    await tick()
+    expect(store.document!.tasks[0]!.title).toBe('Final report')
+    expect(host.querySelector('[data-testid="week-task"]')!.getAttribute('aria-label')).toContain('Final report')
   })
 })

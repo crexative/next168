@@ -24,7 +24,7 @@ const props = defineProps<{
   nowMinute: number
   editable: boolean
 }>()
-const emit = defineEmits<{ select: [blockId: string]; create: [date: string, minute: number]; inspect: [details: BusyDetails] }>()
+const emit = defineEmits<{ select: [blockId: string]; 'select-task': [taskId: string]; create: [date: string, minute: number]; inspect: [details: BusyDetails] }>()
 const index = defineModel<number>('index', { required: true })
 
 const { t, locale } = useI18n()
@@ -159,7 +159,7 @@ onBeforeUnmount(() => {
 
 <template>
   <div class="pager" :data-active-date="dates[index]">
-    <div class="day-strip" role="group" data-toolbar-extension :aria-label="t('week.pager.days')">
+    <div class="day-strip sticky-header" role="group" data-toolbar-extension :aria-label="t('week.pager.days')">
       <button
         v-for="(date, position) in dates"
         :key="date"
@@ -205,6 +205,7 @@ onBeforeUnmount(() => {
             :now-minute="date === today ? nowMinute : null"
             :editable="editable"
             @select="(id) => emit('select', id)"
+            @select-task="(id) => emit('select-task', id)"
             @create="(day, minute) => emit('create', day, minute)"
             @inspect="(details) => emit('inspect', details)"
           />
@@ -214,6 +215,7 @@ onBeforeUnmount(() => {
   </div>
 </template>
 
+<style scoped src="./stickyHeader.css"></style>
 <style scoped>
 .day-strip {
   position: sticky;
@@ -222,9 +224,6 @@ onBeforeUnmount(() => {
   display: grid;
   grid-template-columns: repeat(7, minmax(0, 1fr));
   padding: var(--space-1) var(--space-2);
-  background: var(--material);
-  -webkit-backdrop-filter: var(--material-filter);
-  backdrop-filter: var(--material-filter);
 }
 .strip-day {
   display: flex;

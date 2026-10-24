@@ -1,5 +1,5 @@
 {
-  "summary": "Aucun bloc de temps enregistré sur cet appareil | {count} bloc de temps enregistré sur cet appareil | {count} blocs de temps enregistrés sur cet appareil",
+  "summary": "Aucune routine enregistrée sur cet appareil | {count} routine enregistrée sur cet appareil | {count} routines enregistrées sur cet appareil",
   "add": "Ajouter",
   "deleted": "« {title} » supprimé",
   "grid": {
@@ -17,9 +17,9 @@
     "days": "Jours de la semaine"
   },
   "editor": {
-    "newTitle": "Nouveau bloc",
-    "editTitle": "Modifier le bloc",
-    "title": "Titre",
+    "newTitle": "Nouvelle routine",
+    "editTitle": "Modifier la routine",
+    "title": "Nom",
     "titlePlaceholder": "Travail profond, Sport, Famille…",
     "category": "Catégorie",
     "start": "Début",
@@ -27,10 +27,10 @@
     "nextDay": "+1 jour",
     "days": "Se répète le",
     "save": "Enregistrer",
-    "delete": "Supprimer le bloc",
+    "delete": "Supprimer la routine",
     "hours": "{hours} h",
     "errors": {
-      "titleRequired": "Donnez un titre au bloc.",
+      "titleRequired": "Donnez un nom à la routine.",
       "categoryRequired": "Choisissez une catégorie.",
       "timeRequired": "Indiquez une heure de début et de fin.",
       "zeroLength": "Le début et la fin ne peuvent pas être à la même heure.",
@@ -39,20 +39,24 @@
       "saveFailed": "Enregistrement impossible ({reason})."
     },
     "warnings": {
-      "goalOver": "{category} dépasserait son plafond hebdomadaire de {hours}. Vous pouvez quand même enregistrer."
+      "goalOver": "{category} dépasserait son objectif hebdomadaire de {hours}. Vous pouvez quand même enregistrer."
     }
   },
   "empty": {
     "noCategoriesTitle": "Commencez par vos catégories",
-    "noCategoriesDescription": "Chaque bloc appartient à une catégorie comme Sommeil, Travail ou Sport. Ajoutez-en une dans Réglages.",
+    "noCategoriesDescription": "Chaque routine appartient à une catégorie comme Sommeil, Travail ou Sport. Ajoutez-en une dans Réglages.",
     "openSettings": "Ouvrir Réglages",
     "noBlocksTitle": "Planifiez vos 168 heures",
-    "noBlocksDescription": "Ajoutez un bloc pour une activité hebdomadaire, comme dormir ou travailler.",
-    "addBlock": "Ajouter un bloc"
+    "noBlocksDescription": "Ajoutez une routine pour une activité hebdomadaire, comme dormir ou travailler.",
+    "addBlock": "Ajouter une routine"
   },
   "addMenu": {
-    "block": "Bloc",
-    "event": "Événement"
+    "block": "Routine",
+    "event": "Événement",
+    "task": "Tâche",
+    "taskHint": "À faire ; trouve seule un créneau libre",
+    "eventHint": "Un rendez-vous à jour et heure fixes",
+    "blockHint": "Se répète chaque semaine"
   },
   "nav": {
     "label": "Semaine",
@@ -61,9 +65,8 @@
     "today": "Aujourd’hui"
   },
   "view": {
-    "label": "Affichage",
-    "day": "Jour",
-    "week": "Semaine"
+    "showWeek": "Voir toute la semaine",
+    "showDay": "Voir un jour"
   },
   "overview": {
     "days": "Jours de la semaine",
@@ -78,8 +81,8 @@
   },
   "status": {
     "done": "Fait",
-    "skipped": "Ignoré",
-    "partial": "Partiel"
+    "skipped": "Non",
+    "partial": "En partie"
   },
   "moved": {
     "tomorrow": "« {title} » reportée à demain",

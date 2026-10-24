@@ -66,7 +66,7 @@ NEXT168_CALENDAR_PROVIDER_PROBE=1 npx playwright test e2e/calendars.spec.ts --gr
 
 ## Acceptance and handoff
 
-`e2e/calendars.spec.ts` contains deterministic file import + Week conflict, a real local HTTP server without CORS, a changing CORS-enabled subscription with manual/on-open refresh and offline re-expansion, and two-attendee create/edit/download/re-import plus separate parsing and provider-link assertions. The live-provider probe is explicit and opt-in so third-party availability is not a deterministic CI dependency.
+`e2e/calendars.spec.ts` contains deterministic file import + Week conflict, a real local HTTP server without CORS, a changing CORS-enabled subscription with manual/on-open refresh and offline re-expansion, and create/edit/download/re-import of a meeting plus separate parsing and provider-link assertions. The event sheet asks for a title, a day, all day and from–to, with location and notes under More; it does not ask for attendees or show the time zone. Attendees an event already carries (an import, an assistant proposal) are kept on edit and exported; `eventDraft.spec.ts` covers their ICS and provider-link round trip. The live-provider probe is explicit and opt-in so third-party availability is not a deterministic CI dependency.
 
 The Week assertion requires S1 integration; the S0-shell placeholder in this executor's base does not render the calendar overlay. Do not weaken it into a Settings-only assertion. No shared shell, S1 or model files were edited.
 

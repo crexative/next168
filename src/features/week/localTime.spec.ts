@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { dayIndexOf, localMinuteOf, minuteToTimeValue, orderedDays, timeValueToMinute, weekDates } from './localTime'
+import { dayIndexOf, formatHourCompact, localMinuteOf, minuteToTimeValue, orderedDays, timeValueToMinute, weekDates } from './localTime'
 
 describe('local time helpers', () => {
   it('builds the week around today from the configured first day', () => {
@@ -23,5 +23,15 @@ describe('local time helpers', () => {
     expect(timeValueToMinute('09:30')).toBe(570)
     expect(timeValueToMinute('')).toBeNull()
     expect(timeValueToMinute('24:00')).toBeNull()
+  })
+
+  it('writes the hours of the seven-day axis in two characters at most on a 12-hour clock, and plain numbers on a 24-hour one', () => {
+    expect(['es-CO', 'en-US', 'pt-BR'].map((locale) => [6, 12, 18].map((hour) => formatHourCompact(hour, locale)))).toEqual([
+      ['6a', '12p', '6p'], ['6a', '12p', '6p'], ['6', '12', '18'],
+    ])
+    expect([6, 12, 18].map((hour) => formatHourCompact(hour, 'de-DE'))).toEqual(['6', '12', '18'])
+    expect([6, 12, 18].map((hour) => formatHourCompact(hour, 'fr-FR'))).toEqual(['6', '12', '18'])
+    // A 24-hour choice on a 12-hour locale keeps plain numbers too.
+    expect(formatHourCompact(18, 'es-CO-u-hc-h23')).toBe('18')
   })
 })

@@ -138,7 +138,8 @@ export interface TaskSegment extends DayPart {
   key: string
   taskId: string
   title: string
-  categoryId: string
+  // Undefined for a task that fits any free time.
+  categoryId: string | undefined
   late: boolean
 }
 
@@ -160,3 +161,33 @@ export function taskSegmentsByDate(placements: readonly TaskPlacement[], tasks: 
 export const HOUR_HEIGHT_PX = 48
 export const COMPACT_HOUR_HEIGHT_PX = 16
 export const SLOT_MINUTES = 30
+
+// Short items are small to hit: a 30 minute block is 24 px tall. The pressable area of every item is at least 44 px,
+// centered on it, so a tap just above or below a short block still opens it.
+export const MIN_TARGET_PX = 44
+
+export interface HitTarget {
+  kind: 'block' | 'task'
+  id: string
+  startMinute: number
+  endMinute: number
+  // The lane the item occupies, in percent of the column's width.
+  left: number
+  width: number
+}
+
+// The item a press at `y` px (from the top of the column) and `xPercent` of the column's width is meant for: of the
+// items whose enlarged area holds the press, the one whose center is nearest.
+export function nearestHitTarget(targets: readonly HitTarget[], y: number, xPercent: number, hourHeight: number): HitTarget | undefined {
+  let best: { target: HitTarget; distance: number } | undefined
+  for (const target of targets) {
+    if (xPercent < target.left || xPercent > target.left + target.width) continue
+    const top = (target.startMinute / 60) * hourHeight
+    const bottom = (target.endMinute / 60) * hourHeight
+    const grow = Math.max(0, (MIN_TARGET_PX - (bottom - top)) / 2)
+    if (y < top - grow || y > bottom + grow) continue
+    const distance = Math.abs(y - (top + bottom) / 2)
+    if (!best || distance < best.distance) best = { target, distance }
+  }
+  return best?.target
+}

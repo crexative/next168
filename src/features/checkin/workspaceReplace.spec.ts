@@ -132,6 +132,11 @@ describe('content replaced under the same workspace id (restored backup)', () =>
     title.value = 'Stale task'
     title.dispatchEvent(new Event('input'))
     await nextTick()
+    // Filed "during Old": the form is bound to that stored category, which the restored document changed.
+    const when = host.querySelector<HTMLSelectElement>('[data-testid=task-when]')!
+    when.value = 'c-old'
+    when.dispatchEvent(new Event('change'))
+    await nextTick()
     store.document = { ...workspace('ws-a'), revision: 1, updatedAt: '2026-01-01T00:00:00.000Z', categories: [{ ...category, name: 'Replaced' }] }
     host.querySelector('form')!.dispatchEvent(new Event('submit', { cancelable: true }))
     await store.settled()
@@ -321,6 +326,16 @@ describe('onboarding and undo actions stay bound to what they were prepared for'
     await nextTick()
   }
 
+  // Removing a task is a swipe to the left across its row (the other way is the task sheet).
+  async function swipeTaskAway() {
+    const content = host.querySelector('.task-content')!
+    const fire = (type: string, clientX: number, buttons: number) => content.dispatchEvent(new PointerEvent(type, { bubbles: true, pointerId: 1, pointerType: 'mouse', buttons, clientX }))
+    fire('pointerdown', 300, 1)
+    fire('pointermove', 150, 1)
+    fire('pointerup', 150, 0)
+    await nextTick()
+  }
+
   it('immediately undoes task completion in the same workspace', async () => {
     const { store } = await setup(TasksView, { ...workspace('ws-a'), revision: 1, categories: [category], tasks: [task] })
     await clickTaskButton('button.check')
@@ -346,7 +361,7 @@ describe('onboarding and undo actions stay bound to what they were prepared for'
 
   it('immediately undoes task removal in the same workspace', async () => {
     const { store } = await setup(TasksView, { ...workspace('ws-a'), revision: 1, categories: [category], tasks: [task] })
-    await clickTaskButton('button.remove')
+    await swipeTaskAway()
     await store.settled()
     expect(store.document?.tasks).toEqual([])
     expect(useUndoToast().toast.value).not.toBeNull()
@@ -382,7 +397,7 @@ describe('onboarding and undo actions stay bound to what they were prepared for'
 
   it('does not let a removed-task undo re-add the task to a replacement document', async () => {
     const { store } = await setup(TasksView, { ...workspace('ws-a'), revision: 1, categories: [category], tasks: [task] })
-    await clickTaskButton('button.remove')
+    await swipeTaskAway()
     await store.settled()
     expect(store.document?.tasks).toEqual([])
     store.document = { ...workspace('ws-b'), revision: 1, categories: [{ ...category, name: 'Other' }] }

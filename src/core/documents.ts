@@ -32,7 +32,8 @@ export function validateDocument(raw: unknown): PlannerDocument {
   assertUnique(doc.appliedProposalIds, 'appliedProposalIds')
   const categoryIds = new Set(doc.categories.map((category) => category.id))
   for (const item of [...doc.blocks, ...doc.tasks]) {
-    if (!categoryIds.has(item.categoryId)) throw new Error('document.missingCategory')
+    // A task without a category fits any free time; only a category that is named has to exist.
+    if (item.categoryId !== undefined && !categoryIds.has(item.categoryId)) throw new Error('document.missingCategory')
   }
   // All-day events cover whole local dates with an exclusive end (RFC 5545), so they must span at least one date.
   for (const event of doc.events) {

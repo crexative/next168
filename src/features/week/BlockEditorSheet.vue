@@ -3,6 +3,7 @@ import { computed, ref, useId, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import type { DayIndex, PlannerDocument, TimeBlock } from '@/core/model'
 import Button from '@/ui/Button.vue'
+import CategoryMark from '@/ui/CategoryMark.vue'
 import Sheet from '@/ui/Sheet.vue'
 import { validateBlockDraft, type BlockDraft, type DraftError } from './blockEditing'
 import { formatDate, minuteToTimeValue, orderedDays, timeValueToMinute } from './localTime'
@@ -29,14 +30,17 @@ watch(() => [props.open, props.draft] as const, ([open]) => {
   titleTouched.value = false
 }, { immediate: true })
 
-const current = computed<BlockDraft>(() => ({
+// The routine is named after its category until it is given a name of its own ("Exercise" needs no second "Exercise").
+const selectedCategory = computed(() => props.document.categories.find((category) => category.id === categoryId.value))
+const rawDraft = computed<BlockDraft>(() => ({
   id: props.draft.id, title: title.value, categoryId: categoryId.value,
   start: timeValueToMinute(startValue.value), end: timeValueToMinute(endValue.value), days: days.value,
 }))
+const current = computed<BlockDraft>(() => ({ ...rawDraft.value, title: title.value.trim() || (selectedCategory.value?.name ?? '') }))
 const validation = computed(() => validateBlockDraft(current.value, props.document))
 const visibleErrors = computed(() => validation.value.errors.filter((error) => error.code !== 'titleRequired' || titleTouched.value))
 const endsNextDay = computed(() => current.value.start !== null && current.value.end !== null && current.value.end < current.value.start)
-const dirty = computed(() => JSON.stringify(current.value) !== JSON.stringify(props.draft))
+const dirty = computed(() => JSON.stringify(rawDraft.value) !== JSON.stringify(props.draft))
 const isEditing = computed(() => props.draft.id !== undefined)
 
 // 2026-10-25 is a Sunday; it only provides localized weekday names.
@@ -45,6 +49,17 @@ const weekdayOptions = computed(() => orderedDays(props.document.settings.weekSt
   short: formatDate(`2026-10-${25 + day}`, locale.value, { weekday: 'short' }),
   long: formatDate(`2026-10-${25 + day}`, locale.value, { weekday: 'long' }),
 })))
+
+// Arrow keys move the choice along the chips, as in any radio group.
+function moveCategory(step: number, event: KeyboardEvent): void {
+  const list = props.document.categories
+  const at = list.findIndex((category) => category.id === categoryId.value)
+  const next = list[(at + step + list.length) % list.length]
+  if (!next) return
+  categoryId.value = next.id
+  const chips = (event.currentTarget as HTMLElement).parentElement?.querySelectorAll<HTMLElement>('[role=radio]')
+  chips?.[list.indexOf(next)]?.focus()
+}
 
 function toggleDay(day: DayIndex): void {
   days.value = days.value.includes(day) ? days.value.filter((item) => item !== day) : [...days.value, day]
@@ -66,7 +81,7 @@ function submit(): void {
 </script>
 
 <template>
-  <Sheet :open="open" :title="isEditing ? t('week.editor.editTitle') : t('week.editor.newTitle')" :dirty="dirty" @update:open="emit('update:open', $event)">
+  <Sheet :open="open" :title="isEditing ? t('week.editor.editTitle') : t('week.editor.newTitle')" :dirty="dirty" no-dismiss @update:open="emit('update:open', $event)">
     <form class="editor" novalidate @submit.prevent="submit">
       <label class="field" :for="`${fieldId}-title`">
         <span class="t-footnote field-label">{{ t('week.editor.title') }}</span>
@@ -77,20 +92,34 @@ function submit(): void {
           type="text"
           maxlength="120"
           autocomplete="off"
-          :placeholder="t('week.editor.titlePlaceholder')"
+          :placeholder="selectedCategory?.name ?? t('week.editor.titlePlaceholder')"
           :aria-invalid="visibleErrors.some((error) => error.code === 'titleRequired') || undefined"
           @blur="titleTouched = true"
           @input="titleTouched = true"
         >
       </label>
-      <label class="field" :for="`${fieldId}-category`">
-        <span class="t-footnote field-label">{{ t('week.editor.category') }}</span>
-        <select :id="`${fieldId}-category`" v-model="categoryId" class="input control">
-          <option v-for="category in document.categories" :key="category.id" :value="category.id">
-            {{ category.icon ? `${category.icon} ` : '' }}{{ category.name }}
-          </option>
-        </select>
-      </label>
+      <div class="field" role="radiogroup" :aria-label="t('week.editor.category')">
+        <span class="t-footnote field-label" aria-hidden="true">{{ t('week.editor.category') }}</span>
+        <div class="chips">
+          <button
+            v-for="category in document.categories"
+            :key="category.id"
+            type="button"
+            role="radio"
+            class="chip t-subhead"
+            :aria-checked="category.id === categoryId"
+            :tabindex="category.id === categoryId ? 0 : -1"
+            :data-category-id="category.id"
+            @click="categoryId = category.id"
+            @keydown.right.prevent="moveCategory(1, $event)"
+            @keydown.down.prevent="moveCategory(1, $event)"
+            @keydown.left.prevent="moveCategory(-1, $event)"
+            @keydown.up.prevent="moveCategory(-1, $event)"
+          >
+            <CategoryMark :category="category" with-name />
+          </button>
+        </div>
+      </div>
       <div class="times">
         <label class="field" :for="`${fieldId}-start`">
           <span class="t-footnote field-label">{{ t('week.editor.start') }}</span>
@@ -142,6 +171,19 @@ function submit(): void {
 .field { display: flex; flex-direction: column; gap: var(--space-1); min-width: 0; margin: 0; padding: 0; border: 0; }
 .field-label { display: flex; align-items: center; gap: var(--space-2); color: var(--label-2); }
 .control { width: 100%; }
+.chips { display: flex; flex-wrap: wrap; gap: var(--space-2); }
+.chip {
+  display: inline-flex;
+  align-items: center;
+  max-width: 100%;
+  min-height: var(--tap-target);
+  padding: 0 var(--space-3);
+  border: 1.5px solid transparent;
+  border-radius: var(--radius-control);
+  background: var(--surface-2);
+  color: var(--label);
+}
+.chip[aria-checked='true'] { border-color: var(--tint); background: color-mix(in srgb, var(--tint) 12%, var(--surface)); font-weight: 600; }
 .control[aria-invalid] { border-color: var(--danger); }
 .time { font-variant-numeric: tabular-nums; }
 .times { display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-3); }

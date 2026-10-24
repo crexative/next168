@@ -1,28 +1,21 @@
 {
-  "swipeComplete": "Fait",
   "today": "Aujourd'hui",
   "due": "échéance {date}",
   "completed": "« {title} » terminée",
   "removed": "« {title} » supprimée",
   "overflow": "Il manque {duration} en {category} cette semaine.",
-  "overflowHint": "Ajoutez environ {duration} à vos blocs {category}, raccourcissez la tâche ou scindez-la.",
+  "overflowHint": "Ajoutez environ {duration} à vos routines {category}, raccourcissez la tâche ou scindez-la.",
   "late": "Elle tombe après son échéance ({date}).",
-  "lateHint": "Repoussez l'échéance, relevez sa priorité ou libérez du temps plus tôt dans sa catégorie.",
+  "lateHint": "Repoussez l'échéance, relevez sa priorité ou libérez du temps plus tôt.",
   "warnings": "Alertes de planification",
   "unplaced": "Non planifiées",
-  "unplacedHint": "Aucun temps libre dans cette catégorie sur les 7 prochains jours.",
+  "unplacedHint": "Aucun créneau libre sur les 7 prochains jours.",
   "recentDone": "Terminées récemment",
   "reopen": "Rouvrir",
   "complete": "Terminer {title}",
-  "remove": "Supprimer {title}",
-  "noCategories": {
-    "title": "Créez d'abord une catégorie",
-    "description": "Les tâches sont placées dans le temps libre de leur catégorie.",
-    "action": "Ouvrir les réglages"
-  },
   "empty": {
     "title": "Rien à faire",
-    "description": "Ajoutez une tâche ci-dessus : elle sera placée dans le temps libre de sa catégorie."
+    "description": "Ajoutez une tâche ci-dessus : elle trouve toute seule un créneau libre."
   },
   "add": {
     "title": "Ajouter une tâche",
@@ -30,15 +23,27 @@
     "titlePlaceholder": "Ajouter une tâche…",
     "duration": "Durée",
     "category": "Catégorie",
-    "dueDate": "Échéance (facultatif)",
+    "dueDate": "Échéance",
     "priority": "Priorité",
     "submit": "Ajouter la tâche",
-    "details": "Détails de cette tâche"
+    "details": "Détails de cette tâche",
+    "more": "Plus d'options",
+    "when": "Quand ?",
+    "anyFreeTime": "Tout créneau libre",
+    "during": "Pendant {category}"
   },
   "priority": {
     "1": "Haute",
     "2": "Moyenne",
     "3": "Basse"
   },
-  "changedElsewhere": "Ceci a changé ailleurs et a donc été rechargé. Vérifiez-le puis réessayez."
+  "changedElsewhere": "Ceci a changé ailleurs et a donc été rechargé. Vérifiez-le puis réessayez.",
+  "swipeRemove": "Supprimer",
+  "overflowAny": "Il manque {duration} de temps libre cette semaine.",
+  "overflowAnyHint": "Libérez du temps cette semaine, raccourcissez la tâche ou scindez-la.",
+  "sheet": {
+    "new": "Nouvelle tâche",
+    "edit": "Modifier la tâche",
+    "delete": "Supprimer la tâche"
+  }
 }

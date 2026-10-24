@@ -1,12 +1,11 @@
 <script setup lang="ts">
-import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import type { Category, Task } from '@/core/model'
 import { scheduleTasks } from '@/core/scheduler'
 import { localDateOf } from '@/core/time'
 import { displayLocale, formatDuration } from '@/ui/format'
 import { categoryColor } from '@/features/insights/categoryColor'
-import { defaultTaskCategoryId } from '@/features/onboarding/templates'
 import { readLastTaskCategory, rememberTaskCategory } from './lastCategory'
 import { assertEntry, CHANGED_ELSEWHERE, snapshotOf } from '@/features/insights/entryGuard'
 import { useExternalOccurrences } from '@/features/week/externalOccurrences'
@@ -15,16 +14,16 @@ import Button from '@/ui/Button.vue'
 import EmptyState from '@/ui/EmptyState.vue'
 import Icon from '@/ui/Icon.vue'
 import ListGroup from '@/ui/ListGroup.vue'
-import SegmentedControl from '@/ui/SegmentedControl.vue'
-import { useUndoToast } from '@/ui/undoToast'
 import { planTasks, recentDone, type PlacedEntry } from './grouping'
+import { useTaskActions } from './taskActions'
+import { newDraft, resolveWhen, taskFields, type TaskDraft } from './taskDraft'
+import TaskOptions from './TaskOptions.vue'
 import TaskRow from './TaskRow.vue'
-
-const DURATIONS = [15, 30, 45, 60, 90, 120, 150, 180]
+import TaskSheet from './TaskSheet.vue'
 
 const { t, locale } = useI18n()
 const planner = usePlannerStore()
-const toast = useUndoToast()
+const actions = useTaskActions()
 
 const now = ref(new Date())
 let ticker: ReturnType<typeof setInterval> | undefined
@@ -48,23 +47,34 @@ const plan = computed(() => {
 })
 const done = computed(() => recentDone(document.value?.tasks ?? []))
 
-const form = reactive({ title: '', durationMin: 60, categoryId: '', dueDate: '', priority: '2' as '1' | '2' | '3' })
-// The category of the last task added is offered again; the first one that is not Sleep only when there is none.
-const lastCategoryId = ref(readLastTaskCategory())
-const effectiveCategoryId = computed(() => defaultTaskCategoryId(categories.value, form.categoryId || lastCategoryId.value))
-// One field to start; duration, category, date and priority appear once there is something to file.
-const detailsOpen = computed(() => form.title.trim().length > 0)
+// The title is typed first; the length and, one level deeper, when the task may go, its due date and its priority.
+// The choice of the last task added is offered again (a category that is gone, or Sleep, is never remembered).
+// The planner may still be loading when this view starts, so the remembered choice is only checked against the
+// categories once they are there (effectiveCategoryId) and never decided up front.
+const form = ref<TaskDraft>({ ...newDraft(), categoryId: readLastTaskCategory() })
+const effectiveCategoryId = computed(() => resolveWhen(categories.value, form.value.categoryId))
+const shownDraft = computed<TaskDraft>(() => ({ ...form.value, categoryId: effectiveCategoryId.value }))
+// One field to start; the details appear once there is something to file.
+const detailsOpen = computed(() => form.value.title.trim().length > 0)
 const changedElsewhere = ref(false)
-// The quick-add form depends on one stored entry: the category it files the task under. Other commits (completing
-// a task, editing another category) never touch what is typed; the snapshot only follows what the form displays.
-const formCategory = { id: '', snapshot: undefined as string | undefined }
-watch(() => ({ id: effectiveCategoryId.value, snapshot: snapshotOf(categoryById.value.get(effectiveCategoryId.value)) }), (next) => {
-  formCategory.id = next.id
-  formCategory.snapshot = next.snapshot
+const workspaceId = computed(() => document.value?.workspaceId)
+// The quick-add form depends on the stored entry it files the task under (when it names a category) and on the
+// workspace it was typed in. Other commits (completing a task, editing another category) never touch what is typed;
+// the snapshot only follows what the form displays.
+const formBinding = { workspaceId: undefined as string | undefined, categoryId: '', snapshot: undefined as string | undefined }
+watch(() => ({ workspace: workspaceId.value, id: effectiveCategoryId.value, snapshot: snapshotOf(categoryById.value.get(effectiveCategoryId.value)) }), (next) => {
+  formBinding.workspaceId = next.workspace
+  formBinding.categoryId = next.id
+  formBinding.snapshot = next.snapshot
 }, { immediate: true })
-const canAdd = computed(() => planner.writable && form.title.trim().length > 0 && effectiveCategoryId.value !== '')
+const canAdd = computed(() => planner.writable && form.value.title.trim().length > 0)
 
-const priorityOptions = computed(() => (['1', '2', '3'] as const).map((value) => ({ value, label: t(`tasks.priority.${value}`) })))
+const editing = ref<string | undefined>()
+const sheetOpen = ref(false)
+function openTask(task: Task): void {
+  editing.value = task.id
+  sheetOpen.value = true
+}
 
 function dayLabel(date: string): string {
   const today = localDateOf(now.value, document.value!.settings.timeZone)
@@ -93,7 +103,7 @@ function dueLabel(date: string): string {
 }
 
 function categoryOf(task: Task): Category | undefined {
-  return categoryById.value.get(task.categoryId)
+  return task.categoryId === undefined ? undefined : categoryById.value.get(task.categoryId)
 }
 
 function describe(task: Task): string {
@@ -104,94 +114,33 @@ function describe(task: Task): string {
 
 async function addTask(): Promise<void> {
   if (!canAdd.value) return
-  const { id: categoryId, snapshot } = formCategory
+  const { workspaceId: typedIn, categoryId, snapshot } = formBinding
   changedElsewhere.value = false
-  const task: Task = {
-    id: crypto.randomUUID(),
-    title: form.title.trim(),
-    categoryId,
-    durationMin: form.durationMin,
-    priority: Number(form.priority) as Task['priority'],
-    createdAt: new Date().toISOString(),
-    ...(form.dueDate ? { dueDate: form.dueDate } : {}),
-  }
+  const task: Task = { ...taskFields({ ...form.value, categoryId }), id: crypto.randomUUID(), createdAt: new Date().toISOString() }
   const result = await planner.commit((draft) => {
-    assertEntry(draft.categories.find((category) => category.id === categoryId), snapshot)
+    if (draft.workspaceId !== typedIn) throw new Error(CHANGED_ELSEWHERE)
+    if (categoryId) assertEntry(draft.categories.find((category) => category.id === categoryId), snapshot)
     draft.tasks.push(task)
   })
   if (result.ok) {
-    form.title = ''
-    form.dueDate = ''
-    lastCategoryId.value = categoryId
+    form.value = { ...form.value, title: '', dueDate: '' }
     rememberTaskCategory(categoryId)
   } else if (result.reason === CHANGED_ELSEWHERE) {
     planner.dismissError()
-    form.categoryId = ''
+    form.value = { ...form.value, categoryId: '' }
     changedElsewhere.value = true
   }
 }
 
-// An undo is bound to the entries its own action left behind; anything else means another document and nothing is written.
-function undoCommit(mutator: Parameters<typeof planner.commit>[0]): void {
-  void planner.commit(mutator).then((result) => { if (!result.ok && result.reason === CHANGED_ELSEWHERE) planner.dismissError() })
-}
-
-// Bound to the row that was clicked: a task that changed or was replaced meanwhile is left alone.
-function reopen(task: Task): void {
-  const shown = snapshotOf(task)
-  undoCommit((draft) => {
-    const target = draft.tasks.find((candidate) => candidate.id === task.id)
-    if (!target) return
-    assertEntry(target, shown)
-    delete target.doneAt
-  })
-}
-
-async function complete(task: Task): Promise<void> {
-  const holder: { after?: string } = {}
-  const result = await planner.commit((draft) => {
-    const target = draft.tasks.find((candidate) => candidate.id === task.id)
-    if (!target) return
-    target.doneAt = new Date().toISOString()
-    holder.after = snapshotOf(target)
-  })
-  if (!result.ok) return
-  const after = holder.after
-  toast.show({
-    message: t('tasks.completed', { title: task.title }),
-    onUndo: () => undoCommit((draft) => {
-      const target = draft.tasks.find((candidate) => candidate.id === task.id)
-      if (!target) return
-      assertEntry(target, after)
-      delete target.doneAt
-    }),
-  })
-}
-
-async function remove(task: Task): Promise<void> {
-  const holder: { category?: string } = {}
-  const result = await planner.commit((draft) => {
-    holder.category = snapshotOf(draft.categories.find((candidate) => candidate.id === task.categoryId))
-    draft.tasks = draft.tasks.filter((candidate) => candidate.id !== task.id)
-  })
-  if (!result.ok) return
-  const category = holder.category
-  toast.show({
-    message: t('tasks.removed', { title: task.title }),
-    onUndo: () => undoCommit((draft) => {
-      assertEntry(draft.tasks.find((candidate) => candidate.id === task.id), undefined)
-      assertEntry(draft.categories.find((candidate) => candidate.id === task.categoryId), category)
-      draft.tasks.push(task)
-    }),
-  })
-}
-
+// A task filed under a category misses time in that category; one that fits any free time misses free time.
 function overflowText(task: Task, minutes: number): string {
-  return t('tasks.overflow', { duration: formatDuration(minutes), category: categoryOf(task)?.name ?? '' })
+  const category = categoryOf(task)?.name
+  return category ? t('tasks.overflow', { duration: formatDuration(minutes), category }) : t('tasks.overflowAny', { duration: formatDuration(minutes) })
 }
 
 function overflowHint(task: Task, minutes: number): string {
-  return t('tasks.overflowHint', { duration: formatDuration(minutes), category: categoryOf(task)?.name ?? '' })
+  const category = categoryOf(task)?.name
+  return category ? t('tasks.overflowHint', { duration: formatDuration(minutes), category }) : t('tasks.overflowAnyHint', { duration: formatDuration(minutes) })
 }
 
 function lateText(task: Task): string {
@@ -201,40 +150,13 @@ function lateText(task: Task): string {
 
 <template>
   <div v-if="document && plan" class="tasks">
-    <EmptyState
-      v-if="categories.length === 0"
-      icon="list-checks"
-      :title="t('tasks.noCategories.title')"
-      :description="t('tasks.noCategories.description')"
-    >
-      <Button variant="tinted" href="#/settings">{{ t('tasks.noCategories.action') }}</Button>
-    </EmptyState>
-
-    <form v-else class="add" :aria-label="t('tasks.add.title')" @submit.prevent="addTask">
+    <form class="add" :aria-label="t('tasks.add.title')" @submit.prevent="addTask">
       <label class="field">
         <span class="visually-hidden">{{ t('tasks.add.titleLabel') }}</span>
         <input v-model="form.title" class="input" type="text" maxlength="120" autocomplete="off" enterkeyhint="done" :placeholder="t('tasks.add.titlePlaceholder')">
       </label>
       <div v-if="detailsOpen" class="details" role="group" :aria-label="t('tasks.add.details')" data-testid="task-details">
-        <div class="field-row">
-          <label class="field">
-            <span class="t-footnote t-secondary">{{ t('tasks.add.duration') }}</span>
-            <select v-model.number="form.durationMin" class="input">
-              <option v-for="minutes in DURATIONS" :key="minutes" :value="minutes">{{ formatDuration(minutes) }}</option>
-            </select>
-          </label>
-          <label class="field">
-            <span class="t-footnote t-secondary">{{ t('tasks.add.category') }}</span>
-            <select :value="effectiveCategoryId" class="input" @change="form.categoryId = ($event.target as HTMLSelectElement).value">
-              <option v-for="category in categories" :key="category.id" :value="category.id">{{ category.name }}</option>
-            </select>
-          </label>
-          <label class="field">
-            <span class="t-footnote t-secondary">{{ t('tasks.add.dueDate') }}</span>
-            <input v-model="form.dueDate" class="input" type="date">
-          </label>
-        </div>
-        <SegmentedControl v-model="form.priority" :options="priorityOptions" :label="t('tasks.add.priority')" />
+        <TaskOptions :draft="shownDraft" :categories="categories" @patch="form = { ...form, ...$event }" />
         <Button type="submit" block :disabled="!canAdd">
           <Icon name="plus" :size="20" /> {{ t('tasks.add.submit') }}
         </Button>
@@ -269,10 +191,10 @@ function lateText(task: Task): string {
         :subtitle="`${fragments(entry, day.date)} · ${describe(entry.task)}`"
         :color="categoryOf(entry.task) ? categoryColor(categoryOf(entry.task)!) : 'var(--cat-gray)'"
         :complete-label="t('tasks.complete', { title: entry.task.title })"
-        :remove-label="t('tasks.remove', { title: entry.task.title })"
         data-testid="placed-task"
-        @complete="complete(entry.task)"
-        @remove="remove(entry.task)"
+        @complete="actions.complete(entry.task)"
+        @open="openTask(entry.task)"
+        @remove="actions.remove(entry.task)"
       />
     </ListGroup>
 
@@ -284,14 +206,14 @@ function lateText(task: Task): string {
         :subtitle="describe(task)"
         :color="categoryOf(task) ? categoryColor(categoryOf(task)!) : 'var(--cat-gray)'"
         :complete-label="t('tasks.complete', { title: task.title })"
-        :remove-label="t('tasks.remove', { title: task.title })"
-        @complete="complete(task)"
-        @remove="remove(task)"
+        @complete="actions.complete(task)"
+        @open="openTask(task)"
+        @remove="actions.remove(task)"
       />
     </ListGroup>
 
     <EmptyState
-      v-if="categories.length > 0 && document.tasks.every((task) => task.doneAt)"
+      v-if="document.tasks.every((task) => task.doneAt)"
       icon="list-checks"
       :title="t('tasks.empty.title')"
       :description="t('tasks.empty.description')"
@@ -300,9 +222,11 @@ function lateText(task: Task): string {
     <ListGroup v-if="done.length" :header="t('tasks.recentDone')">
       <li v-for="task in done" :key="task.id" class="done-row" data-testid="done-task">
         <span class="t-body done-title">{{ task.title }}</span>
-        <Button variant="plain" @click="reopen(task)">{{ t('tasks.reopen') }}</Button>
+        <Button variant="plain" @click="actions.reopen(task)">{{ t('tasks.reopen') }}</Button>
       </li>
     </ListGroup>
+
+    <TaskSheet v-model:open="sheetOpen" :task-id="editing" />
   </div>
 </template>
 
@@ -313,8 +237,7 @@ function lateText(task: Task): string {
 .add { padding-inline: min(var(--space-4), 16px); }
 .add > .field .input { padding-inline: min(var(--space-3), 12px); }
 .details { display: flex; flex-direction: column; gap: var(--space-3); }
-.field { display: flex; flex: 1; flex-direction: column; gap: var(--space-1); min-width: 8rem; }
-.field-row { display: flex; flex-wrap: wrap; gap: var(--space-3); }
+.field { display: flex; flex: 1; flex-direction: column; gap: var(--space-1); min-width: 0; }
 .warnings { margin-top: var(--space-4); }
 .warnings ul { display: flex; flex-direction: column; gap: var(--space-2); }
 .warning { display: flex; gap: var(--space-3); padding: var(--space-3) var(--space-4); border-radius: var(--radius-card); background: color-mix(in srgb, var(--warning) 18%, var(--surface)); }

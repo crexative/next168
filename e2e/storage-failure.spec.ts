@@ -37,9 +37,9 @@ test('(b) a write that hits the quota blocks editing and exports the last commit
   await page.evaluate(() => {
     IDBObjectStore.prototype.put = function () { throw new DOMException('quota', 'QuotaExceededError') }
   })
-  await addFromMenu(page, 'Block')
-  const dialog = page.getByRole('dialog', { name: 'New block' })
-  await dialog.getByLabel('Title').fill('Unsaved block')
+  await addFromMenu(page, 'Routine')
+  const dialog = page.getByRole('dialog', { name: 'New routine' })
+  await dialog.getByLabel('Name').fill('Unsaved block')
   await dialog.getByLabel('Starts').fill('12:00')
   await dialog.getByLabel('Ends').fill('12:30')
   await dialog.getByRole('button', { name: 'Save' }).click()

@@ -103,3 +103,24 @@ describe('documents and migration', () => {
     expect(parse()).toMatchObject({ kind: 'corrupt' })
   })
 })
+
+describe('a task with no category (any free time)', () => {
+  const task = { id: 't', title: 'Gift', durationMin: 60, priority: 2 as const, createdAt: '2026-10-24T08:00:00.000Z' }
+  it('is a valid document and round-trips without inventing a category', () => {
+    const doc = document(); doc.tasks = [task]
+    const parsed = parseDocument(JSON.stringify(doc))
+    expect(parsed).toEqual({ kind: 'ok', document: doc })
+    if (parsed.kind === 'ok') expect(parsed.document.tasks[0]).not.toHaveProperty('categoryId')
+  })
+  it('still rejects a task that names a category which does not exist', () => {
+    const doc = document(); doc.tasks = [{ ...task, categoryId: 'missing' }]
+    expect(parseDocument(JSON.stringify(doc))).toMatchObject({ kind: 'corrupt' })
+  })
+  it('reads a document saved before the change, whose tasks all carry a category, unchanged', () => {
+    const doc = document(); doc.tasks = [{ ...task, categoryId: 'work' }]
+    const parsed = parseDocument(JSON.stringify(doc))
+    expect(parsed).toEqual({ kind: 'ok', document: doc })
+    if (parsed.kind === 'ok') expect(parsed.document.tasks[0]!.categoryId).toBe('work')
+  })
+})
+

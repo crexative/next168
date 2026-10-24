@@ -1,5 +1,6 @@
 import type { PlannerDocument, ScheduleInput, TaskPlacement } from './model'
 import { scheduleTasks } from './scheduler'
+import { taskWindows } from './schedulingWindows'
 import { addLocalDays, datedOccurrences, localDateOf, zonedInstant } from './time'
 
 // Stable task placement on top of scheduleTasks (which stays minute-exact for Today and Tasks):
@@ -33,9 +34,15 @@ function inside(chunk: Interval, windows: Interval[]): boolean {
   return windows.some((window) => window.start <= chunk.start && chunk.end <= window.end)
 }
 
-function mergedWindows(document: PlannerDocument, categoryId: string, fromDate: string, days: number, timeZone: string): Interval[] {
+function mergedWindows(document: PlannerDocument, categoryId: string | undefined, fromDate: string, days: number, timeZone: string): Interval[] {
+  const occurrences = datedOccurrences(document, fromDate, days, timeZone)
+  if (categoryId === undefined) {
+    // A task with no category fits anywhere in the horizon that no routine block covers.
+    const range = { start: zonedInstant(fromDate, 0, timeZone).getTime(), end: zonedInstant(addLocalDays(fromDate, days), 0, timeZone).getTime() }
+    return taskWindows(occurrences, undefined, range)
+  }
   const merged: Interval[] = []
-  const windows = datedOccurrences(document, fromDate, days, timeZone)
+  const windows = occurrences
     .filter((item) => item.categoryId === categoryId)
     .map((item) => ({ start: Date.parse(item.start), end: Date.parse(item.end) }))
     .sort((a, b) => a.start - b.start)
