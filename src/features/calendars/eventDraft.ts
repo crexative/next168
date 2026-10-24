@@ -5,6 +5,14 @@ export interface EventDraft {
   title: string; date: string; time: string; allDay: boolean; duration: number
   location: string; notes: string; attendees: string
 }
+// "09:30" <-> minutes since midnight, for the form's time-of-day fields.
+export function minutesOf(time: string): number {
+  const [hour, minute] = time.split(':').map(Number)
+  return Number.isFinite(hour) && Number.isFinite(minute) ? hour! * 60 + minute! : 0
+}
+export function timeOfDay(minutes: number): string {
+  return `${String(Math.floor(minutes / 60)).padStart(2, '0')}:${String(minutes % 60).padStart(2, '0')}`
+}
 export function buildEvent(draft: EventDraft, id: string, timeZone: string): PlannerEvent {
   if (!Number.isInteger(draft.duration) || draft.duration < 1 || draft.duration > (draft.allDay ? 366 : 10080)) throw new Error('calendars.formInvalid')
   const [hour, minute] = draft.time.split(':').map(Number)
