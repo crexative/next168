@@ -105,7 +105,7 @@ test.describe('app shell', () => {
     await expect(toolbar).not.toHaveAttribute('data-collapsed')
   })
 
-  test('reduced transparency has no effect on layout and reduced motion keeps tabs usable', async ({ page }, testInfo) => {
+  test('reduced motion keeps every tab usable', async ({ page }, testInfo) => {
     test.skip(testInfo.project.name !== 'desktop')
     await page.emulateMedia({ reducedMotion: 'reduce' })
     for (const tab of TABS) await openTab(page, tab)
