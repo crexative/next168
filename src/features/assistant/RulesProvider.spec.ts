@@ -41,15 +41,21 @@ describe('RulesProvider', () => {
     const { answer } = await ask('How many unassigned hours do I have?')
     expect(answer).toContain(formatDuration(stats.unassignedHours * 60))
     // Saturday 12:00: 132 h of the week have passed and no block is left before Monday.
-    expect(answer).toBe('36 h free from now to Sunday (132 h already past, 0 min planned ahead). Your routine leaves 153 h of the 168 h unassigned (15 h planned).')
+    expect(answer).toBe('36 h free from now to Sunday (132 h already past, 0 h planned ahead). Your routine leaves 153 h of the 168 h unassigned (15 h planned).')
   })
 
   it('counts free hours from now, not the whole week, mid-week', async () => {
     const document = plannerWithBlocks()
     const wednesday = new Date('2026-10-21T10:00:00Z')
     const { answer } = await rules.ask('How many free hours do I have this week?', contextFor(document, 'es', wednesday), signal)
-    expect(answer).toBe(`Quedan ${formatDuration(freeHoursAhead(document, wednesday, 'UTC') * 60)} libres de aquí al domingo (58 h ya pasaron y 4 h están planificadas por delante). Tu rutina deja 153 h de las 168 h sin asignar (15 h planificadas).`)
+    expect(answer).toBe(`Quedan ${Math.round(freeHoursAhead(document, wednesday, 'UTC'))} h libres de aquí al domingo (58 h ya pasaron y 4 h están planificadas por delante). Tu rutina deja 153 h de las 168 h sin asignar (15 h planificadas).`)
     expect(freeHoursAhead(document, wednesday, 'UTC')).toBe(106)
+  })
+
+  it('rounds free hours to whole hours like the badge (36 h 18 min reads "36 h")', async () => {
+    const saturday = new Date('2026-10-24T11:42:00Z') // 36 h 18 min to Monday 00:00
+    const { answer } = await rules.ask('How many free hours do I have this week?', contextFor(plannerWithBlocks(), 'en', saturday), signal)
+    expect(answer).toMatch(/^36 h free from now to Sunday \(132 h already past, 0 h planned ahead\)/)
   })
 
   it('answers the next block', async () => {

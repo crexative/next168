@@ -1,6 +1,7 @@
 import type { PlannerDocument } from '@/core/model'
 import { addLocalDays, datedOccurrences, localDateOf, zonedInstant } from '@/core/time'
 import { weekDates } from '@/features/week/localTime'
+import { wholeHourParts } from '@/ui/format'
 
 const DAY_MS = 86_400_000
 
@@ -54,6 +55,14 @@ export function weekSplit(document: PlannerDocument, now: Date, timeZone: string
   if (open) coveredMs += open.end - open.start
   const plannedAheadMinutes = Math.min(aheadMinutes, Math.round(coveredMs / 60_000))
   return { pastMinutes, plannedAheadMinutes, freeAheadMinutes: aheadMinutes - plannedAheadMinutes, weekMinutes: pastMinutes + aheadMinutes }
+}
+
+export interface WeekSplitHours { past: number; plannedAhead: number; freeAhead: number; week: number }
+
+// The split as it is shown: whole hours by the shared rounding rule, so every screen says the same number.
+export function weekSplitHours(split: WeekSplit): WeekSplitHours {
+  const [past, plannedAhead, freeAhead] = wholeHourParts([split.pastMinutes, split.plannedAheadMinutes, split.freeAheadMinutes]) as [number, number, number]
+  return { past, plannedAhead, freeAhead, week: past + plannedAhead + freeAhead }
 }
 
 // Hours from `now` to the end of the current week that no block covers.

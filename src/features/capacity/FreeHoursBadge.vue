@@ -4,14 +4,14 @@ import { useI18n } from 'vue-i18n'
 import { TOTAL_WEEK_HOURS, type PlannerDocument } from '@/core/model'
 import { formatDate } from '@/features/week/localTime'
 import { formatHours } from '@/ui/format'
-import { freeHoursAhead, weekEnd } from './freeHours'
+import { weekEnd, weekSplit, weekSplitHours } from './freeHours'
 
 // `framed` draws the badge as its own pill; a parent that groups it with other figures turns it off and supplies the surface.
 const props = withDefaults(defineProps<{ document: PlannerDocument; now: Date; framed?: boolean }>(), { framed: true })
 const { t, locale } = useI18n()
 
 const timeZone = computed(() => props.document.settings.timeZone)
-const hours = computed(() => formatHours(freeHoursAhead(props.document, props.now, timeZone.value)))
+const hours = computed(() => formatHours(weekSplitHours(weekSplit(props.document, props.now, timeZone.value)).freeAhead))
 const lastDay = computed(() => formatDate(weekEnd(props.document, props.now, timeZone.value).lastDate, locale.value, { weekday: 'long' }))
 </script>
 

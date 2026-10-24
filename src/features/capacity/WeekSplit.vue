@@ -4,7 +4,7 @@ import { useI18n } from 'vue-i18n'
 import type { PlannerDocument } from '@/core/model'
 import { formatDate } from '@/features/week/localTime'
 import { formatHours } from '@/ui/format'
-import { weekEnd, weekSplit } from './freeHours'
+import { weekEnd, weekSplit, weekSplitHours } from './freeHours'
 
 // The current week split at `now`: what has passed, what blocks still cover, and what is free. Its free figure
 // comes from the same function as the free-hours badge, so both always show the same number.
@@ -12,13 +12,13 @@ const props = defineProps<{ document: PlannerDocument; now: Date }>()
 const { t, locale } = useI18n()
 
 const timeZone = computed(() => props.document.settings.timeZone)
-const split = computed(() => weekSplit(props.document, props.now, timeZone.value))
+const split = computed(() => weekSplitHours(weekSplit(props.document, props.now, timeZone.value)))
 const lastDay = computed(() => formatDate(weekEnd(props.document, props.now, timeZone.value).lastDate, locale.value, { weekday: 'long' }))
-const hours = (minutes: number) => t('capacity.split.hours', { hours: formatHours(minutes / 60) })
+const hours = (value: number) => t('capacity.split.hours', { hours: formatHours(value) })
 const rows = computed(() => [
-  { key: 'past', label: t('capacity.split.past'), value: hours(split.value.pastMinutes) },
-  { key: 'planned', label: t('capacity.split.planned'), value: hours(split.value.plannedAheadMinutes) },
-  { key: 'free', label: t('capacity.split.free', { day: lastDay.value }), value: hours(split.value.freeAheadMinutes) },
+  { key: 'past', label: t('capacity.split.past'), value: hours(split.value.past) },
+  { key: 'planned', label: t('capacity.split.planned'), value: hours(split.value.plannedAhead) },
+  { key: 'free', label: t('capacity.split.free', { day: lastDay.value }), value: hours(split.value.freeAhead) },
 ])
 </script>
 
@@ -31,7 +31,7 @@ const rows = computed(() => [
         <dd class="t-subhead value">{{ row.value }}</dd>
       </div>
     </dl>
-    <p class="t-footnote t-secondary total">{{ t('capacity.split.total', { total: formatHours(split.weekMinutes / 60) }) }}</p>
+    <p class="t-footnote t-secondary total">{{ t('capacity.split.total', { total: formatHours(split.week) }) }}</p>
   </section>
 </template>
 

@@ -2,14 +2,14 @@ import { currentAndNext } from '@/core/now'
 import { scheduleTasks } from '@/core/scheduler'
 import { computeStats } from '@/core/stats'
 import type { Category, PlannerDocument } from '@/core/model'
-import { weekEnd, weekSplit } from '@/features/capacity/freeHours'
+import { weekEnd, weekSplit, weekSplitHours } from '@/features/capacity/freeHours'
 import {
   formatDuration,
   type AskContext, type AssistantAnswer, type AssistantProvider, type Availability, type Translate,
 } from './provider'
 import { matchesIntent, mentionsHours, normalize } from './rulesLexicon'
 import { formatDate } from '@/features/week/localTime'
-import { displayLocaleFor, formatClock } from '@/ui/format'
+import { displayLocaleFor, formatClock, formatWholeHours } from '@/ui/format'
 
 function mentionedCategory(question: string, categories: Category[]): Category | undefined {
   const text = normalize(question)
@@ -78,12 +78,13 @@ export function answerFromStats(question: string, { document, now, timeZone, loc
   }
   if (!category && matchesIntent('unassigned', question)) {
     // Free time counts from now, through the same split as the free-hours badge; the routine's unassigned hours follow.
-    const split = weekSplit(document, now, timeZone)
+    const split = weekSplitHours(weekSplit(document, now, timeZone))
+    const hours = (value: number) => formatWholeHours(value, displayLocaleFor(locale))
     return t('assistant.answers.unassigned', {
-      free: formatDuration(split.freeAheadMinutes),
+      free: hours(split.freeAhead),
       day: formatDate(weekEnd(document, now, timeZone).lastDate, displayLocaleFor(locale), { weekday: 'long' }),
-      past: formatDuration(split.pastMinutes),
-      plannedAhead: formatDuration(split.plannedAheadMinutes),
+      past: hours(split.past),
+      plannedAhead: hours(split.plannedAhead),
       amount: formatDuration(stats.unassignedHours * 60),
       planned: formatDuration(stats.plannedMinutes),
     })

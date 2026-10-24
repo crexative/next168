@@ -74,9 +74,30 @@ export function formatHourOfDay(hour: number, locale: string): string {
 }
 
 // "2 h 30 min", "45 min", "3 h": whole minutes, the sign left to the sentence around it.
+// Whole hours for parts of one span (past / planned / free in the week): each part is rounded along the running total,
+// so the parts never disagree with the rounded whole ("36 h", never "36,3 h", and the three still add up to 168).
+// This is the one rounding rule for free-time figures: the free-hours badge, Insights and the assistant use it.
+export function wholeHourParts(minutes: readonly number[]): number[] {
+  let before = 0
+  let roundedBefore = 0
+  return minutes.map((part) => {
+    before += part
+    const rounded = Math.round(before / 60)
+    const hours = rounded - roundedBefore
+    roundedBefore = rounded
+    return hours
+  })
+}
+
 // Hours as a figure with at most one decimal ("39,5"), for amounts read in hours of the week.
 export function formatHours(hours: number, locale: string = displayLocale.value): string {
   return new Intl.NumberFormat(locale, { maximumFractionDigits: 1 }).format(hours)
+}
+
+// A whole number of hours in the duration format ("0 h", "36 h"), for parts made by wholeHourParts.
+export function formatWholeHours(hours: number, locale: string = displayLocale.value): string {
+  const t = i18n.global.t as (key: string, named: Record<string, unknown>) => string
+  return t('common.duration.hours', { hours: new Intl.NumberFormat(locale, { maximumFractionDigits: 0 }).format(hours) })
 }
 
 export function formatDuration(totalMinutes: number, locale: string = displayLocale.value): string {

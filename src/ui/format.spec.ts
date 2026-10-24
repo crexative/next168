@@ -2,6 +2,7 @@ import { afterEach, describe, expect, it } from 'vitest'
 import { i18n } from '@/i18n'
 import {
   displayLocale, formatClock, formatDuration, formatHourOfDay, formatMinuteOfDay, hourCycle, resolveDisplayLocale, setHourCycle,
+  wholeHourParts,
 } from './format'
 
 afterEach(() => {
@@ -87,5 +88,21 @@ describe('duration', () => {
       i18n.global.locale.value = language
       expect(formatDuration(150), language).toBe('2 h 30 min')
     }
+  })
+})
+
+describe('wholeHourParts', () => {
+  it('shows free time as whole hours: 36 h 18 min reads 36 h', () => {
+    expect(wholeHourParts([131 * 60 + 42, 0, 36 * 60 + 18])).toEqual([132, 0, 36])
+  })
+
+  it('keeps the parts adding up to the rounded whole, never below zero', () => {
+    const parts = wholeHourParts([58 * 60 + 15, 55 * 60 + 45, 54 * 60])
+    expect(parts).toEqual([58, 56, 54])
+    expect(parts.reduce((sum, part) => sum + part, 0)).toBe(168)
+    // Three half hours: plain rounding would say 1 + 1 + 1 = 3 for a 1 h 30 min whole.
+    const halves = wholeHourParts([30, 30, 30])
+    expect(halves.reduce((sum, part) => sum + part, 0)).toBe(2)
+    expect(halves.every((part) => part >= 0)).toBe(true)
   })
 })
