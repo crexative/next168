@@ -21,10 +21,23 @@ test('two tabs committing from the same revision: exactly one wins, no lost upda
     await page.waitForFunction(() => window.__next168Test?.revision() === 0)
   }
 
-  const [resultFirst, resultSecond] = await Promise.all([
+  // A third page holds the commit lock so both tabs capture revision 0 before either can write;
+  // without it, a fast storage event could refresh one tab first and make the race sequential.
+  const holder = await context.newPage()
+  await holder.goto('./')
+  await holder.evaluate(() => new Promise<void>((locked) => {
+    void navigator.locks.request('next168-commit', () => new Promise<void>((release) => {
+      ;(window as unknown as { releaseCommitLock: () => void }).releaseCommitLock = release
+      locked()
+    }))
+  }))
+  const pending = Promise.all([
     first.evaluate(() => window.__next168Test.setTimeZone('Europe/Berlin')),
     second.evaluate(() => window.__next168Test.setTimeZone('America/Bogota')),
   ])
+  await expect.poll(() => holder.evaluate(async () => (await navigator.locks.query()).pending?.length ?? 0)).toBe(2)
+  await holder.evaluate(() => (window as unknown as { releaseCommitLock: () => void }).releaseCommitLock())
+  const [resultFirst, resultSecond] = await pending
 
   const outcomes = [resultFirst, resultSecond]
   expect(outcomes.filter((result) => result.ok)).toHaveLength(1)

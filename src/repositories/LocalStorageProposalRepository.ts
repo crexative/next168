@@ -40,7 +40,9 @@ export class LocalStorageProposalRepository implements ProposalRepository {
       if (stored.kind !== 'ok') throw new ProposalError('no-document')
       if (stored.document.workspaceId !== parsed.data.workspaceId) throw new ProposalError('workspace-mismatch')
       const built = await buildProposal(parsed.data, stored.document, source, this.deps, this.deps.newId, this.deps.hash)
-      const proposal: ChangeProposal = { ...built, ...(clientName ? { clientName } : {}) }
+      const candidate = changeProposalSchema.safeParse({ ...built, ...(clientName ? { clientName } : {}) })
+      if (!candidate.success) throw new ProposalError('proposal-invalid')
+      const proposal: ChangeProposal = candidate.data
       this.writeAll([...this.readAll(), proposal])
       return proposal
     })
@@ -82,7 +84,7 @@ export class LocalStorageProposalRepository implements ProposalRepository {
       const proposal = proposals.find((candidate) => candidate.id === id)
       if (!proposal) return { kind: 'not-found' }
       if (proposal.status === 'applied') return { kind: 'applied', revision: proposal.appliedRevision ?? 0 }
-      if (proposal.status === 'pending') {
+      if (proposal.status === 'pending' || proposal.status === 'stale') {
         this.updateProposal(proposals, { ...proposal, status: 'rejected', decidedAt: this.deps.now().toISOString() })
       }
       return { kind: 'rejected' }

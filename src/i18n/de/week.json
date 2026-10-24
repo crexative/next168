@@ -1,0 +1,45 @@
+{
+  "summary": "Noch keine Zeitblöcke auf diesem Gerät gespeichert | {count} Zeitblock auf diesem Gerät gespeichert | {count} Zeitblöcke auf diesem Gerät gespeichert",
+  "add": "Block hinzufügen",
+  "deleted": "„{title}“ gelöscht",
+  "grid": {
+    "crossesMidnight": "{range} (über Nacht)"
+  },
+  "pager": {
+    "days": "Wochentage"
+  },
+  "editor": {
+    "newTitle": "Neuer Block",
+    "editTitle": "Block bearbeiten",
+    "title": "Titel",
+    "titlePlaceholder": "Fokusarbeit, Sport, Familie…",
+    "category": "Kategorie",
+    "start": "Beginn",
+    "end": "Ende",
+    "nextDay": "+1 Tag",
+    "days": "Wiederholt sich am",
+    "save": "Sichern",
+    "delete": "Block löschen",
+    "hours": "{hours} Std.",
+    "errors": {
+      "titleRequired": "Gib dem Block einen Titel.",
+      "categoryRequired": "Wähle eine Kategorie.",
+      "timeRequired": "Gib eine Start- und Endzeit ein.",
+      "zeroLength": "Beginn und Ende dürfen nicht gleich sein.",
+      "daysRequired": "Wähle mindestens einen Tag.",
+      "overlap": "Überschneidet sich mit „{title}“. Ändere die Zeit oder die Tage.",
+      "saveFailed": "Speichern nicht möglich ({reason})."
+    },
+    "warnings": {
+      "goalOver": "{category} läge {hours} über der Wochengrenze. Du kannst trotzdem sichern."
+    }
+  },
+  "empty": {
+    "noCategoriesTitle": "Beginne mit deinen Kategorien",
+    "noCategoriesDescription": "Jeder Block gehört zu einer Kategorie wie Schlaf, Arbeit oder Sport. Lege zuerst eine in den Einstellungen an.",
+    "openSettings": "Einstellungen öffnen",
+    "noBlocksTitle": "Plane deine 168 Stunden",
+    "noBlocksDescription": "Füge einen Block für etwas hinzu, das du jede Woche tust, etwa Schlafen oder Arbeiten.",
+    "addBlock": "Block hinzufügen"
+  }
+}

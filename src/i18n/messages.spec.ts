@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { SUPPORTED_LOCALES, collectMessages } from './index'
+import { SUPPORTED_LOCALES, collectMessages, i18n } from './index'
 
 const files = import.meta.glob<{ default: Record<string, unknown> }>('./*/*.json', { eager: true })
 const messages = collectMessages(files)
@@ -12,6 +12,15 @@ function flatten(value: unknown, prefix = ''): string[] {
 const englishKeys = flatten(messages.en).sort()
 
 describe('i18n catalogs', () => {
+  it('loads real translated strings, not empty catalogs', () => {
+    expect(englishKeys.length).toBeGreaterThan(10)
+    for (const locale of SUPPORTED_LOCALES) {
+      const app = messages[locale]?.app as { name?: unknown } | undefined
+      expect(app?.name).toBe('Next168')
+    }
+    expect(i18n.global.t('app.name')).toBe('Next168')
+  })
+
   it('provides every supported locale', () => {
     expect(Object.keys(messages).sort()).toEqual([...SUPPORTED_LOCALES].sort())
   })
