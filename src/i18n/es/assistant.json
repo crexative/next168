@@ -55,50 +55,9 @@
   },
   "proposal": {
     "review": "Revisar cambios",
-    "apply": "Aplicar",
-    "discard": "Descartar",
     "applied": "Los cambios se aplicaron.",
     "rejected": "La propuesta se descartó.",
-    "failed": "No se pudo aplicar la propuesta. No se cambió nada.",
-    "warnings": "{count} aviso(s) que revisar antes de aplicar."
-  },
-  "review": {
-    "add_block": "Añadir bloque: {subject}",
-    "update_block": "Cambiar bloque: {subject}",
-    "delete_block": "Quitar bloque: {subject}",
-    "add_task": "Añadir tarea: {subject}",
-    "update_task": "Cambiar tarea: {subject}",
-    "complete_task": "Completar tarea: {subject}",
-    "add_event": "Añadir evento: {subject}",
-    "update_category_goal": "Cambiar meta: {subject}",
-    "field": {
-      "title": "Título",
-      "category": "Categoría",
-      "days": "Días",
-      "start": "Inicio",
-      "end": "Fin",
-      "notes": "Notas",
-      "goal": "Meta semanal",
-      "durationMin": "Duración (min)",
-      "dueDate": "Fecha límite",
-      "priority": "Prioridad",
-      "doneAt": "Completada",
-      "allDay": "Todo el día",
-      "location": "Lugar",
-      "attendees": "Asistentes"
-    },
-    "value": {
-      "yes": "sí",
-      "no": "no",
-      "empty": "ninguno",
-      "goalMax": "como máximo {hours} h",
-      "goalMin": "al menos {hours} h",
-      "goalNone": "sin meta"
-    },
-    "warning": {
-      "overlap": "Dos bloques se solapan tras estos cambios.",
-      "goalOver": "{category} supera su límite semanal."
-    }
+    "failed": "No se pudo aplicar la propuesta. No se cambió nada."
   },
   "intent": {
     "summary": {

@@ -55,50 +55,9 @@
   },
   "proposal": {
     "review": "Änderungen prüfen",
-    "apply": "Anwenden",
-    "discard": "Verwerfen",
     "applied": "Die Änderungen wurden angewendet.",
     "rejected": "Der Vorschlag wurde verworfen.",
-    "failed": "Der Vorschlag konnte nicht angewendet werden. Es wurde nichts geändert.",
-    "warnings": "{count} Hinweis(e) vor dem Anwenden prüfen."
-  },
-  "review": {
-    "add_block": "Block hinzufügen: {subject}",
-    "update_block": "Block ändern: {subject}",
-    "delete_block": "Block entfernen: {subject}",
-    "add_task": "Aufgabe hinzufügen: {subject}",
-    "update_task": "Aufgabe ändern: {subject}",
-    "complete_task": "Aufgabe abschließen: {subject}",
-    "add_event": "Termin hinzufügen: {subject}",
-    "update_category_goal": "Ziel ändern: {subject}",
-    "field": {
-      "title": "Titel",
-      "category": "Kategorie",
-      "days": "Tage",
-      "start": "Beginn",
-      "end": "Ende",
-      "notes": "Notizen",
-      "goal": "Wochenziel",
-      "durationMin": "Dauer (Min.)",
-      "dueDate": "Fällig am",
-      "priority": "Priorität",
-      "doneAt": "Erledigt",
-      "allDay": "Ganztägig",
-      "location": "Ort",
-      "attendees": "Teilnehmer"
-    },
-    "value": {
-      "yes": "ja",
-      "no": "nein",
-      "empty": "keine",
-      "goalMax": "höchstens {hours} h",
-      "goalMin": "mindestens {hours} h",
-      "goalNone": "kein Ziel"
-    },
-    "warning": {
-      "overlap": "Nach diesen Änderungen überschneiden sich zwei Blöcke.",
-      "goalOver": "{category} überschreitet sein Wochenlimit."
-    }
+    "failed": "Der Vorschlag konnte nicht angewendet werden. Es wurde nichts geändert."
   },
   "intent": {
     "summary": {

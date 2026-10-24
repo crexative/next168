@@ -8,8 +8,10 @@ import App from './App.vue'
 import { registerBuiltinViews } from './app/builtinViews'
 import { registerFeatures } from './app/features'
 import { shell } from './app/registry'
+import { useAssistant } from './features/assistant/useAssistant'
 import { announceUpdate, createUpdateApplier } from './app/updates'
 import { i18n } from './i18n'
+import type { ProposalInput } from './core/model'
 import { createBrowserRepositories } from './repositories/browserRepositories'
 import { configurePlannerStore, usePlannerStore } from './stores/plannerStore'
 
@@ -44,5 +46,12 @@ if (import.meta.env.VITE_E2E) {
     timeZone: () => planner.document?.settings.timeZone ?? null,
     error: () => planner.error,
     proposals: repositories.proposals,
+    // Makes the quick-answers provider reply with a proposal, as a model would: the rules provider never proposes.
+    answerWithProposal: (summary: string, ops: ProposalInput['ops']) => {
+      useAssistant().providers.rules.ask = async () => ({
+        answer: summary,
+        proposal: { contractVersion: '1.0', workspaceId: planner.document!.workspaceId, baseRevision: planner.document!.revision, summary, ops },
+      })
+    },
   }
 }

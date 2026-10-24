@@ -55,50 +55,9 @@
   },
   "proposal": {
     "review": "Review changes",
-    "apply": "Apply",
-    "discard": "Discard",
     "applied": "The changes were applied.",
     "rejected": "The proposal was discarded.",
-    "failed": "The proposal could not be applied. Nothing was changed.",
-    "warnings": "{count} warning(s) to check before applying."
-  },
-  "review": {
-    "add_block": "Add block: {subject}",
-    "update_block": "Change block: {subject}",
-    "delete_block": "Remove block: {subject}",
-    "add_task": "Add task: {subject}",
-    "update_task": "Change task: {subject}",
-    "complete_task": "Complete task: {subject}",
-    "add_event": "Add event: {subject}",
-    "update_category_goal": "Change goal: {subject}",
-    "field": {
-      "title": "Title",
-      "category": "Category",
-      "days": "Days",
-      "start": "Start",
-      "end": "End",
-      "notes": "Notes",
-      "goal": "Weekly goal",
-      "durationMin": "Duration (min)",
-      "dueDate": "Due date",
-      "priority": "Priority",
-      "doneAt": "Completed",
-      "allDay": "All day",
-      "location": "Location",
-      "attendees": "Attendees"
-    },
-    "value": {
-      "yes": "yes",
-      "no": "no",
-      "empty": "none",
-      "goalMax": "at most {hours} h",
-      "goalMin": "at least {hours} h",
-      "goalNone": "no goal"
-    },
-    "warning": {
-      "overlap": "Two blocks overlap after these changes.",
-      "goalOver": "{category} goes over its weekly limit."
-    }
+    "failed": "The proposal could not be applied. Nothing was changed."
   },
   "intent": {
     "summary": {

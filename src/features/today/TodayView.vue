@@ -5,6 +5,7 @@ import { currentAndNext } from '@/core/now'
 import { scheduleTasks } from '@/core/scheduler'
 import { localDateOf, type DatedOccurrence } from '@/core/time'
 import { usePlannerStore } from '@/stores/plannerStore'
+import AskAssistantLink from '@/ui/AskAssistantLink.vue'
 import EmptyState from '@/ui/EmptyState.vue'
 import Icon from '@/ui/Icon.vue'
 import { useExternalOccurrences } from '@/features/week/externalOccurrences'
@@ -47,6 +48,7 @@ function clear(occurrence: DatedOccurrence): void {
 <template>
   <div v-if="document" class="today-view">
     <p class="date-label t-headline t-secondary" data-testid="today-date">{{ dateLabel }}</p>
+    <AskAssistantLink class="assistant-entry" />
     <EmptyState v-if="!hasContent" icon="sun" :title="t('today.empty.title')" :description="t('today.empty.description')">
       <a class="action-link t-headline" href="#/week">{{ t('today.empty.action') }}</a>
     </EmptyState>
@@ -88,6 +90,7 @@ function clear(occurrence: DatedOccurrence): void {
 <style scoped>
 .today-view { padding-bottom: var(--space-6); }
 .date-label { margin: calc(var(--space-2) * -1) var(--space-4) var(--space-4); }
+.assistant-entry { margin: 0 var(--space-4) var(--space-4); }
 .action-link { display: inline-flex; align-items: center; min-height: var(--tap-target); color: var(--tint-label); }
 .checkin-row {
   display: flex;

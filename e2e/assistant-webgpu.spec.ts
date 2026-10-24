@@ -43,7 +43,8 @@ test.describe('@webgpu real on-device model', () => {
     const card = page.getByTestId('proposal-card')
     await expect(card).toBeVisible({ timeout: REPLY_TIMEOUT_MS })
     await card.getByRole('button', { name: 'Review changes' }).click()
-    await expect(card.getByRole('button', { name: 'Apply' })).toBeVisible()
+    const review = page.getByRole('dialog', { name: 'Review proposal' })
+    await expect(review.getByRole('button', { name: 'Approve', exact: true })).toBeVisible()
 
     const pending = await page.evaluate(() => (window as unknown as { __next168Test: { proposals: { list(status: string): Promise<unknown[]> } } }).__next168Test.proposals.list('pending'))
     expect(pending).toHaveLength(1)
@@ -53,7 +54,7 @@ test.describe('@webgpu real on-device model', () => {
     expect(proposal.ops).toMatchObject([{ op: 'add_block', block: { days: [4], start: 1080, end: 1140 } }])
     testInfo.annotations.push({ type: 'proposal', description: JSON.stringify(proposal.ops).slice(0, 500) })
 
-    await card.getByRole('button', { name: 'Apply' }).click()
+    await review.getByRole('button', { name: 'Approve', exact: true }).click()
     await expect(card.getByText('The changes were applied.')).toBeVisible()
   })
 

@@ -5,5 +5,6 @@
   "dismiss": "Ignorer",
   "delete": "Supprimer",
   "save": "Enregistrer",
-  "dragHandle": "Faites glisser vers le bas pour fermer"
+  "dragHandle": "Faites glisser vers le bas pour fermer",
+  "askAssistant": "Demander à l'assistant"
 }

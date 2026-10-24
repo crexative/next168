@@ -7,6 +7,8 @@ import ProposalsView from './ProposalsView.vue'
 import ConnectionPortal from './ConnectionPortal.vue'
 import registerConnect from '../settings/connect'
 
+export { openProposalReview } from './openProposalReview'
+
 export default function registerProposals(registry: ShellRegistry): void {
   if (companionMode) configurePlannerStore({
     repository: new CompanionRepository(), now: () => new Date(), newId: () => crypto.randomUUID(),

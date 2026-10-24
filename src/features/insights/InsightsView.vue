@@ -3,6 +3,7 @@ import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { localDateOf } from '@/core/time'
 import { computeStats, planVsActual, sevenDayMeasures } from '@/core/stats'
+import AskAssistantLink from '@/ui/AskAssistantLink.vue'
 import EmptyState from '@/ui/EmptyState.vue'
 import { usePlannerStore } from '@/stores/plannerStore'
 import { EXERCISE_ICON } from './exercise'
@@ -63,6 +64,7 @@ function chipText(goal: { kind: string; minutes: number }): string {
 
 <template>
   <div v-if="document && stats" class="insights">
+    <AskAssistantLink />
     <EmptyState
       v-if="document.categories.length === 0"
       icon="chart-no-axes-column"
