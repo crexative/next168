@@ -334,8 +334,15 @@ test.describe('time format', () => {
 
 test.describe('accessibility plumbing', () => {
   async function goTo(page: Page, name: string) {
+    // From 768 to 1023 px the sidebar starts collapsed: open it over the content first.
+    const toggle = page.getByTestId('sidebar-toggle')
+    const width = page.viewportSize()!.width
+    const overlay = width >= 768 && width < 1024
+    if (overlay) await toggle.click()
     const nav = page.locator('.tabbar:visible, .sidebar:visible').first()
     await nav.getByRole('link', { name, exact: true }).click()
+    // Choosing a destination closes the overlay; wait for that before the next step opens it again.
+    if (overlay) await expect(toggle).toHaveAttribute('aria-expanded', 'false')
   }
 
   test('each route has its own title; navigating focuses the new heading and announces it', async ({ page }) => {
@@ -443,6 +450,9 @@ test.describe('accessibility plumbing', () => {
       deepWork.getByRole('button', { name: 'Skipped' }).evaluate((element) => getComputedStyle(element).backgroundColor),
     ])
     expect(pressed).not.toBe(unpressed)
+    // On a tablet the navigation is in the collapsed sidebar: open it to see the current destination.
+    const toggle = page.getByTestId('sidebar-toggle')
+    if (await toggle.isVisible() && (await toggle.getAttribute('aria-expanded')) === 'false') await toggle.click()
     const current = await page.locator('[aria-current="page"]:visible').first().evaluate((element) => getComputedStyle(element).backgroundColor)
     expect(current).not.toBe('rgba(0, 0, 0, 0)')
     await openView(page, 'week')
@@ -577,17 +587,17 @@ test.describe('sheets', () => {
 test.describe('language and region settings', () => {
   test('language, first day of the week and 12/24 h are chosen in Settings and kept after a reload', async ({ page }) => {
     await startWith(page)
-    await openView(page, 'settings/advanced')
+    await openView(page, 'settings')
     await page.getByRole('radiogroup', { name: 'Week starts on' }).getByRole('radio', { name: 'Sunday' }).click()
     await page.getByRole('radiogroup', { name: 'Time format' }).getByRole('radio', { name: '24-hour' }).click()
-    await expect(page.locator('#main')).toContainText('Times read like 14:30.')
+    await expect(page.locator('#main')).toContainText('Times look like this: 14:30')
 
     await openView(page, 'week')
     await expect(page.locator('[data-date]').first()).toHaveAttribute('data-date', '2026-10-18')
     await openView(page, 'today')
     await expect(page.getByTestId('timeline-item').filter({ hasText: 'Deep work' }).getByTestId('timeline-start')).toHaveText('09:00')
 
-    await openView(page, 'settings/advanced')
+    await openView(page, 'settings')
     await page.getByTestId('preference-language').selectOption('es')
     await expect(page.getByRole('heading', { level: 1, name: 'Ajustes' })).toBeVisible()
     await expect(page.locator('html')).toHaveAttribute('lang', 'es')

@@ -28,4 +28,6 @@ const mode = (window as { __NEXT168__?: { mode?: string } }).__NEXT168__?.mode =
 <style scoped>
 /* A workspace id is one long unbroken token: it wraps instead of pushing its row wider than the card. */
 .wrap { overflow-wrap: anywhere; text-align: end; }
+/* So does a one-word label ("Almacenamiento") at 200 % text on a phone. */
+:deep(.row-text > .t-body) { overflow-wrap: anywhere; hyphens: auto; }
 </style>

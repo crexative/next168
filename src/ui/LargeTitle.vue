@@ -72,5 +72,8 @@ onBeforeUnmount(() => observer?.disconnect())
 .large-title:focus { outline: none; }
 .large-title {
   padding: calc(var(--toolbar-height) + var(--space-2)) var(--space-4) var(--space-2);
+  /* A one-word title ("Asistente") breaks instead of widening the page at 200 % text on a phone. */
+  overflow-wrap: anywhere;
+  hyphens: auto;
 }
 </style>

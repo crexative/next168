@@ -57,8 +57,10 @@ test.describe('entry points', () => {
       await page.clock.install({ time: NOW })
       await seedOnboarded(page, planned)
       await openTab(page, tab)
-      const entry = page.getByRole('link', { name: 'Ask the assistant' })
-      await expect(entry).toBeVisible()
+      // A toolbar icon on phones and tablets, a sidebar footer row on a desktop: one visible way in.
+      const entry = page.locator('a[href="#/assistant"]:visible')
+      await expect(entry).toHaveCount(1)
+      await expect(entry).toHaveAccessibleName(/^(Ask the assistant|Assistant)$/)
       await entry.click()
       await expect(page).toHaveURL(/#\/assistant$/)
       await expect(page.getByRole('heading', { level: 1, name: 'Assistant' })).toBeVisible()
