@@ -16,7 +16,7 @@ import Icon from '@/ui/Icon.vue'
 import ListGroup from '@/ui/ListGroup.vue'
 import SegmentedControl from '@/ui/SegmentedControl.vue'
 import { useUndoToast } from '@/ui/undoToast'
-import { planTasks, recentDone } from './grouping'
+import { planTasks, recentDone, type PlacedEntry } from './grouping'
 import TaskRow from './TaskRow.vue'
 
 const DURATIONS = [15, 30, 45, 60, 90, 120, 150, 180]
@@ -70,6 +70,17 @@ function dayLabel(date: string): string {
 function timeRange(start: string, end: string): string {
   const format = new Intl.DateTimeFormat(locale.value, { hour: '2-digit', minute: '2-digit', timeZone: document.value!.settings.timeZone })
   return `${format.format(new Date(start))}–${format.format(new Date(end))}`
+}
+
+// Every fragment of a split task, in order; fragments on another day than the group's carry that day's short name.
+function fragments(entry: PlacedEntry, groupDate: string): string {
+  const timeZone = document.value!.settings.timeZone
+  return entry.chunks.map((chunk) => {
+    const date = localDateOf(chunk.start, timeZone)
+    const range = timeRange(chunk.start, chunk.end)
+    if (date === groupDate) return range
+    return `${new Intl.DateTimeFormat(locale.value, { weekday: 'short', timeZone: 'UTC' }).format(new Date(`${date}T12:00:00Z`))} ${range}`
+  }).join(', ')
 }
 
 function dueLabel(date: string): string {
@@ -244,9 +255,9 @@ function lateText(task: Task): string {
     <ListGroup v-for="day in plan.days" :key="day.date" :header="dayLabel(day.date)">
       <TaskRow
         v-for="entry in day.entries"
-        :key="`${entry.task.id}-${entry.chunk.start}`"
+        :key="entry.task.id"
         :title="entry.task.title"
-        :subtitle="`${timeRange(entry.chunk.start, entry.chunk.end)} · ${describe(entry.task)}`"
+        :subtitle="`${fragments(entry, day.date)} · ${describe(entry.task)}`"
         :color="categoryOf(entry.task) ? categoryColor(categoryOf(entry.task)!) : 'var(--cat-gray)'"
         :complete-label="t('tasks.complete', { title: entry.task.title })"
         :remove-label="t('tasks.remove', { title: entry.task.title })"

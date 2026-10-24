@@ -21,6 +21,17 @@ const task = (id: string, durationMin: number, extra: Partial<Task> = {}): Task 
 })
 
 describe('planTasks', () => {
+  it('keeps a task placed in fragments as one entry that lists every fragment', () => {
+    const document = documentWith([task('review', 60)])
+    document.blocks = [{ id: 'b1', categoryId: 'study', title: 'Study', days: [2], start: 9 * 60, end: 11 * 60 }]
+    const busy = [{ start: '2026-10-27T09:46:00Z', end: '2026-10-27T10:46:00Z' }]
+    const plan = planTasks(document, scheduleTasks({ document, busy, now: NOW, timeZone: 'UTC' }))
+    const entries = plan.days.flatMap((day) => day.entries)
+    expect(entries).toHaveLength(1)
+    expect(entries[0]!.chunks.map((chunk) => [chunk.start.slice(11, 16), chunk.end.slice(11, 16)])).toEqual([['09:00', '09:46'], ['10:46', '11:00']])
+    expect(entries[0]!.chunk).toBe(entries[0]!.chunks[0])
+  })
+
   it('groups chunks by local day and reports one hour of overflow for a two hour task', () => {
     const document = documentWith([task('essay', 120)])
     const plan = planTasks(document, scheduleTasks({ document, busy: [], now: NOW, timeZone: 'UTC' }))

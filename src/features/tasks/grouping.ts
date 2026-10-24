@@ -1,9 +1,11 @@
 import type { PlacementChunk, PlannerDocument, Task, TaskPlacement } from '@/core/model'
 import { localDateOf } from '@/core/time'
 
+// One entry per task: it sits under the day of its first fragment and lists every fragment, so a split task is one row.
 export interface PlacedEntry {
   task: Task
   chunk: PlacementChunk
+  chunks: PlacementChunk[]
 }
 
 export interface DayGroup {
@@ -31,10 +33,11 @@ export function planTasks(document: PlannerDocument, placements: TaskPlacement[]
     if (!placement) continue
     if (placement.chunks.length === 0) unplaced.push(task)
     if (placement.overflowMinutes > 0 || placement.late) warnings.push({ task, placement })
-    for (const chunk of placement.chunks) {
-      const date = localDateOf(chunk.start, timeZone)
-      groups.set(date, [...(groups.get(date) ?? []), { task, chunk }])
-    }
+    const chunks = [...placement.chunks].sort((a, b) => Date.parse(a.start) - Date.parse(b.start))
+    const first = chunks[0]
+    if (!first) continue
+    const date = localDateOf(first.start, timeZone)
+    groups.set(date, [...(groups.get(date) ?? []), { task, chunk: first, chunks }])
   }
 
   const days = [...groups.entries()]
