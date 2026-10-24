@@ -54,15 +54,11 @@ const SESSION_ENDING = new Set<AssistantFailureCode>(['out-of-memory', 'device-l
 
 const ANSWER_SCHEMA = { type: 'object', properties: { answer: { type: 'string' } }, required: ['answer'], additionalProperties: false }
 
-function figuresIn(text: string): string[] {
-  return text.match(/\d+(?:[.,]\d+)? h(?: \d+ min)?|\d+ min/g) ?? []
-}
-
-// The model explains; the numbers are the app's. Missing figures are restored in front of its prose.
+// The model explains; the numbers are the app's. The computed facts always come first, as their own block,
+// whatever the model wrote: the model's prose follows on a separate paragraph and is never matched against them.
 export function quoteFacts(modelAnswer: string, facts: string | undefined): string {
   if (!facts) return modelAnswer
-  const compact = modelAnswer.replace(/\s+/g, ' ')
-  return figuresIn(facts).every((figure) => compact.includes(figure)) ? modelAnswer : `${facts}\n${modelAnswer}`
+  return modelAnswer.trim() ? `${facts}\n\n${modelAnswer}` : facts
 }
 
 function proposalSchemaText(): string {

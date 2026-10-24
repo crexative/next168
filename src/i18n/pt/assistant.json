@@ -70,7 +70,35 @@
     "update_task": "Alterar tarefa: {subject}",
     "complete_task": "Concluir tarefa: {subject}",
     "add_event": "Adicionar evento: {subject}",
-    "update_category_goal": "Alterar meta: {subject}"
+    "update_category_goal": "Alterar meta: {subject}",
+    "field": {
+      "title": "Título",
+      "category": "Categoria",
+      "days": "Dias",
+      "start": "Início",
+      "end": "Fim",
+      "notes": "Notas",
+      "goal": "Meta semanal",
+      "durationMin": "Duração (min)",
+      "dueDate": "Prazo",
+      "priority": "Prioridade",
+      "doneAt": "Concluída",
+      "allDay": "Dia inteiro",
+      "location": "Local",
+      "attendees": "Participantes"
+    },
+    "value": {
+      "yes": "sim",
+      "no": "não",
+      "empty": "nenhum",
+      "goalMax": "no máximo {hours} h",
+      "goalMin": "pelo menos {hours} h",
+      "goalNone": "sem meta"
+    },
+    "warning": {
+      "overlap": "Dois blocos se sobrepõem após estas mudanças.",
+      "goalOver": "{category} ultrapassa o limite semanal."
+    }
   },
   "answers": {
     "categoryPlanned": "{category}: {planned} planejadas nesta semana.",

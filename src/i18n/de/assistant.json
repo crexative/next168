@@ -70,7 +70,35 @@
     "update_task": "Aufgabe ändern: {subject}",
     "complete_task": "Aufgabe abschließen: {subject}",
     "add_event": "Termin hinzufügen: {subject}",
-    "update_category_goal": "Ziel ändern: {subject}"
+    "update_category_goal": "Ziel ändern: {subject}",
+    "field": {
+      "title": "Titel",
+      "category": "Kategorie",
+      "days": "Tage",
+      "start": "Beginn",
+      "end": "Ende",
+      "notes": "Notizen",
+      "goal": "Wochenziel",
+      "durationMin": "Dauer (Min.)",
+      "dueDate": "Fällig am",
+      "priority": "Priorität",
+      "doneAt": "Erledigt",
+      "allDay": "Ganztägig",
+      "location": "Ort",
+      "attendees": "Teilnehmer"
+    },
+    "value": {
+      "yes": "ja",
+      "no": "nein",
+      "empty": "keine",
+      "goalMax": "höchstens {hours} h",
+      "goalMin": "mindestens {hours} h",
+      "goalNone": "kein Ziel"
+    },
+    "warning": {
+      "overlap": "Nach diesen Änderungen überschneiden sich zwei Blöcke.",
+      "goalOver": "{category} überschreitet sein Wochenlimit."
+    }
   },
   "answers": {
     "categoryPlanned": "{category}: {planned} diese Woche geplant.",

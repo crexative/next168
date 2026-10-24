@@ -161,14 +161,24 @@ describe('WebLlmProvider prepare and ask', () => {
     const reply = await provider.ask('How many hours of work this week?', context(), signal())
     const request = vague.engine.create.mock.calls[0]![0] as { messages: { content: string }[] }
     expect(request.messages[0]!.content).toContain('Work: 13 h planned this week.')
-    expect(reply.answer).toBe('Work: 13 h planned this week.\nYou have a busy week.')
+    expect(reply.answer).toBe('Work: 13 h planned this week.\n\nYou have a busy week.')
   })
 
-  it('keeps the model wording when it already quotes the total', async () => {
+  it('shows the computed facts as their own block even when the model quotes the total', async () => {
     const good = fakeEngine(() => '{"answer":"You planned 13 h of work this week."}')
     const { provider } = setup({ engine: good })
     await provider.prepare(vi.fn(), signal())
-    expect((await provider.ask('How many hours of work this week?', context(), signal())).answer).toBe('You planned 13 h of work this week.')
+    expect((await provider.ask('How many hours of work this week?', context(), signal())).answer)
+      .toBe('Work: 13 h planned this week.\n\nYou planned 13 h of work this week.')
+  })
+
+  it('does not let a wrong model figure that contains the right one hide the computed facts', async () => {
+    const wrong = fakeEngine(() => '{"answer":"You planned 113 h of work this week."}')
+    const { provider } = setup({ engine: wrong })
+    await provider.prepare(vi.fn(), signal())
+    const reply = await provider.ask('How many hours of work this week?', context(), signal())
+    expect(reply.answer.startsWith('Work: 13 h planned this week.\n\n')).toBe(true)
+    expect(reply.answer.endsWith('You planned 113 h of work this week.')).toBe(true)
   })
 
   it('turns a change request into a validated proposal bound to the document', async () => {
@@ -224,8 +234,10 @@ describe('failure classification and fact quoting', () => {
     expect(classifyFailure(error)).toBe(expected)
   })
 
-  it('quoteFacts leaves answers without facts untouched and accepts spacing differences', () => {
+  it('quoteFacts leaves answers without facts untouched and never makes facts conditional on the model text', () => {
     expect(quoteFacts('hello', undefined)).toBe('hello')
-    expect(quoteFacts('13  h of work', 'Work: 13 h planned this week.')).toBe('13  h of work')
+    expect(quoteFacts('13  h of work', 'Work: 13 h planned this week.')).toBe('Work: 13 h planned this week.\n\n13  h of work')
+    expect(quoteFacts('113 h of work', 'Work: 13 h planned this week.')).toBe('Work: 13 h planned this week.\n\n113 h of work')
+    expect(quoteFacts('  ', 'Work: 13 h planned this week.')).toBe('Work: 13 h planned this week.')
   })
 })
