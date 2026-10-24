@@ -65,6 +65,21 @@ describe('onboarding wizard', () => {
     expect(mounted.store.document!.categories.map((category) => [category.name, category.colorKey])).toContainEqual(['Day job', 'red'])
   })
 
+  it('does not offer, while editing, a colour another picked category uses', async () => {
+    mounted = await mountWithPlanner(OnboardingHost, firstRun())
+    root().querySelector<HTMLButtonElement>('[data-template=work] .edit-button')!.click()
+    await nextTick()
+    // Sleep is ticked and purple, so Work cannot take purple; an unused colour stays available.
+    expect(root().querySelector<HTMLInputElement>('input[type=radio][value=purple]')!.disabled).toBe(true)
+    expect(root().querySelector<HTMLInputElement>('input[type=radio][value=red]')!.disabled).toBe(false)
+    // Unticking Sleep closes the open editor; once reopened, purple is free again.
+    box('Sleep').click()
+    await nextTick()
+    root().querySelector<HTMLButtonElement>('[data-template=work] .edit-button')!.click()
+    await nextTick()
+    expect(root().querySelector<HTMLInputElement>('input[type=radio][value=purple]')!.disabled).toBe(false)
+  })
+
   it('lets the person edit a goal chip on step 2 and saves it', async () => {
     mounted = await mountWithPlanner(OnboardingHost, firstRun())
     await click('Next')
