@@ -109,6 +109,7 @@
       "add_task": "Adicionar a tarefa \"{title}\" ({minutes} min)"
     },
     "problem": {
+      "alreadyThere": "\"{title}\" já está agendado nesse dia e horário. Não é preciso mudar nada.",
       "noChange": "Não consegui transformar isso numa alteração do seu plano. Tente, por exemplo: \"Adiciona um bloco de Trabalho de uma hora na quinta às 18:00\".",
       "needsDetails": "Preciso de mais detalhes para fazer essa alteração: o quê, que dia e que horas. Peça de novo com esses dados.",
       "unknownCategory": "Não encontrei a categoria \"{category}\". As suas categorias são: {categories}.",

@@ -231,7 +231,9 @@ export function proposalFromIntent(intent: ChangeIntent, { request, document, lo
 
     case 'move_block': {
       if (!intent.title || (day === undefined && intent.start === undefined)) return message('needsDetails')
-      const sourceDay = fromDay ?? day
+      const matches = findBlocks(document.blocks, intent.title)
+      const soleDay = matches.length === 1 && matches[0]!.days.length === 1 ? matches[0]!.days[0] : undefined
+      const sourceDay = fromDay ?? soleDay ?? day
       const found = blockOutcome(document.blocks, intent, sourceDay, locale, t)
       if ('message' in found) return { kind: 'message', message: found.message }
       const start = intent.start === undefined ? found.start : parseClock(intent.start)
@@ -240,6 +242,7 @@ export function proposalFromIntent(intent: ChangeIntent, { request, document, lo
       const end = intent.end === undefined ? (start + length) % MINUTES_PER_DAY : parseClock(intent.end)
       if (end === undefined || end === start) return message('needsDetails')
       const target = day ?? sourceDay ?? found.days[0]!
+      if (target === sourceDay && start === found.start && end === found.end) return message('alreadyThere', { title: found.title })
       const ops: ProposalOp[] = sourceDay !== undefined && found.days.length > 1
         ? [
           { op: 'update_block', id: found.id, patch: { days: found.days.filter((existing) => existing !== sourceDay) } },

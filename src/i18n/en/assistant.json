@@ -109,6 +109,7 @@
       "add_task": "Add the task \"{title}\" ({minutes} min)"
     },
     "problem": {
+      "alreadyThere": "\"{title}\" is already scheduled there at that time. Nothing needs changing.",
       "noChange": "I could not turn that into a change to your plan. Try, for example: \"Add a one hour Work block on Thursday at 18:00\".",
       "needsDetails": "I need more detail to make that change: what, which day and what time. Please ask again with those.",
       "unknownCategory": "I could not find the category \"{category}\". Your categories are: {categories}.",

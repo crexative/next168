@@ -84,9 +84,40 @@ describe('add_block', () => {
 })
 
 describe('move_block and delete_block', () => {
-  it('moves a block found by title and keeps its length when only the start changes', () => {
-    expect(ops({ intent: 'move_block', title: 'review', fromDay: 'friday', day: 'thursday', start: '10:00' })).toEqual([
+  it.each([undefined, 'friday'])('moves a single-day block and keeps its length with fromDay %s', (fromDay) => {
+    expect(ops({ intent: 'move_block', title: 'review', fromDay, day: 'thursday', start: '10:00' })).toEqual([
       { op: 'update_block', id: 'work-fri', patch: { days: [4], start: 600, end: 660 } },
+    ])
+  })
+
+  it('moves the sole occurrence to another day without changing its time', () => {
+    expect(ops({ intent: 'move_block', title: 'Review', day: 'thursday' })).toEqual([
+      { op: 'update_block', id: 'work-fri', patch: { days: [4], start: 900, end: 960 } },
+    ])
+  })
+
+  it('asks which occurrence to move when the destination is absent from a repeating block', () => {
+    expect(message({ intent: 'move_block', title: 'Deep work', day: 'thursday', start: '10:00' }))
+      .toBe('"Deep work" occurs on Monday, Tuesday, Wednesday. Which occurrence would you like to change?')
+  })
+
+  it.each([
+    { title: 'Deep work', day: 'tuesday' },
+    { title: 'Deep work', day: 'tuesday', start: '09:00', end: '13:00' },
+    { title: 'Deep work', fromDay: 'tuesday', day: 'tuesday', start: '09:00' },
+    { title: 'Review', day: 'friday' },
+    { title: 'Review', day: 'friday', start: '15:00', end: '16:00' },
+    { title: 'Review', start: '15:00' },
+  ])('returns an already-there message without a proposal for %j', (fields) => {
+    expect(map({ intent: 'move_block', ...fields })).toEqual({
+      kind: 'message', message: `"${fields.title}" is already scheduled there at that time. Nothing needs changing.`,
+    })
+  })
+
+  it('still proposes a move when only the end time changes', () => {
+    expect(ops({ intent: 'move_block', title: 'Deep work', day: 'tuesday', end: '12:00' })).toEqual([
+      { op: 'update_block', id: 'work-am', patch: { days: [1, 3] } },
+      { op: 'add_block', block: { categoryId: 'work', title: 'Deep work', days: [2], start: 540, end: 720 } },
     ])
   })
 
@@ -136,6 +167,27 @@ describe('move_block and delete_block', () => {
     }
     expect(outcome.message).not.toContain('assistant.intent.')
     if (locale !== 'en') expect(outcome.message).not.toContain('Which occurrence')
+  })
+
+  it.each([
+    ['de', '„Deep work“ findet an diesen Tagen statt: Montag, Dienstag, Mittwoch. Welchen Termin möchten Sie ändern?'],
+    ['fr', '« Deep work » a lieu les jours suivants : lundi, mardi, mercredi. Quelle occurrence souhaitez-vous modifier ?'],
+  ])('uses the existing address and quotation style for clarification in %s', (locale, expected) => {
+    expect(proposalFromIntent(parseIntent({ intent: 'move_block', title: 'Deep work', day: 'thursday' }), {
+      ...environment, locale, translate: translatorFor(locale),
+    })).toEqual({ kind: 'message', message: expected })
+  })
+
+  it.each([
+    ['en', '"Review" is already scheduled there at that time. Nothing needs changing.'],
+    ['es', '"Review" ya está programado ahí a esa hora. No hace falta cambiar nada.'],
+    ['de', '„Review“ ist dort bereits zu dieser Zeit eingeplant. Sie müssen nichts ändern.'],
+    ['fr', '« Review » est déjà prévu ce jour-là à cette heure. Vous n’avez rien à modifier.'],
+    ['pt', '"Review" já está agendado nesse dia e horário. Não é preciso mudar nada.'],
+  ])('localizes the already-there message in %s', (locale, expected) => {
+    expect(proposalFromIntent(parseIntent({ intent: 'move_block', title: 'Review', day: 'friday' }), {
+      ...environment, locale, translate: translatorFor(locale),
+    })).toEqual({ kind: 'message', message: expected })
   })
 
   it('reports a block that does not exist', () => {

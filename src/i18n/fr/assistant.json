@@ -109,11 +109,12 @@
       "add_task": "Ajouter la tâche « {title} » ({minutes} min)"
     },
     "problem": {
+      "alreadyThere": "« {title} » est déjà prévu ce jour-là à cette heure. Vous n’avez rien à modifier.",
       "noChange": "Je n'ai pas pu en faire une modification de votre plan. Essayez par exemple : « Ajoute un bloc Travail d'une heure jeudi à 18:00 ».",
       "needsDetails": "Il me faut plus de détails pour faire ce changement : quoi, quel jour et à quelle heure. Reformulez avec ces informations.",
       "unknownCategory": "Je n'ai pas trouvé la catégorie « {category} ». Vos catégories sont : {categories}.",
       "unknownBlock": "Je n'ai pas trouvé de bloc nommé « {title} » dans votre plan.",
-      "absentDay": "\"{title}\" a lieu les jours suivants : {days}. Quelle occurrence souhaitez-vous modifier ?",
+      "absentDay": "« {title} » a lieu les jours suivants : {days}. Quelle occurrence souhaitez-vous modifier ?",
       "ambiguousBlock": "Plusieurs blocs correspondent à « {title} ». Précisez le jour.",
       "notDelete": "Je n'étais pas sûr que vous vouliez supprimer un bloc, donc rien n'a été modifié. Dites « supprime » ou « retire » et le nom du bloc."
     }

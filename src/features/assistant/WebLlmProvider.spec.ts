@@ -199,7 +199,6 @@ describe('WebLlmProvider prepare and ask', () => {
     ['delete_block', 'Deep work', undefined],
     ['delete_block', 'Review', undefined],
     ['move_block', 'Deep work', undefined],
-    ['move_block', 'Review', undefined],
     ['move_block', 'Deep work', 'thursday'],
   ])('returns no proposal for %s of %s on an absent source day (%s)', async (intent, title, fromDay) => {
     const document = plannerWithBlocks()
@@ -209,6 +208,38 @@ describe('WebLlmProvider prepare and ask', () => {
     const reply = await provider.ask(`${intent === 'delete_block' ? 'Delete' : 'Move'} ${title} on Thursday`, contextFor(document), signal())
     expect(reply.proposal).toBeUndefined()
     expect(reply.answer).toBe(`"${title}" occurs on ${title === 'Deep work' ? 'Monday, Tuesday, Wednesday' : 'Friday'}. Which occurrence would you like to change?`)
+    expect(document).toEqual(before)
+  })
+
+  it('infers Friday as the sole source for a Review move to Thursday without fromDay', async () => {
+    const document = plannerWithBlocks()
+    const before = structuredClone(document)
+    const { provider } = setup({ engine: fakeEngine(() => JSON.stringify({ intent: 'move_block', title: 'Review', day: 'thursday', start: '10:00' })) })
+    await provider.prepare(vi.fn(), signal())
+    const reply = await provider.ask('Move Review to Thursday at 10:00', contextFor(document), signal())
+    expect(reply.answer).toBe('Move "Review" to Thursday, 10:00–11:00')
+    expect(reply.proposal).toMatchObject({
+      workspaceId: document.workspaceId, baseRevision: document.revision,
+      ops: [{ op: 'update_block', id: 'work-fri', patch: { days: [4], start: 600, end: 660 } }],
+    })
+    const clock = { now: () => new Date('2026-10-24T12:00:00Z') }
+    const proposal = await buildProposal(reply.proposal, document, 'assistant', clock, () => 'move-proposal')
+    const applied = await applyProposal(document, proposal, () => 'unused', clock)
+    if (applied.kind !== 'applied') throw new Error('expected the move to apply')
+    expect(applied.document.blocks).toEqual(before.blocks.map((block) => block.id === 'work-fri'
+      ? { ...block, days: [4], start: 600, end: 660 }
+      : block))
+    expect(document).toEqual(before)
+  })
+
+  it('answers already there without splitting an unchanged Tuesday occurrence', async () => {
+    const document = plannerWithBlocks()
+    const before = structuredClone(document)
+    const { provider } = setup({ engine: fakeEngine(() => JSON.stringify({ intent: 'move_block', title: 'Deep work', day: 'tuesday' })) })
+    await provider.prepare(vi.fn(), signal())
+    const reply = await provider.ask('Move Deep work to Tuesday', contextFor(document), signal())
+    expect(reply.proposal).toBeUndefined()
+    expect(reply.answer).toBe('"Deep work" is already scheduled there at that time. Nothing needs changing.')
     expect(document).toEqual(before)
   })
 
