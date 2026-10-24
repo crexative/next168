@@ -89,8 +89,10 @@ watch(sidebarVisible, (visible) => {
   })
 })
 
-// Choosing a destination in the overlay closes it.
-watch(current, () => { if (overlayOpen.value) sidebar.setVisible(false) })
+function closeOverlay(): void { if (overlayOpen.value) sidebar.setVisible(false) }
+
+// Navigation started outside the sidebar also closes the overlay.
+watch(current, closeOverlay)
 
 const onStorage = (event: StorageEvent) => sidebar.onStorage(event)
 onMounted(() => {
@@ -160,7 +162,7 @@ dismissUndoWhenChanged(() => planner.document?.workspaceId)
       <p class="sidebar-brand t-title-2">{{ t('app.name') }}</p>
       <ul class="sidebar-list">
         <li v-for="tab in tabs" :key="tab.id">
-          <a class="sidebar-item t-body" :href="viewHash(tab.id)" :aria-current="current === tab.id ? 'page' : undefined">
+          <a class="sidebar-item t-body" :href="viewHash(tab.id)" :aria-current="current === tab.id ? 'page' : undefined" @click="closeOverlay">
             <Icon :name="tab.icon ?? ''" :size="22" />
             {{ t(tab.titleKey) }}
           </a>
@@ -168,7 +170,7 @@ dismissUndoWhenChanged(() => planner.document?.workspaceId)
       </ul>
       <ul class="sidebar-list sidebar-footer" data-testid="sidebar-footer">
         <li v-for="entry in entries" :key="entry.id">
-          <a class="sidebar-item t-body" :href="viewHash(entry.id)" :aria-current="current === entry.id ? 'page' : undefined">
+          <a class="sidebar-item t-body" :href="viewHash(entry.id)" :aria-current="current === entry.id ? 'page' : undefined" @click="closeOverlay">
             <Icon :name="entry.icon" :size="22" />
             {{ entry.title }}
           </a>
