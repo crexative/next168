@@ -100,6 +100,23 @@
       "goalOver": "{category} goes over its weekly limit."
     }
   },
+  "intent": {
+    "summary": {
+      "add_block": "Add \"{title}\" on {day}, {start}–{end}",
+      "move_block": "Move \"{title}\" to {day}, {start}–{end}",
+      "delete_block": "Remove the block \"{title}\"",
+      "delete_block_day": "Remove \"{title}\" on {day}",
+      "add_task": "Add the task \"{title}\" ({minutes} min)"
+    },
+    "problem": {
+      "noChange": "I could not turn that into a change to your plan. Try, for example: \"Add a one hour Work block on Thursday at 18:00\".",
+      "needsDetails": "I need more detail to make that change: what, which day and what time. Please ask again with those.",
+      "unknownCategory": "I could not find the category \"{category}\". Your categories are: {categories}.",
+      "unknownBlock": "I could not find a block called \"{title}\" in your plan.",
+      "ambiguousBlock": "More than one block matches \"{title}\". Please say which day it is on.",
+      "notDelete": "I was not sure you wanted to remove a block, so nothing was changed. Say \"delete\" or \"remove\" and the name of the block."
+    }
+  },
   "answers": {
     "categoryPlanned": "{category}: {planned} planned this week.",
     "categoryOver": "{category}: {planned} planned this week, {amount} over the {goal} limit.",

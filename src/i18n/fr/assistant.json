@@ -100,6 +100,23 @@
       "goalOver": "{category} dépasse sa limite hebdomadaire."
     }
   },
+  "intent": {
+    "summary": {
+      "add_block": "Ajouter « {title} » le {day}, {start}–{end}",
+      "move_block": "Déplacer « {title} » au {day}, {start}–{end}",
+      "delete_block": "Supprimer le bloc « {title} »",
+      "delete_block_day": "Supprimer « {title} » le {day}",
+      "add_task": "Ajouter la tâche « {title} » ({minutes} min)"
+    },
+    "problem": {
+      "noChange": "Je n'ai pas pu en faire une modification de votre plan. Essayez par exemple : « Ajoute un bloc Travail d'une heure jeudi à 18:00 ».",
+      "needsDetails": "Il me faut plus de détails pour faire ce changement : quoi, quel jour et à quelle heure. Reformulez avec ces informations.",
+      "unknownCategory": "Je n'ai pas trouvé la catégorie « {category} ». Vos catégories sont : {categories}.",
+      "unknownBlock": "Je n'ai pas trouvé de bloc nommé « {title} » dans votre plan.",
+      "ambiguousBlock": "Plusieurs blocs correspondent à « {title} ». Précisez le jour.",
+      "notDelete": "Je n'étais pas sûr que vous vouliez supprimer un bloc, donc rien n'a été modifié. Dites « supprime » ou « retire » et le nom du bloc."
+    }
+  },
   "answers": {
     "categoryPlanned": "{category} : {planned} planifiées cette semaine.",
     "categoryOver": "{category} : {planned} planifiées cette semaine, {amount} au-dessus de la limite de {goal}.",

@@ -1,7 +1,7 @@
 // Keyword fragments are matched against accent-stripped, lowercase text, in every locale at once:
 // people ask in a language other than the interface language often enough.
 
-export type Intent = 'nextBlock' | 'overflow' | 'unassigned' | 'remaining' | 'hours' | 'change'
+export type Intent = 'nextBlock' | 'overflow' | 'unassigned' | 'remaining' | 'hours' | 'change' | 'delete'
 
 export function normalize(text: string): string {
   return text.normalize('NFD').replace(/\p{Diacritic}/gu, '').toLowerCase()
@@ -35,6 +35,13 @@ const LEXICON: Record<Exclude<Intent, 'hours'>, string[]> = {
     'reste', 'restant', 'objectif', 'manque',
     'restam', 'restante', 'faltam', 'meta',
     'ubrig', 'verbleib', 'ziel', 'fehlen', 'fehlt', 'bleiben',
+  ],
+  delete: [
+    'delete', 'remove', 'cancel', 'get rid', 'drop ',
+    'elimina', 'quita', 'borra', 'cancela', 'suprime',
+    'supprime', 'retire', 'annule', 'enleve', 'efface',
+    'exclui', 'remova', 'apaga', 'cancele', 'tira ', 'retira',
+    'losch', 'entfern', 'storniere', 'streich',
   ],
   change: [
     'add ', 'move ', 'delete ', 'remove ', 'schedule ', 'reschedule', 'change ', 'create ', 'cancel ', 'plan ',

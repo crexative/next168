@@ -15,6 +15,10 @@ test.describe('@webgpu real on-device model', () => {
 
   test('opt in, download, answer with the computed total and propose a valid change', async ({ page }, testInfo) => {
     test.skip(testInfo.project.name !== 'desktop', 'one real download is enough')
+    // The E2E build prints each raw model reply; keep them as annotations so a failure shows what the model wrote.
+    page.on('console', (message) => {
+      if (message.text().startsWith('[next168-model-reply')) testInfo.annotations.push({ type: 'model-reply', description: message.text().slice(0, 600) })
+    })
     await seedLegacy(page)
     await page.goto('./#/assistant')
     await expect(page.getByRole('heading', { level: 1, name: 'Assistant' })).toBeVisible()
@@ -45,6 +49,8 @@ test.describe('@webgpu real on-device model', () => {
     expect(pending).toHaveLength(1)
     const proposal = changeProposalSchema.parse(pending[0])
     expect(proposal.source).toBe('assistant')
+    // Thursday is day 4; 18:00-19:00 is minutes 1080-1140. The work category of the seeded plan is c-work.
+    expect(proposal.ops).toMatchObject([{ op: 'add_block', block: { days: [4], start: 1080, end: 1140 } }])
     testInfo.annotations.push({ type: 'proposal', description: JSON.stringify(proposal.ops).slice(0, 500) })
 
     await card.getByRole('button', { name: 'Apply' }).click()

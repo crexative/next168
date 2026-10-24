@@ -1,6 +1,7 @@
-import { assistantContext, proposalJsonSchema } from '@/core/assistantContext'
+import { assistantContext } from '@/core/assistantContext'
+import { intentSchemaText, intentSystemPrompt } from './changeIntent'
 import { probeCapabilities, type DeviceCapabilities } from './capabilities'
-import { answerText, validatedProposal } from './modelOutput'
+import { answerFromChangeReply, answerText } from './modelOutput'
 import {
   AssistantError,
   type AskContext, type AssistantAnswer, type AssistantFailureCode, type AssistantProvider, type Availability, type PrepareProgress,
@@ -13,7 +14,7 @@ export const WEBLLM_DOWNLOAD_BYTES = 705 * 1000 * 1000
 const MIN_DEVICE_MEMORY_GB = 2
 const STORAGE_HEADROOM = 1.5
 const ANSWER_TOKENS = 256
-const PROPOSAL_TOKENS = 1024
+const PROPOSAL_TOKENS = 256
 
 export interface WebLlmEngine {
   chat: { completions: { create(request: unknown): Promise<{ choices: { message: { content: string | null } }[] }> } }
@@ -50,6 +51,12 @@ export function classifyFailure(error: unknown): AssistantFailureCode {
   return 'unknown'
 }
 
+// Compiled out of production builds: only the end-to-end build (VITE_E2E) prints the raw reply, so the
+// real-model spec can record what the 1B model actually wrote.
+function traceModelReply(kind: 'answer' | 'proposal', content: string): void {
+  if (import.meta.env.VITE_E2E) console.info(`[next168-model-reply:${kind}] ${content}`)
+}
+
 const SESSION_ENDING = new Set<AssistantFailureCode>(['out-of-memory', 'device-lost'])
 
 const ANSWER_SCHEMA = { type: 'object', properties: { answer: { type: 'string' } }, required: ['answer'], additionalProperties: false }
@@ -59,12 +66,6 @@ const ANSWER_SCHEMA = { type: 'object', properties: { answer: { type: 'string' }
 export function quoteFacts(modelAnswer: string, facts: string | undefined): string {
   if (!facts) return modelAnswer
   return modelAnswer.trim() ? `${facts}\n\n${modelAnswer}` : facts
-}
-
-function proposalSchemaText(): string {
-  const schema: Record<string, unknown> = { ...proposalJsonSchema() }
-  delete schema.$schema
-  return JSON.stringify(schema)
 }
 
 export class WebLlmProvider implements AssistantProvider {
@@ -127,8 +128,8 @@ export class WebLlmProvider implements AssistantProvider {
     if (!engine) throw new AssistantError(this.failure ?? 'unavailable')
     if (signal.aborted) throw new AssistantError('cancelled')
 
-    const facts = answerFromStats(question, context)
     const proposing = isChangeRequest(question)
+    const facts = proposing ? undefined : answerFromStats(question, context)
     const onAbort = () => { void Promise.resolve(engine.interruptGenerate()).catch(() => undefined) }
     signal.addEventListener('abort', onAbort, { once: true })
     try {
@@ -139,14 +140,12 @@ export class WebLlmProvider implements AssistantProvider {
         ],
         temperature: 0,
         max_tokens: proposing ? PROPOSAL_TOKENS : ANSWER_TOKENS,
-        response_format: { type: 'json_object', schema: proposing ? proposalSchemaText() : JSON.stringify(ANSWER_SCHEMA) },
+        response_format: { type: 'json_object', schema: proposing ? intentSchemaText() : JSON.stringify(ANSWER_SCHEMA) },
       })
       if (signal.aborted) throw new AssistantError('cancelled')
       const content = reply.choices[0]?.message.content ?? ''
-      if (proposing) {
-        const proposal = await validatedProposal(content, context.document)
-        return { answer: proposal.summary, proposal }
-      }
+      traceModelReply(proposing ? 'proposal' : 'answer', content)
+      if (proposing) return await answerFromChangeReply(content, question, context)
       return { answer: quoteFacts(answerText(content), facts) }
     } catch (error) {
       throw this.fail(signal.aborted ? new AssistantError('cancelled') : error)
@@ -187,21 +186,14 @@ export class WebLlmProvider implements AssistantProvider {
   }
 
   private systemPrompt(context: AskContext, facts: string | undefined, proposing: boolean): string {
+    if (proposing) return intentSystemPrompt(context.document, context.locale)
     const lines = [
       'You are the Next168 weekly planner assistant. Everything runs on the user\'s device.',
       `Reply in the language with code "${context.locale}".`,
       'Never calculate totals yourself: quote the computed figures below exactly.',
     ]
     if (facts) lines.push(`Computed facts (authoritative):\n${facts}`)
-    if (proposing) {
-      lines.push(
-        'The user wants a change. Reply with a JSON proposal: a short "summary" and the "ops" that make the change.',
-        'Use ids from the planner data. Days are 0 (Sunday) to 6 (Saturday). Times are minutes after midnight.',
-        `Planner data: ${assistantContext(context.document)}`,
-      )
-    } else {
-      lines.push('Reply with JSON of the form {"answer": "..."} using at most three sentences.', `Planner data: ${assistantContext(context.document)}`)
-    }
+    lines.push('Reply with JSON of the form {"answer": "..."} using at most three sentences.', `Planner data: ${assistantContext(context.document)}`)
     return lines.join('\n')
   }
 }

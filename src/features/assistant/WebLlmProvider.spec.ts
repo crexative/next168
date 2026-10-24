@@ -183,18 +183,40 @@ describe('WebLlmProvider prepare and ask', () => {
 
   it('turns a change request into a validated proposal bound to the document', async () => {
     const document = plannerWithBlocks()
-    const proposing = fakeEngine(() => JSON.stringify({
-      summary: 'Gym on Thursday evening',
-      ops: [{ op: 'add_block', block: { categoryId: 'work', title: 'Gym', days: [4], start: 1080, end: 1140 } }],
-    }))
+    const proposing = fakeEngine(() => JSON.stringify({ intent: 'add_block', title: 'Gym', categoryName: 'work', day: 'thursday', start: '18:00', durationMinutes: 60 }))
     const { provider } = setup({ engine: proposing })
     await provider.prepare(vi.fn(), signal())
     const reply = await provider.ask('Add a gym block on Thursday at 18:00', contextFor(document), signal())
-    expect(reply.proposal).toMatchObject({ workspaceId: document.workspaceId, baseRevision: document.revision })
-    expect(reply.answer).toBe('Gym on Thursday evening')
+    expect(reply.proposal).toMatchObject({
+      workspaceId: document.workspaceId, baseRevision: document.revision,
+      ops: [{ op: 'add_block', block: { categoryId: 'work', title: 'Gym', days: [4], start: 1080, end: 1140 } }],
+    })
+    expect(reply.answer).toBe('Add "Gym" on Thursday, 18:00–19:00')
   })
 
-  it('rejects invalid model JSON for a proposal as invalid-output', async () => {
+  it('asks the model for a small intent, with examples and names but no ids or computed facts', async () => {
+    const proposing = fakeEngine(() => '{"intent":"none"}')
+    const { provider } = setup({ engine: proposing })
+    await provider.prepare(vi.fn(), signal())
+    await provider.ask('Add a gym block', context(), signal())
+    const request = proposing.engine.create.mock.calls[0]![0] as { messages: { content: string }[]; response_format: { schema: string }; max_tokens: number }
+    expect(Object.keys(JSON.parse(request.response_format.schema).properties)).toEqual(['intent', 'title', 'categoryName', 'day', 'fromDay', 'start', 'end', 'durationHours', 'durationMinutes', 'dueDate'])
+    expect(request.messages[0]!.content).toContain('Categories: Work, Study')
+    expect(request.messages[0]!.content).toContain('Request: Add a two hour Study block')
+    expect(request.messages[0]!.content).not.toContain('work-am')
+    expect(request.messages[1]!.content).toBe('Add a gym block')
+    expect(request.max_tokens).toBeLessThanOrEqual(256)
+  })
+
+  it('answers with a friendly message, not an error, when the request names an unknown category', async () => {
+    const { provider } = setup({ engine: fakeEngine(() => '{"intent":"add_block","title":"Gym","categoryName":"Fitness","day":"monday","start":"07:00"}') })
+    await provider.prepare(vi.fn(), signal())
+    const reply = await provider.ask('Add a gym block on Monday at 7', context(), signal())
+    expect(reply.proposal).toBeUndefined()
+    expect(reply.answer).toBe('I could not find the category "Fitness". Your categories are: Work, Study.')
+  })
+
+  it('rejects a reply that is not an intent as invalid-output without ending the session', async () => {
     const broken = fakeEngine(() => '{"summary":"x","ops":[{"op":"add_block"}]}')
     const { provider } = setup({ engine: broken })
     await provider.prepare(vi.fn(), signal())
