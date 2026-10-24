@@ -216,3 +216,51 @@ describe('delete-all', () => {
     expect(await store.commit((draft) => { draft.calendarSources = [] }, { purgeEpoch: epoch + 1 })).toEqual({ ok: true })
   })
 })
+
+describe('what storage held when the document was loaded', () => {
+  it('tells proven-empty storage apart from a stored document, including a revision-0 one', async () => {
+    const empty = setup()
+    await empty.store.load()
+    expect(empty.store.stored).toBe(false)
+    expect(empty.store.document?.revision).toBe(0)
+
+    const storage = new MemoryStore()
+    storage.data.set('document', JSON.stringify(testDocument({ revision: 0 })))
+    const migrated = setup(storage)
+    await migrated.store.load()
+    expect(migrated.store.stored).toBe(true)
+    expect(migrated.store.document?.revision).toBe(0)
+  })
+
+  it('becomes stored after the first commit', async () => {
+    const { store } = setup()
+    await store.load()
+    expect(await store.commit((draft) => { draft.settings.onboardingDone = true })).toEqual({ ok: true })
+    expect(store.stored).toBe(true)
+  })
+})
+
+describe('a commit with expect', () => {
+  it('asks the repository for the guarded write with what was opened on, and refuses a change in storage', async () => {
+    const { store, planner, storage } = setup()
+    await store.load()
+    const guarded = vi.spyOn(planner, 'saveGuarded')
+    const epoch = planner.knownPurgeEpoch()
+    // Another tab filled storage after this tab's empty load.
+    storage.data.set('document', JSON.stringify(testDocument({ revision: 0 })))
+    const result = await store.commit((draft) => { draft.settings.onboardingDone = true }, { expect: { storedFingerprint: 'absent', purgeEpoch: epoch } })
+    expect(guarded).toHaveBeenCalledWith(expect.objectContaining({ revision: 1 }), 0, { storedFingerprint: 'absent', purgeEpoch: epoch })
+    expect(result).toEqual({ ok: false, reason: 'conflict' })
+    expect(JSON.parse(storage.data.get('document') as string).revision).toBe(0)
+    expect(store.stored).toBe(true)
+  })
+
+  it('falls back to the plain save when the repository has no guarded write (the companion)', async () => {
+    const { store, planner } = setup()
+    await store.load()
+    Object.defineProperty(planner, 'saveGuarded', { value: undefined })
+    const save = vi.spyOn(planner, 'save')
+    expect(await store.commit((draft) => { draft.settings.onboardingDone = true }, { expect: { storedFingerprint: 'absent' } })).toEqual({ ok: true })
+    expect(save).toHaveBeenCalledTimes(1)
+  })
+})

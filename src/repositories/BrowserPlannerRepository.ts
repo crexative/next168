@@ -7,10 +7,19 @@ import type { ChangeChannel } from './changeChannel'
 import type { BrowserStore, Snapshot } from './indexedDbStore'
 import { LEGACY_KEYS, planLegacyImport } from './legacyImport'
 import {
-  NO_WEB_LOCKS, failureReason, isValidDocumentText, storedDocument, type RunExclusive, type StorageLike, type StoredDocument,
+  NO_WEB_LOCKS, failureReason, isValidDocumentText, storedDocument, storedFingerprintOf, type RunExclusive, type StorageLike,
+  type StoredDocument, type StoredFingerprint,
 } from './storageCommit'
 
 export { NO_WEB_LOCKS } from './storageCommit'
+
+// What a write must still find in storage, checked inside the commit lock before the write.
+export interface CommitGuard {
+  // Refuse when a delete-all happened since this epoch was read.
+  purgeEpoch?: number
+  // Refuse unless the stored document is exactly this ('absent' = nothing stored).
+  storedFingerprint?: StoredFingerprint
+}
 
 export interface BrowserPlannerRepositoryDeps {
   store: BrowserStore
@@ -87,7 +96,13 @@ export class BrowserPlannerRepository implements PlannerRepository {
 
   // A save that also fails when a delete-all ran since `purgeEpoch` was read, even if the revision matches.
   saveAtEpoch(document: PlannerDocument, expectedRevision: number, purgeEpoch: number): Promise<SaveResult> {
-    return this.commitDocument(document, expectedRevision, purgeEpoch)
+    return this.commitDocument(document, expectedRevision, { purgeEpoch })
+  }
+
+  // A save that also fails unless storage still holds exactly the document the caller opened on, and (optionally)
+  // the same purge epoch: a flow that cannot be refreshed mid-way uses it so it never overwrites another tab.
+  saveGuarded(document: PlannerDocument, expectedRevision: number, guard: CommitGuard): Promise<SaveResult> {
+    return this.commitDocument(document, expectedRevision, guard)
   }
 
   async purgeEpoch(): Promise<number> {
@@ -250,7 +265,7 @@ export class BrowserPlannerRepository implements PlannerRepository {
     return plan.result
   }
 
-  private async commitDocument(document: PlannerDocument, expectedRevision: number, purgeEpoch?: number): Promise<SaveResult> {
+  private async commitDocument(document: PlannerDocument, expectedRevision: number, guard: CommitGuard = {}): Promise<SaveResult> {
     let checked: PlannerDocument
     try {
       checked = validateDocument(document)
@@ -263,8 +278,10 @@ export class BrowserPlannerRepository implements PlannerRepository {
       const stored = storedDocument(snapshot.document)
       const refused = this.refuseStale(stored, expectedRevision)
       if (refused) return refused
-      if (purgeEpoch !== undefined && purgeEpochOf(snapshot) !== purgeEpoch) {
-        return { kind: 'conflict', currentRevision: stored.kind === 'ok' ? stored.document.revision : 0 }
+      const currentRevision = stored.kind === 'ok' ? stored.document.revision : 0
+      if (guard.purgeEpoch !== undefined && purgeEpochOf(snapshot) !== guard.purgeEpoch) return { kind: 'conflict', currentRevision }
+      if (guard.storedFingerprint !== undefined && (await storedFingerprintOf(snapshot.document)) !== guard.storedFingerprint) {
+        return { kind: 'conflict', currentRevision }
       }
       const json = JSON.stringify(checked)
       await store.write(snapshot.document === undefined ? { document: json } : { document: json, backup: snapshot.document })
