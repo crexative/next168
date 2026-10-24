@@ -43,7 +43,7 @@ function later(): void {
     <p class="t-subhead nudge-text">{{ text }}</p>
     <div class="nudge-actions">
       <Button variant="tinted" @click="exportNow">{{ t('settings.exportNudge.action') }}</Button>
-      <Button variant="plain" @click="later">{{ t('onboarding.notNow') }}</Button>
+      <Button variant="plain" @click="later">{{ t('common.dismiss') }}</Button>
     </div>
   </section>
 </template>

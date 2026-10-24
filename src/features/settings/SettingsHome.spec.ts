@@ -2,6 +2,7 @@
 import { afterEach, beforeEach, expect, it, vi } from 'vitest'
 import { nextTick } from 'vue'
 import { testDocument } from '@/repositories/testSupport'
+import { SUPPORTED_LOCALES } from '@/i18n'
 import { FIRST_SEEN_KEY } from './data/exportReminder'
 import { mountWithPlanner, SLEEP, WORK, type Mounted } from './testSupport'
 import SettingsHome from './SettingsHome.vue'
@@ -61,4 +62,19 @@ it('nudges for a weekly backup, exports from the nudge and then goes quiet', asy
   expect(nudge()!.textContent).toContain("You haven't exported a backup yet.")
   nudge()!.querySelector<HTMLButtonElement>('button')!.click()
   await vi.waitFor(() => expect(nudge()).toBeNull())
+})
+
+it.each(SUPPORTED_LOCALES)('%s renders a localized reminder dismiss button and snoozes across visits', async (locale) => {
+  const labels = { en: 'Dismiss', es: 'Descartar', fr: 'Ignorer', pt: 'Dispensar', de: 'Ausblenden' }
+  localStorage.setItem(FIRST_SEEN_KEY, new Date(Date.now() - 10 * 86_400_000).toISOString())
+  mounted = await mountWithPlanner(SettingsHome, done, locale)
+  const nudge = mounted.host.querySelector('[data-testid=export-nudge]')!
+  const dismiss = nudge.querySelector<HTMLButtonElement>('button:last-child')!
+  expect(dismiss.textContent?.trim()).toBe(labels[locale])
+  dismiss.click()
+  await nextTick()
+  expect(mounted.host.querySelector('[data-testid=export-nudge]')).toBeNull()
+  mounted.unmount()
+  mounted = await mountWithPlanner(SettingsHome, done, locale)
+  expect(mounted.host.querySelector('[data-testid=export-nudge]')).toBeNull()
 })

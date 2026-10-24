@@ -80,6 +80,20 @@ describe('onboarding wizard', () => {
     expect(root().querySelector<HTMLInputElement>('input[type=radio][value=purple]')!.disabled).toBe(false)
   })
 
+  it('does not offer the colour of a category the workspace keeps, even when it is unticked here', async () => {
+    mounted = await mountWithPlanner(OnboardingHost, { ...firstRun(), categories: [{ id: 'c-reading', name: 'Reading', colorKey: 'teal', goal: { type: 'none', hoursPerWeek: 0 } }] })
+    await nextTick()
+    const reading = root().querySelector<HTMLInputElement>('input[aria-label="Use Reading"]')!
+    reading.click()
+    await nextTick()
+    expect(reading.checked).toBe(false)
+    const work = root().querySelector<HTMLInputElement>('input[aria-label="Use Work"]')!
+    if (!work.checked) { work.click(); await nextTick() }
+    root().querySelector<HTMLButtonElement>('[data-template=work] .edit-button')!.click()
+    await nextTick()
+    expect(root().querySelector<HTMLInputElement>('input[type=radio][value=teal]')!.disabled).toBe(true)
+  })
+
   it('lets the person edit a goal chip on step 2 and saves it', async () => {
     mounted = await mountWithPlanner(OnboardingHost, firstRun())
     await click('Next')

@@ -303,7 +303,7 @@ describe('onboarding and undo actions stay bound to what they were prepared for'
     expect(store.error).toBeNull()
   })
 
-  it('still completes after an unrelated commit in the same workspace', async () => {
+  it('refuses wizard completion after the opening revision changes in the same workspace', async () => {
     const { store, click } = await atFinish(firstRun('ws-a'))
     expect(document.body.querySelector<HTMLInputElement>('.onboarding input[aria-label="Use Sleep"]')!.checked).toBe(true)
     await click('Next')
@@ -311,8 +311,9 @@ describe('onboarding and undo actions stay bound to what they were prepared for'
     await store.commit((draft) => { draft.checkIns.push({ date: TODAY, note: 'x' }) })
     await click('Finish')
     await store.settled()
-    expect(store.document?.settings.onboardingDone).toBe(true)
-    expect(store.document?.categories.map((candidate) => candidate.name)).toContain('Sleep')
+    expect(store.document?.settings.onboardingDone).toBe(false)
+    expect(store.document?.categories).toEqual([])
+    expect(store.document?.checkIns).toEqual([{ date: TODAY, note: 'x' }])
   })
 
   async function clickTaskButton(selector: string) {

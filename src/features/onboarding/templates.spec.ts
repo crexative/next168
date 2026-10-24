@@ -114,6 +114,20 @@ describe('onboarding week counter and edits', () => {
     expect(result.tasks[0]!.categoryId).toBe('c-existing')
   })
 
+  it('counts a recoloured kept category with its new colour, freeing the old one for a new category', () => {
+    const existing: Category[] = [{ id: 'c-sleep', name: 'Sleep', colorKey: 'purple', goal: { type: 'none', hoursPerWeek: 0 } }]
+    const choices: TemplateChoice[] = [
+      { templateId: 'sleep', existingCategoryId: 'c-sleep', selected: true, name: 'Sleep', colorKey: 'red', sketch: false, goal: { type: 'none', hoursPerWeek: 0 } },
+      { templateId: 'work', selected: true, name: 'Work', colorKey: 'red', sketch: false, goal: { type: 'none', hoursPerWeek: 0 } },
+      { templateId: 'learning', selected: true, name: 'Study', colorKey: 'purple', sketch: false, goal: { type: 'none', hoursPerWeek: 0 } },
+    ]
+    const result = buildOnboardingResult(choices, { title: '', templateId: 'work', durationMin: 30 }, { ...environment, existing })
+    expect(result.categoryUpdates).toEqual([{ id: 'c-sleep', patch: { colorKey: 'red', customColor: undefined } }])
+    const byName = new Map(result.categories.map((category) => [category.name, category.colorKey]))
+    expect(byName.get('Work')).not.toBe('red')
+    expect(byName.get('Study')).toBe('purple')
+  })
+
   it('gives a new category a colour no kept category uses when the wizard is reopened', () => {
     const existing: Category[] = [{ id: 'c-existing', name: 'Reading', colorKey: 'purple', goal: { type: 'none', hoursPerWeek: 0 } }]
     const sleepOnly = allChoices().filter((choice) => choice.templateId === 'sleep')

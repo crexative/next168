@@ -35,6 +35,7 @@ export const CATEGORY_TEMPLATES: CategoryTemplate[] = [
 
 export interface TemplateChoice {
   templateId: string
+  existingCategoryId?: string
   selected: boolean
   name: string
   colorKey: ColorKey
@@ -50,15 +51,18 @@ export function presetWeeklyMinutes(preset: BlockPreset): number {
   return length * preset.days.length
 }
 
-export function templateOf(templateId: string): CategoryTemplate {
-  return CATEGORY_TEMPLATES.find((template) => template.id === templateId)!
+export function templateOf(templateId: string): CategoryTemplate | undefined {
+  return CATEGORY_TEMPLATES.find((template) => template.id === templateId)
 }
 
 // What the wizard's current picks add up to, so the week's 168 hours stay visible while choosing.
 export function plannedMinutes(choices: TemplateChoice[]): number {
   return choices
     .filter((choice) => choice.selected && choice.sketch)
-    .reduce((sum, choice) => sum + presetWeeklyMinutes(templateOf(choice.templateId).preset), 0)
+    .reduce((sum, choice) => {
+      const preset = templateOf(choice.templateId)?.preset
+      return sum + (preset ? presetWeeklyMinutes(preset) : 0)
+    }, 0)
 }
 
 // A goal is fine when it has no hours or hours the category editor would accept (0.5–168).
@@ -74,6 +78,7 @@ export interface FirstTaskChoice {
 
 export interface OnboardingResult {
   categories: Category[]
+  categoryUpdates: { id: string; patch: Partial<Pick<Category, 'name' | 'colorKey' | 'customColor' | 'goal'>> }[]
   blocks: TimeBlock[]
   tasks: Task[]
 }
@@ -110,18 +115,39 @@ export function buildOnboardingResult(
   // Reopening the wizard on a workspace that already has categories must not duplicate them: a pick with the
   // name of an existing category is that category.
   const existingByName = new Map((environment.existing ?? []).map((category) => [category.name.trim().toLowerCase(), category]))
-  const reused = (choice: TemplateChoice) => existingByName.get(choice.name.trim().toLowerCase())
+  const existingById = new Map((environment.existing ?? []).map((category) => [category.id, category]))
+  const reused = (choice: TemplateChoice) => choice.existingCategoryId
+    ? existingById.get(choice.existingCategoryId)
+    : existingByName.get(choice.name.trim().toLowerCase())
   const categoryIds = new Map(picked.map((choice) => [choice.templateId, reused(choice)?.id ?? environment.newId()]))
   const templates = new Map(CATEGORY_TEMPLATES.map((template) => [template.id, template]))
 
   // New categories get distinct colours, also from the categories a reopened wizard keeps.
   const created = picked.filter((choice) => !reused(choice))
-  const colorKeys = distinctColorKeys(created.map((choice) => choice.colorKey), (environment.existing ?? []).map((category) => category.colorKey))
+  // Kept categories count with the colour they end with: a reused category recoloured here frees its old colour.
+  const keptColors = (environment.existing ?? []).map((category) => picked.find((choice) => reused(choice)?.id === category.id)?.colorKey ?? category.colorKey)
+  const colorKeys = distinctColorKeys(created.map((choice) => choice.colorKey), keptColors)
   const categories = created.map((choice, index): Category => {
     const template = templates.get(choice.templateId)!
     return { id: categoryIds.get(choice.templateId)!, name: choice.name.trim(), colorKey: colorKeys[index]!, icon: template.icon, goal: goalHoursValid(choice.goal) ? { ...choice.goal, hoursPerWeek: choice.goal.type === 'none' ? 0 : choice.goal.hoursPerWeek } : template.goal }
   })
-  const blocks = picked.filter((choice) => choice.sketch).map((choice): TimeBlock => {
+  const categoryUpdates: OnboardingResult['categoryUpdates'] = []
+  for (const choice of picked) {
+    const existing = reused(choice)
+    if (!existing) continue
+    const patch: OnboardingResult['categoryUpdates'][number]['patch'] = {}
+    if (choice.name.trim() !== existing.name) patch.name = choice.name.trim()
+    if (choice.colorKey !== existing.colorKey) {
+      patch.colorKey = choice.colorKey
+      // A chosen palette colour replaces a legacy custom colour; unrelated edits preserve it.
+      patch.customColor = undefined
+    }
+    if (goalHoursValid(choice.goal) && (choice.goal.type !== existing.goal.type || choice.goal.hoursPerWeek !== existing.goal.hoursPerWeek)) {
+      patch.goal = { ...choice.goal, hoursPerWeek: choice.goal.type === 'none' ? 0 : choice.goal.hoursPerWeek }
+    }
+    if (Object.keys(patch).length) categoryUpdates.push({ id: existing.id, patch })
+  }
+  const blocks = picked.filter((choice) => choice.sketch && templates.has(choice.templateId)).map((choice): TimeBlock => {
     const { preset } = templates.get(choice.templateId)!
     return { id: environment.newId(), categoryId: categoryIds.get(choice.templateId)!, title: choice.name.trim(), days: [...preset.days], start: preset.start, end: preset.end }
   })
@@ -129,5 +155,5 @@ export function buildOnboardingResult(
   const tasks: Task[] = firstTask.title.trim() && taskCategory
     ? [{ id: environment.newId(), title: firstTask.title.trim(), categoryId: taskCategory, durationMin: firstTask.durationMin, priority: 2, createdAt: environment.now.toISOString() }]
     : []
-  return { categories, blocks, tasks }
+  return { categories, categoryUpdates, blocks, tasks }
 }

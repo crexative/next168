@@ -33,6 +33,7 @@
   "finish": "Concluir",
   "noTaskCategory": "Sem categoria, ignorar a tarefa",
   "notNow": "Agora não",
+  "changedElsewhere": "Seu plano mudou enquanto a configuração estava aberta. Nada foi salvo. Confira os valores atuais e tente novamente.",
   "counter": "{planned} h de 168 planejadas",
   "counterFree": "{free} h livres",
   "counterOver": "Você passa {over} h das 168",

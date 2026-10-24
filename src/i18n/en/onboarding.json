@@ -33,6 +33,7 @@
   "finish": "Finish",
   "noTaskCategory": "No category, skip the task",
   "notNow": "Not now",
+  "changedElsewhere": "Your plan changed while setup was open. Nothing was saved. Review the latest values and try again.",
   "counter": "{planned} of 168 h planned",
   "counterFree": "{free} h free",
   "counterOver": "You're {over} h over the 168",
