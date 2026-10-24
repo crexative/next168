@@ -64,7 +64,7 @@ test.describe('@webgpu real on-device model', () => {
     await page.goto('./#/assistant')
     await page.getByRole('button', { name: 'Download the model (705 MB)' }).click()
     await expect(page.getByTestId('status-webllm')).toHaveText('Ready', { timeout: DOWNLOAD_TIMEOUT_MS })
-    await page.goto('./#/settings')
+    await page.goto('./#/settings/advanced')
     await page.getByRole('button', { name: 'Delete the downloaded model' }).click()
     await expect(page.getByRole('button', { name: 'Delete the downloaded model' })).toHaveCount(0)
     await page.goto('./#/assistant')

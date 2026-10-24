@@ -1,6 +1,6 @@
 import AxeBuilder from '@axe-core/playwright'
 import { expect, test, type Locator, type Page } from '@playwright/test'
-import { V2_KEY, openTab, seedKey } from './fixtures'
+import { V2_KEY, openAdvanced, openTab, seedKey } from './fixtures'
 
 // Second verification (SHA eb95fb3): geometry regressions, not just visibility.
 const NOW = new Date('2026-10-19T12:00:00Z')
@@ -21,7 +21,7 @@ const ics = [
 async function seedWithConflicts(page: Page, document = plan, calendar = ics): Promise<void> {
   await page.clock.install({ time: NOW })
   await seedKey(page, V2_KEY, JSON.stringify(document))
-  await openTab(page, 'settings')
+  await openAdvanced(page)
   await page.getByLabel('Import .ics file', { exact: true }).setInputFiles({ name: 'conflicts.ics', mimeType: 'text/calendar', buffer: Buffer.from(calendar) })
   await expect(page.getByTestId('calendar-source')).toHaveCount(1)
   await openTab(page, 'week')

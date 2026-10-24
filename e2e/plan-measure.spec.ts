@@ -1,7 +1,7 @@
 import { readFileSync, writeFileSync } from 'node:fs'
 import AxeBuilder from '@axe-core/playwright'
 import { expect, test, type Page } from '@playwright/test'
-import { LEGACY_BLOCK_COUNT, legacyData, openTab, seedKey, V2_KEY } from './fixtures'
+import { LEGACY_BLOCK_COUNT, legacyData, openAdvanced, openTab, seedKey, V2_KEY } from './fixtures'
 
 const BACKUP_KEY = 'next168-v2-backup'
 const MONDAY_MORNING = new Date('2026-10-26T08:00:00Z')
@@ -49,21 +49,25 @@ test.describe('plan and measure', () => {
   test('@smoke a fresh profile gets onboarding with templates and ends with a populated week', async ({ page }) => {
     await page.clock.setFixedTime(MONDAY_MORNING)
     await page.goto('./')
-    const dialog = page.getByRole('dialog', { name: 'Pick your categories' })
+    const dialog = page.getByRole('dialog', { name: 'Your week has 168 hours. Decide where they go.' })
     await expect(dialog).toBeVisible()
 
-    await dialog.getByRole('checkbox', { name: 'Use Sleep' }).check()
-    await dialog.getByRole('checkbox', { name: 'Use Work' }).check()
+    // Sleep and Work come ticked.
+    await expect(dialog.getByRole('checkbox', { name: 'Use Sleep' })).toBeChecked()
+    await expect(dialog.getByRole('checkbox', { name: 'Use Work' })).toBeChecked()
     await dialog.getByRole('checkbox', { name: 'Use Exercise' }).check()
-    await dialog.getByRole('textbox', { name: 'Category name' }).nth(1).fill('Day job')
+    await dialog.getByRole('button', { name: 'Edit Work' }).click()
+    await dialog.getByRole('textbox', { name: 'Category name' }).fill('Day job')
     await dialog.getByRole('button', { name: 'Next' }).click()
 
-    await expect(page.getByRole('dialog', { name: 'Sketch a typical week' })).toBeVisible()
+    await expect(page.getByRole('dialog', { name: 'Adjust your typical week' })).toBeVisible()
     await expect(page.getByText('23:00–07:00 · Every day')).toBeVisible()
     await page.getByRole('button', { name: 'Next' }).click()
 
     await page.getByLabel('Task', { exact: true }).fill('Book a health check')
     await page.getByRole('button', { name: 'Finish' }).click()
+    await expect(page.getByRole('dialog', { name: 'Your week is ready' })).toBeVisible()
+    await page.getByRole('button', { name: 'Close' }).click()
     await expect(page.getByTestId('onboarding')).toBeHidden()
 
     const document = await storedDocument(page)
@@ -179,13 +183,14 @@ test.describe('plan and measure', () => {
       tasks: [{ id: 't-1', title: 'Write report', categoryId: 'c-study', durationMin: 60, priority: 2, createdAt: '2026-10-20T10:00:00.000Z' }],
       checkIns: [{ date: '2026-10-25', bedtime: 1380, wake: 420, stress: 2 }],
     }))
-    await openTab(page, 'settings')
+    await openAdvanced(page)
     await expect(page.getByTestId('data-mode')).toContainText('This browser')
     await expect(page.getByTestId('data-workspace')).toHaveText('ws-e2e')
+    await openTab(page, 'settings')
     const before = withoutBookkeeping(await storedDocument(page))
 
     const downloadPromise = page.waitForEvent('download')
-    await page.getByRole('button', { name: 'Export JSON' }).click()
+    await page.getByRole('button', { name: 'Export backup' }).click()
     const download = await downloadPromise
     expect(download.suggestedFilename()).toBe('next168-export-2026-10-26.json')
     const exportPath = testInfo.outputPath('export.json')

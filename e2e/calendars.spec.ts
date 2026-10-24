@@ -3,7 +3,7 @@ import { createServer, type Server } from 'node:http'
 import { once } from 'node:events'
 import { readFile } from 'node:fs/promises'
 import ICAL from 'ical.js'
-import { seedKey, V2_KEY, openTab } from './fixtures'
+import { seedKey, V2_KEY, openAdvanced, openTab } from './fixtures'
 
 const fixturePath = 'src/core/__fixtures__/ics/google.ics'
 const document = {
@@ -16,7 +16,7 @@ const document = {
 async function setup(page: Page) {
   await page.clock.install({ time: new Date('2026-10-19T12:00:00Z') })
   await seedKey(page, V2_KEY, JSON.stringify(document))
-  await openTab(page, 'settings')
+  await openAdvanced(page)
 }
 const feed = (title: string) => `BEGIN:VCALENDAR\r\nVERSION:2.0\r\nBEGIN:VEVENT\r\nUID:local-server\r\nDTSTART:20261019T140000Z\r\nDTEND:20261019T150000Z\r\nSUMMARY:${title}\r\nEND:VEVENT\r\nEND:VCALENDAR\r\n`
 async function serve(body: () => string, cors: boolean): Promise<{ server: Server; url: string }> {
@@ -53,7 +53,7 @@ test('calendar settings fit from 320 to 1920 px with a long source name and URL'
     events: [{ id: 'long-event', title: eventTitle, start: '2026-10-20T14:30:00.000Z', end: '2026-10-20T15:30:00.000Z', allDay: false, attendees: [] }],
   }))
   await page.setViewportSize({ width: 320, height: 900 })
-  await openTab(page, 'settings')
+  await openAdvanced(page)
   const source = page.getByTestId('calendar-source')
   await expect(source).toBeVisible()
   await expect(source.getByRole('textbox', { name: `Rename ${sourceName}`, exact: true })).toHaveValue(sourceName)
@@ -121,7 +121,7 @@ test('deleting a calendar source in another tab removes its events from the open
   const settings = await context.newPage()
   try {
     await settings.clock.install({ time: new Date('2026-10-19T12:00:00Z') })
-    await openTab(settings, 'settings')
+    await openAdvanced(settings)
     await settings.getByTestId('calendar-source').getByRole('button', { name: 'Remove', exact: true }).click()
     await expect(settings.getByTestId('calendar-source')).toHaveCount(0)
 

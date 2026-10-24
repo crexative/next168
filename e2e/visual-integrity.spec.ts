@@ -26,7 +26,7 @@ const LOCALES = Object.keys(EVENT_COPY) as (keyof typeof EVENT_COPY)[]
 async function widenInputFonts(page: Page): Promise<void> {
   // Exercise the Linux CI failure on every OS, including systems with narrower default fonts.
   await page.addStyleTag({ content: `
-    .onboarding input.name, .onboarding select.color, .event-form input[inputmode="email"] {
+    .onboarding input.name, .onboarding .chip-name, .onboarding .goal-chip, .event-form input[inputmode="email"] {
       font-family: Verdana, "DejaVu Sans", sans-serif !important;
       font-size: 1.16875rem !important; /* 110% of the shared 17 px input font. */
     }
@@ -125,27 +125,32 @@ for (const theme of THEMES) {
           const onboarding = page.getByTestId('onboarding')
           await expect(onboarding).toBeVisible()
           await widenInputFonts(page)
-          await expect(onboarding.locator('input.name')).toHaveCount(7)
-          if (locale === 'es') await expect(onboarding.locator('input.name').last()).toHaveValue('Desplazamientos')
+          await expect(onboarding.locator('.chip-name')).toHaveCount(7)
+          if (locale === 'es') await expect(onboarding.locator('.chip-name').last()).toHaveText('Desplazamientos')
           await auditSheet(page, `${theme}/${locale}/${width}/wider fonts/onboarding step 1`)
 
           for (const checkbox of await onboarding.getByRole('checkbox').all()) await checkbox.check()
-          await expect(onboarding.locator('input.name:disabled, select.color:disabled')).toHaveCount(0)
-          await audit(page, `${theme}/${locale}/${width}/wider fonts/onboarding step 1 with picks`)
-          const targets = await onboarding.locator('input.name, select.color, .check').evaluateAll((elements) =>
+          await expect(onboarding.locator('.edit-button:disabled')).toHaveCount(0)
+          await onboarding.locator('[data-template=work] .edit-button').click()
+          await expect(onboarding.locator('input.name')).toBeVisible()
+          await audit(page, `${theme}/${locale}/${width}/wider fonts/onboarding step 1 with picks and the editor open`)
+          const targets = await onboarding.locator('.chip, .edit-button, .swatch-choice').evaluateAll((elements) =>
             elements.map((element) => ({ width: element.getBoundingClientRect().width, height: element.getBoundingClientRect().height })),
           )
           for (const target of targets) {
             expect(target.width).toBeGreaterThanOrEqual(44)
             expect(target.height).toBeGreaterThanOrEqual(44)
           }
+          await onboarding.getByRole('button', { name: /^(Next|Siguiente|Suivant|Weiter|Avançar|Próximo)$/ }).click()
+          await onboarding.locator('[data-template=work] .goal-chip').click()
+          await audit(page, `${theme}/${locale}/${width}/wider fonts/onboarding step 2 with the goal editor open`)
         })
 
         test(`wider fonts: new event attendees (${locale}, ${width}px)`, async ({ page }, testInfo) => {
           test.skip(testInfo.project.name !== 'phone', 'the narrow-width regression runs in the phone project')
           await page.setViewportSize({ width, height: 812 })
           await start(page, theme, { ...plannedDocument, settings: { ...plannedDocument.settings, locale } }, locale)
-          await open(page, 'settings')
+          await open(page, 'settings/advanced')
           await page.getByRole('button', { name: EVENT_COPY[locale].button, exact: true }).click()
           const attendees = page.getByRole('dialog').locator('input[inputmode="email"]')
           await expect(attendees).toBeVisible()
@@ -161,24 +166,41 @@ for (const theme of THEMES) {
 
     test('every tab', async ({ page }) => {
       await start(page, theme, plannedDocument)
-      for (const view of ['today', 'week', 'tasks', 'insights', 'settings', 'assistant', 'checkin']) {
+      for (const view of ['today', 'week', 'tasks', 'insights', 'settings', 'settings/advanced', 'assistant', 'proposals', 'checkin']) {
         await open(page, view)
         await audit(page, `${theme}/${view}`)
       }
     })
 
-    test('onboarding steps 1–3 (owner\'s Spanish sheet)', async ({ page }) => {
+    test('onboarding steps 1–3 and the confirmation (owner\'s Spanish sheet)', async ({ page }) => {
       await start(page, theme, { ...firstRunDocument, settings: { ...firstRunDocument.settings, locale: 'es' } }, 'es')
       await page.goto('./')
       await auditSheet(page, `${theme}/onboarding step 1`)
       const dialog = page.getByRole('dialog')
-      await dialog.getByRole('checkbox').first().check()
-      await dialog.getByRole('checkbox').nth(1).check()
+      await dialog.getByRole('checkbox', { name: 'Usar Ejercicio' }).check()
       await audit(page, `${theme}/onboarding step 1 with picks`)
+      await dialog.getByRole('button', { name: 'Editar Trabajo' }).click()
+      await audit(page, `${theme}/onboarding step 1 editing a category`)
       await dialog.getByRole('button', { name: 'Siguiente' }).click()
       await audit(page, `${theme}/onboarding step 2`)
+      await dialog.getByRole('button', { name: 'Cambiar la meta de Trabajo' }).click()
+      await audit(page, `${theme}/onboarding step 2 editing a goal`)
       await dialog.getByRole('button', { name: 'Siguiente' }).click()
       await audit(page, `${theme}/onboarding step 3`)
+      await dialog.getByLabel('Tarea', { exact: true }).fill('Llamar al banco')
+      await dialog.getByRole('button', { name: 'Terminar' }).click()
+      await expect(page.getByRole('dialog', { name: 'Tu semana está lista' })).toBeVisible()
+      await auditSheet(page, `${theme}/onboarding confirmation`)
+    })
+
+    test('tasks quick add with its details, and the assistant page', async ({ page }) => {
+      await start(page, theme, plannedDocument)
+      await open(page, 'tasks')
+      await page.getByPlaceholder('Add task…').fill('A task with a rather long title that wraps onto a second line on a phone')
+      await expect(page.getByTestId('task-details')).toBeVisible()
+      await audit(page, `${theme}/tasks quick add with details`)
+      await open(page, 'assistant')
+      await audit(page, `${theme}/assistant with suggestions`)
     })
 
     test('week block editor and the day sheets', async ({ page }) => {
@@ -202,6 +224,18 @@ for (const theme of THEMES) {
       await auditSheet(page, `${theme}/new category`)
       await page.keyboard.press('Escape')
 
+      await page.getByRole('button', { name: 'Delete all data…' }).click()
+      await auditSheet(page, `${theme}/delete everything`)
+      await page.keyboard.press('Escape')
+      await expect(page.getByRole('dialog')).toHaveCount(0)
+
+      const v1Path = testInfo.outputPath('v1.json')
+      await import('node:fs').then(({ writeFileSync }) => writeFileSync(v1Path, JSON.stringify(legacyData)))
+      await page.getByLabel('Choose a Next168 export file').setInputFiles(v1Path)
+      await expect(page.getByTestId('import-preview')).toBeVisible()
+      await audit(page, `${theme}/import preview`)
+
+      await open(page, 'settings/advanced')
       await page.getByRole('button', { name: 'New event', exact: true }).click()
       await auditSheet(page, `${theme}/new event`)
       await page.keyboard.press('Escape')
@@ -209,20 +243,9 @@ for (const theme of THEMES) {
       await auditSheet(page, `${theme}/edit event`)
       await page.keyboard.press('Escape')
 
-      await page.getByRole('button', { name: 'Delete all data…' }).click()
-      await auditSheet(page, `${theme}/delete everything`)
-      await page.keyboard.press('Escape')
-      await expect(page.getByRole('dialog')).toHaveCount(0)
-
       await page.getByLabel('Import .ics file', { exact: true }).setInputFiles('src/core/__fixtures__/ics/google.ics')
       await expect(page.getByTestId('calendar-source')).toHaveCount(1)
       await audit(page, `${theme}/calendar details`)
-
-      const v1Path = testInfo.outputPath('v1.json')
-      await import('node:fs').then(({ writeFileSync }) => writeFileSync(v1Path, JSON.stringify(legacyData)))
-      await page.getByLabel('Choose a Next168 export file').setInputFiles(v1Path)
-      await expect(page.getByTestId('import-preview')).toBeVisible()
-      await audit(page, `${theme}/import preview`)
     })
 
     test('proposal review and check-in', async ({ page }) => {
