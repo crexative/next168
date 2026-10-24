@@ -41,6 +41,34 @@ async function subscribe(page: Page, url: string) {
   await page.getByRole('button', { name: 'Add subscription', exact: true }).click()
 }
 
+test('calendar settings fit from 320 to 1920 px with a long source name and URL', async ({ page }) => {
+  const sourceName = 'UnbrokenCalendarName'.repeat(4)
+  const url = `https://calendars.example.invalid/${'unbroken-feed-path'.repeat(40)}.ics?token=${'x'.repeat(200)}`
+  const eventTitle = 'UnbrokenEventTitle'.repeat(6)
+  await page.clock.install({ time: new Date('2026-10-19T12:00:00Z') })
+  await page.route(url, route => route.fulfill({ contentType: 'text/calendar', body: feed(eventTitle) }))
+  await seedKey(page, V2_KEY, JSON.stringify({
+    ...document,
+    calendarSources: [{ id: 'long-source', name: sourceName, kind: 'url', url, colorKey: 'purple' }],
+    events: [{ id: 'long-event', title: eventTitle, start: '2026-10-20T14:30:00.000Z', end: '2026-10-20T15:30:00.000Z', allDay: false, attendees: [] }],
+  }))
+  await page.setViewportSize({ width: 320, height: 900 })
+  await openTab(page, 'settings')
+  const source = page.getByTestId('calendar-source')
+  await expect(source).toBeVisible()
+  await expect(source.getByRole('textbox', { name: `Rename ${sourceName}`, exact: true })).toHaveValue(sourceName)
+  await expect(page.getByTestId('calendar-occurrence')).toContainText(eventTitle)
+  await expect(page.getByTestId('planner-event')).toContainText(eventTitle)
+  await page.getByLabel('Calendar name', { exact: true }).fill(sourceName)
+  await page.getByLabel('Subscription URL', { exact: true }).fill(url)
+  await expect(page.getByLabel('Subscription URL', { exact: true })).toHaveValue(url)
+  await expect(page.getByLabel('Import .ics file', { exact: true })).toBeEnabled()
+  for (const width of [320, 375, 768, 1440, 1920]) {
+    await page.setViewportSize({ width, height: 900 })
+    await expect.poll(() => page.evaluate(() => window.document.scrollingElement!.scrollWidth - window.innerWidth), `calendar settings at ${width}px`).toBeLessThanOrEqual(0)
+  }
+})
+
 // Re-enabled by the S1/S3 integration step: the Week view (S1) renders the S3 overlay.
 test.fixme('import file → preview and Week show events with a conflict against the plan', async ({ page }) => {
   await setup(page)
