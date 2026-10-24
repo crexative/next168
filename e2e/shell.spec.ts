@@ -114,6 +114,8 @@ test.describe('app shell', () => {
   test('every tab opens scrolled to the top with the large title showing', async ({ page }, testInfo) => {
     test.skip(testInfo.project.name !== 'phone')
     await openTab(page, 'settings')
+    // Every view is tall enough to keep the old offset, as populated views are.
+    await page.addStyleTag({ content: '.view { min-height: 3000px; }' })
     await page.evaluate(() => window.scrollTo(0, 1500))
     await expect.poll(() => page.evaluate(() => window.scrollY)).toBeGreaterThan(300)
     const nav = page.getByRole('navigation', { name: 'Main navigation' })
