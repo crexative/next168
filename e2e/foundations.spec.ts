@@ -624,3 +624,21 @@ test.describe('large text and narrow screens', () => {
     await auditScreens(page, 'de-320')
   })
 })
+
+test.describe('visual-integrity guard', () => {
+  test('reports controls that overlap where they are shown, not a control scrolled under a footer', async ({ page }, testInfo) => {
+    test.skip(testInfo.project.name !== 'desktop', 'a fixture page; one project is enough')
+    await page.setContent(`
+      <div style="position:fixed;inset:0;display:flex;flex-direction:column;height:300px">
+        <div style="flex:1;overflow-y:auto"><div style="height:230px"></div><button style="height:44px">Save</button></div>
+        <button style="height:44px">Cancel</button>
+      </div>`)
+    expect((await visualIntegrityViolations(page)).filter((violation) => violation.includes('overlaps'))).toEqual([])
+    await page.setContent(`
+      <div style="position:fixed;inset:0">
+        <button style="position:absolute;top:10px;left:10px;width:100px;height:44px">One</button>
+        <button style="position:absolute;top:20px;left:50px;width:100px;height:44px">Two</button>
+      </div>`)
+    expect((await visualIntegrityViolations(page)).filter((violation) => violation.includes('overlaps'))).toHaveLength(1)
+  })
+})

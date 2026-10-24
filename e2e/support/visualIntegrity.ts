@@ -391,10 +391,18 @@ export function auditInPage(options: { focusRings: boolean }): string[] {
   }
 
   const formControls = controls.filter((control) => control.matches(FORM_CONTROL) && Number(getComputedStyle(control).opacity) > 0)
+  // Only the part a scroll container shows can overlap: a button scrolled under a sheet's footer is out of view.
+  function shownPart(control: Element): Box {
+    const rect = control.getBoundingClientRect()
+    const box = scrolledInto(control)
+    return { left: Math.max(rect.left, box.left), top: Math.max(rect.top, box.top), right: Math.min(rect.right, box.right), bottom: Math.min(rect.bottom, box.bottom) }
+  }
   formControls.forEach((first, index) => {
     for (const second of formControls.slice(index + 1)) {
       if (first.contains(second) || second.contains(first) || layerOf(first) !== layerOf(second)) continue
-      if (intersects(first.getBoundingClientRect(), second.getBoundingClientRect())) violations.push(`${describe(first)} overlaps ${describe(second)}`)
+      const [a, b] = [shownPart(first), shownPart(second)]
+      if (a.right <= a.left || a.bottom <= a.top || b.right <= b.left || b.bottom <= b.top) continue
+      if (intersects(a, b)) violations.push(`${describe(first)} overlaps ${describe(second)}`)
     }
   })
 
