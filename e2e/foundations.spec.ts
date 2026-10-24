@@ -170,7 +170,7 @@ test.describe('buttons', () => {
     test.skip(testInfo.project.name !== 'phone')
     await startWith(page)
     await openView(page, 'week')
-    await addFromMenu(page, 'Block')
+    await addFromMenu(page, 'Routine')
     const save = page.getByRole('dialog').getByRole('button', { name: 'Save', exact: true })
     await expect(save).toBeVisible()
     const [saveBox, bodyBox] = await Promise.all([save.boundingBox(), page.locator('.sheet-body').boundingBox()])
@@ -180,10 +180,10 @@ test.describe('buttons', () => {
   test('empty states offer a tinted call to action and no link is underlined', async ({ page }) => {
     await startWith(page, { ...richDocument, blocks: [], tasks: [] })
     await openView(page, 'today')
-    // Today's empty state leads with "Set up my week"; Week's "Add a block" is the tinted secondary call to action.
+    // Today's empty state leads with "Set up my week"; Week's "Add a routine" is the tinted secondary call to action.
     await expect(page.getByRole('button', { name: 'Set up my week · 1 min' })).toBeVisible()
     await openView(page, 'week')
-    const action = page.getByRole('button', { name: 'Add a block' })
+    const action = page.getByRole('button', { name: 'Add a routine' })
     await expect(action).toBeVisible()
     await expect(action).toHaveClass(/ui-button/)
     await expect(action).toHaveClass(/is-tinted/)
@@ -363,7 +363,7 @@ test.describe('accessibility plumbing', () => {
   async function deleteGym(page: Page) {
     await openView(page, 'week')
     await page.locator('[data-date="2026-10-21"] [data-block-id="b-gym"]').first().click()
-    await page.getByRole('dialog').getByRole('button', { name: 'Delete block' }).click()
+    await page.getByRole('dialog').getByRole('button', { name: 'Delete routine' }).click()
     await expect(page.locator('.toast')).toBeVisible()
     // The closing sheet keeps focus trapped until it is gone.
     await expect(page.getByRole('dialog')).toHaveCount(0)
@@ -487,7 +487,7 @@ test.describe('sheets', () => {
     await page.setViewportSize({ width: 390, height: 844 })
     await startWith(page)
     await openView(page, 'week')
-    await addFromMenu(page, 'Block')
+    await addFromMenu(page, 'Routine')
     const dialog = page.getByRole('dialog')
     await expect(dialog).toBeVisible()
     await page.waitForFunction(() => document.getAnimations().every((animation) => animation.playState !== 'running'))
@@ -499,7 +499,7 @@ test.describe('sheets', () => {
   async function openAddBlock(page: Page) {
     await startWith(page)
     await openView(page, 'week')
-    await addFromMenu(page, 'Block')
+    await addFromMenu(page, 'Routine')
     const dialog = page.getByRole('dialog')
     await expect(dialog).toBeVisible()
     await page.waitForFunction(() => document.getAnimations().every((animation) => animation.playState !== 'running'))
@@ -564,15 +564,25 @@ test.describe('sheets', () => {
     expect(await track.evaluate((element) => (element as HTMLElement).style.transform)).toBe(before)
   })
 
-  test('a phone sheet ends with a Cancel within thumb reach', async ({ page }, testInfo) => {
+  test('a phone sheet ends with a Cancel within thumb reach, except the routine and task sheets whose actions already end it', async ({ page }, testInfo) => {
     test.skip(testInfo.project.name !== 'phone')
-    const dialog = await openAddBlock(page)
+    await startWith(page)
+    await openView(page, 'week')
+    await addFromMenu(page, 'Event')
+    const dialog = page.getByRole('dialog')
+    await expect(dialog).toBeVisible()
+    await page.waitForFunction(() => document.getAnimations().every((animation) => animation.playState !== 'running'))
     const cancel = dialog.getByRole('button', { name: 'Cancel', exact: true })
     const [box, panel] = await Promise.all([cancel.boundingBox(), page.locator('.sheet-panel').boundingBox()])
     expect(panel!.y + panel!.height - (box!.y + box!.height)).toBeLessThanOrEqual(16)
     expect(box!.height).toBeGreaterThanOrEqual(44)
     await cancel.click()
     await expect(dialog).toHaveCount(0)
+
+    // The routine sheet ends with Save and a plain text "Delete routine"; no Cancel, the close button remains.
+    const routine = await openAddBlock(page)
+    await expect(routine.getByRole('button', { name: 'Cancel', exact: true })).toHaveCount(0)
+    await expect(routine.getByRole('button', { name: 'Close' })).toBeVisible()
   })
 })
 

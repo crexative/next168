@@ -63,7 +63,7 @@ for (const size of Object.keys(SIZES) as (keyof typeof SIZES)[]) {
 
         await open(page, 'week', 'Semana')
         await expect(prompt).toBeVisible()
-        await expect(page.getByRole('button', { name: 'Añadir un bloque' })).toBeVisible()
+        await expect(page.getByRole('button', { name: 'Añadir una rutina' })).toBeVisible()
         await audit(page, `${size}/${theme}/empty Week`)
 
         await prompt.click()

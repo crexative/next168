@@ -4,7 +4,7 @@ import { V2_KEY, onlyProject, seedKey } from './fixtures'
 import { storedPlanner } from './support/indexedDb'
 import { addFromMenu } from './support/week'
 
-// Week UX slice (#3): tasks drawn in Week, block outcomes, week navigation, "+" with Block / Event,
+// Week UX slice (#3): tasks drawn in Week, block outcomes, week navigation, "+" with Tarea / Evento / Rutina,
 // stable task times and the phone's whole-week overview. Spanish (es-CO), 390x844 and 1440x900, both themes.
 test.use({ locale: 'es-CO' })
 
@@ -98,8 +98,8 @@ for (const theme of THEMES) {
         await expect(chunks.nth(0).locator('.task-box')).toHaveCSS('border-top-style', 'dashed')
         await expect(chunks.nth(0)).toBeVisible()
         await expect(chunks.nth(0).getByText('Informe')).toBeVisible()
-        // The block underneath stays tappable: the chunk does not catch pointer events.
-        await expect(chunks.nth(0)).toHaveCSS('pointer-events', 'none')
+        // A task is something to tap: it opens the task sheet.
+        await expect(chunks.nth(0)).toHaveCSS('pointer-events', 'auto')
 
         // Outcomes recorded from Today: text and an icon, not colour alone.
         if (size === 'phone') await page.locator('.strip-day').first().click()
@@ -108,9 +108,14 @@ for (const theme of THEMES) {
         await expect(done.getByTestId('block-status')).toContainText('Hecho')
         await expect(done.getByTestId('block-status').locator('svg')).toBeVisible()
         await expect(done).toHaveAttribute('aria-label', /, Hecho$/)
+        // One visual, one meaning: done is dimmed (60 %) with its check, never struck through.
+        await expect(done).toHaveCSS('opacity', '0.6')
+        await expect(done.locator('.block-title')).not.toHaveCSS('text-decoration-line', 'line-through')
         if (size === 'phone') await page.locator('.strip-day').nth(1).click()
         const skipped = column(page, '2026-10-20').locator('[data-block-id="b-work"]')
-        await expect(skipped.getByTestId('block-status')).toContainText('Omitido')
+        await expect(skipped.getByTestId('block-status')).toContainText('No')
+        await expect(skipped).toHaveCSS('opacity', '1')
+        await expect(skipped.locator('.block-title')).toHaveCSS('text-decoration-line', 'line-through')
       })
 
       test('week navigation pages with the range label and Today returns to this week', async ({ page }) => {
@@ -119,14 +124,15 @@ for (const theme of THEMES) {
         const today = page.getByTestId('week-today')
         await expect(range).toHaveText(RANGE_THIS_WEEK)
         await expect(range).toHaveAttribute('aria-live', 'polite')
-        await expect(today).toBeDisabled()
+        // "Hoy" is only there when another week is shown.
+        await expect(today).toHaveCount(0)
 
         await page.getByRole('button', { name: 'Semana siguiente' }).click()
         await expect(range).toHaveText(/^26( de)? oct.*1( de)? nov/)
         await expect(column(page, '2026-10-26')).toHaveCount(1)
         await expect(column(page, '2026-10-19')).toHaveCount(0)
         await expect(page.getByTestId('now-line')).toHaveCount(0)
-        await expect(today).toBeEnabled()
+        await expect(today).toBeVisible()
         // Planned blocks repeat in the next week; today's tasks stay out of past days but fill the coming ones.
         await expect(column(page, '2026-10-26').locator('[data-block-id="b-work"]')).toHaveCount(1)
 
@@ -135,32 +141,41 @@ for (const theme of THEMES) {
         await expect(range).toHaveText(/^12\s*(–|-|a)\s*18( de)? oct/)
         await expect(taskChunks(page, '2026-10-14')).toHaveCount(0)
 
+        await expect(today).toBeVisible()
         await today.click()
         await expect(range).toHaveText(RANGE_THIS_WEEK)
-        await expect(today).toBeDisabled()
+        await expect(today).toHaveCount(0)
         await expect(page.getByTestId('now-line')).toHaveCount(1)
         if (size === 'phone') await expect(page.locator('.pager')).toHaveAttribute('data-active-date', WEDNESDAY)
 
-        for (const name of ['Semana anterior', 'Semana siguiente', 'Hoy']) {
+        for (const name of ['Semana anterior', 'Semana siguiente']) {
           const target = await box(page.getByRole('button', { name, exact: true }))
           expect(target.width, name).toBeGreaterThanOrEqual(44)
           expect(target.height, name).toBeGreaterThanOrEqual(44)
         }
+        await page.getByRole('button', { name: 'Semana siguiente' }).click()
+        const away = await box(page.getByRole('button', { name: 'Hoy', exact: true }))
+        expect(away.width).toBeGreaterThanOrEqual(44)
+        expect(away.height).toBeGreaterThanOrEqual(44)
+        // One compact toolbar: the range with the free hours under it, not a card of its own.
         await expect(page.getByTestId('week-free-hours-slot')).toHaveCount(1)
       })
 
-      test('"+" offers Bloque and Evento, and an event created there shows in Week', async ({ page }) => {
+      test('"+" offers Tarea, Evento and Rutina, and an event created there shows in Week', async ({ page }) => {
         await openWeek(page, theme, size)
         const trigger = page.getByTestId('week-add')
         await expect(trigger).toHaveAttribute('aria-haspopup', 'menu')
         await expect(trigger).toHaveAttribute('aria-expanded', 'false')
         await trigger.click()
         await expect(trigger).toHaveAttribute('aria-expanded', 'true')
-        await expect(page.getByRole('menuitem')).toHaveText(['Bloque', 'Evento'])
+        await expect(page.getByRole('menuitem')).toHaveText([/^TareaAlgo por hacer; busca su hueco libre$/, /^EventoUna cita con día y hora$/, /^RutinaSe repite cada semana$/])
+        await expect(page.getByRole('menuitem', { name: 'Rutina', exact: true })).toHaveAccessibleDescription('Se repite cada semana')
         // Keyboard: the first entry has focus; Escape closes and gives focus back.
-        await expect(page.getByRole('menuitem', { name: 'Bloque' })).toBeFocused()
+        await expect(page.getByRole('menuitem', { name: 'Tarea', exact: true })).toBeFocused()
         await page.keyboard.press('ArrowDown')
-        await expect(page.getByRole('menuitem', { name: 'Evento' })).toBeFocused()
+        await expect(page.getByRole('menuitem', { name: 'Evento', exact: true })).toBeFocused()
+        await page.keyboard.press('ArrowUp')
+        await expect(page.getByRole('menuitem', { name: 'Tarea', exact: true })).toBeFocused()
         await page.keyboard.press('Escape')
         await expect(page.getByRole('menu')).toHaveCount(0)
         await expect(trigger).toBeFocused()
@@ -169,7 +184,8 @@ for (const theme of THEMES) {
         const dialog = page.getByRole('dialog', { name: 'Nuevo evento' })
         await expect(dialog).toBeVisible()
         await dialog.getByLabel('Título').fill('Reunión con Ana')
-        await dialog.getByLabel('Hora').fill('15:00')
+        await dialog.getByLabel('De', { exact: true }).fill('15:00')
+        await expect(dialog.getByLabel('A', { exact: true })).toHaveValue('16:00')
         await dialog.getByRole('button', { name: 'Guardar evento' }).click()
         await expect(dialog).toBeHidden()
         await expect.poll(async () => (await storedPlanner<{ events: { title: string }[] }>(page)).events.map((event) => event.title)).toEqual(['Reunión con Ana'])
@@ -182,20 +198,22 @@ for (const theme of THEMES) {
         expect(eventBox.y - bounds.y).toBeCloseTo(15 * 48, 0)
       })
 
-      test('a block can still be added from "+" and the menu closes on outside press', async ({ page }) => {
+      test('a routine can still be added from "+" and the menu closes on outside press', async ({ page }) => {
         await openWeek(page, theme, size)
         await page.getByTestId('week-add').click()
         await expect(page.getByRole('menu')).toBeVisible()
         await page.getByRole('heading', { level: 1 }).click({ force: true })
         await expect(page.getByRole('menu')).toHaveCount(0)
-        await addFromMenu(page, 'Bloque')
-        await expect(page.getByRole('dialog', { name: 'Nuevo bloque' })).toBeVisible()
+        await addFromMenu(page, 'Rutina')
+        await expect(page.getByRole('dialog', { name: 'Nueva rutina' })).toBeVisible()
       })
 
       test('axe finds no serious or critical issues with tasks, the menu and the sheet', async ({ page }) => {
         await openWeek(page, theme, size)
         await page.getByTestId('week-add').click()
         await expect(page.getByRole('menu')).toBeVisible()
+        // The menu fades in: axe must not sample it halfway (contrast is judged on the blended colours).
+        await expect(page.getByRole('menu')).toHaveCSS('opacity', '1')
         await page.waitForFunction(() => document.getAnimations().every((animation) => animation.playState !== 'running'))
         const results = await new AxeBuilder({ page: page as unknown as ConstructorParameters<typeof AxeBuilder>[0]['page'] }).analyze()
         expect(results.violations.filter((item) => item.impact === 'serious' || item.impact === 'critical').map((item) => `${item.id}: ${item.nodes[0]?.html}`)).toEqual([])
@@ -220,13 +238,18 @@ for (const theme of THEMES) {
       expect(target.height).toBeGreaterThanOrEqual(44)
     })
 
-    test('the Día / Semana toggle shows the whole week at a glance and a day opens from it', async ({ page }) => {
+    test('one toolbar button shows the whole week at a glance and a day opens from it', async ({ page }) => {
       await openWeek(page, theme, 'phone')
-      const toggle = page.getByRole('radiogroup', { name: 'Vista' })
-      await expect(toggle.getByRole('radio', { name: 'Día' })).toHaveAttribute('aria-checked', 'true')
+      const toggle = page.getByTestId('week-view-toggle')
+      await expect(page.getByRole('radiogroup', { name: 'Vista' })).toHaveCount(0)
+      await expect(toggle).toHaveAccessibleName('Ver toda la semana')
       await expect(page.getByTestId('week-overview')).toHaveCount(0)
+      const toggleBox = await box(toggle)
+      expect(toggleBox.width).toBeGreaterThanOrEqual(44)
+      expect(toggleBox.height).toBeGreaterThanOrEqual(44)
 
-      await toggle.getByRole('radio', { name: 'Semana' }).click()
+      await toggle.click()
+      await expect(toggle).toHaveAccessibleName('Ver un día')
       const overview = page.getByTestId('week-overview')
       await expect(overview).toBeVisible()
       await expect(overview.locator('.day-column')).toHaveCount(7)
@@ -256,7 +279,7 @@ for (const theme of THEMES) {
       await overview.getByRole('button', { name: 'Abrir jueves, 22 de octubre' }).click()
       await expect(page.locator('.pager')).toHaveAttribute('data-active-date', '2026-10-22')
       await expect(page.getByTestId('week-overview')).toHaveCount(0)
-      await expect(toggle.getByRole('radio', { name: 'Día' })).toHaveAttribute('aria-checked', 'true')
+      await expect(toggle).toHaveAccessibleName('Ver toda la semana')
     })
   })
 }
@@ -268,7 +291,7 @@ test.describe('week on desktop', () => {
     await openWeek(page, 'light', 'desktop')
     await expect(page.locator('#toolbar-actions').getByTestId('week-add')).toHaveCount(1)
     await expect(page.locator('.fab-anchor')).toHaveCount(0)
-    await expect(page.getByRole('radiogroup', { name: 'Vista' })).toHaveCount(0)
+    await expect(page.getByTestId('week-view-toggle')).toHaveCount(0)
   })
 })
 
@@ -315,5 +338,143 @@ test.describe('stable task times', () => {
     expect(await startMinuteOf(taskChunks(page, WEDNESDAY))).toBe(555)
     await expect(taskChunks(page, '2026-10-22')).toHaveCount(0)
     await expect(page.getByText('«Informe» pasó a mañana')).toHaveCount(0)
+  })
+})
+
+// Tasks that find a free slot, the task sheet and the craft fixes of the Tareas / Semana simplification.
+test.describe('tasks in Week', () => {
+  test.beforeEach(onlyProject('desktop'))
+
+  test('a task with no category sits in time no routine covers, and a tap opens its sheet to edit, delete and undo', async ({ page }) => {
+    const document = plannerDocument({
+      tasks: [{ id: 't-gift', title: 'Comprar regalo para mamá', durationMin: 60, priority: 2, createdAt: '2026-10-20T08:00:00.000Z' }],
+      actuals: [],
+    })
+    await openWeek(page, 'light', 'desktop', document)
+    const chunk = taskChunks(page).first()
+    await expect(chunk).toHaveAttribute('aria-label', /^Tarea: Comprar regalo para mamá, /)
+    // Trabajo profundo covers 09:00-13:00 on Wednesday: the gift goes after it, not inside work hours.
+    expect(await startMinuteOf(chunk)).toBe(780)
+
+    await chunk.click()
+    const sheet = page.getByRole('dialog', { name: 'Editar tarea' })
+    await expect(sheet).toBeVisible()
+    await expect(sheet.getByLabel('Tarea', { exact: true })).toHaveValue('Comprar regalo para mamá')
+    await sheet.getByLabel('Tarea', { exact: true }).fill('Comprar regalo de cumpleaños')
+    await sheet.getByRole('button', { name: 'Guardar', exact: true }).click()
+    await expect(sheet).toBeHidden()
+    await expect(taskChunks(page).first()).toHaveAttribute('aria-label', /^Tarea: Comprar regalo de cumpleaños, /)
+
+    await taskChunks(page).first().click()
+    await page.getByRole('dialog', { name: 'Editar tarea' }).getByRole('button', { name: 'Eliminar tarea' }).click()
+    await expect(taskChunks(page)).toHaveCount(0)
+    await expect.poll(async () => (await storedPlanner<{ tasks: unknown[] }>(page)).tasks).toHaveLength(0)
+    await page.getByRole('button', { name: 'Deshacer' }).click()
+    await expect(taskChunks(page)).toHaveCount(1)
+  })
+
+  test('a "+ Tarea" is added without choosing anything and lands in a free slot', async ({ page }) => {
+    await openWeek(page, 'light', 'desktop', plannerDocument({ tasks: [], actuals: [] }))
+    await addFromMenu(page, 'Tarea')
+    const sheet = page.getByRole('dialog', { name: 'Nueva tarea' })
+    await sheet.getByLabel('Tarea', { exact: true }).fill('Llamar al banco')
+    await sheet.getByRole('radio', { name: '30 min' }).click()
+    await sheet.getByRole('button', { name: 'Añadir tarea' }).click()
+    await expect(sheet).toBeHidden()
+    await expect.poll(async () => (await storedPlanner<{ tasks: { title: string; categoryId?: string; durationMin: number }[] }>(page)).tasks).toMatchObject([{ title: 'Llamar al banco', durationMin: 30 }])
+    expect((await storedPlanner<{ tasks: object[] }>(page)).tasks[0]).not.toHaveProperty('categoryId')
+    expect(await startMinuteOf(taskChunks(page).first())).toBe(780)
+  })
+
+  test('a 30-minute block opens from just outside it: its target is 44 px', async ({ page }) => {
+    const document = plannerDocument({
+      blocks: [{ id: 'b-walk', categoryId: 'c-exercise', title: 'Caminata', days: [3], start: 720, end: 750 }],
+      tasks: [], actuals: [],
+    })
+    await openWeek(page, 'light', 'desktop', document)
+    const walk = column(page, WEDNESDAY).locator('[data-block-id="b-walk"]')
+    const drawn = await box(walk)
+    expect(drawn.height).toBeLessThan(44)
+    const x = drawn.x + drawn.width / 2
+    // 9 px under the block, in the empty part of the column.
+    await page.mouse.click(x, drawn.y + drawn.height + 9)
+    await expect(page.getByRole('dialog', { name: 'Editar rutina' })).toBeVisible()
+    await page.keyboard.press('Escape')
+    await expect(page.getByRole('dialog')).toHaveCount(0)
+    // Farther away, an empty slot still starts a new routine.
+    await page.mouse.click(x, drawn.y + drawn.height + 16)
+    await expect(page.getByRole('dialog', { name: 'Nueva rutina' })).toBeVisible()
+  })
+
+  test('the sticky day header is a thick material that hides what scrolls under it, and labels are drawn above the now-line', async ({ page }) => {
+    await openWeek(page, 'light', 'desktop')
+    const header = await page.locator('.grid-header').evaluate((element) => getComputedStyle(element).backgroundColor)
+    const alpha = /rgba\(.*,\s*([\d.]+)\)$/.exec(header)?.[1]
+    expect(alpha === undefined || Number(alpha) >= 0.95, header).toBe(true)
+    const layers = await page.evaluate(() => ({
+      line: getComputedStyle(document.querySelector('[data-testid="now-line"]')!).zIndex,
+      title: getComputedStyle(document.querySelector('.block-title')!).zIndex,
+      task: getComputedStyle(document.querySelector('.task-title')!).zIndex,
+    }))
+    expect(Number(layers.title)).toBeGreaterThan(Number(layers.line))
+    expect(Number(layers.task)).toBeGreaterThan(Number(layers.line))
+  })
+
+  test('a block beside an event in a narrow column keeps its title on one line, never broken in the middle of a word', async ({ page }) => {
+    const document = plannerDocument({
+      events: [{ id: 'e-1', title: 'Reunión', start: '2026-10-21T09:00:00.000Z', end: '2026-10-21T10:00:00.000Z', allDay: false, attendees: [] }],
+      actuals: [],
+    })
+    await openWeek(page, 'light', 'desktop', document)
+    // Seven columns of about 146 px: narrower than 9.5 rem, where the title strip beside an event applies.
+    await page.setViewportSize({ width: 1100, height: 900 })
+    const work = column(page, WEDNESDAY).locator('[data-block-id="b-work"]')
+    await expect(work).toHaveClass(/is-beside/)
+    const title = work.locator('.block-title')
+    await expect(title).toHaveCSS('word-break', 'normal')
+    await expect(title).toHaveCSS('white-space', 'nowrap')
+    const lines = await title.evaluate((element) => element.getBoundingClientRect().height / parseFloat(getComputedStyle(element).lineHeight))
+    expect(lines).toBeLessThan(1.5)
+  })
+
+  test('a block whose first half hour holds a task shows only its title, not its time range', async ({ page }) => {
+    // Now is 08:07, so the first task starts with the 09:00 block.
+    await openWeek(page, 'light', 'desktop', plannerDocument({ actuals: [] }), new Date('2026-10-21T08:07:00.000Z'))
+    const work = column(page, WEDNESDAY).locator('[data-block-id="b-work"]')
+    await expect(work).toHaveClass(/is-crowded/)
+    await expect(work.locator('.block-time')).toBeHidden()
+    await expect(work.locator('.block-title')).toBeVisible()
+  })
+})
+
+test.describe('a block keeps its time when its first task starts later', () => {
+  test.beforeEach(onlyProject('desktop'))
+
+  test('the first task starts 75 minutes into the block, so the time range stays', async ({ page }) => {
+    await openWeek(page, 'light', 'desktop', plannerDocument({ actuals: [] }))
+    const work = column(page, WEDNESDAY).locator('[data-block-id="b-work"]')
+    await expect(work).not.toHaveClass(/is-crowded/)
+    await expect(work.locator('.block-time')).toBeVisible()
+  })
+})
+
+test.describe('week overview', () => {
+  test.beforeEach(onlyProject('phone'))
+
+  test('the hour labels are compact and a short block keeps a drawn height', async ({ page }) => {
+    const document = plannerDocument({
+      blocks: [
+        { id: 'b-work', categoryId: 'c-work', title: 'Trabajo profundo', days: [1, 2, 3, 4, 5], start: 540, end: 780 },
+        { id: 'b-commute', categoryId: 'c-exercise', title: 'Trayecto', days: [3], start: 480, end: 495 },
+      ],
+      tasks: [], actuals: [],
+    })
+    await openWeek(page, 'light', 'phone', document)
+    await page.getByTestId('week-view-toggle').click()
+    const overview = page.getByTestId('week-overview')
+    const labels = await overview.locator('.time-axis .hour-label').allTextContents()
+    expect(labels.filter(Boolean)).toEqual(['6a', '12p', '6p'])
+    const commute = await box(overview.locator('[data-block-id="b-commute"]'))
+    expect(commute.height).toBeGreaterThanOrEqual(8)
   })
 })

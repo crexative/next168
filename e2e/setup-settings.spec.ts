@@ -137,7 +137,7 @@ for (const size of SIZES) {
       expect(stored.categories).toEqual([])
     })
 
-    test(`tasks: one field first, details after typing, last category remembered (${label})`, async ({ page }) => {
+    test(`tasks: one field first, length chips after typing, "when" one level deeper, last choice remembered (${label})`, async ({ page }) => {
       await start(page, size, theme, planned())
       await page.goto('./#/tasks')
       await expect(page.getByRole('heading', { level: 1, name: 'Tareas' })).toBeVisible()
@@ -149,18 +149,28 @@ for (const size of SIZES) {
       await field.fill('Leer un capítulo')
       const details = page.getByTestId('task-details')
       await expect(details).toBeVisible()
-      await expect(details.getByLabel('Duración')).toBeVisible()
-      await expect(details.getByLabel('Categoría')).toHaveValue('c-work')
-      await expect(details.getByLabel('Fecha límite (opcional)')).toBeVisible()
+      await expect(details.getByRole('radiogroup', { name: 'Duración' }).getByRole('radio')).toHaveText(['15 min', '30 min', '1 h', '2 h'])
+      await expect(details.getByRole('radio', { name: '1 h' })).toHaveAttribute('aria-checked', 'true')
+      // "¿Cuándo?", the deadline and the priority are one level deeper; by default a task fits any free slot.
+      await expect(details.getByLabel('¿Cuándo?')).toBeHidden()
       await calm(page)
       expect(await visualIntegrityViolations(page)).toEqual([])
-      await details.getByLabel('Categoría').selectOption('c-study')
+      await details.getByRole('button', { name: 'Más opciones' }).click()
+      await expect(details.getByLabel('¿Cuándo?')).toHaveValue('')
+      await expect(details.getByLabel('¿Cuándo?').locator('option')).toHaveText(['En cualquier hueco libre', 'Durante Trabajo', 'Durante Estudio'])
+      await expect(details.getByLabel('Fecha límite')).toBeVisible()
+      await expect(details.getByRole('radiogroup', { name: 'Prioridad' })).toBeVisible()
+      await calm(page)
+      expect(await visualIntegrityViolations(page)).toEqual([])
+      await details.getByLabel('¿Cuándo?').selectOption('c-study')
       await page.getByRole('button', { name: 'Añadir tarea', exact: true }).click()
       await expect(field).toHaveValue('')
       await expect(page.getByTestId('task-details')).toHaveCount(0)
       await page.reload()
       await page.getByPlaceholder('Añadir tarea…').fill('Otra más')
-      await expect(page.getByTestId('task-details').getByLabel('Categoría')).toHaveValue('c-study')
+      // The remembered choice shows: "More options" opens by itself when something beyond the defaults is set.
+      await expect(page.getByTestId('task-details').getByLabel('¿Cuándo?')).toHaveValue('c-study')
+      await expect(page.getByTestId('task-details').getByLabel('¿Cuándo?')).toBeVisible()
     })
 
     test(`settings: Categorías and Datos on top, everything else one level down (${label})`, async ({ page }) => {

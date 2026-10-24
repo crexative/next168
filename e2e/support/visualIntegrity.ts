@@ -399,10 +399,20 @@ export function auditInPage(options: { focusRings: boolean }): string[] {
     return box.left < box.right && box.top < box.bottom ? box : null
   }
 
+  // A control marked `data-layered` is drawn on top of another one on purpose (a task inside the routine block it was
+  // fitted into). That is layering only while it lies wholly inside the other; sticking out of it is a collision.
+  function layeredInside(inner: Element, outer: Element): boolean {
+    if (!inner.hasAttribute('data-layered')) return false
+    const a = inner.getBoundingClientRect()
+    const b = outer.getBoundingClientRect()
+    return a.left >= b.left - TOLERANCE && a.right <= b.right + TOLERANCE && a.top >= b.top - TOLERANCE && a.bottom <= b.bottom + TOLERANCE
+  }
+
   const formControls = controls.filter((control) => control.matches(FORM_CONTROL) && Number(getComputedStyle(control).opacity) > 0)
   formControls.forEach((first, index) => {
     for (const second of formControls.slice(index + 1)) {
       if (first.contains(second) || second.contains(first) || layerOf(first) !== layerOf(second)) continue
+      if (layeredInside(first, second) || layeredInside(second, first)) continue
       const firstShown = shownRect(first)
       const secondShown = shownRect(second)
       if (firstShown && secondShown && intersects(firstShown, secondShown)) violations.push(`${describe(first)} overlaps ${describe(second)}`)

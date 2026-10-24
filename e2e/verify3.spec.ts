@@ -82,14 +82,17 @@ test.describe('Week at tablet widths', () => {
         await event.scrollIntoViewIfNeeded()
         await expect(event).toHaveCount(1)
 
-        // The inset band leaves a leading block strip; both titles keep at least six painted characters.
+        // The inset band leaves a leading block strip. The event title keeps at least six painted characters; the
+        // block title is never broken in the middle of a word, so in a strip about 25 px wide it keeps its first
+        // letters and an ellipsis (the full title is the block's accessible name and is in its editor).
         const columnBox = (await column.boundingBox())!
         const eventBox = (await event.boundingBox())!
         expect(eventBox.x).toBeGreaterThan(columnBox.x)
         expect(eventBox.width, `${title} width`).toBeGreaterThan(columnBox.width / 2)
         expect(await visibleCharacters(event.locator('.busy-title')), `${title} visible characters`).toBeGreaterThanOrEqual(6)
         const block = column.locator('.block')
-        expect(await visibleCharacters(block.locator('.block-title')), 'block title visible characters').toBeGreaterThanOrEqual(6)
+        expect(await visibleCharacters(block.locator('.block-title')), 'block title visible characters').toBeGreaterThanOrEqual(2)
+        await expect(block.locator('.block-title')).toHaveCSS('white-space', 'nowrap')
         expect((await block.boundingBox())!.width).toBeGreaterThan(columnBox.width - 8)
         await expect(event.getByTestId('calendar-conflict')).toBeVisible()
 
@@ -142,15 +145,15 @@ test.describe('Week at tablet widths', () => {
         const stripWidth = bandBox.x - blockBox.x
         expect(stripWidth).toBeGreaterThan(0)
         expect(bandBox.x + bandBox.width).toBeLessThanOrEqual(blockBox.x + blockBox.width + 0.5)
-        expect(await visibleCharacters(block.locator('.block-title'))).toBeGreaterThanOrEqual(6)
+        expect(await visibleCharacters(block.locator('.block-title'))).toBeGreaterThanOrEqual(2)
         expect(await visibleCharacters(band.locator('.busy-title'))).toBeGreaterThanOrEqual(6)
 
         const point = { x: blockBox.x + stripWidth / 2, y: blockBox.y + blockBox.height / 2 }
         expect(await page.evaluate(({ x, y }) => document.elementFromPoint(x, y)?.closest('[data-block-id]')?.getAttribute('data-block-id'), point)).toBe('b-work')
         await page.touchscreen.tap(point.x, point.y)
-        const editor = page.getByRole('dialog', { name: 'Edit block', exact: true })
+        const editor = page.getByRole('dialog', { name: 'Edit routine', exact: true })
         await expect(editor).toBeVisible()
-        await expect(editor.getByLabel('Title', { exact: true })).toHaveValue('Deep work')
+        await expect(editor.getByLabel('Name', { exact: true })).toHaveValue('Deep work')
         await expect(editor.getByLabel('Starts', { exact: true })).toHaveValue('09:00')
         await expect(editor.getByLabel('Ends', { exact: true })).toHaveValue('10:00')
         await editor.getByRole('button', { name: 'Close', exact: true }).click()
@@ -165,7 +168,7 @@ test.describe('Week at tablet widths', () => {
         await conflict.tap()
         await expect(details).toHaveCount(0)
         await expect(editor).toBeVisible()
-        await expect(editor.getByLabel('Title', { exact: true })).toHaveValue('Deep work')
+        await expect(editor.getByLabel('Name', { exact: true })).toHaveValue('Deep work')
         await expect(editor.getByLabel('Starts', { exact: true })).toHaveValue('09:00')
         await expect(editor.getByLabel('Ends', { exact: true })).toHaveValue('10:00')
       })
@@ -173,13 +176,14 @@ test.describe('Week at tablet widths', () => {
   }
 })
 
-test('the New block sheet from Week "+" preselects the first category that is not Sleep', async ({ page }) => {
+test('the New routine sheet from Week "+" preselects the first category that is not Sleep', async ({ page }) => {
   await seed(page)
   await openTab(page, 'week')
-  await addFromMenu(page, 'Block')
-  const dialog = page.getByRole('dialog', { name: 'New block' })
+  await addFromMenu(page, 'Routine')
+  const dialog = page.getByRole('dialog', { name: 'New routine' })
   await expect(dialog).toBeVisible()
-  await expect(dialog.getByLabel('Category')).toHaveValue('c-work')
+  await expect(dialog.getByRole('radio', { name: 'Work' })).toHaveAttribute('aria-checked', 'true')
+  await expect(dialog.getByRole('radio', { name: 'Sleep' })).toHaveAttribute('aria-checked', 'false')
 })
 
 test.describe('update notice on a phone', () => {

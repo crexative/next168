@@ -16,18 +16,18 @@ const THEMES = ['light', 'dark'] as const
 const LANGUAGE_KEY = 'next168-language'
 const NARROW_WIDTHS = [320, 375] as const
 const EVENT_COPY = {
-  en: { button: 'New event', hint: 'Separate email addresses with commas' },
-  es: { button: 'Nuevo evento', hint: 'Separa los correos con comas' },
-  fr: { button: 'Nouvel événement', hint: 'Séparez les adresses par des virgules' },
-  pt: { button: 'Novo evento', hint: 'Separe os endereços por vírgulas' },
-  de: { button: 'Neuer Termin', hint: 'E-Mail-Adressen durch Kommas trennen' },
+  en: { button: 'New event', more: 'More' },
+  es: { button: 'Nuevo evento', more: 'Más' },
+  fr: { button: 'Nouvel événement', more: 'Plus' },
+  pt: { button: 'Novo evento', more: 'Mais' },
+  de: { button: 'Neuer Termin', more: 'Mehr' },
 } as const
 const LOCALES = Object.keys(EVENT_COPY) as (keyof typeof EVENT_COPY)[]
 
 async function widenInputFonts(page: Page): Promise<void> {
   // Exercise the Linux CI failure on every OS, including systems with narrower default fonts.
   await page.addStyleTag({ content: `
-    .onboarding input.name, .onboarding .chip-name, .onboarding .goal-chip, .event-form input[inputmode="email"] {
+    .onboarding input.name, .onboarding .chip-name, .onboarding .goal-chip, .event-form input:not([type="checkbox"]), .event-form textarea, .task-form input, .task-form select {
       font-family: Verdana, "DejaVu Sans", sans-serif !important;
       font-size: 1.16875rem !important; /* 110% of the shared 17 px input font. */
     }
@@ -147,20 +147,44 @@ for (const theme of THEMES) {
           await audit(page, `${theme}/${locale}/${width}/wider fonts/onboarding step 2 with the goal editor open`)
         })
 
-        test(`wider fonts: new event attendees (${locale}, ${width}px)`, async ({ page }, testInfo) => {
+        test(`wider fonts: new event (${locale}, ${width}px)`, async ({ page }, testInfo) => {
           test.skip(testInfo.project.name !== 'phone', 'the narrow-width regression runs in the phone project')
           await page.setViewportSize({ width, height: 812 })
           await start(page, theme, { ...plannedDocument, settings: { ...plannedDocument.settings, locale } }, locale)
           await open(page, 'settings/advanced')
           await page.getByRole('button', { name: EVENT_COPY[locale].button, exact: true }).click()
-          const attendees = page.getByRole('dialog').locator('input[inputmode="email"]')
-          await expect(attendees).toBeVisible()
-          await expect(attendees).toHaveValue('')
+          const times = page.getByRole('dialog').locator('input[type="time"]')
+          await expect(times).toHaveCount(2)
           await widenInputFonts(page)
-          await attendees.scrollIntoViewIfNeeded()
           await auditSheet(page, `${theme}/${locale}/${width}/wider fonts/new event`)
-          await expect(attendees).toHaveAccessibleDescription(EVENT_COPY[locale].hint)
-          await expect(page.getByText(EVENT_COPY[locale].hint, { exact: true })).toBeVisible()
+          // No attendees, no time zone: location and notes are one level deeper.
+          await expect(page.getByRole('dialog').locator('input[inputmode="email"]')).toHaveCount(0)
+          await page.getByRole('dialog').getByRole('button', { name: EVENT_COPY[locale].more, exact: true }).click()
+          await page.getByRole('dialog').locator('textarea').scrollIntoViewIfNeeded()
+          await auditSheet(page, `${theme}/${locale}/${width}/wider fonts/new event with location and notes`)
+        })
+
+        test(`wider fonts: new task and routine sheets (${locale}, ${width}px)`, async ({ page }, testInfo) => {
+          test.skip(testInfo.project.name !== 'phone', 'the narrow-width regression runs in the phone project')
+          await page.setViewportSize({ width, height: 812 })
+          await start(page, theme, { ...plannedDocument, settings: { ...plannedDocument.settings, locale } }, locale)
+          await open(page, 'week')
+          await page.getByTestId('week-add').click()
+          await page.getByTestId('add-task').click()
+          const sheet = page.getByRole('dialog')
+          await expect(sheet.getByTestId('task-title')).toBeVisible()
+          await widenInputFonts(page)
+          await auditSheet(page, `${theme}/${locale}/${width}/wider fonts/new task`)
+          await sheet.getByTestId('task-more').click()
+          await expect(sheet.getByTestId('task-when')).toBeVisible()
+          await auditSheet(page, `${theme}/${locale}/${width}/wider fonts/new task with more options`)
+          await page.keyboard.press('Escape')
+          await expect(page.getByRole('dialog')).toHaveCount(0)
+          await page.getByTestId('week-add').click()
+          await page.getByTestId('add-block').click()
+          await expect(page.getByRole('dialog').getByRole('radio').first()).toBeVisible()
+          await widenInputFonts(page)
+          await auditSheet(page, `${theme}/${locale}/${width}/wider fonts/new routine`)
         })
       }
     }
@@ -216,25 +240,35 @@ for (const theme of THEMES) {
       await auditSheet(page, `${theme}/onboarding confirmation`)
     })
 
-    test('tasks quick add with its details, and the assistant page', async ({ page }) => {
+    test('tasks quick add with its details, the task sheet, and the assistant page', async ({ page }) => {
       await start(page, theme, plannedDocument)
       await open(page, 'tasks')
+      await audit(page, `${theme}/tasks list`)
       await page.getByPlaceholder('Add task…').fill('Reply to the long email thread')
       await expect(page.getByTestId('task-details')).toBeVisible()
       await audit(page, `${theme}/tasks quick add with details`)
+      await page.getByTestId('task-more').click()
+      await expect(page.getByTestId('task-when')).toBeVisible()
+      await audit(page, `${theme}/tasks quick add with more options`)
+      await page.getByPlaceholder('Add task…').fill('')
+      await page.getByTestId('placed-task').first().locator('.task-text').click()
+      await auditSheet(page, `${theme}/task sheet`)
+      await page.keyboard.press('Escape')
+      await expect(page.getByRole('dialog')).toHaveCount(0)
       await open(page, 'assistant')
       await audit(page, `${theme}/assistant with suggestions`)
     })
 
-    test('week block editor and the day sheets', async ({ page }) => {
+    test('week routine editor and the day sheets', async ({ page }) => {
       await start(page, theme, plannedDocument)
       await open(page, 'week')
-      await addFromMenu(page, 'Block')
-      await auditSheet(page, `${theme}/new block`)
+      await addFromMenu(page, 'Routine')
+      await auditSheet(page, `${theme}/new routine`)
       await page.keyboard.press('Escape')
       await expect(page.getByRole('dialog')).toHaveCount(0)
-      await page.locator('[data-date="2026-10-21"] [data-block-id="b-gym"]').first().click()
-      await auditSheet(page, `${theme}/edit block`)
+      // The long run fills the gym block below its title row: a tap on the title opens the routine, a tap on the task its sheet.
+      await page.locator('[data-date="2026-10-21"] [data-block-id="b-gym"]').first().click({ position: { x: 12, y: 6 } })
+      await auditSheet(page, `${theme}/edit routine`)
     })
 
     test('week in Spanish: tasks, week navigation, the add menu, the event sheet and the phone overview', async ({ page }, testInfo) => {
@@ -252,8 +286,17 @@ for (const theme of THEMES) {
       await auditSheet(page, `${theme}/es/new event from +`)
       await page.keyboard.press('Escape')
       await expect(page.getByRole('dialog')).toHaveCount(0)
+      await page.getByTestId('week-add').click()
+      await page.getByRole('menuitem', { name: 'Tarea', exact: true }).click()
+      await auditSheet(page, `${theme}/es/new task from +`)
+      await page.keyboard.press('Escape')
+      await expect(page.getByRole('dialog')).toHaveCount(0)
+      await page.getByTestId('week-task').first().click()
+      await auditSheet(page, `${theme}/es/edit task from the grid`)
+      await page.keyboard.press('Escape')
+      await expect(page.getByRole('dialog')).toHaveCount(0)
       if (testInfo.project.name === 'phone') {
-        await page.getByRole('radio', { name: 'Semana', exact: true }).click()
+        await page.getByTestId('week-view-toggle').click()
         await expect(page.getByTestId('week-overview')).toBeVisible()
         await audit(page, `${theme}/es/week overview`)
       }
@@ -440,4 +483,24 @@ test.describe('visual integrity guard: overlapping controls', () => {
       '<input> "Name" overlaps <input> "Name"',
     ])
   })
+
+  test('a layered control wholly inside another is layering, one that sticks out of it is reported', async ({ page }, testInfo) => {
+    phoneOnly(testInfo)
+    const layered = (style: string) => `
+      <style>body { margin: 0; } .host { position: absolute; left: 10px; top: 10px; width: 200px; height: 100px; } .task { position: absolute; z-index: 1; ${style} }</style>
+      <button class="host">Deep work</button><button class="task" data-layered>Report</button>`
+    await page.setContent(layered('left: 20px; top: 30px; width: 100px; height: 44px;'))
+    expect(await visualIntegrityViolations(page, { focusRings: false })).toEqual([])
+    await page.setContent(layered('left: 150px; top: 30px; width: 100px; height: 44px;'))
+    expect(await visualIntegrityViolations(page, { focusRings: false })).toEqual(['<button.host> "Deep work" overlaps <button.task> "Report"'])
+  })
+
+  test('a control that is not marked as layered is reported even when it lies inside another', async ({ page }, testInfo) => {
+    phoneOnly(testInfo)
+    await page.setContent(`
+      <style>body { margin: 0; } .host { position: absolute; left: 10px; top: 10px; width: 200px; height: 100px; } .task { position: absolute; left: 20px; top: 30px; width: 100px; height: 44px; }</style>
+      <button class="host">Deep work</button><button class="task">Report</button>`)
+    expect(await visualIntegrityViolations(page, { focusRings: false })).toEqual(['<button.host> "Deep work" overlaps <button.task> "Report"'])
+  })
 })
+

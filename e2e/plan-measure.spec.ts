@@ -103,8 +103,9 @@ test.describe('plan and measure', () => {
     await openTab(page, 'tasks')
 
     await page.getByLabel('Task', { exact: true }).fill('Write report')
-    await page.getByLabel('Duration').selectOption('120')
-    await page.getByLabel('Category').selectOption('c-study')
+    await page.getByRole('radio', { name: '2 h' }).click()
+    await page.getByRole('button', { name: 'More options' }).click()
+    await page.getByLabel('When?').selectOption('c-study')
     await page.getByRole('button', { name: 'Add task' }).click()
 
     const warning = page.getByTestId('overflow-text')

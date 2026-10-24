@@ -60,7 +60,7 @@ for (const base of BASES) {
       await context.setOffline(true)
       await page.reload()
       await expect(page.getByTestId('block-count')).toHaveAttribute('data-count', String(LEGACY_BLOCK_COUNT))
-      await expect(page.getByTestId('block-count')).toHaveText('3 time blocks saved on this device')
+      await expect(page.getByTestId('block-count')).toHaveText('3 routines saved on this device')
       await context.setOffline(false)
     })
 
