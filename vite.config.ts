@@ -34,16 +34,24 @@ export default defineConfig({
       },
       workbox: {
         globPatterns: ['**/*.{js,css,html,svg,png,ico,webmanifest}'],
+        globIgnores: ['**/webllm*.js'],
         maximumFileSizeToCacheInBytes: MAX_PRECACHE_BYTES,
         navigateFallback: 'index.html',
         navigateFallbackDenylist: [/\/api\//],
         clientsClaim: true,
         runtimeCaching: [
           { urlPattern: ({ url }) => url.pathname.includes('/api/'), handler: 'NetworkOnly' },
+          // The optional on-device assistant is about 12 MB of code: cached on first use, never precached.
+          { urlPattern: ({ url }) => /\/assets\/webllm[^/]*\.js$/.test(url.pathname), handler: 'CacheFirst', options: { cacheName: 'next168-assistant-code' } },
         ],
       },
     }),
   ],
+  build: {
+    rollupOptions: {
+      output: { manualChunks: (id) => (id.includes('/node_modules/@mlc-ai/web-llm/') ? 'webllm' : undefined) },
+    },
+  },
   resolve: {
     alias: {
       '@': fileURLToPath(new URL('./src', import.meta.url)),

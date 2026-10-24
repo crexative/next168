@@ -1,0 +1,94 @@
+{
+  "title": "Asistente",
+  "privacy": "Funciona en este dispositivo. Tus planes nunca salen de él; el asistente solo los lee para responderte.",
+  "providers": {
+    "rules": "Respuestas rápidas",
+    "webllm": "Modelo en el dispositivo"
+  },
+  "status": {
+    "header": "Estado del asistente",
+    "rulesDetail": "Responde con tus horas planificadas. Funciona en todas partes, sin descargas.",
+    "available": "Listo",
+    "downloadable": "Requiere descarga",
+    "unavailable": "No disponible",
+    "checking": "Comprobando…",
+    "webllmDetail": {
+      "available": "Listo para usar, también sin conexión.",
+      "downloadable": "Ejecuta un modelo de lenguaje pequeño en este dispositivo. Requiere una descarga única.",
+      "unavailable": "Este dispositivo o navegador no puede ejecutar el modelo (necesita WebGPU). Las respuestas rápidas siguen funcionando.",
+      "checking": "Comprobando este dispositivo…"
+    }
+  },
+  "optIn": {
+    "title": "Activa el modelo en el dispositivo",
+    "body": "Un modelo de lenguaje se ejecuta en este dispositivo, así que tus planes nunca salen de él. Requiere una descarga única de {size}. Puedes borrarlo cuando quieras en Ajustes.",
+    "wifi": "Usa Wi-Fi si puedes: la descarga es grande.",
+    "cellular": "Parece que usas datos móviles y la descarga es grande. Se recomienda Wi-Fi.",
+    "download": "Descargar el modelo ({size})"
+  },
+  "progress": {
+    "title": "Descargando el modelo",
+    "detail": "{percent} % completado. Mantén esta pestaña abierta.",
+    "cancel": "Cancelar"
+  },
+  "chat": {
+    "label": "Pregunta al asistente",
+    "placeholder": "Pregunta sobre tu semana…",
+    "send": "Preguntar",
+    "thinking": "Pensando…"
+  },
+  "failures": {
+    "cancelled": "Cancelado.",
+    "offline": "Estás sin conexión y el modelo aún no está descargado. Conéctate una vez para descargarlo.",
+    "out-of-memory": "Este dispositivo se quedó sin memoria al cargar el modelo. Se usan las respuestas rápidas.",
+    "device-lost": "Se perdió el dispositivo gráfico. Se usan las respuestas rápidas; recarga para volver a probar el modelo.",
+    "invalid-output": "No se pudo usar la respuesta del modelo. Prueba a preguntar con otras palabras.",
+    "unavailable": "El modelo en el dispositivo no está disponible aquí. Se usan las respuestas rápidas.",
+    "unknown": "Algo salió mal. Inténtalo de nuevo."
+  },
+  "settings": {
+    "header": "Asistente",
+    "provider": "Responder con",
+    "needsDownload": "El modelo aún no está descargado.",
+    "openAssistant": "Abrir el asistente",
+    "deleteModel": "Borrar el modelo descargado"
+  },
+  "proposal": {
+    "review": "Revisar cambios",
+    "apply": "Aplicar",
+    "discard": "Descartar",
+    "applied": "Los cambios se aplicaron.",
+    "rejected": "La propuesta se descartó.",
+    "failed": "No se pudo aplicar la propuesta. No se cambió nada.",
+    "warnings": "{count} aviso(s) que revisar antes de aplicar."
+  },
+  "review": {
+    "add_block": "Añadir bloque: {subject}",
+    "update_block": "Cambiar bloque: {subject}",
+    "delete_block": "Quitar bloque: {subject}",
+    "add_task": "Añadir tarea: {subject}",
+    "update_task": "Cambiar tarea: {subject}",
+    "complete_task": "Completar tarea: {subject}",
+    "add_event": "Añadir evento: {subject}",
+    "update_category_goal": "Cambiar meta: {subject}"
+  },
+  "answers": {
+    "categoryPlanned": "{category}: {planned} planificadas esta semana.",
+    "categoryOver": "{category}: {planned} planificadas esta semana, {amount} por encima del límite de {goal}.",
+    "categoryMissing": "{category}: {planned} planificadas esta semana, {amount} por debajo de la meta de {goal}.",
+    "categoryNoGoal": "{category} no tiene meta semanal. {planned} planificadas esta semana.",
+    "maxRoomLeft": "{category}: {planned} planificadas del límite de {goal}, quedan {amount}.",
+    "maxExceeded": "{category}: {planned} planificadas, {amount} por encima del límite de {goal}.",
+    "minStillNeeded": "{category}: {planned} planificadas, faltan {amount} para llegar a la meta de {goal}.",
+    "minReached": "{category}: {planned} planificadas, la meta de {goal} está cumplida.",
+    "currentBlock": "Ahora: {title}, quedan {minutes} min.",
+    "nextBlock": "Siguiente: {title} el {date} a las {time}.",
+    "noNextBlock": "No hay ningún bloque próximo en la semana.",
+    "noOverflow": "Todas las tareas pendientes caben en tu tiempo libre.",
+    "overflow": "{count} tarea(s) no caben o van tarde: {titles}. Quedan {amount} sin programar.",
+    "unassigned": "{amount} de la semana están sin asignar ({planned} planificadas de 168 h).",
+    "totalPlanned": "{planned} planificadas esta semana de 168 h.",
+    "rulesCannotChange": "Cambiar el plan requiere el modelo en el dispositivo. Actívalo en Ajustes, en Asistente.",
+    "rulesUnknown": "Puedo decirte las horas de una categoría esta semana, lo que falta para una meta, las horas sin asignar, tu próximo bloque y qué tareas no caben."
+  }
+}

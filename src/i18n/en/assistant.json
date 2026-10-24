@@ -1,0 +1,94 @@
+{
+  "title": "Assistant",
+  "privacy": "Runs on this device. Your plans never leave it; the assistant only reads them to answer you.",
+  "providers": {
+    "rules": "Quick answers",
+    "webllm": "On-device model"
+  },
+  "status": {
+    "header": "Assistant status",
+    "rulesDetail": "Answers from your planned hours. Works everywhere, no download.",
+    "available": "Ready",
+    "downloadable": "Download needed",
+    "unavailable": "Not available",
+    "checking": "Checking…",
+    "webllmDetail": {
+      "available": "Ready to use, also offline.",
+      "downloadable": "Runs a small language model on this device. Needs a one-time download.",
+      "unavailable": "This device or browser cannot run the on-device model (it needs WebGPU). Quick answers still work.",
+      "checking": "Checking this device…"
+    }
+  },
+  "optIn": {
+    "title": "Turn on the on-device model",
+    "body": "A language model runs on this device, so your plans never leave it. It needs a one-time download of {size}. You can delete it any time in Settings.",
+    "wifi": "Use Wi-Fi if you can: the download is large.",
+    "cellular": "You seem to be on a mobile connection, and the download is large. Wi-Fi is recommended.",
+    "download": "Download the model ({size})"
+  },
+  "progress": {
+    "title": "Downloading the model",
+    "detail": "{percent} % done. Keep this tab open.",
+    "cancel": "Cancel"
+  },
+  "chat": {
+    "label": "Ask the assistant",
+    "placeholder": "Ask about your week…",
+    "send": "Ask",
+    "thinking": "Thinking…"
+  },
+  "failures": {
+    "cancelled": "Cancelled.",
+    "offline": "You are offline and the model is not downloaded yet. Connect once to download it.",
+    "out-of-memory": "This device ran out of memory loading the model. Quick answers are used instead.",
+    "device-lost": "The graphics device was lost. Quick answers are used instead; reload to try the model again.",
+    "invalid-output": "The model's reply could not be used. Please try asking in other words.",
+    "unavailable": "The on-device model is not available here. Quick answers are used instead.",
+    "unknown": "Something went wrong. Please try again."
+  },
+  "settings": {
+    "header": "Assistant",
+    "provider": "Answer with",
+    "needsDownload": "The model is not downloaded yet.",
+    "openAssistant": "Open the assistant",
+    "deleteModel": "Delete the downloaded model"
+  },
+  "proposal": {
+    "review": "Review changes",
+    "apply": "Apply",
+    "discard": "Discard",
+    "applied": "The changes were applied.",
+    "rejected": "The proposal was discarded.",
+    "failed": "The proposal could not be applied. Nothing was changed.",
+    "warnings": "{count} warning(s) to check before applying."
+  },
+  "review": {
+    "add_block": "Add block: {subject}",
+    "update_block": "Change block: {subject}",
+    "delete_block": "Remove block: {subject}",
+    "add_task": "Add task: {subject}",
+    "update_task": "Change task: {subject}",
+    "complete_task": "Complete task: {subject}",
+    "add_event": "Add event: {subject}",
+    "update_category_goal": "Change goal: {subject}"
+  },
+  "answers": {
+    "categoryPlanned": "{category}: {planned} planned this week.",
+    "categoryOver": "{category}: {planned} planned this week, {amount} over the {goal} limit.",
+    "categoryMissing": "{category}: {planned} planned this week, {amount} short of the {goal} goal.",
+    "categoryNoGoal": "{category} has no weekly goal. {planned} planned this week.",
+    "maxRoomLeft": "{category}: {planned} planned of the {goal} limit, {amount} left.",
+    "maxExceeded": "{category}: {planned} planned, {amount} over the {goal} limit.",
+    "minStillNeeded": "{category}: {planned} planned, {amount} still needed to reach the {goal} goal.",
+    "minReached": "{category}: {planned} planned, the {goal} goal is reached.",
+    "currentBlock": "Now: {title}, {minutes} min left.",
+    "nextBlock": "Next: {title} on {date} at {time}.",
+    "noNextBlock": "No upcoming block in the next week.",
+    "noOverflow": "All unfinished tasks fit in your free time.",
+    "overflow": "{count} task(s) do not fit or are late: {titles}. {amount} left unscheduled.",
+    "unassigned": "{amount} of the week are unassigned ({planned} planned of 168 h).",
+    "totalPlanned": "{planned} planned this week out of 168 h.",
+    "rulesCannotChange": "Changing the plan needs the on-device model. Turn it on in Settings, under Assistant.",
+    "rulesUnknown": "I can tell you the hours of a category this week, what is left to reach a goal, unassigned hours, your next block and which tasks do not fit."
+  }
+}

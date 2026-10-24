@@ -1,0 +1,94 @@
+{
+  "title": "Assistant",
+  "privacy": "Fonctionne sur cet appareil. Vos plans ne le quittent jamais ; l'assistant les lit seulement pour vous répondre.",
+  "providers": {
+    "rules": "Réponses rapides",
+    "webllm": "Modèle sur l'appareil"
+  },
+  "status": {
+    "header": "État de l'assistant",
+    "rulesDetail": "Répond à partir de vos heures planifiées. Fonctionne partout, sans téléchargement.",
+    "available": "Prêt",
+    "downloadable": "Téléchargement requis",
+    "unavailable": "Indisponible",
+    "checking": "Vérification…",
+    "webllmDetail": {
+      "available": "Prêt à l'emploi, même hors ligne.",
+      "downloadable": "Exécute un petit modèle de langage sur cet appareil. Nécessite un téléchargement unique.",
+      "unavailable": "Cet appareil ou ce navigateur ne peut pas exécuter le modèle (WebGPU requis). Les réponses rapides fonctionnent toujours.",
+      "checking": "Vérification de cet appareil…"
+    }
+  },
+  "optIn": {
+    "title": "Activer le modèle sur l'appareil",
+    "body": "Un modèle de langage s'exécute sur cet appareil : vos plans ne le quittent jamais. Il nécessite un téléchargement unique de {size}. Vous pouvez le supprimer à tout moment dans les réglages.",
+    "wifi": "Utilisez le Wi-Fi si possible : le téléchargement est volumineux.",
+    "cellular": "Vous semblez utiliser une connexion mobile et le téléchargement est volumineux. Le Wi-Fi est recommandé.",
+    "download": "Télécharger le modèle ({size})"
+  },
+  "progress": {
+    "title": "Téléchargement du modèle",
+    "detail": "{percent} % terminé. Gardez cet onglet ouvert.",
+    "cancel": "Annuler"
+  },
+  "chat": {
+    "label": "Interroger l'assistant",
+    "placeholder": "Posez une question sur votre semaine…",
+    "send": "Demander",
+    "thinking": "Réflexion…"
+  },
+  "failures": {
+    "cancelled": "Annulé.",
+    "offline": "Vous êtes hors ligne et le modèle n'est pas encore téléchargé. Connectez-vous une fois pour le télécharger.",
+    "out-of-memory": "Cet appareil a manqué de mémoire en chargeant le modèle. Les réponses rapides sont utilisées.",
+    "device-lost": "Le périphérique graphique a été perdu. Les réponses rapides sont utilisées ; rechargez pour réessayer le modèle.",
+    "invalid-output": "La réponse du modèle n'a pas pu être utilisée. Essayez de reformuler.",
+    "unavailable": "Le modèle sur l'appareil n'est pas disponible ici. Les réponses rapides sont utilisées.",
+    "unknown": "Une erreur s'est produite. Réessayez."
+  },
+  "settings": {
+    "header": "Assistant",
+    "provider": "Répondre avec",
+    "needsDownload": "Le modèle n'est pas encore téléchargé.",
+    "openAssistant": "Ouvrir l'assistant",
+    "deleteModel": "Supprimer le modèle téléchargé"
+  },
+  "proposal": {
+    "review": "Vérifier les changements",
+    "apply": "Appliquer",
+    "discard": "Ignorer",
+    "applied": "Les changements ont été appliqués.",
+    "rejected": "La proposition a été ignorée.",
+    "failed": "La proposition n'a pas pu être appliquée. Rien n'a été modifié.",
+    "warnings": "{count} avertissement(s) à vérifier avant d'appliquer."
+  },
+  "review": {
+    "add_block": "Ajouter le bloc : {subject}",
+    "update_block": "Modifier le bloc : {subject}",
+    "delete_block": "Supprimer le bloc : {subject}",
+    "add_task": "Ajouter la tâche : {subject}",
+    "update_task": "Modifier la tâche : {subject}",
+    "complete_task": "Terminer la tâche : {subject}",
+    "add_event": "Ajouter l'événement : {subject}",
+    "update_category_goal": "Modifier l'objectif : {subject}"
+  },
+  "answers": {
+    "categoryPlanned": "{category} : {planned} planifiées cette semaine.",
+    "categoryOver": "{category} : {planned} planifiées cette semaine, {amount} au-dessus de la limite de {goal}.",
+    "categoryMissing": "{category} : {planned} planifiées cette semaine, {amount} sous l'objectif de {goal}.",
+    "categoryNoGoal": "{category} n'a pas d'objectif hebdomadaire. {planned} planifiées cette semaine.",
+    "maxRoomLeft": "{category} : {planned} planifiées sur la limite de {goal}, il reste {amount}.",
+    "maxExceeded": "{category} : {planned} planifiées, {amount} au-dessus de la limite de {goal}.",
+    "minStillNeeded": "{category} : {planned} planifiées, il manque {amount} pour atteindre l'objectif de {goal}.",
+    "minReached": "{category} : {planned} planifiées, l'objectif de {goal} est atteint.",
+    "currentBlock": "Maintenant : {title}, encore {minutes} min.",
+    "nextBlock": "Ensuite : {title} le {date} à {time}.",
+    "noNextBlock": "Aucun bloc à venir dans la semaine.",
+    "noOverflow": "Toutes les tâches en cours tiennent dans votre temps libre.",
+    "overflow": "{count} tâche(s) ne tiennent pas ou sont en retard : {titles}. {amount} non planifiées.",
+    "unassigned": "{amount} de la semaine sont non assignées ({planned} planifiées sur 168 h).",
+    "totalPlanned": "{planned} planifiées cette semaine sur 168 h.",
+    "rulesCannotChange": "Modifier le plan nécessite le modèle sur l'appareil. Activez-le dans les réglages, sous Assistant.",
+    "rulesUnknown": "Je peux indiquer les heures d'une catégorie cette semaine, ce qui manque pour un objectif, les heures non assignées, votre prochain bloc et les tâches qui ne tiennent pas."
+  }
+}
