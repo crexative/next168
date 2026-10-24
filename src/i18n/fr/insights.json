@@ -12,6 +12,7 @@
     "overlap": "Certains blocs se chevauchent : la barre est limitée à 168 h.",
     "legend": "Planifié par catégorie"
   },
+  "live": "Cette semaine, il te reste {hours} h libre. | Cette semaine, il te reste {hours} h libres.",
   "goal": {
     "title": "Objectifs par catégorie",
     "over": "Maximum dépassé",

@@ -12,6 +12,7 @@
     "overlap": "Einige Blöcke überschneiden sich, daher ist die Leiste auf 168 h begrenzt.",
     "legend": "Geplant je Kategorie"
   },
+  "live": "Diese Woche bleiben dir noch {hours} h frei.",
   "goal": {
     "title": "Ziele je Kategorie",
     "over": "Über dem Limit",

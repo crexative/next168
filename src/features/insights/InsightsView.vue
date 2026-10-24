@@ -6,13 +6,13 @@ import { computeStats, planVsActual, sevenDayMeasures } from '@/core/stats'
 import EmptyState from '@/ui/EmptyState.vue'
 import { usePlannerStore } from '@/stores/plannerStore'
 import AssistantEntryButton from '@/features/assistant/AssistantEntryButton.vue'
-import WeekSplit from '@/features/capacity/WeekSplit.vue'
+import { freeHoursWhole } from '@/features/capacity/freeHours'
 import { useNow } from '@/features/week/useNow'
 import { EXERCISE_ICON } from './exercise'
 import MeasureTiles from './MeasureTiles.vue'
 import WeekBar from './WeekBar.vue'
 import { categoryColor } from './categoryColor'
-import { formatDuration } from '@/ui/format'
+import { formatDuration, formatHours } from '@/ui/format'
 import { goalProgress, type GoalProgress } from './goalLine'
 
 const { t } = useI18n()
@@ -20,6 +20,7 @@ const planner = usePlannerStore()
 const now = useNow()
 
 const document = computed(() => planner.document)
+const freeHours = computed(() => (document.value ? freeHoursWhole(document.value, now.value, document.value.settings.timeZone) : 0))
 const stats = computed(() => (document.value ? computeStats(document.value) : null))
 const plannedMinutes = computed(() => Object.fromEntries((stats.value?.categories ?? []).map((row) => [row.categoryId, row.plannedMinutes])))
 
@@ -93,7 +94,7 @@ function markerText(row: { category: { goal: { type: string } }; progress: GoalP
     />
     <template v-else>
       <WeekBar :categories="document.categories" :planned-minutes="plannedMinutes" />
-      <WeekSplit :document="document" :now="now" />
+      <p class="t-subhead t-secondary live-line" data-testid="free-hours-live">{{ t('insights.live', { hours: formatHours(freeHours), count: freeHours }) }}</p>
 
       <section class="goals" :aria-label="t('insights.goal.title')">
         <h2 class="t-headline">{{ t('insights.goal.title') }}</h2>
@@ -149,6 +150,7 @@ function markerText(row: { category: { goal: { type: string } }; progress: GoalP
 
 <style scoped>
 .insights { display: flex; flex-direction: column; gap: var(--space-6); padding: 0 var(--space-4) var(--space-6); }
+.live-line { margin: 0; }
 .goals, .actuals { display: flex; flex-direction: column; gap: var(--space-3); }
 .rows { display: flex; flex-direction: column; gap: 1px; overflow: hidden; background: var(--separator); border-radius: var(--radius-card); }
 .row { display: flex; flex-direction: column; gap: var(--space-2); padding: var(--space-3) var(--space-4); background: var(--surface); }

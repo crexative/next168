@@ -1,11 +1,3 @@
 {
-  "badge": "{hours} h free from now to {day} · of {total}",
-  "split": {
-    "title": "This week from now",
-    "past": "Already past",
-    "planned": "Planned ahead",
-    "free": "Free until {day}",
-    "hours": "{hours} h",
-    "total": "Together they make this week’s {total} h."
-  }
+  "badge": "{hours} h free this week"
 }

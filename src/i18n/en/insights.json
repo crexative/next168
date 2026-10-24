@@ -12,6 +12,7 @@
     "overlap": "Some blocks overlap, so the bar is capped at 168 h.",
     "legend": "Planned per category"
   },
+  "live": "{hours} h free left this week.",
   "goal": {
     "title": "Goals by category",
     "over": "Over cap",

@@ -70,7 +70,7 @@ for (const size of SIZES) {
         await start(page, size, theme)
         await open(page, 'today', 'Hoy')
         // 109.75 h to Monday 00:00 minus 4.75 h of Trabajo profundo, 1 h of Gimnasio and 34 h of Dormir.
-        await expect(page.getByTestId('free-hours')).toHaveText('Quedan 70 h libres de aquí al domingo · de 168')
+        await expect(page.getByTestId('free-hours')).toHaveText('70 h libres esta semana')
         const progress = page.getByTestId('day-progress')
         await expect(progress).toHaveText('0 de 4 hechos hoy')
         await page.getByTestId('now-card').getByRole('button', { name: 'Hecho' }).click()

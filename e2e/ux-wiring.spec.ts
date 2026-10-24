@@ -98,14 +98,14 @@ for (const size of Object.keys(SIZES) as (keyof typeof SIZES)[]) {
         await expect(page.getByRole('heading', { level: 1, name: 'Hoy' })).toBeVisible()
       })
 
-      test('Week and Insights show the free hours of Today\'s badge, from one source', async ({ page }) => {
+      test('Week and Insights say the free hours of Today\'s badge, from one source', async ({ page }) => {
         await start(page, size, theme, planned)
         await open(page, 'today', 'Hoy')
         const todayBadge = (await page.getByTestId('free-hours').textContent())!
         // Mon 00:00 → Wed 10:15 is past (58 h 15 min). Of the 109 h 45 min ahead, blocks cover 55 h 45 min: today's work
         // to 17:00 (6 h 45 min), Thu and Fri work (16 h), four nights of sleep (32 h) and Sunday night up to Monday 00:00 (1 h).
         expect(hoursIn(todayBadge)).toBe('54')
-        expect(todayBadge).toBe('Quedan 54 h libres de aquí al domingo · de 168')
+        expect(todayBadge).toBe('54 h libres esta semana')
 
         await open(page, 'week', 'Semana')
         const slot = page.getByTestId('week-free-hours-slot')
@@ -117,14 +117,10 @@ for (const size of Object.keys(SIZES) as (keyof typeof SIZES)[]) {
         await expect(slot.getByTestId('free-hours')).toHaveText(todayBadge)
 
         await open(page, 'insights', 'Análisis')
-        const split = page.getByTestId('week-split')
-        await expect(split).toBeVisible()
-        await expect(split.getByTestId('split-past')).toContainText('58 h')
-        await expect(split.getByTestId('split-planned')).toContainText('56 h')
-        await expect(split.getByTestId('split-free')).toContainText(`${hoursIn(todayBadge)} h`)
-        await expect(split.getByTestId('split-free')).toContainText('Libres hasta el domingo')
-        await expect(split).toContainText('Las tres suman las 168 h de esta semana.')
-        await audit(page, `${size}/${theme}/insights split`)
+        // The "this week, from now" card is gone; one live line says the same figure the badge does.
+        await expect(page.getByTestId('week-split')).toHaveCount(0)
+        await expect(page.getByTestId('free-hours-live')).toHaveText(`Esta semana te quedan ${hoursIn(todayBadge)} h libres.`)
+        await audit(page, `${size}/${theme}/insights live line`)
       })
     })
   }

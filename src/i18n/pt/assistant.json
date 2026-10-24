@@ -94,7 +94,7 @@
     "noNextBlock": "Nenhum bloco próximo na semana.",
     "noOverflow": "Todas as tarefas pendentes cabem no seu tempo livre.",
     "overflow": "{count} tarefa não cabe ou está atrasada: {titles}. {amount} sem agendar. | {count} tarefas não cabem ou estão atrasadas: {titles}. {amount} sem agendar.",
-    "unassigned": "Restam {free} livres daqui até {day} ({past} já passaram e {plannedAhead} planejadas pela frente). Sua rotina deixa {amount} das 168 h sem atribuição ({planned} planejadas).",
+    "freeHours": "Esta semana, resta {free} livre. | Esta semana, restam {free} livres.",
     "totalPlanned": "{planned} planejadas nesta semana de 168 h.",
     "rulesCannotChange": "Alterar o plano requer o modelo no dispositivo. Ative-o em Ajustes, em Assistente.",
     "rulesCannotChangeHere": "Alterar o plano exige o modelo no dispositivo, que este dispositivo ou navegador não consegue executar. As respostas rápidas sobre suas horas continuam funcionando.",
