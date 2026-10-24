@@ -1,11 +1,14 @@
 // A1 gate: does a change that the installed app shows survive `am force-stop com.android.chrome`?
-// Drives the installed PWA on an Android emulator through Chrome DevTools over adb. Not a Playwright spec.
+// Drives the installed PWA on Android through Chrome DevTools over adb. Not a Playwright spec.
 //
 // Prerequisites (see docs/architecture/deliverable-1.md, Revision 4):
-//   emulator booted; `adb -s <serial> reverse tcp:<port> tcp:<port>`; the build under test served on that port;
-//   the app installed from Chrome (menu > Install) with its home-screen icon (see A1_ICON_INDEX).
+//   device or emulator ready; `adb -s <serial> reverse tcp:<port> tcp:<port>`; the build under test served on that
+//   port; the app installed from Chrome (menu > Install). The run only ever touches A1_ORIGIN: its storage is
+//   cleared at the start, and every action targets the page of that origin.
 // Environment:
-//   A1_SERIAL      emulator serial (default emulator-5554); anything that is not an emulator is refused
+//   A1_SERIAL      device serial (default emulator-5554)
+//   A1_DEVICE_OPT_IN  must equal A1_SERIAL to run on a physical device; emulators need no opt-in
+//   A1_PACKAGE     the installed WebAPK package; launched directly instead of tapping a launcher icon
 //   A1_ORIGIN      origin of the installed app (default http://localhost:4610)
 //   A1_ICON_INDEX  which "Next168" home-screen icon is the app under test, counting from 0 in launcher order
 //                  (an emulator can hold shortcuts from other origins; default 0)
@@ -14,13 +17,16 @@
 //   A1_LABEL       label recorded in the log (for example baseline-fae1754 or candidate-<sha>)
 //   A1_ITERATIONS  comma-separated subset of 1..5 (default all)
 import { execFileSync } from 'node:child_process'
-import { mkdirSync, writeFileSync } from 'node:fs'
+import { mkdirSync, readdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { homedir } from 'node:os'
 import { join } from 'node:path'
 import { chromium } from '@playwright/test'
 
 const serial = process.env.A1_SERIAL ?? 'emulator-5554'
-if (!serial.startsWith('emulator-')) throw new Error(`A1 runs only on an emulator, refusing serial ${serial}`)
+if (!serial.startsWith('emulator-') && process.env.A1_DEVICE_OPT_IN !== serial) {
+  throw new Error(`refusing physical device ${serial}: set A1_DEVICE_OPT_IN=${serial} to run on it`)
+}
+const webApkPackage = process.env.A1_PACKAGE
 const origin = process.env.A1_ORIGIN ?? 'http://localhost:4610'
 const iconIndex = Number(process.env.A1_ICON_INDEX ?? 0)
 const cdpPort = Number(process.env.A1_CDP_PORT ?? 4611)
@@ -33,13 +39,31 @@ const runId = Date.now()
 mkdirSync(out, { recursive: true })
 const log = { label, serial, origin, runId, chrome: '', iterations: [] }
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms))
-const adb = (...args) => execFileSync(adbPath, ['-s', serial, ...args], { encoding: 'utf8' })
+const adb = (...args) => execFileSync(adbPath, ['-s', serial, ...args], { encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] })
 const stamp = () => new Date().toISOString()
 const say = (...parts) => console.log(stamp(), ...parts)
 
-async function connect() {
+// The UI follows the device language, so every label comes from the app's own catalogs (src/i18n/<lang>).
+const catalogs = new Map()
+function catalog(lang) {
+  if (!catalogs.has(lang)) {
+    const dir = new URL(`../../src/i18n/${lang}/`, import.meta.url)
+    const messages = {}
+    for (const file of readdirSync(dir)) if (file.endsWith('.json')) messages[file.slice(0, -5)] = JSON.parse(readFileSync(new URL(file, dir), 'utf8'))
+    catalogs.set(lang, messages)
+  }
+  return catalogs.get(lang)
+}
+let lang = 'en'
+function t(key, params = {}) {
+  const value = key.split('.').reduce((node, part) => node?.[part], catalog(lang))
+  if (typeof value !== 'string') throw new Error(`missing ${lang} message ${key}`)
+  return value.replace(/\{(\w+)\}/g, (_, name) => String(params[name]))
+}
+
+async function connect(attempts = 30) {
   adb('forward', `tcp:${cdpPort}`, 'localabstract:chrome_devtools_remote')
-  for (let attempt = 0; attempt < 30; attempt++) {
+  for (let attempt = 0; attempt < attempts; attempt++) {
     try {
       const browser = await chromium.connectOverCDP(`http://127.0.0.1:${cdpPort}`)
       const page = browser.contexts().flatMap((context) => context.pages()).find((candidate) => candidate.url().startsWith(origin))
@@ -77,40 +101,45 @@ async function tapInstalledIcon() {
 }
 
 async function launchInstalledApp() {
-  await tapInstalledIcon()
-  const connection = await connect()
+  const launch = () => (webApkPackage ? adb('shell', 'monkey', '-p', webApkPackage, '-c', 'android.intent.category.LAUNCHER', '1') : tapInstalledIcon())
+  await launch()
+  // A cold Chrome start right after a force-stop can miss the first launch intent; launching again is harmless.
+  const connection = await connect(20).catch(async () => { await launch(); return connect(30) })
   await connection.page.getByRole('heading', { level: 1 }).first().waitFor({ timeout: 20_000 })
+  lang = (await connection.page.evaluate(() => document.documentElement.lang)).split('-')[0] || 'en'
   const standalone = await connection.page.evaluate(() => matchMedia('(display-mode: standalone)').matches)
   if (!standalone) throw new Error('the app did not open in standalone mode; was it launched from the installed icon?')
   return connection
 }
 
+const firstRunSheet = (page) => page.getByRole('dialog', { name: t('onboarding.steps.0.title') })
+
 async function onboardIfAsked(page) {
-  const dialog = page.getByRole('dialog', { name: 'Pick your categories' })
+  const dialog = firstRunSheet(page)
   if (!(await dialog.isVisible().catch(() => false))) return false
-  await dialog.getByRole('checkbox', { name: 'Use Work' }).check()
-  await dialog.getByRole('button', { name: 'Next' }).click()
-  await page.getByRole('button', { name: 'Skip' }).click()
-  await page.getByRole('button', { name: 'Skip' }).click()
+  await dialog.getByRole('checkbox', { name: t('onboarding.useCategory', { name: t('onboarding.templates.work') }) }).check()
+  await dialog.getByRole('button', { name: t('onboarding.next'), exact: true }).click()
+  await page.getByRole('button', { name: t('onboarding.skip'), exact: true }).click()
+  await page.getByRole('button', { name: t('onboarding.skip'), exact: true }).click()
   await page.getByTestId('onboarding').waitFor({ state: 'hidden' })
   return true
 }
 
 async function openWeek(page) {
-  await page.getByRole('link', { name: 'Week' }).last().click()
-  await page.getByRole('heading', { level: 1, name: 'Week' }).waitFor()
+  await page.getByRole('link', { name: t('app.tabs.week'), exact: true }).last().click()
+  await page.getByRole('heading', { level: 1, name: t('app.tabs.week') }).waitFor()
   await page.waitForFunction(() => document.getAnimations().length === 0, null, { timeout: 10_000 }).catch(() => undefined)
 }
 
 async function createBlock(page, title, hour) {
   await openWeek(page)
-  await page.getByRole('button', { name: 'Add block' }).click()
-  const dialog = page.getByRole('dialog', { name: 'New block' })
-  await dialog.getByLabel('Title').fill(title)
-  await dialog.getByLabel('Starts').fill(`${String(hour).padStart(2, '0')}:00`)
-  await dialog.getByLabel('Ends').fill(`${String(hour).padStart(2, '0')}:30`)
+  await page.getByRole('button', { name: t('week.add') }).click()
+  const dialog = page.getByRole('dialog', { name: t('week.editor.newTitle') })
+  await dialog.getByLabel(t('week.editor.title'), { exact: true }).fill(title)
+  await dialog.getByLabel(t('week.editor.start'), { exact: true }).fill(`${String(hour).padStart(2, '0')}:00`)
+  await dialog.getByLabel(t('week.editor.end'), { exact: true }).fill(`${String(hour).padStart(2, '0')}:30`)
   const started = performance.now()
-  await dialog.getByRole('button', { name: 'Save' }).click()
+  await dialog.getByRole('button', { name: t('week.editor.save'), exact: true }).click()
   await dialog.waitFor({ state: 'hidden' })
   const saveMs = Math.round(performance.now() - started)
   await page.getByText(title).first().waitFor()
@@ -118,13 +147,13 @@ async function createBlock(page, title, hour) {
 }
 
 async function deleteEverything(page) {
-  await page.getByRole('link', { name: 'Settings' }).first().click()
-  await page.getByRole('heading', { level: 1, name: 'Settings' }).waitFor()
-  await page.getByRole('button', { name: 'Delete all data…' }).click()
-  const dialog = page.getByRole('dialog', { name: 'Delete everything?' })
-  await dialog.getByRole('textbox').fill('DELETE')
-  await dialog.getByRole('button', { name: 'Delete everything' }).click()
-  await page.getByTestId('data-notice').filter({ hasText: 'All data was deleted' }).waitFor()
+  await page.getByRole('link', { name: t('app.tabs.settings') }).first().click()
+  await page.getByRole('heading', { level: 1, name: t('app.tabs.settings') }).waitFor()
+  await page.getByRole('button', { name: t('data.deleteAll.action') }).click()
+  const dialog = page.getByRole('dialog', { name: t('data.deleteAll.confirmTitle') })
+  await dialog.getByRole('textbox').fill(t('data.deleteAll.phrase'))
+  await dialog.getByRole('button', { name: t('data.deleteAll.confirmAction'), exact: true }).click()
+  await page.getByTestId('data-notice').filter({ hasText: t('data.deleteAll.done') }).waitFor()
 }
 
 // Diagnostic only (red-team #11): which backing store holds the planner in the build under test.
@@ -187,7 +216,7 @@ async function runIteration(iteration) {
   adb('shell', 'am', 'force-stop', 'com.android.chrome')
   await sleep(2000)
   ;({ browser, page } = await launchInstalledApp())
-  entry.onboardingShownAfterRelaunch = await page.getByRole('dialog', { name: 'Pick your categories' }).isVisible().catch(() => false)
+  entry.onboardingShownAfterRelaunch = await firstRunSheet(page).isVisible().catch(() => false)
   entry.after = await storedSnapshot(page)
   const titles = await visibleKillTitles(page, entry.onboardingShownAfterRelaunch)
   entry.visibleKillTitles = titles
@@ -208,9 +237,9 @@ async function runIteration(iteration) {
 async function resetOrigin() {
   const { browser, page } = await launchInstalledApp()
   const session = await page.context().newCDPSession(page)
-  await session.send('Storage.clearDataForOrigin', { origin, storageTypes: 'local_storage,indexeddb' })
+  await session.send('Storage.clearDataForOrigin', { origin, storageTypes: 'local_storage,indexeddb,service_workers,cache_storage' })
   await page.reload()
-  await page.getByRole('dialog', { name: 'Pick your categories' }).waitFor({ timeout: 20_000 })
+  await firstRunSheet(page).waitFor({ timeout: 20_000 })
   await browser.close().catch(() => undefined)
   adb('shell', 'am', 'force-stop', 'com.android.chrome')
 }
