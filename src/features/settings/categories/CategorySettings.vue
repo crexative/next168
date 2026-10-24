@@ -1,10 +1,10 @@
 <script setup lang="ts">
 import { computed, reactive, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { COLOR_KEYS, type Category, type ColorKey, type Goal } from '@/core/model'
+import { COLOR_KEYS, type Category, type ColorKey, type Goal, type PlannerDocument } from '@/core/model'
 import { categoryColor } from '@/features/insights/categoryColor'
 import { formatHoursDecimal } from '@/features/insights/format'
-import { assertWorkspace } from '@/features/insights/workspaceGuard'
+import { assertDocument, stampKey, stampOf, type DocumentStamp } from '@/features/insights/workspaceGuard'
 import { usePlannerStore } from '@/stores/plannerStore'
 import Button from '@/ui/Button.vue'
 import Icon from '@/ui/Icon.vue'
@@ -22,7 +22,7 @@ const planner = usePlannerStore()
 const toast = useUndoToast()
 
 const categories = computed(() => planner.document?.categories ?? [])
-const editing = ref<{ id: string | null; workspaceId: string | undefined } | null>(null)
+const editing = ref<{ id: string | null; stamp: DocumentStamp | undefined; stored: string | undefined } | null>(null)
 const form = reactive<CategoryForm>({ name: '', colorKey: 'blue', goalType: 'none', hours: 1 })
 const reassignTo = ref('')
 const submitted = ref(false)
@@ -40,8 +40,19 @@ const dirty = computed(() => {
   return (Object.keys(baseline) as (keyof CategoryForm)[]).some((key) => baseline[key] !== form[key])
 })
 
-// An open editor refers to categories of the workspace it was opened in.
-watch(() => planner.document?.workspaceId, () => { editing.value = null })
+function storedCategory(id: string | null): string | undefined {
+  const category = id ? planner.document?.categories.find((candidate) => candidate.id === id) : undefined
+  return category ? JSON.stringify(category) : undefined
+}
+
+// An open editor refers to the exact document state it was opened in: close it when its category changed
+// underneath (import, restore, another tab), otherwise just follow the new revision.
+watch(() => stampKey(planner.document), () => {
+  const current = editing.value
+  if (!current) return
+  if (current.stamp?.workspaceId !== planner.document?.workspaceId || storedCategory(current.id) !== current.stored) editing.value = null
+  else current.stamp = stampOf(planner.document)
+})
 
 function goalSummary(goal: Goal): string {
   if (goal.type === 'none') return t('categories.goalSummary.none')
@@ -52,7 +63,14 @@ function openEditor(category?: Category): void {
   Object.assign(form, category ? formFromCategory(category) : { name: '', colorKey: 'blue' as ColorKey, goalType: 'none' as Goal['type'], hours: 1 })
   submitted.value = false
   reassignTo.value = ''
-  editing.value = { id: category?.id ?? null, workspaceId: planner.document?.workspaceId }
+  editing.value = { id: category?.id ?? null, stamp: stampOf(planner.document), stored: storedCategory(category?.id ?? null) }
+}
+
+// Inside the queued commit: the category must still be exactly what the editor was opened on.
+function assertEditable(draft: PlannerDocument, opened: NonNullable<typeof editing.value> | null): void {
+  assertDocument(draft, opened?.stamp)
+  const category = opened?.id ? draft.categories.find((candidate) => candidate.id === opened.id) : undefined
+  if ((category ? JSON.stringify(category) : undefined) !== opened?.stored) throw new Error('workspace-changed')
 }
 
 function closeEditor(): void {
@@ -63,10 +81,10 @@ async function save(): Promise<void> {
   submitted.value = true
   if (validateCategoryForm(form)) return
   const id = editing.value?.id ?? crypto.randomUUID()
-  const workspaceId = editing.value?.workspaceId
+  const opened = editing.value
   const next = { name: form.name.trim(), colorKey: form.colorKey, goal: goalFromForm(form) }
   const result = await planner.commit((draft) => {
-    assertWorkspace(draft, workspaceId)
+    assertEditable(draft, opened)
     const existing = draft.categories.find((category) => category.id === id)
     if (existing) {
       Object.assign(existing, next)
@@ -83,8 +101,8 @@ async function remove(): Promise<void> {
   if (!id) return
   const target = isReferenced.value ? effectiveReassign.value : undefined
   const holder: { removed: ReturnType<typeof removeCategory> } = { removed: null }
-  const workspaceId = editing.value?.workspaceId
-  const result = await planner.commit((draft) => { assertWorkspace(draft, workspaceId); holder.removed = removeCategory(draft, id, target) })
+  const opened = editing.value
+  const result = await planner.commit((draft) => { assertEditable(draft, opened); holder.removed = removeCategory(draft, id, target) })
   const snapshot = holder.removed
   if (!result.ok || !snapshot) return
   closeEditor()

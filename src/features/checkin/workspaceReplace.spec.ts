@@ -9,6 +9,7 @@ import { createTestRepositories, fixedNow, newTestId, testDocument } from '@/rep
 import CheckInView from './CheckInView.vue'
 import CategorySettings from '@/features/settings/categories/CategorySettings.vue'
 import TasksView from '@/features/tasks/TasksView.vue'
+import DataSettings from '@/features/settings/data/DataSettings.vue'
 
 const TODAY = '2026-10-24'
 
@@ -98,5 +99,82 @@ describe('other forms after the workspace is replaced', () => {
     host.querySelector('form')!.dispatchEvent(new Event('submit', { cancelable: true }))
     await store.settled()
     expect(store.document?.tasks).toEqual([])
+  })
+})
+
+describe('content replaced under the same workspace id (restored backup)', () => {
+  it('reloads the check-in form with the restored entry', async () => {
+    const { store } = await setup(CheckInView, { ...workspace('ws-a', 'old displayed note'), revision: 1 })
+    const note = () => host.querySelector<HTMLTextAreaElement>('textarea')!
+    expect(note().value).toBe('old displayed note')
+
+    store.document = { ...workspace('ws-a', 'restored backup note'), revision: 2 }
+    await nextTick()
+    expect(note().value).toBe('restored backup note')
+  })
+
+  it('does not let a queued check-in submission overwrite the restored entry', async () => {
+    const { store } = await setup(CheckInView, { ...workspace('ws-a', 'old displayed note'), revision: 1 })
+    // Same id, same revision: only the stored entry tells the two documents apart.
+    store.document = { ...workspace('ws-a', 'restored backup note'), revision: 1 }
+    host.querySelector('form')!.dispatchEvent(new Event('submit', { cancelable: true }))
+    await store.settled()
+    expect(store.document?.checkIns).toEqual([{ date: TODAY, note: 'restored backup note' }])
+  })
+
+  it('does not let a queued task be added to a different document with the same id and revision', async () => {
+    const category = { id: 'c-old', name: 'Old', colorKey: 'blue' as const, goal: { type: 'none' as const, hoursPerWeek: 0 } }
+    const { store } = await setup(TasksView, { ...workspace('ws-a'), revision: 1, categories: [category] })
+    const title = host.querySelector<HTMLInputElement>('input[type=text], input:not([type])')!
+    title.value = 'Stale task'
+    title.dispatchEvent(new Event('input'))
+    await nextTick()
+    store.document = { ...workspace('ws-a'), revision: 1, updatedAt: '2026-01-01T00:00:00.000Z', categories: [category] }
+    host.querySelector('form')!.dispatchEvent(new Event('submit', { cancelable: true }))
+    await store.settled()
+    expect(store.document?.tasks).toEqual([])
+  })
+
+  it('does not let a category editor save into content restored under the same id', async () => {
+    const old = { id: 'c-old', name: 'Old', colorKey: 'blue' as const, goal: { type: 'none' as const, hoursPerWeek: 0 } }
+    const { store } = await setup(CategorySettings, { ...workspace('ws-a'), revision: 1, categories: [old] })
+    host.querySelector<HTMLButtonElement>('.category-button')!.click()
+    await nextTick()
+    store.document = { ...workspace('ws-a'), revision: 1, categories: [{ ...old, name: 'Restored' }] }
+    document.body.querySelector('form.editor')!.dispatchEvent(new Event('submit', { cancelable: true }))
+    await store.settled()
+    expect(store.document?.categories.map((category) => category.name)).toEqual(['Restored'])
+  })
+})
+
+describe('data settings confirmations', () => {
+  async function openDelete(first: PlannerDocument) {
+    const ctx = await setup(DataSettings, first)
+    const button = [...host.querySelectorAll<HTMLButtonElement>('button')].find((candidate) => candidate.textContent?.includes('Delete'))!
+    button.click()
+    await nextTick()
+    const input = document.body.querySelector<HTMLInputElement>('form.confirm input')!
+    input.value = 'DELETE'
+    input.dispatchEvent(new Event('input'))
+    await nextTick()
+    return ctx
+  }
+
+  it('does not erase a replacement workspace when a stale delete confirmation is submitted', async () => {
+    const { store } = await openDelete({ ...workspace('ws-a', 'a note'), revision: 1 })
+    store.document = { ...workspace('ws-b', 'b note'), revision: 1 }
+    // The watcher has not flushed yet: the confirmation was opened for ws-a.
+    document.body.querySelector('form.confirm')!.dispatchEvent(new Event('submit', { cancelable: true }))
+    await store.settled()
+    expect(store.document?.workspaceId).toBe('ws-b')
+    expect(store.document?.checkIns).toEqual([{ date: TODAY, note: 'b note' }])
+  })
+
+  it('does not erase content restored under the same workspace id', async () => {
+    const { store } = await openDelete({ ...workspace('ws-a', 'a note'), revision: 1 })
+    store.document = { ...workspace('ws-a', 'restored note'), revision: 2, updatedAt: '2030-01-01T00:00:00.000Z' }
+    document.body.querySelector('form.confirm')!.dispatchEvent(new Event('submit', { cancelable: true }))
+    await store.settled()
+    expect(store.document?.checkIns).toEqual([{ date: TODAY, note: 'restored note' }])
   })
 })

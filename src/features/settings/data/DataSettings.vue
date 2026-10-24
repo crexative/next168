@@ -3,7 +3,7 @@ import { computed, onMounted, ref, shallowRef, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { STORAGE_KEYS } from '@/core/model'
 import { createBrowserRepositories } from '@/repositories/browserRepositories'
-import { assertWorkspace } from '@/features/insights/workspaceGuard'
+import { assertDocument, stampKey, stampOf, type DocumentStamp } from '@/features/insights/workspaceGuard'
 import { usePlannerStore } from '@/stores/plannerStore'
 import Button from '@/ui/Button.vue'
 import Icon from '@/ui/Icon.vue'
@@ -32,9 +32,23 @@ const persisted = ref<boolean | null>(null)
 const busy = ref(false)
 const deleteOpen = ref(false)
 const typed = ref('')
+// The document state the open preview / delete confirmation was computed for; checked again inside the commit.
+let previewStamp: DocumentStamp | undefined
+let deleteStamp: DocumentStamp | undefined
 
 // A preview or delete confirmation was computed against the workspace that has just been replaced.
-watch(() => planner.document?.workspaceId, () => { preview.value = null; deleteOpen.value = false; typed.value = '' })
+watch(() => stampKey(planner.document), () => { preview.value = null; previewStamp = undefined; closeDelete() })
+
+function openDelete(): void {
+  deleteStamp = stampOf(planner.document)
+  deleteOpen.value = true
+}
+
+function closeDelete(): void {
+  deleteOpen.value = false
+  deleteStamp = undefined
+  typed.value = ''
+}
 
 const phrase = computed(() => t('data.deleteAll.phrase'))
 const canDelete = computed(() => planner.writable && matchesConfirmation(typed.value, phrase.value))
@@ -91,7 +105,7 @@ async function onFileChosen(event: Event): Promise<void> {
     return
   }
   const result = previewImport(await file.text(), current, new Date())
-  if (result.kind === 'ok') preview.value = result.preview
+  if (result.kind === 'ok') { preview.value = result.preview; previewStamp = stampOf(current) }
   else if (result.kind === 'unsupported') notice.value = { tone: 'error', text: t('data.import.unsupported', { version: String(result.version) }) }
   else notice.value = { tone: 'error', text: t('data.import.invalid', { reason: result.reason }) }
 }
@@ -100,7 +114,8 @@ async function confirmImport(): Promise<void> {
   const chosen = preview.value
   if (!chosen) return
   busy.value = true
-  const result = await planner.commit((draft) => { replaceContent(draft, chosen.document) })
+  const stamp = previewStamp
+  const result = await planner.commit((draft) => { assertDocument(draft, stamp); replaceContent(draft, chosen.document) })
   if (!result.ok) {
     notice.value = { tone: 'error', text: t('data.import.failed', { reason: result.reason }) }
     busy.value = false
@@ -123,15 +138,15 @@ async function removeLeftovers(): Promise<void> {
 
 async function deleteEverything(): Promise<void> {
   const current = planner.document
-  if (!current || !canDelete.value) return
+  const stamp = deleteStamp
+  if (!current || !stamp || !canDelete.value) return
   busy.value = true
   const fresh = freshDocument(current, new Date())
-  const result = await planner.commit((draft) => { assertWorkspace(draft, current.workspaceId); replaceContent(draft, fresh) })
+  const result = await planner.commit((draft) => { assertDocument(draft, stamp); replaceContent(draft, fresh) })
   if (result.ok) {
     await replaceSourceTexts(calendarSourceStore(), {})
     await removeLeftovers()
-    deleteOpen.value = false
-    typed.value = ''
+    closeDelete()
     preview.value = null
     notice.value = { tone: 'ok', text: t('data.deleteAll.done') }
   } else {
@@ -196,11 +211,11 @@ async function deleteEverything(): Promise<void> {
 
     <ListGroup :header="t('data.deleteAll.title')" :footer="t('data.deleteAll.footer')">
       <li class="note">
-        <Button variant="plain" destructive :disabled="!planner.writable" @click="deleteOpen = true"><Icon name="trash-2" :size="20" /> {{ t('data.deleteAll.action') }}</Button>
+        <Button variant="plain" destructive :disabled="!planner.writable" @click="openDelete"><Icon name="trash-2" :size="20" /> {{ t('data.deleteAll.action') }}</Button>
       </li>
     </ListGroup>
 
-    <Sheet :open="deleteOpen" :title="t('data.deleteAll.confirmTitle')" :dirty="typed !== ''" @update:open="(open) => { deleteOpen = open; if (!open) typed = '' }">
+    <Sheet :open="deleteOpen" :title="t('data.deleteAll.confirmTitle')" :dirty="typed !== ''" @update:open="(open) => { if (open) openDelete(); else closeDelete() }">
       <form class="confirm" @submit.prevent="deleteEverything">
         <p class="t-subhead">{{ t('data.deleteAll.confirmBody') }}</p>
         <label class="field">

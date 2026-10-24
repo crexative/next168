@@ -2,7 +2,7 @@
 import { computed, reactive, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { localDateOf } from '@/core/time'
-import { assertWorkspace } from '@/features/insights/workspaceGuard'
+import { assertDocument, stampKey, stampOf, type DocumentStamp } from '@/features/insights/workspaceGuard'
 import { usePlannerStore } from '@/stores/plannerStore'
 import Button from '@/ui/Button.vue'
 import SegmentedControl from '@/ui/SegmentedControl.vue'
@@ -18,16 +18,32 @@ const timeZone = computed(() => planner.document?.settings.timeZone ?? 'UTC')
 const today = computed(() => localDateOf(new Date(), timeZone.value))
 const form = reactive<CheckInFormState>(formFromCheckIn('', undefined))
 const saved = ref(false)
-let formWorkspaceId: string | undefined
+// What the form was loaded from: the document state and the stored entry for its date.
+let formStamp: DocumentStamp | undefined
+let formStored: string | undefined
+
+function storedEntry(date: string): string | undefined {
+  const entry = planner.document?.checkIns.find((checkIn) => checkIn.date === date)
+  return entry ? JSON.stringify(entry) : undefined
+}
 
 function loadDate(date: string): void {
   Object.assign(form, formFromCheckIn(date, planner.document?.checkIns.find((checkIn) => checkIn.date === date)))
-  formWorkspaceId = planner.document?.workspaceId
+  formStamp = stampOf(planner.document)
+  formStored = storedEntry(date)
   saved.value = false
 }
 
-// A replaced workspace (import, delete-all, another tab) invalidates whatever the form holds.
-watch(() => planner.document?.workspaceId, () => { if (planner.document) loadDate(form.date || today.value) }, { immediate: true })
+// Replaced content (import, restored backup with the same workspace id, delete-all, another tab) invalidates
+// whatever the form holds; a plain revision bump that leaves this entry alone only moves the stamp.
+watch(() => stampKey(planner.document), (_, previous) => {
+  const document = planner.document
+  if (!document) return
+  const date = form.date || today.value
+  const replaced = previous === undefined || formStamp?.workspaceId !== document.workspaceId || storedEntry(date) !== formStored
+  if (replaced) loadDate(date)
+  else formStamp = stampOf(document)
+}, { immediate: true })
 
 function onDateChange(): void {
   if (form.date) loadDate(form.date)
@@ -48,9 +64,11 @@ const stressWithNone = computed(() => [{ value: '0' as const, label: '–' }, ..
 
 async function save(): Promise<void> {
   const next = checkInFromForm(form)
-  const workspaceId = formWorkspaceId
+  const stamp = formStamp
+  const stored = formStored
   const result = await planner.commit((draft) => {
-    assertWorkspace(draft, workspaceId)
+    assertDocument(draft, stamp)
+    if (JSON.stringify(draft.checkIns.find((checkIn) => checkIn.date === next.date)) !== stored) throw new Error('workspace-changed')
     draft.checkIns = isEmptyCheckIn(next)
       ? draft.checkIns.filter((checkIn) => checkIn.date !== next.date)
       : upsertCheckIn(draft.checkIns, next)
