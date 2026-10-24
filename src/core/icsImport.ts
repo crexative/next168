@@ -32,7 +32,8 @@ function recurrenceSeed(rule: ICAL.Recur, start: ICAL.Time, from: number): { sta
   const skipped = Math.max(0, Math.floor(target.subtractDate(start).toSeconds() / (step * 3600)) - 1)
   const seed = start.clone()
   // Whole wall-time periods retain DTSTART's defaults and INTERVAL/WKST phase across DST.
-  seed.adjust(0, skipped * step, 0, 0)
+  if (rule.freq === 'HOURLY') seed.adjust(0, skipped * step, 0, 0)
+  else seed.adjust(skipped * step / 24, 0, 0, 0)
   return { start: seed, skipped }
 }
 
@@ -70,10 +71,10 @@ export function icsImport(text: string, sourceId: string, range: CalendarRange, 
   const from = boundary(range.start), until = boundary(range.end)
   if (!Number.isFinite(from) || !Number.isFinite(until) || until <= from) throw new CalendarImportError('range')
   let iterations = 0
-  let historyIterations: number | null = null
   const tick = (work = 1) => {
-    const used = historyIterations === null ? (iterations += work) : (historyIterations += work)
-    if (used > 50000) throw new CalendarImportError('iterations')
+    // Historical replay and in-range candidates share one source-wide work limit.
+    iterations += work
+    if (iterations > 50000) throw new CalendarImportError('iterations')
   }
   const budgetRules = (component: ICAL.Component): void => {
     for (const property of component.getAllProperties('rrule')) {
@@ -164,24 +165,19 @@ export function icsImport(text: string, sourceId: string, range: CalendarRange, 
       const rule = property.getFirstValue() as ICAL.Recur
       const seed = recurrenceSeed(rule, event.startDate, nearFrom)
       if (rule.count && seed.skipped >= rule.count) continue
-      // Rules requiring replay have a separate bounded skip, never spending another series' range budget.
-      historyIterations = seed.start.toUnixTime() * 1000 < nearFrom ? 0 : null
-      try {
-        const iterator = rule.iterator(seed.start)
-        let first = true
-        for (;;) {
-          tick()
-          const next = iterator.next()
-          if (!next) break
-          if (first && rule.count) iterator.occurrence_number += seed.skipped
-          first = false
-          const instant = next.isDate ? boundary(next.toString()) : next.toJSDate().getTime()
-          if (instant < nearFrom) continue
-          historyIterations = null
-          if (instant >= until) break
-          visit(next)
-        }
-      } finally { historyIterations = null }
+      const iterator = rule.iterator(seed.start)
+      let first = true
+      for (;;) {
+        tick()
+        const next = iterator.next()
+        if (!next) break
+        if (first && rule.count) iterator.occurrence_number += seed.skipped
+        first = false
+        const instant = next.isDate ? boundary(next.toString()) : next.toJSDate().getTime()
+        if (instant < nearFrom) continue
+        if (instant >= until) break
+        visit(next)
+      }
     }
     for (const property of component.getAllProperties('rdate')) for (const value of property.getValues()) {
       tick()

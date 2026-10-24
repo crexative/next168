@@ -54,7 +54,69 @@ describe('ICS range expansion', () => {
 })
 
 describe('recurrence edge cases', () => {
-  it('expands several long-running series within the requested week without charging their history to the source', () => {
+  it.each(['America/Bogota', 'Pacific/Auckland'])('seeks all-day DAILY/WEEKLY COUNT series in %s', timeZone => {
+    const events = parse('all-day-seek', timeZone)
+    expect(events.filter(event => event.uid === 'daily-count@example.invalid').map(event => [event.start, event.end])).toEqual(
+      Array.from({ length: 7 }, (_, day) => [`2026-10-${19 + day}`, `2026-10-${20 + day}`]),
+    )
+    expect(events.filter(event => event.uid === 'weekly-count@example.invalid')).toEqual([
+      expect.objectContaining({ start: '2026-10-19', end: '2026-10-20', allDay: true }),
+    ])
+  })
+  it.each(['America/Bogota', 'Pacific/Auckland'])('honours inclusive DATE UNTIL after DAILY/WEEKLY seeks in %s', timeZone => {
+    const events = parse('all-day-seek', timeZone)
+    expect(events.filter(event => event.uid === 'daily-until@example.invalid').map(event => event.start)).toEqual([
+      '2026-10-19', '2026-10-20', '2026-10-21',
+    ])
+    expect(events.filter(event => event.uid === 'weekly-until@example.invalid').map(event => event.start)).toEqual(['2026-10-19'])
+    expect(icsImport(fixture('all-day-seek'), 's', { start: '2026-10-26', end: '2026-11-02' }, timeZone)
+      .filter(event => event.uid.includes('until'))).toEqual([])
+  })
+  it('seeks ancient all-day DAILY/WEEKLY series without replaying their history', () => {
+    const text = fixture('all-day-seek').replace(/2026010[15]/g, '19000101').replace(/;COUNT=\d+/g, '')
+    const events = icsImport(text, 's', range, 'America/Bogota')
+    expect(events.filter(event => event.uid === 'daily-count@example.invalid').map(event => event.start)).toEqual(
+      Array.from({ length: 7 }, (_, day) => `2026-10-${19 + day}`),
+    )
+    expect(events.filter(event => event.uid === 'weekly-count@example.invalid').map(event => event.start)).toEqual(['2026-10-19'])
+    expect(events.filter(event => event.uid === 'daily-until@example.invalid').map(event => event.start)).toEqual([
+      '2026-10-19', '2026-10-20', '2026-10-21',
+    ])
+    expect(events.filter(event => event.uid === 'weekly-until@example.invalid').map(event => event.start)).toEqual(['2026-10-19'])
+  })
+  it.each([
+    ['DAILY', 'COUNT=294', ['2026-10-19', '2026-10-20', '2026-10-21']],
+    ['WEEKLY', 'COUNT=42', ['2026-10-19']],
+    ['DAILY', 'INTERVAL=2;COUNT=148', ['2026-10-20', '2026-10-22']],
+    ['WEEKLY', 'INTERVAL=2;COUNT=22', ['2026-10-26']],
+  ])('keeps all-day %s %s phase and COUNT exhaustion after a seek', (frequency, limit, expected) => {
+    const text = fixture('all-day-seek').replace(new RegExp(`FREQ=${frequency};COUNT=\\d+`), `FREQ=${frequency};${limit}`)
+    const events = icsImport(text, 's', { start: range.start, end: '2026-11-09' }, 'America/Bogota')
+    expect(events.filter(event => event.uid === `${frequency.toLowerCase()}-count@example.invalid`).map(event => event.start)).toEqual(expected)
+  })
+  it('bounds total historical replay across non-seekable series in one source', () => {
+    expect(parse('historical-monthly')).toEqual([])
+    const master = fixture('historical-monthly').match(/BEGIN:VEVENT[\s\S]*?END:VEVENT/)![0]
+    const text = calendar(Array.from({ length: 16 }, (_, index) => master.replace('UID:historical', `UID:historical-${index}`)).join('\n'))
+    expect(() => icsImport(text, 's', range, 'UTC')).toThrow('iterations')
+  })
+  it.each([
+    ['HOURLY;INTERVAL=6;COUNT=1167', [3, 9, 15, 21].map(hour => `2026-10-19T${String(hour).padStart(2, '0')}:00:00.000Z`)],
+    ['DAILY;COUNT=294', [19, 20, 21].map(day => `2026-10-${day}T09:00:00.000Z`)],
+    ['DAILY;INTERVAL=2;COUNT=148', [20, 22].map(day => `2026-10-${day}T09:00:00.000Z`)],
+    ['WEEKLY;COUNT=43', ['2026-10-22T09:00:00.000Z']],
+    ['WEEKLY;INTERVAL=2;COUNT=22', ['2026-10-22T09:00:00.000Z']],
+    ['HOURLY;INTERVAL=6;UNTIL=20261019T210000Z', [3, 9, 15, 21].map(hour => `2026-10-19T${String(hour).padStart(2, '0')}:00:00.000Z`)],
+    ['DAILY;UNTIL=20261021T090000Z', [19, 20, 21].map(day => `2026-10-${day}T09:00:00.000Z`)],
+    ['WEEKLY;UNTIL=20261022T090000Z', ['2026-10-22T09:00:00.000Z']],
+    ['HOURLY;COUNT=2', []],
+    ['DAILY;COUNT=2', []],
+    ['WEEKLY;COUNT=2', []],
+  ])('preserves timed seek phase and termination for %s', (rule, expected) => {
+    const text = fixture('timed-seek').replace('FREQ=DAILY;COUNT=294', `FREQ=${rule}`)
+    expect(icsImport(text, 's', { start: range.start, end: '2026-11-09' }, 'UTC').map(event => event.start)).toEqual(expected)
+  })
+  it('expands several long-running series within the requested week without replaying seekable history', () => {
     const events = parse('long-running')
     const starts = (uid: string) => events.filter(event => event.uid === `${uid}@example.invalid`).map(event => event.start)
     expect(starts('weekly')).toEqual(['2026-10-19T14:00:00.000Z'])
