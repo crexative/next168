@@ -1,6 +1,6 @@
 # Next168 deliverable 1 — architecture
 
-Epic: [#3](https://github.com/crexative/next168/issues/3) · GOAL: [deliverable 1](https://github.com/crexative/next168/issues/3#issuecomment-6379989364) · Architect: MIA coordinator (Claude Opus 5.5), 2026-10-24 · Status: **revision 2 — red-team findings absorbed (§7)**.
+Epic: [#3](https://github.com/crexative/next168/issues/3) · GOAL: [deliverable 1](https://github.com/crexative/next168/issues/3#issuecomment-6379989364) · Architect: MIA coordinator (Claude Opus 5.5), 2026-10-24 · Status: **revision 3 — red-team and delta findings absorbed (§7)**.
 
 Inputs (all on this branch): `docs/research/codebase-and-product.md`, `docs/research/llm-connectivity.md`, `docs/research/on-device-ai.md`, `docs/research/competitors-commercial.md`, `docs/research/competitors-open-source.md`, `docs/design/visual-design.md`. Coordinator verifications on 2026-10-24: Hugging Face API reports `mlc-ai/gemma-4-E2B-it-q4f16_1-MLC` = 2,831 MB in 94 files, licence `apache-2.0`; `Llama-3.2-1B-Instruct-q4f16_1-MLC` = 705 MB; `Qwen3-1.7B-q4f16_1-MLC` = 984 MB. Chrome's Prompt API page (updated 2026-08-26) lists desktop only, >4 GB VRAM, 16 GB RAM, 22 GB free disk, and `responseConstraint` JSON Schema support.
 
@@ -129,6 +129,21 @@ Red team: Codex gpt-6.1-sol, 2026-10-24 04:51–04:57 UTC, review of `f4597a9` (
 | 13 | Weak acceptance evidence | ICS export verified with an independent parser (Python `icalendar` in the verifier) and re-import; a tested provider/CORS matrix (real public Google holiday feed and others) recorded in `docs/calendars.md`; installability checked with Chrome DevTools Protocol `Page.getInstallabilityErrors` (empty) plus SW control and offline launch, at both `/` and `/next168/` bases. |
 | 14 | Contracts too thin for parallel work | Frozen in `model.ts`: storage keys, `Clock`, scheduler `TaskPlacement`, `ProposalRepository`, `ExternalOccurrence`. S0-shell provides `registerSettingsSection()` and a view registry so slices plug in without editing shared files. `src/core/icsImport*` belongs to S3, not S0-core. Category CRUD UI belongs to S2. The coordinator owns integration merges and shared-file conflicts. |
 | 15 MINOR | AI breadth | D1 ships `RulesProvider` + `WebLlmProvider` only; default model `Llama-3.2-1B-Instruct-q4f16_1-MLC` (705 MB, verified), Gemma 4 E2B offered only with `shader-f16` and enough memory; `response_format.schema` passed as a JSON string; OOM, cancellation, device-lost and offline-reload tests. Chrome Prompt API moves to deliverable 2. |
+
+### Revision 3 — delta review (Codex, 2026-10-24) resolutions
+
+Delta verdict on revision 2: blockers 1–3 and findings 4 and 11 resolved; four new MAJOR contract defects and several partials. Resolved in `model.ts` and here:
+
+- **Proposal workspace binding:** `proposalInputSchema.workspaceId` is required and must equal the document's; mismatch → rejected before a proposal is stored.
+- **Proposal/document crash atomicity:** the document carries `appliedProposalIds`, committed in the same write as the content change. Approve first checks it: if the id is present, only the proposal status is repaired. Crash between the two writes can never double-apply.
+- **Companion durability:** the commit point is the `rename`. A later directory-fsync failure is returned as `ok` with a `durability-unknown` warning and the file is re-read on next load; failures before the rename leave the previous file intact.
+- **Calendar portability:** `CalendarSourceStore` port with IndexedDB (browser) and companion file (`~/.next168/calendars/<id>.ics`, `/api/calendars/:id`) adapters; `ExportBundle` carries the document plus raw source texts, verified by hash after import.
+- **Actuals:** snapshot zoned `plannedStartAt`/`plannedEndAt` and elapsed `plannedMinutes` (overnight and DST correct); uniqueness `(blockId, plannedStartAt)` enforced by core semantic validation.
+- **Placements:** `PlacementChunk` uses ISO instants; local values are derived for display. `scheduleTasks(input: ScheduleInput)` signature frozen.
+- **Shell registration:** frozen in `src/app/contracts.ts` (`registerView`, `registerSettingsSection`).
+- **Updates and unsaved forms:** a new version never force-reloads; every tab shows "Update available — reload when ready"; the tab that clicks it reloads only after its in-flight commit settles, and open sheets with unsaved input block the reload with a prompt.
+- **Calendar outcomes:** subscription refresh verified against a local server whose feed changes between fetches; importing into a real Google/Outlook account is an owner check (recorded as such), because no agent account exists and writing to the owner's calendar is out of scope.
+- **AI scope:** Gemma 4 E2B is deferred to deliverable 2; D1 ships Rules + WebLLM with `Llama-3.2-1B-Instruct-q4f16_1-MLC` only, which is the model the acceptance run verifies.
 
 ## 8. Risks
 

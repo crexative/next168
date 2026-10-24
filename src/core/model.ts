@@ -67,17 +67,20 @@ export const checkInSchema = z.object({
 })
 
 // A dated occurrence snapshot: history stays correct after the template block is edited or deleted.
-// done = plannedEnd - plannedStart minutes; partial = actualMinutes (required); skipped = 0.
-// Unique per (date, blockId, plannedStart).
+// plannedMinutes = elapsed minutes between the zoned instants (handles overnight and DST).
+// Counted minutes: done = plannedMinutes; partial = actualMinutes (required, <= plannedMinutes); skipped = 0.
+// Unique per (blockId, plannedStartAt); `date` is the local date the occurrence starts on.
 export const blockActualSchema = z.object({
   date: isoDate,
   blockId: id,
   categoryId: id,
-  plannedStart: minuteSchema,
-  plannedEnd: minuteSchema,
+  plannedStartAt: isoDateTime,
+  plannedEndAt: isoDateTime,
+  plannedMinutes: z.number().int().min(1).max(MINUTES_PER_DAY + 60),
   status: z.enum(['done', 'partial', 'skipped']),
-  actualMinutes: z.number().int().min(0).max(MINUTES_PER_DAY).optional(),
-}).refine((a) => a.status !== 'partial' || a.actualMinutes !== undefined, { message: 'actual.partialNeedsMinutes', path: ['actualMinutes'] })
+  actualMinutes: z.number().int().min(0).max(MINUTES_PER_DAY + 60).optional(),
+}).refine((a) => Math.round((Date.parse(a.plannedEndAt) - Date.parse(a.plannedStartAt)) / 60000) === a.plannedMinutes, { message: 'actual.plannedMinutesMismatch', path: ['plannedMinutes'] })
+  .refine((a) => a.status !== 'partial' || (a.actualMinutes !== undefined && a.actualMinutes <= a.plannedMinutes), { message: 'actual.partialNeedsMinutes', path: ['actualMinutes'] })
 
 export const plannerEventSchema = z.object({
   id,
@@ -158,6 +161,7 @@ export const changeProposalSchema = z.object({
 // What an assistant (MCP client, on-device model or pasted JSON) may submit.
 export const proposalInputSchema = z.object({
   contractVersion: z.literal('1.0'),
+  workspaceId: id, // must equal the target document's workspaceId; never relabelled
   baseRevision: z.number().int().min(0),
   summary: z.string().max(500),
   ops: z.array(proposalOpSchema).min(1).max(MAX_OPS_PER_PROPOSAL),
@@ -184,7 +188,20 @@ export const plannerDocumentSchema = z.object({
   actuals: z.array(blockActualSchema).max(50000),
   events: z.array(plannerEventSchema).max(5000),
   calendarSources: z.array(calendarSourceSchema).max(20),
+  // Idempotency record committed atomically with the content change it caused (last 200 kept).
+  // Approving a proposal whose id is already here only repairs its status; it never re-applies.
+  appliedProposalIds: z.array(id).max(200),
 })
+
+// Transfer bundle for export/import between origins, modes and devices (§7 #7, #10).
+export const exportBundleSchema = z.object({
+  format: z.literal('next168-export'),
+  bundleVersion: z.literal(1),
+  exportedAt: isoDateTime,
+  document: plannerDocumentSchema,
+  calendarSourceTexts: z.record(z.string(), z.string().max(5 * 1024 * 1024)), // sourceId -> raw ICS
+})
+export type ExportBundle = z.infer<typeof exportBundleSchema>
 
 export type Minute = z.infer<typeof minuteSchema>
 export type DayIndex = z.infer<typeof dayIndexSchema>
@@ -215,9 +232,27 @@ export const STORAGE_KEYS = {
 export interface Clock { now(): Date }
 
 // Scheduler contract (core/scheduler.ts), consumed by Today (S1) and Tasks (S2).
-export interface PlacementChunk { date: string; start: Minute; end: Minute } // local date, half-open [start, end)
+export interface PlacementChunk { start: string; end: string } // ISO instants, half-open; derive local display values
 export interface TaskPlacement { taskId: string; chunks: PlacementChunk[]; overflowMinutes: number; late: boolean }
 export interface BusyInterval { start: string; end: string } // ISO instants, half-open
+
+export interface ScheduleInput {
+  document: PlannerDocument
+  busy: BusyInterval[]
+  now: Date
+  timeZone: string
+  days?: number // default 7
+}
+// core/scheduler.ts: export function scheduleTasks(input: ScheduleInput): TaskPlacement[]
+
+// Raw calendar source text, one adapter per mode: IndexedDB `next168-calendars` (browser) and
+// `~/.next168/calendars/<sourceId>.ics` via `/api/calendars/:id` (companion). Included in ExportBundle.
+export interface CalendarSourceStore {
+  get(sourceId: string): Promise<string | undefined>
+  put(sourceId: string, icsText: string): Promise<void>
+  delete(sourceId: string): Promise<void>
+  list(): Promise<string[]>
+}
 
 // Storage port (D4). Adapters: LocalStorageRepository (browser) and CompanionRepository (HTTP).
 export type LoadResult =
