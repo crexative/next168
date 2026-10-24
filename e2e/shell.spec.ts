@@ -111,6 +111,22 @@ test.describe('app shell', () => {
     await expect(toolbar).not.toHaveAttribute('data-collapsed')
   })
 
+  test('every tab opens scrolled to the top with the large title showing', async ({ page }, testInfo) => {
+    test.skip(testInfo.project.name !== 'phone')
+    await openTab(page, 'settings')
+    await page.evaluate(() => window.scrollTo(0, 1500))
+    await expect.poll(() => page.evaluate(() => window.scrollY)).toBeGreaterThan(300)
+    const nav = page.getByRole('navigation', { name: 'Main navigation' })
+    for (const tab of ['Tasks', 'Insights', 'Today'] as const) {
+      await nav.getByRole('link', { name: tab }).click()
+      await expect(page.getByRole('heading', { level: 1, name: tab })).toBeVisible()
+      await expect(page.locator('.view-enter-active, .view-leave-active')).toHaveCount(0)
+      expect(await page.evaluate(() => window.scrollY), `${tab} scroll offset`).toBe(0)
+      await expect(page.locator('header.toolbar')).not.toHaveAttribute('data-collapsed')
+      await page.evaluate(() => window.scrollTo(0, 154))
+    }
+  })
+
   test('reduced motion keeps every tab usable', async ({ page }, testInfo) => {
     test.skip(testInfo.project.name !== 'desktop')
     await page.emulateMedia({ reducedMotion: 'reduce' })

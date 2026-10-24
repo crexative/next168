@@ -17,6 +17,9 @@ const { views, tabs } = shell
 const { current } = useHashRoute(() => new Set(views.keys()))
 const currentView = computed(() => views.get(current.value) ?? views.get('today'))
 const settingsView = computed(() => views.get('settings'))
+
+// A tab opens at its top: the previous view's offset would otherwise be clamped to whatever the new view allows.
+function scrollToTop(): void { window.scrollTo({ top: 0, behavior: 'instant' }) }
 </script>
 
 <template>
@@ -46,7 +49,7 @@ const settingsView = computed(() => views.get('settings'))
       <StatusBanners />
       <main id="main" class="main" tabindex="-1">
         <RecoveryScreen v-if="planner.status === 'corrupt'" />
-        <Transition v-else name="view" mode="out-in">
+        <Transition v-else name="view" mode="out-in" @after-leave="scrollToTop">
           <div v-if="currentView" :key="currentView.id" class="view">
             <LargeTitle :title="t(currentView.titleKey)">
               <template #actions>
