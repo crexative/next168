@@ -4,7 +4,7 @@ import { useI18n } from 'vue-i18n'
 import type { Category } from '@/core/model'
 import { buildCapacity, WEEK_MINUTES } from './capacity'
 import { categoryColor } from './categoryColor'
-import { formatDuration } from './format'
+import { formatDuration } from '@/ui/format'
 
 const props = defineProps<{ categories: Category[]; plannedMinutes: Record<string, number> }>()
 
@@ -13,11 +13,11 @@ const { t } = useI18n()
 const capacity = computed(() => buildCapacity(props.categories, props.plannedMinutes))
 const segments = computed(() => capacity.value.segments.map((segment) => {
   const category = props.categories.find((candidate) => candidate.id === segment.categoryId)!
-  return { ...segment, name: category.name, color: categoryColor(category), duration: formatDuration(t, segment.minutes) }
+  return { ...segment, name: category.name, color: categoryColor(category), duration: formatDuration(segment.minutes) }
 }))
-const availableDuration = computed(() => formatDuration(t, capacity.value.availableMinutes))
+const availableDuration = computed(() => formatDuration(capacity.value.availableMinutes))
 const headline = computed(() => t('insights.bar.available', { duration: availableDuration.value }))
-const weekLabel = computed(() => formatDuration(t, WEEK_MINUTES))
+const weekLabel = computed(() => formatDuration(WEEK_MINUTES))
 </script>
 
 <template>

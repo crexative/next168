@@ -185,7 +185,7 @@ test.describe('buttons', () => {
     await expect(action).toHaveClass(/ui-button/)
     await expect(action).toHaveClass(/is-tinted/)
     expect(await action.evaluate((element) => getComputedStyle(element).backgroundColor)).not.toBe('rgba(0, 0, 0, 0)')
-    for (const view of ['today', 'settings', 'tasks']) {
+    for (const view of ['today', 'settings', 'tasks', 'insights']) {
       await openView(page, view)
       const underlined = await page.locator('#main a').evaluateAll((links) => links
         .filter((link) => link.getClientRects().length > 0 && getComputedStyle(link).textDecorationLine.includes('underline'))
@@ -566,12 +566,6 @@ test.describe('language and region settings', () => {
 test.describe('large text and narrow screens', () => {
   const MAIN_SCREENS = ['today', 'week', 'tasks', 'insights', 'settings']
 
-  // Known findings on screens other slices are rebuilding in this deliverable; any other violation fails.
-  const OWNED_ELSEWHERE: { view: string; pattern: RegExp; owner: string }[] = [
-    { view: 'tasks', pattern: /clips its placeholder/, owner: 'slice E: one-field quick add with a short placeholder' },
-    { view: 'insights', pattern: /^<span\.t-body\.name> ".*" overflows horizontally/, owner: 'slice D: Insights rewrite' },
-  ]
-
   // Text that leaves its button or link, and text in a bar (toolbar, day strip, tab bar) drawn over other text.
   async function spilledText(page: Page): Promise<string[]> {
     return page.evaluate(() => {
@@ -615,8 +609,7 @@ test.describe('large text and narrow screens', () => {
     for (const view of MAIN_SCREENS) {
       await openView(page, view)
       await page.waitForFunction(() => document.getAnimations().every((animation) => animation.playState !== 'running'))
-      const violations = (await visualIntegrityViolations(page))
-        .filter((violation) => !OWNED_ELSEWHERE.some((known) => known.view === view && known.pattern.test(violation)))
+      const violations = await visualIntegrityViolations(page)
       expect.soft(violations, `${state}/${view}`).toEqual([])
       expect.soft(await spilledText(page), `${state}/${view}: text outside its control or over other text in a bar`).toEqual([])
       // Scrolled, the toolbar shows its collapsed title next to its actions.

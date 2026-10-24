@@ -61,6 +61,9 @@ for (const size of SIZES) {
       await expect(dialog).toBeVisible()
       await expect(dialog.getByText('Sin cuenta. Todo se queda en este dispositivo.')).toBeVisible()
       await calm(page)
+      // "Ahora no" is the one way out besides the close button: no bottom "Cancelar" from the sheet on phones.
+      await expect(dialog.getByRole('button', { name: 'Ahora no', exact: true })).toHaveCount(1)
+      await expect(dialog.getByRole('button', { name: 'Cancelar', exact: true })).toHaveCount(0)
 
       // Sueño and Trabajo come ticked; the counter adds their typical week.
       await expect(dialog.getByRole('checkbox', { name: 'Usar Sueño' })).toBeChecked()

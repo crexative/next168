@@ -57,7 +57,7 @@ export function answerFromStats(question: string, { document, now, timeZone, loc
   if (matchesIntent('nextBlock', question)) {
     const { current, next } = currentAndNext(document, now, timeZone)
     const parts: string[] = []
-    if (current) parts.push(t('assistant.answers.currentBlock', { title: current.title, minutes: current.minutesLeft }))
+    if (current) parts.push(t('assistant.answers.currentBlock', { title: current.title, left: formatDuration(current.minutesLeft) }))
     parts.push(next
       ? t('assistant.answers.nextBlock', {
         title: next.title,

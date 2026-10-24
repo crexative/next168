@@ -1,9 +1,4 @@
 {
-  "duration": {
-    "minutes": "{minutes} min",
-    "hours": "{hours} h",
-    "both": "{hours} h {minutes} min"
-  },
   "empty": {
     "title": "Noch keine Daten",
     "description": "Fügen Sie Kategorien und Blöcke hinzu, um zu sehen, wie Ihre 168 Stunden verteilt sind."

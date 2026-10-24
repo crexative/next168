@@ -42,6 +42,9 @@ let navigated = false
 watch(current, () => { navigated = true })
 function onViewEntered(element: Element): void {
   if (!navigated || (element as HTMLElement).dataset.view !== currentView.value?.id) return
+  // A view that already placed focus on something more specific (Today's "Saved" card after the check-in) keeps it.
+  const active = document.activeElement
+  if (active && active !== element && element.contains(active)) return
   element.querySelector<HTMLElement>('h1')?.focus({ preventScroll: true })
   announce(pageTitle.value)
 }

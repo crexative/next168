@@ -3,7 +3,7 @@ import { computed, reactive, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { Pencil } from 'lucide-vue-next'
 import { COLOR_KEYS, type ColorKey, type Goal } from '@/core/model'
-import { formatDuration, formatHoursDecimal } from '@/features/insights/format'
+import { formatDuration, formatHours } from '@/ui/format'
 import { minuteToTime } from '@/features/checkin/checkInForm'
 import { assertEntry, CHANGED_ELSEWHERE, snapshotOf } from '@/features/insights/entryGuard'
 import { usePlannerStore } from '@/stores/plannerStore'
@@ -98,11 +98,11 @@ function presetText(templateId: string): string {
 }
 
 function weeklyText(templateId: string): string {
-  return t('onboarding.perWeek', { hours: formatHoursDecimal(presetWeeklyMinutes(templateOf(templateId).preset)) })
+  return t('onboarding.perWeek', { hours: formatHours(presetWeeklyMinutes(templateOf(templateId).preset) / 60) })
 }
 
 function goalText(goal: Goal): string {
-  return t(`onboarding.goal.${goal.type}`, { hours: formatHoursDecimal(goal.hoursPerWeek * 60) })
+  return t(`onboarding.goal.${goal.type}`, { hours: formatHours(goal.hoursPerWeek) })
 }
 
 function displayName(choice: TemplateChoice): string {
@@ -178,7 +178,7 @@ const stepTitle = computed(() => (finished.value ? t('onboarding.done.title') : 
 </script>
 
 <template>
-  <Sheet :open="open" :title="stepTitle" :dirty="dirty" @update:open="onSheetToggle">
+  <Sheet :open="open" :title="stepTitle" :dirty="dirty" no-dismiss @update:open="onSheetToggle">
     <div v-if="finished" class="onboarding" data-testid="onboarding" data-state="done">
       <p class="t-body" data-testid="onboarding-summary">
         {{ t('onboarding.done.summary', { categories: t('onboarding.done.categories', { count: finished.categories }, finished.categories), blocks: t('onboarding.done.blocks', { count: finished.blocks }, finished.blocks) }) }}
@@ -195,9 +195,9 @@ const stepTitle = computed(() => (finished.value ? t('onboarding.done.title') : 
       <p class="t-subhead t-secondary">{{ t(`onboarding.steps.${step}.description`) }}</p>
 
       <p v-if="step < 2" class="counter t-subhead" role="status" data-testid="week-counter" :data-over="over > 0 || undefined">
-        <span class="counter-planned">{{ t('onboarding.counter', { planned: formatHoursDecimal(planned) }) }}</span>
-        <span v-if="over > 0" class="counter-over">{{ t('onboarding.counterOver', { over: formatHoursDecimal(over) }) }}</span>
-        <span v-else class="t-secondary">{{ t('onboarding.counterFree', { free: formatHoursDecimal(free) }) }}</span>
+        <span class="counter-planned">{{ t('onboarding.counter', { planned: formatHours(planned / 60) }) }}</span>
+        <span v-if="over > 0" class="counter-over">{{ t('onboarding.counterOver', { over: formatHours(over / 60) }) }}</span>
+        <span v-else class="t-secondary">{{ t('onboarding.counterFree', { free: formatHours(free / 60) }) }}</span>
       </p>
 
       <ul v-if="step === 0" class="choices">
@@ -291,7 +291,7 @@ const stepTitle = computed(() => (finished.value ? t('onboarding.done.title') : 
           <label class="field">
             <span class="t-footnote t-secondary">{{ t('tasks.add.duration') }}</span>
             <select v-model.number="firstTask.durationMin" class="input">
-              <option v-for="minutes in DURATIONS" :key="minutes" :value="minutes">{{ formatDuration(t, minutes) }}</option>
+              <option v-for="minutes in DURATIONS" :key="minutes" :value="minutes">{{ formatDuration(minutes) }}</option>
             </select>
           </label>
         </div>

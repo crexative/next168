@@ -212,6 +212,9 @@ function asksStatus(item: TimelineItem): item is TimelineItem & { kind: 'block' 
   .row-bar { grid-column: 1; grid-row: 1 / span 2; }
   .row-content { grid-column: 2; }
   .task-check { grid-column: 3; grid-row: 1 / span 2; }
+  /* Last night's line cannot stay one line at this size: the note moves under the title. */
+  .carry { flex-wrap: wrap; white-space: normal; }
+  .carry-note { flex: 0 1 auto; min-width: 0; }
 }
 @media (prefers-reduced-motion: reduce) {
   .task-check:active:not(:disabled) .task-ring { transform: none; opacity: 0.6; }

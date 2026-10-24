@@ -50,11 +50,6 @@
     "description": "Aucun bloc, tâche ou événement aujourd'hui.",
     "action": "Ouvrir la semaine"
   },
-  "duration": {
-    "minutes": "{minutes} min",
-    "hours": "{hours} h",
-    "hoursMinutes": "{hours} h {minutes} min"
-  },
   "header": {
     "progress": "{done} sur {total} faits aujourd’hui"
   }

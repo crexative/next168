@@ -3,7 +3,7 @@ import { computed, reactive, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { COLOR_KEYS, type Category, type ColorKey, type Goal, type PlannerDocument } from '@/core/model'
 import { categoryColor, categorySharingColor, firstUnusedColorKey } from '@/features/insights/categoryColor'
-import { formatHoursDecimal } from '@/features/insights/format'
+import { formatHours } from '@/ui/format'
 import { assertEntry, CHANGED_ELSEWHERE, snapshotOf } from '@/features/insights/entryGuard'
 import { usePlannerStore } from '@/stores/plannerStore'
 import Button from '@/ui/Button.vue'
@@ -65,7 +65,7 @@ watch(() => snapshotOf(storedCategory(editing.value?.id ?? null)), followStored)
 
 function goalSummary(goal: Goal): string {
   if (goal.type === 'none') return t('categories.goalSummary.none')
-  return t(`categories.goalSummary.${goal.type}`, { hours: formatHoursDecimal(goal.hoursPerWeek * 60) })
+  return t(`categories.goalSummary.${goal.type}`, { hours: formatHours(goal.hoursPerWeek) })
 }
 
 function openEditor(category?: Category): void {

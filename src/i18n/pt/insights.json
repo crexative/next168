@@ -1,9 +1,4 @@
 {
-  "duration": {
-    "minutes": "{minutes} min",
-    "hours": "{hours} h",
-    "both": "{hours} h {minutes} min"
-  },
   "empty": {
     "title": "Ainda sem dados",
     "description": "Adicione categorias e blocos para ver como suas 168 horas são usadas."

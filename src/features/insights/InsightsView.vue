@@ -10,7 +10,7 @@ import { EXERCISE_ICON } from './exercise'
 import MeasureTiles from './MeasureTiles.vue'
 import WeekBar from './WeekBar.vue'
 import { categoryColor } from './categoryColor'
-import { formatDuration } from './format'
+import { formatDuration } from '@/ui/format'
 import { goalProgress, type GoalProgress } from './goalLine'
 
 const { t } = useI18n()
@@ -58,24 +58,24 @@ const measures = computed(() => {
 function chipText(row: { goal: { kind: string; minutes: number }; progress: GoalProgress }): string {
   const { goal } = row
   if (goal.kind === 'over') return t('insights.goal.over')
-  if (goal.kind === 'missing') return t('insights.goal.missing', { duration: formatDuration(t, goal.minutes) })
+  if (goal.kind === 'missing') return t('insights.goal.missing', { duration: formatDuration(goal.minutes) })
   return t('insights.goal.ok')
 }
 
 function lineText(row: { plannedMinutes: number; progress: GoalProgress }): string {
   const { line } = row.progress
-  const planned = formatDuration(t, row.plannedMinutes)
+  const planned = formatDuration(row.plannedMinutes)
   if (line.kind === 'none') return t('insights.goal.none')
   if (line.kind === 'minMet') return t('insights.goal.line.minMet')
-  if (line.kind === 'over') return t('insights.goal.line.over', { over: formatDuration(t, line.overMinutes) })
-  const params = { planned, goal: formatDuration(t, line.goalMinutes), left: formatDuration(t, line.leftMinutes) }
+  if (line.kind === 'over') return t('insights.goal.line.over', { over: formatDuration(line.overMinutes) })
+  const params = { planned, goal: formatDuration(line.goalMinutes), left: formatDuration(line.leftMinutes) }
   return t(`insights.goal.line.${line.kind}`, params)
 }
 
 function markerText(row: { category: { goal: { type: string } }; progress: GoalProgress }): string {
   const line = row.progress.line
   if (line.kind === 'none') return ''
-  return t(row.category.goal.type === 'max' ? 'insights.goal.markerMax' : 'insights.goal.markerMin', { duration: formatDuration(t, line.goalMinutes) })
+  return t(row.category.goal.type === 'max' ? 'insights.goal.markerMax' : 'insights.goal.markerMin', { duration: formatDuration(line.goalMinutes) })
 }
 </script>
 
@@ -98,7 +98,7 @@ function markerText(row: { category: { goal: { type: string } }; progress: GoalP
             <div class="row-head">
               <span class="swatch" :style="{ background: categoryColor(row.category) }" aria-hidden="true" />
               <span class="t-body name">{{ row.category.name }}</span>
-              <span class="t-subhead t-secondary" data-testid="planned">{{ formatDuration(t, row.plannedMinutes) }}</span>
+              <span class="t-subhead t-secondary" data-testid="planned">{{ formatDuration(row.plannedMinutes) }}</span>
             </div>
             <div class="scale" aria-hidden="true">
               <div class="track">
@@ -130,7 +130,7 @@ function markerText(row: { category: { goal: { type: string } }; progress: GoalP
               <span class="swatch" :style="{ background: row.color }" aria-hidden="true" />
               <span class="t-body name">{{ row.name }}</span>
               <span class="t-subhead t-secondary" data-testid="actual-value">
-                {{ t('insights.planVsActual.value', { actual: formatDuration(t, row.actualMinutes), planned: formatDuration(t, row.plannedMinutes) }) }}
+                {{ t('insights.planVsActual.value', { actual: formatDuration(row.actualMinutes), planned: formatDuration(row.plannedMinutes) }) }}
               </span>
             </div>
           </li>
@@ -148,8 +148,9 @@ function markerText(row: { category: { goal: { type: string } }; progress: GoalP
 .goals, .actuals { display: flex; flex-direction: column; gap: var(--space-3); }
 .rows { display: flex; flex-direction: column; gap: 1px; overflow: hidden; background: var(--separator); border-radius: var(--radius-card); }
 .row { display: flex; flex-direction: column; gap: var(--space-2); padding: var(--space-3) var(--space-4); background: var(--surface); }
-.row-head { display: flex; align-items: center; gap: var(--space-3); }
-.name { flex: 1; min-width: 0; overflow-wrap: anywhere; }
+/* With large text the figure moves under the name instead of squeezing it. */
+.row-head { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-1) var(--space-3); }
+.name { flex: 1 1 6rem; min-width: 0; overflow-wrap: anywhere; }
 .swatch { width: 12px; height: 12px; border-radius: 50%; flex: none; }
 .scale { position: relative; padding-bottom: var(--space-4); }
 .track { position: relative; height: 8px; border-radius: 4px; background: var(--surface-2); }

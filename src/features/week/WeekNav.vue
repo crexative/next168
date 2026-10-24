@@ -48,7 +48,8 @@ const range = computed(() => weekRangeLabel(props.dates, locale.value, props.tod
   transition: transform 0.1s var(--ease-out), opacity 0.1s;
 }
 .nav-button:active { transform: scale(0.97); }
-.range { min-width: 0; margin: 0; font-variant-numeric: tabular-nums; text-align: center; white-space: nowrap; }
+/* One line at normal sizes; with large text the range wraps between its words instead of spilling. */
+.range { min-width: 0; margin: 0; font-variant-numeric: tabular-nums; text-align: center; text-wrap: balance; }
 .today-button {
   min-width: var(--tap-target);
   min-height: var(--tap-target);

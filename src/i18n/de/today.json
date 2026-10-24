@@ -50,11 +50,6 @@
     "description": "Heute keine Blöcke, Aufgaben oder Termine.",
     "action": "Woche öffnen"
   },
-  "duration": {
-    "minutes": "{minutes} Min.",
-    "hours": "{hours} Std.",
-    "hoursMinutes": "{hours} Std. {minutes} Min."
-  },
   "header": {
     "progress": "{done} von {total} heute erledigt"
   }

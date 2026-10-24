@@ -2,7 +2,8 @@
 import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 import type { MeasureState } from '@/core/stats'
-import { formatDuration } from './format'
+import Button from '@/ui/Button.vue'
+import { formatDuration } from '@/ui/format'
 
 type Day = { date: string; sleep: MeasureState; exercise: MeasureState; lateWork: MeasureState; stress: MeasureState }
 type Measures = {
@@ -28,7 +29,7 @@ const tiles = computed(() => {
   return [
     {
       id: 'sleep', key: 'averageSleep',
-      value: measures.averageSleepMinutes === null ? t('insights.measures.none') : formatDuration(t, measures.averageSleepMinutes),
+      value: measures.averageSleepMinutes === null ? t('insights.measures.none') : formatDuration(measures.averageSleepMinutes),
       pick: (day: Day) => day.sleep,
     },
     {
@@ -66,7 +67,7 @@ const tiles = computed(() => {
     </div>
     <div v-else class="empty" data-testid="measures-empty">
       <p class="t-subhead">{{ t('insights.measures.emptyBody') }}</p>
-      <a class="empty-link t-headline" href="#/checkin">{{ t('insights.measures.emptyAction') }}</a>
+      <Button variant="tinted" href="#/checkin">{{ t('insights.measures.emptyAction') }}</Button>
     </div>
   </section>
 </template>
@@ -82,5 +83,4 @@ const tiles = computed(() => {
 .dot.is-amber { background: var(--warning); border-color: var(--warning); border-radius: 3px; }
 .dot.is-bad { background: var(--danger); border-color: var(--danger); border-radius: 0; transform: rotate(45deg); }
 .empty { display: flex; flex-direction: column; align-items: flex-start; gap: var(--space-2); padding: var(--space-4); background: var(--surface); border-radius: var(--radius-card); }
-.empty-link { display: inline-flex; align-items: center; min-height: var(--tap-target); color: var(--tint-label); }
 </style>

@@ -45,7 +45,7 @@ const minutesLeft = computed(() => {
 // A free moment says how long it lasts, but only when the next thing starts today (otherwise "Después" names the day).
 const freeFor = computed(() => {
   if (props.current || !props.next || localDateOf(props.next.start, props.timeZone) !== props.today) return ''
-  return t('today.now.freeFor', { duration: formatSpan(t, (Date.parse(props.next.start) - props.now.getTime()) / 60000) })
+  return t('today.now.freeFor', { duration: formatSpan((Date.parse(props.next.start) - props.now.getTime()) / 60000) })
 })
 
 const nextWhen = computed(() => {

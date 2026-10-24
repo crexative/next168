@@ -74,6 +74,11 @@ export function formatHourOfDay(hour: number, locale: string): string {
 }
 
 // "2 h 30 min", "45 min", "3 h": whole minutes, the sign left to the sentence around it.
+// Hours as a figure with at most one decimal ("39,5"), for amounts read in hours of the week.
+export function formatHours(hours: number, locale: string = displayLocale.value): string {
+  return new Intl.NumberFormat(locale, { maximumFractionDigits: 1 }).format(hours)
+}
+
 export function formatDuration(totalMinutes: number, locale: string = displayLocale.value): string {
   const rounded = Math.abs(Math.round(totalMinutes))
   const number = new Intl.NumberFormat(locale, { maximumFractionDigits: 0 })

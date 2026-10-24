@@ -89,7 +89,7 @@
     "maxExceeded": "{category} : {planned} planifiées, {amount} au-dessus de la limite de {goal}.",
     "minStillNeeded": "{category} : {planned} planifiées, il manque {amount} pour atteindre l'objectif de {goal}.",
     "minReached": "{category} : {planned} planifiées, l'objectif de {goal} est atteint.",
-    "currentBlock": "Maintenant : {title}, encore {minutes} min.",
+    "currentBlock": "Maintenant : {title}, encore {left}.",
     "nextBlock": "Ensuite : {title} le {date} à {time}.",
     "noNextBlock": "Aucun bloc à venir dans la semaine.",
     "noOverflow": "Toutes les tâches en cours tiennent dans votre temps libre.",
