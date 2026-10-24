@@ -41,7 +41,7 @@
     "stress": "Durchschnittlicher Stress (1–5)",
     "none": "—",
     "exerciseOfTarget": "{count} von {target} Einheiten",
-    "emptyBody": "Diese Werte stammen aus Ihrem Abend-Check-in: Schlafenszeit, Aufstehen, Arbeitsende, Bewegung und Stress. Das dauert weniger als eine Minute.",
+    "emptyBody": "Diese Werte stammen aus Ihrem Tagesabschluss: Schlafenszeit, Aufstehen, Arbeitsende, Bewegung und Stress. Das dauert weniger als eine Minute.",
     "emptyAction": "Heutigen Check-in machen",
     "state": {
       "good": "gut",

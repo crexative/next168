@@ -180,7 +180,10 @@ test.describe('buttons', () => {
   test('empty states offer a tinted call to action and no link is underlined', async ({ page }) => {
     await startWith(page, { ...richDocument, blocks: [], tasks: [] })
     await openView(page, 'today')
-    const action = page.getByRole('link', { name: 'Plan your week' })
+    // Today's empty state leads with "Set up my week"; Week's "Add a block" is the tinted secondary call to action.
+    await expect(page.getByRole('button', { name: 'Set up my week · 1 min' })).toBeVisible()
+    await openView(page, 'week')
+    const action = page.getByRole('button', { name: 'Add a block' })
     await expect(action).toBeVisible()
     await expect(action).toHaveClass(/ui-button/)
     await expect(action).toHaveClass(/is-tinted/)

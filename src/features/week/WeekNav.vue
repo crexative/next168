@@ -23,8 +23,8 @@ const range = computed(() => weekRangeLabel(props.dates, locale.value, props.tod
       <Icon name="chevron-right" :size="24" />
     </button>
     <button type="button" class="today-button t-subhead" data-testid="week-today" :disabled="isCurrent" @click="emit('today')">{{ t('week.nav.today') }}</button>
-    <!-- Slot for the free-hours badge: its component is mounted here by the insights slice. -->
-    <div class="free-hours-slot" data-testid="week-free-hours-slot" />
+    <!-- The free-hours badge, on its own line under the controls. -->
+    <div class="free-hours-slot" data-testid="week-free-hours-slot"><slot name="free-hours" /></div>
   </div>
 </template>
 
@@ -32,6 +32,7 @@ const range = computed(() => weekRangeLabel(props.dates, locale.value, props.tod
 .week-nav {
   display: flex;
   align-items: center;
+  flex-wrap: wrap;
   gap: var(--space-1);
   padding: 0 var(--space-4);
 }
@@ -65,6 +66,7 @@ const range = computed(() => weekRangeLabel(props.dates, locale.value, props.tod
 .today-button:active:not(:disabled) { transform: scale(0.97); }
 /* Already on this week: the button says so by looking inert, and its label still reads "Today". */
 .today-button:disabled { background: transparent; color: var(--label-2); }
+.free-hours-slot { flex: 1 0 100%; min-width: 0; padding-block: var(--space-1); }
 .free-hours-slot:empty { display: none; }
 @media (prefers-reduced-motion: reduce) {
   .nav-button:active, .today-button:active:not(:disabled) { transform: none; opacity: 0.7; }

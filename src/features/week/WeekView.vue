@@ -10,6 +10,9 @@ import SegmentedControl from '@/ui/SegmentedControl.vue'
 import { useUndoToast } from '@/ui/undoToast'
 import { useMediaQuery } from '@/ui/useMediaQuery'
 import EventSheet from '@/features/calendars/EventSheet.vue'
+import FreeHoursBadge from '@/features/capacity/FreeHoursBadge.vue'
+import SetupWeekPrompt from '@/features/onboarding/SetupWeekPrompt.vue'
+import { setupWeekOffered } from '@/features/onboarding/reopen'
 import { defaultTaskCategoryId } from '@/features/onboarding/templates'
 import AddMenu from './AddMenu.vue'
 import BlockEditorSheet from './BlockEditorSheet.vue'
@@ -47,6 +50,7 @@ const currentWeek = computed(() => weekDates(today.value, document.value?.settin
 const weekOffset = ref(0)
 const dates = computed(() => shiftWeek(currentWeek.value, weekOffset.value))
 const isCurrentWeek = computed(() => weekOffset.value === 0)
+const setupOffered = computed(() => setupWeekOffered(planner))
 const nowMinute = computed(() => localMinuteOf(now.value, timeZone.value))
 const external = useExternalOccurrences(() => document.value ? { fromDate: dates.value[0]!, days: 7, timeZone: timeZone.value } : null)
 
@@ -222,13 +226,21 @@ async function remove(blockId: string): Promise<void> {
     </Teleport>
 
     <EmptyState v-if="!hasCategories" icon="calendar-days" :title="t('week.empty.noCategoriesTitle')" :description="t('week.empty.noCategoriesDescription')">
-      <Button variant="tinted" href="#/settings">{{ t('week.empty.openSettings') }}</Button>
+      <!-- Without categories the setup wizard creates them; when it cannot be offered, Settings remains. -->
+      <SetupWeekPrompt v-if="setupOffered" />
+      <Button v-else variant="tinted" href="#/settings">{{ t('week.empty.openSettings') }}</Button>
     </EmptyState>
     <EmptyState v-else-if="!hasContent" icon="calendar-days" :title="t('week.empty.noBlocksTitle')" :description="t('week.empty.noBlocksDescription')">
-      <Button :disabled="!planner.writable" @click="openNewFromButton">{{ t('week.empty.addBlock') }}</Button>
+      <div class="empty-choices">
+        <SetupWeekPrompt />
+        <Button :variant="setupOffered ? 'tinted' : 'filled'" :disabled="!planner.writable" @click="openNewFromButton">{{ t('week.empty.addBlock') }}</Button>
+      </div>
     </EmptyState>
     <template v-else>
-      <WeekNav :dates="dates" :today="today" :is-current="isCurrentWeek" @previous="showWeek(-1)" @next="showWeek(1)" @today="showToday" />
+      <WeekNav :dates="dates" :today="today" :is-current="isCurrentWeek" @previous="showWeek(-1)" @next="showWeek(1)" @today="showToday">
+        <!-- Free hours count from now, so they belong to the current week only. -->
+        <template v-if="isCurrentWeek" #free-hours><FreeHoursBadge :document="document" :now="now" /></template>
+      </WeekNav>
       <div v-if="!isWide" class="view-mode">
         <SegmentedControl v-model="viewMode" :options="modeOptions" :label="t('week.view.label')" />
       </div>
@@ -309,10 +321,5 @@ async function remove(blockId: string): Promise<void> {
   bottom: calc(var(--tabbar-height) + var(--safe-bottom) + var(--banners-height, 0px) + 4.75rem);
 }
 .has-fab { padding-bottom: 4.5rem; }
-.empty-link {
-  display: inline-flex;
-  align-items: center;
-  min-height: var(--tap-target);
-  color: var(--tint-label);
-}
+.empty-choices { display: flex; flex-direction: column; align-items: center; gap: var(--space-2); }
 </style>

@@ -46,6 +46,14 @@ beforeEach(() => { vi.useFakeTimers({ toFake: ['Date'] }); vi.setSystemTime(fixe
 afterEach(() => { app?.unmount(); host?.remove(); app = undefined; vi.useRealTimers(); i18n.global.locale.value = 'en' })
 
 describe('check-in form', () => {
+  it('has a back control to Today, since the check-in has no tab', async () => {
+    await mount(planned)
+    const back = host.querySelector<HTMLAnchorElement>('[data-testid="back-button"]')!
+    expect(back.getAttribute('href')).toBe('#/today')
+    expect(back.getAttribute('aria-label')).toBe('Back to Today')
+    expect(host.querySelector('form')!.contains(back)).toBe(false)
+  })
+
   it('labels both questions visibly and names the radio groups after them', async () => {
     await mount(planned)
     const groups = [...host.querySelectorAll('[role="radiogroup"]')]

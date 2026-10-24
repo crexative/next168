@@ -5,13 +5,15 @@ import { currentAndNext } from '@/core/now'
 import { scheduleTasks } from '@/core/scheduler'
 import { localDateOf, type DatedOccurrence } from '@/core/time'
 import { usePlannerStore } from '@/stores/plannerStore'
-import AskAssistantLink from '@/ui/AskAssistantLink.vue'
 import Button from '@/ui/Button.vue'
 import EmptyState from '@/ui/EmptyState.vue'
 import { useUndoToast } from '@/ui/undoToast'
+import AssistantEntryButton from '@/features/assistant/AssistantEntryButton.vue'
 import FreeHoursBadge from '@/features/capacity/FreeHoursBadge.vue'
 import CheckInCard from '@/features/checkin/CheckInCard.vue'
 import { consumeSavedFlag } from '@/features/checkin/checkinFlash'
+import SetupWeekPrompt from '@/features/onboarding/SetupWeekPrompt.vue'
+import { setupWeekOffered } from '@/features/onboarding/reopen'
 import { useExternalOccurrences } from '@/features/week/externalOccurrences'
 import { formatDate } from '@/features/week/localTime'
 import { useNow } from '@/features/week/useNow'
@@ -100,9 +102,11 @@ function clear(occurrence: DatedOccurrence): void {
         </p>
       </div>
     </header>
-    <AskAssistantLink class="assistant-entry" />
+    <AssistantEntryButton />
     <EmptyState v-if="!hasContent" icon="sun" :title="t('today.empty.title')" :description="t('today.empty.description')">
-      <Button variant="tinted" href="#/week">{{ t('today.empty.action') }}</Button>
+      <!-- The setup wizard is the quick way in; when it cannot be offered, the link to Week remains. -->
+      <SetupWeekPrompt v-if="setupWeekOffered(planner)" />
+      <Button v-else variant="tinted" href="#/week">{{ t('today.empty.action') }}</Button>
     </EmptyState>
     <template v-else>
       <NowCard
@@ -150,5 +154,4 @@ function clear(occurrence: DatedOccurrence): void {
 .stat { padding: var(--space-3) var(--space-4); }
 .stat + .stat { border-top: 0.5px solid var(--separator); }
 .day-progress { margin: 0; font-variant-numeric: tabular-nums; }
-.assistant-entry { margin: 0 var(--space-4) var(--space-4); }
 </style>

@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { deepWork, plannerDocument, sleep } from '@/features/week/testDocument'
-import { freeHoursAhead, weekEnd } from './freeHours'
+import { formatHours } from '@/ui/format'
+import { freeHoursAhead, weekEnd, weekSplit } from './freeHours'
 
 // Wednesday 2026-10-21 10:15 UTC; with weeks starting on Monday the week ends at Monday 00:00.
 const NOW = new Date('2026-10-21T10:15:00Z')
@@ -47,5 +48,35 @@ describe('freeHoursAhead', () => {
     const now = new Date('2026-10-25T23:30:00Z')
     expect(freeHoursAhead(document, now, 'UTC')).toBe(0.5)
     expect(freeHoursAhead(document, now, 'Asia/Tokyo')).toBe(7 * 24 - 8.5)
+  })
+})
+
+describe('weekSplit', () => {
+  it('splits the week at now into past, planned ahead and free ahead, and the badge reads the same free figure', () => {
+    const document = plannerDocument({ blocks: [deepWork] })
+    const split = weekSplit(document, NOW, 'UTC')
+    expect(split.pastMinutes).toBe(2 * 24 * 60 + 10 * 60 + 15) // Mon 00:00 to Wed 10:15
+    expect(split.plannedAheadMinutes).toBe(45 + 2 * 120)
+    expect(split.freeAheadMinutes / 60).toBe(freeHoursAhead(document, NOW, 'UTC'))
+    expect(split.pastMinutes + split.plannedAheadMinutes + split.freeAheadMinutes).toBe(168 * 60)
+    expect(split.weekMinutes).toBe(168 * 60)
+  })
+
+  it('has nothing past at the first instant of the week and nothing ahead in its last minute', () => {
+    const atStart = weekSplit(plannerDocument({ blocks: [deepWork] }), new Date('2026-10-19T00:00:00Z'), 'UTC')
+    expect(atStart).toMatchObject({ pastMinutes: 0, plannedAheadMinutes: 5 * 120, freeAheadMinutes: 168 * 60 - 5 * 120 })
+    const lastMinute = weekSplit(plannerDocument({ blocks: [deepWork] }), new Date('2026-10-25T23:59:00Z'), 'UTC')
+    expect(lastMinute).toMatchObject({ pastMinutes: 168 * 60 - 1, plannedAheadMinutes: 0, freeAheadMinutes: 1 })
+  })
+
+  it('measures a week with a DST change in real hours', () => {
+    // Europe/Madrid falls back on Sunday 2026-10-25: that week has 169 h; New York springs forward on 2026-03-08: 167 h.
+    expect(weekSplit(plannerDocument(), new Date('2026-10-21T10:15:00Z'), 'Europe/Madrid').weekMinutes).toBe(169 * 60)
+    expect(weekSplit(plannerDocument(), new Date('2026-03-04T15:00:00Z'), 'America/New_York').weekMinutes).toBe(167 * 60)
+  })
+
+  it('formats hours with at most one decimal in the reader\'s locale', () => {
+    expect(formatHours(109.75, 'es')).toBe('109,8')
+    expect(formatHours(39, 'en')).toBe('39')
   })
 })

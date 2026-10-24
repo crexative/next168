@@ -41,7 +41,7 @@
     "stress": "Average stress (1–5)",
     "none": "—",
     "exerciseOfTarget": "{count} of {target} sessions",
-    "emptyBody": "These measures come from your nightly check-in: when you went to bed, when you woke, when work ended, exercise and stress. It takes under a minute.",
+    "emptyBody": "These measures come from your day wrap-up: when you went to bed, when you woke, when work ended, exercise and stress. It takes under a minute.",
     "emptyAction": "Do tonight's check-in",
     "state": {
       "good": "good",

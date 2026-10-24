@@ -47,7 +47,7 @@
       "categories": "keine Kategorien | {count} Kategorie | {count} Kategorien",
       "blocks": "keine Blöcke | {count} Block | {count} Blöcke",
       "tasks": "keine Aufgaben | {count} Aufgabe | {count} Aufgaben",
-      "checkIns": "keine Check-ins | {count} Check-in | {count} Check-ins",
+      "checkIns": "keine Tagesabschlüsse | {count} Tagesabschluss | {count} Tagesabschlüsse",
       "actuals": "keine Ist-Daten | {count} Plan-Ist-Eintrag | {count} Plan-Ist-Einträge",
       "events": "keine Termine | {count} Termin | {count} Termine",
       "calendarSources": "keine Kalender | {count} Kalender | {count} Kalender"

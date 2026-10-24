@@ -113,3 +113,40 @@ describe('Today status questions', () => {
     expect(host.querySelector('[data-testid="task-check"]')).not.toBeNull()
   })
 })
+
+describe('Today wiring', () => {
+  const empty: PlannerDocument = { ...base, blocks: [], tasks: [], settings: { ...base.settings, onboardingDone: true } }
+
+  it('offers "Set up my week" on an empty Today instead of the link to Week, and it reopens the wizard', async () => {
+    const store = await mount('2026-10-24T12:00:00Z', empty)
+    const prompt = host.querySelector<HTMLButtonElement>('[data-testid="setup-week"]')!
+    expect(prompt.textContent).toBe('Set up my week · 1 min')
+    expect(host.querySelector('a[href="#/week"]')).toBeNull()
+    prompt.click()
+    await store.settled()
+    expect(store.document!.settings.onboardingDone).toBe(false)
+  })
+
+  it('keeps the link to Week when the planner is read-only and the wizard cannot be offered', async () => {
+    const store = await mount('2026-10-24T12:00:00Z', empty)
+    store.$patch({ status: 'readonly' })
+    await nextTick()
+    expect(store.writable).toBe(false)
+    expect(host.querySelector('[data-testid="setup-week"]')).toBeNull()
+    expect(host.querySelector('a[href="#/week"]')).not.toBeNull()
+  })
+
+  it('reaches the assistant through the toolbar icon only', async () => {
+    const toolbar = document.createElement('div')
+    toolbar.id = 'toolbar-actions'
+    document.body.appendChild(toolbar)
+    try {
+      await mount('2026-10-24T12:00:00Z')
+      await nextTick()
+      expect(toolbar.querySelector('[data-testid="assistant-entry"]')?.getAttribute('href')).toBe('#/assistant')
+      expect(host.querySelector('a[href="#/assistant"]')).toBeNull()
+    } finally {
+      toolbar.remove()
+    }
+  })
+})

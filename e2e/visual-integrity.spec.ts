@@ -173,6 +173,17 @@ for (const theme of THEMES) {
       }
     })
 
+    for (const [label, categories] of [['no categories', []], ['categories, no blocks', plannedDocument.categories]] as const) {
+      test(`empty Today and Week offer "Set up my week" (${label})`, async ({ page }) => {
+        await start(page, theme, { ...firstRunDocument, categories, settings: { ...firstRunDocument.settings, onboardingDone: true } })
+        for (const view of ['today', 'week']) {
+          await open(page, view)
+          await expect(page.getByTestId('setup-week')).toBeVisible()
+          await audit(page, `${theme}/${view} empty (${label})`)
+        }
+      })
+    }
+
     test('onboarding steps 1–3 and the confirmation (owner\'s Spanish sheet)', async ({ page }) => {
       await start(page, theme, { ...firstRunDocument, settings: { ...firstRunDocument.settings, locale: 'es' } }, 'es')
       await page.goto('./')

@@ -47,7 +47,7 @@
       "categories": "no categories | {count} category | {count} categories",
       "blocks": "no time blocks | {count} time block | {count} time blocks",
       "tasks": "no tasks | {count} task | {count} tasks",
-      "checkIns": "no check-ins | {count} check-in | {count} check-ins",
+      "checkIns": "no day wrap-ups | {count} day wrap-up | {count} day wrap-ups",
       "actuals": "no records | {count} plan-vs-actual record | {count} plan-vs-actual records",
       "events": "no events | {count} event | {count} events",
       "calendarSources": "no calendars | {count} calendar | {count} calendars"

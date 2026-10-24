@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { computeStats } from '@/core/stats'
+import { freeHoursAhead } from '@/features/capacity/freeHours'
 import { formatDuration, type AssistantProvider } from './provider'
 import { RulesProvider } from './RulesProvider'
 import { contextFor, plannerWithBlocks } from './testSupport'
@@ -35,11 +36,20 @@ describe('RulesProvider', () => {
     expect((await ask('What remains to reach my study goal?')).answer).toBe('Study: 2 h planned, 3 h still needed to reach the 5 h goal.')
   })
 
-  it('answers unassigned hours from the stats', async () => {
+  it('answers free hours from now through the same split as the badge, then the routine\'s unassigned hours', async () => {
     const stats = computeStats(plannerWithBlocks())
     const { answer } = await ask('How many unassigned hours do I have?')
     expect(answer).toContain(formatDuration(stats.unassignedHours * 60))
-    expect(answer).toBe('153 h of the week are unassigned (15 h planned of 168 h).')
+    // Saturday 12:00: 132 h of the week have passed and no block is left before Monday.
+    expect(answer).toBe('36 h free from now to Sunday (132 h already past, 0 min planned ahead). Your routine leaves 153 h of the 168 h unassigned (15 h planned).')
+  })
+
+  it('counts free hours from now, not the whole week, mid-week', async () => {
+    const document = plannerWithBlocks()
+    const wednesday = new Date('2026-10-21T10:00:00Z')
+    const { answer } = await rules.ask('How many free hours do I have this week?', contextFor(document, 'es', wednesday), signal)
+    expect(answer).toBe(`Quedan ${formatDuration(freeHoursAhead(document, wednesday, 'UTC') * 60)} libres de aquí al domingo (58 h ya pasaron y 4 h están planificadas por delante). Tu rutina deja 153 h de las 168 h sin asignar (15 h planificadas).`)
+    expect(freeHoursAhead(document, wednesday, 'UTC')).toBe(106)
   })
 
   it('answers the next block', async () => {

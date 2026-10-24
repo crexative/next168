@@ -2,6 +2,7 @@ import { currentAndNext } from '@/core/now'
 import { scheduleTasks } from '@/core/scheduler'
 import { computeStats } from '@/core/stats'
 import type { Category, PlannerDocument } from '@/core/model'
+import { weekEnd, weekSplit } from '@/features/capacity/freeHours'
 import {
   formatDuration,
   type AskContext, type AssistantAnswer, type AssistantProvider, type Availability, type Translate,
@@ -76,7 +77,16 @@ export function answerFromStats(question: string, { document, now, timeZone, loc
     return t('assistant.answers.overflow', { count: overflowing.length, titles: titles.join(', '), amount: formatDuration(minutes) })
   }
   if (!category && matchesIntent('unassigned', question)) {
-    return t('assistant.answers.unassigned', { amount: formatDuration(stats.unassignedHours * 60), planned: formatDuration(stats.plannedMinutes) })
+    // Free time counts from now, through the same split as the free-hours badge; the routine's unassigned hours follow.
+    const split = weekSplit(document, now, timeZone)
+    return t('assistant.answers.unassigned', {
+      free: formatDuration(split.freeAheadMinutes),
+      day: formatDate(weekEnd(document, now, timeZone).lastDate, displayLocaleFor(locale), { weekday: 'long' }),
+      past: formatDuration(split.pastMinutes),
+      plannedAhead: formatDuration(split.plannedAheadMinutes),
+      amount: formatDuration(stats.unassignedHours * 60),
+      planned: formatDuration(stats.plannedMinutes),
+    })
   }
   if (category && matchesIntent('remaining', question)) return remainingLine(document, category, t)
   if (category) return categoryLine(document, category, t)

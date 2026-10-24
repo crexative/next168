@@ -41,7 +41,7 @@
     "stress": "Estrés medio (1–5)",
     "none": "—",
     "exerciseOfTarget": "{count} de {target} sesiones",
-    "emptyBody": "Estas medidas salen de tu registro nocturno: cuándo te acostaste, cuándo despertaste, cuándo terminó el trabajo, ejercicio y estrés. Lleva menos de un minuto.",
+    "emptyBody": "Estas medidas salen de tu cierre del día: cuándo te acostaste, cuándo despertaste, cuándo terminó el trabajo, ejercicio y estrés. Lleva menos de un minuto.",
     "emptyAction": "Hacer el registro de hoy",
     "state": {
       "good": "bien",

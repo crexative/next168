@@ -1,3 +1,11 @@
 {
-  "badge": "Restam {hours} h livres daqui até {day} · de {total}"
+  "badge": "Restam {hours} h livres daqui até {day} · de {total}",
+  "split": {
+    "title": "Esta semana, a partir de agora",
+    "past": "Já passaram",
+    "planned": "Planejadas pela frente",
+    "free": "Livres até {day}",
+    "hours": "{hours} h",
+    "total": "Juntas somam as {total} h desta semana."
+  }
 }

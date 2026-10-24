@@ -47,7 +47,7 @@
       "categories": "aucune catégorie | {count} catégorie | {count} catégories",
       "blocks": "aucun bloc | {count} bloc | {count} blocs",
       "tasks": "aucune tâche | {count} tâche | {count} tâches",
-      "checkIns": "aucun bilan | {count} bilan | {count} bilans",
+      "checkIns": "aucun bilan du jour | {count} bilan du jour | {count} bilans du jour",
       "actuals": "aucune mesure | {count} mesure prévu/réel | {count} mesures prévu/réel",
       "events": "aucun événement | {count} événement | {count} événements",
       "calendarSources": "aucun calendrier | {count} calendrier | {count} calendriers"

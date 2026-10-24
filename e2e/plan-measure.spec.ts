@@ -141,7 +141,7 @@ test.describe('plan and measure', () => {
     await expect(page.getByTestId('capacity-available')).toHaveText('66 h available of 168')
     await expect(page.getByTestId('goal-row-c-work').getByTestId('goal-chip')).toHaveText(/Over cap/)
     await expect(page.getByTestId('goal-row-c-sleep').getByTestId('goal-chip')).toContainText('On track')
-    await expect(page.getByTestId('measures-empty')).toContainText('nightly check-in')
+    await expect(page.getByTestId('measures-empty')).toContainText('day wrap-up')
     await page.getByRole('link', { name: "Do tonight's check-in" }).click()
     await expect(page).toHaveURL(/#\/checkin$/)
   })

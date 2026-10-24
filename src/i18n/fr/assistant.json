@@ -94,7 +94,7 @@
     "noNextBlock": "Aucun bloc à venir dans la semaine.",
     "noOverflow": "Toutes les tâches en cours tiennent dans votre temps libre.",
     "overflow": "{count} tâche ne tient pas ou est en retard : {titles}. {amount} non planifiées. | {count} tâches ne tiennent pas ou sont en retard : {titles}. {amount} non planifiées.",
-    "unassigned": "{amount} de la semaine sont non assignées ({planned} planifiées sur 168 h).",
+    "unassigned": "{free} libres d’ici {day} ({past} déjà passées, {plannedAhead} prévues d’ici là). Ta routine laisse {amount} des 168 h non assignées ({planned} planifiées).",
     "totalPlanned": "{planned} planifiées cette semaine sur 168 h.",
     "rulesCannotChange": "Modifier le plan nécessite le modèle sur l'appareil. Activez-le dans les réglages, sous Assistant.",
     "rulesCannotChangeHere": "Modifier le plan nécessite le modèle sur l'appareil, que cet appareil ou ce navigateur ne peut pas exécuter. Les réponses rapides sur tes heures fonctionnent toujours.",

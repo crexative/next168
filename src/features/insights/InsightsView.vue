@@ -3,9 +3,11 @@ import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { localDateOf } from '@/core/time'
 import { computeStats, planVsActual, sevenDayMeasures } from '@/core/stats'
-import AskAssistantLink from '@/ui/AskAssistantLink.vue'
 import EmptyState from '@/ui/EmptyState.vue'
 import { usePlannerStore } from '@/stores/plannerStore'
+import AssistantEntryButton from '@/features/assistant/AssistantEntryButton.vue'
+import WeekSplit from '@/features/capacity/WeekSplit.vue'
+import { useNow } from '@/features/week/useNow'
 import { EXERCISE_ICON } from './exercise'
 import MeasureTiles from './MeasureTiles.vue'
 import WeekBar from './WeekBar.vue'
@@ -15,6 +17,7 @@ import { goalProgress, type GoalProgress } from './goalLine'
 
 const { t } = useI18n()
 const planner = usePlannerStore()
+const now = useNow()
 
 const document = computed(() => planner.document)
 const stats = computed(() => (document.value ? computeStats(document.value) : null))
@@ -81,7 +84,7 @@ function markerText(row: { category: { goal: { type: string } }; progress: GoalP
 
 <template>
   <div v-if="document && stats" class="insights">
-    <AskAssistantLink />
+    <AssistantEntryButton />
     <EmptyState
       v-if="document.categories.length === 0"
       icon="chart-no-axes-column"
@@ -90,6 +93,7 @@ function markerText(row: { category: { goal: { type: string } }; progress: GoalP
     />
     <template v-else>
       <WeekBar :categories="document.categories" :planned-minutes="plannedMinutes" />
+      <WeekSplit :document="document" :now="now" />
 
       <section class="goals" :aria-label="t('insights.goal.title')">
         <h2 class="t-headline">{{ t('insights.goal.title') }}</h2>

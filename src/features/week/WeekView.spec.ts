@@ -347,3 +347,58 @@ describe('WeekView saving', () => {
     expect(host.querySelector<HTMLElement>('[data-testid="pager-track"]')?.style.transform).toBe('translateX(calc(-200% + 0px))')
   })
 })
+
+describe('WeekView wiring', () => {
+  async function mountWeek(fill: (draft: import('@/core/model').PlannerDocument) => void) {
+    vi.useFakeTimers({ toFake: ['Date'] })
+    vi.setSystemTime(new Date('2026-10-21T10:15:00Z'))
+    const { planner } = createTestRepositories()
+    configurePlannerStore({ repository: planner, now: fixedNow, newId: newTestId, locale: () => 'en', timeZone: () => 'UTC' })
+    const pinia = createPinia()
+    setActivePinia(pinia)
+    const store = usePlannerStore()
+    await store.load()
+    await store.commit((draft) => { draft.settings.onboardingDone = true; fill(draft) })
+    i18n.global.locale.value = 'en'
+    const host = globalThis.document.createElement('div')
+    globalThis.document.body.append(host)
+    const app = createApp(WeekView)
+    app.use(pinia).use(i18n).mount(host)
+    cleanup = () => { app.unmount(); host.remove() }
+    await tick()
+    return { host, store }
+  }
+  const work = { id: 'work', name: 'Work', colorKey: 'blue' as const, goal: { type: 'none' as const, hoursPerWeek: 0 } }
+
+  it('shows the free-hours badge in the header slot for the current week only', async () => {
+    const { host } = await mountWeek((draft) => {
+      draft.categories.push(work)
+      draft.blocks.push({ id: 'focus', categoryId: 'work', title: 'Focus', start: 600, end: 780, days: [1] })
+    })
+    const badge = () => host.querySelector('[data-testid="week-free-hours-slot"] [data-testid="free-hours"]')
+    // Wednesday 10:15 to Monday 00:00 is 109.75 h, and Monday's block is already behind.
+    expect(badge()?.textContent?.trim()).toBe('109.8 h free from now to Sunday · of 168')
+    host.querySelector<HTMLElement>('[data-testid="week-next"]')!.click()
+    await tick()
+    expect(badge()).toBeNull()
+    host.querySelector<HTMLElement>('[data-testid="week-today"]')!.click()
+    await tick()
+    expect(badge()).not.toBeNull()
+  })
+
+  it('offers "Set up my week" next to adding a block when the week is empty', async () => {
+    const { host, store } = await mountWeek((draft) => { draft.categories.push(work) })
+    const prompt = host.querySelector<HTMLButtonElement>('[data-testid="setup-week"]')!
+    expect(prompt.textContent).toBe('Set up my week · 1 min')
+    expect([...host.querySelectorAll('button')].some((button) => button.textContent?.trim() === 'Add a block')).toBe(true)
+    prompt.click()
+    await store.settled()
+    expect(store.document!.settings.onboardingDone).toBe(false)
+  })
+
+  it('offers "Set up my week" instead of the Settings link when there are no categories', async () => {
+    const { host } = await mountWeek(() => undefined)
+    expect(host.querySelector('[data-testid="setup-week"]')).not.toBeNull()
+    expect(host.querySelector('a[href="#/settings"]')).toBeNull()
+  })
+})

@@ -94,7 +94,7 @@
     "noNextBlock": "No hay ningún bloque próximo en la semana.",
     "noOverflow": "Todas las tareas pendientes caben en tu tiempo libre.",
     "overflow": "{count} tarea no cabe o va tarde: {titles}. Quedan {amount} sin programar. | {count} tareas no caben o van tarde: {titles}. Quedan {amount} sin programar.",
-    "unassigned": "{amount} de la semana están sin asignar ({planned} planificadas de 168 h).",
+    "unassigned": "Quedan {free} libres de aquí al {day} ({past} ya pasaron y {plannedAhead} están planificadas por delante). Tu rutina deja {amount} de las 168 h sin asignar ({planned} planificadas).",
     "totalPlanned": "{planned} planificadas esta semana de 168 h.",
     "rulesCannotChange": "Cambiar el plan requiere el modelo en el dispositivo. Actívalo en Ajustes, en Asistente.",
     "rulesCannotChangeHere": "Cambiar el plan requiere el modelo en el dispositivo, que este dispositivo o navegador no puede ejecutar. Las respuestas rápidas sobre tus horas siguen funcionando.",

@@ -47,7 +47,7 @@
       "categories": "nenhuma categoria | {count} categoria | {count} categorias",
       "blocks": "nenhum bloco | {count} bloco | {count} blocos",
       "tasks": "nenhuma tarefa | {count} tarefa | {count} tarefas",
-      "checkIns": "nenhum registro | {count} registro do dia | {count} registros do dia",
+      "checkIns": "nenhum fechamento do dia | {count} fechamento do dia | {count} fechamentos do dia",
       "actuals": "nenhum dado | {count} dado de planejado e realizado | {count} dados de planejado e realizado",
       "events": "nenhum evento | {count} evento | {count} eventos",
       "calendarSources": "nenhum calendário | {count} calendário | {count} calendários"

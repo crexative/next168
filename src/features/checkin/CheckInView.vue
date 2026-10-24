@@ -5,6 +5,7 @@ import { localDateOf } from '@/core/time'
 import { assertEntry, CHANGED_ELSEWHERE, snapshotOf } from '@/features/insights/entryGuard'
 import { usePlannerStore } from '@/stores/plannerStore'
 import Button from '@/ui/Button.vue'
+import BackButton from '@/features/settings/BackButton.vue'
 import {
   checkInFromForm, formFromCheckIn, isEmptyCheckIn, upsertCheckIn, withPlanTimes,
   type CheckInFormState,
@@ -80,47 +81,52 @@ async function save(): Promise<void> {
 </script>
 
 <template>
-  <form v-if="planner.document" class="checkin" :aria-label="t('checkin.title')" @submit.prevent="save">
-    <p class="t-subhead t-secondary">{{ t('checkin.intro') }}</p>
+  <div v-if="planner.document" class="checkin">
+    <!-- The check-in has no tab, so it gets the back control the other tab-less screens use. -->
+    <BackButton current="checkin" fallback="today" />
+    <form class="checkin-form" :aria-label="t('checkin.title')" @submit.prevent="save">
+      <p class="t-subhead t-secondary">{{ t('checkin.intro') }}</p>
 
-    <label class="field">
-      <span class="t-footnote t-secondary">{{ t('checkin.date') }}</span>
-      <input v-model="form.date" class="input" type="date" :max="today" required @change="onDateChange">
-    </label>
-
-    <div class="times" data-testid="checkin-times">
       <label class="field">
-        <span class="t-footnote t-secondary">{{ t('checkin.bedtime') }}</span>
-        <input v-model="form.bedtime" class="input" type="time">
+        <span class="t-footnote t-secondary">{{ t('checkin.date') }}</span>
+        <input v-model="form.date" class="input" type="date" :max="today" required @change="onDateChange">
       </label>
+
+      <div class="times" data-testid="checkin-times">
+        <label class="field">
+          <span class="t-footnote t-secondary">{{ t('checkin.bedtime') }}</span>
+          <input v-model="form.bedtime" class="input" type="time">
+        </label>
+        <label class="field">
+          <span class="t-footnote t-secondary">{{ t('checkin.wake') }}</span>
+          <input v-model="form.wake" class="input" type="time">
+        </label>
+        <label v-if="showWorkEnd" class="field" data-testid="work-end-field">
+          <span class="t-footnote t-secondary">{{ t('checkin.workEnd') }}</span>
+          <input v-model="form.workEnd" class="input" type="time">
+        </label>
+      </div>
+
+      <p v-if="fromPlan" class="t-footnote t-secondary plan-hint" data-testid="plan-hint">{{ t('checkin.planHint') }}</p>
+
+      <ChoiceRow v-model="form.exercise" :options="exerciseOptions" :label="t('checkin.exercise.label')" />
+      <ChoiceRow v-model="form.stress" :options="stressOptions" :label="t('checkin.stress')" />
+
       <label class="field">
-        <span class="t-footnote t-secondary">{{ t('checkin.wake') }}</span>
-        <input v-model="form.wake" class="input" type="time">
+        <span class="t-footnote t-secondary">{{ t('checkin.note') }}</span>
+        <textarea v-model="form.note" class="input note" rows="3" maxlength="280" />
       </label>
-      <label v-if="showWorkEnd" class="field" data-testid="work-end-field">
-        <span class="t-footnote t-secondary">{{ t('checkin.workEnd') }}</span>
-        <input v-model="form.workEnd" class="input" type="time">
-      </label>
-    </div>
 
-    <p v-if="fromPlan" class="t-footnote t-secondary plan-hint" data-testid="plan-hint">{{ t('checkin.planHint') }}</p>
-
-    <ChoiceRow v-model="form.exercise" :options="exerciseOptions" :label="t('checkin.exercise.label')" />
-    <ChoiceRow v-model="form.stress" :options="stressOptions" :label="t('checkin.stress')" />
-
-    <label class="field">
-      <span class="t-footnote t-secondary">{{ t('checkin.note') }}</span>
-      <textarea v-model="form.note" class="input note" rows="3" maxlength="280" />
-    </label>
-
-    <Button type="submit" block :disabled="!planner.writable || !form.date">{{ t('checkin.save') }}</Button>
-    <p v-if="changedElsewhere" class="t-subhead" role="alert">{{ t('checkin.changedElsewhere') }}</p>
-  </form>
+      <Button type="submit" block :disabled="!planner.writable || !form.date">{{ t('checkin.save') }}</Button>
+      <p v-if="changedElsewhere" class="t-subhead" role="alert">{{ t('checkin.changedElsewhere') }}</p>
+    </form>
+  </div>
 </template>
 
 <style scoped>
 /* Starts under the large title like Assistant; centred, it drifted away from its own title on wide windows. */
 .checkin { display: flex; flex-direction: column; gap: var(--space-4); max-width: 36rem; padding: 0 var(--space-4) var(--space-6); }
+.checkin-form { display: flex; flex-direction: column; gap: var(--space-4); }
 .times { display: flex; flex-wrap: wrap; gap: var(--space-3); }
 .field { display: flex; flex: 1; flex-direction: column; gap: var(--space-1); min-width: 8rem; }
 /* The form sits on the page background, not in a card. */

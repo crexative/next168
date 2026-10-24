@@ -1,3 +1,11 @@
 {
-  "badge": "Noch {hours} Std. frei bis {day} · von {total}"
+  "badge": "Noch {hours} Std. frei bis {day} · von {total}",
+  "split": {
+    "title": "Diese Woche ab jetzt",
+    "past": "Schon vorbei",
+    "planned": "Noch geplant",
+    "free": "Frei bis {day}",
+    "hours": "{hours} Std.",
+    "total": "Zusammen ergeben sie die {total} Std. dieser Woche."
+  }
 }

@@ -41,7 +41,7 @@
     "stress": "Stress moyen (1–5)",
     "none": "—",
     "exerciseOfTarget": "{count} séances sur {target}",
-    "emptyBody": "Ces mesures viennent de votre bilan du soir : heure du coucher, du réveil, fin du travail, exercice et stress. Cela prend moins d'une minute.",
+    "emptyBody": "Ces mesures viennent de votre bilan du jour : heure du coucher, du réveil, fin du travail, exercice et stress. Cela prend moins d'une minute.",
     "emptyAction": "Faire le bilan de ce soir",
     "state": {
       "good": "bien",
