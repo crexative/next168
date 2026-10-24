@@ -16,10 +16,13 @@
     "lint": "eslint . --fix",
     "test": "vitest",
     "icons": "pwa-assets-generator",
-    "e2e": "playwright test"
+    "e2e": "playwright test",
+    "companion:build": "npm --prefix companion run build",
+    "companion:start": "node companion/dist/cli.js serve"
   },
   "dependencies": {
     "@mlc-ai/web-llm": "0.2.85",
+    "ical.js": "2.2.1",
     "lucide-vue-next": "0.577.0",
     "motion": "14.1.0",
     "pinia": "^3.0.3",
@@ -40,6 +43,7 @@
     "@vue/tsconfig": "^0.8.1",
     "eslint": "^9.33.0",
     "eslint-plugin-vue": "~10.4.0",
+    "fake-indexeddb": "6.2.5",
     "happy-dom": "^20.0.7",
     "jiti": "^2.5.1",
     "npm-run-all2": "^8.0.4",

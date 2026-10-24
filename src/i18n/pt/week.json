@@ -1,0 +1,45 @@
+{
+  "summary": "Nenhum bloco de tempo salvo neste dispositivo | {count} bloco de tempo salvo neste dispositivo | {count} blocos de tempo salvos neste dispositivo",
+  "add": "Adicionar bloco",
+  "deleted": "“{title}” excluído",
+  "grid": {
+    "crossesMidnight": "{range} (noturno)"
+  },
+  "pager": {
+    "days": "Dias da semana"
+  },
+  "editor": {
+    "newTitle": "Novo bloco",
+    "editTitle": "Editar bloco",
+    "title": "Título",
+    "titlePlaceholder": "Trabalho focado, Academia, Família…",
+    "category": "Categoria",
+    "start": "Começa",
+    "end": "Termina",
+    "nextDay": "+1 dia",
+    "days": "Repete em",
+    "save": "Salvar",
+    "delete": "Excluir bloco",
+    "hours": "{hours} h",
+    "errors": {
+      "titleRequired": "Dê um título ao bloco.",
+      "categoryRequired": "Escolha uma categoria.",
+      "timeRequired": "Informe um horário de início e de fim.",
+      "zeroLength": "Início e fim não podem ser no mesmo horário.",
+      "daysRequired": "Escolha pelo menos um dia.",
+      "overlap": "Sobrepõe “{title}”. Mude o horário ou os dias.",
+      "saveFailed": "Não foi possível salvar ({reason})."
+    },
+    "warnings": {
+      "goalOver": "{category} ficaria {hours} acima do limite semanal. Você ainda pode salvar."
+    }
+  },
+  "empty": {
+    "noCategoriesTitle": "Comece pelas suas categorias",
+    "noCategoriesDescription": "Cada bloco pertence a uma categoria como Sono, Trabalho ou Exercício. Adicione uma em Ajustes primeiro.",
+    "openSettings": "Abrir Ajustes",
+    "noBlocksTitle": "Planeje suas 168 horas",
+    "noBlocksDescription": "Adicione um bloco para algo que você faz toda semana, como dormir ou trabalhar.",
+    "addBlock": "Adicionar um bloco"
+  }
+}

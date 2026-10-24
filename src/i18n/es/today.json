@@ -1,0 +1,49 @@
+{
+  "now": {
+    "label": "Ahora",
+    "eyebrow": "Ahora",
+    "freeEyebrow": "En este momento",
+    "free": "Tiempo libre",
+    "minutesLeft": "Quedan {minutes} min",
+    "hoursMinutesLeft": "Quedan {hours} h {minutes} min",
+    "progress": "Progreso del bloque actual",
+    "next": "Después",
+    "nothingNext": "Nada más planificado esta semana",
+    "tomorrowAt": "Mañana, {time}",
+    "dayAt": "{day}, {time}"
+  },
+  "checkin": {
+    "title": "Registro de la noche",
+    "description": "Sueño, ejercicio, fin del trabajo y estrés en menos de un minuto"
+  },
+  "timeline": {
+    "label": "Cronología de hoy",
+    "title": "Cronología",
+    "allDay": "Todo el día",
+    "conflict": "Conflicto",
+    "late": "Tarde",
+    "kinds": {
+      "task": "Tarea",
+      "event": "Evento",
+      "external": "Calendario"
+    }
+  },
+  "actual": {
+    "question": "¿Cómo fue {title}?",
+    "done": "Hecho",
+    "partial": "Parcial",
+    "skipped": "Omitido",
+    "minutesLabel": "Minutos dedicados (planificados {planned})",
+    "savePartial": "Guardar"
+  },
+  "empty": {
+    "title": "Aún no hay nada planificado",
+    "description": "Añade bloques de tiempo a tu semana y Hoy mostrará lo que ocurre ahora y después.",
+    "action": "Planifica tu semana"
+  },
+  "emptyDay": {
+    "title": "Un día libre",
+    "description": "Hoy no hay bloques, tareas ni eventos.",
+    "action": "Abrir la semana"
+  }
+}

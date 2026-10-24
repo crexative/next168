@@ -1,0 +1,49 @@
+{
+  "now": {
+    "label": "Agora",
+    "eyebrow": "Agora",
+    "freeEyebrow": "Neste momento",
+    "free": "Tempo livre",
+    "minutesLeft": "Faltam {minutes} min",
+    "hoursMinutesLeft": "Faltam {hours} h {minutes} min",
+    "progress": "Progresso do bloco atual",
+    "next": "A seguir",
+    "nothingNext": "Nada mais planejado nesta semana",
+    "tomorrowAt": "Amanhã, {time}",
+    "dayAt": "{day}, {time}"
+  },
+  "checkin": {
+    "title": "Registro da noite",
+    "description": "Sono, exercício, fim do trabalho e estresse em menos de um minuto"
+  },
+  "timeline": {
+    "label": "Linha do tempo de hoje",
+    "title": "Linha do tempo",
+    "allDay": "Dia inteiro",
+    "conflict": "Conflito",
+    "late": "Atrasada",
+    "kinds": {
+      "task": "Tarefa",
+      "event": "Evento",
+      "external": "Calendário"
+    }
+  },
+  "actual": {
+    "question": "Como foi {title}?",
+    "done": "Feito",
+    "partial": "Parcial",
+    "skipped": "Pulado",
+    "minutesLabel": "Minutos dedicados (planejados {planned})",
+    "savePartial": "Salvar"
+  },
+  "empty": {
+    "title": "Nada planejado ainda",
+    "description": "Adicione blocos de tempo à sua semana e Hoje mostrará o que acontece agora e a seguir.",
+    "action": "Planejar a semana"
+  },
+  "emptyDay": {
+    "title": "Um dia livre",
+    "description": "Nenhum bloco, tarefa ou evento hoje.",
+    "action": "Abrir a semana"
+  }
+}

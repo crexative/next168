@@ -44,6 +44,15 @@ describe('atomic proposal application', () => {
     expect(doc.blocks).toEqual([])
     expect(await applyProposal(result.document, proposal, idGen(), clock, hash)).toEqual({ kind: 'already-applied', document: result.document })
   })
+  it('rejects an all-day event that does not span a whole date, so the document always exports', async () => {
+    const sameDay: ProposalOp = { op: 'add_event', event: { title: 'Holiday', start: '2026-10-24T00:00:00Z', end: '2026-10-24T12:00:00Z', allDay: true, attendees: [] } }
+    const doc = document()
+    const proposal = await buildProposal(input([sameDay]), doc, 'assistant', clock, () => 'p-all-day', hash)
+    expect((await applyProposal(doc, proposal, idGen(), clock, hash)).kind).toBe('rejected')
+    const nextDay: ProposalOp = { op: 'add_event', event: { ...sameDay.event, end: '2026-10-25T00:00:00Z' } }
+    const ok = await buildProposal(input([nextDay]), doc, 'assistant', clock, () => 'p-all-day-ok', hash)
+    expect((await applyProposal(doc, ok, idGen(), clock, hash)).kind).toBe('applied')
+  })
   it('supports every op with exact before/after and snapshot-safe deletion', async () => {
     const doc = document()
     doc.blocks = [{ id: 'existing', ...add.block }]

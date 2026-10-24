@@ -1,0 +1,45 @@
+{
+  "summary": "Aucun bloc de temps enregistré sur cet appareil | {count} bloc de temps enregistré sur cet appareil | {count} blocs de temps enregistrés sur cet appareil",
+  "add": "Ajouter un bloc",
+  "deleted": "« {title} » supprimé",
+  "grid": {
+    "crossesMidnight": "{range} (de nuit)"
+  },
+  "pager": {
+    "days": "Jours de la semaine"
+  },
+  "editor": {
+    "newTitle": "Nouveau bloc",
+    "editTitle": "Modifier le bloc",
+    "title": "Titre",
+    "titlePlaceholder": "Travail profond, Sport, Famille…",
+    "category": "Catégorie",
+    "start": "Début",
+    "end": "Fin",
+    "nextDay": "+1 jour",
+    "days": "Se répète le",
+    "save": "Enregistrer",
+    "delete": "Supprimer le bloc",
+    "hours": "{hours} h",
+    "errors": {
+      "titleRequired": "Donnez un titre au bloc.",
+      "categoryRequired": "Choisissez une catégorie.",
+      "timeRequired": "Indiquez une heure de début et de fin.",
+      "zeroLength": "Le début et la fin ne peuvent pas être à la même heure.",
+      "daysRequired": "Choisissez au moins un jour.",
+      "overlap": "Chevauche « {title} ». Changez l'heure ou les jours.",
+      "saveFailed": "Enregistrement impossible ({reason})."
+    },
+    "warnings": {
+      "goalOver": "{category} dépasserait son plafond hebdomadaire de {hours}. Vous pouvez quand même enregistrer."
+    }
+  },
+  "empty": {
+    "noCategoriesTitle": "Commencez par vos catégories",
+    "noCategoriesDescription": "Chaque bloc appartient à une catégorie comme Sommeil, Travail ou Sport. Ajoutez-en une dans Réglages.",
+    "openSettings": "Ouvrir Réglages",
+    "noBlocksTitle": "Planifiez vos 168 heures",
+    "noBlocksDescription": "Ajoutez un bloc pour une activité hebdomadaire, comme dormir ou travailler.",
+    "addBlock": "Ajouter un bloc"
+  }
+}

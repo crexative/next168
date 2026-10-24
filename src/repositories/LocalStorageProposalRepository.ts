@@ -84,7 +84,7 @@ export class LocalStorageProposalRepository implements ProposalRepository {
       const proposal = proposals.find((candidate) => candidate.id === id)
       if (!proposal) return { kind: 'not-found' }
       if (proposal.status === 'applied') return { kind: 'applied', revision: proposal.appliedRevision ?? 0 }
-      if (proposal.status === 'pending') {
+      if (proposal.status === 'pending' || proposal.status === 'stale') {
         this.updateProposal(proposals, { ...proposal, status: 'rejected', decidedAt: this.deps.now().toISOString() })
       }
       return { kind: 'rejected' }
