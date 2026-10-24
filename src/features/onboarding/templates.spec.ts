@@ -51,6 +51,16 @@ describe('onboarding templates', () => {
     expect(result.blocks[0]!.title).toBe('Studio')
   })
 
+  it('gives every created category a distinct colour, even when the choices repeat one', () => {
+    const defaults = buildOnboardingResult(allChoices(), { title: '', templateId: 'work', durationMin: 60 }, environment)
+    expect(new Set(defaults.categories.map((category) => category.colorKey)).size).toBe(defaults.categories.length)
+
+    const clashing = allChoices().map((choice) => ({ ...choice, colorKey: 'blue' as const }))
+    const result = buildOnboardingResult(clashing, { title: '', templateId: 'work', durationMin: 60 }, environment)
+    expect(new Set(result.categories.map((category) => category.colorKey)).size).toBe(CATEGORY_TEMPLATES.length)
+    expect(result.categories[0]!.colorKey).toBe('blue')
+  })
+
   it('defaults the first task to the first picked category that is not Sleep', () => {
     const pick = (...ids: string[]) => allChoices().map((choice) => ({ ...choice, selected: ids.includes(choice.templateId) }))
     expect(defaultTaskTemplateId(pick('sleep', 'work', 'exercise'), '')).toBe('work')

@@ -1,4 +1,5 @@
 import type { Category, ColorKey, DayIndex, Task, TimeBlock } from '@/core/model'
+import { distinctColorKeys } from '@/features/insights/categoryColor'
 import { EXERCISE_ICON } from '@/features/insights/exercise'
 
 export interface BlockPreset {
@@ -82,9 +83,10 @@ export function buildOnboardingResult(
   const categoryIds = new Map(picked.map((choice) => [choice.templateId, environment.newId()]))
   const templates = new Map(CATEGORY_TEMPLATES.map((template) => [template.id, template]))
 
-  const categories = picked.map((choice): Category => {
+  const colorKeys = distinctColorKeys(picked.map((choice) => choice.colorKey))
+  const categories = picked.map((choice, index): Category => {
     const template = templates.get(choice.templateId)!
-    return { id: categoryIds.get(choice.templateId)!, name: choice.name.trim(), colorKey: choice.colorKey, icon: template.icon, goal: template.goal }
+    return { id: categoryIds.get(choice.templateId)!, name: choice.name.trim(), colorKey: colorKeys[index]!, icon: template.icon, goal: template.goal }
   })
   const blocks = picked.filter((choice) => choice.sketch).map((choice): TimeBlock => {
     const { preset } = templates.get(choice.templateId)!
