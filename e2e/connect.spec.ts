@@ -70,7 +70,8 @@ test('companion mode never opens the browser planner database (A11)', async ({ p
   await page.goto(`${companion.url}/#/assistant`)
   await expect(page.getByRole('heading', { level: 1, name: 'Assistant' })).toBeVisible()
   const op = { op: 'add_block', block: { categoryId: 'focus', title: 'Card block', days: [2], start: 600, end: 660 } }
-  await page.evaluate((change) => (window as unknown as { __next168Test: { answerWithProposal(summary: string, ops: unknown[]): void } }).__next168Test.answerWithProposal('Add a card block', [change]), op)
+  // globalThis, not window: the companion type-checks this file without the DOM library.
+  await page.evaluate((change) => (globalThis as unknown as { __next168Test: { answerWithProposal(summary: string, ops: unknown[]): void } }).__next168Test.answerWithProposal('Add a card block', [change]), op)
   await page.getByRole('textbox', { name: 'Ask the assistant' }).fill('Add a card block')
   await page.getByRole('button', { name: 'Ask', exact: true }).click()
   await page.getByTestId('proposal-card').getByRole('button', { name: 'Review changes' }).click()
@@ -89,6 +90,9 @@ test('companion mode never opens the browser planner database (A11)', async ({ p
   await expect(page.getByTestId('data-notice')).toContainText('Imported and verified')
   expect((await companion.workspace.document()).blocks.map((block) => block.title)).toEqual(['Imported block'])
 
-  const databases = await page.evaluate(async () => (await indexedDB.databases()).map((database) => database.name))
+  const databases = await page.evaluate(async () => {
+    const factory = (globalThis as unknown as { indexedDB: { databases(): Promise<{ name?: string }[]> } }).indexedDB
+    return (await factory.databases()).map((database) => database.name)
+  })
   expect(databases).not.toContain('next168')
 })
