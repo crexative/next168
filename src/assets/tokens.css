@@ -29,6 +29,8 @@
   --cat-fill-strength: 16%;
 
   --scrim: rgba(0, 0, 0, 0.4);
+  /* The select chevron in --label-2; an image cannot read a custom property, so each theme names its own. */
+  --chevron-down: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%233c3c43' stroke-opacity='.6' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
   --shadow-floating: 0 10px 40px rgba(0, 0, 0, 0.18), 0 2px 8px rgba(0, 0, 0, 0.08);
   --material: color-mix(in srgb, var(--surface) 72%, transparent);
   --material-filter: blur(20px) saturate(180%);
@@ -88,6 +90,7 @@
 
     --scrim: rgba(0, 0, 0, 0.6);
     --shadow-floating: 0 10px 40px rgba(0, 0, 0, 0.6);
+    --chevron-down: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23ebebf5' stroke-opacity='.6' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
   }
 }
 
@@ -125,6 +128,7 @@
 
   --scrim: rgba(0, 0, 0, 0.6);
   --shadow-floating: 0 10px 40px rgba(0, 0, 0, 0.6);
+  --chevron-down: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23ebebf5' stroke-opacity='.6' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
 }
 
 @media (prefers-reduced-transparency: reduce) {

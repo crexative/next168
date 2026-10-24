@@ -229,7 +229,6 @@ async function remove(): Promise<void> {
 .empty { padding: var(--space-3) var(--space-4); }
 .editor { display: flex; flex-direction: column; gap: var(--space-3); }
 .field { display: flex; flex-direction: column; gap: var(--space-1); }
-.input { min-height: var(--tap-target); padding: 0 var(--space-3); border: 1px solid var(--separator); border-radius: var(--radius-control); background: var(--surface-2); }
 .error { color: var(--danger-label); }
 .colors { margin: 0; padding: 0; border: 0; }
 .swatches { display: flex; flex-wrap: wrap; gap: var(--space-1); }

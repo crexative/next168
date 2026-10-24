@@ -122,6 +122,7 @@ async function save(): Promise<void> {
 .checkin { display: flex; flex-direction: column; gap: var(--space-4); max-width: 36rem; margin-inline: auto; padding: 0 var(--space-4) var(--space-6); }
 .times { display: flex; flex-wrap: wrap; gap: var(--space-3); }
 .field { display: flex; flex: 1; flex-direction: column; gap: var(--space-1); min-width: 8rem; }
-.input { min-height: var(--tap-target); padding: 0 var(--space-3); border: 1px solid var(--separator); border-radius: var(--radius-control); background: var(--surface); }
+/* The form sits on the page background, not in a card. */
+.input { background-color: var(--surface); }
 .note { padding: var(--space-2) var(--space-3); resize: vertical; }
 </style>

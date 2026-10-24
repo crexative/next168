@@ -185,10 +185,10 @@ const stepTitle = computed(() => t(`onboarding.steps.${step.value}.title`))
 .check-box { display: inline-flex; align-items: center; justify-content: center; flex: none; width: 22px; height: 22px; border: 2px solid var(--label-3); border-radius: 6px; color: transparent; }
 .check-input:checked + .check-box { border-color: var(--tint); background: var(--tint); color: var(--tint-text); }
 .check-input:focus-visible + .check-box { outline: 2px solid var(--tint); outline-offset: 2px; }
-.input { min-height: var(--tap-target); padding: 0 var(--space-3); border: 1px solid var(--separator); border-radius: var(--radius-control); background: var(--surface-2); }
 .name { flex: 1; min-width: 0; }
-/* Sized to its longest option label (all locales); a fixed width truncated "Morado"/"Turquesa". */
-.color { flex: none; width: auto; max-inline-size: 50%; border-width: 2px; }
+/* Sized to its longest option label (all locales); a fixed width truncated "Morado"/"Turquesa".
+   The border takes the colour but keeps the 1 px edge of the name field beside it. */
+.color { flex: none; width: auto; max-inline-size: 50%; }
 .sketch { background: var(--surface-2); border-radius: var(--radius-control); }
 .sketch-label { position: relative; display: flex; align-items: center; gap: var(--space-3); width: 100%; min-height: var(--tap-target); padding: var(--space-2) var(--space-3); }
 .sketch-label > span { display: flex; flex-direction: column; }

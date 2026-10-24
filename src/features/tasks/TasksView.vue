@@ -302,7 +302,6 @@ function lateText(task: Task): string {
 .add { display: flex; flex-direction: column; gap: var(--space-3); padding: var(--space-4); background: var(--surface); border-radius: var(--radius-card); }
 .field { display: flex; flex: 1; flex-direction: column; gap: var(--space-1); min-width: 8rem; }
 .field-row { display: flex; flex-wrap: wrap; gap: var(--space-3); }
-.input { min-height: var(--tap-target); padding: 0 var(--space-3); border: 1px solid var(--separator); border-radius: var(--radius-control); background: var(--surface-2); }
 .warnings { margin-top: var(--space-4); }
 .warnings ul { display: flex; flex-direction: column; gap: var(--space-2); }
 .warning { display: flex; gap: var(--space-3); padding: var(--space-3) var(--space-4); border-radius: var(--radius-card); background: color-mix(in srgb, var(--warning) 18%, var(--surface)); }
