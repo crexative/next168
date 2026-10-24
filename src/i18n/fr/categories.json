@@ -1,0 +1,45 @@
+{
+  "title": "Catégories",
+  "footer": "Les objectifs sont des repères : dépasser un plafond avertit, sans jamais bloquer.",
+  "empty": "Aucune catégorie pour l'instant.",
+  "add": "Ajouter une catégorie",
+  "edit": "Modifier {name}",
+  "addTitle": "Nouvelle catégorie",
+  "editTitle": "Modifier la catégorie",
+  "name": "Nom",
+  "color": "Couleur",
+  "colors": {
+    "blue": "Bleu",
+    "green": "Vert",
+    "orange": "Orange",
+    "pink": "Rose",
+    "purple": "Violet",
+    "teal": "Turquoise",
+    "yellow": "Jaune",
+    "red": "Rouge",
+    "gray": "Gris"
+  },
+  "goal": "Objectif hebdomadaire",
+  "goalType": {
+    "max": "Au plus",
+    "min": "Au moins",
+    "none": "Aucun objectif"
+  },
+  "goalSummary": {
+    "none": "Pas d'objectif hebdomadaire",
+    "max": "Au plus {hours} h par semaine",
+    "min": "Au moins {hours} h par semaine"
+  },
+  "hours": "Heures par semaine",
+  "errors": {
+    "nameRequired": "Donnez un nom à la catégorie.",
+    "hoursRange": "Indiquez entre 0,5 et 168 heures."
+  },
+  "deleteTitle": "Supprimer la catégorie",
+  "inUse": "{blocks} blocs et {tasks} tâches utilisent cette catégorie. Déplacez-les vers une autre catégorie pour la supprimer.",
+  "reassignTo": "Les déplacer vers",
+  "noReassignTarget": "Créez d'abord une autre catégorie.",
+  "reassignAndDelete": "Déplacer et supprimer",
+  "delete": "Supprimer la catégorie",
+  "deleted": "« {name} » supprimée"
+}

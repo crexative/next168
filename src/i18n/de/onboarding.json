@@ -1,0 +1,35 @@
+{
+  "templates": {
+    "sleep": "Schlaf",
+    "work": "Arbeit",
+    "exercise": "Bewegung",
+    "learning": "Lernen",
+    "family": "Familie",
+    "free-time": "Freizeit",
+    "commute": "Pendeln"
+  },
+  "steps": {
+    "0": {
+      "title": "Kategorien wählen",
+      "description": "Wählen Sie, was Ihre Woche füllt. Benennen oder färben Sie alles um und überspringen Sie, was Sie nicht brauchen."
+    },
+    "1": {
+      "title": "Typische Woche skizzieren",
+      "description": "Fügen Sie typische Blöcke für die gewählten Kategorien hinzu. Sie können sie später ändern."
+    },
+    "2": {
+      "title": "Erste Aufgabe hinzufügen",
+      "description": "Aufgaben werden in die freie Zeit ihrer Kategorie eingepasst."
+    }
+  },
+  "progress": "Schritt {step} von {total}",
+  "useCategory": "{name} verwenden",
+  "categoryName": "Name der Kategorie",
+  "categoryColor": "Farbe der Kategorie",
+  "everyDay": "Jeden Tag",
+  "needCategories": "Wählen Sie in Schritt 1 mindestens eine Kategorie oder überspringen Sie diesen Schritt.",
+  "back": "Zurück",
+  "skip": "Überspringen",
+  "next": "Weiter",
+  "finish": "Fertig"
+}

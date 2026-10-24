@@ -1,0 +1,73 @@
+{
+  "title": "Data",
+  "where": {
+    "title": "Where your data lives",
+    "footer": "Data stays in this browser profile and origin. To move it, export here and import there.",
+    "mode": "Storage",
+    "origin": "Address",
+    "workspace": "Workspace",
+    "modes": {
+      "browser": "This browser",
+      "companion": "Companion app"
+    }
+  },
+  "ios": {
+    "title": "iPhone and iPad",
+    "body": "Export before using Add to Home Screen: the installed app has its own storage. Then open the installed app and import the file there."
+  },
+  "persistence": {
+    "title": "Storage protection",
+    "status": "Protected from automatic clean-up",
+    "unknown": "Unknown",
+    "granted": "Yes",
+    "notGranted": "Not yet",
+    "request": "Ask the browser to protect it"
+  },
+  "transfer": {
+    "title": "Export and import"
+  },
+  "export": {
+    "action": "Export JSON",
+    "done": "Exported {fileName}.",
+    "failed": "Could not export ({reason})."
+  },
+  "import": {
+    "action": "Import file…",
+    "fileLabel": "Choose a Next168 export file",
+    "tooLarge": "This file is too large to import.",
+    "unsupported": "This file was made by a newer version (schema {version}). Update Next168 first.",
+    "invalid": "This file cannot be imported ({reason}). Nothing was changed.",
+    "failed": "Import failed ({reason}). Your data is unchanged.",
+    "verified": "Imported and verified against what was stored (fingerprint {hash}).",
+    "verifyFailed": {
+      "unreadable": "Imported, but the stored data could not be read back. Export a copy and reload.",
+      "mismatch": "Imported, but the stored data differs from the file. Export a copy and check it."
+    },
+    "previewTitle": "Import preview",
+    "version": "File schema version {version} (current {current})",
+    "migrated": "migrated from version {from}",
+    "counts": {
+      "categories": "no categories | {count} category | {count} categories",
+      "blocks": "no time blocks | {count} time block | {count} time blocks",
+      "tasks": "no tasks | {count} task | {count} tasks",
+      "checkIns": "no check-ins | {count} check-in | {count} check-ins",
+      "actuals": "no records | {count} plan-vs-actual record | {count} plan-vs-actual records",
+      "events": "no events | {count} event | {count} events",
+      "calendarSources": "no calendars | {count} calendar | {count} calendars"
+    },
+    "replaceWarning": "Importing replaces everything currently in this browser. Export first if you may need it.",
+    "replace": "Replace my data"
+  },
+  "deleteAll": {
+    "title": "Delete all data",
+    "footer": "Removes your plan, tasks, check-ins and backups from this device. This cannot be undone.",
+    "action": "Delete all data…",
+    "phrase": "DELETE",
+    "confirmTitle": "Delete everything?",
+    "confirmBody": "This permanently erases all Next168 data on this device, including backups. Export a copy first if you may need it.",
+    "typeToConfirm": "Type {phrase} to confirm",
+    "confirmAction": "Delete everything",
+    "done": "All data was deleted.",
+    "failed": "Could not delete ({reason}). Nothing was changed."
+  }
+}

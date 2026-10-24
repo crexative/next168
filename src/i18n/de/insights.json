@@ -1,0 +1,45 @@
+{
+  "duration": {
+    "minutes": "{minutes} min",
+    "hours": "{hours} h",
+    "both": "{hours} h {minutes} min"
+  },
+  "empty": {
+    "title": "Noch keine Daten",
+    "description": "Fügen Sie Kategorien und Blöcke hinzu, um zu sehen, wie Ihre 168 Stunden verteilt sind."
+  },
+  "bar": {
+    "title": "Ihre 168 Stunden",
+    "summary": "{planned} geplant, {unassigned} nicht zugewiesen"
+  },
+  "goal": {
+    "title": "Ziele je Kategorie",
+    "over": "{duration} über dem Limit",
+    "missing": "Noch {duration}",
+    "ok": "Im Plan",
+    "none": "Kein Ziel"
+  },
+  "planVsActual": {
+    "title": "Plan und Ist",
+    "value": "{actual} von {planned}",
+    "empty": "Markieren Sie Blöcke unter Heute als erledigt, um Plan und Wirklichkeit zu vergleichen.",
+    "removed": "Entfernte Kategorie"
+  },
+  "measures": {
+    "title": "Letzte 7 Tage",
+    "averageSleep": "Durchschnittlicher Schlaf",
+    "exercise": "Bewegung",
+    "lateWork": "Abende mit später Arbeit",
+    "stress": "Durchschnittlicher Stress (1–5)",
+    "none": "—",
+    "exerciseOfTarget": "{count} von {target} Einheiten",
+    "emptyBody": "Diese Werte stammen aus Ihrem Abend-Check-in: Schlafenszeit, Aufstehen, Arbeitsende, Bewegung und Stress. Das dauert weniger als eine Minute.",
+    "emptyAction": "Heutigen Check-in machen",
+    "state": {
+      "good": "gut",
+      "amber": "grenzwertig",
+      "bad": "braucht Aufmerksamkeit",
+      "none": "keine Daten"
+    }
+  }
+}

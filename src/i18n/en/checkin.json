@@ -1,0 +1,19 @@
+{
+  "title": "Check-in",
+  "intro": "A minute at the end of the day. Everything stays on this device.",
+  "date": "Date you woke up",
+  "bedtime": "Bedtime",
+  "wake": "Wake-up",
+  "workEnd": "Work ended",
+  "exercise": {
+    "label": "Exercise",
+    "yes": "Yes",
+    "no": "No",
+    "not-planned": "Not planned",
+    "unanswered": "Skip"
+  },
+  "stress": "Stress, 1 calm to 5 high",
+  "note": "Note (optional)",
+  "save": "Save check-in",
+  "saved": "Saved"
+}

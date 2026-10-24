@@ -1,0 +1,45 @@
+{
+  "title": "Categories",
+  "footer": "Goals are guides: going over a cap warns you, it never blocks you.",
+  "empty": "No categories yet.",
+  "add": "Add category",
+  "edit": "Edit {name}",
+  "addTitle": "New category",
+  "editTitle": "Edit category",
+  "name": "Name",
+  "color": "Color",
+  "colors": {
+    "blue": "Blue",
+    "green": "Green",
+    "orange": "Orange",
+    "pink": "Pink",
+    "purple": "Purple",
+    "teal": "Teal",
+    "yellow": "Yellow",
+    "red": "Red",
+    "gray": "Gray"
+  },
+  "goal": "Weekly goal",
+  "goalType": {
+    "max": "At most",
+    "min": "At least",
+    "none": "No goal"
+  },
+  "goalSummary": {
+    "none": "No weekly goal",
+    "max": "At most {hours} h per week",
+    "min": "At least {hours} h per week"
+  },
+  "hours": "Hours per week",
+  "errors": {
+    "nameRequired": "Give the category a name.",
+    "hoursRange": "Use between 0.5 and 168 hours."
+  },
+  "deleteTitle": "Delete category",
+  "inUse": "{blocks} time blocks and {tasks} tasks use this category. Move them to another category to delete it.",
+  "reassignTo": "Move them to",
+  "noReassignTarget": "Create another category first.",
+  "reassignAndDelete": "Move and delete",
+  "delete": "Delete category",
+  "deleted": "Deleted “{name}”"
+}

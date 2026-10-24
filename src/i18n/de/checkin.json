@@ -1,0 +1,19 @@
+{
+  "title": "Check-in",
+  "intro": "Eine Minute am Tagesende. Alles bleibt auf diesem Gerät.",
+  "date": "Datum des Aufwachens",
+  "bedtime": "Schlafenszeit",
+  "wake": "Aufstehzeit",
+  "workEnd": "Arbeitsende",
+  "exercise": {
+    "label": "Bewegung",
+    "yes": "Ja",
+    "no": "Nein",
+    "not-planned": "Nicht geplant",
+    "unanswered": "Überspringen"
+  },
+  "stress": "Stress, 1 ruhig bis 5 hoch",
+  "note": "Notiz (optional)",
+  "save": "Check-in speichern",
+  "saved": "Gespeichert"
+}

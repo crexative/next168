@@ -1,0 +1,42 @@
+{
+  "swipeComplete": "Erledigt",
+  "today": "Heute",
+  "due": "fällig {date}",
+  "completed": "„{title}“ erledigt",
+  "removed": "„{title}“ entfernt",
+  "overflow": "In {category} fehlen diese Woche {duration}.",
+  "overflowHint": "Fügen Sie etwa {duration} zu einem {category}-Block hinzu, verkürzen Sie die Aufgabe oder teilen Sie sie.",
+  "late": "Sie liegt nach dem Fälligkeitsdatum ({date}).",
+  "lateHint": "Verschieben Sie das Datum, erhöhen Sie die Priorität oder schaffen Sie früher Zeit in der Kategorie.",
+  "warnings": "Planungshinweise",
+  "unplaced": "Nicht eingeplant",
+  "unplacedHint": "In den nächsten 7 Tagen gibt es in dieser Kategorie keine freie Zeit.",
+  "recentDone": "Zuletzt erledigt",
+  "reopen": "Wieder öffnen",
+  "complete": "{title} erledigen",
+  "remove": "{title} entfernen",
+  "noCategories": {
+    "title": "Legen Sie zuerst eine Kategorie an",
+    "description": "Aufgaben werden in die freie Zeit ihrer Kategorie eingepasst.",
+    "action": "Einstellungen öffnen"
+  },
+  "empty": {
+    "title": "Nichts zu tun",
+    "description": "Fügen Sie oben eine Aufgabe hinzu; sie wird in die freie Zeit ihrer Kategorie eingepasst."
+  },
+  "add": {
+    "title": "Aufgabe hinzufügen",
+    "titleLabel": "Aufgabe",
+    "titlePlaceholder": "Was ist zu tun?",
+    "duration": "Dauer",
+    "category": "Kategorie",
+    "dueDate": "Fällig am (optional)",
+    "priority": "Priorität",
+    "submit": "Aufgabe hinzufügen"
+  },
+  "priority": {
+    "1": "Hoch",
+    "2": "Mittel",
+    "3": "Niedrig"
+  }
+}

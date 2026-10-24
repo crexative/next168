@@ -1,0 +1,45 @@
+{
+  "title": "Categorias",
+  "footer": "As metas são guias: passar de um limite avisa, nunca bloqueia.",
+  "empty": "Ainda sem categorias.",
+  "add": "Adicionar categoria",
+  "edit": "Editar {name}",
+  "addTitle": "Nova categoria",
+  "editTitle": "Editar categoria",
+  "name": "Nome",
+  "color": "Cor",
+  "colors": {
+    "blue": "Azul",
+    "green": "Verde",
+    "orange": "Laranja",
+    "pink": "Rosa",
+    "purple": "Roxo",
+    "teal": "Turquesa",
+    "yellow": "Amarelo",
+    "red": "Vermelho",
+    "gray": "Cinza"
+  },
+  "goal": "Meta semanal",
+  "goalType": {
+    "max": "No máximo",
+    "min": "No mínimo",
+    "none": "Sem meta"
+  },
+  "goalSummary": {
+    "none": "Sem meta semanal",
+    "max": "No máximo {hours} h por semana",
+    "min": "No mínimo {hours} h por semana"
+  },
+  "hours": "Horas por semana",
+  "errors": {
+    "nameRequired": "Dê um nome à categoria.",
+    "hoursRange": "Use entre 0,5 e 168 horas."
+  },
+  "deleteTitle": "Excluir categoria",
+  "inUse": "{blocks} blocos e {tasks} tarefas usam esta categoria. Mova-os para outra categoria para excluí-la.",
+  "reassignTo": "Mover para",
+  "noReassignTarget": "Crie outra categoria primeiro.",
+  "reassignAndDelete": "Mover e excluir",
+  "delete": "Excluir categoria",
+  "deleted": "“{name}” excluída"
+}

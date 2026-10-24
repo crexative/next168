@@ -1,0 +1,45 @@
+{
+  "title": "Kategorien",
+  "footer": "Ziele sind Richtwerte: Eine Überschreitung warnt, blockiert aber nie.",
+  "empty": "Noch keine Kategorien.",
+  "add": "Kategorie hinzufügen",
+  "edit": "{name} bearbeiten",
+  "addTitle": "Neue Kategorie",
+  "editTitle": "Kategorie bearbeiten",
+  "name": "Name",
+  "color": "Farbe",
+  "colors": {
+    "blue": "Blau",
+    "green": "Grün",
+    "orange": "Orange",
+    "pink": "Rosa",
+    "purple": "Violett",
+    "teal": "Türkis",
+    "yellow": "Gelb",
+    "red": "Rot",
+    "gray": "Grau"
+  },
+  "goal": "Wochenziel",
+  "goalType": {
+    "max": "Höchstens",
+    "min": "Mindestens",
+    "none": "Kein Ziel"
+  },
+  "goalSummary": {
+    "none": "Kein Wochenziel",
+    "max": "Höchstens {hours} h pro Woche",
+    "min": "Mindestens {hours} h pro Woche"
+  },
+  "hours": "Stunden pro Woche",
+  "errors": {
+    "nameRequired": "Geben Sie der Kategorie einen Namen.",
+    "hoursRange": "Verwenden Sie 0,5 bis 168 Stunden."
+  },
+  "deleteTitle": "Kategorie löschen",
+  "inUse": "{blocks} Blöcke und {tasks} Aufgaben verwenden diese Kategorie. Verschieben Sie sie in eine andere Kategorie, um sie zu löschen.",
+  "reassignTo": "Verschieben nach",
+  "noReassignTarget": "Legen Sie zuerst eine weitere Kategorie an.",
+  "reassignAndDelete": "Verschieben und löschen",
+  "delete": "Kategorie löschen",
+  "deleted": "„{name}“ gelöscht"
+}

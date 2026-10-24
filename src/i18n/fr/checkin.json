@@ -1,0 +1,19 @@
+{
+  "title": "Bilan du jour",
+  "intro": "Une minute en fin de journée. Tout reste sur cet appareil.",
+  "date": "Date de votre réveil",
+  "bedtime": "Heure du coucher",
+  "wake": "Heure du réveil",
+  "workEnd": "Fin du travail",
+  "exercise": {
+    "label": "Exercice",
+    "yes": "Oui",
+    "no": "Non",
+    "not-planned": "Non prévu",
+    "unanswered": "Passer"
+  },
+  "stress": "Stress, de 1 calme à 5 élevé",
+  "note": "Note (facultatif)",
+  "save": "Enregistrer le bilan",
+  "saved": "Enregistré"
+}

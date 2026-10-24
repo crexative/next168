@@ -1,0 +1,45 @@
+{
+  "title": "Categorías",
+  "footer": "Los objetivos son guías: pasarse de un tope avisa, nunca bloquea.",
+  "empty": "Aún no hay categorías.",
+  "add": "Añadir categoría",
+  "edit": "Editar {name}",
+  "addTitle": "Nueva categoría",
+  "editTitle": "Editar categoría",
+  "name": "Nombre",
+  "color": "Color",
+  "colors": {
+    "blue": "Azul",
+    "green": "Verde",
+    "orange": "Naranja",
+    "pink": "Rosa",
+    "purple": "Morado",
+    "teal": "Turquesa",
+    "yellow": "Amarillo",
+    "red": "Rojo",
+    "gray": "Gris"
+  },
+  "goal": "Objetivo semanal",
+  "goalType": {
+    "max": "Máximo",
+    "min": "Mínimo",
+    "none": "Sin objetivo"
+  },
+  "goalSummary": {
+    "none": "Sin objetivo semanal",
+    "max": "Máximo {hours} h por semana",
+    "min": "Mínimo {hours} h por semana"
+  },
+  "hours": "Horas por semana",
+  "errors": {
+    "nameRequired": "Ponle un nombre a la categoría.",
+    "hoursRange": "Usa entre 0,5 y 168 horas."
+  },
+  "deleteTitle": "Eliminar categoría",
+  "inUse": "{blocks} bloques y {tasks} tareas usan esta categoría. Muévelos a otra categoría para eliminarla.",
+  "reassignTo": "Moverlos a",
+  "noReassignTarget": "Crea antes otra categoría.",
+  "reassignAndDelete": "Mover y eliminar",
+  "delete": "Eliminar categoría",
+  "deleted": "Eliminada «{name}»"
+}

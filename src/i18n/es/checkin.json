@@ -1,0 +1,19 @@
+{
+  "title": "Registro del día",
+  "intro": "Un minuto al final del día. Todo se queda en este dispositivo.",
+  "date": "Fecha en que despertaste",
+  "bedtime": "Hora de acostarte",
+  "wake": "Hora de despertar",
+  "workEnd": "Fin del trabajo",
+  "exercise": {
+    "label": "Ejercicio",
+    "yes": "Sí",
+    "no": "No",
+    "not-planned": "No previsto",
+    "unanswered": "Omitir"
+  },
+  "stress": "Estrés, de 1 calma a 5 alto",
+  "note": "Nota (opcional)",
+  "save": "Guardar registro",
+  "saved": "Guardado"
+}

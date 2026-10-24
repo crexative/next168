@@ -1,0 +1,45 @@
+{
+  "duration": {
+    "minutes": "{minutes} min",
+    "hours": "{hours} h",
+    "both": "{hours} h {minutes} min"
+  },
+  "empty": {
+    "title": "No insights yet",
+    "description": "Add categories and time blocks to see how your 168 hours are spent."
+  },
+  "bar": {
+    "title": "Your 168 hours",
+    "summary": "{planned} planned, {unassigned} unassigned"
+  },
+  "goal": {
+    "title": "Goals by category",
+    "over": "Over cap by {duration}",
+    "missing": "{duration} to go",
+    "ok": "On track",
+    "none": "No goal"
+  },
+  "planVsActual": {
+    "title": "Plan vs actual",
+    "value": "{actual} of {planned}",
+    "empty": "Mark blocks as done on Today to compare what you planned with what happened.",
+    "removed": "Removed category"
+  },
+  "measures": {
+    "title": "Last 7 days",
+    "averageSleep": "Average sleep",
+    "exercise": "Exercise",
+    "lateWork": "Late-work nights",
+    "stress": "Average stress (1–5)",
+    "none": "—",
+    "exerciseOfTarget": "{count} of {target} sessions",
+    "emptyBody": "These measures come from your nightly check-in: when you went to bed, when you woke, when work ended, exercise and stress. It takes under a minute.",
+    "emptyAction": "Do tonight's check-in",
+    "state": {
+      "good": "good",
+      "amber": "borderline",
+      "bad": "needs attention",
+      "none": "no data"
+    }
+  }
+}

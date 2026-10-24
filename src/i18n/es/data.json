@@ -1,0 +1,73 @@
+{
+  "title": "Datos",
+  "where": {
+    "title": "Dónde viven tus datos",
+    "footer": "Los datos se quedan en este perfil y origen del navegador. Para moverlos, exporta aquí e importa allí.",
+    "mode": "Almacenamiento",
+    "origin": "Dirección",
+    "workspace": "Espacio de trabajo",
+    "modes": {
+      "browser": "Este navegador",
+      "companion": "Aplicación complementaria"
+    }
+  },
+  "ios": {
+    "title": "iPhone y iPad",
+    "body": "Exporta antes de usar Añadir a pantalla de inicio: la app instalada tiene su propio almacenamiento. Luego abre la app instalada e importa allí el archivo."
+  },
+  "persistence": {
+    "title": "Protección del almacenamiento",
+    "status": "Protegido de la limpieza automática",
+    "unknown": "Desconocido",
+    "granted": "Sí",
+    "notGranted": "Todavía no",
+    "request": "Pedir al navegador que lo proteja"
+  },
+  "transfer": {
+    "title": "Exportar e importar"
+  },
+  "export": {
+    "action": "Exportar JSON",
+    "done": "Exportado {fileName}.",
+    "failed": "No se pudo exportar ({reason})."
+  },
+  "import": {
+    "action": "Importar archivo…",
+    "fileLabel": "Elige un archivo de exportación de Next168",
+    "tooLarge": "El archivo es demasiado grande para importarlo.",
+    "unsupported": "Este archivo es de una versión más nueva (esquema {version}). Actualiza Next168 primero.",
+    "invalid": "No se puede importar este archivo ({reason}). No se cambió nada.",
+    "failed": "Falló la importación ({reason}). Tus datos no han cambiado.",
+    "verified": "Importado y verificado con lo almacenado (huella {hash}).",
+    "verifyFailed": {
+      "unreadable": "Importado, pero no se pudo releer lo almacenado. Exporta una copia y recarga.",
+      "mismatch": "Importado, pero lo almacenado difiere del archivo. Exporta una copia y revísala."
+    },
+    "previewTitle": "Vista previa de la importación",
+    "version": "Versión de esquema del archivo {version} (actual {current})",
+    "migrated": "migrado desde la versión {from}",
+    "counts": {
+      "categories": "ninguna categoría | {count} categoría | {count} categorías",
+      "blocks": "ningún bloque | {count} bloque | {count} bloques",
+      "tasks": "ninguna tarea | {count} tarea | {count} tareas",
+      "checkIns": "ningún registro | {count} registro del día | {count} registros del día",
+      "actuals": "ningún dato | {count} dato de plan frente a realidad | {count} datos de plan frente a realidad",
+      "events": "ningún evento | {count} evento | {count} eventos",
+      "calendarSources": "ningún calendario | {count} calendario | {count} calendarios"
+    },
+    "replaceWarning": "Importar sustituye todo lo que hay ahora en este navegador. Exporta antes si puedes necesitarlo.",
+    "replace": "Sustituir mis datos"
+  },
+  "deleteAll": {
+    "title": "Borrar todos los datos",
+    "footer": "Elimina tu plan, tareas, registros y copias de seguridad de este dispositivo. No se puede deshacer.",
+    "action": "Borrar todos los datos…",
+    "phrase": "BORRAR",
+    "confirmTitle": "¿Borrar todo?",
+    "confirmBody": "Esto elimina para siempre todos los datos de Next168 en este dispositivo, incluidas las copias. Exporta antes una copia si puedes necesitarla.",
+    "typeToConfirm": "Escribe {phrase} para confirmar",
+    "confirmAction": "Borrar todo",
+    "done": "Se borraron todos los datos.",
+    "failed": "No se pudo borrar ({reason}). No se cambió nada."
+  }
+}

@@ -1,0 +1,35 @@
+{
+  "templates": {
+    "sleep": "Sleep",
+    "work": "Work",
+    "exercise": "Exercise",
+    "learning": "Learning",
+    "family": "Family",
+    "free-time": "Free time",
+    "commute": "Commute"
+  },
+  "steps": {
+    "0": {
+      "title": "Pick your categories",
+      "description": "Choose what fills your week. Rename or recolor anything, and skip what you do not need."
+    },
+    "1": {
+      "title": "Sketch a typical week",
+      "description": "Add typical blocks for the categories you picked. You can edit them later."
+    },
+    "2": {
+      "title": "Add a first task",
+      "description": "Tasks are fitted into free time of their category."
+    }
+  },
+  "progress": "Step {step} of {total}",
+  "useCategory": "Use {name}",
+  "categoryName": "Category name",
+  "categoryColor": "Category color",
+  "everyDay": "Every day",
+  "needCategories": "Pick at least one category in step 1, or skip this step.",
+  "back": "Back",
+  "skip": "Skip",
+  "next": "Next",
+  "finish": "Finish"
+}

@@ -1,0 +1,45 @@
+{
+  "duration": {
+    "minutes": "{minutes} min",
+    "hours": "{hours} h",
+    "both": "{hours} h {minutes} min"
+  },
+  "empty": {
+    "title": "Ainda sem dados",
+    "description": "Adicione categorias e blocos para ver como suas 168 horas são usadas."
+  },
+  "bar": {
+    "title": "Suas 168 horas",
+    "summary": "{planned} planejadas, {unassigned} sem atribuição"
+  },
+  "goal": {
+    "title": "Metas por categoria",
+    "over": "Acima do limite em {duration}",
+    "missing": "Faltam {duration}",
+    "ok": "No caminho",
+    "none": "Sem meta"
+  },
+  "planVsActual": {
+    "title": "Planejado e realizado",
+    "value": "{actual} de {planned}",
+    "empty": "Marque blocos como feitos em Hoje para comparar o planejado com o que aconteceu.",
+    "removed": "Categoria removida"
+  },
+  "measures": {
+    "title": "Últimos 7 dias",
+    "averageSleep": "Sono médio",
+    "exercise": "Exercício",
+    "lateWork": "Noites de trabalho tardio",
+    "stress": "Estresse médio (1–5)",
+    "none": "—",
+    "exerciseOfTarget": "{count} de {target} sessões",
+    "emptyBody": "Estas medidas vêm do seu registro noturno: quando foi dormir, quando acordou, quando o trabalho terminou, exercício e estresse. Leva menos de um minuto.",
+    "emptyAction": "Fazer o registro de hoje",
+    "state": {
+      "good": "bom",
+      "amber": "no limite",
+      "bad": "precisa de atenção",
+      "none": "sem dados"
+    }
+  }
+}

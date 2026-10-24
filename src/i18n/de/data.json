@@ -1,0 +1,73 @@
+{
+  "title": "Daten",
+  "where": {
+    "title": "Wo Ihre Daten liegen",
+    "footer": "Die Daten bleiben in diesem Browserprofil und dieser Herkunft. Zum Umziehen hier exportieren und dort importieren.",
+    "mode": "Speicher",
+    "origin": "Adresse",
+    "workspace": "Arbeitsbereich",
+    "modes": {
+      "browser": "Dieser Browser",
+      "companion": "Begleit-App"
+    }
+  },
+  "ios": {
+    "title": "iPhone und iPad",
+    "body": "Exportieren Sie vor „Zum Home-Bildschirm“: Die installierte App hat einen eigenen Speicher. Öffnen Sie danach die installierte App und importieren Sie die Datei dort."
+  },
+  "persistence": {
+    "title": "Speicherschutz",
+    "status": "Vor automatischer Bereinigung geschützt",
+    "unknown": "Unbekannt",
+    "granted": "Ja",
+    "notGranted": "Noch nicht",
+    "request": "Browser um Schutz bitten"
+  },
+  "transfer": {
+    "title": "Export und Import"
+  },
+  "export": {
+    "action": "JSON exportieren",
+    "done": "{fileName} exportiert.",
+    "failed": "Export nicht möglich ({reason})."
+  },
+  "import": {
+    "action": "Datei importieren…",
+    "fileLabel": "Next168-Exportdatei auswählen",
+    "tooLarge": "Die Datei ist zu groß für den Import.",
+    "unsupported": "Diese Datei stammt aus einer neueren Version (Schema {version}). Aktualisieren Sie zuerst Next168.",
+    "invalid": "Diese Datei kann nicht importiert werden ({reason}). Es wurde nichts geändert.",
+    "failed": "Import fehlgeschlagen ({reason}). Ihre Daten sind unverändert.",
+    "verified": "Importiert und mit dem Gespeicherten abgeglichen (Fingerabdruck {hash}).",
+    "verifyFailed": {
+      "unreadable": "Importiert, aber die gespeicherten Daten konnten nicht zurückgelesen werden. Exportieren Sie eine Kopie und laden Sie neu.",
+      "mismatch": "Importiert, aber die gespeicherten Daten weichen von der Datei ab. Exportieren Sie eine Kopie und prüfen Sie sie."
+    },
+    "previewTitle": "Importvorschau",
+    "version": "Schemaversion der Datei {version} (aktuell {current})",
+    "migrated": "migriert von Version {from}",
+    "counts": {
+      "categories": "keine Kategorien | {count} Kategorie | {count} Kategorien",
+      "blocks": "keine Blöcke | {count} Block | {count} Blöcke",
+      "tasks": "keine Aufgaben | {count} Aufgabe | {count} Aufgaben",
+      "checkIns": "keine Check-ins | {count} Check-in | {count} Check-ins",
+      "actuals": "keine Ist-Daten | {count} Plan-Ist-Eintrag | {count} Plan-Ist-Einträge",
+      "events": "keine Termine | {count} Termin | {count} Termine",
+      "calendarSources": "keine Kalender | {count} Kalender | {count} Kalender"
+    },
+    "replaceWarning": "Der Import ersetzt alles, was derzeit in diesem Browser liegt. Exportieren Sie vorher, falls Sie es brauchen könnten.",
+    "replace": "Meine Daten ersetzen"
+  },
+  "deleteAll": {
+    "title": "Alle Daten löschen",
+    "footer": "Entfernt Plan, Aufgaben, Check-ins und Sicherungen von diesem Gerät. Das lässt sich nicht rückgängig machen.",
+    "action": "Alle Daten löschen…",
+    "phrase": "LÖSCHEN",
+    "confirmTitle": "Alles löschen?",
+    "confirmBody": "Dadurch werden alle Next168-Daten auf diesem Gerät endgültig gelöscht, auch Sicherungen. Exportieren Sie vorher eine Kopie, falls Sie sie brauchen könnten.",
+    "typeToConfirm": "Geben Sie {phrase} zur Bestätigung ein",
+    "confirmAction": "Alles löschen",
+    "done": "Alle Daten wurden gelöscht.",
+    "failed": "Löschen nicht möglich ({reason}). Es wurde nichts geändert."
+  }
+}

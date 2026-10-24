@@ -1,0 +1,45 @@
+{
+  "duration": {
+    "minutes": "{minutes} min",
+    "hours": "{hours} h",
+    "both": "{hours} h {minutes} min"
+  },
+  "empty": {
+    "title": "Pas encore de données",
+    "description": "Ajoutez des catégories et des blocs pour voir comment se répartissent vos 168 heures."
+  },
+  "bar": {
+    "title": "Vos 168 heures",
+    "summary": "{planned} planifiées, {unassigned} non attribuées"
+  },
+  "goal": {
+    "title": "Objectifs par catégorie",
+    "over": "Dépassement de {duration}",
+    "missing": "Encore {duration}",
+    "ok": "Dans l'objectif",
+    "none": "Pas d'objectif"
+  },
+  "planVsActual": {
+    "title": "Prévu et réel",
+    "value": "{actual} sur {planned}",
+    "empty": "Marquez des blocs comme faits dans Aujourd'hui pour comparer le prévu et le réel.",
+    "removed": "Catégorie supprimée"
+  },
+  "measures": {
+    "title": "7 derniers jours",
+    "averageSleep": "Sommeil moyen",
+    "exercise": "Exercice",
+    "lateWork": "Soirées de travail tardif",
+    "stress": "Stress moyen (1–5)",
+    "none": "—",
+    "exerciseOfTarget": "{count} séances sur {target}",
+    "emptyBody": "Ces mesures viennent de votre bilan du soir : heure du coucher, du réveil, fin du travail, exercice et stress. Cela prend moins d'une minute.",
+    "emptyAction": "Faire le bilan de ce soir",
+    "state": {
+      "good": "bien",
+      "amber": "limite",
+      "bad": "à surveiller",
+      "none": "pas de données"
+    }
+  }
+}

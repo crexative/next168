@@ -1,0 +1,35 @@
+{
+  "templates": {
+    "sleep": "Sueño",
+    "work": "Trabajo",
+    "exercise": "Ejercicio",
+    "learning": "Aprendizaje",
+    "family": "Familia",
+    "free-time": "Tiempo libre",
+    "commute": "Desplazamientos"
+  },
+  "steps": {
+    "0": {
+      "title": "Elige tus categorías",
+      "description": "Elige qué llena tu semana. Renombra o cambia el color de lo que quieras y omite lo que no necesites."
+    },
+    "1": {
+      "title": "Esboza una semana tipo",
+      "description": "Añade bloques típicos para las categorías elegidas. Podrás editarlos después."
+    },
+    "2": {
+      "title": "Añade una primera tarea",
+      "description": "Las tareas se encajan en el tiempo libre de su categoría."
+    }
+  },
+  "progress": "Paso {step} de {total}",
+  "useCategory": "Usar {name}",
+  "categoryName": "Nombre de la categoría",
+  "categoryColor": "Color de la categoría",
+  "everyDay": "Todos los días",
+  "needCategories": "Elige al menos una categoría en el paso 1 o salta este paso.",
+  "back": "Atrás",
+  "skip": "Omitir",
+  "next": "Siguiente",
+  "finish": "Terminar"
+}

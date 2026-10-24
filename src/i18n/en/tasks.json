@@ -1,0 +1,42 @@
+{
+  "swipeComplete": "Done",
+  "today": "Today",
+  "due": "due {date}",
+  "completed": "Completed “{title}”",
+  "removed": "Removed “{title}”",
+  "overflow": "{duration} missing in {category} this week.",
+  "overflowHint": "Add about {duration} to a {category} block, shorten the task, or split it.",
+  "late": "This lands after its due date ({date}).",
+  "lateHint": "Move the due date, raise its priority, or free up earlier time in its category.",
+  "warnings": "Scheduling warnings",
+  "unplaced": "Not scheduled",
+  "unplacedHint": "No free time in this category in the next 7 days.",
+  "recentDone": "Recently done",
+  "reopen": "Reopen",
+  "complete": "Complete {title}",
+  "remove": "Remove {title}",
+  "noCategories": {
+    "title": "Create a category first",
+    "description": "Tasks are fitted into the free time of their category.",
+    "action": "Open settings"
+  },
+  "empty": {
+    "title": "Nothing to do",
+    "description": "Add a task above and it is fitted into free time of its category."
+  },
+  "add": {
+    "title": "Add task",
+    "titleLabel": "Task",
+    "titlePlaceholder": "What needs doing?",
+    "duration": "Duration",
+    "category": "Category",
+    "dueDate": "Due date (optional)",
+    "priority": "Priority",
+    "submit": "Add task"
+  },
+  "priority": {
+    "1": "High",
+    "2": "Medium",
+    "3": "Low"
+  }
+}

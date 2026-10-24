@@ -1,0 +1,42 @@
+{
+  "swipeComplete": "Hecho",
+  "today": "Hoy",
+  "due": "vence {date}",
+  "completed": "Completada «{title}»",
+  "removed": "Eliminada «{title}»",
+  "overflow": "Faltan {duration} en {category} esta semana.",
+  "overflowHint": "Añade unos {duration} a un bloque de {category}, acorta la tarea o divídela.",
+  "late": "Cae después de su fecha límite ({date}).",
+  "lateHint": "Mueve la fecha límite, sube su prioridad o libera tiempo antes en su categoría.",
+  "warnings": "Avisos de planificación",
+  "unplaced": "Sin programar",
+  "unplacedHint": "No hay tiempo libre en esta categoría en los próximos 7 días.",
+  "recentDone": "Hechas recientemente",
+  "reopen": "Reabrir",
+  "complete": "Completar {title}",
+  "remove": "Eliminar {title}",
+  "noCategories": {
+    "title": "Crea primero una categoría",
+    "description": "Las tareas se encajan en el tiempo libre de su categoría.",
+    "action": "Abrir ajustes"
+  },
+  "empty": {
+    "title": "Nada pendiente",
+    "description": "Añade una tarea arriba y se encajará en el tiempo libre de su categoría."
+  },
+  "add": {
+    "title": "Añadir tarea",
+    "titleLabel": "Tarea",
+    "titlePlaceholder": "¿Qué hay que hacer?",
+    "duration": "Duración",
+    "category": "Categoría",
+    "dueDate": "Fecha límite (opcional)",
+    "priority": "Prioridad",
+    "submit": "Añadir tarea"
+  },
+  "priority": {
+    "1": "Alta",
+    "2": "Media",
+    "3": "Baja"
+  }
+}

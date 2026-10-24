@@ -1,0 +1,45 @@
+{
+  "duration": {
+    "minutes": "{minutes} min",
+    "hours": "{hours} h",
+    "both": "{hours} h {minutes} min"
+  },
+  "empty": {
+    "title": "Aún no hay datos",
+    "description": "Añade categorías y bloques para ver cómo se reparten tus 168 horas."
+  },
+  "bar": {
+    "title": "Tus 168 horas",
+    "summary": "{planned} planificadas, {unassigned} sin asignar"
+  },
+  "goal": {
+    "title": "Objetivos por categoría",
+    "over": "Te pasas por {duration}",
+    "missing": "Faltan {duration}",
+    "ok": "En objetivo",
+    "none": "Sin objetivo"
+  },
+  "planVsActual": {
+    "title": "Plan frente a realidad",
+    "value": "{actual} de {planned}",
+    "empty": "Marca bloques como hechos en Hoy para comparar lo planificado con lo ocurrido.",
+    "removed": "Categoría eliminada"
+  },
+  "measures": {
+    "title": "Últimos 7 días",
+    "averageSleep": "Sueño medio",
+    "exercise": "Ejercicio",
+    "lateWork": "Noches con trabajo tardío",
+    "stress": "Estrés medio (1–5)",
+    "none": "—",
+    "exerciseOfTarget": "{count} de {target} sesiones",
+    "emptyBody": "Estas medidas salen de tu registro nocturno: cuándo te acostaste, cuándo despertaste, cuándo terminó el trabajo, ejercicio y estrés. Lleva menos de un minuto.",
+    "emptyAction": "Hacer el registro de hoy",
+    "state": {
+      "good": "bien",
+      "amber": "justo",
+      "bad": "requiere atención",
+      "none": "sin datos"
+    }
+  }
+}
