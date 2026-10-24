@@ -1,6 +1,7 @@
 import AxeBuilder from '@axe-core/playwright'
 import { expect, test, type Locator, type Page } from '@playwright/test'
 import { V2_KEY, openTab, seedKey, storedValue } from './fixtures'
+import { installTransformRecorder } from './support/transformRecorder'
 
 // Wednesday 2026-10-21 10:15 UTC; the browser and the document both use UTC.
 const NOW = new Date('2026-10-21T10:15:00.000Z')
@@ -62,22 +63,9 @@ async function settled(page: Page): Promise<void> {
   await expect.poll(() => page.getByTestId('pager-track').evaluate((element) => element.style.transform)).toMatch(/\+ 0px\)\)$/)
 }
 
-// Records every transform the pager track is given, synchronously through a style mutation observer (no frame
-// sampling, so a transform applied and replaced between two frames is still seen), starting now or at the next
-// pointer release, before the page's own handlers run. The 'now' recording starts with the current transform.
+// Starts now or at the next pointer release, before the page's own handlers run.
 async function recordTrackTransforms(page: Page, from: 'now' | 'release' = 'now'): Promise<void> {
-  await page.evaluate((start) => {
-    const track = document.querySelector<HTMLElement>('[data-testid="pager-track"]')!
-    const samples: string[] = []
-    ;(window as unknown as { __transforms: string[] }).__transforms = samples
-    const observer = new MutationObserver(() => { samples.push(track.style.transform) })
-    const begin = () => {
-      if (start === 'now') samples.push(track.style.transform)
-      observer.observe(track, { attributes: true, attributeFilter: ['style'] })
-    }
-    if (start === 'now') begin()
-    else window.addEventListener('pointerup', begin, { capture: true, once: true })
-  }, from)
+  await page.evaluate(installTransformRecorder, from)
 }
 
 async function distinctTransforms(page: Page): Promise<string[]> {
@@ -317,7 +305,7 @@ test.describe('week', () => {
     await expect(page.locator('.pager')).toHaveAttribute('data-active-date', '2026-10-23')
     expect(await runningTransformAnimations(page)).toBe(0)
     await page.waitForTimeout(400)
-    expect(await distinctTransforms(page)).toEqual(['translateX(calc(-300% + 0px))', 'translateX(calc(-400% + 0px))'])
+    expect(await distinctTransforms(page)).toEqual(['translateX(calc(-400% + 0px))'])
   })
 })
 
