@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, useId } from 'vue'
+import { ref, useId, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import type { BlockActual } from '@/core/model'
 import type { DatedOccurrence } from '@/core/time'
@@ -22,6 +22,9 @@ const STATUSES: { status: ActualStatus; icon: string }[] = [
 ]
 const asking = ref(false)
 const minutes = ref(0)
+
+// A Partial draft belongs to the occurrence it was opened for: when the card moves on to the next block, it is dropped.
+watch(() => `${props.occurrence.blockId}@${props.occurrence.start}`, () => { asking.value = false })
 
 function choose(status: ActualStatus): void {
   if (props.actual?.status === status) {

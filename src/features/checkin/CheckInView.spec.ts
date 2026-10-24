@@ -111,4 +111,66 @@ describe('check-in form', () => {
     expect(first[0]!.getAttribute('aria-checked')).toBe('false')
     expect(first[1]!.getAttribute('aria-checked')).toBe('true')
   })
+
+  it('clears an optional answer and removes its stored field on save', async () => {
+    const store = await mount({ ...planned, checkIns: [{ date: '2026-10-24', bedtime: 1320, wake: 360, exercise: 'yes', stress: 3, note: 'ok' }] })
+    const clear = (group: number) => host.querySelectorAll('.choice-row')[group]!.querySelector<HTMLButtonElement>('[data-testid="choice-clear"]')
+    const checked = (group: number) => host.querySelectorAll('[role="radiogroup"]')[group]!.querySelectorAll('[aria-checked="true"]').length
+    expect([checked(0), checked(1)]).toEqual([1, 1])
+    clear(0)!.click()
+    clear(1)!.click()
+    await nextTick()
+    expect([checked(0), checked(1)]).toEqual([0, 0])
+    // Nothing left to clear, and focus did not vanish with the button.
+    expect([clear(0), clear(1)]).toEqual([null, null])
+    host.querySelector<HTMLButtonElement>('button[type=submit]')!.click()
+    await store.settled()
+    expect(store.document?.checkIns).toEqual([{ date: '2026-10-24', bedtime: 1320, wake: 360, note: 'ok' }])
+  })
+
+  it('offers no clear action while a question is unanswered', async () => {
+    await mount(planned)
+    expect(host.querySelectorAll('[data-testid="choice-clear"]')).toHaveLength(0)
+  })
+
+  it('names the question in the clear action and returns focus to the row', async () => {
+    await mount({ ...planned, checkIns: [{ date: '2026-10-24', exercise: 'no' }] })
+    const clear = host.querySelector<HTMLButtonElement>('[data-testid="choice-clear"]')!
+    expect(clear.getAttribute('aria-label')).toBe('Clear: Did you exercise?')
+    clear.click()
+    await nextTick()
+    expect(window.document.activeElement?.getAttribute('role')).toBe('radio')
+  })
+
+  it('keeps what was typed through unrelated commits and reloads when its own entry changes elsewhere', async () => {
+    const store = await mount(planned)
+    const note = host.querySelector<HTMLTextAreaElement>('textarea')!
+    note.value = 'typed, not saved'
+    note.dispatchEvent(new Event('input'))
+    await store.commit((draft) => { draft.checkIns.push({ date: '2026-10-20', note: 'another day' }); draft.settings.weekStartsOn = 0 })
+    await nextTick()
+    expect(host.querySelector<HTMLTextAreaElement>('textarea')!.value).toBe('typed, not saved')
+    await store.commit((draft) => { draft.checkIns.push({ date: '2026-10-24', note: 'synced from another device' }) })
+    await nextTick()
+    expect(host.querySelector<HTMLTextAreaElement>('textarea')!.value).toBe('synced from another device')
+  })
+
+  it('keeps a stored work-end time visible on a day without work', async () => {
+    await mount({ ...planned, checkIns: [{ date: '2026-10-24', workEnd: 1080 }] })
+    expect(input('Work ended')?.value).toBe('18:00')
+  })
+
+  it('does not accept a date after today', async () => {
+    await mount(planned)
+    expect(host.querySelector<HTMLInputElement>('input[type=date]')!.max).toBe('2026-10-24')
+  })
+
+  it('removes the entry when every answer has been cleared', async () => {
+    const store = await mount({ ...planned, checkIns: [{ date: '2026-10-24', exercise: 'yes', stress: 3 }] })
+    host.querySelectorAll<HTMLButtonElement>('[data-testid="choice-clear"]').forEach((button) => button.click())
+    await nextTick()
+    host.querySelector<HTMLButtonElement>('button[type=submit]')!.click()
+    await store.settled()
+    expect(store.document?.checkIns).toEqual([])
+  })
 })

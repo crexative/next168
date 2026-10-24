@@ -28,12 +28,13 @@ const base: PlannerDocument = {
 
 let app: App | undefined
 let host: HTMLElement
+let repos: ReturnType<typeof createTestRepositories>
 
 async function mount(at: string, seed: PlannerDocument = base) {
   vi.setSystemTime(new Date(at))
   const pinia = createPinia()
   setActivePinia(pinia)
-  const repos = createTestRepositories()
+  repos = createTestRepositories()
   configurePlannerStore({ repository: repos.planner, now: () => new Date(at), newId: newTestId, locale: () => 'en', timeZone: () => 'UTC' })
   const store = usePlannerStore()
   host = document.createElement('div')
@@ -111,6 +112,63 @@ describe('Today status questions', () => {
     await nextTick()
     expect(store.document?.tasks[0]?.doneAt).toBeUndefined()
     expect(host.querySelector('[data-testid="task-check"]')).not.toBeNull()
+  })
+
+  it('asks about a block that started after the stored “plan first seen” moment, even with no other evidence', async () => {
+    window.localStorage.setItem('next168-plan-since:ws-today', String(Date.parse('2026-10-24T09:00:00Z')))
+    await mount('2026-10-24T12:00:00Z', { ...base, checkIns: [], tasks: [] })
+    expect(host.querySelector('.now-card [role="group"]')?.getAttribute('aria-label')).toBe('How did Family lunch go?')
+  })
+
+  it('stamps the finish time with the current moment', async () => {
+    const store = await mount('2026-10-24T12:00:00Z')
+    host.querySelector<HTMLButtonElement>('[data-testid="task-check"]')!.click()
+    await store.settled()
+    expect(store.document?.tasks[0]?.doneAt).toBe('2026-10-24T12:00:00.000Z')
+  })
+
+  it('shows no “done” toast when the save did not go through', async () => {
+    const store = await mount('2026-10-24T12:00:00Z')
+    vi.spyOn(repos.planner, 'save').mockResolvedValueOnce({ kind: 'error', reason: 'disk-full' })
+    host.querySelector<HTMLButtonElement>('[data-testid="task-check"]')!.click()
+    await store.settled()
+    await nextTick()
+    expect(useUndoToast().toast.value).toBeNull()
+    expect(store.document?.tasks[0]?.doneAt).toBeUndefined()
+  })
+
+  it('leaves the task done and raises no error when the undo no longer applies', async () => {
+    const store = await mount('2026-10-24T12:00:00Z')
+    host.querySelector<HTMLButtonElement>('[data-testid="task-check"]')!.click()
+    await store.settled()
+    await store.commit((draft) => { draft.tasks[0]!.title = 'Renamed on another device' })
+    useUndoToast().undo()
+    await store.settled()
+    await nextTick()
+    expect(store.document?.tasks[0]?.doneAt).toBeTruthy()
+    expect(store.error).toBeNull()
+  })
+
+  it('does not let an all-day busy calendar entry push today’s tasks out of the plan', async () => {
+    setExternalOccurrenceSource(async () => [{ sourceId: 's', uid: 'holiday', title: 'Holiday', start: '2026-10-24', end: '2026-10-25', allDay: true, busy: true }])
+    await mount('2026-10-24T12:00:00Z')
+    await new Promise((resolve) => setTimeout(resolve, 0))
+    await nextTick()
+    expect(text('day-progress')).toBe('0 of 4 done today')
+    expect(host.querySelector('[data-testid="task-check"]')).not.toBeNull()
+  })
+
+  it('shows no progress line on a day with nothing to do', async () => {
+    await mount('2026-10-24T12:00:00Z', { ...base, blocks: [], tasks: [], checkIns: [] })
+    expect(host.querySelector('[data-testid="day-progress"]')).toBeNull()
+    expect(text('free-hours')).toBe('36 h free from now to Sunday · of 168')
+  })
+
+  it('does not pull focus to the check-in card when Today opens without a fresh save', async () => {
+    await mount('2026-10-24T20:30:00Z')
+    expect(host.querySelector('[data-testid="checkin-card"]')).not.toBeNull()
+    await new Promise((resolve) => setTimeout(resolve, 20))
+    expect(window.document.activeElement).toBe(window.document.body)
   })
 })
 

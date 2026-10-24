@@ -21,4 +21,13 @@ describe('nextUp', () => {
     expect(nextUp(null, [task('2026-10-21T11:00:00.000Z')], NOW)?.title).toBe('Write report')
     expect(nextUp(null, [], NOW)).toBeNull()
   })
+
+  it('ignores blocks and events in the timeline: only a placed task can come before the next block', () => {
+    const occurrence = { blockId: 'b', categoryId: 'work', title: 'Review', date: '2026-10-21', start: '2026-10-21T10:30:00.000Z', end: '2026-10-21T11:00:00.000Z', plannedMinutes: 30 }
+    const items: TimelineItem[] = [
+      { kind: 'block', key: 'block:b', title: 'Review', start: occurrence.start, end: occurrence.end, conflict: false, categoryId: 'work', occurrence },
+      { kind: 'event', key: 'event:e', title: 'Dentist', start: '2026-10-21T10:45:00.000Z', end: '2026-10-21T11:15:00.000Z', conflict: false },
+    ]
+    expect(nextUp(block, items, NOW)).toBe(block)
+  })
 })

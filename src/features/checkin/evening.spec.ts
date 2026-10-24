@@ -22,4 +22,11 @@ describe('check-in card timing', () => {
     expect(checkInCardVisible(done, new Date('2026-10-21T08:00:00Z'))).toBe(true)
     expect(checkInDoneToday(done, new Date('2026-10-22T08:00:00Z'))).toBe(false)
   })
+
+  it('decides “today” in the document time zone, not in UTC', () => {
+    const bogota = plannerDocument({ settings: { ...empty.settings, timeZone: 'America/Bogota' }, checkIns: [{ date: '2026-10-21' }] })
+    // 21:00 in Bogotá on 21 Oct is already 22 Oct in UTC.
+    expect(checkInDoneToday(bogota, new Date('2026-10-22T02:00:00Z'))).toBe(true)
+    expect(checkInDoneToday(bogota, new Date('2026-10-22T06:00:00Z'))).toBe(false) // 01:00 on 22 Oct in Bogotá
+  })
 })

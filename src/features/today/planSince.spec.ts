@@ -17,6 +17,8 @@ describe('planSince', () => {
     expect(planSince(plannerDocument(), stamped)).toBe(stamped)
     const withCheckIn = plannerDocument({ checkIns: [{ date: '2026-10-19' }] })
     expect(planSince(withCheckIn, stamped)).toBe(Date.parse('2026-10-19T00:00:00Z'))
+    const actual = { date: '2026-10-17', blockId: 'b', categoryId: 'work', plannedStartAt: '2026-10-17T09:00:00.000Z', plannedEndAt: '2026-10-17T10:00:00.000Z', plannedMinutes: 60, status: 'done' as const }
+    expect(planSince(plannerDocument({ actuals: [actual] }), stamped)).toBe(Date.parse('2026-10-17T09:00:00Z'))
     expect(planSince(plannerDocument({ tasks: [{ id: 't', title: 'T', categoryId: 'work', durationMin: 30, priority: 1, createdAt: '2026-10-18T10:00:00.000Z' }] }), stamped)).toBe(Date.parse('2026-10-18T10:00:00Z'))
   })
 
