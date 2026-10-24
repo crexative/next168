@@ -34,6 +34,12 @@ describe('documents and migration', () => {
     const result = migrateToCurrent({ categories: [{ id: 'c', name: 'C', color: '#007AFF', weeklyHourLimit: 0 }], timeBlocks: [] }, env)
     expect(result).toMatchObject({ kind: 'ok', document: { categories: [{ colorKey: 'blue', customColor: '#007AFF' }] } })
   })
+  it.each([
+    ['#e11d48', 'pink'], ['#16a34a', 'green'], ['#f59e0b', 'orange'], ['#8b5cf6', 'purple'], ['#9ca3af', 'gray'], ['#0ea5e9', 'teal'],
+  ])('maps the off-palette v1 color %s to the nearest palette key %s', (color, key) => {
+    const result = migrateToCurrent({ categories: [{ id: 'c', name: 'C', color, weeklyHourLimit: 0 }], timeBlocks: [] }, env)
+    expect(result).toMatchObject({ kind: 'ok', document: { categories: [{ colorKey: key, customColor: color }] } })
+  })
   it.each(['{bad', 'null', '{}', '[]', '"text"', '{"categories":[],"timeBlocks":[{}]}'])('never accepts corrupt input %s', (raw) => {
     expect(parseDocument(raw).kind).not.toBe('ok')
     expect(migrateToCurrent(raw, env).kind).not.toBe('ok')
