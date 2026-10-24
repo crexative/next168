@@ -261,7 +261,7 @@ test('onboarding does not ask the browser to protect storage; the first check-in
   await page.getByRole('dialog').getByRole('button', { name: 'Terminar' }).click()
   await expect(page.getByRole('dialog', { name: 'Tu semana está lista' })).toBeVisible()
   expect(await page.evaluate(() => (window as unknown as { __persistCalls: number[] }).__persistCalls.length)).toBe(0)
-  await page.getByRole('button', { name: 'Cerrar' }).click()
+  await page.getByTestId('onboarding').getByRole('button', { name: 'Cerrar' }).click()
   await expect(page.getByRole('dialog')).toHaveCount(0)
 
   await page.goto('./#/checkin')
@@ -300,7 +300,7 @@ for (const theme of THEMES) {
     await expect(page.getByTestId('back-button')).toBeVisible()
     expect(await visualIntegrityViolations(page)).toEqual([])
     await page.getByRole('button', { name: 'Añadir una hora de estudio' }).click()
-    const sheet = page.getByRole('dialog', { name: 'Revisar cambios' })
+    const sheet = page.getByRole('dialog', { name: 'Revisar propuesta' })
     await expect(sheet.getByTestId('change-after')).toContainText('Estudio')
     await expect(sheet.getByTestId('review-loading')).toHaveCount(0)
     await expect(sheet.locator('.side')).toHaveCount(2)
