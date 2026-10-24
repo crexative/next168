@@ -1,23 +1,33 @@
 {
   "title": "Day wrap-up",
   "intro": "A minute at the end of the day. Everything stays on this device.",
-  "date": "Date you woke up",
-  "bedtime": "Bedtime",
-  "wake": "Wake-up",
-  "workEnd": "Work ended",
-  "exercise": {
-    "label": "Did you exercise?",
-    "yes": "Yes",
-    "no": "No",
-    "not-planned": "Not planned"
+  "bedtime": {
+    "sentence": "You went to bed at {time} last night",
+    "question": "When did you go to bed last night?"
   },
-  "stress": "Stress today (1 calm – 5 high)",
+  "wake": {
+    "sentence": "You woke up at {time} today",
+    "question": "When did you wake up today?"
+  },
+  "workEnd": {
+    "sentence": "You finished work at {time} today",
+    "question": "When did you finish work today?"
+  },
+  "change": "Change",
+  "stress": "Stress today",
+  "stressLow": "calm",
+  "stressHigh": "high",
+  "stressScale": "1 is calm, 5 is high stress",
   "clear": "Clear",
   "clearAnswer": "Clear: {question}",
   "note": "Note (optional)",
+  "pending": {
+    "title": "Not marked yet",
+    "hint": "Tap the circle if you did it. Press and hold to choose Partly or No."
+  },
   "save": "Save wrap-up",
   "changedElsewhere": "This changed elsewhere, so it was reloaded. Please review it and try again.",
-  "planHint": "Times come from your plan; change them if it went differently.",
+  "planHint": "Times come from your plan; tap one to change it.",
   "card": {
     "description": "Sleep, exercise and stress in a minute",
     "doneStreak": "Done ✓ · streak {count}",

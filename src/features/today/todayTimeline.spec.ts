@@ -29,8 +29,26 @@ describe('today timeline', () => {
     expect(allDay).toEqual([{ key: 'external:cal/y/', title: 'Conference', kind: 'external' }])
   })
 
-  it('marks overlapping blocks and events as conflicts but never placed tasks', () => {
-    expect(items.filter((item) => item.conflict).map((item) => item.title)).toEqual(['Deep work', 'Client call', 'Gym class', 'Sleep'])
-    expect(items.find((item) => item.kind === 'task')).toMatchObject({ conflict: false, start: '2026-10-21T09:00:00.000Z' })
+  it('names what overlapping blocks and events share time with, but never for placed tasks', () => {
+    const overlaps = (title: string) => items.filter((item) => item.title === title).map((item) => item.overlapsWith)
+    expect(overlaps('Deep work')).toEqual([['Client call']])
+    expect(overlaps('Client call')).toEqual([['Deep work']])
+    expect(overlaps('Gym class')).toEqual([['Sleep']])
+    expect(overlaps('Write report')).toEqual([[]])
+    // Last night's tail of Sleep overlaps nothing; tonight's Sleep overlaps the evening class.
+    expect(overlaps('Sleep')).toEqual([[], ['Gym class']])
+    expect(items.find((item) => item.kind === 'task')).toMatchObject({ start: '2026-10-21T09:00:00.000Z' })
+  })
+
+  it('lists each overlapping title once, however many times it overlaps', () => {
+    const twice = plannerDocument({
+      blocks: [deepWork],
+      events: [
+        { id: 'a', title: 'Standup', start: '2026-10-21T09:00:00Z', end: '2026-10-21T09:15:00Z', allDay: false, attendees: [] },
+        { id: 'b', title: 'Standup', start: '2026-10-21T10:00:00Z', end: '2026-10-21T10:15:00Z', allDay: false, attendees: [] },
+      ],
+    })
+    const built = buildTimeline({ document: twice, today: '2026-10-21', timeZone: 'UTC', placements: [], external: [] })
+    expect(built.items.find((item) => item.title === 'Deep work')?.overlapsWith).toEqual(['Standup'])
   })
 })

@@ -2,24 +2,21 @@
   "now": {
     "label": "Now",
     "eyebrow": "Now",
-    "freeEyebrow": "Right now",
-    "free": "Unplanned",
-    "minutesLeft": "{minutes} min left",
-    "hoursMinutesLeft": "{hours} h {minutes} min left",
-    "progress": "Progress of the current block",
+    "free": "Free time",
+    "freeUntil": "Free time until {time}",
+    "progress": "Progress",
     "next": "Next",
     "nothingNext": "Nothing else planned this week",
     "tomorrowAt": "Tomorrow, {time}",
-    "dayAt": "{day}, {time}",
-    "freeFor": "in {duration}"
+    "dayAt": "{day}, {time}"
   },
   "timeline": {
-    "label": "Today's timeline",
-    "title": "Timeline",
+    "label": "Your day",
+    "title": "Your day",
     "allDay": "All day",
-    "conflict": "Conflict",
+    "overlaps": "Overlaps with {titles}",
     "sinceYesterday": "Since yesterday",
-    "untilTomorrow": "Until tomorrow",
+    "untilTime": "Until {time}",
     "sinceDate": "Since {date}",
     "untilDate": "Until {date}",
     "late": "Late",
@@ -29,28 +26,35 @@
       "external": "Calendar"
     },
     "carryOver": "Since yesterday · until {time}",
-    "completeTask": "Complete {title}",
     "taskDone": "Task done: {title}"
   },
-  "actual": {
-    "question": "How did {title} go?",
+  "status": {
+    "markDone": "Mark {title} as done",
+    "stateDone": "{title}: done. Tap to remove the answer",
+    "statePartial": "{title}: partly done. Tap to mark it done",
+    "stateSkipped": "{title}: not done. Tap to mark it done",
+    "hint": "Press and hold to choose Partly or No",
+    "menuLabel": "How did {title} go?",
     "done": "Done",
-    "partial": "Partial",
-    "skipped": "Skipped",
+    "partial": "Partly",
+    "skipped": "No",
+    "clear": "Remove answer",
     "minutesLabel": "Minutes spent (planned {planned})",
-    "savePartial": "Save"
+    "save": "Save",
+    "marked": "{title}: {status}",
+    "cleared": "Answer removed: {title}"
   },
   "empty": {
     "title": "Nothing planned yet",
-    "description": "Add time blocks to your week and Today shows what is happening now and next.",
+    "description": "Add routines to your week and Today shows what is happening now and next.",
     "action": "Plan your week"
   },
   "emptyDay": {
     "title": "A free day",
-    "description": "No blocks, tasks or events today.",
+    "description": "No routines, tasks or events today.",
     "action": "Open the week"
   },
   "header": {
-    "progress": "{done} of {total} done today"
+    "subtitle": "{date} · {hours} free this week"
   }
 }

@@ -54,22 +54,37 @@ const text = (testId: string) => host.querySelector(`[data-testid="${testId}"]`)
 beforeEach(() => { vi.useFakeTimers({ toFake: ['Date'] }); window.localStorage.clear(); setExternalOccurrenceSource(async () => []) })
 afterEach(() => { useUndoToast().dismiss(); app?.unmount(); host?.remove(); app = undefined; vi.useRealTimers() })
 
+const clock = (value: string | undefined) => value?.replace(/\s/g, ' ')
+const controlOf = (selector: string) => host.querySelector<HTMLButtonElement>(`${selector} [data-testid="status-control"]`)
+const taskCircle = () => controlOf('[data-kind="task"]')
+
 describe('Today header and cards', () => {
-  it('shows the free hours and how many of today’s items are done', async () => {
+  it('replaces the two-row card with one line: the date and the live free hours', async () => {
+    await mount('2026-10-24T12:00:00Z')
+    expect(text('today-subtitle')).toBe('Saturday, October 24 · 23 h free this week')
+    expect(host.querySelector('[data-testid="free-hours"], [data-testid="day-progress"], .today-stats')).toBeNull()
+  })
+
+  it('keeps the subtitle number in step with the plan: whole hours, never tenths', async () => {
     const store = await mount('2026-10-24T12:00:00Z')
-    expect(text('free-hours')).toBe('23 h free this week')
-    // Family lunch + Reading + Sleep start today, plus the placed task; nothing is done yet.
-    expect(text('day-progress')).toBe('0 of 4 done today')
-    await store.commit((draft) => { draft.tasks[0]!.doneAt = '2026-10-24T11:00:00.000Z' })
+    await store.commit((draft) => { draft.blocks.push({ id: 'walk', categoryId: 'family', title: 'Walk', days: [6], start: 1000, end: 1090 }) })
     await nextTick()
-    expect(text('day-progress')).toBe('1 of 4 done today')
+    // 90 more planned minutes today: 23 h 0 min - 1 h 30 min = 21 h 30 min, shown rounded.
+    expect(text('today-subtitle')).toMatch(/· 2[12] h free this week$/)
+    expect(text('today-subtitle')).not.toMatch(/[.,]\d/)
   })
 
   it('puts a placed task in "Next" when it starts before the next block', async () => {
     await mount('2026-10-24T14:30:00Z')
-    expect(text('now-title')).toBe('Unplanned')
-    expect(text('now-free-for')).toBe('in 30 min')
+    expect(clock(text('now-title'))).toBe('Free time until 3:00 PM')
     expect(text('now-next')).toContain('Reading')
+  })
+
+  it('starts a re-fitted task on a tidy five-minute time, not at the minute the plan was recalculated', async () => {
+    await mount('2026-10-24T12:31:30Z')
+    const start = host.querySelector('[data-kind="task"] [data-testid="timeline-start"]')?.textContent
+    expect(clock(start)).toBe('12:35 PM')
+    expect(clock(host.querySelector('[data-kind="task"] [data-testid="timeline-end"]')?.textContent)).toBe('1:05 PM')
   })
 
   it('only offers the check-in card from 20:00, then shows it done with the streak', async () => {
@@ -86,43 +101,50 @@ describe('Today header and cards', () => {
 })
 
 describe('Today status questions', () => {
-  it('asks for status inside the Now card, and not for blocks that started before the plan was first seen', async () => {
-    await mount('2026-10-24T12:00:00Z', { ...base, checkIns: [] , tasks: [] })
-    // First time the plan is seen at 12:00 (no older evidence): Family lunch started at 10:00 and is not asked.
-    expect(host.querySelector('.now-card [role="group"]')).toBeNull()
+  it('does not ask for status inside the Now card while the block is mid-way, even when the plan existed before', async () => {
+    await mount('2026-10-24T12:00:00Z')
+    expect(host.querySelector('[data-testid="now-title"]')?.textContent).toBe('Family lunch')
+    expect(controlOf('.now-card')).toBeNull()
     expect(host.querySelector('[role="group"]')).toBeNull()
   })
 
-  it('asks when older evidence shows the plan existed', async () => {
-    await mount('2026-10-24T12:00:00Z')
-    expect(host.querySelector('.now-card [role="group"]')?.getAttribute('aria-label')).toBe('How did Family lunch go?')
+  it('asks in the last minutes of the block when older evidence shows the plan existed', async () => {
+    await mount('2026-10-24T13:55:00Z')
+    expect(controlOf('.now-card')?.getAttribute('aria-label')).toBe('Mark Family lunch as done')
+  })
+
+  it('does not ask about a block that started before the plan was first seen', async () => {
+    await mount('2026-10-24T13:55:00Z', { ...base, checkIns: [], tasks: [] })
+    // First time the plan is seen at 13:55 (no older evidence): Family lunch started at 10:00 and is not asked.
+    expect(controlOf('.now-card')).toBeNull()
+    expect(host.querySelector('[data-testid="status-control"]')).toBeNull()
   })
 
   it('completes a task from its row and undoes it from the toast', async () => {
     const store = await mount('2026-10-24T12:00:00Z')
-    host.querySelector<HTMLButtonElement>('[data-testid="task-check"]')!.click()
+    taskCircle()!.click()
     await store.settled()
     await nextTick()
     expect(store.document?.tasks[0]?.doneAt).toBeTruthy()
-    expect(host.querySelector('[data-testid="task-check"]')).toBeNull()
+    expect(taskCircle()).toBeNull()
     const toast = useUndoToast()
     expect(toast.toast.value?.message).toBe('Task done: Call grandma')
     toast.undo()
     await store.settled()
     await nextTick()
     expect(store.document?.tasks[0]?.doneAt).toBeUndefined()
-    expect(host.querySelector('[data-testid="task-check"]')).not.toBeNull()
+    expect(taskCircle()).not.toBeNull()
   })
 
   it('asks about a block that started after the stored “plan first seen” moment, even with no other evidence', async () => {
     window.localStorage.setItem('next168-plan-since:ws-today', String(Date.parse('2026-10-24T09:00:00Z')))
-    await mount('2026-10-24T12:00:00Z', { ...base, checkIns: [], tasks: [] })
-    expect(host.querySelector('.now-card [role="group"]')?.getAttribute('aria-label')).toBe('How did Family lunch go?')
+    await mount('2026-10-24T13:55:00Z', { ...base, checkIns: [], tasks: [] })
+    expect(controlOf('.now-card')?.getAttribute('aria-label')).toBe('Mark Family lunch as done')
   })
 
   it('stamps the finish time with the current moment', async () => {
     const store = await mount('2026-10-24T12:00:00Z')
-    host.querySelector<HTMLButtonElement>('[data-testid="task-check"]')!.click()
+    taskCircle()!.click()
     await store.settled()
     expect(store.document?.tasks[0]?.doneAt).toBe('2026-10-24T12:00:00.000Z')
   })
@@ -130,7 +152,7 @@ describe('Today status questions', () => {
   it('shows no “done” toast when the save did not go through', async () => {
     const store = await mount('2026-10-24T12:00:00Z')
     vi.spyOn(repos.planner, 'save').mockResolvedValueOnce({ kind: 'error', reason: 'disk-full' })
-    host.querySelector<HTMLButtonElement>('[data-testid="task-check"]')!.click()
+    taskCircle()!.click()
     await store.settled()
     await nextTick()
     expect(useUndoToast().toast.value).toBeNull()
@@ -139,7 +161,7 @@ describe('Today status questions', () => {
 
   it('leaves the task done and raises no error when the undo no longer applies', async () => {
     const store = await mount('2026-10-24T12:00:00Z')
-    host.querySelector<HTMLButtonElement>('[data-testid="task-check"]')!.click()
+    taskCircle()!.click()
     await store.settled()
     await store.commit((draft) => { draft.tasks[0]!.title = 'Renamed on another device' })
     useUndoToast().undo()
@@ -154,14 +176,12 @@ describe('Today status questions', () => {
     await mount('2026-10-24T12:00:00Z')
     await new Promise((resolve) => setTimeout(resolve, 0))
     await nextTick()
-    expect(text('day-progress')).toBe('0 of 4 done today')
-    expect(host.querySelector('[data-testid="task-check"]')).not.toBeNull()
+    expect(taskCircle()).not.toBeNull()
   })
 
-  it('shows no progress line on a day with nothing to do', async () => {
+  it('shows only the date and the free hours on a day with nothing to do', async () => {
     await mount('2026-10-24T12:00:00Z', { ...base, blocks: [], tasks: [], checkIns: [] })
-    expect(host.querySelector('[data-testid="day-progress"]')).toBeNull()
-    expect(text('free-hours')).toBe('36 h free this week')
+    expect(text('today-subtitle')).toBe('Saturday, October 24 · 36 h free this week')
   })
 
   it('does not pull focus to the check-in card when Today opens without a fresh save', async () => {
@@ -169,6 +189,96 @@ describe('Today status questions', () => {
     expect(host.querySelector('[data-testid="checkin-card"]')).not.toBeNull()
     await new Promise((resolve) => setTimeout(resolve, 20))
     expect(window.document.activeElement).toBe(window.document.body)
+  })
+})
+
+describe('Today block status', () => {
+  const lunchRow = () => [...host.querySelectorAll<HTMLElement>('[data-testid="timeline-item"]')].find((row) => row.textContent?.includes('Family lunch'))!
+  const lunchCircle = () => lunchRow().querySelector<HTMLButtonElement>('[data-testid="status-control"]')!
+  const actuals = (store: Awaited<ReturnType<typeof mount>>) => store.document!.actuals.map((actual) => [actual.blockId, actual.status])
+  const answered = (status: 'done' | 'partial' | 'skipped'): PlannerDocument => ({
+    ...base,
+    actuals: [{ date: '2026-10-24', blockId: 'family', categoryId: 'family', plannedStartAt: '2026-10-24T10:00:00.000Z', plannedEndAt: '2026-10-24T14:00:00.000Z', plannedMinutes: 240, status, ...(status === 'partial' ? { actualMinutes: 60 } : {}) }],
+  })
+
+  it('marks a finished block done with one tap, tells so in a toast and undoes it', async () => {
+    const store = await mount('2026-10-24T14:30:00Z')
+    expect(lunchCircle().getAttribute('data-status')).toBe('none')
+    lunchCircle().click()
+    await store.settled()
+    await nextTick()
+    expect(actuals(store)).toEqual([['family', 'done']])
+    expect(lunchCircle().getAttribute('data-status')).toBe('done')
+    expect(useUndoToast().toast.value?.message).toBe('Family lunch: Done')
+    useUndoToast().undo()
+    await store.settled()
+    await nextTick()
+    expect(actuals(store)).toEqual([])
+    expect(lunchCircle().getAttribute('data-status')).toBe('none')
+  })
+
+  it('undoes an answer back to the previous one exactly, minutes included', async () => {
+    const store = await mount('2026-10-24T14:30:00Z', answered('partial'))
+    lunchCircle().click()
+    await store.settled()
+    expect(store.document!.actuals[0]).toMatchObject({ status: 'done' })
+    expect(store.document!.actuals[0]).not.toHaveProperty('actualMinutes')
+    useUndoToast().undo()
+    await store.settled()
+    expect(store.document!.actuals[0]).toMatchObject({ status: 'partial', actualMinutes: 60 })
+  })
+
+  it('takes a done answer back with a second tap, and the toast offers it again', async () => {
+    const store = await mount('2026-10-24T14:30:00Z', answered('done'))
+    lunchCircle().click()
+    await store.settled()
+    await nextTick()
+    expect(actuals(store)).toEqual([])
+    expect(useUndoToast().toast.value?.message).toBe('Answer removed: Family lunch')
+    useUndoToast().undo()
+    await store.settled()
+    expect(actuals(store)).toEqual([['family', 'done']])
+  })
+
+  it('does not overwrite a newer answer when the undo no longer applies, and raises no error', async () => {
+    const store = await mount('2026-10-24T14:30:00Z')
+    lunchCircle().click()
+    await store.settled()
+    await store.commit((draft) => { draft.actuals[0]!.status = 'skipped' })
+    useUndoToast().undo()
+    await store.settled()
+    await nextTick()
+    expect(actuals(store)).toEqual([['family', 'skipped']])
+    expect(store.error).toBeNull()
+  })
+
+  it('shows no toast and keeps the circle open when the save did not go through', async () => {
+    const store = await mount('2026-10-24T14:30:00Z')
+    vi.spyOn(repos.planner, 'save').mockResolvedValueOnce({ kind: 'error', reason: 'disk-full' })
+    lunchCircle().click()
+    await store.settled()
+    await nextTick()
+    expect(useUndoToast().toast.value).toBeNull()
+    expect(actuals(store)).toEqual([])
+  })
+
+  it('commits once when the circle is tapped twice before the first save settles', async () => {
+    const store = await mount('2026-10-24T14:30:00Z')
+    const save = vi.spyOn(repos.planner, 'save')
+    const circle = lunchCircle()
+    circle.click()
+    circle.click()
+    await store.settled()
+    expect(save).toHaveBeenCalledTimes(1)
+    expect(actuals(store)).toEqual([['family', 'done']])
+  })
+
+  it('asks the question of a block still in progress only from its last ten minutes', async () => {
+    await mount('2026-10-24T13:49:00Z')
+    expect(host.querySelector('[data-testid="status-control"][aria-label="Mark Family lunch as done"]')).toBeNull()
+    app!.unmount(); host.remove()
+    await mount('2026-10-24T13:50:00Z')
+    expect(controlOf('.now-card')).not.toBeNull()
   })
 })
 

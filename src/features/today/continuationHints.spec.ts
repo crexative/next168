@@ -3,7 +3,12 @@ import { createI18n } from 'vue-i18n'
 import { i18n, SUPPORTED_LOCALES } from '@/i18n'
 import { plannerDocument, sleep } from '@/features/week/testDocument'
 import { buildTimeline } from './todayTimeline'
-import { continuationHints } from './continuationHints'
+import { continuationHints as rawHints } from './continuationHints'
+
+// ICU separates the clock from "AM" with a narrow no-break space on some platforms; the text is compared with plain spaces.
+const continuationHints: typeof rawHints = (...args) => rawHints(...args).map((hint) => (
+  hint.params.time ? { ...hint, params: { time: hint.params.time.replace(/\s/g, ' ') } } : hint
+))
 
 const now = new Date('2026-10-24T12:00:00Z')
 const multiDay = { start: '2026-10-22T18:00:00Z', end: '2026-10-27T09:00:00Z' }
@@ -17,7 +22,7 @@ describe('timeline continuation hints', () => {
     expect(items).toHaveLength(2)
     expect(items.map(item => continuationHints(item, now, 'UTC', 'en'))).toEqual([
       [{ key: 'today.timeline.sinceYesterday', params: {} }],
-      [{ key: 'today.timeline.untilTomorrow', params: {} }],
+      [{ key: 'today.timeline.untilTime', params: { time: '6:00 AM' }, plural: 2 }],
     ])
   })
 
@@ -31,7 +36,7 @@ describe('timeline continuation hints', () => {
   it('shows both adjacent hints when an event crosses both day boundaries', () => {
     expect(continuationHints({ start: '2026-10-23T23:00:00Z', end: '2026-10-25T06:00:00Z' }, now, 'UTC', 'en')).toEqual([
       { key: 'today.timeline.sinceYesterday', params: {} },
-      { key: 'today.timeline.untilTomorrow', params: {} },
+      { key: 'today.timeline.untilTime', params: { time: '6:00 AM' }, plural: 2 },
     ])
   })
 
@@ -67,7 +72,7 @@ describe('timeline continuation hints', () => {
     expect(continuationHints(
       { start: '2026-03-08T06:00:00Z', end: '2026-03-09T04:30:00Z' },
       new Date('2026-03-08T16:00:00Z'), 'America/New_York', 'en',
-    )).toEqual([{ key: 'today.timeline.untilTomorrow', params: {} }])
+    )).toEqual([{ key: 'today.timeline.untilTime', params: { time: '12:30 AM' }, plural: 2 }])
   })
 
   it('recognizes adjacent dates across a year boundary', () => {
@@ -76,7 +81,7 @@ describe('timeline continuation hints', () => {
       new Date('2027-01-01T12:00:00Z'), 'UTC', 'en',
     )).toEqual([
       { key: 'today.timeline.sinceYesterday', params: {} },
-      { key: 'today.timeline.untilTomorrow', params: {} },
+      { key: 'today.timeline.untilTime', params: { time: '9:00 AM' }, plural: 2 },
     ])
   })
 
@@ -93,14 +98,21 @@ describe('timeline continuation hints', () => {
     expect(continuationHints({ start, end: new Date(boundary - 1).toISOString() }, now, timeZone, 'en')).toEqual([])
     expect(continuationHints({ start, end: midnight }, now, timeZone, 'en')).toEqual([])
     expect(continuationHints({ start, end: new Date(boundary + 1).toISOString() }, now, timeZone, 'en')).toEqual([
-      { key: 'today.timeline.untilTomorrow', params: {} },
+      { key: 'today.timeline.untilTime', params: { time: '12:00 AM' }, plural: 2 },
     ])
   })
 
   it('still shows until tomorrow for an overnight event ending at 07:00', () => {
     expect(continuationHints({ start: '2026-10-24T23:00:00Z', end: '2026-10-25T07:00:00Z' }, now, 'UTC', 'en')).toEqual([
-      { key: 'today.timeline.untilTomorrow', params: {} },
+      { key: 'today.timeline.untilTime', params: { time: '7:00 AM' }, plural: 2 },
     ])
+  })
+
+  it('reads the end in the person’s clock and picks the singular article for one o’clock', () => {
+    const item = { start: '2026-10-24T22:00:00Z', end: '2026-10-25T01:00:00Z' }
+    expect(continuationHints(item, now, 'UTC', 'es', 'es-CO')).toEqual([{ key: 'today.timeline.untilTime', params: { time: '1:00 a. m.' }, plural: 1 }])
+    expect(continuationHints(item, now, 'UTC', 'es', 'es-ES-u-hc-h23')).toEqual([{ key: 'today.timeline.untilTime', params: { time: '1:00' }, plural: 1 }])
+    expect(continuationHints({ ...item, end: '2026-10-25T13:00:00Z' }, now, 'UTC', 'es', 'es-ES-u-hc-h23')).toEqual([{ key: 'today.timeline.untilTime', params: { time: '13:00' }, plural: 2 }])
   })
 
   it.each([
@@ -128,7 +140,7 @@ describe('timeline continuation hints', () => {
       messages: { [locale]: i18n.global.getLocaleMessage(locale) },
     }).global
     const hints = continuationHints(multiDay, now, 'UTC', locale)
-    for (const key of ['sinceYesterday', 'untilTomorrow', 'sinceDate', 'untilDate']) {
+    for (const key of ['sinceYesterday', 'untilTime', 'sinceDate', 'untilDate']) {
       expect(translator.te(`today.timeline.${key}`)).toBe(true)
     }
     expect(hints.map(hint => translator.t(hint.key, hint.params))).toEqual([since, until])

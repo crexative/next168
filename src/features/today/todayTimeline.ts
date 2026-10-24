@@ -1,7 +1,8 @@
 import type { ExternalOccurrence, PlannerDocument, TaskPlacement } from '@/core/model'
 import { addLocalDays, datedOccurrences, zonedInstant, type DatedOccurrence } from '@/core/time'
 
-interface TimelineBase { key: string; title: string; start: string; end: string; conflict: boolean }
+// `overlapsWith` names what an item shares time with; it is information about the day, not an alarm.
+interface TimelineBase { key: string; title: string; start: string; end: string; overlapsWith: string[] }
 export type TimelineItem =
   | TimelineBase & { kind: 'block'; occurrence: DatedOccurrence; categoryId: string }
   | TimelineBase & { kind: 'task'; taskId: string; categoryId: string; late: boolean }
@@ -19,20 +20,25 @@ export interface TimelineInput {
 
 const intersects = (start: string, end: string, from: number, to: number) => Date.parse(start) < to && Date.parse(end) > from
 
-// Blocks, Next168 events and busy calendar events that overlap each other are conflicts.
+// Blocks, Next168 events and busy calendar events that overlap each other each name the others.
 // Task chunks are placed inside free block time by the scheduler, so they never count.
-function markConflicts(items: TimelineItem[]): TimelineItem[] {
+function markOverlaps(items: TimelineItem[]): TimelineItem[] {
   const candidates = items.filter((item) => item.kind === 'block' || item.kind === 'event' || item.kind === 'external')
-  const conflicting = new Set<string>()
+  const overlaps = new Map<string, string[]>()
+  const note = (item: TimelineItem, other: TimelineItem) => {
+    const titles = overlaps.get(item.key) ?? []
+    if (!titles.includes(other.title)) titles.push(other.title)
+    overlaps.set(item.key, titles)
+  }
   for (const [index, item] of candidates.entries()) {
     for (const other of candidates.slice(index + 1)) {
       if (Date.parse(item.start) < Date.parse(other.end) && Date.parse(other.start) < Date.parse(item.end)) {
-        conflicting.add(item.key)
-        conflicting.add(other.key)
+        note(item, other)
+        note(other, item)
       }
     }
   }
-  return items.map((item) => ({ ...item, conflict: conflicting.has(item.key) }))
+  return items.map((item) => ({ ...item, overlapsWith: overlaps.get(item.key) ?? [] }))
 }
 
 export function buildTimeline({ document, today, timeZone, external, placements }: TimelineInput): { items: TimelineItem[]; allDay: AllDayItem[] } {
@@ -42,21 +48,21 @@ export function buildTimeline({ document, today, timeZone, external, placements 
   const items: TimelineItem[] = [
     ...datedOccurrences(document, today, 1, timeZone).map((occurrence): TimelineItem => ({
       kind: 'block', key: `block:${occurrence.blockId}@${occurrence.start}`, title: occurrence.title,
-      start: occurrence.start, end: occurrence.end, conflict: false, occurrence, categoryId: occurrence.categoryId,
+      start: occurrence.start, end: occurrence.end, overlapsWith: [], occurrence, categoryId: occurrence.categoryId,
     })),
     ...placements.flatMap((placement) => {
       const task = tasks.get(placement.taskId)
       if (!task) return []
       return placement.chunks.filter((chunk) => intersects(chunk.start, chunk.end, from, to)).map((chunk): TimelineItem => ({
         kind: 'task', key: `task:${task.id}@${chunk.start}`, title: task.title, start: chunk.start, end: chunk.end,
-        conflict: false, taskId: task.id, categoryId: task.categoryId ?? '', late: placement.late,
+        overlapsWith: [], taskId: task.id, categoryId: task.categoryId ?? '', late: placement.late,
       }))
     }),
     ...document.events.filter((event) => !event.allDay && intersects(event.start, event.end, from, to)).map((event): TimelineItem => ({
-      kind: 'event', key: `event:${event.id}`, title: event.title, start: event.start, end: event.end, conflict: false,
+      kind: 'event', key: `event:${event.id}`, title: event.title, start: event.start, end: event.end, overlapsWith: [],
     })),
     ...external.filter((item) => item.busy && !item.allDay && intersects(item.start, item.end, from, to)).map((item): TimelineItem => ({
-      kind: 'external', key: `external:${item.sourceId}/${item.uid}/${item.recurrenceId ?? ''}`, title: item.title, start: item.start, end: item.end, conflict: false,
+      kind: 'external', key: `external:${item.sourceId}/${item.uid}/${item.recurrenceId ?? ''}`, title: item.title, start: item.start, end: item.end, overlapsWith: [],
     })),
   ]
   const allDay: AllDayItem[] = [
@@ -66,5 +72,5 @@ export function buildTimeline({ document, today, timeZone, external, placements 
       .map((item) => ({ key: `external:${item.sourceId}/${item.uid}/${item.recurrenceId ?? ''}`, title: item.title, kind: 'external' as const })),
   ]
   const sorted = items.sort((a, b) => Date.parse(a.start) - Date.parse(b.start) || Date.parse(b.end) - Date.parse(a.end) || a.key.localeCompare(b.key))
-  return { items: markConflicts(sorted), allDay }
+  return { items: markOverlaps(sorted), allDay }
 }

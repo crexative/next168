@@ -189,10 +189,10 @@ test('the New routine sheet from Week "+" preselects the first category that is 
 test.describe('update notice on a phone', () => {
   test.beforeEach(onlyProject('phone'))
 
-  test("the first row's buttons end up clear of a tall notice, and the notice can be dismissed", async ({ page }) => {
+  test("the first row's circle ends up clear of a tall notice, and the notice can be dismissed", async ({ page }) => {
     await page.setViewportSize({ width: 375, height: 700 })
     // French wraps the notice onto three lines, the tallest case; the page must still end clear of it.
-    // After Deep work ended, with an earlier check-in showing the plan existed, its row asks how it went.
+    // After Deep work ended, with an earlier check-in showing the plan existed, its row carries the status circle.
     await seed(page, 'fr', new Date('2026-10-21T12:00:00.000Z'), [{ date: '2026-10-20' }])
     await page.goto('./#/today')
     await expect(page.getByTestId('timeline-item').first()).toBeVisible()
@@ -204,9 +204,9 @@ test.describe('update notice on a phone', () => {
     // Scroll as far as the page allows: nothing interactive in the first row may remain under the notice.
     await page.evaluate(() => window.scrollTo(0, window.document.documentElement.scrollHeight))
     const buttons = page.getByTestId('timeline-item').first().locator('button')
-    expect(await buttons.count()).toBeGreaterThanOrEqual(3)
+    expect(await buttons.count()).toBe(1)
     for (const button of await buttons.all()) {
-      expect(await isTopmost(button), `${await button.innerText()} is under the notice`).toBe(true)
+      expect(await isTopmost(button), `${await button.getAttribute('aria-label')} is under the notice`).toBe(true)
     }
 
     const close = banner.getByTestId('update-banner-close')
