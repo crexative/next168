@@ -36,9 +36,11 @@ let animation: { stop(): void } | undefined
 let gesture: { pointerId: number; startX: number; startY: number; baseOffset: number; axis: 'pending' | 'x'; width: number; samples: PointerSample[] } | undefined
 let suppressClick = false
 
-function applyOffset(value: number): void {
+// The model index only follows a change once the parent has re-rendered, so a settle passes its target explicitly.
+function applyOffset(value: number, position = index.value): void {
   offset = value
-  if (track.value) track.value.style.transform = `translateX(calc(${-index.value * 100}% + ${value}px))`
+  const transform = `translateX(calc(${-position * 100}% + ${value}px))`
+  if (track.value && track.value.style.transform !== transform) track.value.style.transform = transform
 }
 
 function fadeIn(): void {
@@ -53,13 +55,14 @@ function settleOn(next: number, velocity = 0): void {
   const from = offset + (next - index.value) * width
   index.value = next
   if (prefersReducedMotion()) {
-    applyOffset(0)
+    applyOffset(0, next)
     fadeIn()
     return
   }
-  applyOffset(from)
+  const apply = (value: number) => applyOffset(value, next)
+  apply(from)
   const bounce = Math.abs(velocity) > FLICK_VELOCITY_PX_PER_S ? 0.15 : 0
-  const run = springTo(from, 0, applyOffset, { velocity, bounce })
+  const run = springTo(from, 0, apply, { velocity, bounce })
   animation = run
   void run.finished.then(() => { if (animation === run) animation = undefined })
 }
