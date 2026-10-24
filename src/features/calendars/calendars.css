@@ -12,7 +12,7 @@
 .calendar-actions { display: flex; gap: var(--space-2); flex-wrap: wrap; align-items: center; }
 .calendar-actions > * { max-width: 100%; white-space: normal; overflow-wrap: anywhere; }
 .calendar-actions a { display: inline-flex; align-items: center; min-height: 44px; padding: 0 12px; color: var(--tint-label); }
-.calendar-section { display: grid; gap: var(--space-4); margin-bottom: var(--space-6); overflow-wrap: anywhere; }
+.calendar-section { padding-inline: var(--space-4); display: grid; gap: var(--space-4); margin-bottom: var(--space-6); overflow-wrap: anywhere; }
 .calendar-source { display: grid; gap: var(--space-2); }
 .calendar-file { display: grid; gap: var(--space-2); padding: var(--space-3); border-radius: var(--radius-card); background: var(--surface); }
 .calendar-file input { min-width: 0; width: 100%; max-width: 100%; min-height: 44px; }

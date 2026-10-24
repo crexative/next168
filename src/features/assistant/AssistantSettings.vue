@@ -28,7 +28,7 @@ async function remove(): Promise<void> {
 </script>
 
 <template>
-  <ListGroup :header="t('assistant.settings.header')" :footer="t('assistant.privacy')">
+  <ListGroup class="assistant-settings" :header="t('assistant.settings.header')" :footer="t('assistant.privacy')">
     <li class="settings-body">
       <SegmentedControl :model-value="assistant.preference.value" :options="options" :label="t('assistant.settings.provider')" @update:model-value="assistant.choose($event)" />
       <p v-if="assistant.preference.value === 'webllm' && assistant.availability.webllm === 'downloadable'" class="t-footnote t-secondary">
@@ -41,5 +41,8 @@ async function remove(): Promise<void> {
 </template>
 
 <style scoped>
+/* Same side gutter as the other settings sections; the header and footer are already inset inside the group. */
+.assistant-settings { padding-inline: var(--space-4); }
+.assistant-settings :deep(.list-header), .assistant-settings :deep(.list-footer) { padding-inline: 0; }
 .settings-body { display: flex; flex-direction: column; align-items: flex-start; gap: var(--space-3); padding: var(--space-4); }
 </style>

@@ -69,6 +69,22 @@ test('calendar settings fit from 320 to 1920 px with a long source name and URL'
   }
 })
 
+test('every settings section keeps a 16 px side gutter', async ({ page }) => {
+  await setup(page)
+  await expect(page.getByRole('heading', { level: 2, name: 'Calendars', exact: true })).toBeVisible()
+  const edges = await page.evaluate(() => {
+    const width = window.innerWidth
+    return Array.from(window.document.querySelectorAll('main h2, main .list-card, main .calendar-file, main .calendar-form input, main .connect-card'))
+      .map((node) => { const box = node.getBoundingClientRect(); return { name: `${node.tagName}.${node.className} ${node.textContent?.slice(0, 20)}`, left: box.left, right: width - box.right } })
+  })
+  expect(edges.length).toBeGreaterThan(5)
+  const main = await page.locator('main').evaluate((node) => node.getBoundingClientRect().left)
+  for (const edge of edges) {
+    expect(edge.left - main, `${edge.name} left gutter`).toBeGreaterThanOrEqual(15.5)
+    expect(edge.right, `${edge.name} right gutter`).toBeGreaterThanOrEqual(15.5)
+  }
+})
+
 // Integration: the Week view (S1) renders the occurrence source S3 registers with the shell.
 test('import file → preview and Week show events with a conflict against the plan', async ({ page }) => {
   await setup(page)
