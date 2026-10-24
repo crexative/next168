@@ -48,8 +48,22 @@ const reload = () => reloadWhenReady(() => planner.settled())
 </template>
 
 <style scoped>
-.banners { display: flex; flex-direction: column; gap: var(--space-2); padding: var(--space-2) var(--space-4) 0; }
+/* Overlay, not flow: a notice that arrives late (update, storage) must never push the page content down. */
+.banners {
+  position: fixed;
+  inset: calc(var(--safe-top) + var(--toolbar-height)) calc(var(--safe-right) + var(--space-4)) auto calc(var(--safe-left) + var(--space-4));
+  z-index: 15;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  max-width: 1200px;
+  margin-inline: auto;
+  pointer-events: none;
+}
 .banners:empty { display: none; }
+@media (min-width: 1024px) {
+  .banners { inset-inline-start: calc(var(--sidebar-width) + var(--space-4)); }
+}
 .banner {
   display: flex;
   align-items: center;
@@ -58,6 +72,8 @@ const reload = () => reloadWhenReady(() => planner.settled())
   border-radius: var(--radius-card);
   background: var(--surface);
   color: var(--label);
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.18);
+  pointer-events: auto;
 }
 .banner p { flex: 1; }
 .banner.is-error { border: 1px solid var(--danger); }
