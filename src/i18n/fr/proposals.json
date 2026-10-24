@@ -31,5 +31,30 @@
     "complete_task": "Terminer une tâche",
     "add_event": "Ajouter un événement",
     "update_category_goal": "Modifier un objectif"
-  }
+  },
+  "details": "Détails",
+  "unknownCategory": "Catégorie inconnue",
+  "minutes": "{minutes} min",
+  "completed": "Terminée",
+  "fields": {
+    "title": "Titre",
+    "category": "Catégorie",
+    "days": "Jours",
+    "time": "Heure",
+    "when": "Quand",
+    "duration": "Durée",
+    "priority": "Priorité",
+    "due": "Échéance",
+    "status": "Statut",
+    "location": "Lieu",
+    "attendees": "Participants",
+    "notes": "Notes",
+    "goal": "Objectif"
+  },
+  "goal": {
+    "max": "Au plus {hours} h par semaine",
+    "min": "Au moins {hours} h par semaine",
+    "none": "Aucun objectif hebdomadaire"
+  },
+  "nothing": "Rien"
 }

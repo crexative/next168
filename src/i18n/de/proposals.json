@@ -31,5 +31,30 @@
     "complete_task": "Aufgabe abschließen",
     "add_event": "Ereignis hinzufügen",
     "update_category_goal": "Kategorieziel ändern"
-  }
+  },
+  "details": "Details",
+  "unknownCategory": "Unbekannte Kategorie",
+  "minutes": "{minutes} Min.",
+  "completed": "Erledigt",
+  "fields": {
+    "title": "Titel",
+    "category": "Kategorie",
+    "days": "Tage",
+    "time": "Uhrzeit",
+    "when": "Wann",
+    "duration": "Dauer",
+    "priority": "Priorität",
+    "due": "Fällig",
+    "status": "Status",
+    "location": "Ort",
+    "attendees": "Teilnehmende",
+    "notes": "Notizen",
+    "goal": "Ziel"
+  },
+  "goal": {
+    "max": "Höchstens {hours} Std. pro Woche",
+    "min": "Mindestens {hours} Std. pro Woche",
+    "none": "Kein Wochenziel"
+  },
+  "nothing": "Nichts"
 }

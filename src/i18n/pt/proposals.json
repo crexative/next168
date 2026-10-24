@@ -31,5 +31,30 @@
     "complete_task": "Concluir tarefa",
     "add_event": "Adicionar evento",
     "update_category_goal": "Alterar meta da categoria"
-  }
+  },
+  "details": "Detalhes",
+  "unknownCategory": "Categoria desconhecida",
+  "minutes": "{minutes} min",
+  "completed": "Concluída",
+  "fields": {
+    "title": "Título",
+    "category": "Categoria",
+    "days": "Dias",
+    "time": "Horário",
+    "when": "Quando",
+    "duration": "Duração",
+    "priority": "Prioridade",
+    "due": "Prazo",
+    "status": "Estado",
+    "location": "Local",
+    "attendees": "Participantes",
+    "notes": "Notas",
+    "goal": "Meta"
+  },
+  "goal": {
+    "max": "No máximo {hours} h por semana",
+    "min": "Pelo menos {hours} h por semana",
+    "none": "Sem meta semanal"
+  },
+  "nothing": "Nada"
 }

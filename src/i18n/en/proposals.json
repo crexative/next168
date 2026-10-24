@@ -31,5 +31,30 @@
     "complete_task": "Complete task",
     "add_event": "Add event",
     "update_category_goal": "Change category goal"
-  }
+  },
+  "details": "Details",
+  "unknownCategory": "Unknown category",
+  "minutes": "{minutes} min",
+  "completed": "Completed",
+  "fields": {
+    "title": "Title",
+    "category": "Category",
+    "days": "Days",
+    "time": "Time",
+    "when": "When",
+    "duration": "Duration",
+    "priority": "Priority",
+    "due": "Due",
+    "status": "Status",
+    "location": "Location",
+    "attendees": "Attendees",
+    "notes": "Notes",
+    "goal": "Goal"
+  },
+  "goal": {
+    "max": "At most {hours} h per week",
+    "min": "At least {hours} h per week",
+    "none": "No weekly goal"
+  },
+  "nothing": "Nothing"
 }

@@ -37,6 +37,15 @@ it('shows the exact proposal without applying it, then commits only on the expli
   const review = [...host.querySelectorAll('button')].find(button => button.textContent?.includes('A focused hour'))!
   review.click()
   await vi.waitFor(() => expect(window.document.querySelector('[role="dialog"]')?.textContent).toContain('Focused planning'))
+  const after = window.document.querySelector('[data-testid="change-after"]')!
+  expect(after.textContent).toContain('Focused planning')
+  expect(after.textContent).toContain('Focus')
+  expect(after.textContent).toContain('Mon')
+  expect(after.textContent).toContain('9:00 AM – 10:00 AM')
+  expect(after.textContent).not.toMatch(/categoryId|preview-1|"start"/)
+  const raw = window.document.querySelector<HTMLDetailsElement>('[role="dialog"] details.raw')!
+  expect(raw.open).toBe(false)
+  expect(raw.querySelector('pre')?.textContent).toContain('"categoryId"')
   expect(approve).not.toHaveBeenCalled()
   expect(planner.document?.blocks).toHaveLength(0)
   const button = [...window.document.querySelectorAll<HTMLButtonElement>('[role="dialog"] button')].find(button => button.textContent?.trim() === 'Approve')!
