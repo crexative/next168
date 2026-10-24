@@ -94,7 +94,7 @@
     "noNextBlock": "Kein anstehender Block in der kommenden Woche.",
     "noOverflow": "Alle offenen Aufgaben passen in deine freie Zeit.",
     "overflow": "{count} Aufgabe passt nicht oder ist überfällig: {titles}. {amount} nicht eingeplant. | {count} Aufgaben passen nicht oder sind überfällig: {titles}. {amount} nicht eingeplant.",
-    "unassigned": "Noch {free} frei bis {day} ({past} schon vorbei, {plannedAhead} noch geplant). Deine Routine lässt {amount} der 168 h frei ({planned} geplant).",
+    "freeHours": "Diese Woche bleiben dir noch {free} frei.",
     "totalPlanned": "{planned} von 168 h diese Woche geplant.",
     "rulesCannotChange": "Den Plan zu ändern erfordert das Modell auf dem Gerät. Aktiviere es in den Einstellungen unter Assistent.",
     "rulesCannotChangeHere": "Den Plan zu ändern erfordert das Modell auf dem Gerät, das dieses Gerät oder dieser Browser nicht ausführen kann. Schnelle Antworten zu deinen Stunden funktionieren weiterhin.",

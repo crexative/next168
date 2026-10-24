@@ -377,7 +377,7 @@ describe('WeekView wiring', () => {
     })
     const badge = () => host.querySelector('[data-testid="week-free-hours-slot"] [data-testid="free-hours"]')
     // Wednesday 10:15 to Monday 00:00 is 109 h 45 min, shown as whole hours; Monday's block is already behind.
-    expect(badge()?.textContent?.trim()).toBe('110 h free from now to Sunday · of 168')
+    expect(badge()?.textContent?.trim()).toBe('110 h free this week')
     host.querySelector<HTMLElement>('[data-testid="week-next"]')!.click()
     await tick()
     expect(badge()).toBeNull()

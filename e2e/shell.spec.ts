@@ -119,7 +119,7 @@ test.describe('app shell', () => {
     await page.evaluate(() => window.scrollTo(0, 1500))
     await expect.poll(() => page.evaluate(() => window.scrollY)).toBeGreaterThan(300)
     const nav = page.getByRole('navigation', { name: 'Main navigation' })
-    for (const tab of ['Tasks', 'Insights', 'Today'] as const) {
+    for (const tab of ['Tasks', 'Summary', 'Today'] as const) {
       await nav.getByRole('link', { name: tab }).click()
       await expect(page.getByRole('heading', { level: 1, name: tab })).toBeVisible()
       await expect(page.locator('.view-enter-active, .view-leave-active')).toHaveCount(0)

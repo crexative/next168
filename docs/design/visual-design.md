@@ -23,7 +23,7 @@ Purpose and simplicity (one primary thing per screen), familiarity (iOS Calendar
 | Today | "Now" card (current block, time left, progress, next), today's timeline with placed tasks, evening check-in entry | — (new, from prototype) |
 | Week | Time-axis week grid (desktop: 7 columns; phone: day pager with swipe) | Calendar |
 | Tasks | Inbox of tasks auto-fitted into free time of their category's blocks; overflow warnings | — (new) |
-| Insights | 168-hour stacked bar, category goals (max/min), 7-day measures from check-ins | Statistics |
+| Summary (Resumen) | 168-hour stacked bar, one row per goal, 7-day measures from the Day wrap-up | Statistics |
 | Settings (gear, not a tab on phone) | Categories, language, data export/import, AI assistant, connect your LLM | Categories tab, language dropdown |
 
 Phone: translucent bottom tab bar (4 tabs, SF-style line icons, label under icon). Desktop ≥1024 px: translucent left sidebar with the same items plus Settings at the bottom; content max width 1200 px.
@@ -78,7 +78,7 @@ Each screen opens with a large title ("Today", "Week") that collapses into the t
 - **Week grid:** time axis 00–24 with 1 px hairlines every hour; blocks absolutely positioned by start/end, fill = category color at 16 % (light) / 28 % (dark), 3 px leading bar in full color, title Headline, time Footnote. Midnight-crossing blocks render on both days. Red now-line with dot. Tap a block → sheet anchored to it. Phone: one day per page, horizontal swipe with 1:1 tracking, velocity projection to the nearest day, rubber band at week ends; a segmented day strip on top.
 - **Block/task editor:** bottom sheet on phone (drag handle, drag-to-dismiss with velocity handoff, detents medium/large), centered sheet on desktop scaling from the trigger. Inline validation (overlap, category cap) as the user types, never only on submit.
 - **Lists (tasks, categories):** inset grouped lists like iOS Settings; swipe-left reveals Delete; delete shows an undo toast for 5 s instead of a confirm dialog.
-- **Insights:** one 168-segment stacked bar (each segment one hour, colored by category, gray for unassigned); per-category rows with goal marker and a chip ("2 h over cap", "3 h to go"); 7-day dot strips for sleep, exercise, late work, stress.
+- **Summary (Resumen):** three sections. "Your typical week": one stacked bar colored by category, gray for unassigned, headed "106 h assigned · 62 h unassigned" and one live line ("54 h free left this week"). "Your goals this week": one row per goal with one line in whole hours ("3 of at least 4 h · 1 h to go") and one ✓ or ! mark, plus what was done. "Last 7 days": named by its dates, with dot strips for sleep, exercise, late work, stress. Hours are whole numbers everywhere (a guard fails on `toFixed(` and on fractional-hour strings).
 - **Buttons:** filled tint (primary), tinted 12 % (secondary), plain text (tertiary); 44 px minimum hit target; `:active` scale 0.97 within 100 ms on pointer-down.
 - **Icons:** one inline SVG line-icon set (Lucide, MIT, tree-shaken) at 1.5 px stroke; emoji remain only as optional user-chosen category glyphs.
 

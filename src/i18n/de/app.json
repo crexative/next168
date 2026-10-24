@@ -4,7 +4,7 @@
     "today": "Heute",
     "week": "Woche",
     "tasks": "Aufgaben",
-    "insights": "Auswertung",
+    "insights": "Übersicht",
     "settings": "Einstellungen"
   },
   "navigation": {
@@ -27,7 +27,7 @@
       "description": "Aufgaben werden in die freie Zeit ihrer Kategorie eingeplant."
     },
     "insights": {
-      "title": "Noch keine Auswertung",
+      "title": "Noch keine Übersicht",
       "description": "Sieh, wie deine 168 Stunden verteilt sind, sobald du deine Woche planst."
     },
     "settings": {

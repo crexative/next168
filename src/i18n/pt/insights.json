@@ -1,37 +1,29 @@
 {
   "empty": {
     "title": "Ainda sem dados",
-    "description": "Adicione categorias e blocos para ver como suas 168 horas são usadas."
+    "description": "Adicione categorias e rotinas para ver como se dividem as suas 168 horas."
   },
   "bar": {
-    "title": "Suas 168 horas",
-    "available": "{duration} disponíveis de 168",
-    "segment": "{name}: {duration} planejadas",
-    "availableName": "Disponível",
-    "availableSegment": "Disponível: {duration}",
-    "overlap": "Alguns blocos se sobrepõem, então a barra é limitada a 168 h.",
-    "legend": "Planejado por categoria"
+    "title": "Sua semana típica",
+    "summary": "{assigned} atribuídas · {unassigned} sem atribuição",
+    "segment": "{name}: {duration}",
+    "unassignedName": "Sem atribuição",
+    "unassignedSegment": "Sem atribuição: {duration}",
+    "overlap": "Algumas rotinas se sobrepõem, então a barra é limitada a 168 h.",
+    "legend": "Horas atribuídas por categoria",
+    "live": "Esta semana, resta {hours} h livre. | Esta semana, restam {hours} h livres."
   },
-  "goal": {
-    "title": "Metas por categoria",
-    "over": "Acima do máximo",
-    "missing": "Faltam {duration}",
-    "ok": "No caminho",
-    "none": "Sem meta",
+  "goals": {
+    "title": "Suas metas desta semana",
+    "empty": "Ainda sem metas. Defina uma em cada categoria, em Ajustes.",
     "line": {
-      "maxLeft": "{planned} de máx. {goal} · restam {left}",
-      "over": "Você passou do máximo em {over}",
-      "minMissing": "{planned} de mín. {goal} · faltam {left}",
-      "minMet": "Mínimo cumprido"
+      "minMissing": "{planned} de pelo menos {goal} · falta {left} | {planned} de pelo menos {goal} · faltam {left}",
+      "minMet": "{planned} de pelo menos {goal}",
+      "maxLeft": "{planned} de no máximo {goal} · resta {left} | {planned} de no máximo {goal} · restam {left}",
+      "atMax": "No máximo · {goal}",
+      "over": "{planned} de no máximo {goal} · {over} a mais"
     },
-    "markerMax": "máx. {duration}",
-    "markerMin": "mín. {duration}"
-  },
-  "planVsActual": {
-    "title": "Planejado e realizado",
-    "value": "{actual} de {planned}",
-    "empty": "Marque blocos como feitos em Hoje para comparar o planejado com o que aconteceu.",
-    "removed": "Categoria removida"
+    "done": "Feito: {actual} de {planned}"
   },
   "measures": {
     "title": "Últimos 7 dias",
@@ -41,8 +33,8 @@
     "stress": "Estresse médio (1–5)",
     "none": "—",
     "exerciseOfTarget": "{count} de {target} sessões",
-    "emptyBody": "Estas medidas vêm do seu fechamento do dia: quando foi dormir, quando acordou, quando o trabalho terminou, exercício e estresse. Leva menos de um minuto.",
-    "emptyAction": "Fazer o registro de hoje",
+    "emptyBody": "Estas medidas vêm do seu Fechamento do dia: quando foi dormir, quando acordou, quando o trabalho terminou, exercício e estresse. Leva menos de um minuto.",
+    "emptyAction": "Fazer o Fechamento do dia",
     "state": {
       "good": "bom",
       "amber": "no limite",

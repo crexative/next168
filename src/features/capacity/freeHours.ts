@@ -69,3 +69,8 @@ export function weekSplitHours(split: WeekSplit): WeekSplitHours {
 export function freeHoursAhead(document: PlannerDocument, now: Date, timeZone: string): number {
   return weekSplit(document, now, timeZone).freeAheadMinutes / 60
 }
+
+// The live free-hours figure as every screen shows it: whole hours from `now` to the end of the week that no block covers.
+export function freeHoursWhole(document: PlannerDocument, now: Date, timeZone: string): number {
+  return weekSplitHours(weekSplit(document, now, timeZone)).freeAhead
+}

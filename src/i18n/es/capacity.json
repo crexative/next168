@@ -1,11 +1,3 @@
 {
-  "badge": "Quedan {hours} h libres de aquí al {day} · de {total}",
-  "split": {
-    "title": "Esta semana, desde ahora",
-    "past": "Ya pasaron",
-    "planned": "Planificadas por delante",
-    "free": "Libres hasta el {day}",
-    "hours": "{hours} h",
-    "total": "Las tres suman las {total} h de esta semana."
-  }
+  "badge": "{hours} h libre esta semana | {hours} h libres esta semana"
 }

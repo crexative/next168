@@ -57,7 +57,7 @@ afterEach(() => { useUndoToast().dismiss(); app?.unmount(); host?.remove(); app 
 describe('Today header and cards', () => {
   it('shows the free hours and how many of today’s items are done', async () => {
     const store = await mount('2026-10-24T12:00:00Z')
-    expect(text('free-hours')).toBe('23 h free from now to Sunday · of 168')
+    expect(text('free-hours')).toBe('23 h free this week')
     // Family lunch + Reading + Sleep start today, plus the placed task; nothing is done yet.
     expect(text('day-progress')).toBe('0 of 4 done today')
     await store.commit((draft) => { draft.tasks[0]!.doneAt = '2026-10-24T11:00:00.000Z' })
@@ -161,7 +161,7 @@ describe('Today status questions', () => {
   it('shows no progress line on a day with nothing to do', async () => {
     await mount('2026-10-24T12:00:00Z', { ...base, blocks: [], tasks: [], checkIns: [] })
     expect(host.querySelector('[data-testid="day-progress"]')).toBeNull()
-    expect(text('free-hours')).toBe('36 h free from now to Sunday · of 168')
+    expect(text('free-hours')).toBe('36 h free this week')
   })
 
   it('does not pull focus to the check-in card when Today opens without a fresh save', async () => {

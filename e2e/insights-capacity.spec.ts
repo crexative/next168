@@ -42,7 +42,7 @@ async function expectNothingClipped(page: Page): Promise<void> {
   expect(problems).toEqual([])
 }
 
-test.describe('insights capacity', () => {
+test.describe('summary: your typical week and goals', () => {
   test('100 planned categories fit the bar on a 375 px phone @smoke', async ({ page }) => {
     await page.setViewportSize({ width: 375, height: 812 })
     const categories = Array.from({ length: 100 }, (_, index) => ({
@@ -55,15 +55,15 @@ test.describe('insights capacity', () => {
     await start(page, { categories, blocks })
     await openTab(page, 'insights')
 
-    await expect(page.getByTestId('capacity-available')).toHaveText('68 h available of 168')
+    await expect(page.getByTestId('capacity-available')).toHaveText('100 h assigned · 68 h unassigned')
     const bar = page.getByTestId('week-bar')
     await expect(bar.locator('[data-segment]')).toHaveCount(101)
     for (const category of categories) {
-      await expect(bar.getByRole('img', { name: `${category.name}: 1 h planned`, exact: true })).toHaveCount(1)
+      await expect(bar.getByRole('img', { name: `${category.name}: 1 h`, exact: true })).toHaveCount(1)
       await expect(page.getByTestId(`legend-${category.id}`)).toHaveText(`${category.name}1 h`)
     }
-    await expect(bar.getByRole('img', { name: 'Available: 68 h', exact: true })).toBeVisible()
-    await expect(page.getByTestId('legend-available')).toHaveText('Available68 h')
+    await expect(bar.getByRole('img', { name: 'Unassigned: 68 h', exact: true })).toBeVisible()
+    await expect(page.getByTestId('legend-available')).toHaveText('Unassigned68 h')
 
     const geometry = await bar.evaluate((element) => {
       const barBox = element.getBoundingClientRect()
@@ -86,48 +86,49 @@ test.describe('insights capacity', () => {
     await expectNothingClipped(page)
   })
 
-  test('shows the disk-usage bar with the legend, the Available value and per-category goals, nothing clipped', async ({ page }) => {
+  test('shows your typical week as one bar with the legend, the unassigned hours and one line per goal, nothing clipped', async ({ page }) => {
     await start(page, { categories: [sleep, work, study], blocks })
     await openTab(page, 'insights')
 
     // 35 h sleep + 32 h work + 1 h study = 68 h planned, 100 h available.
-    await expect(page.getByTestId('capacity-available')).toHaveText('100 h available of 168')
+    await expect(page.getByTestId('capacity-available')).toHaveText('68 h assigned · 100 h unassigned')
     const legend = page.getByTestId('capacity-legend')
     await expect(legend.getByTestId('legend-c-sleep')).toContainText('Sleep35 h')
     await expect(legend.getByTestId('legend-c-work')).toContainText('Work32 h')
     await expect(legend.getByTestId('legend-c-study')).toContainText('Study1 h')
-    await expect(legend.getByTestId('legend-available')).toContainText('Available100 h')
+    await expect(legend.getByTestId('legend-available')).toContainText('Unassigned100 h')
 
     const bar = page.getByTestId('week-bar')
-    await expect(bar.getByRole('img', { name: 'Work: 32 h planned' })).toBeVisible()
-    await expect(bar.getByRole('img', { name: 'Available: 100 h' })).toBeVisible()
+    await expect(bar.getByRole('img', { name: 'Work: 32 h' })).toBeVisible()
+    await expect(bar.getByRole('img', { name: 'Unassigned: 100 h' })).toBeVisible()
     const widths = await bar.locator('[data-segment]').evaluateAll((nodes) => nodes.map((node) => [node.getAttribute('data-segment'), node.getBoundingClientRect().width] as const))
     const widthOf = (id: string) => widths.find(([key]) => key === id)![1]
     expect(widthOf('available') / widthOf('c-work')).toBeCloseTo(100 / 32, 0)
 
     const sleepRow = page.getByTestId('goal-row-c-sleep')
-    await expect(sleepRow.getByTestId('goal-line')).toHaveText('35 h of min 49 h · 14 h to go')
-    await expect(sleepRow.getByTestId('goal-chip')).toContainText('14 h to go')
-    await expect(sleepRow.getByTestId('goal-marker')).toHaveText('min 49 h')
+    await expect(sleepRow.getByTestId('goal-line')).toHaveText('35 of at least 49 h · 14 h to go')
+    await expect(sleepRow.getByTestId('goal-state')).toHaveText('!')
     const workRow = page.getByTestId('goal-row-c-work')
-    await expect(workRow.getByTestId('goal-line')).toHaveText('32 h of max 40 h · 8 h left')
-    await expect(workRow.getByTestId('goal-marker')).toHaveText('max 40 h')
-    await expect(page.getByTestId('goal-row-c-study').getByTestId('goal-line')).toHaveText('No goal')
+    await expect(workRow.getByTestId('goal-line')).toHaveText('32 of at most 40 h · 8 h left')
+    await expect(workRow.getByTestId('goal-state')).toHaveText('✓')
+    // A category without a goal has no row; the status is one line and one mark, never a chip as well.
+    await expect(page.getByTestId('goal-row-c-study')).toHaveCount(0)
+    await expect(page.getByTestId('goal-chip')).toHaveCount(0)
     await expect(page.getByTestId('capacity-overlap')).toHaveCount(0)
 
     await expectNothingClipped(page)
   })
 
-  test('an empty plan is all available and a min goal at 0 h says what is missing', async ({ page }) => {
+  test('an empty plan is all unassigned and a min goal at 0 h says what is missing', async ({ page }) => {
     await start(page, { categories: [sleep, work], blocks: [] })
     await openTab(page, 'insights')
-    await expect(page.getByTestId('capacity-available')).toHaveText('168 h available of 168')
+    await expect(page.getByTestId('capacity-available')).toHaveText('0 h assigned · 168 h unassigned')
     await expect(page.getByTestId('week-bar').locator('[data-segment]')).toHaveCount(1)
-    await expect(page.getByTestId('week-bar').getByRole('img', { name: 'Available: 168 h' })).toBeVisible()
+    await expect(page.getByTestId('week-bar').getByRole('img', { name: 'Unassigned: 168 h' })).toBeVisible()
     const row = page.getByTestId('goal-row-c-sleep')
-    await expect(row.getByTestId('goal-chip')).toHaveText(/49 h to go/)
-    await expect(row.getByTestId('goal-chip')).not.toContainText('On track')
-    await expect(page.getByTestId('goal-row-c-work').getByTestId('goal-line')).toHaveText('0 min of max 40 h · 40 h left')
+    await expect(row.getByTestId('goal-line')).toHaveText('0 of at least 49 h · 49 h to go')
+    await expect(row.getByTestId('goal-state')).toHaveText('!')
+    await expect(page.getByTestId('goal-row-c-work').getByTestId('goal-line')).toHaveText('0 of at most 40 h · 40 h left')
     await expectNothingClipped(page)
   })
 
@@ -136,9 +137,10 @@ test.describe('insights capacity', () => {
     const easySleep = { ...sleep, goal: { type: 'min', hoursPerWeek: 20 } }
     await start(page, { categories: [easySleep, overWork, study], blocks })
     await openTab(page, 'insights')
-    await expect(page.getByTestId('goal-row-c-work').getByTestId('goal-line')).toHaveText('Over the max by 12 h')
-    await expect(page.getByTestId('goal-row-c-work').getByTestId('goal-chip')).toHaveText(/Over cap/)
-    await expect(page.getByTestId('goal-row-c-sleep').getByTestId('goal-line')).toHaveText('Minimum met')
+    await expect(page.getByTestId('goal-row-c-work').getByTestId('goal-line')).toHaveText('32 of at most 20 h · 12 h over')
+    await expect(page.getByTestId('goal-row-c-work').getByTestId('goal-state')).toHaveText('!')
+    await expect(page.getByTestId('goal-row-c-sleep').getByTestId('goal-line')).toHaveText('35 of at least 20 h')
+    await expect(page.getByTestId('goal-row-c-sleep').getByTestId('goal-state')).toHaveText('✓')
     await expectNothingClipped(page)
   })
 
@@ -147,7 +149,7 @@ test.describe('insights capacity', () => {
     await start(page, { categories: [sleep, work], blocks: [heavy('b1', 'c-sleep'), heavy('b2', 'c-work')] })
     await openTab(page, 'insights')
     // 2 × 140 h planned: the bar is capped, nothing is left.
-    await expect(page.getByTestId('capacity-available')).toHaveText('0 min available of 168')
+    await expect(page.getByTestId('capacity-available')).toHaveText('168 h assigned · 0 h unassigned')
     await expect(page.getByTestId('week-bar').locator('[data-segment="available"]')).toHaveCount(0)
     await expect(page.getByTestId('capacity-overlap')).toContainText('capped at 168 h')
     await expectNothingClipped(page)
@@ -156,9 +158,9 @@ test.describe('insights capacity', () => {
   test('renders in Spanish with the owner wording', async ({ page }) => {
     await start(page, { settings: { ...onboardedDocument().settings, locale: 'es' }, categories: [sleep, work, study], blocks })
     await page.goto('./#/insights')
-    await expect(page.getByTestId('capacity-available')).toHaveText('100 h disponibles de 168')
-    await expect(page.getByTestId('goal-row-c-work').getByTestId('goal-line')).toHaveText('32 h de máx. 40 h · quedan 8 h')
-    await expect(page.getByTestId('goal-row-c-sleep').getByTestId('goal-line')).toHaveText('35 h de mín. 49 h · faltan 14 h')
+    await expect(page.getByTestId('capacity-available')).toHaveText('68 h asignadas · 100 h sin asignar')
+    await expect(page.getByTestId('goal-row-c-work').getByTestId('goal-line')).toHaveText('32 de como máximo 40 h · quedan 8 h')
+    await expect(page.getByTestId('goal-row-c-sleep').getByTestId('goal-line')).toHaveText('35 de al menos 49 h · faltan 14 h')
   })
 
   for (const scheme of ['light', 'dark'] as const) {

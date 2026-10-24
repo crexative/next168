@@ -1,37 +1,29 @@
 {
   "empty": {
     "title": "Noch keine Daten",
-    "description": "Fügen Sie Kategorien und Blöcke hinzu, um zu sehen, wie Ihre 168 Stunden verteilt sind."
+    "description": "Fügen Sie Kategorien und Routinen hinzu, um zu sehen, wie sich Ihre 168 Stunden verteilen."
   },
   "bar": {
-    "title": "Ihre 168 Stunden",
-    "available": "{duration} frei von 168",
-    "segment": "{name}: {duration} geplant",
-    "availableName": "Frei",
-    "availableSegment": "Frei: {duration}",
-    "overlap": "Einige Blöcke überschneiden sich, daher ist die Leiste auf 168 h begrenzt.",
-    "legend": "Geplant je Kategorie"
+    "title": "Ihre Standardwoche",
+    "summary": "{assigned} zugewiesen · {unassigned} nicht zugewiesen",
+    "segment": "{name}: {duration}",
+    "unassignedName": "Nicht zugewiesen",
+    "unassignedSegment": "Nicht zugewiesen: {duration}",
+    "overlap": "Einige Routinen überschneiden sich, daher ist die Leiste auf 168 h begrenzt.",
+    "legend": "Zugewiesene Stunden je Kategorie",
+    "live": "Diese Woche bleiben dir noch {hours} h frei."
   },
-  "goal": {
-    "title": "Ziele je Kategorie",
-    "over": "Über dem Limit",
-    "missing": "Noch {duration}",
-    "ok": "Im Plan",
-    "none": "Kein Ziel",
+  "goals": {
+    "title": "Ihre Ziele diese Woche",
+    "empty": "Noch keine Ziele. Legen Sie eines je Kategorie unter Einstellungen fest.",
     "line": {
-      "maxLeft": "{planned} von max. {goal} · noch {left} übrig",
-      "over": "Max. um {over} überschritten",
-      "minMissing": "{planned} von min. {goal} · es fehlen {left}",
-      "minMet": "Minimum erreicht"
+      "minMissing": "{planned} von mindestens {goal} · es fehlen {left}",
+      "minMet": "{planned} von mindestens {goal}",
+      "maxLeft": "{planned} von höchstens {goal} · noch {left} übrig",
+      "atMax": "Am Maximum · {goal}",
+      "over": "{planned} von höchstens {goal} · {over} zu viel"
     },
-    "markerMax": "max. {duration}",
-    "markerMin": "min. {duration}"
-  },
-  "planVsActual": {
-    "title": "Plan und Ist",
-    "value": "{actual} von {planned}",
-    "empty": "Markieren Sie Blöcke unter Heute als erledigt, um Plan und Wirklichkeit zu vergleichen.",
-    "removed": "Entfernte Kategorie"
+    "done": "Erledigt: {actual} von {planned}"
   },
   "measures": {
     "title": "Letzte 7 Tage",
@@ -42,7 +34,7 @@
     "none": "—",
     "exerciseOfTarget": "{count} von {target} Einheiten",
     "emptyBody": "Diese Werte stammen aus Ihrem Tagesabschluss: Schlafenszeit, Aufstehen, Arbeitsende, Bewegung und Stress. Das dauert weniger als eine Minute.",
-    "emptyAction": "Heutigen Check-in machen",
+    "emptyAction": "Tagesabschluss machen",
     "state": {
       "good": "gut",
       "amber": "grenzwertig",

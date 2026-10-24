@@ -2,7 +2,7 @@ import { currentAndNext } from '@/core/now'
 import { scheduleTasks } from '@/core/scheduler'
 import { computeStats } from '@/core/stats'
 import type { Category, PlannerDocument } from '@/core/model'
-import { weekEnd, weekSplit, weekSplitHours } from '@/features/capacity/freeHours'
+import { freeHoursWhole } from '@/features/capacity/freeHours'
 import {
   formatDuration,
   type AskContext, type AssistantAnswer, type AssistantProvider, type Availability, type Translate,
@@ -77,17 +77,9 @@ export function answerFromStats(question: string, { document, now, timeZone, loc
     return t('assistant.answers.overflow', { count: overflowing.length, titles: titles.join(', '), amount: formatDuration(minutes) })
   }
   if (!category && matchesIntent('unassigned', question)) {
-    // Free time counts from now, through the same split as the free-hours badge; the routine's unassigned hours follow.
-    const split = weekSplitHours(weekSplit(document, now, timeZone))
-    const hours = (value: number) => formatWholeHours(value, displayLocaleFor(locale))
-    return t('assistant.answers.unassigned', {
-      free: hours(split.freeAhead),
-      day: formatDate(weekEnd(document, now, timeZone).lastDate, displayLocaleFor(locale), { weekday: 'long' }),
-      past: hours(split.past),
-      plannedAhead: hours(split.plannedAhead),
-      amount: formatDuration(stats.unassignedHours * 60),
-      planned: formatDuration(stats.plannedMinutes),
-    })
+    // The one live figure: hours from now to the end of the week that nothing covers, as the badge shows it.
+    const free = freeHoursWhole(document, now, timeZone)
+    return t('assistant.answers.freeHours', { free: formatWholeHours(free, displayLocaleFor(locale)), count: free })
   }
   if (category && matchesIntent('remaining', question)) return remainingLine(document, category, t)
   if (category) return categoryLine(document, category, t)

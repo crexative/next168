@@ -4,7 +4,7 @@
     "today": "Today",
     "week": "Week",
     "tasks": "Tasks",
-    "insights": "Insights",
+    "insights": "Summary",
     "settings": "Settings"
   },
   "navigation": {
@@ -27,7 +27,7 @@
       "description": "Tasks will be fitted into free time of their category."
     },
     "insights": {
-      "title": "No insights yet",
+      "title": "No summary yet",
       "description": "See how your 168 hours are spent once you plan your week."
     },
     "settings": {

@@ -1,37 +1,29 @@
 {
   "empty": {
-    "title": "No insights yet",
-    "description": "Add categories and time blocks to see how your 168 hours are spent."
+    "title": "No data yet",
+    "description": "Add categories and routines to see how your 168 hours are spent."
   },
   "bar": {
-    "title": "Your 168 hours",
-    "available": "{duration} available of 168",
-    "segment": "{name}: {duration} planned",
-    "availableName": "Available",
-    "availableSegment": "Available: {duration}",
-    "overlap": "Some blocks overlap, so the bar is capped at 168 h.",
-    "legend": "Planned per category"
+    "title": "Your typical week",
+    "summary": "{assigned} assigned · {unassigned} unassigned",
+    "segment": "{name}: {duration}",
+    "unassignedName": "Unassigned",
+    "unassignedSegment": "Unassigned: {duration}",
+    "overlap": "Some routines overlap, so the bar is capped at 168 h.",
+    "legend": "Assigned hours per category",
+    "live": "{hours} h free left this week."
   },
-  "goal": {
-    "title": "Goals by category",
-    "over": "Over cap",
-    "missing": "{duration} to go",
-    "ok": "On track",
-    "none": "No goal",
+  "goals": {
+    "title": "Your goals this week",
+    "empty": "No goals yet. Set one on a category in Settings.",
     "line": {
-      "maxLeft": "{planned} of max {goal} · {left} left",
-      "over": "Over the max by {over}",
-      "minMissing": "{planned} of min {goal} · {left} to go",
-      "minMet": "Minimum met"
+      "minMissing": "{planned} of at least {goal} · {left} to go",
+      "minMet": "{planned} of at least {goal}",
+      "maxLeft": "{planned} of at most {goal} · {left} left",
+      "atMax": "At the max · {goal}",
+      "over": "{planned} of at most {goal} · {over} over"
     },
-    "markerMax": "max {duration}",
-    "markerMin": "min {duration}"
-  },
-  "planVsActual": {
-    "title": "Plan vs actual",
-    "value": "{actual} of {planned}",
-    "empty": "Mark blocks as done on Today to compare what you planned with what happened.",
-    "removed": "Removed category"
+    "done": "Done: {actual} of {planned}"
   },
   "measures": {
     "title": "Last 7 days",
@@ -41,8 +33,8 @@
     "stress": "Average stress (1–5)",
     "none": "—",
     "exerciseOfTarget": "{count} of {target} sessions",
-    "emptyBody": "These measures come from your day wrap-up: when you went to bed, when you woke, when work ended, exercise and stress. It takes under a minute.",
-    "emptyAction": "Do tonight's check-in",
+    "emptyBody": "These measures come from your Day wrap-up: when you went to bed, when you woke, when work ended, exercise and stress. It takes under a minute.",
+    "emptyAction": "Do the Day wrap-up",
     "state": {
       "good": "good",
       "amber": "borderline",

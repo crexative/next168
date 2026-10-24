@@ -86,7 +86,7 @@ test.describe('plan and measure', () => {
     await expect(page.locator('main')).not.toBeEmpty()
     await openTab(page, 'insights')
     await expect(page.getByTestId('week-bar').locator('[data-segment]')).toHaveCount(4)
-    await expect(page.getByTestId(`goal-row-${document.categories[0].id}`)).toContainText('On track')
+    await expect(page.getByTestId(`goal-row-${document.categories[0].id}`)).toContainText('✓')
   })
 
   test('skipping onboarding keeps the planner empty and marks it done', async ({ page }) => {
@@ -133,16 +133,16 @@ test.describe('plan and measure', () => {
     await expect(page.getByTestId('task-warnings')).toContainText('Move the due date')
   })
 
-  test('insights shows the 168 hour bar, goal chips and an empty measures state that leads to the check-in', async ({ page }) => {
+  test('Summary shows the 168 hour bar, one line and mark per goal and an empty measures state that leads to the check-in', async ({ page }) => {
     await startWith(page, plannerDocument())
     await openTab(page, 'insights')
     const bar = page.getByTestId('week-bar')
     await expect(bar.locator('[data-segment]')).toHaveCount(4)
-    await expect(page.getByTestId('capacity-available')).toHaveText('66 h available of 168')
-    await expect(page.getByTestId('goal-row-c-work').getByTestId('goal-chip')).toHaveText(/Over cap/)
-    await expect(page.getByTestId('goal-row-c-sleep').getByTestId('goal-chip')).toContainText('On track')
-    await expect(page.getByTestId('measures-empty')).toContainText('day wrap-up')
-    await page.getByRole('link', { name: "Do tonight's check-in" }).click()
+    await expect(page.getByTestId('capacity-available')).toHaveText('102 h assigned · 66 h unassigned')
+    await expect(page.getByTestId('goal-row-c-work').getByTestId('goal-state')).toHaveText('!')
+    await expect(page.getByTestId('goal-row-c-sleep').getByTestId('goal-state')).toHaveText('✓')
+    await expect(page.getByTestId('measures-empty')).toContainText('Day wrap-up')
+    await page.getByRole('link', { name: 'Do the Day wrap-up' }).click()
     await expect(page).toHaveURL(/#\/checkin$/)
   })
 
@@ -154,7 +154,7 @@ test.describe('plan and measure', () => {
       }],
     }))
     await openTab(page, 'insights')
-    await expect(page.getByTestId('actual-row-c-work').getByTestId('actual-value')).toContainText('5 h of 9 h')
+    await expect(page.getByTestId('goal-row-c-work').getByTestId('actual-line')).toHaveText('Done: 5 h of 9 h')
   })
 
   test('saving a check-in updates the sleep average in insights', async ({ page }) => {
@@ -176,7 +176,7 @@ test.describe('plan and measure', () => {
     await openTab(page, 'insights')
     await expect(page.getByTestId('measure-sleep').getByTestId('measure-value')).toHaveText('8 h')
     await expect(page.getByTestId('measure-late-work').getByTestId('measure-value')).toHaveText('1')
-    await expect(page.getByTestId('measure-stress').getByTestId('measure-value')).toHaveText('4.0')
+    await expect(page.getByTestId('measure-stress').getByTestId('measure-value')).toHaveText('4')
     expect((await storedDocument(page)).checkIns).toEqual([{ date: '2026-10-26', bedtime: 1380, wake: 420, workEnd: 1320, exercise: 'yes', stress: 4 }])
 
     await page.goto('./#/checkin')
