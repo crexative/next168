@@ -97,7 +97,7 @@ Auto-detects browser language with localStorage persistence.
 
 ### 💾 Data Persistence
 
-- Automatic localStorage saving
+- Every change is saved to the browser's IndexedDB in one durable transaction (older localStorage data is imported once)
 - Data persists across sessions
 - Sample data for new users
 - No backend required
