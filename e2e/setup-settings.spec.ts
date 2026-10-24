@@ -34,7 +34,12 @@ async function start(page: Page, size: (typeof SIZES)[number], theme: (typeof TH
 }
 
 async function calm(page: Page): Promise<void> {
-  await page.waitForFunction(() => document.getAnimations().every((animation) => animation.playState !== 'running'))
+  // Sheets move with scripted springs, not CSS animations: wait for the panel to rest as well.
+  await page.waitForFunction(() => {
+    const panel = document.querySelector<HTMLElement>('[role="dialog"]')
+    const springing = panel !== null && !/^(|none|translateY\(0px\))$/.test(panel.style.transform)
+    return !springing && document.getAnimations().every((animation) => animation.playState !== 'running')
+  })
 }
 
 async function boxes(page: Page, selector: string): Promise<{ width: number; height: number }[]> {
