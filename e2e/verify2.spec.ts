@@ -1,3 +1,4 @@
+import AxeBuilder from '@axe-core/playwright'
 import { expect, test, type Locator, type Page } from '@playwright/test'
 import { V2_KEY, openTab, seedKey } from './fixtures'
 
@@ -112,4 +113,25 @@ test('the update banner never covers the page title or the date line', async ({ 
     return !!top && (top === node || node.contains(top))
   })
   expect(hit).toBe(true)
+})
+
+test('block segments carry their visible text at the start of their accessible name', async ({ page }) => {
+  await page.clock.install({ time: NOW })
+  await seedKey(page, V2_KEY, JSON.stringify({
+    ...plan,
+    categories: [...plan.categories, { id: 'c-sleep', name: 'Sleep', colorKey: 'purple', goal: { type: 'min', hoursPerWeek: 49 } }],
+    blocks: [...plan.blocks, { id: 'b-sleep', categoryId: 'c-sleep', title: 'Sleep', days: [0, 1, 2, 3, 4, 5, 6], start: 1320, end: 360 }],
+  }))
+  await openTab(page, 'week')
+  const blocks = page.locator('.block')
+  expect(await blocks.count()).toBeGreaterThan(3)
+  const overnight = await blocks.evaluateAll((nodes) => nodes.filter((node) => /overnight/.test(node.getAttribute('aria-label') ?? '')).length)
+  expect(overnight, 'overnight segments are rendered').toBeGreaterThan(0)
+  for (const block of await blocks.all()) {
+    const visible = (await block.innerText()).replace(/\s+/g, ' ').trim()
+    const label = ((await block.getAttribute('aria-label')) ?? '').replace(/\s+/g, ' ').trim()
+    expect(label.startsWith(visible), `"${label}" starts with "${visible}"`).toBe(true)
+  }
+  const results = await new AxeBuilder({ page: page as unknown as ConstructorParameters<typeof AxeBuilder>[0]['page'] }).include('.week-view').withRules(['label-content-name-mismatch']).analyze()
+  expect(results.violations.map((violation) => `${violation.id} ${violation.nodes.map((node) => node.html.slice(0, 160)).join(' | ')}`)).toEqual([])
 })

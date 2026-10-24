@@ -87,11 +87,11 @@ function onColumnClick(event: MouseEvent): void {
       :data-block-id="segment.occurrence.blockId"
       :data-start-minute="segment.startMinute"
       :data-end-minute="segment.endMinute"
-      :aria-label="`${segment.occurrence.title}, ${timeRange(segment)}`"
+      :aria-label="`${segment.occurrence.title} ${timeRange(segment)}`"
       :disabled="!editable"
       @click="emit('select', segment.occurrence.blockId)"
     >
-      <span class="block-title">{{ segment.occurrence.title }}</span>
+      <span class="block-title">{{ segment.occurrence.title }}</span>{{ ' ' }}
       <span class="block-time">{{ timeRange(segment) }}</span>
     </button>
     <div v-if="nowMinute !== null" class="now-line" :style="{ top: `${(nowMinute / 60) * HOUR_HEIGHT_PX}px` }" data-testid="now-line" aria-hidden="true" />
