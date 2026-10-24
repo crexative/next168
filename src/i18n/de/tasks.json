@@ -5,7 +5,7 @@
   "completed": "„{title}“ erledigt",
   "removed": "„{title}“ entfernt",
   "overflow": "In {category} fehlen diese Woche {duration}.",
-  "overflowHint": "Fügen Sie etwa {duration} zu einem {category}-Block hinzu, verkürzen Sie die Aufgabe oder teilen Sie sie.",
+  "overflowHint": "Fügen Sie etwa {duration} zu den {category}-Blöcken hinzu, verkürzen Sie die Aufgabe oder teilen Sie sie.",
   "late": "Sie liegt nach dem Fälligkeitsdatum ({date}).",
   "lateHint": "Verschieben Sie das Datum, erhöhen Sie die Priorität oder schaffen Sie früher Zeit in der Kategorie.",
   "warnings": "Planungshinweise",

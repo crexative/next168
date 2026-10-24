@@ -5,7 +5,7 @@
   "completed": "“{title}” concluída",
   "removed": "“{title}” removida",
   "overflow": "Faltam {duration} em {category} esta semana.",
-  "overflowHint": "Adicione cerca de {duration} a um bloco de {category}, encurte a tarefa ou divida-a.",
+  "overflowHint": "Adicione cerca de {duration} aos blocos de {category}, encurte a tarefa ou divida-a.",
   "late": "Cai depois do prazo ({date}).",
   "lateHint": "Mude o prazo, aumente a prioridade ou libere tempo mais cedo na categoria.",
   "warnings": "Avisos de planejamento",

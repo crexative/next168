@@ -5,7 +5,7 @@
   "completed": "« {title} » terminée",
   "removed": "« {title} » supprimée",
   "overflow": "Il manque {duration} en {category} cette semaine.",
-  "overflowHint": "Ajoutez environ {duration} à un bloc {category}, raccourcissez la tâche ou scindez-la.",
+  "overflowHint": "Ajoutez environ {duration} à vos blocs {category}, raccourcissez la tâche ou scindez-la.",
   "late": "Elle tombe après son échéance ({date}).",
   "lateHint": "Repoussez l'échéance, relevez sa priorité ou libérez du temps plus tôt dans sa catégorie.",
   "warnings": "Alertes de planification",

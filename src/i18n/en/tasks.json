@@ -5,7 +5,7 @@
   "completed": "Completed “{title}”",
   "removed": "Removed “{title}”",
   "overflow": "{duration} missing in {category} this week.",
-  "overflowHint": "Add about {duration} to a {category} block, shorten the task, or split it.",
+  "overflowHint": "Add about {duration} to {category} blocks, shorten the task, or split it.",
   "late": "This lands after its due date ({date}).",
   "lateHint": "Move the due date, raise its priority, or free up earlier time in its category.",
   "warnings": "Scheduling warnings",
