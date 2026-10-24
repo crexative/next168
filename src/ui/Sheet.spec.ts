@@ -45,6 +45,14 @@ describe('Sheet', () => {
     expect(document.querySelector('.sheet-root.is-shown')).not.toBeNull()
   })
 
+  it('focuses the title, not the close button, when it opens', async () => {
+    open.value = true
+    await nextTick()
+    await vi.advanceTimersByTimeAsync(10)
+    expect(document.activeElement?.tagName).toBe('H2')
+    expect(document.activeElement?.textContent).toBe('T')
+  })
+
   it('still removes the sheet after an uninterrupted close', async () => {
     open.value = true
     await nextTick()
