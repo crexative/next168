@@ -41,7 +41,9 @@ export function summarizeEntity(value: unknown, context: SummaryContext): Summar
   }
   if (Array.isArray(entity.days)) rows.push(row('days', entity.days.map((day) => weekday(Number(day), locale)).join(', ')))
   if (typeof entity.start === 'number' && typeof entity.end === 'number') {
-    rows.push(row('time', `${formatMinute(entity.start, locale)} – ${formatMinute(entity.end, locale)}`))
+    // A routine that ends earlier than it starts runs past midnight; it is named the way the week names it.
+    const range = `${formatMinute(entity.start, locale)} – ${formatMinute(entity.end, locale)}`
+    rows.push(row('time', entity.end < entity.start ? t('week.grid.crossesMidnight', { range }) : range))
   } else if (typeof entity.start === 'string' && typeof entity.end === 'string') {
     // All-day export preserves stored calendar dates and uses an exclusive end.
     const when = entity.allDay === true

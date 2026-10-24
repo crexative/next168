@@ -191,3 +191,36 @@ describe('proposal repository', () => {
     await expect(proposals.reject('x')).rejects.toMatchObject({ code: 'no-web-locks' })
   })
 })
+
+describe('a proposal that creates categories (#3)', () => {
+  const createsSleep: ProposalInput['ops'] = [
+    { op: 'add_category', ref: 'new-sleep', category: { name: 'Sleep', goal: { type: 'min', hoursPerWeek: 56 } } },
+    { op: 'add_block', block: { categoryId: 'new-sleep', title: 'Sleep', days: [0, 1, 2, 3, 4], start: 1350, end: 390 } },
+  ]
+
+  it('approving it twice, even concurrently (double tap or two tabs), creates the category once', async () => {
+    const { proposals, input, store } = await setup()
+    const proposal = await proposals.create({ ...input, ops: createsSleep }, 'import')
+    const [first, second] = await Promise.all([
+      proposals.approve(proposal.id, proposal.contentHash, proposal.baseRevision),
+      proposals.approve(proposal.id, proposal.contentHash, proposal.baseRevision),
+    ])
+    expect(first).toEqual({ kind: 'applied', revision: 2 })
+    expect(second).toEqual({ kind: 'applied', revision: 2 })
+    const document = storedDocument(store)
+    expect(document.revision).toBe(2)
+    expect(document.categories.map((item: { name: string }) => item.name)).toEqual(['Work', 'Sleep'])
+    expect(document.blocks).toEqual([expect.objectContaining({ start: 1350, end: 390, categoryId: document.categories[1].id })])
+  })
+
+  it('is stale, and writes nothing to the plan, when another tab changed the plan after it was made', async () => {
+    const { proposals, planner, input, store } = await setup()
+    const proposal = await proposals.create({ ...input, ops: createsSleep }, 'import')
+    // Another tab adds a category with the same name and commits first.
+    await planner.save(testDocument({ revision: 2, categories: [category, { ...category, id: 'other-tab', name: 'Sleep' }] }), 1)
+    const before = store.data.get('document')
+    expect(await proposals.approve(proposal.id, proposal.contentHash, proposal.baseRevision)).toEqual({ kind: 'stale', currentRevision: 2 })
+    expect(store.data.get('document')).toBe(before)
+    expect(storedProposals(store)[0].status).toBe('stale')
+  })
+})

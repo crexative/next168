@@ -38,14 +38,19 @@
     "errors": {
       "empty": "Paste your AI’s reply first.",
       "tooLarge": "That text is too long. Paste only your AI’s last reply.",
-      "none": "I didn’t find any changes. Ask your AI: “give me the changes in the next168 block”.",
+      "none": "Your AI answered without changes for Next168: maybe it only talked, or it needs something from you first. Read its message. To change your plan, ask it: “give me the changes in the next168 block”.",
       "malformed": "The changes in that reply are cut off or damaged. Ask your AI to send them again in a single next168 block.",
       "invalid": "I couldn’t understand those changes. Copy again so your AI knows the format, then ask it to try again.",
       "wrongWorkspace": "These changes were made for a different plan. Copy again and start a new chat with your AI.",
       "stale": "Your plan changed after you copied it for your AI. Copy again and ask your AI to repeat the changes.",
       "unusable": "Some changes don’t fit your current plan, for example a block that no longer exists. Copy again and ask your AI to try again.",
-      "saveFailed": "The changes couldn’t be saved. Try again."
-    }
+      "saveFailed": "The changes couldn’t be saved. Try again.",
+      "tooManyOps": "Your AI sent {count} changes and a proposal holds at most {max}. Ask it to put the days that share a routine in one change, or to send the rest after you approve this part.",
+      "duplicateCategory": "Your AI wants to create the category “{name}”, but you already have it. Ask it to use the one you have and to send the changes again."
+    },
+    "emptyHint": "You have no categories yet: your AI can create them in the same changes it proposes.",
+    "replyStart": "Its reply begins:",
+    "loadingCalendars": "Loading your calendars…"
   },
   "local": {
     "title": "Claude Desktop or Claude Code (on this computer)",

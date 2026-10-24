@@ -1,4 +1,4 @@
-import { proposalInputSchema, type PlannerDocument, type ProposalInput } from '@/core/model'
+import { MAX_OPS_PER_PROPOSAL, proposalInputSchema, type PlannerDocument, type ProposalInput } from '@/core/model'
 
 // Finds the proposal in the whole reply of a chat AI. The reply is prose with, ideally, one fenced block labelled
 // `next168`. Copying from a chat window often loses the fences, a model sometimes labels the block `json`, and
@@ -6,8 +6,9 @@ import { proposalInputSchema, type PlannerDocument, type ProposalInput } from '@
 
 export const MAX_REPLY_BYTES = 256 * 1024
 
-export type ExtractFailure = 'empty' | 'tooLarge' | 'none' | 'malformed' | 'invalid'
-export type ExtractResult = { ok: true; input: ProposalInput } | { ok: false; reason: ExtractFailure }
+export type ExtractFailure = 'empty' | 'tooLarge' | 'none' | 'malformed' | 'invalid' | 'tooManyOps'
+// `count` is how many changes a proposal over the limit had, so the message can name both numbers.
+export type ExtractResult = { ok: true; input: ProposalInput } | { ok: false; reason: ExtractFailure; count?: number }
 
 interface Candidate { text: string; fenced: boolean }
 
@@ -66,15 +67,18 @@ export function extractProposal(reply: string): ExtractResult {
   const text = reply.replace(/\r\n?/g, '\n')
   if (!text.trim()) return { ok: false, reason: 'empty' }
   if (new TextEncoder().encode(text).length > MAX_REPLY_BYTES) return { ok: false, reason: 'tooLarge' }
-  let malformed = false, invalid = false
+  let malformed = false, invalid = false, tooMany = 0
   for (const candidate of candidates(text)) {
     let value: unknown
     try { value = parseLeniently(candidate.text.trim()) } catch { malformed = true; continue }
     if (value === null || typeof value !== 'object' || Array.isArray(value)) { if (candidate.fenced) invalid = true; continue }
     const parsed = proposalInputSchema.safeParse(value)
     if (parsed.success) return { ok: true, input: parsed.data }
+    const ops = (value as { ops?: unknown }).ops
+    if (Array.isArray(ops) && ops.length > MAX_OPS_PER_PROPOSAL) tooMany = Math.max(tooMany, ops.length)
     invalid = true
   }
+  if (tooMany) return { ok: false, reason: 'tooManyOps', count: tooMany }
   if (invalid) return { ok: false, reason: 'invalid' }
   if (malformed || /"ops"\s*:/.test(text)) return { ok: false, reason: 'malformed' }
   return { ok: false, reason: 'none' }

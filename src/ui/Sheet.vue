@@ -8,7 +8,8 @@ import { releaseVelocity, rubberBand, shouldDismiss, springTo, type Sample } fro
 import { isHover, watchPressEnd } from './pressEnd'
 
 // A phone sheet ends with a dismiss button within the thumb's reach (`dismissLabel`, default "Cancel");
-// `noDismiss` leaves it out for a sheet whose own actions already include one.
+// `noDismiss` leaves it out for a sheet whose own actions already include one. A `footer` slot replaces it with the
+// sheet's own actions, pinned below the scrolling body at every width.
 const props = defineProps<{ open: boolean; title: string; dirty?: boolean; dismissLabel?: string; noDismiss?: boolean }>()
 const emit = defineEmits<{ 'update:open': [open: boolean] }>()
 
@@ -251,7 +252,9 @@ onBeforeUnmount(() => {
           </div>
         </div>
         <div class="sheet-body"><slot /></div>
-        <div v-if="!isCentered && !noDismiss" class="sheet-footer">
+        <!-- A sheet's own decision (Approve and Cancel) stays in reach at every width while the body scrolls. -->
+        <div v-if="$slots.footer" class="sheet-footer is-actions" data-testid="sheet-actions"><slot name="footer" /></div>
+        <div v-else-if="!isCentered && !noDismiss" class="sheet-footer">
           <button class="sheet-dismiss t-body" type="button" @click="requestClose">{{ dismissLabel ?? t('common.cancel') }}</button>
         </div>
       </div>
@@ -297,6 +300,8 @@ onBeforeUnmount(() => {
 .sheet-body { flex: 1; overflow-y: auto; overscroll-behavior: contain; padding: var(--space-2) var(--space-4) var(--space-4); }
 /* Within the thumb's reach at the bottom of a phone sheet, always visible while the body scrolls. */
 .sheet-footer { flex: none; padding: var(--space-1) var(--space-4); border-top: 0.5px solid var(--separator); }
+.sheet-footer.is-actions { padding: var(--space-2) var(--space-4); }
+.is-centered .sheet-footer.is-actions { padding-bottom: var(--space-3); }
 .sheet-dismiss {
   display: flex;
   align-items: center;

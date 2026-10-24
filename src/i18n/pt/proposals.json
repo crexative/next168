@@ -8,7 +8,7 @@
   "sources": {
     "mcp": "Assistente via MCP",
     "assistant": "Assistente no dispositivo",
-    "import": "Arquivo importado"
+    "import": "Colada da sua IA"
   },
   "review": "Revisar proposta",
   "revision": "Baseada na revisão {revision}",
@@ -28,6 +28,7 @@
   "durabilityWarning": "A mudança foi confirmada, mas a durabilidade ou o estado precisa de verificação. Mantenha o companion ativo e recarregue antes de tentar novamente.",
   "currentBlocks": "Sua rotina atual",
   "operations": {
+    "add_category": "Adicionar categoria",
     "add_block": "Adicionar rotina",
     "update_block": "Editar rotina",
     "delete_block": "Excluir rotina",
@@ -62,5 +63,23 @@
     "none": "Sem meta"
   },
   "nothing": "Nada",
-  "loading": "Carregando proposta…"
+  "loading": "Carregando proposta…",
+  "groups": {
+    "categories": "Categorias novas",
+    "goals": "Metas",
+    "routines": "Rotinas",
+    "tasks": "Tarefas",
+    "events": "Eventos"
+  },
+  "counts": {
+    "categories": "{count} categoria nova | {count} categorias novas",
+    "goals": "{count} meta | {count} metas",
+    "routines": "{count} rotina | {count} rotinas",
+    "tasks": "{count} tarefa | {count} tarefas",
+    "events": "{count} evento | {count} eventos"
+  },
+  "cancel": "Cancelar",
+  "discardOnCancel": "Se você cancelar, estas mudanças são descartadas e seu plano fica como está.",
+  "keepOnCancel": "Se você cancelar, a proposta continua pendente em Propostas.",
+  "duplicateCategory": "Você já tem uma categoria chamada «{name}». Peça uma proposta que a use."
 }

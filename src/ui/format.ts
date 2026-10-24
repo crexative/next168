@@ -88,8 +88,9 @@ export function wholeHourParts(minutes: readonly number[]): number[] {
   })
 }
 
-// The number rule: hours are never shown in tenths. Summaries, totals and goal progress read in whole hours ("54"),
-// short spans in "h min" (formatDuration). Any figure that is not an hour count goes through formatWholeNumber.
+// The number rule: hours are never shown in tenths. Free-time figures read in whole hours ("54"), short spans in
+// "h min" (formatDuration); a category's total reads the same in the week's legend and in its goal line (formatTotal).
+// Any figure that is not an hour count goes through formatWholeNumber.
 export function formatHours(hours: number, locale: string = displayLocale.value): string {
   return formatWholeNumber(hours, locale)
 }
@@ -109,6 +110,14 @@ export function formatWholeHours(hours: number, locale: string = displayLocale.v
 export function formatTotal(totalMinutes: number, locale: string = displayLocale.value): string {
   const minutes = Math.abs(totalMinutes)
   return minutes < 10 * 60 ? formatDuration(minutes, locale) : formatWholeHours(Math.round(minutes / 60), locale)
+}
+
+// The number a reader meets first in formatTotal ("45 min" → 45, "1 h 30 min" → 1, "36 h" → 36), for singular and
+// plural agreement in the sentence around it.
+export function totalCount(totalMinutes: number): number {
+  const minutes = Math.abs(Math.round(totalMinutes))
+  if (minutes < 60) return minutes
+  return minutes < 10 * 60 ? Math.floor(minutes / 60) : Math.round(minutes / 60)
 }
 
 // "2 h 30 min", "45 min", "3 h": whole minutes, the sign left to the sentence around it. For a span of time (a block,

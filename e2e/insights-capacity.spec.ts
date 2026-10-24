@@ -106,10 +106,10 @@ test.describe('summary: your typical week and goals', () => {
     expect(widthOf('available') / widthOf('c-work')).toBeCloseTo(100 / 32, 0)
 
     const sleepRow = page.getByTestId('goal-row-c-sleep')
-    await expect(sleepRow.getByTestId('goal-line')).toHaveText('35 of at least 49 h · 14 h to go')
+    await expect(sleepRow.getByTestId('goal-line')).toHaveText('35 h of at least 49 h · 14 h to go')
     await expect(sleepRow.getByTestId('goal-state')).toHaveText('!')
     const workRow = page.getByTestId('goal-row-c-work')
-    await expect(workRow.getByTestId('goal-line')).toHaveText('32 of at most 40 h · 8 h left')
+    await expect(workRow.getByTestId('goal-line')).toHaveText('32 h of at most 40 h · 8 h left')
     await expect(workRow.getByTestId('goal-state')).toHaveText('✓')
     // A category without a goal has no row; the status is one line and one mark, never a chip as well.
     await expect(page.getByTestId('goal-row-c-study')).toHaveCount(0)
@@ -126,9 +126,9 @@ test.describe('summary: your typical week and goals', () => {
     await expect(page.getByTestId('week-bar').locator('[data-segment]')).toHaveCount(1)
     await expect(page.getByTestId('week-bar').getByRole('img', { name: 'Unassigned: 168 h' })).toBeVisible()
     const row = page.getByTestId('goal-row-c-sleep')
-    await expect(row.getByTestId('goal-line')).toHaveText('0 of at least 49 h · 49 h to go')
+    await expect(row.getByTestId('goal-line')).toHaveText('0 h of at least 49 h · 49 h to go')
     await expect(row.getByTestId('goal-state')).toHaveText('!')
-    await expect(page.getByTestId('goal-row-c-work').getByTestId('goal-line')).toHaveText('0 of at most 40 h · 40 h left')
+    await expect(page.getByTestId('goal-row-c-work').getByTestId('goal-line')).toHaveText('0 h of at most 40 h · 40 h left')
     await expectNothingClipped(page)
   })
 
@@ -137,9 +137,9 @@ test.describe('summary: your typical week and goals', () => {
     const easySleep = { ...sleep, goal: { type: 'min', hoursPerWeek: 20 } }
     await start(page, { categories: [easySleep, overWork, study], blocks })
     await openTab(page, 'insights')
-    await expect(page.getByTestId('goal-row-c-work').getByTestId('goal-line')).toHaveText('32 of at most 20 h · 12 h over')
+    await expect(page.getByTestId('goal-row-c-work').getByTestId('goal-line')).toHaveText('32 h of at most 20 h · 12 h over')
     await expect(page.getByTestId('goal-row-c-work').getByTestId('goal-state')).toHaveText('!')
-    await expect(page.getByTestId('goal-row-c-sleep').getByTestId('goal-line')).toHaveText('35 of at least 20 h')
+    await expect(page.getByTestId('goal-row-c-sleep').getByTestId('goal-line')).toHaveText('35 h of at least 20 h')
     await expect(page.getByTestId('goal-row-c-sleep').getByTestId('goal-state')).toHaveText('✓')
     await expectNothingClipped(page)
   })
@@ -159,8 +159,8 @@ test.describe('summary: your typical week and goals', () => {
     await start(page, { settings: { ...onboardedDocument().settings, locale: 'es' }, categories: [sleep, work, study], blocks })
     await page.goto('./#/insights')
     await expect(page.getByTestId('capacity-available')).toHaveText('68 h asignadas · 100 h sin asignar')
-    await expect(page.getByTestId('goal-row-c-work').getByTestId('goal-line')).toHaveText('32 de como máximo 40 h · quedan 8 h')
-    await expect(page.getByTestId('goal-row-c-sleep').getByTestId('goal-line')).toHaveText('35 de al menos 49 h · faltan 14 h')
+    await expect(page.getByTestId('goal-row-c-work').getByTestId('goal-line')).toHaveText('32 h de como máximo 40 h · quedan 8 h')
+    await expect(page.getByTestId('goal-row-c-sleep').getByTestId('goal-line')).toHaveText('35 h de al menos 49 h · faltan 14 h')
   })
 
   for (const scheme of ['light', 'dark'] as const) {

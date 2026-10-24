@@ -8,7 +8,7 @@
   "sources": {
     "mcp": "Assistent über MCP",
     "assistant": "Assistent auf dem Gerät",
-    "import": "Importierte Datei"
+    "import": "Aus deiner KI eingefügt"
   },
   "review": "Vorschlag prüfen",
   "revision": "Basiert auf Revision {revision}",
@@ -28,6 +28,7 @@
   "durabilityWarning": "Die Änderung wurde bestätigt, aber Dauerhaftigkeit oder Status muss geprüft werden. Lass den Companion laufen und lade vor einem neuen Versuch neu.",
   "currentBlocks": "Ihre aktuelle Routine",
   "operations": {
+    "add_category": "Kategorie hinzufügen",
     "add_block": "Routine hinzufügen",
     "update_block": "Routine bearbeiten",
     "delete_block": "Routine löschen",
@@ -62,5 +63,23 @@
     "none": "Kein Wochenziel"
   },
   "nothing": "Nichts",
-  "loading": "Vorschlag wird geladen…"
+  "loading": "Vorschlag wird geladen…",
+  "groups": {
+    "categories": "Neue Kategorien",
+    "goals": "Ziele",
+    "routines": "Routinen",
+    "tasks": "Aufgaben",
+    "events": "Termine"
+  },
+  "counts": {
+    "categories": "{count} neue Kategorie | {count} neue Kategorien",
+    "goals": "{count} Ziel | {count} Ziele",
+    "routines": "{count} Routine | {count} Routinen",
+    "tasks": "{count} Aufgabe | {count} Aufgaben",
+    "events": "{count} Termin | {count} Termine"
+  },
+  "cancel": "Abbrechen",
+  "discardOnCancel": "Wenn du abbrichst, werden diese Änderungen verworfen und dein Plan bleibt, wie er ist.",
+  "keepOnCancel": "Wenn du abbrichst, bleibt der Vorschlag unter Vorschläge offen.",
+  "duplicateCategory": "Du hast schon eine Kategorie namens „{name}“. Fordere einen Vorschlag an, der sie nutzt."
 }

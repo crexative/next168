@@ -8,7 +8,7 @@
   "sources": {
     "mcp": "Assistant via MCP",
     "assistant": "Assistant sur l'appareil",
-    "import": "Fichier importé"
+    "import": "Collée depuis ton IA"
   },
   "review": "Examiner la proposition",
   "revision": "Basée sur la révision {revision}",
@@ -28,6 +28,7 @@
   "durabilityWarning": "Le changement est validé, mais la durabilité ou l’état doit être vérifié. Gardez le companion actif et rechargez avant de réessayer.",
   "currentBlocks": "Votre routine actuelle",
   "operations": {
+    "add_category": "Ajouter une catégorie",
     "add_block": "Ajouter une routine",
     "update_block": "Modifier la routine",
     "delete_block": "Supprimer la routine",
@@ -62,5 +63,23 @@
     "none": "Sans objectif"
   },
   "nothing": "Rien",
-  "loading": "Chargement de la proposition…"
+  "loading": "Chargement de la proposition…",
+  "groups": {
+    "categories": "Nouvelles catégories",
+    "goals": "Objectifs",
+    "routines": "Routines",
+    "tasks": "Tâches",
+    "events": "Événements"
+  },
+  "counts": {
+    "categories": "{count} nouvelle catégorie | {count} nouvelles catégories",
+    "goals": "{count} objectif | {count} objectifs",
+    "routines": "{count} routine | {count} routines",
+    "tasks": "{count} tâche | {count} tâches",
+    "events": "{count} événement | {count} événements"
+  },
+  "cancel": "Annuler",
+  "discardOnCancel": "Si tu annules, ces changements sont abandonnés et ton plan reste tel quel.",
+  "keepOnCancel": "Si tu annules, la proposition reste en attente dans Propositions.",
+  "duplicateCategory": "Tu as déjà une catégorie appelée « {name} ». Demande une proposition qui l’utilise."
 }

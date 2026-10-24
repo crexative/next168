@@ -38,14 +38,19 @@
     "errors": {
       "empty": "Cole primeiro a resposta da sua IA.",
       "tooLarge": "Esse texto é longo demais. Cole só a última resposta da sua IA.",
-      "none": "Não encontrei nenhuma proposta. Peça à sua IA: «me dê as mudanças no bloco next168».",
+      "none": "Sua IA respondeu sem mudanças para o Next168: talvez só tenha conversado ou precise de algo seu antes. Leia a mensagem dela. Para mudar seu plano, peça: «me dê as mudanças no bloco next168».",
       "malformed": "As mudanças dessa resposta estão cortadas ou danificadas. Peça à sua IA que as envie de novo em um único bloco next168.",
       "invalid": "Não entendi essas mudanças. Copie de novo para a sua IA conhecer o formato e peça que tente outra vez.",
       "wrongWorkspace": "Essas mudanças são de outro plano. Copie de novo e comece uma conversa nova com a sua IA.",
       "stale": "O seu plano mudou depois de você copiá-lo para a sua IA. Copie de novo e peça que ela repita as mudanças.",
       "unusable": "Algumas mudanças não combinam com o seu plano atual, por exemplo um bloco que não existe mais. Copie de novo e peça à sua IA que tente outra vez.",
-      "saveFailed": "Não foi possível salvar as mudanças. Tente de novo."
-    }
+      "saveFailed": "Não foi possível salvar as mudanças. Tente de novo.",
+      "tooManyOps": "Sua IA enviou {count} mudanças e uma proposta aceita no máximo {max}. Peça que junte em uma só mudança os dias com a mesma rotina, ou que mande o resto depois que você aprovar esta parte.",
+      "duplicateCategory": "Sua IA quer criar a categoria «{name}», mas você já a tem. Peça que use a que já existe e mande as mudanças de novo."
+    },
+    "emptyHint": "Você ainda não tem categorias: sua IA pode criá-las nas mesmas mudanças que propuser.",
+    "replyStart": "A resposta dela começa assim:",
+    "loadingCalendars": "Carregando seus calendários…"
   },
   "local": {
     "title": "Claude Desktop ou Claude Code (neste computador)",

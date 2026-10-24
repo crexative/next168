@@ -36,3 +36,11 @@ describe('proposal date summaries', () => {
       .toEqual([{ label: 'proposals.fields.when', value: expected }])
   })
 })
+
+describe('routine times', () => {
+  const t = (key: string, params?: Record<string, unknown>) => (key === 'week.grid.crossesMidnight' ? `${String(params?.range)} (overnight)` : key)
+  it('names a routine that runs past midnight as overnight, and a daytime one plainly', () => {
+    expect(summarizeEntity({ start: 1350, end: 390 }, { ...context, t })).toContainEqual({ label: 'proposals.fields.time', value: '10:30 PM – 6:30 AM (overnight)' })
+    expect(summarizeEntity({ start: 540, end: 600 }, { ...context, t })).toContainEqual({ label: 'proposals.fields.time', value: '9:00 AM – 10:00 AM' })
+  })
+})

@@ -61,6 +61,7 @@ type ProposalOp =
   | { op: 'add_block'; block: Omit<TimeBlock,'id'> } | { op: 'update_block'; id; patch: Partial<Omit<TimeBlock,'id'>> } | { op: 'delete_block'; id }
   | { op: 'add_task'; task: Omit<Task,'id'|'createdAt'|'doneAt'> } | { op: 'update_task'; id; patch } | { op: 'complete_task'; id }
   | { op: 'add_event'; event: Omit<PlannerEvent,'id'> } | { op: 'update_category_goal'; id; goal }
+  | { op: 'add_category'; ref; category: { name; goal? } } // #3: later ops in the same proposal use `ref` as a category id
 ```
 
 Migration v1 → v2: `dayOfWeek ∪ repeatDays` → `days` (dedupe); `"HH:mm"` → minutes; `durationMinutes` dropped (derived); `weeklyHourLimit` → `goal {type:'max', hoursPerWeek}`; hex `color` → nearest `ColorKey`; empty new collections; `settings` from `Intl` and `next168-language`; `onboardingDone = true` if v1 had data or `next168-tutorial-completed`. Fixtures from real v1 shapes, including duplicate repeat days and an overnight block.

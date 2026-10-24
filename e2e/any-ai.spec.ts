@@ -1,7 +1,8 @@
 import { expect, test, type Page } from '@playwright/test'
 import { V2_KEY, seedKey } from './fixtures'
-import { storedPlanner } from './support/indexedDb'
+import { storedPlanner, storedRecord } from './support/indexedDb'
 import { visualIntegrityViolations } from './support/visualIntegrity'
+import { SYNTHETIC_RANGE_COUNT, syntheticWeekReply } from '../src/features/assistant/anyAi/syntheticWeek'
 
 // "Usar con tu IA" (#3): copy a prompt, paste the AI's whole reply, review and approve. Spanish, 390x844 and
 // 1440x900, both themes. The browser never talks to an AI: the clipboard is stubbed and replies are typed in.
@@ -49,7 +50,12 @@ ${JSON.stringify(proposal, null, 2)}
 Cuando lo apruebes en Next168, el gimnasio quedará el jueves de 18:00 a 19:00. ¿Quieres que revise también el fin de semana?`
 }
 
-async function begin(page: Page, theme: (typeof THEMES)[number], size: keyof typeof SIZES, options: { clipboard?: boolean } = {}): Promise<void> {
+// The planner of a person who skipped the first-run setup ("Ahora no"): nothing in it yet.
+function emptyPlanner() {
+  return { ...plannerDocument(), categories: [], blocks: [], tasks: [], events: [] }
+}
+
+async function begin(page: Page, theme: (typeof THEMES)[number], size: keyof typeof SIZES, options: { clipboard?: boolean; document?: object } = {}): Promise<void> {
   await page.setViewportSize(SIZES[size])
   await page.emulateMedia({ colorScheme: theme })
   await page.clock.install({ time: NOW })
@@ -59,7 +65,7 @@ async function begin(page: Page, theme: (typeof THEMES)[number], size: keyof typ
     ;(window as unknown as { __copied: string[] }).__copied = copied
     Object.defineProperty(navigator, 'clipboard', { configurable: true, value: clipboard ? { writeText: async (text: string) => { copied.push(text) } } : undefined })
   }, [options.clipboard !== false] as const)
-  await seedKey(page, V2_KEY, JSON.stringify(plannerDocument()))
+  await seedKey(page, V2_KEY, JSON.stringify(options.document ?? plannerDocument()))
 }
 
 const copiedTexts = (page: Page) => page.evaluate(() => (window as unknown as { __copied: string[] }).__copied)
@@ -102,8 +108,8 @@ for (const theme of THEMES) {
         await expect(page.getByTestId('any-ai-copied')).toHaveText('Copiado. Ahora pégalo en tu chat.')
         const [text] = await copiedTexts(page)
         expect(text).toContain('Next168 es un planificador semanal privado')
-        expect(text).toContain(`workspaceId=${WORKSPACE} revision=1`)
-        expect(text).toContain('"Gimnasio" mar 18:00-19:00 [id=b-gym')
+        expect(text).toContain(`workspaceId="${WORKSPACE}" revision=1`)
+        expect(text).toContain('"Gimnasio" [category="c-exercise"]: mar 18:00-19:00 [id="b-gym"')
         expect(text).toContain('2026-10-22 14:00-15:00 "Revisión de diseño"')
         expect(text).toContain('"Informe trimestral" 90 min')
         expect(text.length).toBeLessThan(6000)
@@ -126,7 +132,7 @@ for (const theme of THEMES) {
         await openFromAssistant(page)
         await page.getByTestId('any-ai-copy').click()
         await expect(page.getByTestId('any-ai-manual')).toBeVisible()
-        await expect(page.getByTestId('any-ai-manual')).toHaveValue(new RegExp(`workspaceId=${WORKSPACE} revision=1`))
+        await expect(page.getByTestId('any-ai-manual')).toHaveValue(new RegExp(`workspaceId="${WORKSPACE}" revision=1`))
         await expect(page.getByTestId('any-ai-copied')).toHaveCount(0)
         await noViolations(page, `${theme}/${size}/manual copy`)
       })
@@ -147,7 +153,7 @@ for (const theme of THEMES) {
         expect((await storedPlanner<{ revision: number; blocks: { id: string; days: number[] }[] }>(page)).revision).toBe(1)
         await noViolations(page, `${theme}/${size}/review of a pasted reply`)
 
-        await review.getByRole('button', { name: 'Aprobar', exact: true }).click()
+        await page.getByTestId('review-approve').click()
         await expect(page.getByTestId('proposal-review')).toHaveCount(0)
         const stored = await storedPlanner<{ revision: number; blocks: { id: string; days: number[] }[] }>(page)
         expect(stored.revision).toBe(2)
@@ -165,7 +171,8 @@ for (const theme of THEMES) {
         await openFromAssistant(page)
         await box(page).fill('Claro, yo movería el gimnasio al jueves. ¿Algo más?')
         await page.getByTestId('any-ai-review').click()
-        await expect(page.getByTestId('any-ai-error')).toHaveText('No encontré una propuesta. Pídele a tu IA: «dame los cambios en el bloque next168».')
+        await expect(page.getByTestId('any-ai-error')).toContainText('Tu IA respondió sin cambios para Next168: quizá solo conversó o necesita algo de ti antes. Lee su mensaje. Para cambiar tu plan, pídele: «dame los cambios en el bloque next168».')
+        await expect(page.getByTestId('any-ai-reply-start')).toHaveText('Claro, yo movería el gimnasio al jueves. ¿Algo más?')
         await expect(page.getByRole('alert')).toBeVisible()
         await expect(page.getByTestId('proposal-review')).toHaveCount(0)
         await expect(box(page)).toHaveValue(/movería el gimnasio/)
@@ -199,8 +206,8 @@ for (const theme of THEMES) {
         await page.getByTestId('any-ai-copy-again').click()
         await expect.poll(async () => (await copiedTexts(page)).length).toBe(2)
         const fresh = (await copiedTexts(page))[1]!
-        expect((await copiedTexts(page))[0]).toContain(`workspaceId=${WORKSPACE} revision=1`)
-        expect(fresh).toContain(`workspaceId=${WORKSPACE} revision=2`)
+        expect((await copiedTexts(page))[0]).toContain(`workspaceId="${WORKSPACE}" revision=1`)
+        expect(fresh).toContain(`workspaceId="${WORKSPACE}" revision=2`)
         expect(fresh).toContain('"Llamar al banco"')
         await expect(page.getByTestId('any-ai-error')).toHaveCount(0)
         expect((await storedPlanner<{ blocks: { id: string; days: number[] }[] }>(page)).blocks.find((block) => block.id === 'b-gym')!.days).toEqual([2])
@@ -218,3 +225,103 @@ for (const theme of THEMES) {
     })
   }
 }
+
+// The whole week of another planner into an EMPTY Next168 in one round trip (#3). The reply is a recorded, realistic
+// chat answer built from a synthetic week of the owner's size (8 categories, 85 ranges, 3 tasks); the browser never
+// talks to an AI. Only the workspace and revision, which the AI copies from the prompt, are filled in from the copy.
+const promptBinding = (text: string) => {
+  const match = /workspaceId=("(?:[^"\\]|\\.)*") revision=(\d+)/.exec(text)!
+  return { workspaceId: JSON.parse(match[1]!) as string, revision: Number(match[2]) }
+}
+
+for (const size of Object.keys(SIZES) as (keyof typeof SIZES)[]) {
+  test.describe(`a whole week into an empty planner (${size})`, () => {
+    test.beforeEach(({}, testInfo) => { test.skip(testInfo.project.name !== 'desktop', 'sizes are set by the spec; one project is enough') })
+
+    test('one paste creates the 8 categories, 85 routine ranges and 3 tasks; Summary shows all 168 hours', async ({ page }) => {
+      await begin(page, 'light', size, { document: emptyPlanner() })
+      await openFromAssistant(page)
+      await expect(page.getByTestId('any-ai-empty-hint')).toHaveText('Aún no tienes categorías: tu IA puede crearlas en los mismos cambios que te proponga.')
+      await page.getByTestId('any-ai-copy').click()
+      const [prompt] = await copiedTexts(page)
+      expect(prompt).toContain('{"op":"add_category"')
+      const binding = promptBinding(prompt!)
+      await box(page).fill(syntheticWeekReply(binding.workspaceId, binding.revision))
+      await page.getByTestId('any-ai-review').click()
+
+      await expect(page.getByTestId('review-overview')).toHaveText('8 categorías nuevas · 32 rutinas · 3 tareas')
+      // Approve is in the footer, on screen without scrolling the 43 changes.
+      await expect(page.getByTestId('review-approve')).toBeEnabled()
+      await expect(page.getByTestId('review-approve')).toBeInViewport({ ratio: 1 })
+      await expect(page.getByTestId('review-cancel')).toBeInViewport({ ratio: 1 })
+      expect((await storedPlanner<{ categories: unknown[] }>(page)).categories).toHaveLength(0)
+      await noViolations(page, `${size}/review of a whole week`)
+      // A double tap applies it once.
+      await page.getByTestId('review-approve').dblclick()
+      await expect(page.getByTestId('proposal-review')).toHaveCount(0)
+
+      const stored = await storedPlanner<{ revision: number; categories: { id: string; name: string; colorKey: string }[]; blocks: { categoryId: string; days: number[]; start: number; end: number }[]; tasks: { categoryId: string }[] }>(page)
+      expect(stored.revision).toBe(binding.revision + 1)
+      expect(stored.categories.map((category) => category.name)).toEqual(['Sueño', 'Trabajo', 'Ejercicio', 'Comer y cocinar', 'Proyecto personal', 'Familia y amigos', 'Aprender', 'Rutinas y casa'])
+      expect(new Set(stored.categories.map((category) => category.colorKey)).size).toBe(8)
+      expect(stored.blocks.reduce((sum, block) => sum + block.days.length, 0)).toBe(SYNTHETIC_RANGE_COUNT)
+      expect(SYNTHETIC_RANGE_COUNT).toBe(85)
+      expect(stored.blocks.filter((block) => block.end < block.start)).toHaveLength(2)
+      expect(stored.tasks).toHaveLength(3)
+      const ids = new Set(stored.categories.map((category) => category.id))
+      expect([...stored.blocks, ...stored.tasks].every((item) => ids.has(item.categoryId))).toBe(true)
+      await expect(page.getByTestId('proposal-badge')).toHaveCount(0)
+      await expect(box(page)).toHaveValue('')
+
+      await page.goto('./#/insights')
+      await expect(page.getByTestId('capacity-available')).toHaveText('168 h asignadas · 0 h sin asignar')
+      await page.goto('./#/tasks')
+      await expect(page.getByText('Confirmar cantidades del mercado')).toBeVisible()
+    })
+
+    test('cancelling the review discards the pasted changes: no pending proposal, and the reply is still there to review again', async ({ page }) => {
+      await begin(page, 'light', size, { document: emptyPlanner() })
+      await openFromAssistant(page)
+      await page.getByTestId('any-ai-copy').click()
+      const binding = promptBinding((await copiedTexts(page))[0]!)
+      const reply = syntheticWeekReply(binding.workspaceId, binding.revision)
+      await box(page).fill(reply)
+      await page.getByTestId('any-ai-review').click()
+      await expect(page.getByTestId('review-cancel-note')).toHaveText('Si cancelas, estos cambios se descartan y tu plan queda como está.')
+      await page.getByTestId('review-cancel').click()
+      await expect(page.getByTestId('proposal-review')).toHaveCount(0)
+      await expect.poll(async () => (JSON.parse(await storedRecord(page, 'proposals') ?? '[]') as { status: string }[]).map((proposal) => proposal.status)).toEqual(['rejected'])
+      await expect(page.getByTestId('proposal-badge')).toHaveCount(0)
+      expect((await storedPlanner<{ categories: unknown[] }>(page)).categories).toHaveLength(0)
+      await expect(box(page)).toHaveValue(reply)
+      await page.getByTestId('any-ai-review').click()
+      await expect(page.getByTestId('review-overview')).toHaveText('8 categorías nuevas · 32 rutinas · 3 tareas')
+    })
+
+    test('approving after another tab changed the plan is refused and creates nothing', async ({ page, context }) => {
+      await begin(page, 'light', size, { document: emptyPlanner() })
+      await openFromAssistant(page)
+      await page.getByTestId('any-ai-copy').click()
+      const binding = promptBinding((await copiedTexts(page))[0]!)
+      await box(page).fill(syntheticWeekReply(binding.workspaceId, binding.revision))
+      await page.getByTestId('any-ai-review').click()
+      await expect(page.getByTestId('review-approve')).toBeEnabled()
+
+      const other = await context.newPage()
+      await other.goto('./#/tasks')
+      await expect(other.getByRole('heading', { level: 1, name: 'Tareas' })).toBeVisible()
+      await other.locator('form.add input[type=text]').fill('Llamar al banco')
+      await other.locator('form.add input[type=text]').press('Enter')
+      await expect.poll(async () => (await storedPlanner<{ revision: number }>(other)).revision).toBe(binding.revision + 1)
+
+      await page.getByTestId('review-approve').click()
+      await expect(page.getByTestId('proposal-review')).toContainText('Tu plan cambió.')
+      await expect(page.getByTestId('review-approve')).toBeDisabled()
+      const stored = await storedPlanner<{ categories: unknown[]; tasks: unknown[] }>(page)
+      expect(stored.categories).toHaveLength(0)
+      expect(stored.tasks).toHaveLength(1)
+      await other.close()
+    })
+  })
+}
+

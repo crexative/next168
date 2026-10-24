@@ -1,5 +1,6 @@
-import { changeProposalSchema, proposalInputSchema, type ChangeProposal, type Clock, type PlannerDocument, type ProposalOp } from './model'
+import { changeProposalSchema, proposalInputSchema, type Category, type ChangeProposal, type Clock, type PlannerDocument, type ProposalOp } from './model'
 import { canonicalJson, sha256, type Hasher } from './canonical'
+import { firstUnusedColorKey } from './colorKeys'
 import { nextRevision, validateDocument } from './documents'
 import { computeStats } from './stats'
 import { overlaps } from './time'
@@ -10,7 +11,13 @@ export type ProposalApplication =
   | { kind: 'already-applied'; document: PlannerDocument }
   | { kind: 'rejected'; reason: string }
 export interface ProposalChange { op: ProposalOp['op']; before: unknown; after: unknown }
-export interface ProposalPreview { valid: boolean; changes: ProposalChange[]; warnings: string[]; reason?: string }
+// `categories` are the categories as they would be after approval, so new ones can be named in the review.
+export interface ProposalPreview { valid: boolean; changes: ProposalChange[]; warnings: string[]; categories: Category[]; reason?: string }
+
+// Category names compare without case, accents' composition or extra spaces: "sueño " and "Sueño" are the same.
+export function categoryNameKey(name: string): string {
+  return name.normalize('NFC').trim().replace(/\s+/g, ' ').toLocaleLowerCase()
+}
 
 export async function canonicalContentHash(ops: ProposalOp[], hash: Hasher = sha256): Promise<string> {
   return hash(canonicalJson(ops))
@@ -34,28 +41,43 @@ function required<T extends { id: string }>(items: T[], id: string): T {
   if (!item) throw new Error('proposal.missingTarget')
   return item
 }
+// Reasons carry a detail after the first colon, as warnings do ("proposal.duplicateCategory:Sueño").
+function fail(code: string, detail?: string): never { throw new Error(detail === undefined ? code : `${code}:${detail}`) }
+
 function stage(document: PlannerDocument, ops: ProposalOp[], idGen: IdGenerator, clock: Clock) {
   const changes: ProposalChange[] = []
+  // Temporary refs of the categories this proposal creates, to their real ids; any other id passes through unchanged.
+  const refs = new Map<string, string>()
+  const categoryId = (value: string) => refs.get(value) ?? value
+  const withCategory = <T extends { categoryId?: string }>(item: T): T => (item.categoryId === undefined ? item : { ...item, categoryId: categoryId(item.categoryId) })
   for (const op of ops) {
     let before: unknown = null, after: unknown = null
     switch (op.op) {
+      case 'add_category': {
+        if (refs.has(op.ref) || document.categories.some((category) => category.id === op.ref)) fail('proposal.categoryRefTaken', op.ref)
+        const existing = document.categories.find((category) => categoryNameKey(category.name) === categoryNameKey(op.category.name))
+        if (existing) fail('proposal.duplicateCategory', existing.name)
+        const colorKey = firstUnusedColorKey(document.categories.filter((category) => !category.customColor).map((category) => category.colorKey))
+        const category: Category = { id: idGen(), name: op.category.name, colorKey, goal: op.category.goal ?? { type: 'none', hoursPerWeek: 0 } }
+        refs.set(op.ref, category.id); document.categories.push(category); after = category; break
+      }
       case 'add_block': {
-        const block = { ...op.block, id: idGen() }; document.blocks.push(block); after = block; break
+        const block = { ...withCategory(op.block), id: idGen() }; document.blocks.push(block); after = block; break
       }
       case 'update_block': {
         const block = required(document.blocks, op.id); before = structuredClone(block)
-        Object.assign(block, op.patch); after = block; break
+        Object.assign(block, withCategory(op.patch)); after = block; break
       }
       case 'delete_block': {
         before = required(document.blocks, op.id)
         document.blocks = document.blocks.filter((block) => block.id !== op.id); break
       }
       case 'add_task': {
-        const task = { ...op.task, id: idGen(), createdAt: clock.now().toISOString() }; document.tasks.push(task); after = task; break
+        const task = { ...withCategory(op.task), id: idGen(), createdAt: clock.now().toISOString() }; document.tasks.push(task); after = task; break
       }
       case 'update_task': {
         const task = required(document.tasks, op.id); before = structuredClone(task)
-        Object.assign(task, op.patch); after = task; break
+        Object.assign(task, withCategory(op.patch)); after = task; break
       }
       case 'complete_task': {
         const task = required(document.tasks, op.id); before = structuredClone(task)
@@ -65,7 +87,7 @@ function stage(document: PlannerDocument, ops: ProposalOp[], idGen: IdGenerator,
         const event = { ...op.event, id: idGen() }; document.events.push(event); after = event; break
       }
       case 'update_category_goal': {
-        const category = required(document.categories, op.id); before = structuredClone(category)
+        const category = required(document.categories, categoryId(op.id)); before = structuredClone(category)
         category.goal = op.goal; after = category; break
       }
     }
@@ -80,7 +102,7 @@ export async function previewProposal(document: PlannerDocument, proposal: Chang
     const snapshot = validateDocument(document)
     const verified = await verifyProposal(snapshot, proposal, hash)
     let sequence = 0
-    const ids = new Set([...snapshot.blocks, ...snapshot.tasks, ...snapshot.events].map((item) => item.id))
+    const ids = new Set([...snapshot.categories, ...snapshot.blocks, ...snapshot.tasks, ...snapshot.events].map((item) => item.id))
     const previewId = () => { let id: string; do { id = `preview-${++sequence}` } while (ids.has(id)); return id }
     const result = stage(snapshot, verified.ops, previewId, { now: () => new Date(verified.createdAt) })
     const warnings: string[] = []
@@ -88,8 +110,8 @@ export async function previewProposal(document: PlannerDocument, proposal: Chang
     for (const category of computeStats(result.document).categories) {
       if (category.goal.kind === 'over') warnings.push(`goal.over:${category.categoryId}`)
     }
-    return { valid: true, changes: result.changes, warnings }
-  } catch (error) { return { valid: false, changes: [], warnings: [], reason: reason(error) } }
+    return { valid: true, changes: result.changes, warnings, categories: result.document.categories }
+  } catch (error) { return { valid: false, changes: [], warnings: [], categories: document.categories, reason: reason(error) } }
 }
 export async function applyProposal(document: PlannerDocument, proposal: ChangeProposal, idGen: IdGenerator, clock: Clock, hash: Hasher = sha256): Promise<ProposalApplication> {
   if (document.appliedProposalIds.includes(proposal.id)) return { kind: 'already-applied', document }

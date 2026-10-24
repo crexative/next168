@@ -44,6 +44,24 @@ describe('reviewReply', () => {
     expect(proposals.create).not.toHaveBeenCalled()
   })
 
+  it('names the category a new one would duplicate, and how many changes a too-long reply had', async () => {
+    const proposals = repository()
+    const duplicate = proposal({ ops: [{ op: 'add_category', ref: 'new-work', category: { name: 'WORK' } }] })
+    expect(await reviewReply(reply(duplicate), realisticWeek(), proposals)).toEqual({ ok: false, reason: 'duplicateCategory', detail: 'Work' })
+    const many = proposal({ ops: Array.from({ length: 230 }, () => ({ op: 'update_block', id: 'b-gym', patch: { days: [4] } })) })
+    expect(await reviewReply(reply(many), realisticWeek(), proposals)).toEqual({ ok: false, reason: 'tooManyOps', detail: '230' })
+    expect(proposals.create).not.toHaveBeenCalled()
+  })
+
+  it('stores a proposal that creates categories and uses their refs in the same proposal', async () => {
+    const proposals = repository()
+    const created = proposal({ ops: [
+      { op: 'add_category', ref: 'new-music', category: { name: 'Music', goal: { type: 'min', hoursPerWeek: 2 } } },
+      { op: 'add_block', block: { categoryId: 'new-music', title: 'Piano', days: [2, 4], start: 1260, end: 1320 } },
+    ] })
+    expect(await reviewReply(reply(created), realisticWeek(), proposals)).toMatchObject({ ok: true })
+  })
+
   it('maps what the repository says when the plan moved between the check and the save', async () => {
     const failing = (error: unknown) => ({ create: vi.fn(async () => { throw error }) })
     expect(await reviewReply(reply(proposal()), realisticWeek(), failing(new Error('proposal.staleRevision')))).toEqual({ ok: false, reason: 'stale' })
