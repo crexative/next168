@@ -3,7 +3,7 @@ import { createEmptyDocument } from '@/core/documents'
 import { validateDocument } from '@/core/documents'
 import { computeStats } from '@/core/stats'
 import { overlaps } from '@/core/time'
-import { buildOnboardingResult, CATEGORY_TEMPLATES, type TemplateChoice } from './templates'
+import { buildOnboardingResult, CATEGORY_TEMPLATES, defaultTaskTemplateId, type TemplateChoice } from './templates'
 
 const NOW = new Date('2026-10-24T12:00:00Z')
 let counter = 0
@@ -48,5 +48,13 @@ describe('onboarding templates', () => {
     const result = buildOnboardingResult(choices, { title: '', templateId: 'work', durationMin: 60 }, environment)
     expect(result.categories[0]).toMatchObject({ name: 'Studio', colorKey: 'red' })
     expect(result.blocks[0]!.title).toBe('Studio')
+  })
+
+  it('defaults the first task to the first picked category that is not Sleep', () => {
+    const pick = (...ids: string[]) => allChoices().map((choice) => ({ ...choice, selected: ids.includes(choice.templateId) }))
+    expect(defaultTaskTemplateId(pick('sleep', 'work', 'exercise'), '')).toBe('work')
+    expect(defaultTaskTemplateId(pick('sleep', 'work', 'exercise'), 'exercise')).toBe('exercise')
+    expect(defaultTaskTemplateId(pick('sleep', 'work'), 'learning')).toBe('work')
+    expect(defaultTaskTemplateId(pick('sleep'), '')).toBe('')
   })
 })

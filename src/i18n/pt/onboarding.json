@@ -31,5 +31,6 @@
   "back": "Voltar",
   "skip": "Pular",
   "next": "Avançar",
-  "finish": "Concluir"
+  "finish": "Concluir",
+  "noTaskCategory": "Sem categoria, ignorar a tarefa"
 }

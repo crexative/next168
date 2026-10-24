@@ -9,7 +9,7 @@ import { usePlannerStore } from '@/stores/plannerStore'
 import Button from '@/ui/Button.vue'
 import Icon from '@/ui/Icon.vue'
 import Sheet from '@/ui/Sheet.vue'
-import { buildOnboardingResult, CATEGORY_TEMPLATES, type FirstTaskChoice, type TemplateChoice } from './templates'
+import { buildOnboardingResult, CATEGORY_TEMPLATES, defaultTaskTemplateId, type FirstTaskChoice, type TemplateChoice } from './templates'
 
 const DURATIONS = [15, 30, 45, 60, 90, 120, 150, 180]
 const LAST_STEP = 2
@@ -43,7 +43,7 @@ watch(() => identityOf(planner.document), (identity) => {
 
 const open = computed(() => planner.status === 'ready' && planner.document?.settings.onboardingDone === false)
 const picked = computed(() => choices.filter((choice) => choice.selected))
-const taskTemplateId = computed(() => (picked.value.some((choice) => choice.templateId === firstTask.templateId) ? firstTask.templateId : picked.value[0]?.templateId ?? ''))
+const taskTemplateId = computed(() => defaultTaskTemplateId(choices, firstTask.templateId))
 const saving = ref(false)
 
 function dayNames(days: number[]): string {
@@ -154,6 +154,7 @@ const stepTitle = computed(() => t(`onboarding.steps.${step.value}.title`))
           <label class="field">
             <span class="t-footnote t-secondary">{{ t('tasks.add.category') }}</span>
             <select :value="taskTemplateId" class="input" @change="firstTask.templateId = ($event.target as HTMLSelectElement).value">
+              <option v-if="taskTemplateId === ''" value="">{{ t('onboarding.noTaskCategory') }}</option>
               <option v-for="choice in picked" :key="choice.templateId" :value="choice.templateId">{{ choice.name }}</option>
             </select>
           </label>

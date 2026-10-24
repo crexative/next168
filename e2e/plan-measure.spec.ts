@@ -71,7 +71,8 @@ test.describe('plan and measure', () => {
     expect(document.categories.map((category: { name: string }) => category.name)).toEqual(['Sleep', 'Day job', 'Exercise'])
     expect(document.categories[0].goal).toEqual({ type: 'min', hoursPerWeek: 49 })
     expect(document.blocks).toHaveLength(3)
-    expect(document.tasks[0]).toMatchObject({ title: 'Book a health check' })
+    // The default category is the first one that is not Sleep, so the task never lands in the sleep block.
+    expect(document.tasks[0]).toMatchObject({ title: 'Book a health check', categoryId: document.categories[1].id })
 
     await openTab(page, 'week')
     await expect(page.locator('main')).not.toBeEmpty()

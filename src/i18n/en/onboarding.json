@@ -31,5 +31,6 @@
   "back": "Back",
   "skip": "Skip",
   "next": "Next",
-  "finish": "Finish"
+  "finish": "Finish",
+  "noTaskCategory": "No category, skip the task"
 }

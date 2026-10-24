@@ -31,5 +31,6 @@
   "back": "Atrás",
   "skip": "Omitir",
   "next": "Siguiente",
-  "finish": "Terminar"
+  "finish": "Terminar",
+  "noTaskCategory": "Sin categoría, omitir la tarea"
 }

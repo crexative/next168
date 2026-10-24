@@ -49,6 +49,13 @@ export interface OnboardingResult {
   tasks: Task[]
 }
 
+// A first task defaults to the first picked category that is not Sleep (a task inside the sleep block is never useful);
+// an explicit choice among the picked categories is kept, and nothing is chosen when only Sleep is picked.
+export function defaultTaskTemplateId(choices: TemplateChoice[], current: string): string {
+  const picked = choices.filter((choice) => choice.selected)
+  return picked.some((choice) => choice.templateId === current) ? current : picked.find((choice) => choice.templateId !== 'sleep')?.templateId ?? ''
+}
+
 export function buildOnboardingResult(
   choices: TemplateChoice[],
   firstTask: FirstTaskChoice,

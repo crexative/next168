@@ -31,5 +31,6 @@
   "back": "Zurück",
   "skip": "Überspringen",
   "next": "Weiter",
-  "finish": "Fertig"
+  "finish": "Fertig",
+  "noTaskCategory": "Keine Kategorie, Aufgabe überspringen"
 }
