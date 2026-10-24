@@ -1,20 +1,29 @@
 {
-  "title": "Registro do dia",
+  "title": "Fechamento do dia",
   "intro": "Um minuto no fim do dia. Tudo fica neste dispositivo.",
   "date": "Data em que acordou",
   "bedtime": "Hora de dormir",
   "wake": "Hora de acordar",
   "workEnd": "Fim do trabalho",
   "exercise": {
-    "label": "Exercício",
+    "label": "Você se exercitou?",
     "yes": "Sim",
     "no": "Não",
-    "not-planned": "Não planejado",
-    "unanswered": "Pular"
+    "not-planned": "Não planejado"
   },
-  "stress": "Estresse, de 1 calmo a 5 alto",
+  "stress": "Estresse hoje (1 calmo – 5 alto)",
   "note": "Nota (opcional)",
-  "save": "Salvar registro",
-  "saved": "Salvo",
-  "changedElsewhere": "Isto mudou noutro lugar, por isso foi recarregado. Reveja e tente novamente."
+  "save": "Salvar fechamento",
+  "changedElsewhere": "Isto mudou noutro lugar, por isso foi recarregado. Reveja e tente novamente.",
+  "planHint": "Os horários vêm do seu plano; mude-os se foi diferente.",
+  "card": {
+    "description": "Sono, exercício e estresse em um minuto",
+    "doneStreak": "Feito ✓ · sequência {count}",
+    "savedStreak": "Salvo ✓ · sequência {count}",
+    "remind": "Lembrar-me às {time}",
+    "remindBlocked": "As notificações estão bloqueadas neste navegador. Ative-as nos ajustes dele para receber o lembrete."
+  },
+  "reminder": {
+    "body": "Como foi o dia? Leva um minuto."
+  }
 }

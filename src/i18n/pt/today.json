@@ -3,18 +3,15 @@
     "label": "Agora",
     "eyebrow": "Agora",
     "freeEyebrow": "Neste momento",
-    "free": "Tempo livre",
+    "free": "Sem planejamento",
     "minutesLeft": "Faltam {minutes} min",
     "hoursMinutesLeft": "Faltam {hours} h {minutes} min",
     "progress": "Progresso do bloco atual",
     "next": "A seguir",
     "nothingNext": "Nada mais planejado nesta semana",
     "tomorrowAt": "Amanhã, {time}",
-    "dayAt": "{day}, {time}"
-  },
-  "checkin": {
-    "title": "Registro da noite",
-    "description": "Sono, exercício, fim do trabalho e estresse em menos de um minuto"
+    "dayAt": "{day}, {time}",
+    "freeFor": "em {duration}"
   },
   "timeline": {
     "label": "Linha do tempo de hoje",
@@ -30,7 +27,10 @@
       "task": "Tarefa",
       "event": "Evento",
       "external": "Calendário"
-    }
+    },
+    "carryOver": "Desde ontem · até {time}",
+    "completeTask": "Concluir {title}",
+    "taskDone": "Tarefa feita: {title}"
   },
   "actual": {
     "question": "Como foi {title}?",
@@ -49,5 +49,13 @@
     "title": "Um dia livre",
     "description": "Nenhum bloco, tarefa ou evento hoje.",
     "action": "Abrir a semana"
+  },
+  "duration": {
+    "minutes": "{minutes} min",
+    "hours": "{hours} h",
+    "hoursMinutes": "{hours} h {minutes} min"
+  },
+  "header": {
+    "progress": "{done} de {total} feitos hoje"
   }
 }

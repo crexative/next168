@@ -20,10 +20,10 @@ describe('TodayTimeline partial status', () => {
     const onRecord = vi.fn()
     const mounted = await mountForTest(TodayTimeline, {
       items, allDay, actuals: document.actuals, categories: document.categories,
-      now: new Date('2026-10-21T10:15:00Z'), timeZone: 'UTC', writable: true, onClear, onRecord,
+      now: new Date('2026-10-21T10:15:00Z'), timeZone: 'UTC', writable: true, planSince: Date.parse('2026-10-20T00:00:00Z'), onClear, onRecord,
     })
     unmount = mounted.unmount
-    const partial = [...mounted.host.querySelectorAll<HTMLButtonElement>('.actual-choice')].find((button) => button.classList.contains('is-partial'))!
+    const partial = [...mounted.host.querySelectorAll<HTMLButtonElement>('.choice')].find((button) => button.classList.contains('is-partial'))!
     expect(partial.getAttribute('aria-pressed')).toBe('true')
     partial.click()
     await nextTick()

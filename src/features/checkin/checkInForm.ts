@@ -1,4 +1,5 @@
 import type { CheckIn } from '@/core/model'
+import type { PlanSuggestion } from './planAnchors'
 
 export type ExerciseAnswer = NonNullable<CheckIn['exercise']> | ''
 export type StressAnswer = '' | '1' | '2' | '3' | '4' | '5'
@@ -34,6 +35,16 @@ export function formFromCheckIn(date: string, checkIn: CheckIn | undefined): Che
     exercise: checkIn?.exercise ?? '',
     stress: checkIn?.stress ? (String(checkIn.stress) as StressAnswer) : '',
     note: checkIn?.note ?? '',
+  }
+}
+
+// A new check-in starts with the times the plan implies; a stored one is shown exactly as saved.
+export function withPlanTimes(form: CheckInFormState, suggestion: PlanSuggestion): CheckInFormState {
+  return {
+    ...form,
+    bedtime: minuteToTime(suggestion.bedtime),
+    wake: minuteToTime(suggestion.wake),
+    workEnd: minuteToTime(suggestion.workEnd),
   }
 }
 

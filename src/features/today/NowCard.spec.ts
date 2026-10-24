@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, it } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 import { currentAndNext } from '@/core/now'
 import { deepWork, plannerDocument, sleep } from '@/features/week/testDocument'
 import { mountForTest } from '@/features/week/mountForTest'
@@ -8,9 +8,12 @@ const document = plannerDocument({ blocks: [deepWork, sleep] })
 let unmount = () => undefined as void
 afterEach(() => unmount())
 
-async function render(now: string) {
+async function render(now: string, extra: Record<string, unknown> = {}) {
   const { current, next } = currentAndNext(document, new Date(now), 'UTC')
-  const mounted = await mountForTest(NowCard, { current, next, categories: document.categories, today: now.slice(0, 10), timeZone: 'UTC' })
+  const mounted = await mountForTest(NowCard, {
+    current, next, categories: document.categories, actuals: [], askable: true, writable: true,
+    now: new Date(now), today: now.slice(0, 10), timeZone: 'UTC', ...extra,
+  })
   unmount = mounted.unmount
   const text = (id: string) => {
     const element = mounted.host.querySelector(`[data-testid="${id}"]`)!
@@ -38,10 +41,43 @@ describe('NowCard', () => {
     expect(text('now-next')).toMatch(/^Next Deep work Tomorrow, 9:00\sAM$/)
   })
 
-  it('shows free time when nothing is running', async () => {
+  it('says "Unplanned" and how long it lasts when nothing is running', async () => {
     const { host, text } = await render('2026-10-24T12:00:00Z')
-    expect(text('now-title')).toBe('Free time')
+    expect(text('now-title')).toBe('Unplanned')
+    expect(text('now-free-for')).toBe('in 10 h')
+    expect(host.querySelector('.choices')).toBeNull()
     expect(host.querySelector('[role="progressbar"]')).toBeNull()
     expect(text('now-next')).toMatch(/^Next Sleep 10:00\sPM$/)
+  })
+
+  it('shows "in 1 h 30 min" when the next block starts later today', async () => {
+    const { text } = await render('2026-10-21T20:30:00Z')
+    expect(text('now-title')).toBe('Unplanned')
+    expect(text('now-free-for')).toBe('in 1 h 30 min')
+  })
+
+  it('asks Done / Partial / Skipped inside the card for the current block, filled with an icon and aria-pressed', async () => {
+    const { host } = await render('2026-10-21T10:15:00Z', { actuals: [{
+      date: '2026-10-21', blockId: 'deep', categoryId: 'work', plannedStartAt: '2026-10-21T09:00:00.000Z',
+      plannedEndAt: '2026-10-21T11:00:00.000Z', plannedMinutes: 120, status: 'partial', actualMinutes: 30,
+    }] })
+    const group = host.querySelector('.now-card [role="group"]')!
+    expect(group.getAttribute('aria-label')).toBe('How did Deep work go?')
+    const buttons = [...group.querySelectorAll<HTMLButtonElement>('button')]
+    expect(buttons.map((button) => button.textContent?.trim())).toEqual(['Done', 'Partial', 'Skipped'])
+    expect(buttons.map((button) => button.getAttribute('aria-pressed'))).toEqual(['false', 'true', 'false'])
+  })
+
+  it('does not ask about a block that started before the plan existed', async () => {
+    const { host } = await render('2026-10-21T10:15:00Z', { askable: false })
+    expect(host.querySelector('[role="group"]')).toBeNull()
+    expect(host.querySelector('[data-testid="now-title"]')?.textContent).toBe('Deep work')
+  })
+
+  it('emits the chosen status for the current block', async () => {
+    const onRecord = vi.fn()
+    const { host } = await render('2026-10-21T10:15:00Z', { onRecord })
+    host.querySelector<HTMLButtonElement>('.choice.is-done')!.click()
+    expect(onRecord).toHaveBeenCalledWith(expect.objectContaining({ blockId: 'deep', title: 'Deep work' }), 'done', undefined)
   })
 })

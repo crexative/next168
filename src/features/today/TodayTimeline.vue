@@ -1,14 +1,15 @@
 <script setup lang="ts">
-import { computed, ref, useId } from 'vue'
+import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 import type { BlockActual, Category } from '@/core/model'
 import { addLocalDays, localDateOf, zonedInstant, type DatedOccurrence } from '@/core/time'
-import Button from '@/ui/Button.vue'
 import Icon from '@/ui/Icon.vue'
 import { categoryColor } from '@/features/week/categoryColor'
 import { formatMinute, formatTime } from '@/features/week/localTime'
+import ActualChoices from './ActualChoices.vue'
 import { actualFor, type ActualStatus } from './actuals'
 import { continuationHints } from './continuationHints'
+import { isAskable } from './planSince'
 import type { AllDayItem, TimelineItem } from './todayTimeline'
 
 const props = defineProps<{
@@ -19,19 +20,19 @@ const props = defineProps<{
   now: Date
   timeZone: string
   writable: boolean
+  // Key of the block the Now card already asks about, so its row does not ask a second time.
+  currentKey?: string
+  planSince?: number
 }>()
 const emit = defineEmits<{
   record: [occurrence: DatedOccurrence, status: ActualStatus, actualMinutes?: number]
   clear: [occurrence: DatedOccurrence]
+  completeTask: [taskId: string, title: string]
 }>()
 
 const { t, locale } = useI18n()
-const formId = useId()
-const STATUSES: ActualStatus[] = ['done', 'partial', 'skipped']
 
 const categoriesById = computed(() => new Map(props.categories.map((category) => [category.id, category])))
-const partialKey = ref<string | null>(null)
-const partialMinutes = ref(0)
 
 function color(item: TimelineItem): string {
   return item.kind === 'block' || item.kind === 'task' ? categoryColor(categoriesById.value.get(item.categoryId)) : 'var(--label-2)'
@@ -51,6 +52,11 @@ function endsAfterToday(item: TimelineItem): boolean {
   return Date.parse(item.end) > dayBounds.value.end
 }
 
+// The tail of last night's block (Sleep) is one quiet line: its question belongs to the day it began.
+function isCarryOver(item: TimelineItem): boolean {
+  return item.kind === 'block' && startsBeforeToday(item)
+}
+
 function startLabel(item: TimelineItem): string {
   return startsBeforeToday(item) ? formatMinute(0, locale.value) : formatTime(item.start, locale.value, props.timeZone)
 }
@@ -67,29 +73,8 @@ function isPast(item: TimelineItem): boolean {
   return Date.parse(item.end) <= props.now.getTime()
 }
 
-function statusOf(occurrence: DatedOccurrence): ActualStatus | undefined {
-  return actualFor(props.actuals, occurrence)?.status
-}
-
-function choose(item: TimelineItem & { kind: 'block' }, status: ActualStatus): void {
-  const current = actualFor(props.actuals, item.occurrence)
-  if (current?.status === status) {
-    partialKey.value = null
-    emit('clear', item.occurrence)
-    return
-  }
-  if (status === 'partial') {
-    partialKey.value = item.key
-    partialMinutes.value = current?.status === 'partial' ? current.actualMinutes ?? 0 : Math.round(item.occurrence.plannedMinutes / 2)
-    return
-  }
-  partialKey.value = null
-  emit('record', item.occurrence, status)
-}
-
-function savePartial(item: TimelineItem & { kind: 'block' }): void {
-  emit('record', item.occurrence, 'partial', partialMinutes.value)
-  partialKey.value = null
+function asksStatus(item: TimelineItem): item is TimelineItem & { kind: 'block' } {
+  return item.kind === 'block' && !isCarryOver(item) && item.key !== props.currentKey && hasStarted(item) && isAskable(item.start, props.planSince)
 }
 </script>
 
@@ -106,62 +91,61 @@ function savePartial(item: TimelineItem & { kind: 'block' }): void {
         v-for="item in items"
         :key="item.key"
         class="row"
-        :class="[`is-${item.kind}`, { 'is-past': isPast(item), 'is-conflict': item.conflict }]"
+        :class="[`is-${item.kind}`, { 'is-past': isPast(item), 'is-conflict': item.conflict, 'is-carry': isCarryOver(item) }]"
         :style="{ '--item-color': color(item) }"
         :data-kind="item.kind"
         data-testid="timeline-item"
       >
-        <span class="row-time t-footnote">
-          <span data-testid="timeline-start">{{ startLabel(item) }}</span>
-          <span class="t-secondary" data-testid="timeline-end">{{ endLabel(item) }}</span>
-        </span>
-        <span class="row-bar" aria-hidden="true" />
-        <div class="row-content">
-          <p class="row-title t-body">
-            <span class="row-title-text">{{ item.title }}</span>
-            <span v-if="item.conflict" class="badge is-conflict t-caption" data-testid="conflict-mark">
-              <Icon name="triangle-alert" :size="14" />{{ t('today.timeline.conflict') }}
-            </span>
-            <span v-if="item.kind === 'task' && item.late" class="badge is-late t-caption">{{ t('today.timeline.late') }}</span>
+        <template v-if="isCarryOver(item)">
+          <span class="row-bar" aria-hidden="true" />
+          <p class="carry t-subhead" data-testid="timeline-carry">
+            <span class="carry-title">{{ item.title }}</span>
+            <span class="carry-note t-secondary">{{ t('today.timeline.carryOver', { time: endLabel(item) }) }}</span>
           </p>
-          <p
-            v-for="hint in continuationHints(item, now, timeZone, locale)"
-            :key="hint.key"
-            class="row-kind t-footnote t-secondary"
-            data-testid="timeline-span-hint"
-          >{{ t(hint.key, hint.params) }}</p>
-          <p v-if="item.kind !== 'block'" class="row-kind t-footnote t-secondary">{{ t(`today.timeline.kinds.${item.kind}`) }}</p>
-          <template v-if="item.kind === 'block' && hasStarted(item)">
-            <div class="actual" role="group" :aria-label="t('today.actual.question', { title: item.title })">
-              <button
-                v-for="status in STATUSES"
-                :key="status"
-                type="button"
-                class="actual-choice t-subhead"
-                :class="`is-${status}`"
-                :aria-pressed="statusOf(item.occurrence) === status"
-                :disabled="!writable"
-                @click="choose(item, status)"
-              >
-                {{ t(`today.actual.${status}`) }}
-              </button>
-            </div>
-            <form v-if="partialKey === item.key" class="partial" @submit.prevent="savePartial(item)">
-              <label class="partial-label t-footnote" :for="`${formId}-${item.key}`">{{ t('today.actual.minutesLabel', { planned: item.occurrence.plannedMinutes }) }}</label>
-              <input
-                :id="`${formId}-${item.key}`"
-                v-model.number="partialMinutes"
-                class="input partial-input"
-                type="number"
-                inputmode="numeric"
-                min="0"
-                :max="item.occurrence.plannedMinutes"
-                step="5"
-              >
-              <Button type="submit" variant="tinted">{{ t('today.actual.savePartial') }}</Button>
-            </form>
-          </template>
-        </div>
+        </template>
+        <template v-else>
+          <span class="row-time t-footnote">
+            <span data-testid="timeline-start">{{ startLabel(item) }}</span>
+            <span class="t-secondary" data-testid="timeline-end">{{ endLabel(item) }}</span>
+          </span>
+          <span class="row-bar" aria-hidden="true" />
+          <div class="row-content">
+            <p class="row-title t-body">
+              <span class="row-title-text">{{ item.title }}</span>
+              <span v-if="item.conflict" class="badge is-conflict t-caption" data-testid="conflict-mark">
+                <Icon name="triangle-alert" :size="14" />{{ t('today.timeline.conflict') }}
+              </span>
+              <span v-if="item.kind === 'task' && item.late" class="badge is-late t-caption">{{ t('today.timeline.late') }}</span>
+            </p>
+            <p
+              v-for="hint in continuationHints(item, now, timeZone, locale)"
+              :key="hint.key"
+              class="row-kind t-footnote t-secondary"
+              data-testid="timeline-span-hint"
+            >{{ t(hint.key, hint.params) }}</p>
+            <p v-if="item.kind !== 'block'" class="row-kind t-footnote t-secondary">{{ t(`today.timeline.kinds.${item.kind}`) }}</p>
+          </div>
+          <button
+            v-if="item.kind === 'task'"
+            type="button"
+            class="task-check"
+            data-testid="task-check"
+            :aria-label="t('today.timeline.completeTask', { title: item.title })"
+            :disabled="!writable"
+            @click="emit('completeTask', item.taskId, item.title)"
+          >
+            <span class="task-ring" />
+          </button>
+          <ActualChoices
+            v-if="asksStatus(item)"
+            class="row-actual"
+            :occurrence="item.occurrence"
+            :actual="actualFor(actuals, item.occurrence)"
+            :writable="writable"
+            @record="(status, minutes) => emit('record', item.occurrence, status, minutes)"
+            @clear="emit('clear', item.occurrence)"
+          />
+        </template>
       </li>
     </ol>
   </section>
@@ -175,6 +159,8 @@ function savePartial(item: TimelineItem & { kind: 'block' }): void {
 .timeline { margin: 0; padding: 0; list-style: none; border-radius: var(--radius-card); background: var(--surface); }
 .row { display: grid; grid-template-columns: 4.5rem 3px minmax(0, 1fr); gap: var(--space-3); padding: var(--space-3) var(--space-4); }
 .row + .row { border-top: 0.5px solid var(--separator); }
+.row.is-task { grid-template-columns: 4.5rem 3px minmax(0, 1fr) auto; }
+.row.is-carry { grid-template-columns: 3px minmax(0, 1fr); align-items: center; padding-block: var(--space-2); }
 .row-time { display: flex; flex-direction: column; font-variant-numeric: tabular-nums; }
 .row-bar { border-radius: 2px; background: var(--item-color); }
 .is-task .row-bar { background: repeating-linear-gradient(to bottom, var(--item-color) 0 4px, transparent 4px 7px); }
@@ -184,40 +170,32 @@ function savePartial(item: TimelineItem & { kind: 'block' }): void {
 .row-title { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2); margin: 0; }
 .row-title-text { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
 .row-kind { margin: -0.25rem 0 0; }
+/* One line: the title gives way (with an ellipsis), the note never wraps. */
+.carry { display: flex; align-items: baseline; gap: var(--space-2); min-width: 0; margin: 0; white-space: nowrap; }
+.carry-title { min-width: 0; overflow: hidden; text-overflow: ellipsis; color: var(--label-2); }
+.carry-note { flex: none; font-variant-numeric: tabular-nums; }
 .badge { display: inline-flex; align-items: center; gap: 2px; padding: 1px var(--space-2); border-radius: 999px; }
 .badge.is-conflict { background: color-mix(in srgb, var(--danger) 14%, transparent); color: var(--danger-label); }
 .badge.is-late { background: color-mix(in srgb, var(--warning) 18%, transparent); color: var(--label); }
-.actual { display: flex; flex-wrap: wrap; gap: var(--space-1); }
-/* The pill is drawn by ::before and is shorter than the button, which keeps the 44 px hit target. */
-.actual-choice {
-  position: relative;
-  isolation: isolate;
-  min-width: var(--tap-target);
-  min-height: var(--tap-target);
-  padding: 0 var(--space-4);
+/* The status chips run under the whole row, so three of them fit one line at 375 px. */
+.row-actual { grid-column: 1 / -1; }
+.task-check {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  align-self: center;
+  width: var(--tap-target);
+  height: var(--tap-target);
+  margin: calc(var(--space-3) * -1) calc(var(--space-2) * -1) calc(var(--space-3) * -1) 0;
   border: 0;
+  border-radius: 50%;
   background: transparent;
-  color: var(--label);
-  font-weight: 500;
+  touch-action: manipulation;
 }
-.actual-choice::before {
-  content: '';
-  position: absolute;
-  inset: 6px 0;
-  z-index: -1;
-  border-radius: 999px;
-  background: var(--surface-2);
-  transition: background-color 0.1s, transform 0.1s var(--ease-out);
-}
-.actual-choice:active::before { transform: scale(0.97); }
-.actual-choice[aria-pressed='true'] { font-weight: 600; }
-.actual-choice[aria-pressed='true']::before { background: var(--surface); box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12); }
-.actual-choice.is-done[aria-pressed='true']::before { box-shadow: inset 0 -2px 0 var(--success), 0 1px 3px rgba(0, 0, 0, 0.12); }
-.actual-choice.is-skipped[aria-pressed='true']::before { box-shadow: inset 0 -2px 0 var(--label-2), 0 1px 3px rgba(0, 0, 0, 0.12); }
-.partial { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2); }
-.partial-label { flex-basis: 100%; color: var(--label-2); }
-.partial-input { width: 6rem; font-variant-numeric: tabular-nums; }
+.task-ring { width: 22px; height: 22px; border: 2px solid var(--item-color); border-radius: 50%; transition: transform 0.1s var(--ease-out); }
+.task-check:active:not(:disabled) .task-ring { transform: scale(0.9); }
+.task-check:disabled { opacity: 0.4; cursor: not-allowed; }
 @media (prefers-reduced-motion: reduce) {
-  .actual-choice:active::before { transform: none; opacity: 0.7; }
+  .task-check:active:not(:disabled) .task-ring { transform: none; opacity: 0.6; }
 }
 </style>
