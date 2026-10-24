@@ -5,7 +5,7 @@ import type { Category } from '@/core/model'
 import Icon from '@/ui/Icon.vue'
 import { categoryColor } from './categoryColor'
 import { formatTime } from './localTime'
-import { HOUR_HEIGHT_PX, SLOT_MINUTES, type BlockSegment, type BusySegment } from './weekLayout'
+import { CONFLICT_SPLIT, HOUR_HEIGHT_PX, SLOT_MINUTES, type BlockSegment, type BusySegment } from './weekLayout'
 
 const props = defineProps<{
   date: string
@@ -27,15 +27,25 @@ const conflicting = computed(() => new Set(props.busy
   .filter((item) => item.kind === 'external' && props.segments.some((segment) => segment.startMinute < item.endMinute && item.startMinute < segment.endMinute))
   .map((item) => item.key)))
 
+// One rule for overlap: planned blocks that a conflicting event overlaps take the left lane of the column, the event the right one.
+const conflictingItems = computed(() => props.busy.filter((item) => conflicting.value.has(item.key)))
+const SHORT_EVENT_MINUTES = 45
+
 function verticalStyle(startMinute: number, endMinute: number) {
   return { top: `${(startMinute / 60) * HOUR_HEIGHT_PX}px`, height: `${((endMinute - startMinute) / 60) * HOUR_HEIGHT_PX}px` }
 }
 
+function isBesideEvent(segment: BlockSegment): boolean {
+  return conflictingItems.value.some((item) => segment.startMinute < item.endMinute && item.startMinute < segment.endMinute)
+}
+
 function segmentStyle(segment: BlockSegment) {
+  // The left lane spans CONFLICT_SPLIT of the column; the block's own lanes subdivide it.
+  const span = isBesideEvent(segment) ? CONFLICT_SPLIT : 1
   return {
     ...verticalStyle(segment.startMinute, segment.endMinute),
-    insetInlineStart: `calc(${(segment.lane / segment.lanes) * 100}% + 2px)`,
-    width: `calc(${100 / segment.lanes}% - 4px)`,
+    insetInlineStart: `calc(${(segment.lane / segment.lanes) * span * 100}% + 2px)`,
+    width: `calc(${(span * 100) / segment.lanes}% - 4px)`,
     '--block-color': categoryColor(categoriesById.value.get(segment.occurrence.categoryId)),
   }
 }
@@ -59,20 +69,20 @@ function onColumnClick(event: MouseEvent): void {
       v-for="item in busy"
       :key="item.key"
       class="busy"
-      :class="[`is-${item.kind}`, { 'is-conflict': conflicting.has(item.key) }]"
+      :class="[`is-${item.kind}`, { 'is-conflict': conflicting.has(item.key), 'is-short': item.endMinute - item.startMinute < SHORT_EVENT_MINUTES }]"
       :style="verticalStyle(item.startMinute, item.endMinute)"
       :title="item.title"
       data-testid="busy-overlay"
     >
+      <span v-if="conflicting.has(item.key)" class="conflict-mark t-caption" data-testid="calendar-conflict"><Icon name="triangle-alert" :size="12" /><span class="conflict-text">{{ t('week.grid.conflict') }}</span></span>
       <span class="busy-title t-caption">{{ item.title }}</span>
-      <span v-if="conflicting.has(item.key)" class="conflict-mark t-caption" data-testid="calendar-conflict"><Icon name="triangle-alert" :size="12" />{{ t('week.grid.conflict') }}</span>
     </div>
     <button
       v-for="segment in segments"
       :key="segment.key"
       type="button"
       class="block"
-      :class="{ 'is-short': segment.endMinute - segment.startMinute < 45, 'continues-before': segment.continuesBefore, 'continues-after': segment.continuesAfter }"
+      :class="{ 'is-short': segment.endMinute - segment.startMinute < 45, 'is-beside': isBesideEvent(segment), 'continues-before': segment.continuesBefore, 'continues-after': segment.continuesAfter }"
       :style="segmentStyle(segment)"
       :data-block-id="segment.occurrence.blockId"
       :data-start-minute="segment.startMinute"
@@ -90,6 +100,7 @@ function onColumnClick(event: MouseEvent): void {
 
 <style scoped>
 .day-column {
+  
   position: relative;
   height: calc(var(--hour-height) * 24);
   background-image: linear-gradient(to bottom, var(--separator) 0.5px, transparent 0.5px);
@@ -147,11 +158,22 @@ function onColumnClick(event: MouseEvent): void {
 .busy-title { display: block; overflow: hidden; color: var(--label); text-overflow: ellipsis; white-space: nowrap; }
 /* A conflicting event takes the right-hand side of the column so the block it overlaps stays readable beside it. */
 .is-conflict {
-  inset-inline-start: 22%;
+  inset-inline-start: 50%; /* CONFLICT_SPLIT */
+  container-type: inline-size;
   border-color: var(--danger);
   background: repeating-linear-gradient(135deg, color-mix(in srgb, var(--label-2) 10%, var(--surface)) 0 4px, var(--surface) 4px 8px);
 }
-.conflict-mark { display: flex; align-items: center; gap: 2px; color: var(--danger-label); }
+.conflict-mark { display: flex; flex: none; align-items: center; gap: 2px; color: var(--danger-label); }
+/* Short events fit the mark and the title on one line at the minimum height. */
+.busy.is-short { display: flex; align-items: center; gap: var(--space-1); padding-block: 0; }
+.busy.is-short .busy-title { flex: 1; min-width: 0; }
+/* In a lane too narrow for the word, the icon alone stays; its text remains as the accessible name. */
+@container (max-width: 5.5rem) {
+  .conflict-text { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+}
+.is-beside { padding-block: 1px; gap: 0; }
+.is-beside .block-title, .is-beside .block-time { line-height: 1.2; }
+.is-beside .block-time { white-space: normal; overflow-wrap: anywhere; }
 
 .now-line {
   position: absolute;

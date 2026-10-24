@@ -93,3 +93,6 @@ export function busySegmentsByDate(external: ExternalOccurrence[], events: Plann
 
 export const HOUR_HEIGHT_PX = 48
 export const SLOT_MINUTES = 30
+
+// Share of the column kept by planned blocks that a calendar event overlaps; the event takes the rest.
+export const CONFLICT_SPLIT = 0.5
