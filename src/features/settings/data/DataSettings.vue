@@ -160,14 +160,14 @@ async function deleteEverything(): Promise<void> {
         <template #trailing><span data-testid="persistence-status">{{ persisted === null ? t('data.persistence.unknown') : persisted ? t('data.persistence.granted') : t('data.persistence.notGranted') }}</span></template>
       </ListRow>
       <li v-if="persisted === false" class="note">
-        <Button variant="tinted" @click="requestPersistence">{{ t('data.persistence.request') }}</Button>
+        <Button variant="plain" @click="requestPersistence">{{ t('data.persistence.request') }}</Button>
       </li>
     </ListGroup>
 
     <ListGroup :header="t('data.transfer.title')">
       <li class="note actions">
         <Button @click="exportData"><Icon name="download" :size="20" /> {{ t('data.export.action') }}</Button>
-        <Button variant="tinted" :disabled="!planner.writable" @click="fileInput?.click()"><Icon name="upload" :size="20" /> {{ t('data.import.action') }}</Button>
+        <Button variant="plain" :disabled="!planner.writable" @click="fileInput?.click()"><Icon name="upload" :size="20" /> {{ t('data.import.action') }}</Button>
         <input ref="fileInput" class="visually-hidden" type="file" accept=".json,application/json" :aria-label="t('data.import.fileLabel')" tabindex="-1" @change="onFileChosen">
       </li>
     </ListGroup>
@@ -192,7 +192,7 @@ async function deleteEverything(): Promise<void> {
 
     <ListGroup :header="t('data.deleteAll.title')" :footer="t('data.deleteAll.footer')">
       <li class="note">
-        <Button variant="tinted" destructive :disabled="!planner.writable" @click="deleteOpen = true"><Icon name="trash-2" :size="20" /> {{ t('data.deleteAll.action') }}</Button>
+        <Button variant="plain" destructive :disabled="!planner.writable" @click="deleteOpen = true"><Icon name="trash-2" :size="20" /> {{ t('data.deleteAll.action') }}</Button>
       </li>
     </ListGroup>
 

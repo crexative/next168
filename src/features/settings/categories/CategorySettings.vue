@@ -145,11 +145,11 @@ async function remove(): Promise<void> {
               </select>
             </label>
             <p v-else class="t-footnote t-secondary">{{ t('categories.noReassignTarget') }}</p>
-            <Button variant="tinted" destructive block :disabled="!reassignOptions.length || !planner.writable" @click="remove">
+            <Button variant="plain" destructive block :disabled="!reassignOptions.length || !planner.writable" @click="remove">
               {{ t('categories.reassignAndDelete') }}
             </Button>
           </template>
-          <Button v-else variant="tinted" destructive block :disabled="!planner.writable" @click="remove">{{ t('categories.delete') }}</Button>
+          <Button v-else variant="plain" destructive block :disabled="!planner.writable" @click="remove">{{ t('categories.delete') }}</Button>
         </section>
       </form>
     </Sheet>
