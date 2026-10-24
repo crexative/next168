@@ -1,0 +1,49 @@
+{
+  "now": {
+    "label": "Now",
+    "eyebrow": "Now",
+    "freeEyebrow": "Right now",
+    "free": "Free time",
+    "minutesLeft": "{minutes} min left",
+    "hoursMinutesLeft": "{hours} h {minutes} min left",
+    "progress": "Progress of the current block",
+    "next": "Next",
+    "nothingNext": "Nothing else planned this week",
+    "tomorrowAt": "Tomorrow, {time}",
+    "dayAt": "{day}, {time}"
+  },
+  "checkin": {
+    "title": "Evening check-in",
+    "description": "Sleep, exercise, work end and stress in under a minute"
+  },
+  "timeline": {
+    "label": "Today's timeline",
+    "title": "Timeline",
+    "allDay": "All day",
+    "conflict": "Conflict",
+    "late": "Late",
+    "kinds": {
+      "task": "Task",
+      "event": "Event",
+      "external": "Calendar"
+    }
+  },
+  "actual": {
+    "question": "How did {title} go?",
+    "done": "Done",
+    "partial": "Partial",
+    "skipped": "Skipped",
+    "minutesLabel": "Minutes spent (planned {planned})",
+    "savePartial": "Save"
+  },
+  "empty": {
+    "title": "Nothing planned yet",
+    "description": "Add time blocks to your week and Today shows what is happening now and next.",
+    "action": "Plan your week"
+  },
+  "emptyDay": {
+    "title": "A free day",
+    "description": "No blocks, tasks or events today.",
+    "action": "Open the week"
+  }
+}

@@ -164,6 +164,8 @@ describe('proposal repository', () => {
     await planner.save(testDocument({ revision: 2, categories: [category] }), 1)
     expect(await proposals.approve(proposal.id, proposal.contentHash, 1)).toEqual({ kind: 'stale', currentRevision: 2 })
     expect((await proposals.list('stale'))).toHaveLength(1)
+    expect(await proposals.reject(proposal.id)).toEqual({ kind: 'rejected' })
+    expect((await proposals.list()).map((stored) => stored.status)).toEqual(['rejected'])
   })
 
   it('refuses an approval bound to different content', async () => {

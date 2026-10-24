@@ -1,0 +1,45 @@
+{
+  "summary": "No time blocks saved on this device yet | {count} time block saved on this device | {count} time blocks saved on this device",
+  "add": "Add block",
+  "deleted": "Deleted “{title}”",
+  "grid": {
+    "crossesMidnight": "{range} (overnight)"
+  },
+  "pager": {
+    "days": "Days of the week"
+  },
+  "editor": {
+    "newTitle": "New block",
+    "editTitle": "Edit block",
+    "title": "Title",
+    "titlePlaceholder": "Deep work, Gym, Family…",
+    "category": "Category",
+    "start": "Starts",
+    "end": "Ends",
+    "nextDay": "+1 day",
+    "days": "Repeats on",
+    "save": "Save",
+    "delete": "Delete block",
+    "hours": "{hours} h",
+    "errors": {
+      "titleRequired": "Give the block a title.",
+      "categoryRequired": "Choose a category.",
+      "timeRequired": "Enter a start and an end time.",
+      "zeroLength": "Start and end can't be the same time.",
+      "daysRequired": "Pick at least one day.",
+      "overlap": "Overlaps “{title}”. Change the time or the days.",
+      "saveFailed": "Could not save ({reason})."
+    },
+    "warnings": {
+      "goalOver": "{category} would be {hours} over its weekly cap. You can still save."
+    }
+  },
+  "empty": {
+    "noCategoriesTitle": "Start with your categories",
+    "noCategoriesDescription": "Blocks belong to a category such as Sleep, Work or Exercise. Add one in Settings first.",
+    "openSettings": "Open Settings",
+    "noBlocksTitle": "Plan your 168 hours",
+    "noBlocksDescription": "Add a block for something you do every week, like sleep or work.",
+    "addBlock": "Add a block"
+  }
+}

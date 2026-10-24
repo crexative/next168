@@ -1,0 +1,49 @@
+{
+  "now": {
+    "label": "Jetzt",
+    "eyebrow": "Jetzt",
+    "freeEyebrow": "Gerade",
+    "free": "Freie Zeit",
+    "minutesLeft": "Noch {minutes} Min.",
+    "hoursMinutesLeft": "Noch {hours} Std. {minutes} Min.",
+    "progress": "Fortschritt des aktuellen Blocks",
+    "next": "Danach",
+    "nothingNext": "Diese Woche ist nichts weiter geplant",
+    "tomorrowAt": "Morgen, {time}",
+    "dayAt": "{day}, {time}"
+  },
+  "checkin": {
+    "title": "Abend-Check-in",
+    "description": "Schlaf, Sport, Arbeitsende und Stress in unter einer Minute"
+  },
+  "timeline": {
+    "label": "Heutiger Zeitverlauf",
+    "title": "Zeitverlauf",
+    "allDay": "Ganztägig",
+    "conflict": "Konflikt",
+    "late": "Verspätet",
+    "kinds": {
+      "task": "Aufgabe",
+      "event": "Termin",
+      "external": "Kalender"
+    }
+  },
+  "actual": {
+    "question": "Wie lief {title}?",
+    "done": "Erledigt",
+    "partial": "Teilweise",
+    "skipped": "Ausgelassen",
+    "minutesLabel": "Aufgewendete Minuten (geplant {planned})",
+    "savePartial": "Sichern"
+  },
+  "empty": {
+    "title": "Noch nichts geplant",
+    "description": "Füge deiner Woche Zeitblöcke hinzu, dann zeigt Heute, was jetzt und als Nächstes ansteht.",
+    "action": "Woche planen"
+  },
+  "emptyDay": {
+    "title": "Ein freier Tag",
+    "description": "Heute keine Blöcke, Aufgaben oder Termine.",
+    "action": "Woche öffnen"
+  }
+}

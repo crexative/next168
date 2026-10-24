@@ -42,6 +42,17 @@ describe('stats', () => {
     expect(sevenDayMeasures([], '2026-10-24', 0)).toMatchObject({ averageSleepMinutes: null, averageStress: null, exerciseCount: 0 })
   })
 })
+describe('sleep display bands', () => {
+  // good 7–9 h, amber 6–10 h, otherwise bad; edges are inclusive.
+  it.each([
+    [359, 'bad'], [360, 'amber'], [419, 'amber'], [420, 'good'], [540, 'good'], [541, 'amber'], [600, 'amber'], [601, 'bad'],
+  ] as const)('%i minutes of sleep is %s', (minutes, state) => {
+    const wake = 7 * 60
+    const bedtime = (wake - minutes + 1440) % 1440
+    const measures = sevenDayMeasures([{ date: '2026-10-24', bedtime, wake }], '2026-10-24', 0)
+    expect(measures.days.find((day) => day.date === '2026-10-24')).toMatchObject({ sleep: state })
+  })
+})
 describe('current and next', () => {
   it('finds the current overnight occurrence and tomorrow first with real progress', () => {
     const doc = document(); doc.blocks = [block, { ...block, id: 'tomorrow', days: [0], start: 600, end: 660 }]
