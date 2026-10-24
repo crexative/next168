@@ -237,22 +237,26 @@ test.describe('headings', () => {
 test.describe('colour is never alone', () => {
   const glyphOf = (element: Element) => getComputedStyle(element.querySelector('.category-glyph')!, '::before').content.replace(/^"|"$/g, '')
 
-  test('Today rows show the category glyph and, when it differs from the title, its name', async ({ page }) => {
-    await startWith(page)
+  test('Today rows tell blocks, tasks and events apart by the line beside them, with no glyph or sub-label to read', async ({ page }) => {
+    await startWith(page, { ...richDocument, events: [{ id: 'e-dentist', title: 'Dentist', start: '2026-10-21T15:00:00.000Z', end: '2026-10-21T16:00:00.000Z', allDay: false, attendees: [] }] })
     await openView(page, 'today')
-    const rows = await page.getByTestId('timeline-item').evaluateAll((items, glyphSource) => {
-      const glyph = new Function('element', `return (${glyphSource})(element)`) as (element: Element) => string
-      return items.filter((item) => item.querySelector('[data-testid="category-mark"]')).map((item) => ({
-        title: item.querySelector('.row-title-text')?.textContent?.trim(),
-        glyph: glyph(item),
-        name: item.querySelector('[data-testid="timeline-category"]')?.textContent?.trim() ?? null,
-      }))
-    }, glyphOf.toString())
-    expect(rows).toEqual(expect.arrayContaining([
-      { title: 'Deep work', glyph: 'W', name: 'Work' },
-      { title: 'Gym', glyph: 'E', name: 'Exercise' },
-      { title: 'Sleep', glyph: '😴', name: null },
-    ]))
+    const rows = await page.getByTestId('timeline-item').evaluateAll((items) => items.map((item) => {
+      const style = getComputedStyle(item.querySelector('.row-bar')!)
+      return {
+        kind: item.getAttribute('data-kind'),
+        pattern: style.backgroundImage !== 'none' ? 'dotted' : style.borderInlineStartStyle === 'dashed' ? 'dashed' : 'solid',
+        marks: item.querySelectorAll('[data-testid="category-mark"], [data-testid="timeline-category"]').length,
+        kindWord: item.querySelector('.visually-hidden')?.textContent?.trim() ?? null,
+      }
+    }))
+    expect(rows.every((row) => row.marks === 0)).toBe(true)
+    const patterns = (kind: string) => [...new Set(rows.filter((row) => row.kind === kind).map((row) => row.pattern))]
+    expect(patterns('block')).toEqual(['solid'])
+    expect(patterns('task')).toEqual(['dotted'])
+    expect(patterns('event')).toEqual(['dashed'])
+    // The same distinction in words for a screen reader, which cannot see the line.
+    expect(rows.find((row) => row.kind === 'task')?.kindWord).toBe('Task:')
+    expect(rows.find((row) => row.kind === 'event')?.kindWord).toBe('Event:')
   })
 
   test('Week blocks show the glyph and say the category', async ({ page }) => {
@@ -418,33 +422,21 @@ test.describe('accessibility plumbing', () => {
     await expect(page.locator('.toast')).toHaveCount(0)
   })
 
-  test('status chips are 8–12 px apart', async ({ page }) => {
-    await startWith(page)
-    await openView(page, 'today')
-    const gaps = await page.getByTestId('now-card').locator('.choices').evaluate((group) => {
-      const boxes = Array.from(group.children).map((child) => child.getBoundingClientRect())
-      return boxes.slice(1).filter((box, index) => Math.abs(box.top - boxes[index]!.top) < 1).map((box, index) => box.left - boxes[index]!.right)
-    })
-    expect(gaps).toHaveLength(2)
-    for (const gap of gaps) {
-      expect(gap).toBeGreaterThanOrEqual(8)
-      expect(gap).toBeLessThanOrEqual(12)
-    }
-  })
-
   test('forced colours keep pressed, selected and current states and shapes visible', async ({ page }) => {
     await page.emulateMedia({ forcedColors: 'active' })
     await startWith(page)
     await openView(page, 'today')
-    // Deep work is the block in progress, so its status chips sit in the Now card.
+    // Deep work is the block in progress; in its last minutes the status circle sits in the Now card.
+    await page.clock.fastForward('04:10:00')
     const deepWork = page.getByTestId('now-card')
-    await deepWork.getByRole('button', { name: 'Done' }).click()
-    await expect(deepWork.getByRole('button', { name: 'Done' })).toHaveAttribute('aria-pressed', 'true')
-    const [pressed, unpressed] = await Promise.all([
-      deepWork.getByRole('button', { name: 'Done' }).evaluate((element) => getComputedStyle(element).backgroundColor),
-      deepWork.getByRole('button', { name: 'Skipped' }).evaluate((element) => getComputedStyle(element).backgroundColor),
-    ])
-    expect(pressed).not.toBe(unpressed)
+    const circle = deepWork.getByTestId('status-control')
+    await expect(circle).toHaveAttribute('data-status', 'none')
+    const idle = await circle.locator('.status-ring').evaluate((element) => getComputedStyle(element).backgroundColor)
+    await circle.click()
+    await expect(circle).toHaveAttribute('data-status', 'done')
+    // The fill eases in over 100 ms.
+    await expect.poll(() => circle.locator('.status-ring').evaluate((element) => getComputedStyle(element).backgroundColor)).not.toBe(idle)
+    await expect(circle.locator('svg')).toHaveCount(1)
     const current = await page.locator('[aria-current="page"]:visible').first().evaluate((element) => getComputedStyle(element).backgroundColor)
     expect(current).not.toBe('rgba(0, 0, 0, 0)')
     await openView(page, 'week')

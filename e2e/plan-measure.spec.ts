@@ -164,10 +164,17 @@ test.describe('plan and measure', () => {
 
     await page.goto('./#/checkin')
     await expect(page.getByRole('heading', { level: 1, name: 'Day wrap-up' })).toBeVisible()
-    await page.getByLabel('Bedtime').fill('23:00')
-    await page.getByLabel('Wake-up').fill('07:00')
-    await page.getByLabel('Work ended').fill('22:00')
-    await page.getByRole('radio', { name: 'Yes' }).click()
+    // Each time is a sentence; tapping it opens its time.
+    for (const [testId, question, value] of [
+      ['fact-bedtime', 'When did you go to bed last night?', '23:00'],
+      ['fact-wake', 'When did you wake up today?', '07:00'],
+      ['fact-work-end', 'When did you finish work today?', '22:00'],
+    ] as const) {
+      await page.getByTestId(testId).getByRole('button').click()
+      const field = page.getByLabel(question)
+      await field.fill(value)
+      await field.press('Enter')
+    }
     await page.getByRole('radio', { name: '4', exact: true }).click()
     await page.getByRole('button', { name: 'Save wrap-up' }).click()
 
@@ -177,10 +184,12 @@ test.describe('plan and measure', () => {
     await expect(page.getByTestId('measure-sleep').getByTestId('measure-value')).toHaveText('8 h')
     await expect(page.getByTestId('measure-late-work').getByTestId('measure-value')).toHaveText('1')
     await expect(page.getByTestId('measure-stress').getByTestId('measure-value')).toHaveText('4.0')
-    expect((await storedDocument(page)).checkIns).toEqual([{ date: '2026-10-26', bedtime: 1380, wake: 420, workEnd: 1320, exercise: 'yes', stress: 4 }])
+    expect((await storedDocument(page)).checkIns).toEqual([{ date: '2026-10-26', bedtime: 1380, wake: 420, workEnd: 1320, stress: 4 }])
 
     await page.goto('./#/checkin')
-    await expect(page.getByLabel('Bedtime')).toHaveValue('23:00')
+    await expect(page.getByTestId('fact-bedtime')).toContainText('11:00')
+    await page.getByTestId('fact-bedtime').getByRole('button').click()
+    await expect(page.getByLabel('When did you go to bed last night?')).toHaveValue('23:00')
   })
 
   test('export, delete all and import restores an identical document', async ({ page }, testInfo) => {
