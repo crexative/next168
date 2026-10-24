@@ -6,6 +6,7 @@ import Icon from '@/ui/Icon.vue'
 import { categoryColor } from './categoryColor'
 import { formatTime } from './localTime'
 import { HOUR_HEIGHT_PX, SLOT_MINUTES, layoutDaySegments, type BlockSegment, type BusySegment, type DayPart, type LanePosition } from './weekLayout'
+import type { BusyDetails } from './busyDetails'
 
 const props = defineProps<{
   date: string
@@ -17,7 +18,7 @@ const props = defineProps<{
   nowMinute: number | null
   editable: boolean
 }>()
-const emit = defineEmits<{ select: [blockId: string]; create: [date: string, minute: number] }>()
+const emit = defineEmits<{ select: [blockId: string]; create: [date: string, minute: number]; inspect: [details: BusyDetails] }>()
 
 const { t, locale } = useI18n()
 const categoriesById = computed(() => new Map(props.categories.map((category) => [category.id, category])))
@@ -44,6 +45,9 @@ function itemStyle(item: DayPart & LanePosition) {
     ...verticalStyle(item.startMinute, item.endMinute),
     insetInlineStart: `calc(${item.left}% + 2px)`,
     width: `calc(${item.width}% - 4px)`,
+    // Used instead of the shared lanes when the column is too narrow for readable lanes (see the container query below).
+    '--stack-left': `${item.stackLeft}%`,
+    '--stack-width': `${item.stackWidth}%`,
   }
 }
 
@@ -59,6 +63,19 @@ function timeRange(segment: BlockSegment): string {
   return segment.continuesAfter || segment.continuesBefore ? t('week.grid.crossesMidnight', { range }) : range
 }
 
+function inspect(item: BusySegment): void {
+  const range = `${formatTime(item.start, locale.value, props.timeZone)} – ${formatTime(item.end, locale.value, props.timeZone)}`
+  emit('inspect', {
+    title: item.title,
+    date: item.date,
+    range: item.continuesBefore || item.continuesAfter ? t('week.grid.crossesMidnight', { range }) : range,
+    calendar: item.kind === 'event' ? t('week.details.ownEvent') : item.calendar ?? t('week.details.calendarFallback'),
+    conflictsWith: props.segments
+      .filter((segment) => segment.startMinute < item.endMinute && item.startMinute < segment.endMinute)
+      .map((segment) => segment.occurrence.title),
+  })
+}
+
 function onColumnClick(event: MouseEvent): void {
   if (!props.editable || event.target !== event.currentTarget) return
   const bounds = (event.currentTarget as HTMLElement).getBoundingClientRect()
@@ -69,18 +86,20 @@ function onColumnClick(event: MouseEvent): void {
 
 <template>
   <div class="day-column" :data-date="date" :aria-label="label" role="group" @click="onColumnClick">
-    <div
+    <button
       v-for="item in layout.busy"
       :key="item.key"
+      type="button"
       class="busy"
       :class="[`is-${item.kind}`, { 'is-conflict': conflicting.has(item.key), 'is-short': item.endMinute - item.startMinute < SHORT_EVENT_MINUTES }]"
       :style="itemStyle(item)"
       :title="item.title"
       data-testid="busy-overlay"
+      @click="inspect(item)"
     >
       <span v-if="conflicting.has(item.key)" class="conflict-mark t-caption" data-testid="calendar-conflict"><Icon name="triangle-alert" :size="12" /><span class="conflict-text">{{ t('week.grid.conflict') }}</span></span>
       <span class="busy-title t-caption">{{ item.title }}</span>
-    </div>
+    </button>
     <button
       v-for="segment in layout.blocks"
       :key="segment.key"
@@ -111,6 +130,7 @@ function onColumnClick(event: MouseEvent): void {
   background-size: 100% var(--hour-height);
   border-inline-start: 0.5px solid var(--separator);
   cursor: cell;
+  container: day-column / inline-size;
 }
 .block {
   position: absolute;
@@ -153,11 +173,12 @@ function onColumnClick(event: MouseEvent): void {
   border: 1px dashed var(--label-2);
   border-radius: 6px;
   background: repeating-linear-gradient(135deg, color-mix(in srgb, var(--label-2) 10%, transparent) 0 4px, transparent 4px 8px);
-  /* Events paint above planned blocks; the area stays click-through so the column and blocks keep working. */
+  /* Events paint above planned blocks and open their details when tapped. */
   z-index: 1;
-  pointer-events: none;
+  color: var(--label);
+  text-align: start;
+  cursor: pointer;
 }
-.busy-title, .conflict-mark { pointer-events: auto; }
 .busy-title { display: block; overflow: hidden; color: var(--label); text-overflow: ellipsis; white-space: nowrap; }
 .is-conflict {
   container-type: inline-size;
@@ -169,8 +190,20 @@ function onColumnClick(event: MouseEvent): void {
 .busy.is-short { display: flex; align-items: center; gap: var(--space-1); padding-block: 0; }
 .busy.is-short .busy-title { flex: 1; min-width: 0; }
 /* In a lane too narrow for the word, the icon alone stays; its text remains as the accessible name. */
-@container (max-width: 5.5rem) {
+@container (max-width: 4.5rem) {
   .conflict-text { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+}
+/* Columns too narrow for two readable lanes (about 4 rem each): planned blocks keep the whole width and each
+   calendar event is a full-width band over them. The block keeps its title; its time is in the accessible name. */
+@container day-column (max-width: 9.5rem) {
+  .block, .busy {
+    inset-inline-start: calc(var(--stack-left) + 2px) !important;
+    width: calc(var(--stack-width) - 4px) !important;
+  }
+  .is-beside .block-time { display: none; }
+  /* A one-line band keeps the title; the word lives in the details and the accessible name. */
+  .busy.is-short .conflict-text { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+  .busy.is-conflict:not(.is-short) { display: flex; flex-direction: column; justify-content: center; }
 }
 .is-beside { padding-block: 1px; gap: 0; }
 .is-beside .block-title, .is-beside .block-time { line-height: 1.2; }

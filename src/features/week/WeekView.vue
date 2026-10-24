@@ -11,8 +11,10 @@ import { useUndoToast } from '@/ui/undoToast'
 import { useMediaQuery } from '@/ui/useMediaQuery'
 import { defaultTaskCategoryId } from '@/features/onboarding/templates'
 import BlockEditorSheet from './BlockEditorSheet.vue'
+import BusyDetailsSheet from './BusyDetailsSheet.vue'
 import DayPager from './DayPager.vue'
 import WeekGrid from './WeekGrid.vue'
+import type { BusyDetails } from './busyDetails'
 import { removeBlock, restoreBlock, upsertBlock, type BlockDraft } from './blockEditing'
 import { useExternalOccurrences } from './externalOccurrences'
 import { dayIndexOf, localMinuteOf, weekDates } from './localTime'
@@ -35,7 +37,10 @@ const dates = computed(() => weekDates(today.value, document.value?.settings.wee
 const nowMinute = computed(() => localMinuteOf(now.value, timeZone.value))
 const external = useExternalOccurrences(() => document.value ? { fromDate: dates.value[0]!, days: 7, timeZone: timeZone.value } : null)
 const segments = computed(() => document.value ? blockSegmentsByDate(document.value, dates.value, timeZone.value) : {})
-const busy = computed(() => busySegmentsByDate(external.value, document.value?.events ?? [], dates.value, timeZone.value))
+const busy = computed(() => busySegmentsByDate(
+  external.value, document.value?.events ?? [], dates.value, timeZone.value,
+  new Map((document.value?.calendarSources ?? []).map((source) => [source.id, source.name])),
+))
 const blockCount = computed(() => document.value?.blocks.length ?? 0)
 const hasCategories = computed(() => (document.value?.categories.length ?? 0) > 0)
 
@@ -57,6 +62,8 @@ watch(hasGrid, async (shown) => {
   scrollToNow(line)
 }, { immediate: true, flush: 'post' })
 
+const detailsOpen = ref(false)
+const details = ref<BusyDetails | null>(null)
 const editorOpen = ref(false)
 const saveError = ref<string | null>(null)
 const saving = ref(false)
@@ -76,6 +83,11 @@ function openNewFromButton(): void {
   const date = isWide.value ? today.value : dates.value[pagerIndex.value] ?? today.value
   const nextHour = Math.min(23, Math.floor(nowMinute.value / 60) + 1) * 60
   openNew(date, date === today.value ? nextHour : 9 * 60)
+}
+
+function inspect(next: BusyDetails): void {
+  details.value = next
+  detailsOpen.value = true
 }
 
 function openExisting(blockId: string): void {
@@ -142,6 +154,7 @@ async function remove(blockId: string): Promise<void> {
         :editable="planner.writable"
         @select="openExisting"
         @create="openNew"
+        @inspect="inspect"
       />
       <DayPager
         v-else
@@ -156,9 +169,11 @@ async function remove(blockId: string): Promise<void> {
         :editable="planner.writable"
         @select="openExisting"
         @create="openNew"
+        @inspect="inspect"
       />
     </template>
 
+    <BusyDetailsSheet v-model:open="detailsOpen" :details="details" />
     <BlockEditorSheet
       v-model:open="editorOpen"
       :draft="draft"

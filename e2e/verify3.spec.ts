@@ -53,6 +53,52 @@ async function isTopmost(locator: Locator): Promise<boolean> {
   })
 }
 
+test.describe('Week at tablet widths', () => {
+  test.beforeEach(onlyProject('desktop'))
+
+  for (const [width, height] of [[768, 1024], [1024, 900]] as const) {
+    test(`an event over a block stays readable and opens its details at ${width} px`, async ({ page }) => {
+      await page.setViewportSize({ width, height })
+      await seed(page)
+      await importEvents(page)
+      await openTab(page, 'week')
+
+      for (const [date, title, minutes] of [['2026-10-22', 'Team sync', 60], ['2026-10-23', 'Vendor call', 30]] as const) {
+        const column = page.locator(`.day-column[data-date="${date}"]`)
+        const event = column.locator('.busy')
+        await event.scrollIntoViewIfNeeded()
+        await expect(event).toHaveCount(1)
+
+        // The event is a band over the block, not a sliver beside it, and keeps a readable title.
+        const columnBox = (await column.boundingBox())!
+        expect((await event.boundingBox())!.width, `${title} width`).toBeGreaterThan(columnBox.width - 8)
+        expect(await visibleCharacters(event.locator('.busy-title')), `${title} visible characters`).toBeGreaterThanOrEqual(6)
+        const block = column.locator('.block')
+        expect(await visibleCharacters(block.locator('.block-title')), 'block title visible characters').toBeGreaterThanOrEqual(6)
+        expect((await block.boundingBox())!.width).toBeGreaterThan(columnBox.width - 8)
+        await expect(event.getByTestId('calendar-conflict')).toBeVisible()
+
+        // A longer event also keeps the word "Conflict" readable, inside the band.
+        if (minutes >= 45) {
+          const eventBox = (await event.boundingBox())!
+          const textBox = (await event.locator('.conflict-text').boundingBox())!
+          expect(textBox.width).toBeGreaterThan(20)
+          expect(textBox.x + textBox.width).toBeLessThanOrEqual(eventBox.x + eventBox.width + 0.5)
+        }
+
+        expect(await isTopmost(event), `${title} is hit-testable`).toBe(true)
+        await event.click()
+        const dialog = page.getByRole('dialog', { name: title })
+        await expect(dialog).toBeVisible()
+        await expect(dialog.getByTestId('busy-details')).toContainText('9:30 AM')
+        await expect(dialog.getByTestId('busy-details-conflict')).toHaveText('Conflicts with Deep work')
+        await dialog.getByRole('button', { name: 'Close' }).click()
+        await expect(dialog).toHaveCount(0)
+      }
+    })
+  }
+})
+
 test('the New block sheet from Week "+" preselects the first category that is not Sleep', async ({ page }) => {
   await seed(page)
   await openTab(page, 'week')

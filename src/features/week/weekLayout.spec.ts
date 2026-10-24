@@ -125,6 +125,15 @@ describe('shared day lanes', () => {
   it('returns an empty layout for an empty day', () => {
     expect(layout([], [])).toEqual({ blocks: [], busy: [] })
   })
+
+  it('also lays blocks and events out stacked, for columns too narrow to share lanes', () => {
+    const result = layout([block('a', 540, 660)], [event('2026-10-21T09:30:00Z', '2026-10-21T10:30:00Z')])
+    expect(result.blocks[0]).toMatchObject({ lanes: 2, stackLeft: 0, stackWidth: 100 })
+    expect(result.busy[0]).toMatchObject({ lanes: 2, stackLeft: 0, stackWidth: 100 })
+    const crowded = layout([block('a', 540, 660), block('b', 600, 720)], [event('2026-10-21T11:00:00Z', '2026-10-21T12:00:00Z')])
+    expect(crowded.blocks.map((item) => [item.stackLeft, item.stackWidth])).toEqual([[0, 50], [50, 50]])
+    expect(crowded.busy.map((item) => [item.stackLeft, item.stackWidth])).toEqual([[0, 100]])
+  })
 })
 
 describe('daylight saving changes', () => {

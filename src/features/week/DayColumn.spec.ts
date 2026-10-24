@@ -30,3 +30,22 @@ it('renders shared lanes for staggered blocks and an event without shrinking ind
   expect([overlay.style.insetInlineStart, overlay.style.width]).toEqual(['calc(0% + 2px)', 'calc(50% - 4px)'])
   expect(overlay.querySelector('[data-testid="calendar-conflict"]')).not.toBeNull()
 })
+
+it('opens the event details with the full title, range, calendar and the block it conflicts with', () => {
+  const date = '2026-10-21'
+  const document = plannerDocument({ blocks: [{ ...deepWork, days: [3] }] })
+  const segments = blockSegmentsByDate(document, [date], 'UTC')[date]!
+  const busy = busySegmentsByDate([
+    { sourceId: 's', uid: 'e', title: 'Team sync with the vendor', start: `${date}T09:30:00Z`, end: `${date}T10:30:00Z`, allDay: false, busy: true },
+  ], [], [date], 'UTC', new Map([['s', 'Work calendar']]))[date]!
+  const inspected: unknown[] = []
+  host = window.document.createElement('div')
+  window.document.body.append(host)
+  app = createApp(DayColumn, { date, label: date, segments, busy, categories: document.categories, timeZone: 'UTC', nowMinute: null, editable: true, onInspect: (details: unknown) => inspected.push(details) }).use(i18n)
+  app.mount(host)
+
+  const overlay = host.querySelector<HTMLButtonElement>('button.busy')!
+  expect(overlay.style.getPropertyValue('--stack-width')).toBe('100%')
+  overlay.click()
+  expect(inspected).toEqual([{ title: 'Team sync with the vendor', date, range: '9:30 AM – 10:30 AM', calendar: 'Work calendar', conflictsWith: [deepWork.title] }])
+})

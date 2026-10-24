@@ -6,6 +6,13 @@
     "conflict": "Konflikt",
     "crossesMidnight": "{range} (über Nacht)"
   },
+  "details": {
+    "when": "Wann",
+    "calendar": "Kalender",
+    "conflictsWith": "Überschneidet sich mit {title}",
+    "ownEvent": "Next168-Termin",
+    "calendarFallback": "Kalender"
+  },
   "pager": {
     "days": "Wochentage"
   },
