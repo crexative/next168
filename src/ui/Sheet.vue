@@ -27,6 +27,8 @@ let releaseUnsaved: (() => void) | undefined
 let dragStart: { pointerY: number; offset: number } | undefined
 let samples: Sample[] = []
 let exitVelocity = 0
+// Bumped by every open/close so a stale animation never acts on a newer state.
+let generation = 0
 
 function applyOffset(value: number): void {
   offset = value
@@ -41,20 +43,24 @@ function wait(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms))
 }
 
-async function animateIn(): Promise<void> {
+async function animateIn(resumeFrom?: number): Promise<void> {
+  const token = ++generation
   await nextTick()
   const element = panel.value
-  if (!element) return
+  if (!element || token !== generation) return
   shown.value = true
   if (isCentered.value || prefersReducedMotion()) {
     applyOffset(0)
     return
   }
-  applyOffset(height())
-  animation = springTo(height(), 0, applyOffset)
+  const from = resumeFrom ?? height()
+  applyOffset(from)
+  animation = springTo(from, 0, applyOffset)
 }
 
-async function animateOut(): Promise<void> {
+// Resolves true when the close ran to completion, false when a reopen superseded it.
+async function animateOut(): Promise<boolean> {
+  const token = ++generation
   shown.value = false
   if (isCentered.value || prefersReducedMotion()) {
     await wait(FADE_MS)
@@ -64,8 +70,10 @@ async function animateOut(): Promise<void> {
     animation = run
     await run.finished
   }
+  if (token !== generation) return false
   exitVelocity = 0
   rendered.value = false
+  return true
 }
 
 function focusables(): HTMLElement[] {
@@ -133,16 +141,19 @@ function onGrabUp(event: PointerEvent): void {
 
 watch(() => props.open, async (open) => {
   if (open) {
-    returnFocusTo = document.activeElement as HTMLElement | null
+    const interrupted = rendered.value
+    if (interrupted) animation?.stop()
+    else returnFocusTo = document.activeElement as HTMLElement | null
     rendered.value = true
     document.documentElement.dataset.sheetOpen = ''
-    await animateIn()
+    await animateIn(interrupted ? offset : undefined)
     ;(focusables()[0] ?? panel.value)?.focus()
   } else if (rendered.value) {
     delete document.documentElement.dataset.sheetOpen
-    await animateOut()
-    returnFocusTo?.focus()
-    returnFocusTo = null
+    if (await animateOut()) {
+      returnFocusTo?.focus()
+      returnFocusTo = null
+    }
   }
 }, { immediate: true })
 

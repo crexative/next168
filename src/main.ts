@@ -8,7 +8,7 @@ import App from './App.vue'
 import { registerBuiltinViews } from './app/builtinViews'
 import { registerFeatures } from './app/features'
 import { shell } from './app/registry'
-import { announceUpdate } from './app/updates'
+import { announceUpdate, createUpdateApplier } from './app/updates'
 import { i18n } from './i18n'
 import { createBrowserRepositories } from './repositories/browserRepositories'
 import { configurePlannerStore, usePlannerStore } from './stores/plannerStore'
@@ -25,8 +25,10 @@ configurePlannerStore({
 registerBuiltinViews(shell.registry)
 registerFeatures(shell.registry)
 
+const updater = createUpdateApplier(() => updateServiceWorker())
 const updateServiceWorker = registerSW({
-  onNeedRefresh: () => announceUpdate(() => updateServiceWorker(true)),
+  onNeedRefresh: () => announceUpdate(updater.apply),
+  onNeedReload: updater.onActivated,
 })
 
 const app = createApp(App)
