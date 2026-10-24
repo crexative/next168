@@ -161,6 +161,7 @@ function asksStatus(item: TimelineItem): item is TimelineItem & { kind: 'block' 
 .row + .row { border-top: 0.5px solid var(--separator); }
 .row.is-task { grid-template-columns: 4.5rem 3px minmax(0, 1fr) auto; }
 .row.is-carry { grid-template-columns: 3px minmax(0, 1fr); align-items: center; padding-block: var(--space-2); }
+.is-carry .row-bar { align-self: stretch; }
 .row-time { display: flex; flex-direction: column; font-variant-numeric: tabular-nums; }
 .row-bar { border-radius: 2px; background: var(--item-color); }
 .is-task .row-bar { background: repeating-linear-gradient(to bottom, var(--item-color) 0 4px, transparent 4px 7px); }

@@ -15,7 +15,7 @@ export interface PlanSuggestion {
   bedtime?: number
   wake?: number
   workEnd?: number
-  // Whether the plan has work on that date; the "work ended" field is hidden on days without any.
+  // False only when the plan does schedule work, just not on that date; a plan without any work block says nothing about it.
   worksThatDay: boolean
 }
 
@@ -34,10 +34,14 @@ export function suggestFromPlan(document: PlannerDocument, date: string): PlanSu
     const category = categories.get(item.categoryId)
     return category && isWorkCategory(category) && localDateOf(item.start, timeZone) === date
   })
+  const planHasWork = document.blocks.some((block) => {
+    const category = categories.get(block.categoryId)
+    return category !== undefined && isWorkCategory(category)
+  })
   const lastWork = work.sort((a, b) => Date.parse(b.end) - Date.parse(a.end))[0]
   return {
     ...(sleep ? { bedtime: localMinuteOf(sleep.start, timeZone), wake: localMinuteOf(sleep.end, timeZone) } : {}),
     ...(lastWork ? { workEnd: localMinuteOf(lastWork.end, timeZone) } : {}),
-    worksThatDay: work.length > 0,
+    worksThatDay: work.length > 0 || !planHasWork,
   }
 }

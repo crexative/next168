@@ -74,18 +74,20 @@ test.describe('Week and Today ergonomics', () => {
     expect(await page.evaluate(() => window.scrollY)).toBeGreaterThan(0)
   })
 
-  test('Done / Partial / Skipped are compact pills that keep a 44 px hit target', async ({ page }) => {
+  test('Done / Partial / Skipped sit in the Now card as three 44 px targets on one row', async ({ page }) => {
     await page.clock.install({ time: NOW })
-    await seedOnboarded(page, planned)
+    // An earlier check-in shows the plan existed before today, so the current block can be asked about.
+    await seedOnboarded(page, { ...planned, checkIns: [{ date: '2026-10-25' }] })
     await openTab(page, 'today')
-    const buttons = page.getByRole('group', { name: /Deep work/ }).getByRole('button')
+    const buttons = page.getByTestId('now-card').getByRole('group', { name: /Deep work/ }).getByRole('button')
     await expect(buttons).toHaveCount(3)
+    const tops = new Set<number>()
     for (const button of await buttons.all()) {
       const box = (await button.boundingBox())!
       expect(box.height).toBeGreaterThanOrEqual(44)
       expect(box.width).toBeGreaterThanOrEqual(44)
-      const pillHeight = await button.evaluate((element) => parseFloat(getComputedStyle(element, '::before').height))
-      expect(pillHeight).toBeLessThan(44)
+      tops.add(Math.round(box.y))
     }
+    expect(tops.size).toBe(1)
   })
 })

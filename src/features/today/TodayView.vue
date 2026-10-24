@@ -93,8 +93,8 @@ function clear(occurrence: DatedOccurrence): void {
     <header class="today-header">
       <p class="date-label t-headline t-secondary" data-testid="today-date">{{ dateLabel }}</p>
       <div class="today-stats">
-        <FreeHoursBadge :document="document" :now="now" />
-        <p v-if="progress.total > 0" class="day-progress t-subhead" data-testid="day-progress">
+        <FreeHoursBadge class="stat" :document="document" :now="now" :framed="false" />
+        <p v-if="progress.total > 0" class="stat day-progress t-subhead" data-testid="day-progress">
           {{ t('today.header.progress', { done: progress.done, total: progress.total }) }}
         </p>
       </div>
@@ -144,14 +144,11 @@ function clear(occurrence: DatedOccurrence): void {
 .today-view { padding-bottom: var(--space-6); }
 .today-header { margin: calc(var(--space-2) * -1) var(--space-4) var(--space-4); }
 .date-label { margin: 0 0 var(--space-2); }
-.today-stats { display: flex; flex-wrap: wrap; gap: var(--space-2); }
-.day-progress {
-  margin: 0;
-  padding: var(--space-2) var(--space-3);
-  border-radius: var(--radius-control);
-  background: var(--surface);
-  font-variant-numeric: tabular-nums;
-}
+/* The two figures share one card, like a short list group. */
+.today-stats { overflow: hidden; border-radius: var(--radius-card); background: var(--surface); }
+.stat { padding: var(--space-3) var(--space-4); }
+.stat + .stat { border-top: 0.5px solid var(--separator); }
+.day-progress { margin: 0; font-variant-numeric: tabular-nums; }
 .assistant-entry { margin: 0 var(--space-4) var(--space-4); }
 .action-link { display: inline-flex; align-items: center; min-height: var(--tap-target); color: var(--tint-label); }
 </style>

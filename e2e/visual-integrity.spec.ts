@@ -67,9 +67,9 @@ const plannedDocument = {
 
 const firstRunDocument = { ...plannedDocument, workspaceId: 'workspace-first-run', categories: [], blocks: [], tasks: [], checkIns: [], events: [], settings: { ...plannedDocument.settings, onboardingDone: false } }
 
-async function start(page: Page, theme: (typeof THEMES)[number], document: unknown, locale = 'en'): Promise<void> {
+async function start(page: Page, theme: (typeof THEMES)[number], document: unknown, locale = 'en', at: Date = NOW): Promise<void> {
   await page.emulateMedia({ colorScheme: theme })
-  await page.clock.install({ time: NOW })
+  await page.clock.install({ time: at })
   await page.addInitScript(([key, value]) => window.localStorage.setItem(key!, value!), [LANGUAGE_KEY, locale])
   await seedKey(page, V2_KEY, typeof document === 'string' ? document : JSON.stringify(document))
 }
@@ -241,6 +241,72 @@ for (const theme of THEMES) {
       await open(page, 'checkin')
       await page.getByLabel('Note').fill('A long evening note that wraps across more than one line to check the text area.')
       await audit(page, `${theme}/check-in filled`)
+    })
+
+    test('Today and the nightly check-in (Spanish): Now card chips, rows, free card, evening card, form and saved state', async ({ page }, testInfo) => {
+      const spanish = { ...plannedDocument, settings: { ...plannedDocument.settings, locale: 'es' } }
+      // Headless Chromium reports notifications as blocked; the reminder button only exists where they can be asked for.
+      await page.addInitScript(() => {
+        class AskableNotification { static permission: NotificationPermission = 'default'; static requestPermission = async () => 'granted' as const }
+        Object.defineProperty(window, 'Notification', { value: AskableNotification, configurable: true })
+      })
+      // The Now card asks about the block in progress; the task is listed under "Después".
+      await start(page, theme, spanish, 'es', new Date('2026-10-21T10:15:30.000Z'))
+      await open(page, 'today')
+      await expect(page.getByTestId('now-card').getByRole('group')).toBeVisible()
+      await audit(page, `${theme}/today: now card with status chips`)
+      await page.getByTestId('now-card').getByRole('button', { name: 'Parcial' }).click()
+      await expect(page.getByLabel(/Minutos dedicados/)).toBeVisible()
+      await audit(page, `${theme}/today: now card with the minutes field`)
+
+      // Deep work is over: its row asks, the card says "Sin planificar", and an old block is one line.
+      await page.clock.setSystemTime(new Date('2026-10-21T12:00:00.000Z'))
+      await page.clock.fastForward(31_000)
+      await expect(page.getByTestId('now-title')).toHaveText('Sin planificar')
+      await expect(page.getByRole('group', { name: '¿Cómo fue Deep work?' })).toBeVisible()
+      await audit(page, `${theme}/today: free card and a finished block asking`)
+      await page.getByRole('group', { name: '¿Cómo fue Deep work?' }).getByRole('button', { name: 'Hecho' }).click()
+      await audit(page, `${theme}/today: finished block answered`)
+      await page.getByTestId('task-check').first().click()
+      await expect(page.getByRole('button', { name: 'Deshacer' })).toBeVisible()
+      await audit(page, `${theme}/today: task done with the undo toast`)
+
+      // Evening: the card with the reminder, the form, and Today again after saving.
+      await page.clock.fastForward(9 * 3600_000)
+      await expect(page.getByTestId('checkin-card')).toBeVisible()
+      await expect(page.getByRole('button', { name: 'Recordarme a las 22:00' })).toBeVisible()
+      await audit(page, `${theme}/today: check-in card with the reminder`)
+      await page.getByTestId('checkin-card').getByRole('link').click()
+      await expect(page.getByRole('heading', { level: 1, name: 'Cierre del día' })).toBeVisible()
+      await expect(page.locator('.view-enter-active, .view-leave-active')).toHaveCount(0)
+      await audit(page, `${theme}/check-in prefilled from the plan`)
+      await page.getByRole('radio', { name: 'Sí' }).click()
+      await page.getByRole('radiogroup', { name: /Estrés hoy/ }).getByRole('radio', { name: '2' }).click()
+      await audit(page, `${theme}/check-in answered`)
+      await page.getByRole('button', { name: 'Guardar cierre' }).click()
+      await expect(page.getByTestId('checkin-done')).toContainText('Guardado ✓')
+      await audit(page, `${theme}/today: check-in saved`)
+      await page.clock.runFor(5000)
+      await expect(page.getByTestId('checkin-done')).toContainText('Hecho ✓')
+      await audit(page, `${theme}/today: check-in done`)
+
+      if (testInfo.project.name === 'phone') {
+        for (const width of NARROW_WIDTHS) {
+          await page.setViewportSize({ width, height: 700 })
+          await open(page, 'today')
+          await audit(page, `${theme}/today at ${width}px: check-in done`)
+        }
+      }
+    })
+
+    test('Today with a plan first seen today and the first-run check-in (Spanish)', async ({ page }) => {
+      const fresh = { ...plannedDocument, checkIns: [], tasks: [], settings: { ...plannedDocument.settings, locale: 'es' } }
+      await start(page, theme, fresh, 'es', new Date('2026-10-21T23:30:00.000Z'))
+      await open(page, 'today')
+      await expect(page.getByTestId('checkin-card')).toBeVisible()
+      await audit(page, `${theme}/today: plan seen for the first time, sleep in progress`)
+      await open(page, 'checkin')
+      await audit(page, `${theme}/check-in without a saved entry`)
     })
 
     test('recovery screen and its confirmation', async ({ page }) => {

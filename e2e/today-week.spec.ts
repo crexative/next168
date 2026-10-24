@@ -25,7 +25,8 @@ const seededDocument = {
     { id: 'b-gym', categoryId: 'c-exercise', title: 'Gym', days: [3], start: 1080, end: 1140 },
   ],
   tasks: [],
-  checkIns: [],
+  // An earlier check-in shows the plan existed before today, so today's blocks can be asked about.
+  checkIns: [{ date: '2026-10-20' }],
   actuals: [],
   events: [],
   calendarSources: [],
@@ -135,8 +136,8 @@ test.describe('today', () => {
 
     await page.reload()
     await expect(page.getByRole('group', { name: 'How did Deep work go?' }).getByRole('button', { name: 'Done' })).toHaveAttribute('aria-pressed', 'true')
-    // Last night's sleep is past too and can be marked; Gym has not started yet.
-    await expect(page.getByRole('group', { name: 'How did Sleep go?' })).toHaveCount(1)
+    // Last night's sleep is a single quiet line without a question; Gym has not started yet.
+    await expect(page.getByRole('group', { name: 'How did Sleep go?' })).toHaveCount(0)
     await expect(page.getByRole('group', { name: 'How did Gym go?' })).toHaveCount(0)
   })
 
@@ -149,9 +150,11 @@ test.describe('today', () => {
     await expect.poll(async () => (await storedDocument(page)).actuals[0]).toMatchObject({ status: 'partial', actualMinutes: 50, plannedMinutes: 120 })
   })
 
-  test('the check-in entry links to the check-in route', async ({ page }) => {
+  test('the check-in card appears in the evening and links to the check-in route', async ({ page }) => {
     await openSeeded(page, 'today')
-    await expect(page.getByRole('link', { name: /Evening check-in/ })).toHaveAttribute('href', '#/checkin')
+    await expect(page.getByTestId('checkin-card')).toHaveCount(0)
+    await page.clock.fastForward(11 * 3600_000)
+    await expect(page.getByRole('link', { name: /Day wrap-up/ })).toHaveAttribute('href', '#/checkin')
   })
 })
 

@@ -156,15 +156,17 @@ test.describe('plan and measure', () => {
     await expect(page.getByTestId('measure-sleep')).toHaveCount(0)
 
     await page.goto('./#/checkin')
-    await expect(page.getByRole('heading', { level: 1, name: 'Check-in' })).toBeVisible()
+    await expect(page.getByRole('heading', { level: 1, name: 'Day wrap-up' })).toBeVisible()
     await page.getByLabel('Bedtime').fill('23:00')
     await page.getByLabel('Wake-up').fill('07:00')
     await page.getByLabel('Work ended').fill('22:00')
     await page.getByRole('radio', { name: 'Yes' }).click()
     await page.getByRole('radio', { name: '4', exact: true }).click()
-    await page.getByRole('button', { name: 'Save check-in' }).click()
+    await page.getByRole('button', { name: 'Save wrap-up' }).click()
 
-    await expect(page).toHaveURL(/#\/insights$/)
+    // Saving returns to Today; the measures are one tap away.
+    await expect(page).toHaveURL(/#\/today$/)
+    await openTab(page, 'insights')
     await expect(page.getByTestId('measure-sleep').getByTestId('measure-value')).toHaveText('8 h')
     await expect(page.getByTestId('measure-late-work').getByTestId('measure-value')).toHaveText('1')
     await expect(page.getByTestId('measure-stress').getByTestId('measure-value')).toHaveText('4.0')

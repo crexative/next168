@@ -81,7 +81,7 @@ function savePartial(): void {
 <style scoped>
 .actual { display: flex; flex-direction: column; gap: var(--space-2); }
 /* Three equal chips in one row at every width; the icon sits above the label so long words (German, French) still fit. */
-.choices { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--space-2); }
+.choices { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--space-2); max-width: 26rem; }
 .choice {
   display: flex;
   flex-direction: column;

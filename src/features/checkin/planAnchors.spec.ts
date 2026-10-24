@@ -18,8 +18,8 @@ describe('suggestFromPlan', () => {
     expect('workEnd' in saturday).toBe(false)
   })
 
-  it('suggests nothing when the plan has no sleep and no work', () => {
-    expect(suggestFromPlan(plannerDocument(), '2026-10-21')).toEqual({ worksThatDay: false })
+  it('suggests nothing, and does not hide "work ended", when the plan has no sleep and no work at all', () => {
+    expect(suggestFromPlan(plannerDocument(), '2026-10-21')).toEqual({ worksThatDay: true })
   })
 
   it('recognises Work by icon or by its name in any supported language', () => {

@@ -95,10 +95,10 @@ test.describe('phone fixes', () => {
     await expect(rows).toHaveCount(2)
     const texts = await rows.allInnerTexts()
     expect(texts[0]).not.toBe(texts[1])
-    expect(texts[0]).toContain('Desde ayer')
+    // Yesterday's tail is one quiet line; tonight's start keeps its two time rows.
+    expect(texts[0]).toContain('Desde ayer · hasta 7:00')
     expect(texts[1]).toContain('Hasta mañana')
-    await expect(rows.nth(0).getByTestId('timeline-start')).toHaveText(/^0:00$/)
-    await expect(rows.nth(0).getByTestId('timeline-end')).toHaveText(/^7:00$/)
+    await expect(rows.nth(0).getByTestId('timeline-start')).toHaveCount(0)
     await expect(rows.nth(1).getByTestId('timeline-start')).toHaveText(/^23:00$/)
     await expect(rows.nth(1).getByTestId('timeline-end')).toHaveText(/^0:00$/)
   })
