@@ -155,7 +155,13 @@ function onEscape(event: KeyboardEvent): void {
   close()
 }
 
+// Arrows and Tab belong to the minutes field while it is open; they only move through the menu.
+function onTab(): void {
+  if (panel.value === 'menu') close(false)
+}
+
 function move(step: number, event: KeyboardEvent): void {
+  if (panel.value !== 'menu') return
   const items = menuItems()
   const at = items.indexOf(document.activeElement as HTMLElement)
   items[(at + step + items.length) % items.length]?.focus()
@@ -203,49 +209,43 @@ onBeforeUnmount(() => {
     >
       <span class="status-ring"><Icon v-if="status === 'done'" name="check" :size="14" /></span>
     </button>
+    <!-- One panel whose content swaps from the menu to the minutes form, so the two never overlap while fading. -->
     <Transition name="status-panel">
       <div
-        v-if="panel === 'menu'"
+        v-if="panel !== null"
         :id="menuId"
         ref="menu"
         class="panel"
-        :class="{ 'is-above': above }"
-        role="menu"
+        :class="{ 'is-above': above, minutes: panel === 'minutes' }"
+        :role="panel === 'menu' ? 'menu' : 'group'"
         :aria-label="t('today.status.menuLabel', { title })"
-        data-testid="status-menu"
+        :data-testid="panel === 'menu' ? 'status-menu' : 'status-minutes-panel'"
         @keydown.down="move(1, $event)"
         @keydown.up="move(-1, $event)"
-        @keydown.tab="close(false)"
+        @keydown.tab="onTab"
       >
-        <button type="button" role="menuitem" class="menu-item t-body" data-testid="status-partial" @click="askMinutes">{{ t('today.status.partial') }}</button>
-        <button type="button" role="menuitem" class="menu-item t-body" data-testid="status-skipped" @click="choose('skipped')">{{ t('today.status.skipped') }}</button>
-        <button v-if="status" type="button" role="menuitem" class="menu-item t-body" data-testid="status-clear" @click="clearAnswer">{{ t('today.status.clear') }}</button>
+        <template v-if="panel === 'menu'">
+          <button type="button" role="menuitem" class="menu-item t-body" data-testid="status-partial" @click="askMinutes">{{ t('today.status.partial') }}</button>
+          <button type="button" role="menuitem" class="menu-item t-body" data-testid="status-skipped" @click="choose('skipped')">{{ t('today.status.skipped') }}</button>
+          <button v-if="status" type="button" role="menuitem" class="menu-item t-body" data-testid="status-clear" @click="clearAnswer">{{ t('today.status.clear') }}</button>
+        </template>
+        <form v-else class="minutes-form" data-testid="status-minutes" @submit.prevent="saveMinutes">
+          <label class="minutes-label t-footnote" :for="inputId">{{ t('today.status.minutesLabel', { planned: plannedMinutes }) }}</label>
+          <div class="minutes-row">
+            <input
+              :id="inputId"
+              v-model.number="minutes"
+              class="input minutes-input"
+              type="number"
+              inputmode="numeric"
+              min="0"
+              :max="plannedMinutes"
+              step="5"
+            >
+            <Button type="submit" variant="tinted">{{ t('today.status.save') }}</Button>
+          </div>
+        </form>
       </div>
-    </Transition>
-    <Transition name="status-panel">
-      <form
-        v-if="panel === 'minutes'"
-        class="panel minutes"
-        :class="{ 'is-above': above }"
-        :aria-label="t('today.status.menuLabel', { title })"
-        data-testid="status-minutes"
-        @submit.prevent="saveMinutes"
-      >
-        <label class="minutes-label t-footnote" :for="inputId">{{ t('today.status.minutesLabel', { planned: plannedMinutes }) }}</label>
-        <div class="minutes-row">
-          <input
-            :id="inputId"
-            v-model.number="minutes"
-            class="input minutes-input"
-            type="number"
-            inputmode="numeric"
-            min="0"
-            :max="plannedMinutes"
-            step="5"
-          >
-          <Button type="submit" variant="tinted">{{ t('today.status.save') }}</Button>
-        </div>
-      </form>
     </Transition>
   </span>
 </template>
@@ -314,13 +314,24 @@ onBeforeUnmount(() => {
 }
 .menu-item:active { background: color-mix(in srgb, var(--label-2) 14%, transparent); }
 .menu-item:focus-visible { outline-offset: -2px; }
-.minutes { display: flex; flex-direction: column; gap: var(--space-2); width: max-content; max-width: min(18rem, 80vw); padding: var(--space-3); }
+.panel.minutes { width: max-content; max-width: min(18rem, 80vw); padding: var(--space-3); }
+.minutes-form { display: flex; flex-direction: column; gap: var(--space-2); }
 .minutes-label { color: var(--label-2); }
 .minutes-row { display: flex; align-items: center; gap: var(--space-2); }
 .minutes-input { width: 6rem; font-variant-numeric: tabular-nums; }
 
 .status-panel-enter-active, .status-panel-leave-active { transition: opacity 0.15s, transform 0.2s var(--ease-out); }
 .status-panel-enter-from, .status-panel-leave-to { opacity: 0; transform: scale(0.96); }
+/* Forced palettes drop fills: the answer keeps its shape (ring, filled disc, half disc, dash) in system colours. */
+@media (forced-colors: active) {
+  .status-circle { outline: none; color: HighlightText; }
+  .status-circle:focus-visible { outline: 2px solid Highlight; outline-offset: 2px; }
+  .status-ring { forced-color-adjust: none; border-color: CanvasText; }
+  .is-done .status-ring { border-color: Highlight; background: Highlight; }
+  .is-partial .status-ring { background: linear-gradient(to right, Highlight 50%, transparent 50%); }
+  .is-skipped .status-ring::after { background: CanvasText; }
+  .panel { border: 1px solid CanvasText; }
+}
 @media (prefers-reduced-motion: reduce) {
   .status-circle:active:not(:disabled) .status-ring { transform: none; opacity: 0.6; }
   .status-panel-enter-from, .status-panel-leave-to { transform: none; }

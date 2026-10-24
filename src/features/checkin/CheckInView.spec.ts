@@ -307,6 +307,28 @@ describe('check-in blocks to mark', () => {
     expect(store.document?.checkIns.at(-1)).toMatchObject({ date: '2026-10-24', exercise: 'yes' })
   })
 
+  it('forgets which blocks it listed when the workspace is replaced', async () => {
+    const store = await mount(trained)
+    circle('Gym')!.click()
+    await store.settled()
+    await nextTick()
+    expect(listed()).toEqual(['Gym', 'Run'])
+    // Another workspace (imported, restored) where Gym was answered long ago: it has no reason to stay on this list.
+    store.document = { ...structuredClone(trained), workspaceId: 'ws-imported', actuals: structuredClone(store.document!.actuals) }
+    await nextTick()
+    await nextTick()
+    expect(listed()).toEqual(['Run'])
+  })
+
+  it('reads the timeline inside the save, so a mark still being written is not missed', async () => {
+    const store = await mount(trained)
+    circle('Gym')!.click()
+    // The mark is queued, not yet applied: the save queued after it must still see it.
+    submit()
+    await store.settled()
+    expect(store.document?.checkIns.at(-1)).toMatchObject({ exercise: 'yes' })
+  })
+
   it('derives a no when every exercise block was skipped', async () => {
     const store = await mount({ ...trained, blocks: trained.blocks.filter((block) => block.id !== 'run' && block.id !== 'yoga') })
     circle('Gym')!.dispatchEvent(new MouseEvent('contextmenu', { bubbles: true, cancelable: true }))

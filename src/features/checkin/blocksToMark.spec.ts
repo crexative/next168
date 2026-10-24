@@ -10,6 +10,8 @@ const document = plannerDocument({
     { id: 'deep', categoryId: 'work', title: 'Deep work', days: [3], start: 540, end: 660 },
     { id: 'late', categoryId: 'work', title: 'Late', days: [3], start: 1320, end: 0 },
     { id: 'sleep', categoryId: 'sleep', title: 'Sleep', days: [0, 1, 2, 3, 4, 5, 6], start: 1320, end: 360 },
+    { id: 'nap', categoryId: 'sleep', title: 'Nap', days: [3], start: 780, end: 840 },
+    { id: 'shift', categoryId: 'work', title: 'Night shift', days: [2], start: 1380, end: 60 },
   ],
   categories: [
     { id: 'work', name: 'Work', colorKey: 'blue', goal: { type: 'none', hoursPerWeek: 0 } },
@@ -19,7 +21,7 @@ const document = plannerDocument({
 const titles = (now: string, ...since: [number | undefined] | []) => blocksToMark(document, '2026-10-21', at(now), since.length ? since[0] : SINCE).map((item) => item.title)
 
 describe('blocksToMark', () => {
-  it('lists finished blocks of the day, never Sleep or last night’s tail', () => {
+  it('lists finished blocks of the day, never a Sleep block (the sentences above cover it) or the tail of a block that began yesterday', () => {
     expect(titles('2026-10-21T20:00:00Z')).toEqual(['Deep work'])
   })
 

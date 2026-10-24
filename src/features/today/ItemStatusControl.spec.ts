@@ -169,8 +169,13 @@ describe('ItemStatusControl menu', () => {
     const { circle, host } = mount()
     const outer = vi.fn()
     host.addEventListener('keydown', outer)
+    // Vue ignores a bubbling event that reaches a listener attached in the same millisecond; the frozen clock must move.
+    await vi.advanceTimersByTimeAsync(10)
+    const handled = vi.spyOn(Event.prototype, 'stopPropagation')
     circle().dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }))
+    expect(handled).not.toHaveBeenCalled()
     expect(outer).toHaveBeenCalledTimes(1)
+    handled.mockRestore()
   })
 
   it('has no menu for a task: a plain checkbox', async () => {
@@ -230,6 +235,28 @@ describe('ItemStatusControl partly done', () => {
     await flush()
     expect(record).toHaveBeenCalledWith('partial', 45)
     expect(form()).toBeNull()
+  })
+
+  it('swaps the menu for the minutes inside one panel, so the two never overlap while fading', async () => {
+    const mounted = mount()
+    mounted.circle().dispatchEvent(new MouseEvent('contextmenu', { bubbles: true, cancelable: true }))
+    await flush()
+    mounted.menu()!.querySelector<HTMLButtonElement>('[data-testid="status-partial"]')!.click()
+    await nextTick()
+    expect(mounted.host.querySelectorAll('.panel')).toHaveLength(1)
+    expect(mounted.host.querySelector('[role="menu"], [role="menuitem"]')).toBeNull()
+    expect(mounted.host.querySelector('.panel')?.getAttribute('role')).toBe('group')
+  })
+
+  it('leaves the arrow keys and Tab to the minutes field', async () => {
+    const { form, input } = await openMinutes()
+    await vi.advanceTimersByTimeAsync(10)
+    const up = new KeyboardEvent('keydown', { key: 'ArrowUp', bubbles: true, cancelable: true })
+    input().dispatchEvent(up)
+    expect(up.defaultPrevented).toBe(false)
+    input().dispatchEvent(new KeyboardEvent('keydown', { key: 'Tab', bubbles: true, cancelable: true }))
+    await flush()
+    expect(form()).not.toBeNull()
   })
 
   it('starts from the minutes already recorded when an answer exists', async () => {
