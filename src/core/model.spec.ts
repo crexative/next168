@@ -3,12 +3,13 @@ import { plannerDocumentSchema, proposalInputSchema, timeBlockSchema } from './m
 
 const emptyDocument = {
   schemaVersion: 2,
+  workspaceId: 'w1',
   revision: 0,
   updatedAt: '2026-10-24T05:00:00.000Z',
   settings: { locale: 'en', weekStartsOn: 1, timeZone: 'UTC', onboardingDone: false, theme: 'system' },
   categories: [{ id: 'sleep', name: 'Sleep', colorKey: 'purple', goal: { type: 'min', hoursPerWeek: 49 } }],
   blocks: [{ id: 'b1', categoryId: 'sleep', title: 'Sleep', days: [0, 1, 2, 3, 4, 5, 6], start: 22 * 60, end: 6 * 60 }],
-  tasks: [], checkIns: [], actuals: [], events: [], calendarSources: [], externalEvents: [], proposals: [],
+  tasks: [], checkIns: [], actuals: [], events: [], calendarSources: [],
 }
 
 describe('planner document contract', () => {

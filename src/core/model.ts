@@ -29,6 +29,7 @@ export const categorySchema = z.object({
   id,
   name: text(60),
   colorKey: colorKeySchema,
+  customColor: z.string().regex(/^#[0-9a-fA-F]{6}$/).optional(), // preserved legacy v1 hex; overrides colorKey when present
   icon: optionalText(16),
   goal: goalSchema,
 })
@@ -65,12 +66,18 @@ export const checkInSchema = z.object({
   note: optionalText(280),
 })
 
+// A dated occurrence snapshot: history stays correct after the template block is edited or deleted.
+// done = plannedEnd - plannedStart minutes; partial = actualMinutes (required); skipped = 0.
+// Unique per (date, blockId, plannedStart).
 export const blockActualSchema = z.object({
   date: isoDate,
   blockId: id,
+  categoryId: id,
+  plannedStart: minuteSchema,
+  plannedEnd: minuteSchema,
   status: z.enum(['done', 'partial', 'skipped']),
-  minutes: z.number().int().min(0).max(MINUTES_PER_DAY).optional(),
-})
+  actualMinutes: z.number().int().min(0).max(MINUTES_PER_DAY).optional(),
+}).refine((a) => a.status !== 'partial' || a.actualMinutes !== undefined, { message: 'actual.partialNeedsMinutes', path: ['actualMinutes'] })
 
 export const plannerEventSchema = z.object({
   id,
@@ -93,15 +100,18 @@ export const calendarSourceSchema = z.object({
   lastError: optionalText(200),
 })
 
-export const externalEventSchema = z.object({
-  sourceId: id,
-  uid: z.string().min(1).max(512),
-  title: z.string().max(300),
-  start: isoDateTime,
-  end: isoDateTime,
-  allDay: z.boolean(),
-  busy: z.boolean(),
-})
+// Derived on demand from the stored source text for a requested range; never persisted in the document.
+// Identity = sourceId + uid + recurrenceId. allDay events use local dates and an exclusive end date.
+export interface ExternalOccurrence {
+  sourceId: string
+  uid: string
+  recurrenceId?: string
+  title: string
+  start: string // ISO instant, or YYYY-MM-DD when allDay
+  end: string   // exclusive
+  allDay: boolean
+  busy: boolean
+}
 
 const blockFields = z.object({
   categoryId: id,
@@ -128,16 +138,21 @@ export const proposalOpSchema = z.discriminatedUnion('op', [
 
 export const MAX_OPS_PER_PROPOSAL = 50
 
+// Stored outside the planner document so recording a proposal never changes the content revision.
+// ops/baseRevision/contentHash are immutable after creation; status moves pending -> applied|rejected|stale once.
 export const changeProposalSchema = z.object({
   id,
+  workspaceId: id,
   source: z.enum(['mcp', 'assistant', 'import']),
   clientName: optionalText(80),
   baseRevision: z.number().int().min(0),
+  contentHash: z.string().min(16).max(128), // hash of the canonical ops JSON; approval binds to it
   summary: z.string().max(500),
   ops: z.array(proposalOpSchema).min(1).max(MAX_OPS_PER_PROPOSAL),
   status: z.enum(['pending', 'applied', 'rejected', 'stale']),
   createdAt: isoDateTime,
   decidedAt: isoDateTime.optional(),
+  appliedRevision: z.number().int().min(0).optional(),
 })
 
 // What an assistant (MCP client, on-device model or pasted JSON) may submit.
@@ -158,7 +173,8 @@ export const settingsSchema = z.object({
 
 export const plannerDocumentSchema = z.object({
   schemaVersion: z.literal(SCHEMA_VERSION),
-  revision: z.number().int().min(0),
+  workspaceId: id,                    // random per workspace; imports keep it, proposals bind to it
+  revision: z.number().int().min(0),  // content revision: +1 on every committed content change
   updatedAt: isoDateTime,
   settings: settingsSchema,
   categories: z.array(categorySchema).max(100),
@@ -168,8 +184,6 @@ export const plannerDocumentSchema = z.object({
   actuals: z.array(blockActualSchema).max(50000),
   events: z.array(plannerEventSchema).max(5000),
   calendarSources: z.array(calendarSourceSchema).max(20),
-  externalEvents: z.array(externalEventSchema).max(20000),
-  proposals: z.array(changeProposalSchema).max(200),
 })
 
 export type Minute = z.infer<typeof minuteSchema>
@@ -183,12 +197,27 @@ export type CheckIn = z.infer<typeof checkInSchema>
 export type BlockActual = z.infer<typeof blockActualSchema>
 export type PlannerEvent = z.infer<typeof plannerEventSchema>
 export type CalendarSource = z.infer<typeof calendarSourceSchema>
-export type ExternalEvent = z.infer<typeof externalEventSchema>
 export type ProposalOp = z.infer<typeof proposalOpSchema>
 export type ChangeProposal = z.infer<typeof changeProposalSchema>
 export type ProposalInput = z.infer<typeof proposalInputSchema>
 export type Settings = z.infer<typeof settingsSchema>
 export type PlannerDocument = z.infer<typeof plannerDocumentSchema>
+
+// Storage keys (browser mode). v1 `next168-data` is read-only migration input and never written.
+export const STORAGE_KEYS = {
+  legacyV1: 'next168-data',
+  document: 'next168-v2',
+  backup: 'next168-v2-backup',
+  proposals: 'next168-v2-proposals',
+  lockName: 'next168-commit',
+} as const
+
+export interface Clock { now(): Date }
+
+// Scheduler contract (core/scheduler.ts), consumed by Today (S1) and Tasks (S2).
+export interface PlacementChunk { date: string; start: Minute; end: Minute } // local date, half-open [start, end)
+export interface TaskPlacement { taskId: string; chunks: PlacementChunk[]; overflowMinutes: number; late: boolean }
+export interface BusyInterval { start: string; end: string } // ISO instants, half-open
 
 // Storage port (D4). Adapters: LocalStorageRepository (browser) and CompanionRepository (HTTP).
 export type LoadResult =
@@ -202,8 +231,25 @@ export type SaveResult =
   | { kind: 'conflict'; currentRevision: number }
   | { kind: 'error'; reason: string }
 
+// save() must be a serialized compare-and-swap: re-read the stored revision inside an exclusive lock
+// (Web Locks in browsers, an in-process mutex + atomic rename in the companion), write the backup of the
+// previous bytes first, then the new bytes; any failure leaves the previous document intact.
 export interface PlannerRepository {
   load(): Promise<LoadResult>
   save(document: PlannerDocument, expectedRevision: number): Promise<SaveResult>
   subscribe(onExternalChange: () => void): () => void
+}
+
+export type ProposalDecision =
+  | { kind: 'applied'; revision: number }
+  | { kind: 'rejected' }
+  | { kind: 'stale'; currentRevision: number }
+  | { kind: 'not-found' }
+
+export interface ProposalRepository {
+  list(status?: ChangeProposal['status']): Promise<ChangeProposal[]>
+  create(input: ProposalInput, source: ChangeProposal['source'], clientName?: string): Promise<ChangeProposal>
+  // Idempotent: a second approve of an applied proposal returns the recorded result without changing anything.
+  approve(id: string, contentHash: string, baseRevision: number): Promise<ProposalDecision>
+  reject(id: string): Promise<ProposalDecision>
 }
