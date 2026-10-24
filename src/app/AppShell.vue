@@ -118,6 +118,8 @@ function scrollToTop(): void { window.scrollTo({ top: 0, behavior: 'instant' }) 
   touch-action: manipulation;
 }
 .tabbar-item:active { transform: scale(0.97); }
+/* The bar touches the screen edges, so its items draw the focus ring inside themselves. */
+.tabbar-item:focus-visible { outline-offset: -2px; border-radius: var(--radius-control); }
 .tabbar-item[aria-current='page'] { color: var(--tint-label); }
 
 .gear {

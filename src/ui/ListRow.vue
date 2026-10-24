@@ -40,6 +40,8 @@ defineProps<{ title: string; subtitle?: string; interactive?: boolean }>()
   text-align: start;
 }
 button.row-content:active { background: var(--surface-2); }
+/* The card clips its rows, so a row draws its focus ring inside itself, rounded like the card. */
+.row-content:focus-visible { outline-offset: -2px; border-radius: var(--radius-card); }
 .row-text { display: flex; flex: 1; flex-direction: column; min-width: 0; }
 .row-leading { display: inline-flex; }
 .row-trailing { margin-inline-start: auto; }

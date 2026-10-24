@@ -223,6 +223,8 @@ async function remove(): Promise<void> {
 .categories { display: flex; flex-direction: column; align-items: stretch; gap: var(--space-2); padding-inline: var(--space-4); }
 .category-row + .category-row .category-button::before { content: ''; position: absolute; top: 0; right: 0; left: var(--space-4); border-top: 1px solid var(--separator); }
 .category-button { position: relative; display: flex; align-items: center; gap: var(--space-3); width: 100%; min-height: var(--tap-target); padding: var(--space-2) var(--space-4); border: 0; background: transparent; text-align: start; }
+/* The card clips its rows, so a row draws its focus ring inside itself, rounded like the card. */
+.category-button:focus-visible { outline-offset: -2px; border-radius: var(--radius-card); }
 .category-text { display: flex; flex: 1; flex-direction: column; min-width: 0; }
 .chevron { color: var(--label-3); }
 .swatch { width: 14px; height: 14px; border-radius: 50%; flex: none; }
