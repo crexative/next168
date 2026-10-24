@@ -1,9 +1,12 @@
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import Icon from '@/ui/Icon.vue'
 import LargeTitle from '@/ui/LargeTitle.vue'
+import LiveAnnouncer from '@/ui/LiveAnnouncer.vue'
 import UndoToast from '@/ui/UndoToast.vue'
+import { announce } from '@/ui/announcer'
+import { dismissUndoWhenChanged } from '@/ui/undoToast'
 import { usePlannerStore } from '@/stores/plannerStore'
 import RecoveryScreen from './RecoveryScreen.vue'
 import StatusBanners from './StatusBanners.vue'
@@ -23,6 +26,27 @@ const WIDE_VIEWS: ReadonlySet<string> = new Set(['week', 'insights'])
 
 // A tab opens at its top: the previous view's offset would otherwise be clamped to whatever the new view allows.
 function scrollToTop(): void { window.scrollTo({ top: 0, behavior: 'instant' }) }
+
+const pageTitle = computed(() => currentView.value ? t(currentView.value.titleKey) : '')
+
+// Every route has its own document title ("Week · Next168"), kept in the current language.
+watch(pageTitle, (title) => {
+  window.document.title = title ? `${title} · ${t('app.name')}` : t('app.name')
+}, { immediate: true })
+
+// After a route change (not the first load) focus moves to the new page's heading and its name is announced,
+// so keyboard and screen-reader users land where sighted users look. A view that already gave way to a newer
+// one does neither.
+let navigated = false
+watch(current, () => { navigated = true })
+function onViewEntered(element: Element): void {
+  if (!navigated || (element as HTMLElement).dataset.view !== currentView.value?.id) return
+  element.querySelector<HTMLElement>('h1')?.focus({ preventScroll: true })
+  announce(pageTitle.value)
+}
+
+// An undo offered for one workspace must not apply to another (replaced, imported or deleted meanwhile).
+dismissUndoWhenChanged(() => planner.document?.workspaceId)
 </script>
 
 <template>
@@ -49,11 +73,13 @@ function scrollToTop(): void { window.scrollTo({ top: 0, behavior: 'instant' }) 
     </nav>
 
     <div class="content">
+      <!-- Early in the tab order, before the page, so its Undo is a few keystrokes away from anywhere. -->
+      <UndoToast />
       <StatusBanners />
       <main id="main" class="main" tabindex="-1">
         <RecoveryScreen v-if="planner.status === 'corrupt'" />
-        <Transition v-else name="view" mode="out-in" @after-leave="scrollToTop">
-          <div v-if="currentView" :key="currentView.id" class="view" :data-measure="WIDE_VIEWS.has(currentView.id) ? 'wide' : 'readable'">
+        <Transition v-else name="view" mode="out-in" @after-leave="scrollToTop" @after-enter="onViewEntered">
+          <div v-if="currentView" :key="currentView.id" class="view" :data-view="currentView.id" :data-measure="WIDE_VIEWS.has(currentView.id) ? 'wide' : 'readable'">
             <LargeTitle :title="t(currentView.titleKey)">
               <template #actions>
                 <a
@@ -85,7 +111,7 @@ function scrollToTop(): void { window.scrollTo({ top: 0, behavior: 'instant' }) 
         <span>{{ t(tab.titleKey) }}</span>
       </a>
     </nav>
-    <UndoToast />
+    <LiveAnnouncer />
   </div>
 </template>
 

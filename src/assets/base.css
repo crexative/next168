@@ -110,6 +110,23 @@ html[data-sheet-open] body { overflow: hidden; }
   html[data-sheet-open] #app { transform: scale(0.96); }
 }
 
+/* Windows High Contrast and other forced palettes drop backgrounds and box shadows, so states and shapes that
+   relied on them are restated with system colours. !important beats the components' scoped rules on purpose. */
+@media (forced-colors: active) {
+  :focus-visible { outline-color: Highlight; }
+  button, [role='button'], [role='radio'] { outline: 1px solid ButtonText; outline-offset: -1px; }
+  button:focus-visible, [role='button']:focus-visible, [role='radio']:focus-visible { outline: 2px solid Highlight; outline-offset: 2px; }
+  [aria-pressed='true'], [role='radio'][aria-checked='true'], [aria-current='page'] {
+    forced-color-adjust: none;
+    background: Highlight !important;
+    color: HighlightText !important;
+  }
+  [aria-pressed='true'] *, [role='radio'][aria-checked='true'] *, [aria-current='page'] * { color: HighlightText !important; }
+  /* Category bars, the now-line and the progress fill carry position, not colour: draw them in the text colour. */
+  .row-bar, .now-line, .now-line::before, .block::before, [role='progressbar'] > * { forced-color-adjust: none; background: CanvasText !important; }
+  .toolbar, .tabbar, .sidebar, [data-toolbar-extension] { border-color: CanvasText; }
+}
+
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after {
     animation-duration: 0.15s !important;

@@ -25,7 +25,8 @@ onBeforeUnmount(() => observer?.disconnect())
       <div id="toolbar-actions" class="toolbar-actions"><slot name="actions" /></div>
     </div>
   </header>
-  <h1 ref="heading" class="large-title t-large-title">{{ title }}</h1>
+  <!-- Focusable by script only: the shell moves focus here after a route change. -->
+  <h1 ref="heading" class="large-title t-large-title" tabindex="-1">{{ title }}</h1>
 </template>
 
 <style scoped>
@@ -63,6 +64,7 @@ onBeforeUnmount(() => observer?.disconnect())
 .toolbar-actions { display: flex; align-items: center; gap: var(--space-2); position: relative; }
 /* The collapsed bar ends on a hairline; a page with its own bar under the toolbar draws the edge there instead (base.css). */
 .toolbar[data-collapsed] { box-shadow: 0 0.5px 0 var(--material-edge); }
+.large-title:focus { outline: none; }
 .large-title {
   padding: calc(var(--toolbar-height) + var(--space-2)) var(--space-4) var(--space-2);
 }

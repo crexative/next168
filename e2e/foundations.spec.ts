@@ -312,3 +312,142 @@ test.describe('time format', () => {
     await expect(page.locator('#main')).not.toContainText(/\d{4}-\d{2}-\d{2}/)
   })
 })
+
+test.describe('accessibility plumbing', () => {
+  async function goTo(page: Page, name: string) {
+    const nav = page.locator('.tabbar:visible, .sidebar:visible').first()
+    await nav.getByRole('link', { name, exact: true }).click()
+  }
+
+  test('each route has its own title; navigating focuses the new heading and announces it', async ({ page }) => {
+    await startWith(page)
+    await openView(page, 'today')
+    await expect(page).toHaveTitle('Today · Next168')
+    // The first load leaves focus alone.
+    expect(await page.evaluate(() => document.activeElement?.tagName)).toBe('BODY')
+
+    await goTo(page, 'Week')
+    await expect(page).toHaveTitle('Week · Next168')
+    await expect(page.getByRole('heading', { level: 1, name: 'Week' })).toBeFocused()
+    await expect(page.getByTestId('live-announcer')).toHaveText('Week')
+
+    // A quick second navigation wins: focus and the one announcement are for the last page only.
+    await goTo(page, 'Tasks')
+    await goTo(page, 'Insights')
+    await expect(page.getByRole('heading', { level: 1, name: 'Insights' })).toBeFocused()
+    await expect(page.getByTestId('live-announcer')).toHaveText('Insights')
+    await expect(page).toHaveTitle('Insights · Next168')
+  })
+
+  async function deleteGym(page: Page) {
+    await openView(page, 'week')
+    await page.locator('[data-date="2026-10-21"] [data-block-id="b-gym"]').first().click()
+    await page.getByRole('dialog').getByRole('button', { name: 'Delete block' }).click()
+    await expect(page.locator('.toast')).toBeVisible()
+  }
+
+  test('the undo toast stays 15 s, holds while pointed at, and Cmd/Ctrl+Z undoes', async ({ page }) => {
+    await startWith(page)
+    await deleteGym(page)
+    const toast = page.locator('.toast')
+    await page.clock.runFor(10_000)
+    await expect(toast).toBeVisible()
+    await toast.hover()
+    await page.clock.runFor(30_000)
+    await expect(toast).toBeVisible()
+    await page.mouse.move(1, 1)
+    await page.clock.runFor(4_000)
+    await expect(toast).toBeVisible()
+    await page.keyboard.press('ControlOrMeta+z')
+    await expect(toast).toHaveCount(0)
+    await expect(page.locator('[data-date="2026-10-21"] [data-block-id="b-gym"]')).not.toHaveCount(0)
+
+    await deleteGym(page)
+    await page.clock.runFor(15_100)
+    await expect(toast).toHaveCount(0)
+  })
+
+  test('the toast\'s Undo is among the first stops of the tab order', async ({ page }) => {
+    await startWith(page)
+    await deleteGym(page)
+    await page.evaluate(() => (document.activeElement as HTMLElement | null)?.blur())
+    await page.locator('body').focus()
+    let reached = false
+    for (let press = 0; press < 8 && !reached; press += 1) {
+      await page.keyboard.press('Tab')
+      reached = await page.evaluate(() => document.activeElement?.closest('.toast') !== null)
+    }
+    expect(reached).toBe(true)
+  })
+
+  test('an undo offered before the workspace was replaced is withdrawn', async ({ page }) => {
+    await startWith(page, { ...richDocument, events: [{ id: 'e-review', title: 'Design review', start: '2026-10-22T14:00:00.000Z', end: '2026-10-22T15:00:00.000Z', allDay: false, attendees: [] }] })
+    await openView(page, 'settings')
+    await page.getByTestId('planner-event').getByRole('button', { name: 'Remove', exact: true }).click()
+    await expect(page.locator('.toast')).toBeVisible()
+    await page.getByRole('button', { name: 'Delete all data…' }).click()
+    await page.getByRole('dialog').getByRole('textbox').fill('DELETE')
+    await page.getByRole('dialog').getByRole('button', { name: 'Delete everything' }).click()
+    await expect(page.locator('.toast')).toHaveCount(0)
+  })
+
+  test('status chips are 8–12 px apart', async ({ page }) => {
+    await startWith(page)
+    await openView(page, 'today')
+    const gaps = await page.locator('.actual').first().evaluate((group) => {
+      const boxes = Array.from(group.children).map((child) => child.getBoundingClientRect())
+      return boxes.slice(1).filter((box, index) => Math.abs(box.top - boxes[index]!.top) < 1).map((box, index) => box.left - boxes[index]!.right)
+    })
+    for (const gap of gaps) {
+      expect(gap).toBeGreaterThanOrEqual(8)
+      expect(gap).toBeLessThanOrEqual(12)
+    }
+  })
+
+  test('forced colours keep pressed, selected and current states and shapes visible', async ({ page }) => {
+    await page.emulateMedia({ forcedColors: 'active' })
+    await startWith(page)
+    await openView(page, 'today')
+    const deepWork = page.getByTestId('timeline-item').filter({ hasText: 'Deep work' })
+    await deepWork.getByRole('button', { name: 'Done' }).click()
+    await expect(deepWork.getByRole('button', { name: 'Done' })).toHaveAttribute('aria-pressed', 'true')
+    const [pressed, unpressed] = await Promise.all([
+      deepWork.getByRole('button', { name: 'Done' }).evaluate((element) => getComputedStyle(element).backgroundColor),
+      deepWork.getByRole('button', { name: 'Skipped' }).evaluate((element) => getComputedStyle(element).backgroundColor),
+    ])
+    expect(pressed).not.toBe(unpressed)
+    const current = await page.locator('[aria-current="page"]:visible').first().evaluate((element) => getComputedStyle(element).backgroundColor)
+    expect(current).not.toBe('rgba(0, 0, 0, 0)')
+    await openView(page, 'week')
+    const outline = await page.locator('[data-block-id="b-work"]').first().evaluate((element) => getComputedStyle(element).outlineStyle)
+    expect(outline).toBe('solid')
+  })
+
+  test('increased contrast makes bars solid and field borders full strength', async ({ page }) => {
+    await page.emulateMedia({ contrast: 'more' })
+    await startWith(page)
+    await openView(page, 'settings')
+    await page.mouse.wheel(0, 300)
+    await expect(page.locator('.toolbar[data-collapsed]')).toHaveCount(1)
+    await page.waitForFunction(() => document.getAnimations().every((animation) => animation.playState !== 'running'))
+    const look = await page.evaluate(() => {
+      const probe = document.createElement('input')
+      probe.className = 'input'
+      document.body.append(probe)
+      const result = {
+        bar: getComputedStyle(document.querySelector('.toolbar')!).backgroundColor,
+        filter: getComputedStyle(document.querySelector('.toolbar')!).backdropFilter,
+        field: getComputedStyle(probe).borderTopColor,
+        secondary: (() => { const note = document.createElement('p'); note.className = 't-secondary'; document.body.append(note); const color = getComputedStyle(note).color; note.remove(); return color })(),
+        label: getComputedStyle(document.body).color,
+      }
+      probe.remove()
+      return result
+    })
+    expect(look.bar).toMatch(/^rgb\(/)
+    expect(look.filter).toBe('none')
+    expect(look.field).toBe(look.label)
+    const alpha = Number(/rgba\([^)]*,\s*([\d.]+)\)/.exec(look.secondary)?.[1] ?? 1)
+    expect(alpha, `secondary text ${look.secondary}`).toBeGreaterThanOrEqual(0.85)
+  })
+})

@@ -39,6 +39,8 @@ function move(offset: number, event: KeyboardEvent): void {
 <style scoped>
 .segmented {
   display: flex;
+  /* At large text sizes the segments wrap onto more rows instead of running out of the track. */
+  flex-wrap: wrap;
   gap: 2px;
   padding: 2px;
   border-radius: var(--radius-control);
@@ -60,5 +62,9 @@ function move(offset: number, event: KeyboardEvent): void {
   background: var(--surface);
   font-weight: 600;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12);
+}
+@media (forced-colors: active) {
+  .segmented { border: 1px solid CanvasText; }
+  .segment.is-selected { forced-color-adjust: none; background: Highlight; color: HighlightText; }
 }
 </style>

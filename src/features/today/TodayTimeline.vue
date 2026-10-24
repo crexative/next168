@@ -195,7 +195,7 @@ function savePartial(item: TimelineItem & { kind: 'block' }): void {
 .badge { display: inline-flex; align-items: center; gap: 2px; padding: 1px var(--space-2); border-radius: 999px; }
 .badge.is-conflict { background: color-mix(in srgb, var(--danger) 14%, transparent); color: var(--danger-label); }
 .badge.is-late { background: color-mix(in srgb, var(--warning) 18%, transparent); color: var(--label); }
-.actual { display: flex; flex-wrap: wrap; gap: var(--space-1); }
+.actual { display: flex; flex-wrap: wrap; gap: var(--space-2); }
 /* The pill is drawn by ::before and is shorter than the button, which keeps the 44 px hit target. */
 .actual-choice {
   position: relative;
