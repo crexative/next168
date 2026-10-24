@@ -13,6 +13,8 @@ import { announceUpdate, createUpdateApplier } from './app/updates'
 import { i18n } from './i18n'
 import type { ProposalInput } from './core/model'
 import { createBrowserRepositories } from './repositories/browserRepositories'
+import { companionMode } from './repositories/CompanionRepository'
+import { configureCalendarServices } from './features/calendars/calendarStore'
 import { configurePlannerStore, usePlannerStore } from './stores/plannerStore'
 
 const repositories = createBrowserRepositories()
@@ -23,6 +25,10 @@ configurePlannerStore({
   locale: () => i18n.global.locale.value,
   timeZone: () => Intl.DateTimeFormat().resolvedOptions().timeZone,
 })
+
+// Browser calendar writes share the planner's lock and purge epoch, so none lands after a delete-all.
+// Companion mode keeps its own calendar services (configured lazily).
+if (!companionMode) configureCalendarServices({ texts: repositories.calendarTexts, purgeGuard: repositories.planner })
 
 registerBuiltinViews(shell.registry)
 registerFeatures(shell.registry)

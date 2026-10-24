@@ -1,6 +1,6 @@
 import { CalendarImportError, MAX_ICS_BYTES } from '@/core/icsImport'
 
-export interface IcsFetcher { fetch(url: string): Promise<string> }
+export interface IcsFetcher { fetch(url: string, signal?: AbortSignal): Promise<string> }
 export type CalendarMode = 'browser' | 'companion'
 
 export function calendarMode(): CalendarMode {
@@ -17,10 +17,12 @@ export function normalizeCalendarUrl(value: string): string {
 
 export function createIcsFetcher(request: typeof fetch = globalThis.fetch.bind(globalThis), mode: CalendarMode = calendarMode()): IcsFetcher {
   return {
-    async fetch(value) {
+    async fetch(value, signal) {
       const url = normalizeCalendarUrl(value)
       const controller = new AbortController()
       const timeout = setTimeout(() => controller.abort(), 10000)
+      const cancel = () => controller.abort()
+      signal?.addEventListener('abort', cancel, { once: true })
       try {
         const response = await request(mode === 'companion' ? `/api/ics?url=${encodeURIComponent(url)}` : url, {
           mode: 'cors', credentials: mode === 'companion' ? 'same-origin' : 'omit', signal: controller.signal,
@@ -43,7 +45,7 @@ export function createIcsFetcher(request: typeof fetch = globalThis.fetch.bind(g
       } catch (error) {
         if (error instanceof CalendarImportError) throw error
         throw new CalendarImportError('fetch')
-      } finally { clearTimeout(timeout) }
+      } finally { clearTimeout(timeout); signal?.removeEventListener('abort', cancel) }
     },
   }
 }

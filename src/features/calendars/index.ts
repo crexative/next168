@@ -1,9 +1,9 @@
 import type { CalendarSourceStore } from '@/core/model'
 import type { ShellRegistry } from '@/app/contracts'
 import { setExternalOccurrenceSource } from '@/features/week/externalOccurrences'
-import { provideCalendarSourceStore } from '@/features/settings/data/calendarSourceHook'
+import { provideCalendarLifecycle, provideCalendarSourceStore } from '@/features/settings/data/calendarSourceHook'
 import CalendarsSection from '@/features/settings/calendars/CalendarsSection.vue'
-import { calendarServices, calendarTextRevision } from './calendarStore'
+import { calendarServices, calendarTextRevision, cancelCalendarRefreshes } from './calendarStore'
 import { calendarSourceRevision, expandCalendarSources } from './occurrenceSource'
 
 export { useCalendarEvents } from './useCalendarEvents'
@@ -29,4 +29,5 @@ export default function registerCalendars(registry: ShellRegistry): void {
   registry.registerSettingsSection({ id: 'calendars', component: CalendarsSection, titleKey: 'calendars.heading', order: 30 })
   setExternalOccurrenceSource(expandCalendarSources, calendarSourceRevision)
   provideCalendarSourceStore(currentTexts)
+  provideCalendarLifecycle({ cancelRefreshes: cancelCalendarRefreshes, textsChanged: () => { calendarTextRevision.value++ } })
 }

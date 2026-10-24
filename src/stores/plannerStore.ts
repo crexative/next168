@@ -2,6 +2,7 @@ import { computed, ref, shallowRef } from 'vue'
 import { defineStore } from 'pinia'
 import type { PlannerDocument, PlannerRepository, SaveResult } from '@/core/model'
 import { createEmptyDocument, nextRevision } from '@/repositories/core'
+import { failureReason, isStorageFailure } from '@/repositories/storageCommit'
 
 export type PlannerStatus = 'loading' | 'ready' | 'readonly' | 'corrupt' | 'unsupported' | 'error'
 
@@ -14,6 +15,10 @@ export interface RepositoryExtras {
   replaceCorrupt?(document: PlannerDocument): Promise<SaveResult>
   peekBackup?(): Promise<PlannerDocument | undefined>
   restoreBackup?(): Promise<SaveResult>
+  // Browser only: replaces the planner and removes everything else it stored, in one commit-lock hold.
+  deleteAll?(fresh: PlannerDocument, expectedRevision: number): Promise<SaveResult>
+  // Browser only: a save refused when a delete-all happened since `purgeEpoch` was read.
+  saveAtEpoch?(document: PlannerDocument, expectedRevision: number, purgeEpoch: number): Promise<SaveResult>
 }
 export type PlannerRepositoryWithExtras = PlannerRepository & RepositoryExtras
 
@@ -36,6 +41,16 @@ function requireEnvironment(): PlannerStoreEnvironment {
   return environment
 }
 
+// The repository of the current mode (browser or companion), for read-backs outside the store.
+export function activePlannerRepository(): PlannerRepositoryWithExtras {
+  return requireEnvironment().repository
+}
+
+export interface CommitOptions {
+  // Calendar writes pass the purge epoch they started under, so they never land after a delete-all.
+  purgeEpoch?: number
+}
+
 export const usePlannerStore = defineStore('planner', () => {
   const document = shallowRef<PlannerDocument | null>(null)
   const status = ref<PlannerStatus>('loading')
@@ -45,6 +60,8 @@ export const usePlannerStore = defineStore('planner', () => {
   const corruptRaw = ref<string | null>(null)
   const corruptReason = ref<string | null>(null)
   const backupAvailable = ref(false)
+  // True after a write failed on storage: the error screen then says the last change was not saved.
+  const lastChangeLost = ref(false)
 
   let queue: Promise<unknown> = Promise.resolve()
   let stopListening: (() => void)[] = []
@@ -63,13 +80,15 @@ export const usePlannerStore = defineStore('planner', () => {
     try {
       result = await repository.load()
     } catch (failure) {
+      // The document already shown (if any) stays in memory, so the error screen can still export it.
       status.value = 'error'
-      error.value = failure instanceof Error ? failure.message : 'load-failed'
+      error.value = failureReason(failure)
       return
     }
     corruptRaw.value = null
     corruptReason.value = null
     backupAvailable.value = false
+    lastChangeLost.value = false
     switch (result.kind) {
       case 'ok':
         document.value = result.document
@@ -110,28 +129,43 @@ export const usePlannerStore = defineStore('planner', () => {
     return load()
   }
 
-  function commit(mutator: (draft: PlannerDocument) => void): Promise<CommitResult> {
+  function candidateFrom(base: PlannerDocument, mutator: (draft: PlannerDocument) => void): PlannerDocument {
+    const draft = structuredClone(base)
+    mutator(draft)
+    draft.revision = base.revision
+    try {
+      return nextRevision(draft, { now: requireEnvironment().now })
+    } catch {
+      throw new Error('invalid-document')
+    }
+  }
+
+  // A failure of the storage itself blocks editing: the error screen replaces the views until a reload works.
+  function reportStorageFailure(reason: string): void {
+    error.value = reason
+    if (!isStorageFailure(reason)) return
+    status.value = 'error'
+    lastChangeLost.value = true
+  }
+
+  function persist(
+    mutator: (draft: PlannerDocument) => void,
+    write: (repository: PlannerRepositoryWithExtras, candidate: PlannerDocument, expectedRevision: number) => Promise<SaveResult>,
+  ): Promise<CommitResult> {
     return serialized(async () => {
-      const { repository, now } = requireEnvironment()
+      const { repository } = requireEnvironment()
       const base = document.value
       if (status.value !== 'ready' || !base) return { ok: false, reason: status.value }
 
       let candidate: PlannerDocument
       try {
-        const draft = structuredClone(base)
-        mutator(draft)
-        draft.revision = base.revision
-        try {
-          candidate = nextRevision(draft, { now })
-        } catch {
-          throw new Error('invalid-document')
-        }
+        candidate = candidateFrom(base, mutator)
       } catch (failure) {
         error.value = failure instanceof Error ? failure.message : 'commit-failed'
         return { ok: false, reason: error.value }
       }
 
-      const saved = await repository.save(candidate, base.revision).catch((failure): SaveResult => ({
+      const saved = await write(repository, candidate, base.revision).catch((failure): SaveResult => ({
         kind: 'error', reason: failure instanceof Error ? failure.message : 'save-failed',
       }))
       if (saved.kind === 'ok') {
@@ -145,9 +179,29 @@ export const usePlannerStore = defineStore('planner', () => {
         error.value = 'conflict'
         return { ok: false, reason: 'conflict' }
       }
-      error.value = saved.reason
+      reportStorageFailure(saved.reason)
       return { ok: false, reason: saved.reason }
     })
+  }
+
+  function commit(mutator: (draft: PlannerDocument) => void, options: CommitOptions = {}): Promise<CommitResult> {
+    const { purgeEpoch } = options
+    return persist(mutator, (repository, candidate, expected) => (
+      purgeEpoch !== undefined && repository.saveAtEpoch
+        ? repository.saveAtEpoch(candidate, expected, purgeEpoch)
+        : repository.save(candidate, expected)
+    ))
+  }
+
+  function canDeleteAll(): boolean {
+    return requireEnvironment().repository.deleteAll !== undefined
+  }
+
+  // Browser delete-all: the mutator builds the fresh document exactly as a commit would.
+  function deleteAll(mutator: (draft: PlannerDocument) => void): Promise<CommitResult> {
+    return persist(mutator, (repository, candidate, expected) => (
+      repository.deleteAll ? repository.deleteAll(candidate, expected) : Promise.resolve({ kind: 'error', reason: 'delete-all-unsupported' })
+    ))
   }
 
   // Resolves once every commit queued so far has settled; the update flow waits on it before reloading.
@@ -166,8 +220,8 @@ export const usePlannerStore = defineStore('planner', () => {
       const fresh = createEmptyDocument({ now: now(), locale: locale(), timeZone: timeZone(), idGen: newId })
       const saved = await repository.replaceCorrupt(fresh)
       if (saved.kind !== 'ok') {
-        error.value = saved.kind === 'error' ? saved.reason : 'conflict'
-        return { ok: false, reason: error.value }
+        reportStorageFailure(saved.kind === 'error' ? saved.reason : 'conflict')
+        return { ok: false, reason: error.value ?? 'conflict' }
       }
       await applyLoad()
       return { ok: true }
@@ -180,8 +234,8 @@ export const usePlannerStore = defineStore('planner', () => {
       if (status.value !== 'corrupt' || !repository.restoreBackup) return { ok: false, reason: status.value }
       const restored = await repository.restoreBackup()
       if (restored.kind !== 'ok') {
-        error.value = restored.kind === 'error' ? restored.reason : 'conflict'
-        return { ok: false, reason: error.value }
+        reportStorageFailure(restored.kind === 'error' ? restored.reason : 'conflict')
+        return { ok: false, reason: error.value ?? 'conflict' }
       }
       await applyLoad()
       return { ok: true }
@@ -189,7 +243,7 @@ export const usePlannerStore = defineStore('planner', () => {
   }
 
   return {
-    document, status, error, migratedFrom, legacyChanged, corruptRaw, corruptReason, backupAvailable, writable,
-    start, load, commit, settled, dismissError, startFresh, restoreBackup,
+    document, status, error, migratedFrom, legacyChanged, corruptRaw, corruptReason, backupAvailable, lastChangeLost, writable,
+    start, load, commit, deleteAll, canDeleteAll, reportStorageFailure, settled, dismissError, startFresh, restoreBackup,
   }
 })

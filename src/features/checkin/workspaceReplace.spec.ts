@@ -182,6 +182,19 @@ describe('data settings confirmations', () => {
   })
 })
 
+describe('delete-all and pending actions of the deleted planner', () => {
+  it('withdraws an undo offered for the deleted planner, so it cannot write into the fresh one', async () => {
+    const { store } = await openDelete({ ...workspace('ws-a', 'a note'), revision: 1 })
+    const onUndo = vi.fn()
+    useUndoToast().show({ message: 'Block deleted', onUndo })
+    document.body.querySelector('form.confirm')!.dispatchEvent(new Event('submit', { cancelable: true }))
+    await vi.waitFor(() => expect(store.document?.workspaceId).not.toBe('ws-a'))
+    await vi.waitFor(() => expect(useUndoToast().toast.value).toBeNull())
+    useUndoToast().undo()
+    expect(onUndo).not.toHaveBeenCalled()
+  })
+})
+
 describe('forms bind to their own entry, confirmations to the content hash', () => {
   const category = { id: 'c-1', name: 'Work', colorKey: 'blue' as const, goal: { type: 'none' as const, hoursPerWeek: 0 } }
   const task = { id: 't-1', title: 'Existing', categoryId: 'c-1', durationMin: 30, priority: 2 as const, createdAt: '2026-10-01T00:00:00.000Z' }

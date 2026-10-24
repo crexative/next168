@@ -1,13 +1,13 @@
-import { beforeEach, describe, expect, it } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { createPinia, setActivePinia } from 'pinia'
 import { configurePlannerStore, usePlannerStore } from './plannerStore'
-import { createTestRepositories, fixedNow, KEYS, MemoryStorage, newTestId, testDocument } from '@/repositories/testSupport'
+import { createTestRepositories, fixedNow, KEYS, MemoryChannelBus, MemoryStore, mutexRunner, newTestId, testDocument } from '@/repositories/testSupport'
 
-function setup(storage = new MemoryStorage(), withLocks = true) {
-  const repos = createTestRepositories(storage, withLocks)
+function setup(storage = new MemoryStore(), withLocks = true) {
+  const repos = createTestRepositories({ store: storage, withLocks })
   configurePlannerStore({ repository: repos.planner, now: fixedNow, newId: newTestId, locale: () => 'en', timeZone: () => 'UTC' })
   setActivePinia(createPinia())
-  return { ...repos, store: usePlannerStore() }
+  return { ...repos, storage, store: usePlannerStore() }
 }
 
 beforeEach(() => setActivePinia(createPinia()))
@@ -18,23 +18,23 @@ describe('loading', () => {
     await store.load()
     expect(store.status).toBe('ready')
     expect(store.document?.revision).toBe(0)
-    expect(storage.data.size).toBe(0)
+    expect(storage.writeTransactions).toBe(0)
   })
 
   it('exposes corrupt data with its raw text and never changes storage', async () => {
-    const storage = new MemoryStorage()
-    storage.data.set(KEYS.document, 'garbage')
+    const storage = new MemoryStore()
+    storage.data.set('document', 'garbage')
     const { store } = setup(storage)
     await store.load()
     expect(store.status).toBe('corrupt')
     expect(store.corruptRaw).toBe('garbage')
     expect(store.document).toBeNull()
-    expect(storage.data.get(KEYS.document)).toBe('garbage')
+    expect(storage.data.get('document')).toBe('garbage')
   })
 
   it('opens newer schema versions as unsupported', async () => {
-    const storage = new MemoryStorage()
-    storage.data.set(KEYS.document, JSON.stringify({ schemaVersion: 3 }))
+    const storage = new MemoryStore()
+    storage.data.set('document', JSON.stringify({ schemaVersion: 3 }))
     const { store } = setup(storage)
     await store.load()
     expect(store.status).toBe('unsupported')
@@ -42,7 +42,7 @@ describe('loading', () => {
   })
 
   it('is read-only with an explanation when Web Locks are missing', async () => {
-    const { store } = setup(new MemoryStorage(), false)
+    const { store } = setup(new MemoryStore(), false)
     await store.load()
     expect(store.status).toBe('readonly')
     expect(store.error).toBe('no-web-locks')
@@ -57,18 +57,32 @@ describe('commit', () => {
     expect(await store.commit((draft) => { draft.settings.timeZone = 'Europe/Berlin' })).toEqual({ ok: true })
     expect(store.document?.revision).toBe(1)
     expect(store.document?.settings.timeZone).toBe('Europe/Berlin')
-    expect(JSON.parse(storage.data.get(KEYS.document)!).settings.timeZone).toBe('Europe/Berlin')
+    expect(JSON.parse(storage.data.get('document') as string).settings.timeZone).toBe('Europe/Berlin')
   })
 
-  it('keeps the state unchanged and exposes the error when saving fails', async () => {
+  it('a storage failure keeps the last committed document and blocks editing with the error status (A8)', async () => {
     const { store, storage } = setup()
     await store.load()
-    storage.failAllWrites = true
+    await store.commit((draft) => { draft.settings.timeZone = 'Asia/Tokyo' })
+    storage.failWrites = true
     const result = await store.commit((draft) => { draft.settings.timeZone = 'Europe/Berlin' })
     expect(result).toEqual({ ok: false, reason: 'quota-exceeded' })
     expect(store.error).toBe('quota-exceeded')
-    expect(store.document?.revision).toBe(0)
-    expect(store.document?.settings.timeZone).toBe('UTC')
+    expect(store.status).toBe('error')
+    expect(store.writable).toBe(false)
+    expect(store.document?.revision).toBe(1)
+    expect(store.document?.settings.timeZone).toBe('Asia/Tokyo')
+    expect(await store.commit((draft) => { draft.settings.timeZone = 'Europe/Paris' })).toEqual({ ok: false, reason: 'error' })
+    storage.failWrites = false
+    await store.load()
+    expect(store.status).toBe('ready')
+  })
+
+  it('a refused document is not a storage failure and keeps editing available', async () => {
+    const { store } = setup()
+    await store.load()
+    expect(await store.commit((draft) => { draft.settings.locale = '' })).toEqual({ ok: false, reason: 'invalid-document' })
+    expect(store.status).toBe('ready')
   })
 
   it('does not mutate the published document while the mutator runs', async () => {
@@ -84,7 +98,7 @@ describe('commit', () => {
     await store.load()
     const result = await store.commit((draft) => { draft.settings.locale = '' })
     expect(result).toEqual({ ok: false, reason: 'invalid-document' })
-    expect(storage.data.size).toBe(0)
+    expect(storage.writeTransactions).toBe(0)
   })
 
   it('rejects semantic violations without publishing or persisting the draft', async () => {
@@ -94,7 +108,7 @@ describe('commit', () => {
     expect(await store.commit((draft) => { draft.appliedProposalIds = ['duplicate', 'duplicate'] }))
       .toEqual({ ok: false, reason: 'invalid-document' })
     expect(store.document).toBe(before)
-    expect(storage.data.size).toBe(0)
+    expect(storage.writeTransactions).toBe(0)
   })
 
   it('reports a conflict and reloads the winner after a stale commit', async () => {
@@ -123,20 +137,20 @@ describe('commit', () => {
 
 describe('recovery', () => {
   it('starts fresh only on request and keeps the raw bytes in the backup', async () => {
-    const storage = new MemoryStorage()
-    storage.data.set(KEYS.document, 'garbage')
+    const storage = new MemoryStore()
+    storage.data.set('document', 'garbage')
     const { store } = setup(storage)
     await store.load()
     expect(await store.startFresh()).toEqual({ ok: true })
     expect(store.status).toBe('ready')
-    expect(storage.data.get(KEYS.backup)).toBe('garbage')
+    expect(storage.data.get('backup')).toBe('garbage')
   })
 
   it('restores the last valid backup', async () => {
     const { store, planner, storage } = setup()
     await planner.save(testDocument({ revision: 1 }), 0)
     await planner.save(testDocument({ revision: 2 }), 1)
-    storage.data.set(KEYS.document, 'garbage')
+    storage.data.set('document', 'garbage')
     await store.load()
     expect(store.backupAvailable).toBe(true)
     await store.restoreBackup()
@@ -146,15 +160,59 @@ describe('recovery', () => {
 })
 
 describe('external changes', () => {
-  it('reloads when another tab writes the document key and flags legacy writes', async () => {
-    const { store, planner, events } = setup()
+  it('reloads when another tab commits, without a storage event', async () => {
+    const storage = new MemoryStore()
+    const bus = new MemoryChannelBus()
+    const runExclusive = mutexRunner()
+    const thisTab = createTestRepositories({ store: storage, bus, runExclusive })
+    const otherTab = createTestRepositories({ store: storage, bus, runExclusive })
+    configurePlannerStore({ repository: thisTab.planner, now: fixedNow, newId: newTestId, locale: () => 'en', timeZone: () => 'UTC' })
+    const store = usePlannerStore()
     await store.start()
-    await planner.save(testDocument({ revision: 1 }), 0)
-    events.dispatchEvent(Object.assign(new Event('storage'), { key: KEYS.document }))
-    await store.settled()
-    expect(store.document?.revision).toBe(1)
+    await otherTab.planner.save(testDocument({ revision: 1 }), 0)
+    await vi.waitFor(() => expect(store.document?.revision).toBe(1))
+  })
 
-    events.dispatchEvent(Object.assign(new Event('storage'), { key: KEYS.legacyV1 }))
+  it('flags writes from an older tab to the legacy keys', async () => {
+    const { store, events } = setup()
+    await store.start()
+    events.dispatchEvent(Object.assign(new Event('storage'), { key: KEYS.legacyV1, newValue: '{}' }))
     expect(store.legacyChanged).toBe(true)
+  })
+
+  it('a failing focus re-check shows the error screen with the document still exportable (A8c)', async () => {
+    const { store, storage, events } = setup()
+    await store.start()
+    await store.commit((draft) => { draft.settings.timeZone = 'Asia/Tokyo' })
+    storage.failReads = true
+    events.dispatchEvent(new Event('focus'))
+    await vi.waitFor(() => expect(store.status).toBe('error'))
+    await store.settled()
+    expect(store.error).toBe('storage-failed:UnknownError')
+    expect(store.document?.settings.timeZone).toBe('Asia/Tokyo')
+  })
+})
+
+describe('delete-all', () => {
+  it('replaces the document through the repository delete-all and publishes it', async () => {
+    const { store, storage } = setup()
+    await store.load()
+    await store.commit((draft) => { draft.settings.timeZone = 'Asia/Tokyo' })
+    storage.data.set('backup', 'old')
+    expect(store.canDeleteAll()).toBe(true)
+    expect(await store.deleteAll((draft) => { draft.settings.timeZone = 'UTC'; draft.workspaceId = 'fresh' })).toEqual({ ok: true })
+    expect(store.document?.workspaceId).toBe('fresh')
+    expect(store.document?.revision).toBe(2)
+    expect(storage.data.has('backup')).toBe(false)
+    expect(storage.data.get('purgeEpoch')).toBe(1)
+  })
+
+  it('a commit started before a delete-all with its purge epoch is refused', async () => {
+    const { store, planner } = setup()
+    await store.load()
+    const epoch = await planner.purgeEpoch()
+    await store.deleteAll((draft) => { draft.workspaceId = 'fresh' })
+    expect(await store.commit((draft) => { draft.calendarSources = [] }, { purgeEpoch: epoch })).toEqual({ ok: false, reason: 'conflict' })
+    expect(await store.commit((draft) => { draft.calendarSources = [] }, { purgeEpoch: epoch + 1 })).toEqual({ ok: true })
   })
 })
