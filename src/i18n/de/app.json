@@ -10,7 +10,9 @@
   "navigation": {
     "tabs": "Hauptnavigation",
     "sidebar": "Seitenleiste",
-    "toolbarActions": "Aktionen"
+    "toolbarActions": "Aktionen",
+    "showSidebar": "Seitenleiste einblenden",
+    "hideSidebar": "Seitenleiste ausblenden"
   },
   "placeholders": {
     "today": {

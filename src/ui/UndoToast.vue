@@ -97,7 +97,7 @@ onBeforeUnmount(() => {
 .toast-enter-from, .toast-leave-to { opacity: 0; transform: translateY(8px); }
 
 @media (min-width: 1024px) {
-  .toast-region { bottom: var(--space-6); padding-inline-start: calc(var(--sidebar-width) + var(--space-4)); }
+  .toast-region { bottom: var(--space-6); padding-inline-start: calc(var(--sidebar-inset, var(--sidebar-width)) + var(--space-4)); }
 }
 @media (prefers-reduced-motion: reduce) {
   .toast-enter-from, .toast-leave-to { transform: none; }

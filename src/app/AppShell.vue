@@ -1,18 +1,25 @@
 <script setup lang="ts">
-import { computed, watch } from 'vue'
+import { computed, nextTick, onBeforeUnmount, onMounted, provide, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
+import { PanelLeft } from 'lucide-vue-next'
 import Icon from '@/ui/Icon.vue'
+import { registerIcons } from '@/ui/icons'
 import LargeTitle from '@/ui/LargeTitle.vue'
 import LiveAnnouncer from '@/ui/LiveAnnouncer.vue'
 import UndoToast from '@/ui/UndoToast.vue'
 import { announce } from '@/ui/announcer'
 import { dismissUndoWhenChanged } from '@/ui/undoToast'
+import { useMediaQuery } from '@/ui/useMediaQuery'
 import { usePlannerStore } from '@/stores/plannerStore'
 import RecoveryScreen from './RecoveryScreen.vue'
 import StorageErrorScreen from './StorageErrorScreen.vue'
 import StatusBanners from './StatusBanners.vue'
+import { SHELL_TOOLBAR_ENTRIES } from './contracts'
 import { shell } from './registry'
+import { isApplePlatform, isSidebarShortcut, layoutFor, OVERLAY_QUERY, PERSISTENT_QUERY, useSidebar } from './sidebar'
 import { useHashRoute, viewHash } from './useHashRoute'
+
+registerIcons({ 'panel-left': PanelLeft })
 
 const { t } = useI18n()
 const planner = usePlannerStore()
@@ -21,9 +28,79 @@ const { views, tabs } = shell
 const { current } = useHashRoute(() => new Set(views.keys()))
 const currentView = computed(() => views.get(current.value) ?? views.get('today'))
 const settingsView = computed(() => views.get('settings'))
+const assistantView = computed(() => views.get('assistant'))
+// The assistant and Settings, in this order, wherever they appear: every toolbar and the sidebar footer.
+const entries = computed(() => [
+  assistantView.value && { id: 'assistant' as const, icon: assistantView.value.icon ?? 'sparkles', title: t(assistantView.value.titleKey), label: t('common.askAssistant'), testId: 'assistant-entry' },
+  settingsView.value && { id: 'settings' as const, icon: settingsView.value.icon ?? 'settings', title: t(settingsView.value.titleKey), label: t(settingsView.value.titleKey), testId: 'settings-entry' },
+].filter((entry) => !!entry))
+provide(SHELL_TOOLBAR_ENTRIES, true)
 
-// Readable measure on wide screens: planning grids and charts get a wider column than lists and forms.
-const WIDE_VIEWS: ReadonlySet<string> = new Set(['week', 'insights'])
+// One readable measure (720 px) for every screen; Week alone takes the full width for its grid.
+const FULL_WIDTH_VIEWS: ReadonlySet<string> = new Set(['week'])
+
+const atLeastTablet = useMediaQuery(OVERLAY_QUERY)
+const atLeastDesktop = useMediaQuery(PERSISTENT_QUERY)
+const layout = computed(() => layoutFor(atLeastTablet.value, atLeastDesktop.value))
+const sidebar = useSidebar(layout)
+const sidebarVisible = sidebar.visible
+// A persistent, visible sidebar already lists the assistant and Settings; the toolbar shows them otherwise.
+const toolbarEntriesShown = computed(() => !(layout.value === 'persistent' && sidebarVisible.value))
+const overlayOpen = computed(() => layout.value === 'overlay' && sidebarVisible.value)
+
+const apple = isApplePlatform()
+const shortcutHint = apple ? '⌘\\' : 'Ctrl+\\'
+const toggleLabel = computed(() => t(sidebarVisible.value ? 'app.navigation.hideSidebar' : 'app.navigation.showSidebar'))
+const toggleButton = ref<HTMLButtonElement | null>(null)
+const sidebarElement = ref<HTMLElement | null>(null)
+let openedFromKeyboard = false
+
+function toggleSidebar(fromKeyboard: boolean): void {
+  openedFromKeyboard = fromKeyboard && !sidebarVisible.value
+  sidebar.toggle()
+}
+
+// A click with no pointer behind it (detail 0) came from Enter or Space.
+function onToggleClick(event: MouseEvent): void { toggleSidebar(event.detail === 0) }
+
+function onKeydown(event: KeyboardEvent): void {
+  if (event.defaultPrevented || layout.value === 'none') return
+  if (isSidebarShortcut(event, apple)) {
+    event.preventDefault()
+    toggleSidebar(true)
+  } else if (event.key === 'Escape' && overlayOpen.value) {
+    event.preventDefault()
+    sidebar.setVisible(false)
+  }
+}
+
+// Runs before the DOM update: focus inside a sidebar that is about to become inert moves to the toggle, which
+// stays in the same place. A sidebar opened from the keyboard puts focus on the current destination.
+watch(sidebarVisible, (visible) => {
+  if (!visible) {
+    if (sidebarElement.value?.contains(document.activeElement)) toggleButton.value?.focus({ preventScroll: true })
+    return
+  }
+  if (!openedFromKeyboard) return
+  openedFromKeyboard = false
+  void nextTick(() => {
+    const target = sidebarElement.value?.querySelector<HTMLElement>('[aria-current="page"]') ?? sidebarElement.value?.querySelector<HTMLElement>('a[href]')
+    target?.focus({ preventScroll: true })
+  })
+})
+
+// Choosing a destination in the overlay closes it.
+watch(current, () => { if (overlayOpen.value) sidebar.setVisible(false) })
+
+const onStorage = (event: StorageEvent) => sidebar.onStorage(event)
+onMounted(() => {
+  window.addEventListener('keydown', onKeydown)
+  window.addEventListener('storage', onStorage)
+})
+onBeforeUnmount(() => {
+  window.removeEventListener('keydown', onKeydown)
+  window.removeEventListener('storage', onStorage)
+})
 
 // A tab opens at its top: the previous view's offset would otherwise be clamped to whatever the new view allows.
 function scrollToTop(): void { window.scrollTo({ top: 0, behavior: 'instant' }) }
@@ -54,8 +131,32 @@ dismissUndoWhenChanged(() => planner.document?.workspaceId)
 </script>
 
 <template>
-  <div class="shell">
-    <nav class="sidebar" :aria-label="t('app.navigation.sidebar')">
+  <div class="shell" :data-layout="layout" :data-sidebar="sidebarVisible ? 'shown' : 'hidden'">
+    <button
+      v-if="layout !== 'none'"
+      ref="toggleButton"
+      class="sidebar-toggle"
+      type="button"
+      :aria-label="toggleLabel"
+      :title="`${toggleLabel} (${shortcutHint})`"
+      :aria-expanded="sidebarVisible ? 'true' : 'false'"
+      aria-controls="app-sidebar"
+      :aria-keyshortcuts="apple ? 'Meta+\\' : 'Control+\\'"
+      data-testid="sidebar-toggle"
+      @click="onToggleClick"
+    >
+      <Icon name="panel-left" :size="22" />
+    </button>
+    <div v-if="layout === 'overlay'" class="sidebar-scrim" :data-open="overlayOpen || undefined" aria-hidden="true" @click="sidebar.setVisible(false)" />
+
+    <nav
+      id="app-sidebar"
+      ref="sidebarElement"
+      class="sidebar"
+      :data-hidden="sidebarVisible ? undefined : 'true'"
+      :inert="!sidebarVisible"
+      :aria-label="t('app.navigation.sidebar')"
+    >
       <p class="sidebar-brand t-title-2">{{ t('app.name') }}</p>
       <ul class="sidebar-list">
         <li v-for="tab in tabs" :key="tab.id">
@@ -65,18 +166,17 @@ dismissUndoWhenChanged(() => planner.document?.workspaceId)
           </a>
         </li>
       </ul>
-      <a
-        v-if="settingsView"
-        class="sidebar-item sidebar-settings t-body"
-        :href="viewHash('settings')"
-        :aria-current="current === 'settings' ? 'page' : undefined"
-      >
-        <Icon :name="settingsView.icon ?? 'settings'" :size="22" />
-        {{ t(settingsView.titleKey) }}
-      </a>
+      <ul class="sidebar-list sidebar-footer" data-testid="sidebar-footer">
+        <li v-for="entry in entries" :key="entry.id">
+          <a class="sidebar-item t-body" :href="viewHash(entry.id)" :aria-current="current === entry.id ? 'page' : undefined">
+            <Icon :name="entry.icon" :size="22" />
+            {{ entry.title }}
+          </a>
+        </li>
+      </ul>
     </nav>
 
-    <div class="content">
+    <div class="content" :inert="overlayOpen">
       <!-- Early in the tab order, before the page, so its Undo is a few keystrokes away from anywhere. -->
       <UndoToast />
       <StatusBanners />
@@ -84,18 +184,23 @@ dismissUndoWhenChanged(() => planner.document?.workspaceId)
         <RecoveryScreen v-if="planner.status === 'corrupt'" />
         <StorageErrorScreen v-else-if="planner.status === 'error'" />
         <Transition v-else name="view" mode="out-in" @after-leave="scrollToTop" @after-enter="onViewEntered">
-          <div v-if="currentView" :key="currentView.id" class="view" :data-view="currentView.id" :data-measure="WIDE_VIEWS.has(currentView.id) ? 'wide' : 'readable'">
+          <div v-if="currentView" :key="currentView.id" class="view" :data-view="currentView.id" :data-measure="FULL_WIDTH_VIEWS.has(currentView.id) ? 'full' : 'readable'">
             <LargeTitle :title="t(currentView.titleKey)">
               <template #actions>
-                <a
-                  v-if="settingsView"
-                  class="gear"
-                  :href="viewHash('settings')"
-                  :aria-label="t(settingsView.titleKey)"
-                  :aria-current="current === 'settings' ? 'page' : undefined"
-                >
-                  <Icon name="settings" :size="24" />
-                </a>
+                <span v-show="toolbarEntriesShown" class="toolbar-entries" data-testid="toolbar-entries">
+                  <a
+                    v-for="entry in entries"
+                    :key="entry.id"
+                    class="toolbar-entry"
+                    :class="{ gear: entry.id === 'settings' }"
+                    :href="viewHash(entry.id)"
+                    :aria-label="entry.label"
+                    :aria-current="current === entry.id ? 'page' : undefined"
+                    :data-testid="entry.testId"
+                  >
+                    <Icon :name="entry.icon" :size="24" />
+                  </a>
+                </span>
               </template>
             </LargeTitle>
             <component :is="currentView.component" />
@@ -121,13 +226,16 @@ dismissUndoWhenChanged(() => planner.document?.workspaceId)
 </template>
 
 <style scoped>
-.shell { min-height: 100dvh; padding-inline: var(--safe-left) var(--safe-right); }
+/* --sidebar-inset is the width the sidebar takes beside the content (0 when hidden or overlaid); fixed bars
+   that centre themselves in the content (undo toast, banners) read it too. */
+.shell { --sidebar-inset: 0px; min-height: 100dvh; padding-inline: var(--safe-left) var(--safe-right); }
+.shell[data-layout='persistent'][data-sidebar='shown'] { --sidebar-inset: var(--sidebar-width); }
 /* --banners-height is the height of the fixed bottom notices (StatusBanners), so none of them covers the end of a page. */
 .content { padding-bottom: calc(var(--tabbar-height) + var(--safe-bottom) + var(--space-4) + var(--banners-height, 0px)); }
 .main { outline: none; }
 .view { margin-inline: auto; }
-.view[data-measure='readable'] { max-width: 44rem; }
-.view[data-measure='wide'] { max-width: 64rem; }
+/* 720 px: one measure for every text and list screen, centred in the space beside the sidebar. */
+.view[data-measure='readable'] { max-width: 45rem; }
 
 .tabbar {
   position: fixed;
@@ -150,7 +258,6 @@ dismissUndoWhenChanged(() => planner.document?.workspaceId)
   align-items: center;
   justify-content: center;
   gap: 2px;
-  /* On a tablet the items gather in the middle instead of spreading to the screen edges. */
   max-width: 7.5rem;
   min-width: 0;
   min-height: var(--tap-target);
@@ -166,17 +273,23 @@ dismissUndoWhenChanged(() => planner.document?.workspaceId)
 .tabbar-item:focus-visible { outline-offset: -2px; border-radius: var(--radius-control); }
 .tabbar-item[aria-current='page'] { color: var(--tint-label); }
 
-.gear {
+.toolbar-entries { display: inline-flex; align-items: center; gap: var(--space-2); }
+.toolbar-entry {
   display: inline-flex;
   align-items: center;
   justify-content: center;
   width: var(--tap-target);
   height: var(--tap-target);
+  border-radius: 50%;
   color: var(--tint-label);
   text-decoration: none;
+  transition: transform 0.1s var(--ease-out), opacity 0.1s;
+  touch-action: manipulation;
 }
+.toolbar-entry:active { transform: scale(0.97); opacity: 0.85; }
 
 .sidebar { display: none; }
+.sidebar-toggle { display: none; }
 .sidebar-item {
   display: flex;
   align-items: center;
@@ -193,9 +306,32 @@ dismissUndoWhenChanged(() => planner.document?.workspaceId)
 .view-enter-active, .view-leave-active { transition: opacity 0.15s; }
 .view-enter-from, .view-leave-to { opacity: 0; }
 
-@media (min-width: 1024px) {
-  .tabbar, .gear { display: none; }
-  .content { margin-inline-start: var(--sidebar-width); padding-bottom: calc(var(--space-8) + var(--banners-height, 0px)); }
+@media (min-width: 768px) {
+  .tabbar { display: none; }
+  .content { margin-inline-start: var(--sidebar-inset); padding-bottom: calc(var(--space-8) + var(--banners-height, 0px)); }
+
+  /* Same spot whether the sidebar is shown or hidden: the leading edge of the toolbar row. */
+  .sidebar-toggle {
+    position: fixed;
+    top: calc(var(--safe-top) + (var(--toolbar-height) - var(--tap-target)) / 2);
+    left: calc(var(--safe-left) + var(--space-2));
+    z-index: 30;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: var(--tap-target);
+    height: var(--tap-target);
+    padding: 0;
+    border: 0;
+    border-radius: var(--radius-control);
+    background: transparent;
+    color: var(--tint-label);
+    transition: transform 0.1s var(--ease-out), opacity 0.1s;
+    touch-action: manipulation;
+  }
+  .sidebar-toggle:hover { background: color-mix(in srgb, var(--label-2) 12%, transparent); }
+  .sidebar-toggle:active { transform: scale(0.97); opacity: 0.85; }
+
   .sidebar {
     position: fixed;
     inset: 0 auto 0 0;
@@ -204,14 +340,57 @@ dismissUndoWhenChanged(() => planner.document?.workspaceId)
     flex-direction: column;
     gap: var(--space-2);
     width: var(--sidebar-width);
-    padding: calc(var(--safe-top) + var(--space-6)) var(--space-3) calc(var(--safe-bottom) + var(--space-4)) calc(var(--safe-left) + var(--space-3));
+    padding: var(--safe-top) var(--space-3) calc(var(--safe-bottom) + var(--space-4)) calc(var(--safe-left) + var(--space-3));
+    overflow-y: auto;
     background: var(--material);
     -webkit-backdrop-filter: var(--material-filter);
     backdrop-filter: var(--material-filter);
     border-inline-end: 0.5px solid var(--separator);
+    /* Leaves and returns along the same path: a critically damped spring (response 0.3 s) on transform only. */
+    transition: transform 0.35s var(--ease-out), visibility 0s;
+    transition-timing-function: linear(0, 0.078, 0.233, 0.399, 0.547, 0.667, 0.76, 0.83, 0.881, 0.917, 0.943, 0.961, 0.973, 0.982, 0.988, 0.992, 1), linear(0, 1);
   }
-  .sidebar-brand { padding: 0 var(--space-3) var(--space-3); }
+  .sidebar[data-hidden] {
+    transform: translateX(calc(-100% - var(--safe-left)));
+    visibility: hidden;
+    transition-delay: 0s, 0.35s;
+  }
+  /* The brand shares the toolbar row with the toggle, after it. */
+  .sidebar-brand {
+    display: flex;
+    align-items: center;
+    min-height: var(--toolbar-height);
+    margin-bottom: var(--space-2);
+    padding-inline-start: calc(var(--tap-target) + var(--space-2));
+  }
   .sidebar-list { display: flex; flex-direction: column; gap: 2px; }
-  .sidebar-settings { margin-top: auto; }
+  .sidebar-footer { margin-top: auto; }
+
+  .sidebar-scrim {
+    position: fixed;
+    inset: 0;
+    z-index: 19;
+    background: var(--scrim);
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.2s;
+  }
+  .sidebar-scrim[data-open] { opacity: 1; pointer-events: auto; }
+  .shell[data-layout='overlay'] .sidebar { box-shadow: var(--shadow-floating); }
+  .shell[data-layout='overlay'] .sidebar[data-hidden] { box-shadow: none; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  /* No slide: the sidebar switches in place with a short cross-fade. */
+  .sidebar, .sidebar[data-hidden] { transform: none; transition: opacity 0.15s, visibility 0s; }
+  .sidebar[data-hidden] { opacity: 0; transition-delay: 0s, 0.15s; }
+  .toolbar-entry:active, .sidebar-toggle:active { transform: none; opacity: 0.7; }
+}
+</style>
+
+<style>
+/* No tab bar from 768 px: bottom offsets that clear it collapse to the safe area. */
+@media (min-width: 768px) {
+  :root { --tabbar-height: 0px; }
 }
 </style>

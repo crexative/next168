@@ -21,26 +21,38 @@ test.describe('app shell', () => {
     }
   })
 
-  test('navigation links switch views and a reload keeps the tab', async ({ page, isMobile }, testInfo) => {
+  test('navigation links switch views and a reload keeps the tab', async ({ page }, testInfo) => {
     test.skip(testInfo.project.name === 'webkit-phone')
     await page.goto('./')
-    const nav = page.getByRole('navigation', { name: isMobile || page.viewportSize()!.width < 1024 ? 'Main navigation' : 'Sidebar' })
+    const width = page.viewportSize()!.width
+    // Phone: the tab bar. Tablet: the sidebar opens over the content from its toggle. Desktop: the sidebar column.
+    if (width >= 768 && width < 1024) await page.getByTestId('sidebar-toggle').click()
+    const nav = page.getByRole('navigation', { name: width < 768 ? 'Main navigation' : 'Sidebar' })
     await nav.getByRole('link', { name: 'Tasks' }).click()
     await expect(page.getByRole('heading', { level: 1, name: 'Tasks' })).toBeVisible()
     await expect(page).toHaveURL(/#\/tasks$/)
     await page.reload()
     await expect(page.getByRole('heading', { level: 1, name: 'Tasks' })).toBeVisible()
-    await expect(nav.getByRole('link', { name: 'Tasks' })).toHaveAttribute('aria-current', 'page')
+    const current = width < 768 ? page.locator('.tabbar [aria-current=page]') : page.locator('#app-sidebar [aria-current=page]')
+    await expect(current).toHaveText(/Tasks/)
   })
 
-  test('settings is a gear below 1024 px and a sidebar item above', async ({ page }) => {
+  test('the assistant and Settings: toolbar icons on a phone and tablet, sidebar footer rows from 768 px', async ({ page }) => {
     await page.goto('./')
-    const wide = page.viewportSize()!.width >= 1024
-    if (wide) {
-      await expect(page.getByRole('navigation', { name: 'Sidebar' }).getByRole('link', { name: 'Settings' })).toBeVisible()
+    const width = page.viewportSize()!.width
+    const toolbarSettings = page.locator('#toolbar-actions').getByRole('link', { name: 'Settings' })
+    const footer = page.getByTestId('sidebar-footer')
+    if (width >= 1024) {
+      await expect(footer.getByRole('link', { name: 'Settings' })).toBeVisible()
+      await expect(toolbarSettings).toBeHidden()
       await expect(page.getByRole('navigation', { name: 'Main navigation' })).toBeHidden()
+    } else if (width >= 768) {
+      await expect(toolbarSettings).toBeVisible()
+      await expect(page.getByRole('navigation', { name: 'Main navigation' })).toBeHidden()
+      await page.getByTestId('sidebar-toggle').click()
+      await expect(footer.getByRole('link', { name: 'Settings' })).toBeVisible()
     } else {
-      await expect(page.getByRole('link', { name: 'Settings' })).toBeVisible()
+      await expect(toolbarSettings).toBeVisible()
       await expect(page.getByRole('navigation', { name: 'Sidebar' })).toBeHidden()
     }
   })

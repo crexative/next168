@@ -10,7 +10,9 @@
   "navigation": {
     "tabs": "Navegación principal",
     "sidebar": "Barra lateral",
-    "toolbarActions": "Acciones"
+    "toolbarActions": "Acciones",
+    "showSidebar": "Mostrar barra lateral",
+    "hideSidebar": "Ocultar barra lateral"
   },
   "placeholders": {
     "today": {
