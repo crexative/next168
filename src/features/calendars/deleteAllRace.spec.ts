@@ -106,7 +106,7 @@ describe('calendar writes racing a delete-all', () => {
     let first = true
     // Pauses right after the guarded text write, when the lock is free again and before the document commit.
     const purgeGuard = {
-      purgeEpoch: () => thisTab.planner.purgeEpoch(),
+      knownPurgeEpoch: () => thisTab.planner.knownPurgeEpoch(),
       ifPurgeEpoch: async (epoch: number, write: () => Promise<void>) => {
         const written = await thisTab.planner.ifPurgeEpoch(epoch, write)
         if (first) { first = false; reached.resolve(); await resume.promise }

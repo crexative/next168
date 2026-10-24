@@ -11,10 +11,13 @@ export function calendarSourceStore(): CalendarSourceStore | undefined {
   return store
 }
 
-// Delete-all cancels this tab's calendar refreshes first and announces the removed texts afterwards.
+// Delete-all cancels this tab's calendar refreshes first and announces the removed texts afterwards. An import
+// captures the purge epoch when it is confirmed and writes its calendar texts only while no delete-all intervened.
 export interface CalendarLifecycle {
   cancelRefreshes(): void
   textsChanged(): void
+  capturePurgeEpoch(): number | undefined
+  writeIfUnpurged(epoch: number | undefined, write: () => Promise<void>): Promise<boolean>
 }
 let lifecycle: CalendarLifecycle | undefined
 

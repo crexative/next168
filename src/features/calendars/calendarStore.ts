@@ -9,7 +9,8 @@ import { createIcsFetcher, normalizeCalendarUrl, type IcsFetcher } from './icsFe
 
 // Browser mode: coordinates calendar writes with delete-all (see BrowserPlannerRepository.ifPurgeEpoch).
 export interface PurgeGuard {
-  purgeEpoch(): Promise<number>
+  // The purge epoch of the planner this tab shows; read synchronously when a user action starts.
+  knownPurgeEpoch(): number | undefined
   ifPurgeEpoch(epoch: number, write: () => Promise<void>): Promise<boolean>
 }
 export interface CalendarServices { texts: CalendarSourceStore; fetcher: IcsFetcher; now: () => Date; newId: () => string; purgeGuard?: PurgeGuard }
@@ -42,16 +43,28 @@ async function fetchCancellable(url: string): Promise<{ text: string } | { cance
   }
 }
 
-// The epoch of the data a calendar operation starts from; undefined where no delete-all coordination exists.
-async function startEpoch(): Promise<number | undefined> {
-  return calendarServices().purgeGuard?.purgeEpoch()
-}
-// Writes a calendar text only if no delete-all happened since `epoch`; otherwise writes nothing and fails.
-async function guardedWrite(epoch: number | undefined, write: () => Promise<void>): Promise<void> {
+// The purge epoch a calendar action is bound to, captured synchronously when the user initiates it (never when
+// queued work finally runs, which can be after a delete-all). Undefined where no delete-all coordination exists;
+// NaN, which matches no stored epoch, when this tab has not loaded its planner yet.
+export function capturePurgeEpoch(): number | undefined {
   const guard = calendarServices().purgeGuard
-  if (!guard || epoch === undefined) return write()
-  if (!(await guard.ifPurgeEpoch(epoch, write))) throw new CalendarImportError('save')
+  return guard ? guard.knownPurgeEpoch() ?? Number.NaN : undefined
 }
+// Runs a calendar text write only if no delete-all happened since `epoch`; resolves false when it wrote nothing.
+export async function writeIfUnpurged(epoch: number | undefined, write: () => Promise<void>): Promise<boolean> {
+  const guard = calendarServices().purgeGuard
+  if (!guard || epoch === undefined) {
+    await write()
+    return true
+  }
+  return guard.ifPurgeEpoch(epoch, write)
+}
+async function guardedWrite(epoch: number | undefined, write: () => Promise<void>): Promise<void> {
+  if (!(await writeIfUnpurged(epoch, write))) throw new CalendarImportError('save')
+}
+
+// What a calendar action was initiated on: the workspace and the purge epoch the user saw.
+export interface CalendarIntent { workspaceId: string | undefined; epoch: number | undefined }
 
 export function calendarErrorCode(error: unknown): string {
   const message = error instanceof Error ? error.message : ''
@@ -69,8 +82,16 @@ export const useCalendarStore = defineStore('calendars', () => {
     queue = run.catch(() => undefined)
     return run
   }
-  async function commit(change: Parameters<typeof planner.commit>[0], epoch?: number): Promise<void> {
-    if (!(await planner.commit(change, { purgeEpoch: epoch })).ok) throw new CalendarImportError('save')
+  function captureIntent(): CalendarIntent {
+    return { workspaceId: planner.document?.workspaceId, epoch: capturePurgeEpoch() }
+  }
+  // Refused when the planner was reset (purge epoch) or replaced (workspace) since the action was initiated.
+  async function commit(change: Parameters<typeof planner.commit>[0], intent: CalendarIntent): Promise<void> {
+    const result = await planner.commit(draft => {
+      if (intent.workspaceId !== undefined && draft.workspaceId !== intent.workspaceId) throw new CalendarImportError('save')
+      change(draft)
+    }, { purgeEpoch: intent.epoch })
+    if (!result.ok) throw new CalendarImportError('save')
   }
   function validate(text: string): void {
     validateIcsText(text)
@@ -78,45 +99,45 @@ export const useCalendarStore = defineStore('calendars', () => {
     const start = localDateOf(calendarServices().now(), zone)
     icsImport(text, 'validation', { start, end: addLocalDays(start, 7) }, zone)
   }
-  // `epoch` is captured when the operation starts: after a delete-all, neither the text, its rollback nor the
-  // document commit may write, so a slow refresh cannot bring deleted calendar data back.
-  async function persist(source: CalendarSource, text: string, epoch: number | undefined): Promise<void> {
+  // After a delete-all or a replaced workspace, neither the text, its rollback nor the document commit may write,
+  // so queued or slow work cannot bring deleted calendar data back.
+  async function persist(source: CalendarSource, text: string, intent: CalendarIntent): Promise<void> {
     const { texts } = calendarServices()
     validate(text)
     const previous = await texts.get(source.id)
-    await guardedWrite(epoch, () => texts.put(source.id, text))
+    await guardedWrite(intent.epoch, () => texts.put(source.id, text))
     try {
       await commit(draft => {
         const index = draft.calendarSources.findIndex(item => item.id === source.id)
         if (index < 0) draft.calendarSources.push(source)
         else draft.calendarSources[index] = source
-      }, epoch)
+      }, intent)
     } catch (error) {
-      await guardedWrite(epoch, () => (previous === undefined ? texts.delete(source.id) : texts.put(source.id, previous))).catch(() => undefined)
+      await guardedWrite(intent.epoch, () => (previous === undefined ? texts.delete(source.id) : texts.put(source.id, previous))).catch(() => undefined)
       throw error
     }
     rawRevision.value++
   }
+  // Every public action captures its intent synchronously, before it joins the queue.
   function importFile(name: string, text: string): Promise<void> {
+    const intent = captureIntent()
     return serialized(async () => {
-      const epoch = await startEpoch()
       const { now, newId } = calendarServices()
-      await persist({ id: newId(), name, kind: 'file', colorKey: 'blue', lastSyncedAt: now().toISOString() }, text, epoch)
+      await persist({ id: newId(), name, kind: 'file', colorKey: 'blue', lastSyncedAt: now().toISOString() }, text, intent)
     })
   }
   function addUrl(name: string, value: string): Promise<void> {
+    const intent = captureIntent()
     return serialized(async () => {
-      const epoch = await startEpoch()
       const { now, newId } = calendarServices()
       const url = normalizeCalendarUrl(value)
       const fetched = await fetchCancellable(url)
       if ('cancelled' in fetched) throw new CalendarImportError('save')
-      await persist({ id: newId(), name, kind: 'url', url, colorKey: 'purple', lastSyncedAt: now().toISOString() }, fetched.text, epoch)
+      await persist({ id: newId(), name, kind: 'url', url, colorKey: 'purple', lastSyncedAt: now().toISOString() }, fetched.text, intent)
     })
   }
-  function refreshSource(id: string): Promise<void> {
+  function refreshSource(id: string, intent: CalendarIntent = captureIntent()): Promise<void> {
     return serialized(async () => {
-      const epoch = await startEpoch()
       const source = planner.document?.calendarSources.find(source => source.id === id)
       if (!source?.url) return
       const { now } = calendarServices()
@@ -130,39 +151,39 @@ export const useCalendarStore = defineStore('calendars', () => {
         await commit(draft => {
           const current = draft.calendarSources.find(source => source.id === id)
           if (current) current.lastError = calendarErrorCode(error)
-        }, epoch)
+        }, intent)
         return
       }
       // Read current metadata after the network wait so a rename in another view is retained.
       const current = planner.document?.calendarSources.find(source => source.id === id)
-      if (current) await persist({ ...current, lastSyncedAt: now().toISOString(), lastError: undefined }, text, epoch)
+      if (current) await persist({ ...current, lastSyncedAt: now().toISOString(), lastError: undefined }, text, intent)
     })
   }
   function refreshOnOpen(): Promise<void> {
     const workspace = planner.document?.workspaceId
     if (!workspace || workspace === refreshedWorkspace) return Promise.resolve()
     refreshedWorkspace = workspace
+    // Each refreshSource call below captures its intent synchronously, i.e. now.
     return Promise.all(planner.document!.calendarSources.filter(source => source.kind === 'url').map(source => refreshSource(source.id))).then(() => undefined)
   }
   function updateSource(id: string, patch: { name?: string; colorKey?: ColorKey }): Promise<void> {
-    return serialized(async () => {
-      const epoch = await startEpoch()
-      await commit(draft => {
-        const source = draft.calendarSources.find(source => source.id === id)
-        if (source) Object.assign(source, patch)
-      }, epoch)
-    })
+    const intent = captureIntent()
+    return serialized(() => commit(draft => {
+      const source = draft.calendarSources.find(source => source.id === id)
+      if (source) Object.assign(source, patch)
+    }, intent))
   }
-  function removeSource(id: string): Promise<void> {
+  function removeSource(id: string, intent: CalendarIntent = captureIntent()): Promise<void> {
     return serialized(async () => {
       // Commit metadata removal first: a failed document save must never discard the only raw copy.
-      await commit(draft => { draft.calendarSources = draft.calendarSources.filter(source => source.id !== id) })
+      await commit(draft => { draft.calendarSources = draft.calendarSources.filter(source => source.id !== id) }, intent)
       await calendarServices().texts.delete(id)
       rawRevision.value++
     })
   }
-  function restoreSource(source: CalendarSource, text: string): Promise<void> {
-    return serialized(async () => persist(source, text, await startEpoch()))
+  // An undo passes the intent of the removal it undoes, so it is bound to the planner the source was removed from.
+  function restoreSource(source: CalendarSource, text: string, intent: CalendarIntent = captureIntent()): Promise<void> {
+    return serialized(() => persist(source, text, intent))
   }
-  return { rawRevision, pending, restoreSource, importFile, addUrl, refreshSource, refreshOnOpen, updateSource, removeSource }
+  return { rawRevision, pending, captureIntent, restoreSource, importFile, addUrl, refreshSource, refreshOnOpen, updateSource, removeSource }
 })

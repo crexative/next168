@@ -55,6 +55,8 @@ function identityOf(raw: string | undefined): string {
 export class BrowserPlannerRepository implements PlannerRepository {
   // Identity of the document this tab last loaded or committed; a focus re-check reloads only when it changed.
   private identity: string | undefined
+  // Purge epoch of the planner this tab last loaded or reset. Calendar actions bind to it when the user starts them.
+  private loadedPurgeEpoch: number | undefined
 
   constructor(private readonly deps: BrowserPlannerRepositoryDeps) {}
 
@@ -64,7 +66,8 @@ export class BrowserPlannerRepository implements PlannerRepository {
 
   async load(): Promise<LoadResult> {
     const { store, runExclusive } = this.deps
-    const snapshot = await store.read(['document', 'migration', 'purge'])
+    const snapshot = await store.read(['document', 'migration', 'purge', 'purgeEpoch'])
+    this.loadedPurgeEpoch = purgeEpochOf(snapshot)
     if (this.purgePending(snapshot)) await this.finishPurge().catch((error) => console.warn('next168: purge resumes on the next load', error))
     if (snapshot.document !== undefined) {
       this.identity = identityOf(snapshot.document)
@@ -89,6 +92,11 @@ export class BrowserPlannerRepository implements PlannerRepository {
 
   async purgeEpoch(): Promise<number> {
     return purgeEpochOf(await this.deps.store.read(['purgeEpoch']))
+  }
+
+  // Synchronous, so a user action captures it at the moment it is initiated, before any queue or await.
+  knownPurgeEpoch(): number | undefined {
+    return this.loadedPurgeEpoch
   }
 
   // Runs `write` under the commit lock only while no delete-all happened since `epoch`. Calendar text writes
@@ -185,11 +193,13 @@ export class BrowserPlannerRepository implements PlannerRepository {
       if (refused) return refused
       const calendarSourceIds = calendarTexts ? await calendarTexts.list() : []
       const json = JSON.stringify(checked)
+      const purgeEpoch = purgeEpochOf(snapshot) + 1
       await store.write({
         document: json, backup: null, proposals: null,
-        purge: { legacyKeys: true, calendarSourceIds }, purgeEpoch: purgeEpochOf(snapshot) + 1,
+        purge: { legacyKeys: true, calendarSourceIds }, purgeEpoch,
       })
       this.identity = identityOf(json)
+      this.loadedPurgeEpoch = purgeEpoch
       // Still inside the same lock hold: requesting the lock again here would wait for itself forever.
       await this.purgeWhileLocked().catch((error) => console.warn('next168: purge resumes on the next load', error))
       return { kind: 'ok', revision: checked.revision }
