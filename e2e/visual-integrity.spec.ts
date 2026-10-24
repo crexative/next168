@@ -1,6 +1,7 @@
 import { expect, test, type Page, type TestInfo } from '@playwright/test'
 import { legacyData, seedKey, V2_KEY } from './fixtures'
 import { visualIntegrityViolations } from './support/visualIntegrity'
+import { addFromMenu } from './support/week'
 
 // Every tab and every sheet, at the three project widths (1440 / 768 / 375 px) and in both themes:
 // no control, focus ring or text is clipped, select chevrons sit inside their padding and controls in a
@@ -184,12 +185,34 @@ for (const theme of THEMES) {
     test('week block editor and the day sheets', async ({ page }) => {
       await start(page, theme, plannedDocument)
       await open(page, 'week')
-      await page.getByRole('button', { name: 'Add block' }).click()
+      await addFromMenu(page, 'Block')
       await auditSheet(page, `${theme}/new block`)
       await page.keyboard.press('Escape')
       await expect(page.getByRole('dialog')).toHaveCount(0)
       await page.locator('[data-date="2026-10-21"] [data-block-id="b-gym"]').first().click()
       await auditSheet(page, `${theme}/edit block`)
+    })
+
+    test('week in Spanish: tasks, week navigation, the add menu, the event sheet and the phone overview', async ({ page }, testInfo) => {
+      await start(page, theme, { ...plannedDocument, settings: { ...plannedDocument.settings, locale: 'es' } }, 'es')
+      await open(page, 'week')
+      await expect(page.getByTestId('week-task').first()).toBeVisible()
+      await audit(page, `${theme}/es/week with tasks`)
+      await page.getByTestId('week-next').click()
+      await audit(page, `${theme}/es/next week`)
+      await page.getByTestId('week-today').click()
+      await page.getByTestId('week-add').click()
+      await expect(page.getByRole('menu')).toBeVisible()
+      await audit(page, `${theme}/es/add menu`)
+      await page.getByRole('menuitem', { name: 'Evento', exact: true }).click()
+      await auditSheet(page, `${theme}/es/new event from +`)
+      await page.keyboard.press('Escape')
+      await expect(page.getByRole('dialog')).toHaveCount(0)
+      if (testInfo.project.name === 'phone') {
+        await page.getByRole('radio', { name: 'Semana', exact: true }).click()
+        await expect(page.getByTestId('week-overview')).toBeVisible()
+        await audit(page, `${theme}/es/week overview`)
+      }
     })
 
     test('settings sheets, import preview and calendar details', async ({ page }, testInfo) => {

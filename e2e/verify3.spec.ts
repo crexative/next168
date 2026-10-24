@@ -1,5 +1,6 @@
 import { expect, test, type Locator, type Page } from '@playwright/test'
 import { V2_KEY, onlyProject, openTab, seedKey } from './fixtures'
+import { addFromMenu } from './support/week'
 
 // Third verification: tablet Week lanes, the New block default category and the update notice on a phone.
 const NOW = new Date('2026-10-21T10:15:00.000Z')
@@ -175,7 +176,7 @@ test.describe('Week at tablet widths', () => {
 test('the New block sheet from Week "+" preselects the first category that is not Sleep', async ({ page }) => {
   await seed(page)
   await openTab(page, 'week')
-  await page.getByRole('button', { name: 'Add block' }).click()
+  await addFromMenu(page, 'Block')
   const dialog = page.getByRole('dialog', { name: 'New block' })
   await expect(dialog).toBeVisible()
   await expect(dialog.getByLabel('Category')).toHaveValue('c-work')

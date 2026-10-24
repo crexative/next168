@@ -1,4 +1,4 @@
-import { MINUTES_PER_DAY, type ExternalOccurrence, type PlannerDocument, type PlannerEvent } from '@/core/model'
+import { MINUTES_PER_DAY, type ExternalOccurrence, type PlannerDocument, type PlannerEvent, type TaskPlacement } from '@/core/model'
 import { addLocalDays, datedOccurrences, zonedInstant, type DatedOccurrence } from '@/core/time'
 import { localMinuteOf } from './localTime'
 
@@ -133,5 +133,30 @@ export function busySegmentsByDate(external: ExternalOccurrence[], events: Plann
   return byDate
 }
 
+// A placed task is drawn inside the planned block it was fitted into.
+export interface TaskSegment extends DayPart {
+  key: string
+  taskId: string
+  title: string
+  categoryId: string
+  late: boolean
+}
+
+export function taskSegmentsByDate(placements: readonly TaskPlacement[], tasks: PlannerDocument['tasks'], dates: string[], timeZone: string): Record<string, TaskSegment[]> {
+  const byDate: Record<string, TaskSegment[]> = Object.fromEntries(dates.map((date) => [date, []]))
+  const byId = new Map(tasks.map((task) => [task.id, task]))
+  for (const placement of placements) {
+    const task = byId.get(placement.taskId)
+    if (!task || task.doneAt) continue
+    for (const chunk of placement.chunks) {
+      for (const part of splitByLocalDay(chunk.start, chunk.end, dates, timeZone)) {
+        byDate[part.date]?.push({ ...part, key: `${task.id}@${chunk.start}@${part.date}`, taskId: task.id, title: task.title, categoryId: task.categoryId, late: placement.late })
+      }
+    }
+  }
+  return byDate
+}
+
 export const HOUR_HEIGHT_PX = 48
+export const COMPACT_HOUR_HEIGHT_PX = 16
 export const SLOT_MINUTES = 30

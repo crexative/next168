@@ -1,6 +1,6 @@
 {
   "summary": "No time blocks saved on this device yet | {count} time block saved on this device | {count} time blocks saved on this device",
-  "add": "Add block",
+  "add": "Add",
   "deleted": "Deleted “{title}”",
   "grid": {
     "conflict": "Conflict",
@@ -49,5 +49,42 @@
     "noBlocksTitle": "Plan your 168 hours",
     "noBlocksDescription": "Add a block for something you do every week, like sleep or work.",
     "addBlock": "Add a block"
+  },
+  "addMenu": {
+    "block": "Block",
+    "event": "Event"
+  },
+  "nav": {
+    "label": "Week",
+    "previous": "Previous week",
+    "next": "Next week",
+    "today": "Today"
+  },
+  "view": {
+    "label": "View",
+    "day": "Day",
+    "week": "Week"
+  },
+  "overview": {
+    "days": "Days of the week",
+    "open": "Open {day}",
+    "legend": "Categories",
+    "task": "Task",
+    "event": "Event"
+  },
+  "task": {
+    "label": "Task: {title}, {range}",
+    "late": "overdue"
+  },
+  "status": {
+    "done": "Done",
+    "skipped": "Skipped",
+    "partial": "Partial"
+  },
+  "moved": {
+    "tomorrow": "“{title}” moved to tomorrow",
+    "tomorrowMany": "{count} tasks moved to tomorrow",
+    "later": "“{title}” moved to {day}",
+    "laterMany": "{count} tasks moved to another day"
   }
 }

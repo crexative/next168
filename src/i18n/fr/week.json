@@ -1,6 +1,6 @@
 {
   "summary": "Aucun bloc de temps enregistré sur cet appareil | {count} bloc de temps enregistré sur cet appareil | {count} blocs de temps enregistrés sur cet appareil",
-  "add": "Ajouter un bloc",
+  "add": "Ajouter",
   "deleted": "« {title} » supprimé",
   "grid": {
     "conflict": "Conflit",
@@ -49,5 +49,42 @@
     "noBlocksTitle": "Planifiez vos 168 heures",
     "noBlocksDescription": "Ajoutez un bloc pour une activité hebdomadaire, comme dormir ou travailler.",
     "addBlock": "Ajouter un bloc"
+  },
+  "addMenu": {
+    "block": "Bloc",
+    "event": "Événement"
+  },
+  "nav": {
+    "label": "Semaine",
+    "previous": "Semaine précédente",
+    "next": "Semaine suivante",
+    "today": "Aujourd’hui"
+  },
+  "view": {
+    "label": "Affichage",
+    "day": "Jour",
+    "week": "Semaine"
+  },
+  "overview": {
+    "days": "Jours de la semaine",
+    "open": "Ouvrir {day}",
+    "legend": "Catégories",
+    "task": "Tâche",
+    "event": "Événement"
+  },
+  "task": {
+    "label": "Tâche : {title}, {range}",
+    "late": "en retard"
+  },
+  "status": {
+    "done": "Fait",
+    "skipped": "Ignoré",
+    "partial": "Partiel"
+  },
+  "moved": {
+    "tomorrow": "« {title} » reportée à demain",
+    "tomorrowMany": "{count} tâches reportées à demain",
+    "later": "« {title} » reportée à {day}",
+    "laterMany": "{count} tâches reportées à un autre jour"
   }
 }

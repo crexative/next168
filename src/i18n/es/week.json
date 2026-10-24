@@ -1,6 +1,6 @@
 {
   "summary": "Aún no hay bloques de tiempo guardados en este dispositivo | {count} bloque de tiempo guardado en este dispositivo | {count} bloques de tiempo guardados en este dispositivo",
-  "add": "Añadir bloque",
+  "add": "Añadir",
   "deleted": "Se eliminó «{title}»",
   "grid": {
     "conflict": "Conflicto",
@@ -49,5 +49,42 @@
     "noBlocksTitle": "Planifica tus 168 horas",
     "noBlocksDescription": "Añade un bloque para algo que haces cada semana, como dormir o trabajar.",
     "addBlock": "Añadir un bloque"
+  },
+  "addMenu": {
+    "block": "Bloque",
+    "event": "Evento"
+  },
+  "nav": {
+    "label": "Semana",
+    "previous": "Semana anterior",
+    "next": "Semana siguiente",
+    "today": "Hoy"
+  },
+  "view": {
+    "label": "Vista",
+    "day": "Día",
+    "week": "Semana"
+  },
+  "overview": {
+    "days": "Días de la semana",
+    "open": "Abrir {day}",
+    "legend": "Categorías",
+    "task": "Tarea",
+    "event": "Evento"
+  },
+  "task": {
+    "label": "Tarea: {title}, {range}",
+    "late": "atrasada"
+  },
+  "status": {
+    "done": "Hecho",
+    "skipped": "Omitido",
+    "partial": "Parcial"
+  },
+  "moved": {
+    "tomorrow": "«{title}» pasó a mañana",
+    "tomorrowMany": "{count} tareas pasaron a mañana",
+    "later": "«{title}» pasó al {day}",
+    "laterMany": "{count} tareas pasaron a otro día"
   }
 }

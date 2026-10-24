@@ -2,6 +2,7 @@ import { readFileSync } from 'node:fs'
 import { expect, test } from '@playwright/test'
 import { LEGACY_KEY, legacyData, onlyProject, openTab, seedLegacy } from './fixtures'
 import { storedPlanner } from './support/indexedDb'
+import { addFromMenu } from './support/week'
 import { seedOnboarded } from './support/seed'
 
 // A8: IndexedDB failing never falls back to localStorage; the app blocks with a clear screen instead.
@@ -36,7 +37,7 @@ test('(b) a write that hits the quota blocks editing and exports the last commit
   await page.evaluate(() => {
     IDBObjectStore.prototype.put = function () { throw new DOMException('quota', 'QuotaExceededError') }
   })
-  await page.getByRole('button', { name: 'Add block' }).click()
+  await addFromMenu(page, 'Block')
   const dialog = page.getByRole('dialog', { name: 'New block' })
   await dialog.getByLabel('Title').fill('Unsaved block')
   await dialog.getByLabel('Starts').fill('12:00')
