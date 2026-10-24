@@ -4,6 +4,7 @@ import { createPinia, setActivePinia } from 'pinia'
 import type { ProposalRepository } from '@/core/model'
 import { STORAGE_KEYS } from '@/core/model'
 import { createEmptyDocument } from '@/core/documents'
+import { calendarExport } from '@/core/calendarExport'
 import { LocalStorageRepository } from '@/repositories/LocalStorageRepository'
 import { LocalStorageProposalRepository } from '@/repositories/LocalStorageProposalRepository'
 import { configurePlannerStore, usePlannerStore } from '@/stores/plannerStore'
@@ -26,7 +27,11 @@ it('shows the exact proposal without applying it, then commits only on the expli
   const runExclusive = async <T,>(task: () => Promise<T>) => task()
   const plannerRepository = new LocalStorageRepository({ storage, events: new EventTarget(), runExclusive, now, newId, locale: () => 'en', timeZone: () => 'UTC' })
   repository = new LocalStorageProposalRepository({ storage, runExclusive, now, newId })
-  const proposal = await repository.create({ contractVersion: '1.0', workspaceId: document.workspaceId, baseRevision: 0, summary: 'A focused hour', ops: [{ op: 'add_block', block: { categoryId: 'focus', title: 'Focused planning', days: [1], start: 540, end: 600 } }] }, 'import')
+  const event = { title: 'Holiday', allDay: true, start: '2026-10-24T00:00:00+14:00', end: '2026-10-25T00:00:00+14:00', attendees: [] }
+  const proposal = await repository.create({ contractVersion: '1.0', workspaceId: document.workspaceId, baseRevision: 0, summary: 'A focused hour', ops: [
+    { op: 'add_block', block: { categoryId: 'focus', title: 'Focused planning', days: [1], start: 540, end: 600 } },
+    { op: 'add_event', event },
+  ] }, 'import')
   const approve = vi.spyOn(repository, 'approve')
   const pinia = createPinia(); setActivePinia(pinia)
   configurePlannerStore({ repository: plannerRepository, now, newId, locale: () => 'en', timeZone: () => 'UTC' })
@@ -43,11 +48,15 @@ it('shows the exact proposal without applying it, then commits only on the expli
   expect(after.textContent).toContain('Mon')
   expect(after.textContent).toContain('9:00 AM – 10:00 AM')
   expect(after.textContent).not.toMatch(/categoryId|preview-1|"start"/)
+  const eventSummary = window.document.querySelectorAll('[data-testid="change-after"]')[1]!
+  expect(eventSummary.textContent).toContain('Oct 24, 2026 – Oct 24, 2026')
+  expect(eventSummary.textContent).not.toContain('Oct 23')
   const raw = window.document.querySelector<HTMLDetailsElement>('[role="dialog"] details.raw')!
   expect(raw.open).toBe(false)
   expect(raw.querySelector('pre')?.textContent).toContain('"categoryId"')
   expect(approve).not.toHaveBeenCalled()
   expect(planner.document?.blocks).toHaveLength(0)
+  expect(planner.document?.events).toHaveLength(0)
   const button = [...window.document.querySelectorAll<HTMLButtonElement>('[role="dialog"] button')].find(button => button.textContent?.trim() === 'Approve')!
   await vi.waitFor(() => expect(button.disabled).toBe(false))
   button.click()
@@ -56,4 +65,7 @@ it('shows the exact proposal without applying it, then commits only on the expli
   await nextTick()
   expect(host.querySelector('[data-testid="applied-blocks"]')?.textContent).toContain('Focused planning')
   expect(planner.document?.revision).toBe(1)
+  expect(planner.document?.events).toEqual([expect.objectContaining(event)])
+  expect(calendarExport(planner.document!.events, { now }))
+    .toContain('DTSTART;VALUE=DATE:20261024\r\nDTEND;VALUE=DATE:20261025')
 })

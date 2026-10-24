@@ -1,4 +1,5 @@
 import type { Category } from '@/core/model'
+import { addLocalDays } from '@/core/time'
 import { formatDate, formatMinute } from '@/features/week/localTime'
 
 export interface SummaryRow { label: string; value: string }
@@ -16,10 +17,8 @@ function weekday(day: number, locale: string): string {
   return new Intl.DateTimeFormat(locale, { weekday: 'short', timeZone: 'UTC' }).format(Date.UTC(2000, 0, 2 + day))
 }
 
-function dateTime(value: string, context: SummaryContext, allDay: boolean): string {
-  const options: Intl.DateTimeFormatOptions = allDay
-    ? { dateStyle: 'medium', timeZone: 'UTC' }
-    : { dateStyle: 'medium', timeStyle: 'short', timeZone: context.timeZone }
+function dateTime(value: string, context: SummaryContext): string {
+  const options: Intl.DateTimeFormatOptions = { dateStyle: 'medium', timeStyle: 'short', timeZone: context.timeZone }
   return new Intl.DateTimeFormat(context.locale, options).format(new Date(value))
 }
 
@@ -44,8 +43,11 @@ export function summarizeEntity(value: unknown, context: SummaryContext): Summar
   if (typeof entity.start === 'number' && typeof entity.end === 'number') {
     rows.push(row('time', `${formatMinute(entity.start, locale)} – ${formatMinute(entity.end, locale)}`))
   } else if (typeof entity.start === 'string' && typeof entity.end === 'string') {
-    const allDay = entity.allDay === true
-    rows.push(row('when', `${dateTime(entity.start, context, allDay)} – ${dateTime(entity.end, context, allDay)}`))
+    // All-day export preserves stored calendar dates and uses an exclusive end.
+    const when = entity.allDay === true
+      ? `${formatDate(entity.start.slice(0, 10), locale, { dateStyle: 'medium' })} – ${formatDate(addLocalDays(entity.end.slice(0, 10), -1), locale, { dateStyle: 'medium' })}`
+      : `${dateTime(entity.start, context)} – ${dateTime(entity.end, context)}`
+    rows.push(row('when', when))
   }
   if (typeof entity.durationMin === 'number') rows.push(row('duration', t('proposals.minutes', { minutes: entity.durationMin })))
   if (typeof entity.priority === 'number') rows.push(row('priority', t(`tasks.priority.${entity.priority}`)))
