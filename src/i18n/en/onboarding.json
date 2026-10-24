@@ -10,12 +10,12 @@
   },
   "steps": {
     "0": {
-      "title": "Pick your categories",
-      "description": "Choose what fills your week. Rename or recolor anything, and skip what you do not need."
+      "title": "Your week has 168 hours. Decide where they go.",
+      "description": "No account. Everything stays on this device."
     },
     "1": {
-      "title": "Sketch a typical week",
-      "description": "Add typical blocks for the categories you picked. You can edit them later."
+      "title": "Adjust your typical week",
+      "description": "Keep the typical blocks you want and adjust each category's goal. You can change it later."
     },
     "2": {
       "title": "Add a first task",
@@ -29,8 +29,28 @@
   "everyDay": "Every day",
   "needCategories": "Pick at least one category in step 1, or skip this step.",
   "back": "Back",
-  "skip": "Skip",
   "next": "Next",
   "finish": "Finish",
-  "noTaskCategory": "No category, skip the task"
+  "noTaskCategory": "No category, skip the task",
+  "notNow": "Not now",
+  "counter": "{planned} of 168 h planned",
+  "counterFree": "{free} h free",
+  "counterOver": "You're {over} h over the 168",
+  "perWeek": "{hours} h per week",
+  "edit": "Edit {name}",
+  "editGoal": "Change the goal for {name}",
+  "goalLabel": "Goal for {name}",
+  "goal": {
+    "max": "Max {hours} h",
+    "min": "Min {hours} h",
+    "none": "No goal"
+  },
+  "done": {
+    "title": "Your week is ready",
+    "categories": "{count} category | {count} categories",
+    "blocks": "{count} block | {count} blocks",
+    "summary": "Saved {categories} and {blocks} on this device.",
+    "task": "“{title}” is in your tasks and will fit into your week.",
+    "seeWeek": "See in Week"
+  }
 }

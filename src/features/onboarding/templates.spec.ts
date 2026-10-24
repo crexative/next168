@@ -4,14 +4,14 @@ import { validateDocument } from '@/core/documents'
 import { computeStats } from '@/core/stats'
 import { overlaps } from '@/core/time'
 import type { Category } from '@/core/model'
-import { buildOnboardingResult, CATEGORY_TEMPLATES, defaultTaskCategoryId, defaultTaskTemplateId, type TemplateChoice } from './templates'
+import { buildOnboardingResult, CATEGORY_TEMPLATES, defaultTaskCategoryId, defaultTaskTemplateId, goalHoursValid, plannedMinutes, presetWeeklyMinutes, type TemplateChoice } from './templates'
 
 const NOW = new Date('2026-10-24T12:00:00Z')
 let counter = 0
 const environment = { newId: () => `id-${++counter}`, now: NOW }
 
 const allChoices = (): TemplateChoice[] => CATEGORY_TEMPLATES.map((template) => ({
-  templateId: template.id, selected: true, name: template.id, colorKey: template.colorKey, sketch: true,
+  templateId: template.id, selected: true, name: template.id, colorKey: template.colorKey, sketch: true, goal: { ...template.goal },
 }))
 
 describe('onboarding templates', () => {
@@ -45,7 +45,7 @@ describe('onboarding templates', () => {
   })
 
   it('honours renamed and recolored choices', () => {
-    const choices: TemplateChoice[] = [{ templateId: 'work', selected: true, name: ' Studio ', colorKey: 'red', sketch: true }]
+    const choices: TemplateChoice[] = [{ templateId: 'work', selected: true, name: ' Studio ', colorKey: 'red', sketch: true, goal: { type: 'max', hoursPerWeek: 40 } }]
     const result = buildOnboardingResult(choices, { title: '', templateId: 'work', durationMin: 60 }, environment)
     expect(result.categories[0]).toMatchObject({ name: 'Studio', colorKey: 'red' })
     expect(result.blocks[0]!.title).toBe('Studio')
@@ -71,5 +71,36 @@ describe('onboarding templates', () => {
     expect(defaultTaskCategoryId([{ ...categories[0]!, name: 'Rest' }, categories[1]!], '')).toBe('c-work')
     expect(defaultTaskCategoryId(categories.slice(0, 1), '')).toBe('c-sleep')
     expect(defaultTaskCategoryId([], '')).toBe('')
+  })
+})
+
+describe('onboarding week counter and edits', () => {
+  it('offers Sleep and Work already ticked and nothing else', () => {
+    expect(CATEGORY_TEMPLATES.filter((template) => template.preselected).map((template) => template.id)).toEqual(['sleep', 'work'])
+  })
+
+  it('adds up the typical week of the ticked categories', () => {
+    const only = (...ids: string[]) => allChoices().map((choice) => ({ ...choice, selected: ids.includes(choice.templateId) }))
+    expect(plannedMinutes(only('sleep', 'work'))).toBe((56 + 40) * 60)
+    expect(plannedMinutes(only())).toBe(0)
+    expect(plannedMinutes(only('sleep').map((choice) => ({ ...choice, sketch: false })))).toBe(0)
+    expect(presetWeeklyMinutes({ start: 23 * 60, end: 7 * 60, days: [0, 1] })).toBe(2 * 8 * 60)
+  })
+
+  it('stores an edited goal, and falls back to the template goal when its hours are unusable', () => {
+    const choices = allChoices().map((choice) => choice.templateId === 'work' ? { ...choice, goal: { type: 'max' as const, hoursPerWeek: 32 } } : choice.templateId === 'sleep' ? { ...choice, goal: { type: 'min' as const, hoursPerWeek: 0 } } : choice)
+    const result = buildOnboardingResult(choices, { title: '', templateId: 'work', durationMin: 60 }, environment)
+    expect(result.categories.find((category) => category.name === 'work')!.goal).toEqual({ type: 'max', hoursPerWeek: 32 })
+    expect(result.categories.find((category) => category.name === 'sleep')!.goal).toEqual({ type: 'min', hoursPerWeek: 49 })
+    expect(goalHoursValid({ type: 'none', hoursPerWeek: 0 })).toBe(true)
+    expect(goalHoursValid({ type: 'min', hoursPerWeek: 169 })).toBe(false)
+  })
+
+  it('reuses an existing category with the same name instead of duplicating it', () => {
+    const existing: Category[] = [{ id: 'c-existing', name: 'WORK', colorKey: 'red', goal: { type: 'none', hoursPerWeek: 0 } }]
+    const result = buildOnboardingResult(allChoices().filter((choice) => choice.templateId === 'work'), { title: 'Plan', templateId: 'work', durationMin: 30 }, { ...environment, existing })
+    expect(result.categories).toEqual([])
+    expect(result.blocks[0]!.categoryId).toBe('c-existing')
+    expect(result.tasks[0]!.categoryId).toBe('c-existing')
   })
 })

@@ -10,12 +10,12 @@
   },
   "steps": {
     "0": {
-      "title": "Kategorien wählen",
-      "description": "Wählen Sie, was Ihre Woche füllt. Benennen oder färben Sie alles um und überspringen Sie, was Sie nicht brauchen."
+      "title": "Deine Woche hat 168 Stunden. Entscheide, wofür sie sind.",
+      "description": "Kein Konto. Alles bleibt auf diesem Gerät."
     },
     "1": {
-      "title": "Typische Woche skizzieren",
-      "description": "Fügen Sie typische Blöcke für die gewählten Kategorien hinzu. Sie können sie später ändern."
+      "title": "Deine Standardwoche anpassen",
+      "description": "Behalte die typischen Blöcke, die du willst, und passe das Ziel jeder Kategorie an. Du kannst es später ändern."
     },
     "2": {
       "title": "Erste Aufgabe hinzufügen",
@@ -29,8 +29,28 @@
   "everyDay": "Jeden Tag",
   "needCategories": "Wählen Sie in Schritt 1 mindestens eine Kategorie oder überspringen Sie diesen Schritt.",
   "back": "Zurück",
-  "skip": "Überspringen",
   "next": "Weiter",
   "finish": "Fertig",
-  "noTaskCategory": "Keine Kategorie, Aufgabe überspringen"
+  "noTaskCategory": "Keine Kategorie, Aufgabe überspringen",
+  "notNow": "Jetzt nicht",
+  "counter": "{planned} von 168 h geplant",
+  "counterFree": "{free} h frei",
+  "counterOver": "Du liegst {over} h über den 168",
+  "perWeek": "{hours} h pro Woche",
+  "edit": "{name} bearbeiten",
+  "editGoal": "Ziel für {name} ändern",
+  "goalLabel": "Ziel für {name}",
+  "goal": {
+    "max": "Max. {hours} h",
+    "min": "Min. {hours} h",
+    "none": "Kein Ziel"
+  },
+  "done": {
+    "title": "Deine Woche ist bereit",
+    "categories": "{count} Kategorie | {count} Kategorien",
+    "blocks": "{count} Block | {count} Blöcke",
+    "summary": "{categories} und {blocks} auf diesem Gerät gespeichert.",
+    "task": "„{title}“ steht in deinen Aufgaben und passt in deine Woche.",
+    "seeWeek": "In Woche ansehen"
+  }
 }
