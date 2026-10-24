@@ -1,7 +1,8 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import { onBeforeUnmount, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import Icon from '@/ui/Icon.vue'
+import { isHover, watchPressEnd } from '@/ui/pressEnd'
 
 defineProps<{ title: string; subtitle?: string; color: string; completeLabel: string; removeLabel: string }>()
 const emit = defineEmits<{ complete: []; remove: [] }>()
@@ -10,23 +11,39 @@ const { t } = useI18n()
 const SWIPE_COMPLETE_PX = 96
 const offset = ref(0)
 let startX: number | undefined
+let stopWatchingPress: (() => void) | undefined
+
+// A swipe whose release happens elsewhere (or is cut by the window losing focus) never completes the task.
+function cancelSwipe(): void {
+  stopWatchingPress?.()
+  stopWatchingPress = undefined
+  startX = undefined
+  offset.value = 0
+}
 
 function onDown(event: PointerEvent): void {
+  cancelSwipe()
   startX = event.clientX
+  stopWatchingPress = watchPressEnd(event.pointerId, cancelSwipe)
 }
 
 function onMove(event: PointerEvent): void {
   if (startX === undefined) return
+  if (isHover(event)) {
+    cancelSwipe()
+    return
+  }
   offset.value = Math.min(0, event.clientX - startX)
 }
 
 function onUp(): void {
   if (startX === undefined) return
   const completed = offset.value <= -SWIPE_COMPLETE_PX
-  startX = undefined
-  offset.value = 0
+  cancelSwipe()
   if (completed) emit('complete')
 }
+
+onBeforeUnmount(() => stopWatchingPress?.())
 </script>
 
 <template>
@@ -38,7 +55,7 @@ function onUp(): void {
       @pointerdown="onDown"
       @pointermove="onMove"
       @pointerup="onUp"
-      @pointercancel="onUp"
+      @pointercancel="cancelSwipe"
     >
       <button class="check" type="button" :aria-label="completeLabel" @click="emit('complete')">
         <span class="check-ring" :style="{ borderColor: color }" />
