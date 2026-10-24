@@ -23,7 +23,17 @@ describe('proposal copy', () => {
         expect(label).not.toBe(source)
       }
     }
-    expect(i18n.global.t('proposals.sources.mcp', {}, { locale: 'en' })).toBe('Claude via MCP')
     expect(i18n.global.t('proposals.sources.assistant', {}, { locale: 'en' })).toBe('On-device assistant')
+  })
+
+  it.each([
+    ['en', 'Assistant via MCP', 'On-device assistant'],
+    ['es', 'Asistente vía MCP', 'Asistente en el dispositivo'],
+    ['fr', 'Assistant via MCP', "Assistant sur l'appareil"],
+    ['pt', 'Assistente via MCP', 'Assistente no dispositivo'],
+    ['de', 'Assistent über MCP', 'Assistent auf dem Gerät'],
+  ] as const)('keeps unverified MCP attribution neutral in %s', (locale, mcp, assistant) => {
+    expect(i18n.global.t('proposals.sources.mcp', {}, { locale })).toBe(mcp)
+    expect(i18n.global.t('proposals.sources.assistant', {}, { locale })).toBe(assistant)
   })
 })

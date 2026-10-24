@@ -5,7 +5,7 @@
   "loadError": "Chargement impossible. Vérifiez la connexion au companion.",
   "untitled": "Changements suggérés",
   "from": "De {source}",
-  "sources": {"mcp": "Claude via MCP", "assistant": "Assistant sur l'appareil", "import": "Fichier importé"},
+  "sources": {"mcp": "Assistant via MCP", "assistant": "Assistant sur l'appareil", "import": "Fichier importé"},
   "review": "Examiner la proposition",
   "revision": "Basée sur la révision {revision}",
   "stale": "Votre planning a changé. Demandez une proposition basée sur la révision actuelle.",

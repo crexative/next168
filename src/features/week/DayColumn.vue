@@ -5,7 +5,7 @@ import type { Category } from '@/core/model'
 import Icon from '@/ui/Icon.vue'
 import { categoryColor } from './categoryColor'
 import { formatTime } from './localTime'
-import { CONFLICT_SPLIT, HOUR_HEIGHT_PX, SLOT_MINUTES, type BlockSegment, type BusySegment } from './weekLayout'
+import { HOUR_HEIGHT_PX, SLOT_MINUTES, layoutDaySegments, type BlockSegment, type BusySegment, type DayPart, type LanePosition } from './weekLayout'
 
 const props = defineProps<{
   date: string
@@ -21,13 +21,13 @@ const emit = defineEmits<{ select: [blockId: string]; create: [date: string, min
 
 const { t, locale } = useI18n()
 const categoriesById = computed(() => new Map(props.categories.map((category) => [category.id, category])))
+const layout = computed(() => layoutDaySegments(props.segments, props.busy))
 
 // A calendar event conflicts when it overlaps a planned block of the same day.
 const conflicting = computed(() => new Set(props.busy
   .filter((item) => item.kind === 'external' && props.segments.some((segment) => segment.startMinute < item.endMinute && item.startMinute < segment.endMinute))
   .map((item) => item.key)))
 
-// One rule for overlap: planned blocks that a conflicting event overlaps take the left lane of the column, the event the right one.
 const conflictingItems = computed(() => props.busy.filter((item) => conflicting.value.has(item.key)))
 const SHORT_EVENT_MINUTES = 45
 
@@ -39,13 +39,17 @@ function isBesideEvent(segment: BlockSegment): boolean {
   return conflictingItems.value.some((item) => segment.startMinute < item.endMinute && item.startMinute < segment.endMinute)
 }
 
-function segmentStyle(segment: BlockSegment) {
-  // The left lane spans CONFLICT_SPLIT of the column; the block's own lanes subdivide it.
-  const span = isBesideEvent(segment) ? CONFLICT_SPLIT : 1
+function itemStyle(item: DayPart & LanePosition) {
   return {
-    ...verticalStyle(segment.startMinute, segment.endMinute),
-    insetInlineStart: `calc(${(segment.lane / segment.lanes) * span * 100}% + 2px)`,
-    width: `calc(${(span * 100) / segment.lanes}% - 4px)`,
+    ...verticalStyle(item.startMinute, item.endMinute),
+    insetInlineStart: `calc(${item.left}% + 2px)`,
+    width: `calc(${item.width}% - 4px)`,
+  }
+}
+
+function segmentStyle(segment: BlockSegment & LanePosition) {
+  return {
+    ...itemStyle(segment),
     '--block-color': categoryColor(categoriesById.value.get(segment.occurrence.categoryId)),
   }
 }
@@ -66,11 +70,11 @@ function onColumnClick(event: MouseEvent): void {
 <template>
   <div class="day-column" :data-date="date" :aria-label="label" role="group" @click="onColumnClick">
     <div
-      v-for="item in busy"
+      v-for="item in layout.busy"
       :key="item.key"
       class="busy"
       :class="[`is-${item.kind}`, { 'is-conflict': conflicting.has(item.key), 'is-short': item.endMinute - item.startMinute < SHORT_EVENT_MINUTES }]"
-      :style="verticalStyle(item.startMinute, item.endMinute)"
+      :style="itemStyle(item)"
       :title="item.title"
       data-testid="busy-overlay"
     >
@@ -78,7 +82,7 @@ function onColumnClick(event: MouseEvent): void {
       <span class="busy-title t-caption">{{ item.title }}</span>
     </div>
     <button
-      v-for="segment in segments"
+      v-for="segment in layout.blocks"
       :key="segment.key"
       type="button"
       class="block"
@@ -144,7 +148,6 @@ function onColumnClick(event: MouseEvent): void {
 
 .busy {
   position: absolute;
-  inset-inline: 1px;
   overflow: hidden;
   padding: 1px var(--space-1);
   border: 1px dashed var(--label-2);
@@ -156,9 +159,7 @@ function onColumnClick(event: MouseEvent): void {
 }
 .busy-title, .conflict-mark { pointer-events: auto; }
 .busy-title { display: block; overflow: hidden; color: var(--label); text-overflow: ellipsis; white-space: nowrap; }
-/* A conflicting event takes the right-hand side of the column so the block it overlaps stays readable beside it. */
 .is-conflict {
-  inset-inline-start: 50%; /* CONFLICT_SPLIT */
   container-type: inline-size;
   border-color: var(--danger);
   background: repeating-linear-gradient(135deg, color-mix(in srgb, var(--label-2) 10%, var(--surface)) 0 4px, var(--surface) 4px 8px);

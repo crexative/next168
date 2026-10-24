@@ -5,7 +5,7 @@
   "loadError": "Não foi possível carregar propostas. Verifique a conexão do companion.",
   "untitled": "Mudanças sugeridas",
   "from": "De {source}",
-  "sources": {"mcp": "Claude via MCP", "assistant": "Assistente no dispositivo", "import": "Arquivo importado"},
+  "sources": {"mcp": "Assistente via MCP", "assistant": "Assistente no dispositivo", "import": "Arquivo importado"},
   "review": "Revisar proposta",
   "revision": "Baseada na revisão {revision}",
   "stale": "Seu plano mudou. Peça uma nova proposta com a revisão atual.",

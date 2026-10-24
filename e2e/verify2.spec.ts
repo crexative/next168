@@ -18,11 +18,11 @@ const ics = [
   'END:VCALENDAR', '',
 ].join('\r\n')
 
-async function seedWithConflicts(page: Page): Promise<void> {
+async function seedWithConflicts(page: Page, document = plan, calendar = ics): Promise<void> {
   await page.clock.install({ time: NOW })
-  await seedKey(page, V2_KEY, JSON.stringify(plan))
+  await seedKey(page, V2_KEY, JSON.stringify(document))
   await openTab(page, 'settings')
-  await page.getByLabel('Import .ics file', { exact: true }).setInputFiles({ name: 'conflicts.ics', mimeType: 'text/calendar', buffer: Buffer.from(ics) })
+  await page.getByLabel('Import .ics file', { exact: true }).setInputFiles({ name: 'conflicts.ics', mimeType: 'text/calendar', buffer: Buffer.from(calendar) })
   await expect(page.getByTestId('calendar-source')).toHaveCount(1)
   await openTab(page, 'week')
 }
@@ -75,6 +75,50 @@ for (const [weekday, date, minutes] of [['Friday', '2026-10-23', 30], ['Thursday
     await expect(busy.locator('[data-testid=calendar-conflict]')).toContainText('Conflict')
   })
 }
+
+// The phone/tablet/desktop projects exercise this at 375/768/1440 px respectively.
+test('staggered overlaps keep all item boxes disjoint and every label topmost', async ({ page }) => {
+  const staggered = {
+    ...plan,
+    blocks: [
+      { ...plan.blocks[0]!, id: 'block-a', title: 'Block A', days: [5], start: 540, end: 660 },
+      { ...plan.blocks[0]!, id: 'block-b', title: 'Block B', days: [5], start: 600, end: 720 },
+    ],
+  }
+  const calendar = [
+    'BEGIN:VCALENDAR', 'VERSION:2.0',
+    'BEGIN:VEVENT', 'UID:staggered@e2e', 'DTSTART:20261023T110000Z', 'DTEND:20261023T120000Z', 'SUMMARY:External event', 'END:VEVENT',
+    'END:VCALENDAR', '',
+  ].join('\r\n')
+  await seedWithConflicts(page, staggered, calendar)
+  const column = await showDay(page, 'Friday', '2026-10-23')
+  const items = column.locator('.block, .busy')
+  await expect(items).toHaveCount(3)
+  await expect(column.locator('.block-title')).toHaveText(['Block A', 'Block B'])
+  await expect(column.locator('.busy-title')).toHaveText('External event')
+
+  const boxes = await Promise.all((await items.all()).map(async (item) => {
+    const box = await item.boundingBox()
+    expect(box).not.toBeNull()
+    expect(box!.width).toBeGreaterThan(0)
+    expect(box!.height).toBeGreaterThan(0)
+    return box!
+  }))
+  for (const [index, box] of boxes.entries()) {
+    for (const other of boxes.slice(index + 1)) {
+      const intersects = box.x < other.x + other.width && other.x < box.x + box.width && box.y < other.y + other.height && other.y < box.y + box.height
+      expect(intersects, `items ${index} and ${boxes.indexOf(other)} intersect`).toBe(false)
+    }
+  }
+  for (const block of await column.locator('.block').all()) {
+    for (const label of ['.block-title', '.block-time']) {
+      expect(await paint(block.locator(label), block), label).toMatchObject({ inside: true, topmost: true })
+    }
+  }
+  const busy = column.locator('.busy')
+  expect(await paint(busy.locator('.busy-title'), busy), 'event title').toMatchObject({ inside: true, topmost: true })
+  expect(await paint(busy.getByTestId('calendar-conflict'), busy), 'conflict mark').toMatchObject({ inside: true, topmost: true })
+})
 
 test('the Assistant screen keeps a 16 px side gutter', async ({ page }) => {
   await page.clock.install({ time: NOW })

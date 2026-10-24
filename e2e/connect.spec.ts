@@ -49,7 +49,7 @@ test('a stale proposal cannot be approved', async ({ page, companion }) => {
   await companion.workspace.save(document, 0)
   await page.goto(`${companion.url}/#pair=${companion.pairingCode}`)
   await page.getByTestId('proposal-badge').click()
-  await expect(page.getByText('From Claude via MCP', { exact: true })).toBeVisible()
+  await expect(page.getByText('From Assistant via MCP', { exact: true })).toBeVisible()
   await expect(page.getByText('From mcp', { exact: true })).toHaveCount(0)
   await page.getByRole('button', { name: proposal.summary }).click()
   await expect(page.getByRole('alert')).toContainText('Ask for a fresh proposal')

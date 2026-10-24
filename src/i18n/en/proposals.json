@@ -5,7 +5,7 @@
   "loadError": "Unable to load proposals. Check the companion connection.",
   "untitled": "Suggested changes",
   "from": "From {source}",
-  "sources": {"mcp": "Claude via MCP", "assistant": "On-device assistant", "import": "Imported file"},
+  "sources": {"mcp": "Assistant via MCP", "assistant": "On-device assistant", "import": "Imported file"},
   "review": "Review proposal",
   "revision": "Based on revision {revision}",
   "stale": "Your planner changed. Ask for a fresh proposal using the current revision.",

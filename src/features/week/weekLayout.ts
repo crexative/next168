@@ -13,14 +13,20 @@ export interface DayPart {
 export interface BlockSegment extends DayPart {
   key: string
   occurrence: DatedOccurrence
-  lane: number
-  lanes: number
 }
 
 export interface BusySegment extends DayPart {
   key: string
   title: string
   kind: 'external' | 'event'
+}
+
+export interface LanePosition {
+  lane: number
+  lanes: number
+  // Percentages of the day column, shared by every item in an overlap cluster.
+  left: number
+  width: number
 }
 
 // Splits an instant range at local midnights so overnight items render on every day they touch.
@@ -43,14 +49,14 @@ export function splitByLocalDay(start: string, end: string, dates: string[], tim
 }
 
 // Side-by-side lanes for items that overlap within one day (overlapping blocks can come from migrated data).
-function assignLanes<T extends { startMinute: number; endMinute: number }>(items: T[]): (T & { lane: number; lanes: number })[] {
+function assignLanes<T extends { startMinute: number; endMinute: number }>(items: T[]): (T & LanePosition)[] {
   const sorted = [...items].sort((a, b) => a.startMinute - b.startMinute || b.endMinute - a.endMinute)
-  const result: (T & { lane: number; lanes: number })[] = []
-  let cluster: (T & { lane: number; lanes: number })[] = []
+  const result: (T & LanePosition)[] = []
+  let cluster: (T & LanePosition)[] = []
   let clusterEnd = -1
   const closeCluster = () => {
     const lanes = Math.max(1, ...cluster.map((item) => item.lane + 1))
-    cluster.forEach((item) => { item.lanes = lanes })
+    cluster.forEach((item) => { item.lanes = lanes; item.left = (item.lane / lanes) * 100; item.width = 100 / lanes })
     result.push(...cluster)
     cluster = []
   }
@@ -59,10 +65,28 @@ function assignLanes<T extends { startMinute: number; endMinute: number }>(items
     const taken = new Set(cluster.filter((other) => other.endMinute > item.startMinute).map((other) => other.lane))
     let lane = 0
     while (taken.has(lane)) lane++
-    cluster.push({ ...item, lane, lanes: 1 })
+    cluster.push({ ...item, lane, lanes: 1, left: 0, width: 100 })
     clusterEnd = Math.max(clusterEnd, item.endMinute)
   }
   closeCluster()
+  return result
+}
+
+export function layoutDaySegments(blocks: BlockSegment[], busy: BusySegment[]): {
+  blocks: (BlockSegment & LanePosition)[]
+  busy: (BusySegment & LanePosition)[]
+} {
+  const items = assignLanes([
+    ...blocks.map((segment) => ({ startMinute: segment.startMinute, endMinute: segment.endMinute, type: 'block' as const, segment })),
+    ...busy.map((segment) => ({ startMinute: segment.startMinute, endMinute: segment.endMinute, type: 'busy' as const, segment })),
+  ])
+  const result: ReturnType<typeof layoutDaySegments> = { blocks: [], busy: [] }
+  for (const item of items) {
+    const { lane, lanes, left, width } = item
+    const position = { lane, lanes, left, width }
+    if (item.type === 'block') result.blocks.push({ ...item.segment, ...position })
+    else result.busy.push({ ...item.segment, ...position })
+  }
   return result
 }
 
@@ -73,7 +97,7 @@ export function blockSegmentsByDate(document: PlannerDocument, dates: string[], 
     splitByLocalDay(occurrence.start, occurrence.end, dates, timeZone).map((part) => ({
       ...part, key: `${occurrence.blockId}@${occurrence.start}@${part.date}`, occurrence,
     })))
-  for (const date of dates) byDate[date] = assignLanes(parts.filter((part) => part.date === date))
+  for (const date of dates) byDate[date] = parts.filter((part) => part.date === date)
   return byDate
 }
 
@@ -93,6 +117,3 @@ export function busySegmentsByDate(external: ExternalOccurrence[], events: Plann
 
 export const HOUR_HEIGHT_PX = 48
 export const SLOT_MINUTES = 30
-
-// Share of the column kept by planned blocks that a calendar event overlaps; the event takes the rest.
-export const CONFLICT_SPLIT = 0.5
