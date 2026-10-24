@@ -82,6 +82,30 @@ test('import file → preview and Week show events with a conflict against the p
   await expect(page.getByText('Project review', { exact: true })).toBeVisible()
 })
 
+test('delete all data leaves no calendar source, neither in the plan nor in the cached texts', async ({ page }) => {
+  await setup(page)
+  await page.getByLabel('Import .ics file', { exact: true }).setInputFiles(fixturePath)
+  await expect(page.getByTestId('calendar-source')).toHaveCount(1)
+  const cachedKeys = () => page.evaluate(() => new Promise<string[]>((resolve, reject) => {
+    const open = indexedDB.open('next168-calendars', 1)
+    open.onerror = () => reject(open.error)
+    open.onsuccess = () => {
+      const request = open.result.transaction('sources').objectStore('sources').getAllKeys()
+      request.onsuccess = () => { open.result.close(); resolve(request.result.map(String)) }
+      request.onerror = () => reject(request.error)
+    }
+  }))
+  expect(await cachedKeys()).toHaveLength(1)
+  await page.getByRole('button', { name: 'Delete all data…' }).click()
+  const dialog = page.getByRole('dialog', { name: 'Delete everything?' })
+  await dialog.getByRole('textbox').fill('delete')
+  await dialog.getByRole('button', { name: 'Delete everything' }).click()
+  await expect(page.getByTestId('data-notice')).toContainText('All data was deleted')
+  await expect(page.getByTestId('calendar-source')).toHaveCount(0)
+  expect(await cachedKeys()).toEqual([])
+  expect(JSON.parse((await page.evaluate(key => window.localStorage.getItem(key), V2_KEY))!).calendarSources).toEqual([])
+})
+
 test('URL without CORS returns a friendly explanation and file-import suggestion', async ({ page }) => {
   const { server, url } = await serve(() => feed('Blocked feed'), false)
   try {
