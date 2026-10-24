@@ -5,7 +5,11 @@
   "loadError": "No se pudieron cargar las propuestas. Revisa la conexión del companion.",
   "untitled": "Cambios sugeridos",
   "from": "De {source}",
-  "sources": {"mcp": "Asistente vía MCP", "assistant": "Asistente en el dispositivo", "import": "Archivo importado"},
+  "sources": {
+    "mcp": "Asistente vía MCP",
+    "assistant": "Asistente en el dispositivo",
+    "import": "Archivo importado"
+  },
   "review": "Revisar propuesta",
   "revision": "Basada en la revisión {revision}",
   "stale": "Tu plan cambió. Solicita una propuesta nueva con la revisión actual.",
@@ -57,5 +61,6 @@
     "min": "Al menos {hours} h por semana",
     "none": "Sin objetivo semanal"
   },
-  "nothing": "Nada"
+  "nothing": "Nada",
+  "loading": "Cargando propuesta…"
 }

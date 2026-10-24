@@ -17,7 +17,8 @@
       "downloadable": "Führt ein kleines Sprachmodell auf diesem Gerät aus. Erfordert einen einmaligen Download.",
       "unavailable": "Dieses Gerät oder dieser Browser kann das Modell nicht ausführen (WebGPU nötig). Schnelle Antworten funktionieren weiterhin.",
       "checking": "Prüfe dieses Gerät…"
-    }
+    },
+    "line": "Schnelle Antworten: {rules} · Modell auf dem Gerät: {model}"
   },
   "optIn": {
     "title": "Modell auf dem Gerät aktivieren",
@@ -48,7 +49,7 @@
     "unknown": "Etwas ist schiefgelaufen. Bitte versuche es erneut."
   },
   "settings": {
-    "header": "Assistent",
+    "header": "Assistent auf dem Gerät",
     "provider": "Antworten mit",
     "needsDownload": "Das Modell ist noch nicht heruntergeladen.",
     "openAssistant": "Assistent öffnen",
@@ -92,12 +93,18 @@
     "nextBlock": "Als Nächstes: {title} am {date} um {time}.",
     "noNextBlock": "Kein anstehender Block in der kommenden Woche.",
     "noOverflow": "Alle offenen Aufgaben passen in deine freie Zeit.",
-    "overflow": "{count} Aufgabe(n) passen nicht oder sind überfällig: {titles}. {amount} nicht eingeplant.",
+    "overflow": "{count} Aufgabe passt nicht oder ist überfällig: {titles}. {amount} nicht eingeplant. | {count} Aufgaben passen nicht oder sind überfällig: {titles}. {amount} nicht eingeplant.",
     "unassigned": "{amount} der Woche sind nicht zugewiesen ({planned} von 168 h geplant).",
     "totalPlanned": "{planned} von 168 h diese Woche geplant.",
     "rulesCannotChange": "Den Plan zu ändern erfordert das Modell auf dem Gerät. Aktiviere es in den Einstellungen unter Assistent.",
     "rulesCannotChangeHere": "Den Plan zu ändern erfordert das Modell auf dem Gerät, das dieses Gerät oder dieser Browser nicht ausführen kann. Schnelle Antworten zu deinen Stunden funktionieren weiterhin.",
     "rulesUnknown": "Ich kann dir die Stunden einer Kategorie diese Woche nennen, was bis zu einem Ziel fehlt, nicht zugewiesene Stunden, deinen nächsten Block und welche Aufgaben nicht passen."
   },
-  "retry": "Erneut versuchen"
+  "retry": "Erneut versuchen",
+  "suggestions": {
+    "label": "Vorgeschlagene Fragen",
+    "hours": "Wie viele freie Stunden habe ich?",
+    "next": "Was kommt als Nächstes?",
+    "overflow": "Welche Aufgaben passen nicht?"
+  }
 }

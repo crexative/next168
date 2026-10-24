@@ -5,7 +5,11 @@
   "loadError": "Vorschläge konnten nicht geladen werden. Prüfe die Companion-Verbindung.",
   "untitled": "Vorgeschlagene Änderungen",
   "from": "Von {source}",
-  "sources": {"mcp": "Assistent über MCP", "assistant": "Assistent auf dem Gerät", "import": "Importierte Datei"},
+  "sources": {
+    "mcp": "Assistent über MCP",
+    "assistant": "Assistent auf dem Gerät",
+    "import": "Importierte Datei"
+  },
   "review": "Vorschlag prüfen",
   "revision": "Basiert auf Revision {revision}",
   "stale": "Deine Planung hat sich geändert. Fordere einen neuen Vorschlag zur aktuellen Revision an.",
@@ -57,5 +61,6 @@
     "min": "Mindestens {hours} Std. pro Woche",
     "none": "Kein Wochenziel"
   },
-  "nothing": "Nichts"
+  "nothing": "Nichts",
+  "loading": "Vorschlag wird geladen…"
 }
