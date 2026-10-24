@@ -35,7 +35,7 @@ const legend = computed(() => {
 
 <template>
   <div class="overview" data-testid="week-overview" :style="{ '--hour-height': `${COMPACT_HOUR_HEIGHT_PX}px` }">
-    <div class="overview-head" role="group" :aria-label="t('week.overview.days')">
+    <div class="overview-head sticky-header" role="group" :aria-label="t('week.overview.days')">
       <span />
       <button
         v-for="(date, index) in dates"
@@ -81,6 +81,7 @@ const legend = computed(() => {
   </div>
 </template>
 
+<style scoped src="./stickyHeader.css"></style>
 <style scoped>
 .overview { padding: 0 var(--space-4) var(--space-4) var(--space-2); }
 .overview-head, .overview-body { display: grid; grid-template-columns: 2.5rem repeat(7, minmax(0, 1fr)); }
@@ -89,8 +90,6 @@ const legend = computed(() => {
   top: calc(var(--safe-top) + var(--toolbar-height));
   z-index: 5;
   padding-block: var(--space-1);
-  /* Opaque: the blocks scrolling under the header must not show through it. */
-  background: var(--bg);
 }
 .overview-day {
   display: flex;

@@ -217,6 +217,7 @@ function onColumnClick(event: MouseEvent): void {
       type="button"
       class="task-chunk"
       :style="box.style"
+      data-layered
       data-testid="week-task"
       :data-task-id="box.task.taskId"
       :data-start-minute="box.task.startMinute"

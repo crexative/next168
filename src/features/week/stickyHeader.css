@@ -1,0 +1,10 @@
+/* The header above the grid stays put while blocks scroll under it. It is the bars' material, thicker (96 %), so a
+   block's label never shows through it; under reduced transparency or increased contrast it is solid. */
+.sticky-header {
+  background: color-mix(in srgb, var(--surface) 96%, transparent);
+  -webkit-backdrop-filter: var(--material-filter);
+  backdrop-filter: var(--material-filter);
+}
+@media (prefers-reduced-transparency: reduce), (prefers-contrast: more) {
+  .sticky-header { background: var(--surface); }
+}

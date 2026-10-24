@@ -159,7 +159,7 @@ onBeforeUnmount(() => {
 
 <template>
   <div class="pager" :data-active-date="dates[index]">
-    <div class="day-strip" role="group" data-toolbar-extension :aria-label="t('week.pager.days')">
+    <div class="day-strip sticky-header" role="group" data-toolbar-extension :aria-label="t('week.pager.days')">
       <button
         v-for="(date, position) in dates"
         :key="date"
@@ -215,6 +215,7 @@ onBeforeUnmount(() => {
   </div>
 </template>
 
+<style scoped src="./stickyHeader.css"></style>
 <style scoped>
 .day-strip {
   position: sticky;
@@ -223,8 +224,6 @@ onBeforeUnmount(() => {
   display: grid;
   grid-template-columns: repeat(7, minmax(0, 1fr));
   padding: var(--space-1) var(--space-2);
-  /* Opaque: the blocks scrolling under the strip must not show through it. */
-  background: var(--bg);
 }
 .strip-day {
   display: flex;

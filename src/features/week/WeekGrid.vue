@@ -26,7 +26,7 @@ const { locale } = useI18n()
 
 <template>
   <div class="week-grid">
-    <div class="grid-header" aria-hidden="true" data-toolbar-extension>
+    <div class="grid-header sticky-header" aria-hidden="true" data-toolbar-extension>
       <span />
       <span v-for="date in dates" :key="date" class="day-heading" :class="{ 'is-today': date === today }">
         <span class="t-caption weekday">{{ formatDate(date, locale, { weekday: 'short' }) }}</span>
@@ -58,6 +58,7 @@ const { locale } = useI18n()
   </div>
 </template>
 
+<style scoped src="./stickyHeader.css"></style>
 <style scoped>
 .week-grid { padding: 0 var(--space-4) var(--space-4) var(--space-2); }
 .grid-header, .grid-body { display: grid; grid-template-columns: 3.25rem repeat(7, minmax(0, 1fr)); }
@@ -68,8 +69,6 @@ const { locale } = useI18n()
   /* Full bleed: the strip spans the toolbar's width, the columns stay on the grid. */
   margin-inline: calc(var(--space-2) * -1) calc(var(--space-4) * -1);
   padding: var(--space-2) var(--space-4) var(--space-2) var(--space-2);
-  /* Opaque: the blocks scrolling under the header must not show through it. */
-  background: var(--bg);
 }
 .day-heading { display: flex; flex-direction: column; align-items: center; gap: 2px; }
 .weekday { color: var(--label-2); text-transform: uppercase; }
