@@ -164,7 +164,7 @@ async function remove(): Promise<void> {
       </li>
       <li v-if="categories.length === 0" class="t-subhead t-secondary empty">{{ t('categories.empty') }}</li>
     </ListGroup>
-    <Button variant="plain" :disabled="!planner.writable" @click="openEditor()">
+    <Button class="add-category" variant="plain" :disabled="!planner.writable" @click="openEditor()">
       <Icon name="plus" :size="20" /> {{ t('categories.add') }}
     </Button>
 
@@ -229,6 +229,8 @@ async function remove(): Promise<void> {
 .chevron { color: var(--label-3); }
 .swatch { width: 14px; height: 14px; border-radius: 50%; flex: none; }
 .empty { padding: var(--space-3) var(--space-4); }
+/* Leading, under the rows' swatches, like the other plain actions in Settings; centred it floated between sections. */
+.add-category { align-self: flex-start; }
 .editor { display: flex; flex-direction: column; gap: var(--space-3); }
 .field { display: flex; flex-direction: column; gap: var(--space-1); }
 .error { color: var(--danger-label); }
