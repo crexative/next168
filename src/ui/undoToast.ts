@@ -6,15 +6,19 @@ export interface UndoToastRequest {
   durationMs?: number
 }
 
-// Long enough to read, reach with the keyboard and decide (WCAG 2.2.1); paused while pointed at or focused.
+// Long enough to read, reach with the keyboard and decide (WCAG 2.2.1); held while pointed at, focused or
+// while the page is hidden.
 export const DEFAULT_DURATION_MS = 15000
+
+// Each reason to hold is tracked on its own: the pointer leaving must not restart the timer while focus stays.
+export type UndoHold = 'pointer' | 'focus' | 'hidden'
 
 const current = ref<{ id: number; message: string; onUndo: () => void } | null>(null)
 let nextId = 0
 let timer: ReturnType<typeof setTimeout> | undefined
 let remainingMs = 0
 let startedAt = 0
-let paused = false
+const holds = new Set<UndoHold>()
 
 function startTimer(): void {
   clearTimeout(timer)
@@ -24,7 +28,7 @@ function startTimer(): void {
 
 function dismiss(): void {
   clearTimeout(timer)
-  paused = false
+  holds.clear()
   current.value = null
 }
 
@@ -32,8 +36,12 @@ function show(request: UndoToastRequest): void {
   nextId += 1
   current.value = { id: nextId, message: request.message, onUndo: request.onUndo }
   remainingMs = request.durationMs ?? DEFAULT_DURATION_MS
-  paused = false
-  startTimer()
+  // Holds belonged to the previous toast's element; a hidden page still holds the new one.
+  const hidden = holds.has('hidden')
+  holds.clear()
+  if (hidden) holds.add('hidden')
+  if (holds.size === 0) startTimer()
+  else clearTimeout(timer)
 }
 
 function undo(): void {
@@ -42,16 +50,17 @@ function undo(): void {
   toast?.onUndo()
 }
 
-function pause(): void {
-  if (!current.value || paused) return
-  paused = true
+function pause(reason: UndoHold = 'pointer'): void {
+  if (reason !== 'hidden' && !current.value) return
+  const wasRunning = current.value !== null && holds.size === 0
+  holds.add(reason)
+  if (!wasRunning) return
   clearTimeout(timer)
   remainingMs = Math.max(0, remainingMs - (Date.now() - startedAt))
 }
 
-function resume(): void {
-  if (!current.value || !paused) return
-  paused = false
+function resume(reason: UndoHold = 'pointer'): void {
+  if (!holds.delete(reason) || holds.size > 0 || !current.value) return
   startTimer()
 }
 

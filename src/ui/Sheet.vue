@@ -5,6 +5,7 @@ import Icon from './Icon.vue'
 import { prefersReducedMotion, useMediaQuery } from './useMediaQuery'
 import { registerUnsavedInput } from './unsavedGuard'
 import { releaseVelocity, rubberBand, shouldDismiss, springTo, type Sample } from './sheetMotion'
+import { isHover, watchPressEnd } from './pressEnd'
 
 // A phone sheet ends with a dismiss button within the thumb's reach (`dismissLabel`, default "Cancel");
 // `noDismiss` leaves it out for a sheet whose own actions already include one.
@@ -32,6 +33,7 @@ let returnFocusTo: HTMLElement | null = null
 let releaseUnsaved: (() => void) | undefined
 let pressStart: { pointerId: number; pointerY: number } | undefined
 let dragStart: { pointerY: number; offset: number } | undefined
+let stopWatchingPress: (() => void) | undefined
 let samples: Sample[] = []
 let exitVelocity = 0
 // Bumped by every open/close so a stale animation never acts on a newer state.
@@ -121,10 +123,40 @@ function requestClose(): void {
 function onGrabDown(event: PointerEvent): void {
   if (isCentered.value || (event.pointerType === 'mouse' && event.button !== 0)) return
   if ((event.target as Element | null)?.closest(INTERACTIVE)) return
+  endPress()
   pressStart = { pointerId: event.pointerId, pointerY: event.clientY }
+  // Released outside the header, cancelled, or the window lost focus: the press (or drag) ends without a flick.
+  stopWatchingPress = watchPressEnd(event.pointerId, () => {
+    stopWatchingPress = undefined
+    cancelPress()
+  })
+}
+
+function endPress(): void {
+  stopWatchingPress?.()
+  stopWatchingPress = undefined
+  pressStart = undefined
+}
+
+// A press that ended without its release reaching the sheet: no drag stays armed, and a started drag settles back.
+function cancelPress(): void {
+  endPress()
+  if (!dragStart) return
+  dragStart = undefined
+  if (prefersReducedMotion()) applyOffset(0)
+  else animation = springTo(offset, 0, applyOffset)
+}
+
+// Capture lost without a release (the element moved, the browser took over): the drag cannot finish normally.
+function onLostCapture(): void {
+  if (dragStart) cancelPress()
 }
 
 function onGrabMove(event: PointerEvent): void {
+  if (isHover(event)) {
+    if (pressStart || dragStart) cancelPress()
+    return
+  }
   if (!dragStart) {
     if (!pressStart || pressStart.pointerId !== event.pointerId || Math.abs(event.clientY - pressStart.pointerY) < DRAG_THRESHOLD_PX) return
     // Grabbing interrupts any running spring and tracks from where the sheet is now.
@@ -139,7 +171,7 @@ function onGrabMove(event: PointerEvent): void {
 }
 
 function onGrabUp(event: PointerEvent): void {
-  pressStart = undefined
+  endPress()
   if (!dragStart) return
   dragStart = undefined
   const velocity = releaseVelocity([...samples, { time: event.timeStamp, y: event.clientY }])
@@ -166,6 +198,8 @@ watch(() => props.open, async (open) => {
     // The title, not the first control: opening a sheet must not light up a focus ring on its close button.
     ;(heading.value ?? panel.value)?.focus({ preventScroll: true })
   } else if (rendered.value) {
+    endPress()
+    dragStart = undefined
     delete document.documentElement.dataset.sheetOpen
     if (await animateOut()) {
       returnFocusTo?.focus()
@@ -180,6 +214,7 @@ watch(() => props.open && props.dirty, (unsaved) => {
 }, { immediate: true })
 
 onBeforeUnmount(() => {
+  endPress()
   animation?.stop()
   releaseUnsaved?.()
   delete document.documentElement.dataset.sheetOpen
@@ -204,7 +239,8 @@ onBeforeUnmount(() => {
           @pointerdown="onGrabDown"
           @pointermove="onGrabMove"
           @pointerup="onGrabUp"
-          @pointercancel="onGrabUp"
+          @pointercancel="cancelPress"
+          @lostpointercapture="onLostCapture"
         >
           <span class="sheet-handle" :title="t('common.dragHandle')" aria-hidden="true" />
           <div class="sheet-header">

@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import { onBeforeUnmount, ref } from 'vue'
+import { watchPressEnd } from './pressEnd'
 
 // One rule for every action: filled for the primary one (hugs its label), tinted for secondary ones, plain for
 // tertiary ones (flush with the content edge). `block` spans the width only on narrow screens; `href` renders a
@@ -13,8 +14,23 @@ withDefaults(defineProps<{
   href?: string
 }>(), { variant: 'filled', type: 'button' })
 
-// Press feedback starts on pointer-down, before the click event fires.
+// Press feedback starts on pointer-down, before the click event fires; it ends wherever the press ends.
 const pressed = ref(false)
+let stopWatchingPress: (() => void) | undefined
+
+function press(event: PointerEvent): void {
+  release()
+  pressed.value = true
+  stopWatchingPress = watchPressEnd(event.pointerId, release)
+}
+
+function release(): void {
+  stopWatchingPress?.()
+  stopWatchingPress = undefined
+  pressed.value = false
+}
+
+onBeforeUnmount(release)
 </script>
 
 <template>
@@ -27,10 +43,10 @@ const pressed = ref(false)
     :disabled="href ? undefined : disabled"
     :aria-disabled="href && disabled ? 'true' : undefined"
     :data-pressed="pressed || undefined"
-    @pointerdown="pressed = true"
-    @pointerup="pressed = false"
-    @pointercancel="pressed = false"
-    @pointerleave="pressed = false"
+    @pointerdown="press"
+    @pointerup="release"
+    @pointercancel="release"
+    @pointerleave="release"
   >
     <slot />
   </component>

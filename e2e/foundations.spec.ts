@@ -526,6 +526,41 @@ test.describe('sheets', () => {
     await page.mouse.up()
   })
 
+  test('ignores hover after a mouse press is released outside the header', async ({ page }, testInfo) => {
+    test.skip(testInfo.project.name !== 'phone')
+    await openAddBlock(page)
+    const transform = () => page.locator('.sheet-panel').evaluate((element) => (element as HTMLElement).style.transform)
+    const handle = (await page.locator('.sheet-handle').boundingBox())!
+    const x = handle.x + handle.width / 2
+    await page.mouse.move(x, handle.y + 2)
+    await page.mouse.down()
+    // One step straight to the scrim: the header never sees a move or the release.
+    await page.mouse.move(x, 20)
+    await page.mouse.up()
+    await page.mouse.move(x, handle.y + 2)
+    await page.mouse.move(x, handle.y + 60, { steps: 4 })
+    expect(await transform()).toBe('translateY(0px)')
+  })
+
+  test('the day pager ignores hover after a press released outside it', async ({ page }, testInfo) => {
+    test.skip(testInfo.project.name !== 'phone')
+    await startWith(page)
+    await openView(page, 'week')
+    const track = page.getByTestId('pager-track')
+    const before = await track.evaluate((element) => (element as HTMLElement).style.transform)
+    const box = (await page.locator('.pager-viewport').boundingBox())!
+    // Mid-screen: below the sticky day strip, above the tab bar, wherever the grid has scrolled.
+    const y = 450
+    expect(box.y).toBeLessThan(y)
+    await page.mouse.move(box.x + 200, y)
+    await page.mouse.down()
+    await page.mouse.move(box.x + 200, 5)
+    await page.mouse.up()
+    await page.mouse.move(box.x + 200, y)
+    await page.mouse.move(box.x + 60, y, { steps: 6 })
+    expect(await track.evaluate((element) => (element as HTMLElement).style.transform)).toBe(before)
+  })
+
   test('a phone sheet ends with a Cancel within thumb reach', async ({ page }, testInfo) => {
     test.skip(testInfo.project.name !== 'phone')
     const dialog = await openAddBlock(page)

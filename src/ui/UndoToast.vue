@@ -18,8 +18,28 @@ function onKeydown(event: KeyboardEvent): void {
   undo()
 }
 
-onMounted(() => window.addEventListener('keydown', onKeydown))
-onBeforeUnmount(() => window.removeEventListener('keydown', onKeydown))
+// Focus moving between parts of the toast is not leaving it.
+function onFocusOut(event: FocusEvent): void {
+  const toastElement = event.currentTarget as HTMLElement
+  if (event.relatedTarget instanceof Node && toastElement.contains(event.relatedTarget)) return
+  resume('focus')
+}
+
+// Time spent in another tab does not count: the person cannot act on the toast there.
+function onVisibilityChange(): void {
+  if (document.visibilityState === 'hidden') pause('hidden')
+  else resume('hidden')
+}
+
+onMounted(() => {
+  window.addEventListener('keydown', onKeydown)
+  document.addEventListener('visibilitychange', onVisibilityChange)
+  onVisibilityChange()
+})
+onBeforeUnmount(() => {
+  window.removeEventListener('keydown', onKeydown)
+  document.removeEventListener('visibilitychange', onVisibilityChange)
+})
 </script>
 
 <template>
@@ -30,10 +50,10 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKeydown))
         :key="toast.id"
         class="toast"
         data-testid="undo-toast"
-        @pointerenter="pause"
-        @pointerleave="resume"
-        @focusin="pause"
-        @focusout="resume"
+        @pointerenter="pause('pointer')"
+        @pointerleave="resume('pointer')"
+        @focusin="pause('focus')"
+        @focusout="onFocusOut"
       >
         <span class="t-subhead">{{ toast.message }}</span>
         <button class="toast-action t-headline" type="button" @click="undo">{{ t('common.undo') }}</button>

@@ -2,6 +2,7 @@
 import { onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import type { BlockActual, Category } from '@/core/model'
+import { isHover, watchPressEnd } from '@/ui/pressEnd'
 import { springTo } from '@/ui/sheetMotion'
 import { prefersReducedMotion } from '@/ui/useMediaQuery'
 import DayColumn from './DayColumn.vue'
@@ -38,6 +39,7 @@ let offset = 0
 let animation: { stop(): void } | undefined
 let gesture: { pointerId: number; startX: number; startY: number; baseOffset: number; axis: 'pending' | 'x'; width: number; samples: PointerSample[] } | undefined
 let suppressClick = false
+let stopWatchingPress: (() => void) | undefined
 
 // The model index only follows a change once the parent has re-rendered, so a settle passes its target explicitly.
 function applyOffset(value: number, position = index.value): void {
@@ -79,10 +81,28 @@ function onPointerDown(event: PointerEvent): void {
     pointerId: event.pointerId, startX: event.clientX, startY: event.clientY, baseOffset: offset,
     axis: 'pending', width: viewport.value?.clientWidth ?? 0, samples: [{ time: event.timeStamp, x: event.clientX }],
   }
+  stopWatchingPress?.()
+  // A press released outside the pager, cancelled, or cut by the window losing focus settles where it is.
+  stopWatchingPress = watchPressEnd(event.pointerId, () => {
+    stopWatchingPress = undefined
+    cancelGesture()
+  })
+}
+
+function cancelGesture(): void {
+  stopWatchingPress?.()
+  stopWatchingPress = undefined
+  if (!gesture) return
+  gesture = undefined
+  if (offset !== 0) settleOn(index.value)
 }
 
 function onPointerMove(event: PointerEvent): void {
   if (!gesture || event.pointerId !== gesture.pointerId) return
+  if (isHover(event)) {
+    cancelGesture()
+    return
+  }
   const dx = event.clientX - gesture.startX
   const dy = event.clientY - gesture.startY
   if (gesture.axis === 'pending') {
@@ -101,6 +121,8 @@ function onPointerMove(event: PointerEvent): void {
 
 function onPointerUp(event: PointerEvent): void {
   if (!gesture || event.pointerId !== gesture.pointerId) return
+  stopWatchingPress?.()
+  stopWatchingPress = undefined
   const { axis, samples, width } = gesture
   gesture = undefined
   if (axis !== 'x') {
@@ -129,7 +151,10 @@ function dayLabel(date: string): string {
 }
 watch(index, () => { if (!gesture && !animation) applyOffset(offset) })
 onMounted(() => applyOffset(0))
-onBeforeUnmount(() => animation?.stop())
+onBeforeUnmount(() => {
+  stopWatchingPress?.()
+  animation?.stop()
+})
 </script>
 
 <template>
