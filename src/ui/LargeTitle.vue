@@ -38,8 +38,11 @@ onBeforeUnmount(() => observer?.disconnect())
   background: transparent;
   transition: background-color 0.15s;
 }
-/* Opaque on purpose: a translucent bar let scrolled content (axis labels, block text) ghost through as a grey smear on the left. */
-.toolbar[data-collapsed] { background: var(--surface); }
+.toolbar[data-collapsed] {
+  background: var(--material);
+  -webkit-backdrop-filter: var(--material-filter);
+  backdrop-filter: var(--material-filter);
+}
 .toolbar-inner {
   display: flex;
   align-items: center;

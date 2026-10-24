@@ -59,35 +59,34 @@ test.describe('phone fixes', () => {
     }
   }
 
-  test('the collapsed week toolbar paints a uniform left half over scrolled content', async ({ page }) => {
+  test('the collapsed week toolbar is translucent unless reduced transparency or increased contrast is preferred', async ({ page }) => {
     await page.setViewportSize({ width: 412, height: 915 })
     await openSleepDocument(page, 'week', '2026-10-24T09:00:00Z')
     await page.evaluate(() => window.scrollTo(0, 150))
     await expect(page.locator('.toolbar')).toHaveAttribute('data-collapsed', 'true')
     await page.waitForFunction(() => document.getAnimations().length === 0)
 
-    const box = (await page.locator('.toolbar').boundingBox())!
-    const png = await page.screenshot({ clip: { x: 0, y: box.y, width: Math.round(412 * 0.4), height: box.height } })
-    const spread = await page.evaluate(async (base64) => {
-      const image = new Image()
-      image.src = `data:image/png;base64,${base64}`
-      await image.decode()
-      const canvas = document.createElement('canvas')
-      canvas.width = image.width
-      canvas.height = image.height
-      const context = canvas.getContext('2d')!
-      context.drawImage(image, 0, 0)
-      const { data } = context.getImageData(0, 0, canvas.width, canvas.height)
-      let min = 255
-      let max = 0
-      for (let index = 0; index < data.length; index += 4) {
-        const luma = (data[index]! + data[index + 1]! + data[index + 2]!) / 3
-        min = Math.min(min, luma)
-        max = Math.max(max, luma)
+    const toolbar = page.locator('.toolbar')
+    // Playwright 1.63 lacks reduced-transparency emulation; the phone project uses Chromium.
+    const session = await page.context().newCDPSession(page)
+    for (const preference of ['no-preference', 'reduce', 'no-preference'] as const) {
+      await session.send('Emulation.setEmulatedMedia', {
+        features: [
+          { name: 'prefers-reduced-transparency', value: preference },
+          { name: 'prefers-contrast', value: 'no-preference' },
+        ],
+      })
+      expect(await page.evaluate((value) => matchMedia(`(prefers-reduced-transparency: ${value})`).matches, preference)).toBe(true)
+      if (preference === 'reduce') {
+        await expect(toolbar).toHaveCSS('backdrop-filter', 'none')
+      } else {
+        await expect(toolbar).not.toHaveCSS('backdrop-filter', 'none')
       }
-      return max - min
-    }, png.toString('base64'))
-    expect(spread).toBeLessThanOrEqual(3)
+    }
+    await session.detach()
+
+    await page.emulateMedia({ contrast: 'more' })
+    await expect(toolbar).toHaveCSS('backdrop-filter', 'none')
   })
 
   test('the overnight block shows distinct spans for yesterday\'s tail and tonight\'s start', async ({ page }) => {
