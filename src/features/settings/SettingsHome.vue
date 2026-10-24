@@ -39,5 +39,7 @@ const page = useSettingsPage()
 /* The card clips its row, so the row draws its focus ring inside itself, rounded like the card. */
 .more-link:focus-visible { outline-offset: -2px; border-radius: var(--radius-card); }
 .more-text { display: flex; flex: 1; flex-direction: column; min-width: 0; }
+/* Long words ("Integraciones", "almacenamiento") break instead of spilling at large text sizes. */
+.more-text > span { overflow-wrap: anywhere; hyphens: auto; }
 .more-chevron { color: var(--label-3); }
 </style>

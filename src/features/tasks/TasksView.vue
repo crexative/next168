@@ -309,6 +309,9 @@ function lateText(task: Task): string {
 <style scoped>
 .tasks { padding: 0 var(--space-4) var(--space-6); }
 .add { display: flex; flex-direction: column; gap: var(--space-3); padding: var(--space-4); background: var(--surface); border-radius: var(--radius-card); }
+/* With large text the card's side margins stop growing (as system margins do), so the field keeps room for its hint. */
+.add { padding-inline: min(var(--space-4), 16px); }
+.add > .field .input { padding-inline: min(var(--space-3), 12px); }
 .details { display: flex; flex-direction: column; gap: var(--space-3); }
 .field { display: flex; flex: 1; flex-direction: column; gap: var(--space-1); min-width: 8rem; }
 .field-row { display: flex; flex-wrap: wrap; gap: var(--space-3); }
