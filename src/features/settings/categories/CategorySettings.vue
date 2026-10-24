@@ -1,9 +1,10 @@
 <script setup lang="ts">
-import { computed, reactive, ref } from 'vue'
+import { computed, reactive, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { COLOR_KEYS, type Category, type ColorKey, type Goal } from '@/core/model'
 import { categoryColor } from '@/features/insights/categoryColor'
 import { formatHoursDecimal } from '@/features/insights/format'
+import { assertWorkspace } from '@/features/insights/workspaceGuard'
 import { usePlannerStore } from '@/stores/plannerStore'
 import Button from '@/ui/Button.vue'
 import Icon from '@/ui/Icon.vue'
@@ -21,7 +22,7 @@ const planner = usePlannerStore()
 const toast = useUndoToast()
 
 const categories = computed(() => planner.document?.categories ?? [])
-const editing = ref<{ id: string | null } | null>(null)
+const editing = ref<{ id: string | null; workspaceId: string | undefined } | null>(null)
 const form = reactive<CategoryForm>({ name: '', colorKey: 'blue', goalType: 'none', hours: 1 })
 const reassignTo = ref('')
 const submitted = ref(false)
@@ -39,6 +40,9 @@ const dirty = computed(() => {
   return (Object.keys(baseline) as (keyof CategoryForm)[]).some((key) => baseline[key] !== form[key])
 })
 
+// An open editor refers to categories of the workspace it was opened in.
+watch(() => planner.document?.workspaceId, () => { editing.value = null })
+
 function goalSummary(goal: Goal): string {
   if (goal.type === 'none') return t('categories.goalSummary.none')
   return t(`categories.goalSummary.${goal.type}`, { hours: formatHoursDecimal(goal.hoursPerWeek * 60) })
@@ -48,7 +52,7 @@ function openEditor(category?: Category): void {
   Object.assign(form, category ? formFromCategory(category) : { name: '', colorKey: 'blue' as ColorKey, goalType: 'none' as Goal['type'], hours: 1 })
   submitted.value = false
   reassignTo.value = ''
-  editing.value = { id: category?.id ?? null }
+  editing.value = { id: category?.id ?? null, workspaceId: planner.document?.workspaceId }
 }
 
 function closeEditor(): void {
@@ -59,8 +63,10 @@ async function save(): Promise<void> {
   submitted.value = true
   if (validateCategoryForm(form)) return
   const id = editing.value?.id ?? crypto.randomUUID()
+  const workspaceId = editing.value?.workspaceId
   const next = { name: form.name.trim(), colorKey: form.colorKey, goal: goalFromForm(form) }
   const result = await planner.commit((draft) => {
+    assertWorkspace(draft, workspaceId)
     const existing = draft.categories.find((category) => category.id === id)
     if (existing) {
       Object.assign(existing, next)
@@ -77,7 +83,8 @@ async function remove(): Promise<void> {
   if (!id) return
   const target = isReferenced.value ? effectiveReassign.value : undefined
   const holder: { removed: ReturnType<typeof removeCategory> } = { removed: null }
-  const result = await planner.commit((draft) => { holder.removed = removeCategory(draft, id, target) })
+  const workspaceId = editing.value?.workspaceId
+  const result = await planner.commit((draft) => { assertWorkspace(draft, workspaceId); holder.removed = removeCategory(draft, id, target) })
   const snapshot = holder.removed
   if (!result.ok || !snapshot) return
   closeEditor()

@@ -2,6 +2,7 @@
 import { computed, reactive, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { localDateOf } from '@/core/time'
+import { assertWorkspace } from '@/features/insights/workspaceGuard'
 import { usePlannerStore } from '@/stores/plannerStore'
 import Button from '@/ui/Button.vue'
 import SegmentedControl from '@/ui/SegmentedControl.vue'
@@ -17,13 +18,16 @@ const timeZone = computed(() => planner.document?.settings.timeZone ?? 'UTC')
 const today = computed(() => localDateOf(new Date(), timeZone.value))
 const form = reactive<CheckInFormState>(formFromCheckIn('', undefined))
 const saved = ref(false)
+let formWorkspaceId: string | undefined
 
 function loadDate(date: string): void {
   Object.assign(form, formFromCheckIn(date, planner.document?.checkIns.find((checkIn) => checkIn.date === date)))
+  formWorkspaceId = planner.document?.workspaceId
   saved.value = false
 }
 
-watch(() => planner.document?.workspaceId, () => { if (planner.document && form.date === '') loadDate(today.value) }, { immediate: true })
+// A replaced workspace (import, delete-all, another tab) invalidates whatever the form holds.
+watch(() => planner.document?.workspaceId, () => { if (planner.document) loadDate(form.date || today.value) }, { immediate: true })
 
 function onDateChange(): void {
   if (form.date) loadDate(form.date)
@@ -44,7 +48,9 @@ const stressWithNone = computed(() => [{ value: '0' as const, label: '–' }, ..
 
 async function save(): Promise<void> {
   const next = checkInFromForm(form)
+  const workspaceId = formWorkspaceId
   const result = await planner.commit((draft) => {
+    assertWorkspace(draft, workspaceId)
     draft.checkIns = isEmptyCheckIn(next)
       ? draft.checkIns.filter((checkIn) => checkIn.date !== next.date)
       : upsertCheckIn(draft.checkIns, next)

@@ -1,8 +1,9 @@
 <script setup lang="ts">
-import { computed, onMounted, ref, shallowRef } from 'vue'
+import { computed, onMounted, ref, shallowRef, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { STORAGE_KEYS } from '@/core/model'
 import { createBrowserRepositories } from '@/repositories/browserRepositories'
+import { assertWorkspace } from '@/features/insights/workspaceGuard'
 import { usePlannerStore } from '@/stores/plannerStore'
 import Button from '@/ui/Button.vue'
 import Icon from '@/ui/Icon.vue'
@@ -31,6 +32,9 @@ const persisted = ref<boolean | null>(null)
 const busy = ref(false)
 const deleteOpen = ref(false)
 const typed = ref('')
+
+// A preview or delete confirmation was computed against the workspace that has just been replaced.
+watch(() => planner.document?.workspaceId, () => { preview.value = null; deleteOpen.value = false; typed.value = '' })
 
 const phrase = computed(() => t('data.deleteAll.phrase'))
 const canDelete = computed(() => planner.writable && matchesConfirmation(typed.value, phrase.value))
@@ -122,7 +126,7 @@ async function deleteEverything(): Promise<void> {
   if (!current || !canDelete.value) return
   busy.value = true
   const fresh = freshDocument(current, new Date())
-  const result = await planner.commit((draft) => { replaceContent(draft, fresh) })
+  const result = await planner.commit((draft) => { assertWorkspace(draft, current.workspaceId); replaceContent(draft, fresh) })
   if (result.ok) {
     await replaceSourceTexts(calendarSourceStore(), {})
     await removeLeftovers()

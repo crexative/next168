@@ -1,11 +1,12 @@
 <script setup lang="ts">
-import { computed, onBeforeUnmount, onMounted, reactive, ref } from 'vue'
+import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import type { Category, Task } from '@/core/model'
 import { scheduleTasks } from '@/core/scheduler'
 import { localDateOf } from '@/core/time'
 import { formatDuration } from '@/features/insights/format'
 import { categoryColor } from '@/features/insights/categoryColor'
+import { assertWorkspace } from '@/features/insights/workspaceGuard'
 import { usePlannerStore } from '@/stores/plannerStore'
 import Button from '@/ui/Button.vue'
 import EmptyState from '@/ui/EmptyState.vue'
@@ -40,6 +41,12 @@ const done = computed(() => recentDone(document.value?.tasks ?? []))
 
 const form = reactive({ title: '', durationMin: 60, categoryId: '', dueDate: '', priority: '2' as '1' | '2' | '3' })
 const effectiveCategoryId = computed(() => (categoryById.value.has(form.categoryId) ? form.categoryId : categories.value[0]?.id ?? ''))
+// Typed values and the picked category belong to the workspace they were entered in.
+let formWorkspaceId = document.value?.workspaceId
+watch(() => document.value?.workspaceId, (workspaceId) => {
+  formWorkspaceId = workspaceId
+  Object.assign(form, { title: '', durationMin: 60, categoryId: '', dueDate: '', priority: '2' })
+})
 const canAdd = computed(() => planner.writable && form.title.trim().length > 0 && effectiveCategoryId.value !== '')
 
 const priorityOptions = computed(() => (['1', '2', '3'] as const).map((value) => ({ value, label: t(`tasks.priority.${value}`) })))
@@ -71,6 +78,7 @@ function describe(task: Task): string {
 
 async function addTask(): Promise<void> {
   if (!canAdd.value) return
+  const workspaceId = formWorkspaceId
   const task: Task = {
     id: crypto.randomUUID(),
     title: form.title.trim(),
@@ -80,7 +88,7 @@ async function addTask(): Promise<void> {
     createdAt: new Date().toISOString(),
     ...(form.dueDate ? { dueDate: form.dueDate } : {}),
   }
-  const result = await planner.commit((draft) => { draft.tasks.push(task) })
+  const result = await planner.commit((draft) => { assertWorkspace(draft, workspaceId); draft.tasks.push(task) })
   if (result.ok) {
     form.title = ''
     form.dueDate = ''
