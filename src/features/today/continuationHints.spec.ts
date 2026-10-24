@@ -80,9 +80,35 @@ describe('timeline continuation hints', () => {
     ])
   })
 
-  it('treats an end at tomorrow’s local midnight as tomorrow', () => {
-    expect(continuationHints({ start: '2026-10-24T09:00:00Z', end: '2026-10-25T00:00:00Z' }, now, 'UTC', 'en')).toEqual([
+  it('shows no continuation for an end at tomorrow’s local midnight', () => {
+    expect(continuationHints({ start: '2026-10-24T09:00:00Z', end: '2026-10-25T00:00:00Z' }, now, 'UTC', 'en')).toEqual([])
+  })
+
+  it.each([
+    ['UTC', '2026-10-25T00:00:00.000Z'],
+    ['America/Bogota', '2026-10-25T05:00:00.000Z'],
+  ])('uses half-open intervals around local midnight in %s', (timeZone, midnight) => {
+    const boundary = Date.parse(midnight)
+    const start = '2026-10-24T09:00:00Z'
+    expect(continuationHints({ start, end: new Date(boundary - 1).toISOString() }, now, timeZone, 'en')).toEqual([])
+    expect(continuationHints({ start, end: midnight }, now, timeZone, 'en')).toEqual([])
+    expect(continuationHints({ start, end: new Date(boundary + 1).toISOString() }, now, timeZone, 'en')).toEqual([
       { key: 'today.timeline.untilTomorrow', params: {} },
+    ])
+  })
+
+  it('still shows until tomorrow for an overnight event ending at 07:00', () => {
+    expect(continuationHints({ start: '2026-10-24T23:00:00Z', end: '2026-10-25T07:00:00Z' }, now, 'UTC', 'en')).toEqual([
+      { key: 'today.timeline.untilTomorrow', params: {} },
+    ])
+  })
+
+  it.each([
+    ['UTC', '2026-10-26T00:00:00Z'],
+    ['America/Bogota', '2026-10-26T05:00:00Z'],
+  ])('shows the last covered date for an end at midnight two days later in %s', (timeZone, end) => {
+    expect(continuationHints({ start: '2026-10-24T09:00:00Z', end }, now, timeZone, 'en')).toEqual([
+      { key: 'today.timeline.untilDate', params: { date: '25 Sun' } },
     ])
   })
 
