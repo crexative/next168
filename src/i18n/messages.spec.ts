@@ -3,6 +3,11 @@ import { SUPPORTED_LOCALES, collectMessages, i18n } from './index'
 
 const files = import.meta.glob<{ default: Record<string, unknown> }>('./*/*.json', { eager: true })
 const messages = collectMessages(files)
+const featureSources = import.meta.glob<string>([
+  '../features/{settings,onboarding,tasks,assistant,proposals}/**/*.{vue,ts}',
+  '!../features/**/*.spec.ts',
+  '!../features/**/*.test.ts',
+], { eager: true, query: '?raw', import: 'default' })
 
 function flatten(value: unknown, prefix = ''): string[] {
   if (value === null || typeof value !== 'object') return [prefix]
@@ -34,6 +39,20 @@ describe('i18n catalogs', () => {
       const empty = flatten(messages[locale]).filter((key) => key.split('.').reduce<unknown>((node, part) => (node as Record<string, unknown>)[part], messages[locale]) === '')
       expect(empty).toEqual([])
     }
+  })
+
+  it.each(SUPPORTED_LOCALES)('%s defines every literal translation key used by setup features', (locale) => {
+    const keys = new Set(flatten(messages[locale]))
+    const missing: string[] = []
+    for (const [file, source] of Object.entries(featureSources)) {
+      for (const match of source.matchAll(/(?<![\w$])\$?t\s*\(\s*(['"`])([^'"`]+)\1/g)) {
+        const key = match[2]!
+        // Computed template keys are covered by the components' domain-specific tests.
+        if (!key.includes('${') && !keys.has(key)) missing.push(`${file}: ${key}`)
+      }
+    }
+    expect(Object.keys(featureSources).length).toBeGreaterThan(0)
+    expect(missing).toEqual([])
   })
 
   it.each(SUPPORTED_LOCALES)('%s overflow hint does not put an indefinite article before the category name', (locale) => {

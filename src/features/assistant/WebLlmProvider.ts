@@ -103,8 +103,6 @@ export class WebLlmProvider implements AssistantProvider {
     if (this.engine) return
     if (this.failure) throw new AssistantError('unavailable')
     if (signal.aborted) throw new AssistantError('cancelled')
-    await navigator.storage?.persist?.().catch(() => false)
-
     const worker = this.dependencies.createWorker()
     const cancelled = new Promise<never>((_, reject) => {
       signal.addEventListener('abort', () => {
