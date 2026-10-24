@@ -4,6 +4,7 @@ import { useI18n } from 'vue-i18n'
 import { usePlannerStore } from '@/stores/plannerStore'
 import Button from '@/ui/Button.vue'
 import BackButton from '@/features/settings/BackButton.vue'
+import AnyAiPanel from './anyAi/AnyAiPanel.vue'
 import ProposalCard from './ProposalCard.vue'
 import { WEBLLM_DOWNLOAD_BYTES } from './WebLlmProvider'
 import { useAssistant } from './useAssistant'
@@ -51,6 +52,8 @@ async function submit(): Promise<void> {
 <template>
   <div class="assistant">
     <BackButton current="assistant" fallback="today" />
+
+    <AnyAiPanel collapsible />
 
     <form class="composer" data-testid="composer" @submit.prevent="submit">
       <label class="sr-only" for="assistant-question">{{ t('assistant.chat.label') }}</label>

@@ -11,11 +11,44 @@
   "customHome": "Para NEXT168_HOME ou NEXT168_PORT personalizados, configure as mesmas variáveis no cliente MCP.",
   "rotateHint": "Para revogar o token MCP, execute este comando e reconecte os clientes:",
   "privacy": "Assistentes na nuvem recebem os dados retornados pelas ferramentas. O texto do plano é dado, não instrução. Aprove apenas mudanças que entenda. Um assistente que controla seu navegador ou sessão do sistema fica fora desta proteção.",
-  "chatgpt": "O ChatGPT não pode acessar diretamente este servidor local. Um OpenAI Secure MCP Tunnel opcional mudaria esse limite; o Next168 não implementa nem ativa túneis.",
+  "chatgpt": "ChatGPT, Gemini e outras IA na web não alcançam esta opção local. Use «Usar com a sua IA» acima.",
   "exportSnapshot": "Exportar instantâneo + prompt",
   "importProposal": "Importar proposta JSON",
   "proposalPlaceholder": "Cole o objeto de proposta retornado pelo assistente.",
   "importError": "Proposta inválida, de outro espaço ou revisão antiga. Exporte outro instantâneo e peça uma nova proposta.",
   "importVerified": "Espaço importado e verificado por releitura do hash de conteúdo.",
-  "workspaceImportError": "A importação falhou ou a verificação divergiu. Guarde o backup original e inspecione o espaço antes de tentar novamente."
+  "workspaceImportError": "A importação falhou ou a verificação divergiu. Guarde o backup original e inspecione o espaço antes de tentar novamente.",
+  "anyAi": {
+    "title": "Usar com a sua IA (ChatGPT, Claude, Gemini…)",
+    "subtitle": "Planeie a sua semana conversando com a IA que você já usa, em qualquer dispositivo. Sem conta nem servidor.",
+    "steps": {
+      "copy": "Toque em «Copiar para a sua IA» e cole em uma nova conversa do ChatGPT, Claude, Gemini ou outra.",
+      "chat": "Fale sobre a sua semana. Quando quiser mudanças, peça: «me dê as mudanças no bloco next168».",
+      "paste": "Copie a resposta completa, cole abaixo e revise as mudanças antes de aprová-las."
+    },
+    "copy": "Copiar para a sua IA",
+    "copied": "Copiado. Agora cole na sua conversa.",
+    "manual": "Seu navegador bloqueou a cópia. Selecione todo o texto abaixo e copie.",
+    "manualLabel": "Texto para copiar para a sua IA",
+    "copyAgain": "Copiar de novo",
+    "pasteLabel": "Cole a resposta da sua IA",
+    "pastePlaceholder": "Cole aqui a resposta completa, com o texto ao redor das mudanças.",
+    "review": "Revisar mudanças",
+    "safety": "Você compartilha o seu plano com a IA que escolher. Nada muda no Next168 até você aprovar.",
+    "errors": {
+      "empty": "Cole primeiro a resposta da sua IA.",
+      "tooLarge": "Esse texto é longo demais. Cole só a última resposta da sua IA.",
+      "none": "Não encontrei nenhuma proposta. Peça à sua IA: «me dê as mudanças no bloco next168».",
+      "malformed": "As mudanças dessa resposta estão cortadas ou danificadas. Peça à sua IA que as envie de novo em um único bloco next168.",
+      "invalid": "Não entendi essas mudanças. Copie de novo para a sua IA conhecer o formato e peça que tente outra vez.",
+      "wrongWorkspace": "Essas mudanças são de outro plano. Copie de novo e comece uma conversa nova com a sua IA.",
+      "stale": "O seu plano mudou depois de você copiá-lo para a sua IA. Copie de novo e peça que ela repita as mudanças.",
+      "unusable": "Algumas mudanças não combinam com o seu plano atual, por exemplo um bloco que não existe mais. Copie de novo e peça à sua IA que tente outra vez.",
+      "saveFailed": "Não foi possível salvar as mudanças. Tente de novo."
+    }
+  },
+  "local": {
+    "title": "Claude Desktop ou Claude Code (neste computador)",
+    "hint": "Para usuários avançados: conecta direto ao companion do Next168 que roda neste computador."
+  }
 }

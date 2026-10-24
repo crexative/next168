@@ -11,11 +11,44 @@
   "customHome": "Verwende für eigene NEXT168_HOME- oder NEXT168_PORT-Werte dieselben Umgebungsvariablen im MCP-Client.",
   "rotateHint": "Um das MCP-Token zu widerrufen, führe diesen Befehl aus und verbinde die Clients erneut:",
   "privacy": "Cloud-Assistenten erhalten die von Tools zurückgegebenen Daten. Planungstext ist eine Information, keine Anweisung. Genehmige nur verständliche Änderungen. Assistenten mit Kontrolle über deinen Browser oder deine Betriebssystemsitzung liegen außerhalb dieses Schutzes.",
-  "chatgpt": "ChatGPT kann diesen lokalen Server nicht direkt erreichen. Ein freiwilliger OpenAI Secure MCP Tunnel würde diese Grenze ändern; Next168 implementiert oder aktiviert keinen Tunnel.",
+  "chatgpt": "ChatGPT, Gemini und andere Web-KIs erreichen diese lokale Option nicht. Nutze oben „Mit deiner KI nutzen“.",
   "exportSnapshot": "Snapshot + Prompt exportieren",
   "importProposal": "JSON-Vorschlag importieren",
   "proposalPlaceholder": "Füge das vom Assistenten zurückgegebene Vorschlagsobjekt ein.",
   "importError": "Ungültiger Vorschlag, falscher Arbeitsbereich oder veraltete Revision. Exportiere einen neuen Snapshot und fordere einen neuen Vorschlag an.",
   "importVerified": "Arbeitsbereich importiert und durch erneutes Lesen des Inhalts-Hashs geprüft.",
-  "workspaceImportError": "Import fehlgeschlagen oder Prüfung abweichend. Bewahre das Original-Backup auf und prüfe den Arbeitsbereich vor einem weiteren Versuch."
+  "workspaceImportError": "Import fehlgeschlagen oder Prüfung abweichend. Bewahre das Original-Backup auf und prüfe den Arbeitsbereich vor einem weiteren Versuch.",
+  "anyAi": {
+    "title": "Mit deiner KI nutzen (ChatGPT, Claude, Gemini…)",
+    "subtitle": "Plane deine Woche im Chat mit der KI, die du schon nutzt, auf jedem Gerät. Ohne Konto, ohne Server.",
+    "steps": {
+      "copy": "Tippe auf „Für deine KI kopieren“ und füge den Text in einen neuen Chat bei ChatGPT, Claude, Gemini oder einer anderen KI ein.",
+      "chat": "Sprich über deine Woche. Wenn du Änderungen willst, bitte: „Gib mir die Änderungen im next168-Block“.",
+      "paste": "Kopiere die ganze Antwort, füge sie unten ein und prüfe die Änderungen, bevor du sie freigibst."
+    },
+    "copy": "Für deine KI kopieren",
+    "copied": "Kopiert. Füge es jetzt in deinen Chat ein.",
+    "manual": "Dein Browser hat das Kopieren blockiert. Markiere den ganzen Text unten und kopiere ihn.",
+    "manualLabel": "Text zum Kopieren für deine KI",
+    "copyAgain": "Erneut kopieren",
+    "pasteLabel": "Antwort deiner KI einfügen",
+    "pastePlaceholder": "Füge hier die ganze Antwort ein, auch den Text um die Änderungen herum.",
+    "review": "Änderungen prüfen",
+    "safety": "Du teilst deinen Plan mit der KI, die du wählst. In Next168 ändert sich nichts, bis du es freigibst.",
+    "errors": {
+      "empty": "Füge zuerst die Antwort deiner KI ein.",
+      "tooLarge": "Dieser Text ist zu lang. Füge nur die letzte Antwort deiner KI ein.",
+      "none": "Ich habe keinen Vorschlag gefunden. Bitte deine KI: „Gib mir die Änderungen im next168-Block“.",
+      "malformed": "Die Änderungen in dieser Antwort sind abgeschnitten oder beschädigt. Bitte deine KI, sie noch einmal in einem einzigen next168-Block zu schicken.",
+      "invalid": "Ich habe diese Änderungen nicht verstanden. Kopiere erneut, damit deine KI das Format kennt, und bitte sie, es noch einmal zu versuchen.",
+      "wrongWorkspace": "Diese Änderungen gehören zu einem anderen Plan. Kopiere erneut und starte einen neuen Chat mit deiner KI.",
+      "stale": "Dein Plan hat sich geändert, nachdem du ihn für deine KI kopiert hast. Kopiere erneut und bitte sie, die Änderungen zu wiederholen.",
+      "unusable": "Manche Änderungen passen nicht zu deinem aktuellen Plan, zum Beispiel ein Block, den es nicht mehr gibt. Kopiere erneut und bitte deine KI, es noch einmal zu versuchen.",
+      "saveFailed": "Die Änderungen konnten nicht gespeichert werden. Versuche es noch einmal."
+    }
+  },
+  "local": {
+    "title": "Claude Desktop oder Claude Code (auf diesem Computer)",
+    "hint": "Für Fortgeschrittene: verbindet sich direkt mit dem Next168-Companion auf diesem Computer."
+  }
 }
