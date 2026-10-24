@@ -35,7 +35,7 @@ function move(offset: number, event: KeyboardEvent): void {
 <template>
   <div class="choice-row">
     <div class="question">
-      <span :id="labelId" class="t-footnote t-secondary">{{ label }}</span>
+      <span :id="labelId" class="question-label t-footnote t-secondary">{{ label }}</span>
       <button
         v-if="modelValue !== ''"
         type="button"
@@ -69,18 +69,20 @@ function move(offset: number, event: KeyboardEvent): void {
 
 <style scoped>
 .choice-row { display: flex; flex-direction: column; gap: var(--space-1); }
-.question { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; column-gap: var(--space-3); }
-/* A text button with a full tap target; the negative margin keeps it from making the question row taller. */
+.question { display: flex; align-items: center; justify-content: space-between; column-gap: var(--space-3); }
+.question-label { flex: 1; min-width: 0; }
+/* The row always keeps the height of the 44 px Clear target, so answering never moves the choices below it. */
 .clear {
   min-height: var(--tap-target);
-  margin-block: calc((var(--tap-target) - 1.25rem) / -2);
   padding: 0 var(--space-2);
   margin-inline-end: calc(var(--space-2) * -1);
   border: 0;
   background: transparent;
   color: var(--tint-label);
   font-weight: 600;
+  white-space: nowrap;
 }
+.question { min-height: var(--tap-target); }
 .choices { display: flex; gap: 2px; padding: 2px; border-radius: var(--radius-control); background: color-mix(in srgb, var(--label-2) 14%, transparent); }
 .choice {
   flex: 1;
