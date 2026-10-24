@@ -224,8 +224,33 @@ for (const theme of THEMES) {
   })
 }
 
+test.describe('check-in answers can be withdrawn', () => {
+  test('Borrar clears exercise and stress, and the saved entry loses both fields', async ({ page }) => {
+    const saved = { ...plan, checkIns: [...plan.checkIns, { date: '2026-10-21', bedtime: 1320, wake: 360, exercise: 'yes', stress: 3 }] }
+    await start(page, SIZES[0], 'light', saved, '2026-10-21T20:30:00.000Z')
+    await open(page, 'checkin', 'Cierre del día')
+    const exercise = page.getByRole('radiogroup', { name: '¿Hiciste ejercicio?' })
+    const stress = page.getByRole('radiogroup', { name: 'Estrés hoy (1 calma – 5 alto)' })
+    await expect(exercise.getByRole('radio', { name: 'Sí' })).toHaveAttribute('aria-checked', 'true')
+    await expect(stress.getByRole('radio', { name: '3' })).toHaveAttribute('aria-checked', 'true')
+    const clearExercise = page.getByRole('button', { name: 'Borrar: ¿Hiciste ejercicio?' })
+    expect((await box(clearExercise)).height).toBeGreaterThanOrEqual(44)
+    await clearExercise.click()
+    await expect(exercise.getByRole('radio', { name: 'Sí' })).toHaveAttribute('aria-checked', 'false')
+    await expect(exercise.getByRole('radio', { name: 'Sí' })).toBeFocused()
+    await page.getByRole('button', { name: 'Borrar: Estrés hoy (1 calma – 5 alto)' }).click()
+    await expect(page.getByRole('button', { name: /^Borrar/ })).toHaveCount(0)
+    await page.getByRole('button', { name: 'Guardar cierre' }).click()
+    await expect(page).toHaveURL(/#\/today$/)
+    await expect.poll(async () => (await stored(page)).checkIns.at(-1)).toEqual({ date: '2026-10-21', bedtime: 1320, wake: 360 })
+  })
+})
+
 test.describe('nightly reminder', () => {
-  async function stubNotifications(page: Page, permission: NotificationPermission | 'absent'): Promise<void> {
+  // `armed` preloads the opt-in the way a returning user has it: permission already granted and the preference stored
+  // before the app starts, so the ticker is running from the first frame and nothing depends on a tap.
+  async function stubNotifications(page: Page, permission: NotificationPermission | 'absent', armed = false): Promise<void> {
+    if (armed) await page.addInitScript(() => window.localStorage.setItem('next168-checkin-reminder', '1'))
     await page.addInitScript((initial) => {
       const log = { asked: 0, shown: [] as { title: string; body?: string }[] }
       ;(window as unknown as { __notifications: typeof log }).__notifications = log
@@ -247,7 +272,7 @@ test.describe('nightly reminder', () => {
   }
   const log = (page: Page) => page.evaluate(() => (window as unknown as { __notifications: { asked: number; shown: { title: string; body?: string }[] } }).__notifications)
 
-  test('is asked for only on tap, notifies at 22:00 and stays quiet once the check-in is done', async ({ page }) => {
+  test('is asked for only on tap and notifies once at 22:00', async ({ page }) => {
     await stubNotifications(page, 'default')
     await start(page, SIZES[0], 'light', plan, '2026-10-21T20:30:00.000Z')
     await open(page, 'today', 'Hoy')
@@ -267,13 +292,24 @@ test.describe('nightly reminder', () => {
     expect((await log(page)).shown).toHaveLength(1)
   })
 
-  test('does not remind someone who already did the check-in', async ({ page }) => {
-    await stubNotifications(page, 'default')
-    await start(page, SIZES[0], 'light', { ...plan, checkIns: [...plan.checkIns, { date: '2026-10-21', exercise: 'no' }] }, '2026-10-21T20:30:00.000Z')
+  const withCheckInToday = { ...plan, checkIns: [...plan.checkIns, { date: '2026-10-21', exercise: 'no' }] }
+
+  test('reminds a returning user at 22:00 when the check-in is still open (control for the next test)', async ({ page }) => {
+    await stubNotifications(page, 'granted', true)
+    await start(page, SIZES[0], 'light', plan, '2026-10-21T20:30:00.000Z')
+    await open(page, 'today', 'Hoy')
+    await expect(page.getByTestId('checkin-remind')).toHaveAttribute('aria-pressed', 'true')
+    await page.clock.runFor(2 * 60 * 60_000)
+    await expect.poll(async () => (await log(page)).shown).toEqual([{ title: 'Cierre del día', body: '¿Cómo fue hoy? Te lleva un minuto.' }])
+  })
+
+  test('does not remind someone who already did the check-in, even with the reminder armed', async ({ page }) => {
+    await stubNotifications(page, 'granted', true)
+    await start(page, SIZES[0], 'light', withCheckInToday, '2026-10-21T20:30:00.000Z')
     await open(page, 'today', 'Hoy')
     await expect(page.getByTestId('checkin-done')).toHaveText('Hecho ✓ · racha 2')
-    await expect(page.getByRole('button', { name: 'Recordarme a las 22:00' })).toHaveCount(0)
-    await page.evaluate(() => window.localStorage.setItem('next168-checkin-reminder', '1'))
+    // Armed for real: the opt-in is on, so only the completed check-in can keep the notification away.
+    await expect(page.getByTestId('checkin-remind')).toHaveAttribute('aria-pressed', 'true')
     await page.clock.runFor(2 * 60 * 60_000)
     expect((await log(page)).shown).toEqual([])
   })
