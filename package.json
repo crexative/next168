@@ -16,7 +16,9 @@
     "lint": "eslint . --fix",
     "test": "vitest",
     "icons": "pwa-assets-generator",
-    "e2e": "playwright test"
+    "e2e": "playwright test",
+    "companion:build": "npm --prefix companion run build",
+    "companion:start": "node companion/dist/cli.js serve"
   },
   "dependencies": {
     "lucide-vue-next": "0.577.0",
