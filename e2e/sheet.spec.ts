@@ -15,17 +15,25 @@ async function openSheet(page: Page): Promise<void> {
   await page.waitForTimeout(500)
 }
 
+// The sheet measures release velocity from the pointer events' own timestamps. Dispatching them over the
+// DevTools protocol with explicit timestamps makes the gesture speed independent of how loaded the machine is.
 async function dragHandle(page: Page, distance: number, durationMs: number, steps: number): Promise<void> {
   const box = (await page.locator('.sheet-grab').boundingBox())!
   const x = box.x + box.width / 2
   const y = box.y + 8
-  await page.mouse.move(x, y)
-  await page.mouse.down()
+  const client = await page.context().newCDPSession(page)
+  const origin = Date.now() / 1000
+  let clock = 0
+  const send = (type: 'mousePressed' | 'mouseMoved' | 'mouseReleased', at: number) => client.send('Input.dispatchMouseEvent', {
+    type, x, y: y + at, button: type === 'mouseMoved' && at === 0 ? 'none' : 'left', buttons: type === 'mouseReleased' ? 0 : 1,
+    clickCount: type === 'mouseMoved' ? 0 : 1, pointerType: 'mouse', timestamp: origin + clock / 1000,
+  })
+  await send('mousePressed', 0)
   for (let step = 1; step <= steps; step += 1) {
-    await page.mouse.move(x, y + (distance * step) / steps)
-    await page.waitForTimeout(durationMs / steps)
+    clock = (durationMs * step) / steps
+    await send('mouseMoved', (distance * step) / steps)
   }
-  await page.mouse.up()
+  await send('mouseReleased', distance)
 }
 
 test.describe('sheet', () => {
@@ -54,7 +62,7 @@ test.describe('sheet', () => {
   test('a fast downward flick dismisses from a small offset', async ({ page }, testInfo) => {
     test.skip(testInfo.project.name !== 'phone')
     await openSheet(page)
-    await dragHandle(page, 60, 0, 2)
+    await dragHandle(page, 60, 40, 2)
     await expect(page.getByRole('dialog')).toBeHidden()
   })
 
