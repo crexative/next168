@@ -32,7 +32,7 @@ test('MCP proposal appears, user approves, block is visible and revision increme
     expect((await companion.workspace.document()).blocks).toHaveLength(0)
     await page.getByTestId('proposal-badge').click()
     await page.getByRole('button', { name: 'Add a focus hour' }).click()
-    await expect(page.getByRole('dialog').getByText('Focused planning', { exact: false })).toBeVisible()
+    await expect(page.getByTestId('change-after').getByText('Focused planning', { exact: true })).toBeVisible()
     await page.getByRole('button', { name: 'Approve', exact: true }).click()
     await expect(page.getByTestId('applied-blocks').getByText('Focused planning', { exact: true })).toBeVisible()
     await expect(page.getByTestId('proposal-badge')).toBeHidden()
