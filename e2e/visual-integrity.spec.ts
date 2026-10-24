@@ -27,7 +27,7 @@ const LOCALES = Object.keys(EVENT_COPY) as (keyof typeof EVENT_COPY)[]
 async function widenInputFonts(page: Page): Promise<void> {
   // Exercise the Linux CI failure on every OS, including systems with narrower default fonts.
   await page.addStyleTag({ content: `
-    .onboarding input.name, .onboarding .chip-name, .onboarding .goal-chip, .event-form input[inputmode="email"] {
+    .onboarding .routine-name, .onboarding .routine-line, .event-form input[inputmode="email"] {
       font-family: Verdana, "DejaVu Sans", sans-serif !important;
       font-size: 1.16875rem !important; /* 110% of the shared 17 px input font. */
     }
@@ -77,7 +77,8 @@ async function start(page: Page, theme: (typeof THEMES)[number], document: unkno
 
 async function settle(page: Page): Promise<void> {
   await page.waitForFunction(() => {
-    const panel = document.querySelector<HTMLElement>('[role="dialog"] ')
+    const panels = document.querySelectorAll<HTMLElement>('[role="dialog"]')
+    const panel = panels[panels.length - 1] ?? null
     const springing = panel !== null && !/^(|none|translateY\(0px\))$/.test(panel.style.transform)
     return !springing && document.getAnimations().every((animation) => animation.playState !== 'running')
   })
@@ -97,12 +98,14 @@ async function audit(page: Page, state: string): Promise<void> {
 
 // A sheet that opens by itself must not light up a focus ring: focus goes to its title (or its first text field).
 async function auditSheet(page: Page, state: string): Promise<void> {
-  const dialog = page.getByRole('dialog')
+  // The topmost sheet: the routine editor opens over the onboarding sheet.
+  const dialog = page.getByRole('dialog').last()
   await expect(dialog).toBeVisible()
   await settle(page)
   const focused = await page.evaluate(() => {
     const active = document.activeElement as HTMLElement | null
-    const dialogElement = document.querySelector('[role="dialog"]')
+    const dialogs = document.querySelectorAll('[role="dialog"]')
+    const dialogElement = dialogs[dialogs.length - 1]
     return {
       inside: Boolean(active && dialogElement?.contains(active)),
       calm: Boolean(active && (active.matches('h1, h2, [role="dialog"], input:not([type="checkbox"]):not([type="radio"]), textarea') || !active.matches(':focus-visible'))),
@@ -126,25 +129,28 @@ for (const theme of THEMES) {
           const onboarding = page.getByTestId('onboarding')
           await expect(onboarding).toBeVisible()
           await widenInputFonts(page)
-          await expect(onboarding.locator('.chip-name')).toHaveCount(7)
-          if (locale === 'es') await expect(onboarding.locator('.chip-name').last()).toHaveText('Desplazamientos')
+          await expect(onboarding.locator('.routine-name')).toHaveCount(7)
+          if (locale === 'es') await expect(onboarding.locator('.routine-name').last()).toHaveText('Desplazamientos')
           await auditSheet(page, `${theme}/${locale}/${width}/wider fonts/onboarding step 1`)
 
           for (const checkbox of await onboarding.getByRole('checkbox').all()) await checkbox.check()
-          await expect(onboarding.locator('.edit-button:disabled')).toHaveCount(0)
-          await onboarding.locator('[data-template=work] .edit-button').click()
-          await expect(onboarding.locator('input.name')).toBeVisible()
-          await audit(page, `${theme}/${locale}/${width}/wider fonts/onboarding step 1 with picks and the editor open`)
-          const targets = await onboarding.locator('.chip, .edit-button, .swatch-choice').evaluateAll((elements) =>
+          // Seven routines, the commute with two lines: every line is a 44 px target and none is clipped.
+          await expect(onboarding.locator('.routine-line')).toHaveCount(8)
+          await audit(page, `${theme}/${locale}/${width}/wider fonts/onboarding step 1 with every routine`)
+          const targets = await onboarding.locator('.routine-head, .routine-line').evaluateAll((elements) =>
             elements.map((element) => ({ width: element.getBoundingClientRect().width, height: element.getBoundingClientRect().height })),
           )
           for (const target of targets) {
             expect(target.width).toBeGreaterThanOrEqual(44)
             expect(target.height).toBeGreaterThanOrEqual(44)
           }
+          await onboarding.locator('[data-template=commute] .routine-line').first().click()
+          await expect(page.getByRole('dialog')).toHaveCount(2)
+          await auditSheet(page, `${theme}/${locale}/${width}/wider fonts/onboarding routine editor`)
+          await page.keyboard.press('Escape')
+          await expect(page.getByRole('dialog')).toHaveCount(1)
           await onboarding.getByRole('button', { name: /^(Next|Siguiente|Suivant|Weiter|Avançar|Próximo)$/ }).click()
-          await onboarding.locator('[data-template=work] .goal-chip').click()
-          await audit(page, `${theme}/${locale}/${width}/wider fonts/onboarding step 2 with the goal editor open`)
+          await audit(page, `${theme}/${locale}/${width}/wider fonts/onboarding step 2`)
         })
 
         test(`wider fonts: new event attendees (${locale}, ${width}px)`, async ({ page }, testInfo) => {
@@ -195,24 +201,23 @@ for (const theme of THEMES) {
       }
     })
 
-    test('onboarding steps 1–3 and the confirmation (owner\'s Spanish sheet)', async ({ page }) => {
+    test('onboarding steps 1–2, the routine editor and the confirmation (owner\'s Spanish sheet)', async ({ page }) => {
       await start(page, theme, { ...firstRunDocument, settings: { ...firstRunDocument.settings, locale: 'es' } }, 'es')
       await page.goto('./')
       await auditSheet(page, `${theme}/onboarding step 1`)
       const dialog = page.getByRole('dialog')
       await dialog.getByRole('checkbox', { name: 'Usar Ejercicio' }).check()
       await audit(page, `${theme}/onboarding step 1 with picks`)
-      await dialog.getByRole('button', { name: 'Editar Trabajo' }).click()
-      await audit(page, `${theme}/onboarding step 1 editing a category`)
+      await dialog.getByRole('button', { name: /^Editar Trabajo:/ }).click()
+      await expect(page.getByRole('dialog')).toHaveCount(2)
+      await auditSheet(page, `${theme}/onboarding editing a routine`)
+      await page.keyboard.press('Escape')
+      await expect(page.getByRole('dialog')).toHaveCount(1)
       await dialog.getByRole('button', { name: 'Siguiente' }).click()
       await audit(page, `${theme}/onboarding step 2`)
-      await dialog.getByRole('button', { name: 'Cambiar la meta de Trabajo' }).click()
-      await audit(page, `${theme}/onboarding step 2 editing a goal`)
-      await dialog.getByRole('button', { name: 'Siguiente' }).click()
-      await audit(page, `${theme}/onboarding step 3`)
       await dialog.getByLabel('Tarea', { exact: true }).fill('Llamar al banco')
       await dialog.getByRole('button', { name: 'Terminar' }).click()
-      await expect(page.getByRole('dialog', { name: 'Tu semana está lista' })).toBeVisible()
+      await expect(page.getByRole('dialog', { name: 'Listo' })).toBeVisible()
       await auditSheet(page, `${theme}/onboarding confirmation`)
     })
 

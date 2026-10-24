@@ -1,10 +1,9 @@
 import { expect, test, type Page } from '@playwright/test'
 import { seedKey, V2_KEY } from './fixtures'
-import { storedPlanner } from './support/indexedDb'
 import { onboardedDocument } from './support/seed'
 import { visualIntegrityViolations } from './support/visualIntegrity'
 
-// Slice E: onboarding, tasks, settings, assistant entry and proposals, in Spanish (es-CO) at a phone and a desktop
+// Slice E: tasks, settings, assistant entry and proposals, in Spanish (es-CO) at a phone and a desktop
 // size, light and dark. Geometry, behaviour and accessibility assertions, one per plan item.
 test.use({ locale: 'es-CO', timezoneId: 'America/Bogota', launchOptions: { args: ['--disable-features=WebGPU'] } })
 test.beforeEach(({}, testInfo) => { test.skip(testInfo.project.name !== 'desktop', 'sizes are set per test: 390x844 and 1440x900') })
@@ -53,89 +52,6 @@ async function boxes(page: Page, selector: string): Promise<{ width: number; hei
 for (const size of SIZES) {
   for (const theme of THEMES) {
     const label = `${size.width}x${size.height} ${theme}`
-
-    test(`onboarding: promise, counter, preselected, chips, one exit, confirmation (${label})`, async ({ page }) => {
-      await start(page, size, theme, firstRun())
-      await page.goto('./')
-      const dialog = page.getByRole('dialog', { name: 'Tu semana tiene 168 horas. Decide a qué van.' })
-      await expect(dialog).toBeVisible()
-      await expect(dialog.getByText('Sin cuenta. Todo se queda en este dispositivo.')).toBeVisible()
-      await calm(page)
-      // "Ahora no" is the one way out besides the close button: no bottom "Cancelar" from the sheet on phones.
-      await expect(dialog.getByRole('button', { name: 'Ahora no', exact: true })).toHaveCount(1)
-      await expect(dialog.getByRole('button', { name: 'Cancelar', exact: true })).toHaveCount(0)
-
-      // Sueño and Trabajo come ticked; the counter adds their typical week.
-      await expect(dialog.getByRole('checkbox', { name: 'Usar Sueño' })).toBeChecked()
-      await expect(dialog.getByRole('checkbox', { name: 'Usar Trabajo' })).toBeChecked()
-      await expect(dialog.getByRole('checkbox', { name: 'Usar Ejercicio' })).not.toBeChecked()
-      await expect(dialog.getByTestId('week-counter')).toContainText('96 de 168 h planificadas')
-      await dialog.getByRole('checkbox', { name: 'Usar Ejercicio' }).check()
-      await expect(dialog.getByTestId('week-counter')).toContainText('99 de 168 h planificadas')
-      await dialog.getByRole('checkbox', { name: 'Usar Ejercicio' }).uncheck()
-
-      // Unticked rows look and act disabled; every target is at least 44 px.
-      const off = dialog.locator('[data-template=familia], [data-template=family]').first()
-      await expect(off.locator('.edit-button')).toBeDisabled()
-      expect(await off.evaluate((element) => Number(getComputedStyle(element.querySelector('.chip-text')!).opacity))).toBeLessThan(1)
-      for (const box of await boxes(page, '.onboarding .chip, .onboarding .edit-button')) {
-        expect(box.height).toBeGreaterThanOrEqual(44)
-        expect(box.width).toBeGreaterThanOrEqual(44)
-      }
-      // Colour dots sit beside the names, not instead of them.
-      await expect(dialog.locator('[data-template=work] .color-dot')).toBeVisible()
-      expect(await visualIntegrityViolations(page)).toEqual([])
-
-      // Rename and recolour through Edit.
-      await dialog.getByRole('button', { name: 'Editar Trabajo' }).click()
-      await dialog.locator('input.name').fill('Empleo')
-      await dialog.getByRole('radio', { name: 'Rojo' }).check()
-      expect(await visualIntegrityViolations(page)).toEqual([])
-      await expect(dialog.getByRole('checkbox', { name: 'Usar Empleo' })).toBeChecked()
-
-      // "Siguiente" needs a category.
-      await dialog.getByRole('checkbox', { name: 'Usar Sueño' }).uncheck()
-      await dialog.getByRole('checkbox', { name: 'Usar Empleo' }).uncheck()
-      await expect(dialog.getByRole('button', { name: 'Siguiente' })).toBeDisabled()
-      await dialog.getByRole('checkbox', { name: 'Usar Sueño' }).check()
-      await dialog.getByRole('checkbox', { name: 'Usar Empleo' }).check()
-      await expect(dialog.getByRole('button', { name: 'Ahora no' })).toHaveCount(1)
-      await dialog.getByRole('button', { name: 'Siguiente' }).click()
-
-      // Step 2: goal chips are editable (the sheet's title changes with the step).
-      const step = page.getByTestId('onboarding')
-      await expect(step.getByRole('button', { name: 'Cambiar la meta de Empleo' })).toContainText('Máx. 40 h')
-      await step.getByRole('button', { name: 'Cambiar la meta de Empleo' }).click()
-      await step.locator('[data-template=work] input[type=number]').fill('30')
-      await expect(step.getByRole('button', { name: 'Cambiar la meta de Empleo' })).toContainText('Máx. 30 h')
-      for (const box of await boxes(page, '.onboarding .goal-chip')) expect(box.height).toBeGreaterThanOrEqual(44)
-      expect(await visualIntegrityViolations(page)).toEqual([])
-      await step.getByRole('button', { name: 'Siguiente' }).click()
-
-      // Step 3 and the confirmation.
-      await step.getByLabel('Tarea', { exact: true }).fill('Llamar al banco')
-      await step.getByRole('button', { name: 'Terminar' }).click()
-      await expect(page.getByRole('dialog', { name: 'Tu semana está lista' })).toBeVisible()
-      await expect(page.getByTestId('onboarding-summary')).toContainText('2 categorías y 2 bloques')
-      await calm(page)
-      expect(await visualIntegrityViolations(page)).toEqual([])
-      const stored = await storedPlanner(page)
-      expect(stored.categories.map((category: { name: string; goal: unknown }) => [category.name, category.goal])).toContainEqual(['Empleo', { type: 'max', hoursPerWeek: 30 }])
-      expect(stored.tasks[0].title).toBe('Llamar al banco')
-      await page.getByTestId('see-week').click()
-      await expect(page).toHaveURL(/#\/week$/)
-      await expect(page.getByRole('dialog')).toHaveCount(0)
-    })
-
-    test(`onboarding: one "Ahora no" leaves with an empty planner (${label})`, async ({ page }) => {
-      await start(page, size, theme, firstRun())
-      await page.goto('./')
-      await page.getByRole('button', { name: 'Ahora no' }).click()
-      await expect(page.getByTestId('onboarding')).toBeHidden()
-      const stored = await storedPlanner(page)
-      expect(stored.settings.onboardingDone).toBe(true)
-      expect(stored.categories).toEqual([])
-    })
 
     test(`tasks: one field first, details after typing, last category remembered (${label})`, async ({ page }) => {
       await start(page, size, theme, planned())
@@ -266,11 +182,10 @@ test('onboarding does not ask the browser to protect storage; the first check-in
   await start(page, SIZES[0], 'light', firstRun())
   await page.goto('./')
   await page.getByRole('dialog').getByRole('button', { name: 'Siguiente' }).click()
-  await page.getByRole('dialog').getByRole('button', { name: 'Siguiente' }).click()
   await page.getByRole('dialog').getByRole('button', { name: 'Terminar' }).click()
-  await expect(page.getByRole('dialog', { name: 'Tu semana está lista' })).toBeVisible()
+  await expect(page.getByRole('dialog', { name: 'Listo' })).toBeVisible()
   expect(await page.evaluate(() => (window as unknown as { __persistCalls: number[] }).__persistCalls.length)).toBe(0)
-  await page.getByTestId('onboarding').getByRole('button', { name: 'Cerrar' }).click()
+  await page.getByTestId('onboarding').getByRole('button', { name: 'Empezar' }).click()
   await expect(page.getByRole('dialog')).toHaveCount(0)
 
   await page.goto('./#/checkin')

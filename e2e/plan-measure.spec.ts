@@ -53,25 +53,26 @@ test.describe('plan and measure', () => {
   test('@smoke a fresh profile gets onboarding with templates and ends with a populated week', async ({ page }) => {
     await page.clock.setFixedTime(MONDAY_MORNING)
     await page.goto('./')
-    const dialog = page.getByRole('dialog', { name: 'Your week has 168 hours. Decide where they go.' })
+    const dialog = page.getByRole('dialog', { name: 'Your typical week' })
     await expect(dialog).toBeVisible()
 
     // Sleep and Work come ticked.
     await expect(dialog.getByRole('checkbox', { name: 'Use Sleep' })).toBeChecked()
     await expect(dialog.getByRole('checkbox', { name: 'Use Work' })).toBeChecked()
     await dialog.getByRole('checkbox', { name: 'Use Exercise' }).check()
-    await dialog.getByRole('button', { name: 'Edit Work' }).click()
-    await dialog.getByRole('textbox', { name: 'Category name' }).fill('Day job')
+    await expect(page.getByTestId('week-counter')).toHaveText(/^99 h assigned · 69 h unassigned$/)
+    // Tapping a routine opens the Week editor: rename Work.
+    await dialog.getByRole('button', { name: /^Edit Work:/ }).click()
+    const editor = page.getByRole('dialog', { name: 'Edit block' })
+    await editor.getByLabel('Title').fill('Day job')
+    await editor.getByRole('button', { name: 'Save' }).click()
     await dialog.getByRole('button', { name: 'Next' }).click()
 
-    await expect(page.getByRole('dialog', { name: 'Adjust your typical week' })).toBeVisible()
-    await expect(page.getByText('23:00–07:00 · Every day')).toBeVisible()
-    await page.getByRole('button', { name: 'Next' }).click()
-
+    await expect(page.getByRole('dialog', { name: 'Your first task' })).toBeVisible()
     await page.getByLabel('Task', { exact: true }).fill('Book a health check')
     await page.getByRole('button', { name: 'Finish' }).click()
-    await expect(page.getByRole('dialog', { name: 'Your week is ready' })).toBeVisible()
-    await page.getByTestId('onboarding').getByRole('button', { name: 'Close' }).click()
+    await expect(page.getByRole('dialog', { name: 'All set' })).toBeVisible()
+    await page.getByTestId('onboarding').getByRole('button', { name: 'Get started' }).click()
     await expect(page.getByTestId('onboarding')).toBeHidden()
 
     const document = await storedDocument(page)
