@@ -193,6 +193,28 @@ for (const theme of THEMES) {
       await auditSheet(page, `${theme}/edit block`)
     })
 
+    test('week in Spanish: tasks, week navigation, the add menu, the event sheet and the phone overview', async ({ page }, testInfo) => {
+      await start(page, theme, { ...plannedDocument, settings: { ...plannedDocument.settings, locale: 'es' } }, 'es')
+      await open(page, 'week')
+      await expect(page.getByTestId('week-task').first()).toBeVisible()
+      await audit(page, `${theme}/es/week with tasks`)
+      await page.getByTestId('week-next').click()
+      await audit(page, `${theme}/es/next week`)
+      await page.getByTestId('week-today').click()
+      await page.getByTestId('week-add').click()
+      await expect(page.getByRole('menu')).toBeVisible()
+      await audit(page, `${theme}/es/add menu`)
+      await page.getByRole('menuitem', { name: 'Evento', exact: true }).click()
+      await auditSheet(page, `${theme}/es/new event from +`)
+      await page.keyboard.press('Escape')
+      await expect(page.getByRole('dialog')).toHaveCount(0)
+      if (testInfo.project.name === 'phone') {
+        await page.getByRole('radio', { name: 'Semana', exact: true }).click()
+        await expect(page.getByTestId('week-overview')).toBeVisible()
+        await audit(page, `${theme}/es/week overview`)
+      }
+    })
+
     test('settings sheets, import preview and calendar details', async ({ page }, testInfo) => {
       await start(page, theme, plannedDocument)
       await open(page, 'settings')
