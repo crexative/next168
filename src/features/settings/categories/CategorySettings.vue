@@ -2,7 +2,7 @@
 import { computed, reactive, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { COLOR_KEYS, type Category, type ColorKey, type Goal, type PlannerDocument } from '@/core/model'
-import { categoryColor } from '@/features/insights/categoryColor'
+import { categoryColor, categorySharingColor, firstUnusedColorKey } from '@/features/insights/categoryColor'
 import { formatHoursDecimal } from '@/features/insights/format'
 import { assertEntry, CHANGED_ELSEWHERE, snapshotOf } from '@/features/insights/entryGuard'
 import { usePlannerStore } from '@/stores/plannerStore'
@@ -33,6 +33,7 @@ const isReferenced = computed(() => usage.value.blocks + usage.value.tasks > 0)
 const reassignOptions = computed(() => categories.value.filter((category) => category.id !== editing.value?.id))
 const effectiveReassign = computed(() => (reassignOptions.value.some((category) => category.id === reassignTo.value) ? reassignTo.value : reassignOptions.value[0]?.id ?? ''))
 const error = computed(() => (submitted.value ? validateCategoryForm(form) : null))
+const sharingCategory = computed(() => categorySharingColor(categories.value, form.colorKey, editing.value?.id ?? null))
 const goalOptions = computed(() => (['max', 'min', 'none'] as const).map((value) => ({ value, label: t(`categories.goalType.${value}`) })))
 const dirty = computed(() => {
   const original = editing.value?.id ? categories.value.find((category) => category.id === editing.value!.id) : undefined
@@ -66,7 +67,7 @@ function goalSummary(goal: Goal): string {
 }
 
 function openEditor(category?: Category): void {
-  Object.assign(form, category ? formFromCategory(category) : { name: '', colorKey: 'blue' as ColorKey, goalType: 'none' as Goal['type'], hours: 1 })
+  Object.assign(form, category ? formFromCategory(category) : { name: '', colorKey: firstUnusedColorKey(categories.value.filter((candidate) => !candidate.customColor).map((candidate) => candidate.colorKey)) as ColorKey, goalType: 'none' as Goal['type'], hours: 1 })
   submitted.value = false
   changedElsewhere.value = false
   reassignTo.value = ''
@@ -187,6 +188,7 @@ async function remove(): Promise<void> {
               <span class="visually-hidden">{{ t(`categories.colors.${color}`) }}</span>
             </label>
           </div>
+          <p v-if="sharingCategory" class="t-footnote t-secondary color-hint" role="status" data-testid="color-in-use">{{ t('categories.colorInUse', { name: sharingCategory.name }) }}</p>
         </fieldset>
 
         <SegmentedControl v-model="form.goalType" :options="goalOptions" :label="t('categories.goal')" />
@@ -232,6 +234,7 @@ async function remove(): Promise<void> {
 .input { min-height: var(--tap-target); padding: 0 var(--space-3); border: 1px solid var(--separator); border-radius: var(--radius-control); background: var(--surface-2); }
 .error { color: var(--danger-label); }
 .colors { margin: 0; padding: 0; border: 0; }
+.color-hint { margin: var(--space-1) 0 0; }
 .swatches { display: flex; flex-wrap: wrap; gap: var(--space-1); }
 .swatch-choice { position: relative; display: inline-flex; align-items: center; justify-content: center; width: var(--tap-target); height: var(--tap-target); }
 .swatch-dot { width: 28px; height: 28px; border-radius: 50%; border: 3px solid transparent; background-clip: padding-box; box-shadow: 0 0 0 1px var(--separator); }

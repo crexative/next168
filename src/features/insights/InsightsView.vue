@@ -11,6 +11,7 @@ import MeasureTiles from './MeasureTiles.vue'
 import WeekBar from './WeekBar.vue'
 import { categoryColor } from './categoryColor'
 import { formatDuration } from './format'
+import { goalProgress, type GoalProgress } from './goalLine'
 
 const { t } = useI18n()
 const planner = usePlannerStore()
@@ -24,17 +25,17 @@ const rows = computed(() => {
   if (!doc || !stats.value) return []
   return stats.value.categories.map((row) => {
     const category = doc.categories.find((candidate) => candidate.id === row.categoryId)!
-    const goalMinutes = category.goal.type === 'none' ? 0 : category.goal.hoursPerWeek * 60
-    const scale = Math.max(goalMinutes, row.plannedMinutes)
-    return {
-      category,
-      plannedMinutes: row.plannedMinutes,
-      goal: row.goal,
-      fill: scale > 0 ? (row.plannedMinutes / scale) * 100 : 0,
-      marker: scale > 0 && goalMinutes > 0 ? (goalMinutes / scale) * 100 : null,
-    }
+    const progress = goalProgress(category.goal, row.plannedMinutes)
+    return { category, plannedMinutes: row.plannedMinutes, goal: row.goal, progress, markerAlign: markerAlign(progress.markerPercent) }
   })
 })
+
+// A label at either end of the bar is anchored to that end so it is never clipped.
+function markerAlign(percent: number | null): 'start' | 'center' | 'end' {
+  if (percent === null) return 'center'
+  if (percent <= 20) return 'start'
+  return percent >= 80 ? 'end' : 'center'
+}
 
 const planVsActualRows = computed(() => {
   const doc = document.value
@@ -54,11 +55,27 @@ const measures = computed(() => {
   return sevenDayMeasures(doc.checkIns, localDateOf(new Date(), doc.settings.timeZone), exerciseTarget, doc.settings.timeZone)
 })
 
-function chipText(goal: { kind: string; minutes: number }): string {
-  const duration = formatDuration(t, goal.minutes)
-  if (goal.kind === 'over') return t('insights.goal.over', { duration })
-  if (goal.kind === 'missing') return t('insights.goal.missing', { duration })
+function chipText(row: { goal: { kind: string; minutes: number }; progress: GoalProgress }): string {
+  const { goal } = row
+  if (goal.kind === 'over') return t('insights.goal.over')
+  if (goal.kind === 'missing') return t('insights.goal.missing', { duration: formatDuration(t, goal.minutes) })
   return t('insights.goal.ok')
+}
+
+function lineText(row: { plannedMinutes: number; progress: GoalProgress }): string {
+  const { line } = row.progress
+  const planned = formatDuration(t, row.plannedMinutes)
+  if (line.kind === 'none') return t('insights.goal.none')
+  if (line.kind === 'minMet') return t('insights.goal.line.minMet')
+  if (line.kind === 'over') return t('insights.goal.line.over', { over: formatDuration(t, line.overMinutes) })
+  const params = { planned, goal: formatDuration(t, line.goalMinutes), left: formatDuration(t, line.leftMinutes) }
+  return t(`insights.goal.line.${line.kind}`, params)
+}
+
+function markerText(row: { category: { goal: { type: string } }; progress: GoalProgress }): string {
+  const line = row.progress.line
+  if (line.kind === 'none') return ''
+  return t(row.category.goal.type === 'max' ? 'insights.goal.markerMax' : 'insights.goal.markerMin', { duration: formatDuration(t, line.goalMinutes) })
 }
 </script>
 
@@ -83,17 +100,23 @@ function chipText(goal: { kind: string; minutes: number }): string {
               <span class="t-body name">{{ row.category.name }}</span>
               <span class="t-subhead t-secondary" data-testid="planned">{{ formatDuration(t, row.plannedMinutes) }}</span>
             </div>
-            <div class="track" aria-hidden="true">
-              <span class="fill" :style="{ width: `${row.fill}%`, background: categoryColor(row.category) }" />
-              <span v-if="row.marker !== null" class="marker" :style="{ left: `${row.marker}%` }" />
+            <div class="scale" aria-hidden="true">
+              <div class="track">
+                <span class="fill" :style="{ width: `${row.progress.fillPercent}%`, background: categoryColor(row.category) }" />
+                <span v-if="row.progress.markerPercent !== null" class="marker" :style="{ left: `${row.progress.markerPercent}%` }" />
+              </div>
+              <span
+                v-if="row.progress.markerPercent !== null"
+                class="marker-label t-caption"
+                :class="`align-${row.markerAlign}`"
+                :style="{ left: `${row.progress.markerPercent}%` }"
+                data-testid="goal-marker"
+              >{{ markerText(row) }}</span>
             </div>
-            <p
-              class="chip t-footnote"
-              :class="`is-${row.goal.kind}`"
-              data-testid="goal-chip"
-            >
-              <span aria-hidden="true">{{ row.goal.kind === 'ok' ? '✓' : row.goal.kind === 'none' ? '' : '!' }}</span>
-              {{ row.goal.kind === 'none' ? t('insights.goal.none') : chipText(row.goal) }}
+            <p class="t-subhead goal-line" data-testid="goal-line">{{ lineText(row) }}</p>
+            <p v-if="row.goal.kind !== 'none'" class="chip t-footnote" :class="`is-${row.goal.kind}`" data-testid="goal-chip">
+              <span aria-hidden="true">{{ row.goal.kind === 'ok' ? '✓' : '!' }}</span>
+              {{ chipText(row) }}
             </p>
           </li>
         </ul>
@@ -128,7 +151,12 @@ function chipText(goal: { kind: string; minutes: number }): string {
 .row-head { display: flex; align-items: center; gap: var(--space-3); }
 .name { flex: 1; min-width: 0; overflow-wrap: anywhere; }
 .swatch { width: 12px; height: 12px; border-radius: 50%; flex: none; }
+.scale { position: relative; padding-bottom: var(--space-4); }
 .track { position: relative; height: 8px; border-radius: 4px; background: var(--surface-2); }
+.marker-label { position: absolute; top: 14px; white-space: nowrap; color: var(--label-2); }
+.marker-label.align-center { transform: translateX(-50%); }
+.marker-label.align-end { transform: translateX(-100%); }
+.goal-line { margin: 0; overflow-wrap: anywhere; }
 .fill { position: absolute; inset: 0 auto 0 0; border-radius: 4px; }
 .marker { position: absolute; top: -3px; bottom: -3px; width: 2px; margin-left: -1px; border-radius: 1px; background: var(--label); }
 .chip { align-self: flex-start; padding: 2px var(--space-2); border-radius: 999px; background: var(--surface-2); color: var(--label-2); }

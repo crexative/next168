@@ -10,14 +10,27 @@
   },
   "bar": {
     "title": "Suas 168 horas",
-    "summary": "{planned} planejadas, {unassigned} sem atribuição"
+    "available": "{duration} disponíveis de 168",
+    "segment": "{name}: {duration} planejadas",
+    "availableName": "Disponível",
+    "availableSegment": "Disponível: {duration}",
+    "overlap": "Alguns blocos se sobrepõem, então a barra é limitada a 168 h.",
+    "legend": "Planejado por categoria"
   },
   "goal": {
     "title": "Metas por categoria",
-    "over": "Acima do limite em {duration}",
+    "over": "Acima do máximo",
     "missing": "Faltam {duration}",
     "ok": "No caminho",
-    "none": "Sem meta"
+    "none": "Sem meta",
+    "line": {
+      "maxLeft": "{planned} de máx. {goal} · restam {left}",
+      "over": "Você passou do máximo em {over}",
+      "minMissing": "{planned} de mín. {goal} · faltam {left}",
+      "minMet": "Mínimo cumprido"
+    },
+    "markerMax": "máx. {duration}",
+    "markerMin": "mín. {duration}"
   },
   "planVsActual": {
     "title": "Planejado e realizado",

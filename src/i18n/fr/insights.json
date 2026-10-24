@@ -10,14 +10,27 @@
   },
   "bar": {
     "title": "Vos 168 heures",
-    "summary": "{planned} planifiées, {unassigned} non attribuées"
+    "available": "{duration} disponibles sur 168",
+    "segment": "{name} : {duration} planifiées",
+    "availableName": "Disponible",
+    "availableSegment": "Disponible : {duration}",
+    "overlap": "Certains blocs se chevauchent : la barre est limitée à 168 h.",
+    "legend": "Planifié par catégorie"
   },
   "goal": {
     "title": "Objectifs par catégorie",
-    "over": "Dépassement de {duration}",
+    "over": "Maximum dépassé",
     "missing": "Encore {duration}",
     "ok": "Dans l'objectif",
-    "none": "Pas d'objectif"
+    "none": "Pas d'objectif",
+    "line": {
+      "maxLeft": "{planned} sur {goal} max · il reste {left}",
+      "over": "Maximum dépassé de {over}",
+      "minMissing": "{planned} sur {goal} min · il manque {left}",
+      "minMet": "Minimum atteint"
+    },
+    "markerMax": "max {duration}",
+    "markerMin": "min {duration}"
   },
   "planVsActual": {
     "title": "Prévu et réel",

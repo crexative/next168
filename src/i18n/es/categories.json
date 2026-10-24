@@ -42,5 +42,6 @@
   "reassignAndDelete": "Mover y eliminar",
   "delete": "Eliminar categoría",
   "deleted": "Eliminada «{name}»",
-  "changedElsewhere": "Esto cambió en otro lugar, así que se volvió a cargar. Revísalo e inténtalo de nuevo."
+  "changedElsewhere": "Esto cambió en otro lugar, así que se volvió a cargar. Revísalo e inténtalo de nuevo.",
+  "colorInUse": "{name} ya usa este color. Puedes mantenerlo igualmente."
 }

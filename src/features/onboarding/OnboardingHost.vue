@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, reactive, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { COLOR_KEYS } from '@/core/model'
+import { COLOR_KEYS, type ColorKey } from '@/core/model'
 import { formatDuration } from '@/features/insights/format'
 import { minuteToTime } from '@/features/checkin/checkInForm'
 import { assertEntry, CHANGED_ELSEWHERE, snapshotOf } from '@/features/insights/entryGuard'
@@ -42,6 +42,10 @@ watch(() => identityOf(planner.document), (identity) => {
 })
 
 const open = computed(() => planner.status === 'ready' && planner.document?.settings.onboardingDone === false)
+// A colour another picked category already uses is not offered again, so every created category gets its own.
+function colorTakenByOther(choice: TemplateChoice, color: ColorKey): boolean {
+  return choices.some((other) => other !== choice && other.selected && other.colorKey === color)
+}
 const picked = computed(() => choices.filter((choice) => choice.selected))
 const taskTemplateId = computed(() => defaultTaskTemplateId(choices, firstTask.templateId))
 const saving = ref(false)
@@ -123,7 +127,7 @@ const stepTitle = computed(() => t(`onboarding.steps.${step.value}.title`))
           </label>
           <input v-model="choice.name" class="input name" type="text" maxlength="60" :aria-label="t('onboarding.categoryName')" :disabled="!choice.selected">
           <select v-model="choice.colorKey" class="input color" :aria-label="t('onboarding.categoryColor')" :disabled="!choice.selected" :style="{ borderColor: `var(--cat-${choice.colorKey})` }">
-            <option v-for="color in COLOR_KEYS" :key="color" :value="color">{{ t(`categories.colors.${color}`) }}</option>
+            <option v-for="color in COLOR_KEYS" :key="color" :value="color" :disabled="colorTakenByOther(choice, color)">{{ t(`categories.colors.${color}`) }}</option>
           </select>
         </li>
       </ul>

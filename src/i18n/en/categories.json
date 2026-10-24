@@ -42,5 +42,6 @@
   "reassignAndDelete": "Move and delete",
   "delete": "Delete category",
   "deleted": "Deleted “{name}”",
-  "changedElsewhere": "This changed elsewhere, so it was reloaded. Please review it and try again."
+  "changedElsewhere": "This changed elsewhere, so it was reloaded. Please review it and try again.",
+  "colorInUse": "{name} already uses this colour. You can still keep it."
 }

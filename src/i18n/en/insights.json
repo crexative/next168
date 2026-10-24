@@ -10,14 +10,27 @@
   },
   "bar": {
     "title": "Your 168 hours",
-    "summary": "{planned} planned, {unassigned} unassigned"
+    "available": "{duration} available of 168",
+    "segment": "{name}: {duration} planned",
+    "availableName": "Available",
+    "availableSegment": "Available: {duration}",
+    "overlap": "Some blocks overlap, so the bar is capped at 168 h.",
+    "legend": "Planned per category"
   },
   "goal": {
     "title": "Goals by category",
-    "over": "Over cap by {duration}",
+    "over": "Over cap",
     "missing": "{duration} to go",
     "ok": "On track",
-    "none": "No goal"
+    "none": "No goal",
+    "line": {
+      "maxLeft": "{planned} of max {goal} · {left} left",
+      "over": "Over the max by {over}",
+      "minMissing": "{planned} of min {goal} · {left} to go",
+      "minMet": "Minimum met"
+    },
+    "markerMax": "max {duration}",
+    "markerMin": "min {duration}"
   },
   "planVsActual": {
     "title": "Plan vs actual",

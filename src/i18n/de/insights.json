@@ -10,14 +10,27 @@
   },
   "bar": {
     "title": "Ihre 168 Stunden",
-    "summary": "{planned} geplant, {unassigned} nicht zugewiesen"
+    "available": "{duration} frei von 168",
+    "segment": "{name}: {duration} geplant",
+    "availableName": "Frei",
+    "availableSegment": "Frei: {duration}",
+    "overlap": "Einige Blöcke überschneiden sich, daher ist die Leiste auf 168 h begrenzt.",
+    "legend": "Geplant je Kategorie"
   },
   "goal": {
     "title": "Ziele je Kategorie",
-    "over": "{duration} über dem Limit",
+    "over": "Über dem Limit",
     "missing": "Noch {duration}",
     "ok": "Im Plan",
-    "none": "Kein Ziel"
+    "none": "Kein Ziel",
+    "line": {
+      "maxLeft": "{planned} von max. {goal} · noch {left} übrig",
+      "over": "Max. um {over} überschritten",
+      "minMissing": "{planned} von min. {goal} · es fehlen {left}",
+      "minMet": "Minimum erreicht"
+    },
+    "markerMax": "max. {duration}",
+    "markerMin": "min. {duration}"
   },
   "planVsActual": {
     "title": "Plan und Ist",
