@@ -60,8 +60,10 @@ async function importWorkspace(event: Event) {
   <div class="connect-settings">
     <h2 class="section-header">{{ t('connect.title') }}</h2>
     <AnyAiPanel class="any-ai-card" />
-    <h3 class="t-headline local-title">{{ t('connect.local.title') }}</h3>
-    <p class="t-subhead t-secondary local-hint">{{ t('connect.local.hint') }}</p>
+    <template v-if="companionMode">
+      <h3 class="t-headline local-title">{{ t('connect.local.title') }}</h3>
+      <p class="t-subhead t-secondary local-hint">{{ t('connect.local.hint') }}</p>
+    </template>
     <section v-if="companionMode && empty" class="connect-card">
       <p class="t-subhead t-secondary">{{ t('connect.transferHint') }}</p>
       <label class="import-workspace">

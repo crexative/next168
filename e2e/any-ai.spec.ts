@@ -108,11 +108,11 @@ for (const theme of THEMES) {
         await noViolations(page, `${theme}/${size}/copied`)
       })
 
-      test('Settings has the same panel and keeps Claude Desktop / Claude Code under its own heading', async ({ page }) => {
+      test('Settings has the same panel; the local Claude option only appears where its companion runs', async ({ page }) => {
         await begin(page, theme, size)
         await page.goto('./#/settings/advanced')
         await expect(page.getByTestId('any-ai-copy')).toBeVisible()
-        await expect(page.getByRole('heading', { name: 'Claude Desktop o Claude Code (en este equipo)' })).toBeVisible()
+        await expect(page.getByRole('heading', { name: 'Claude Desktop o Claude Code (en este equipo)' })).toHaveCount(0)
         await expect(page.getByTestId('any-ai-toggle')).not.toHaveAttribute('aria-expanded', /.*/)
         await noViolations(page, `${theme}/${size}/settings connect section`)
       })
