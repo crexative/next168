@@ -38,12 +38,12 @@ const base: PlannerDocument = {
 let app: App | undefined
 let host: HTMLElement
 
-async function mount(seed: PlannerDocument = base, locale = 'en') {
-  vi.setSystemTime(new Date(NOW))
+async function mount(seed: PlannerDocument = base, locale = 'en', at = NOW) {
+  vi.setSystemTime(new Date(at))
   const pinia = createPinia()
   setActivePinia(pinia)
   const repos = createTestRepositories()
-  configurePlannerStore({ repository: repos.planner, now: () => new Date(NOW), newId: newTestId, locale: () => 'en', timeZone: () => 'UTC' })
+  configurePlannerStore({ repository: repos.planner, now: () => new Date(at), newId: newTestId, locale: () => 'en', timeZone: () => 'UTC' })
   const store = usePlannerStore()
   host = document.createElement('div')
   document.body.appendChild(host)
@@ -136,6 +136,11 @@ describe('Summary: last 7 days', () => {
   it('names the window by its dates, not by weekdays that roll', async () => {
     await mount()
     expect(text('measures-range')).toBe('Oct 15 – 21')
+  })
+
+  it('names a window that crosses a month by both dates, in the reader\'s language', async () => {
+    await mount(base, 'es', '2026-11-03T10:00:00.000Z')
+    expect(text('measures-range')).toBe('28 oct – 3 nov')
   })
 
   it('shows the average stress as a whole number', async () => {
