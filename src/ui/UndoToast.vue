@@ -77,13 +77,16 @@ onBeforeUnmount(() => {
   display: flex;
   align-items: center;
   gap: var(--space-4);
-  max-width: 28rem;
+  /* Never wider than the region, whatever the text width: the Undo button and its focus ring stay on screen. */
+  min-width: 0;
+  max-width: min(28rem, 100%);
   padding: var(--space-1) var(--space-1) var(--space-1) var(--space-4);
   border-radius: var(--radius-card);
   background: var(--surface);
   box-shadow: var(--shadow-floating);
   pointer-events: auto;
 }
+.toast > .t-subhead { min-width: 0; overflow-wrap: anywhere; }
 .toast-action {
   flex: none;
   min-width: var(--tap-target);

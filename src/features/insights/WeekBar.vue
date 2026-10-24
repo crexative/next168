@@ -72,8 +72,9 @@ const weekLabel = computed(() => formatTotal(WEEK_MINUTES))
 .segment { display: block; flex: 0 1 auto; flex-basis: 0; min-width: 0; }
 .is-available { background: var(--surface-2); box-shadow: inset 0 0 0 1px var(--separator); }
 .legend { display: flex; flex-direction: column; gap: var(--space-1); margin: var(--space-1) 0 0; padding: 0; list-style: none; }
-.legend-item { display: flex; align-items: center; gap: var(--space-2); min-width: 0; }
-.legend-name { flex: 1; min-width: 0; overflow-wrap: break-word; }
+/* With large text the hours move under the name instead of squeezing it until a word breaks. */
+.legend-item { display: flex; flex-wrap: wrap; align-items: center; gap: 0 var(--space-2); min-width: 0; }
+.legend-name { flex: 1 1 6rem; min-width: 0; overflow-wrap: break-word; }
 .swatch { width: 10px; height: 10px; border-radius: 50%; flex: none; }
 .swatch.is-available { background: var(--surface-2); box-shadow: inset 0 0 0 1px var(--separator); }
 </style>
