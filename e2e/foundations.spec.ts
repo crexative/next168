@@ -451,3 +451,63 @@ test.describe('accessibility plumbing', () => {
     expect(alpha, `secondary text ${look.secondary}`).toBeGreaterThanOrEqual(0.85)
   })
 })
+
+test.describe('sheets', () => {
+  test('on a narrow screen a mouse click on the close button closes the sheet', async ({ page }, testInfo) => {
+    test.skip(testInfo.project.name !== 'phone', 'the bottom sheet (drag handle) layout')
+    await page.setViewportSize({ width: 390, height: 844 })
+    await startWith(page)
+    await openView(page, 'week')
+    await page.getByRole('button', { name: 'Add block' }).click()
+    const dialog = page.getByRole('dialog')
+    await expect(dialog).toBeVisible()
+    await page.waitForFunction(() => document.getAnimations().every((animation) => animation.playState !== 'running'))
+    const close = (await dialog.getByRole('button', { name: 'Close' }).first().boundingBox())!
+    await page.mouse.click(close.x + close.width / 2, close.y + close.height / 2)
+    await expect(dialog).toHaveCount(0)
+  })
+
+  async function openAddBlock(page: Page) {
+    await startWith(page)
+    await openView(page, 'week')
+    await page.getByRole('button', { name: 'Add block' }).click()
+    const dialog = page.getByRole('dialog')
+    await expect(dialog).toBeVisible()
+    await page.waitForFunction(() => document.getAnimations().every((animation) => animation.playState !== 'running'))
+    await expect.poll(() => page.locator('.sheet-panel').evaluate((element) => (element as HTMLElement).style.transform)).toBe('translateY(0px)')
+    return dialog
+  }
+
+  test('a drag never starts on a button, and a press moves the sheet only after 10 px', async ({ page }, testInfo) => {
+    test.skip(testInfo.project.name !== 'phone')
+    const dialog = await openAddBlock(page)
+    const transform = () => page.locator('.sheet-panel').evaluate((element) => (element as HTMLElement).style.transform)
+    const close = (await dialog.getByRole('button', { name: 'Close' }).boundingBox())!
+    await page.mouse.move(close.x + close.width / 2, close.y + close.height / 2)
+    await page.mouse.down()
+    await page.mouse.move(close.x + close.width / 2, close.y + close.height / 2 + 120, { steps: 6 })
+    expect(await transform()).toBe('translateY(0px)')
+    await page.mouse.up()
+    await expect(dialog).toBeVisible()
+
+    const handle = (await page.locator('.sheet-handle').boundingBox())!
+    await page.mouse.move(handle.x + handle.width / 2, handle.y + 2)
+    await page.mouse.down()
+    await page.mouse.move(handle.x + handle.width / 2, handle.y + 8, { steps: 3 })
+    expect(await transform()).toBe('translateY(0px)')
+    await page.mouse.move(handle.x + handle.width / 2, handle.y + 60, { steps: 4 })
+    expect(await transform()).not.toBe('translateY(0px)')
+    await page.mouse.up()
+  })
+
+  test('a phone sheet ends with a Cancel within thumb reach', async ({ page }, testInfo) => {
+    test.skip(testInfo.project.name !== 'phone')
+    const dialog = await openAddBlock(page)
+    const cancel = dialog.getByRole('button', { name: 'Cancel', exact: true })
+    const [box, panel] = await Promise.all([cancel.boundingBox(), page.locator('.sheet-panel').boundingBox()])
+    expect(panel!.y + panel!.height - (box!.y + box!.height)).toBeLessThanOrEqual(16)
+    expect(box!.height).toBeGreaterThanOrEqual(44)
+    await cancel.click()
+    await expect(dialog).toHaveCount(0)
+  })
+})
