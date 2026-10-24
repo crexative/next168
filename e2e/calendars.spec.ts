@@ -78,6 +78,16 @@ test('import file → preview and Week show events with a conflict against the p
   await openTab(page, 'week')
   await expect(page.getByText('Project review', { exact: true })).toBeVisible()
   await expect(page.getByTestId('calendar-conflict').first()).toBeVisible()
+  // toBeVisible ignores occlusion: the event title and the Conflict mark must be what is painted at their own center.
+  for (const selector of ['[data-testid=busy-overlay].is-conflict .busy-title', '[data-testid=busy-overlay].is-conflict [data-testid=calendar-conflict]']) {
+    const topmost = await page.locator(selector).first().evaluate((node) => {
+      node.scrollIntoView({ block: 'center' })
+      const box = node.getBoundingClientRect()
+      const hit = window.document.elementFromPoint(box.left + box.width / 2, box.top + box.height / 2)
+      return !!hit && (hit === node || node.contains(hit)) ? 'ok' : (hit?.outerHTML ?? 'null').slice(0, 200) + JSON.stringify(box)
+    })
+    expect(topmost, `${selector} is the topmost element at its center`).toBe('ok')
+  }
   await page.reload()
   await expect(page.getByText('Project review', { exact: true })).toBeVisible()
 })

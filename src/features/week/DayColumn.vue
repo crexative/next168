@@ -139,10 +139,18 @@ function onColumnClick(event: MouseEvent): void {
   border: 1px dashed var(--label-2);
   border-radius: 6px;
   background: repeating-linear-gradient(135deg, color-mix(in srgb, var(--label-2) 10%, transparent) 0 4px, transparent 4px 8px);
+  /* Events paint above planned blocks; the area stays click-through so the column and blocks keep working. */
+  z-index: 1;
   pointer-events: none;
 }
-.busy-title { color: var(--label); }
-.is-conflict { border-color: var(--danger); }
+.busy-title, .conflict-mark { pointer-events: auto; }
+.busy-title { display: block; overflow: hidden; color: var(--label); text-overflow: ellipsis; white-space: nowrap; }
+/* A conflicting event takes the right-hand side of the column so the block it overlaps stays readable beside it. */
+.is-conflict {
+  inset-inline-start: 22%;
+  border-color: var(--danger);
+  background: repeating-linear-gradient(135deg, color-mix(in srgb, var(--label-2) 10%, var(--surface)) 0 4px, var(--surface) 4px 8px);
+}
 .conflict-mark { display: flex; align-items: center; gap: 2px; color: var(--danger-label); }
 
 .now-line {
