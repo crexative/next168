@@ -164,7 +164,7 @@ async function remove(): Promise<void> {
       </li>
       <li v-if="categories.length === 0" class="t-subhead t-secondary empty">{{ t('categories.empty') }}</li>
     </ListGroup>
-    <Button variant="plain" :disabled="!planner.writable" @click="openEditor()">
+    <Button class="add-category" variant="plain" :disabled="!planner.writable" @click="openEditor()">
       <Icon name="plus" :size="20" /> {{ t('categories.add') }}
     </Button>
 
@@ -223,13 +223,16 @@ async function remove(): Promise<void> {
 .categories { display: flex; flex-direction: column; align-items: stretch; gap: var(--space-2); padding-inline: var(--space-4); }
 .category-row + .category-row .category-button::before { content: ''; position: absolute; top: 0; right: 0; left: var(--space-4); border-top: 1px solid var(--separator); }
 .category-button { position: relative; display: flex; align-items: center; gap: var(--space-3); width: 100%; min-height: var(--tap-target); padding: var(--space-2) var(--space-4); border: 0; background: transparent; text-align: start; }
+/* The card clips its rows, so a row draws its focus ring inside itself, rounded like the card. */
+.category-button:focus-visible { outline-offset: -2px; border-radius: var(--radius-card); }
 .category-text { display: flex; flex: 1; flex-direction: column; min-width: 0; }
 .chevron { color: var(--label-3); }
 .swatch { width: 14px; height: 14px; border-radius: 50%; flex: none; }
 .empty { padding: var(--space-3) var(--space-4); }
+/* Leading, under the rows' swatches, like the other plain actions in Settings; centred it floated between sections. */
+.add-category { align-self: flex-start; }
 .editor { display: flex; flex-direction: column; gap: var(--space-3); }
 .field { display: flex; flex-direction: column; gap: var(--space-1); }
-.input { min-height: var(--tap-target); padding: 0 var(--space-3); border: 1px solid var(--separator); border-radius: var(--radius-control); background: var(--surface-2); }
 .error { color: var(--danger-label); }
 .colors { margin: 0; padding: 0; border: 0; }
 .swatches { display: flex; flex-wrap: wrap; gap: var(--space-1); }

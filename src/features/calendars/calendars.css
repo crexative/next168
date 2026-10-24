@@ -1,19 +1,26 @@
 .calendar-section, .calendar-form, .calendar-form label, .calendar-list, .calendar-list li, .calendar-source, .calendar-file { min-width: 0; grid-template-columns: minmax(0, 1fr); }
 .calendar-form { display: grid; gap: var(--space-3); }
-.calendar-form label { display: grid; gap: var(--space-1); font-weight: 500; }
-.calendar-form .checkbox { display: flex; align-items: center; min-height: 44px; }
-.calendar-form input:not([type=checkbox]), .calendar-form textarea, .calendar-form select, .calendar-source input, .calendar-source select { min-height: 44px; min-width: 0; width: 100%; padding: 10px 12px; border: 1px solid var(--separator); border-radius: var(--radius-control); background: var(--surface); color: var(--label); font: inherit; box-sizing: border-box; }
-.calendar-form input[type=checkbox] { width: 24px; height: 24px; margin-inline-end: 8px; accent-color: var(--tint); }
+.calendar-form label, label.calendar-form, .calendar-source label { display: grid; gap: var(--space-1); color: var(--label-2); font-size: 0.8125rem; line-height: 1.38; letter-spacing: 0.005em; }
+.calendar-form .checkbox { display: flex; align-items: center; gap: var(--space-3); min-height: var(--tap-target); color: var(--label); font-size: 1.0625rem; line-height: 1.35; letter-spacing: 0; }
+/* The same field shape as the other forms (see .input in base.css); labels read as footnotes above them. */
+.calendar-form input:not([type=checkbox]), .calendar-form textarea, .calendar-form select, .calendar-source input, .calendar-source select { min-height: var(--tap-target); min-width: 0; width: 100%; padding: 0 var(--space-3); border: 1px solid var(--separator); border-radius: var(--radius-control); background-color: var(--surface); color: var(--label); font: inherit; font-size: 1.0625rem; line-height: 1.35; letter-spacing: 0; }
+.calendar-form textarea { padding-block: var(--space-2); }
+.calendar-form select, .calendar-source select { padding-inline-end: calc(var(--space-2) + 1rem + var(--space-2)); }
+/* Inside a card or a sheet the fields sit on --surface, so they take the grouped fill like every other form. */
+.event-form input:not([type=checkbox]), .event-form textarea, .calendar-source input, .calendar-source select { background-color: var(--surface-2); }
+.calendar-form input[type=checkbox] { flex: none; width: 22px; height: 22px; margin: 0; accent-color: var(--tint); }
 .calendar-list { list-style: none; padding: 0; margin: 0; display: grid; gap: var(--space-2); }
-.calendar-list li { display: grid; gap: var(--space-1); padding: var(--space-3); border-radius: var(--radius-card); background: var(--surface); overflow-wrap: anywhere; }
+.calendar-list li { display: grid; gap: var(--space-1); padding: var(--space-4); border-radius: var(--radius-card); background: var(--surface); overflow-wrap: anywhere; }
 .calendar-note { color: var(--label-2); font-size: .9375rem; white-space: pre-line; }
 .calendar-error, .calendar-conflict { color: var(--danger-label); font-size: .9375rem; }
 .calendar-conflict { font-weight: 600; }
-.calendar-actions { display: flex; gap: var(--space-2); flex-wrap: wrap; align-items: center; }
+.calendar-actions { display: flex; gap: 0 var(--space-5); flex-wrap: wrap; align-items: center; }
 .calendar-actions > * { max-width: 100%; white-space: normal; overflow-wrap: anywhere; }
-.calendar-actions a { display: inline-flex; align-items: center; min-height: 44px; padding: 0 12px; color: var(--tint-label); }
+/* Text actions start on the content's leading edge and read alike, whether they are buttons or links. */
+.calendar-actions .is-plain { justify-content: flex-start; padding-inline: 0; }
+.calendar-actions a { display: inline-flex; align-items: center; min-height: var(--tap-target); color: var(--tint-label); font-weight: 600; text-decoration: none; }
 .calendar-section { padding-inline: var(--space-4); display: grid; gap: var(--space-4); margin-bottom: var(--space-6); overflow-wrap: anywhere; }
 .calendar-source { display: grid; gap: var(--space-2); }
-.calendar-file { display: grid; gap: var(--space-2); padding: var(--space-3); border-radius: var(--radius-card); background: var(--surface); }
+.calendar-file { display: grid; gap: var(--space-2); padding: var(--space-4); border-radius: var(--radius-card); background: var(--surface); }
 .calendar-file input { min-width: 0; width: 100%; max-width: 100%; min-height: 44px; }
 .calendar-section h2, .calendar-section h3, .calendar-section p { margin: 0; }

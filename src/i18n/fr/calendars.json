@@ -33,6 +33,7 @@
   "location": "Lieu",
   "notes": "Notes",
   "attendees": "Participants (adresses e-mail)",
+  "attendeesPlaceholder": "Adresses e-mail",
   "attendeesHint": "Séparez les adresses par des virgules",
   "formInvalid": "Saisissez un titre, une date et heure valides, une durée positive et des adresses valides (50 maximum).",
   "saveEvent": "Enregistrer l’événement",

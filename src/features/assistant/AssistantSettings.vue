@@ -45,4 +45,6 @@ async function remove(): Promise<void> {
 .assistant-settings { padding-inline: var(--space-4); }
 .assistant-settings :deep(.list-header), .assistant-settings :deep(.list-footer) { padding-inline: 0; }
 .settings-body { display: flex; flex-direction: column; align-items: flex-start; gap: var(--space-3); padding: var(--space-4); }
+/* Full width like every other segmented control, so "On-device model" does not wrap. */
+.settings-body > .segmented { align-self: stretch; }
 </style>

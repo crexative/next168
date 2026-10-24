@@ -31,6 +31,41 @@ ul { margin: 0; padding: 0; list-style: none; }
   outline-offset: 2px;
 }
 
+/* One field shape for every form: inputs, selects and text areas line up wherever they share a row. */
+.input {
+  min-height: var(--tap-target);
+  padding: 0 var(--space-3);
+  border: 1px solid var(--separator);
+  border-radius: var(--radius-control);
+  background-color: var(--surface-2);
+  color: var(--label);
+}
+
+/* Selects draw their own chevron inside the padding: the native arrow ignores padding and sits on the border. */
+select {
+  -webkit-appearance: none;
+  appearance: none;
+  background-image: var(--chevron-down);
+  background-repeat: no-repeat;
+  /* The glyph is inset 4 px in its 16 px box, so it sits 12 px from the border, mirroring the label's inset. */
+  background-position: calc(100% - var(--space-2)) 50%;
+  background-size: 1rem 1rem;
+}
+select, select.input { padding-inline-end: calc(var(--space-2) + 1rem + var(--space-2)); }
+
+input[type='file']::file-selector-button {
+  min-height: 2.25rem;
+  margin-inline-end: var(--space-3);
+  padding: 0 var(--space-4);
+  border: 0;
+  border-radius: var(--radius-control);
+  background: color-mix(in srgb, var(--tint) 12%, transparent);
+  color: var(--tint-label);
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+}
+
 .t-large-title { font-size: 2.125rem; line-height: 1.2; font-weight: 700; letter-spacing: -0.02em; }
 .t-title-2 { font-size: 1.375rem; line-height: 1.27; font-weight: 700; letter-spacing: -0.01em; }
 .t-headline { font-size: 1.0625rem; line-height: 1.3; font-weight: 600; letter-spacing: -0.01em; }

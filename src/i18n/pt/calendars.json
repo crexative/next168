@@ -33,6 +33,7 @@
   "location": "Local",
   "notes": "Notas",
   "attendees": "Participantes (endereços de e-mail)",
+  "attendeesPlaceholder": "Endereços de e-mail",
   "attendeesHint": "Separe os endereços por vírgulas",
   "formInvalid": "Introduza um título, data e hora válidas, duração positiva e e-mails válidos (até 50).",
   "saveEvent": "Guardar evento",

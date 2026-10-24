@@ -122,9 +122,12 @@ const stepTitle = computed(() => t(`onboarding.steps.${step.value}.title`))
             <span class="check-box" aria-hidden="true"><Icon name="check" :size="16" /></span>
           </label>
           <input v-model="choice.name" class="input name" type="text" maxlength="60" :aria-label="t('onboarding.categoryName')" :disabled="!choice.selected">
-          <select v-model="choice.colorKey" class="input color" :aria-label="t('onboarding.categoryColor')" :disabled="!choice.selected" :style="{ borderColor: `var(--cat-${choice.colorKey})` }">
-            <option v-for="color in COLOR_KEYS" :key="color" :value="color">{{ t(`categories.colors.${color}`) }}</option>
-          </select>
+          <span class="color-control">
+            <span class="color-dot" aria-hidden="true" :style="{ backgroundColor: `var(--cat-${choice.colorKey})` }" />
+            <select v-model="choice.colorKey" class="input color" :aria-label="t('onboarding.categoryColor')" :disabled="!choice.selected" :style="{ borderColor: `var(--cat-${choice.colorKey})` }">
+              <option v-for="color in COLOR_KEYS" :key="color" :value="color">{{ t(`categories.colors.${color}`) }}</option>
+            </select>
+          </span>
         </li>
       </ul>
 
@@ -185,14 +188,20 @@ const stepTitle = computed(() => t(`onboarding.steps.${step.value}.title`))
 .check-box { display: inline-flex; align-items: center; justify-content: center; flex: none; width: 22px; height: 22px; border: 2px solid var(--label-3); border-radius: 6px; color: transparent; }
 .check-input:checked + .check-box { border-color: var(--tint); background: var(--tint); color: var(--tint-text); }
 .check-input:focus-visible + .check-box { outline: 2px solid var(--tint); outline-offset: 2px; }
-.input { min-height: var(--tap-target); padding: 0 var(--space-3); border: 1px solid var(--separator); border-radius: var(--radius-control); background: var(--surface-2); }
 .name { flex: 1; min-width: 0; }
-/* Sized to its longest option label (all locales); a fixed width truncated "Morado"/"Turquesa". */
-.color { flex: none; width: auto; max-inline-size: 50%; border-width: 2px; }
+.color-control { display: inline-flex; align-items: center; gap: var(--space-2); flex: none; }
+.color-dot { flex: none; width: 12px; height: 12px; border-radius: 50%; }
+/* Keep every translated colour readable in the picker without taking the name's row on phones. */
+.color { flex: none; width: auto; }
 .sketch { background: var(--surface-2); border-radius: var(--radius-control); }
 .sketch-label { position: relative; display: flex; align-items: center; gap: var(--space-3); width: 100%; min-height: var(--tap-target); padding: var(--space-2) var(--space-3); }
 .sketch-label > span { display: flex; flex-direction: column; }
 .task-form { display: flex; flex-direction: column; gap: var(--space-3); }
 .field { display: flex; flex-direction: column; gap: var(--space-1); }
 .actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: var(--space-2); margin-top: var(--space-2); }
+@media (max-width: 480px) {
+  .choice:not(.sketch) { display: grid; grid-template-columns: var(--tap-target) minmax(0, 1fr); row-gap: var(--space-1); }
+  .name { width: 100%; }
+  .color-control { grid-column: 2; justify-self: start; }
+}
 </style>

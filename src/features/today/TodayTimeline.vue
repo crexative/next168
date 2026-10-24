@@ -151,7 +151,7 @@ function savePartial(item: TimelineItem & { kind: 'block' }): void {
               <input
                 :id="`${formId}-${item.key}`"
                 v-model.number="partialMinutes"
-                class="partial-input"
+                class="input partial-input"
                 type="number"
                 inputmode="numeric"
                 min="0"
@@ -216,18 +216,7 @@ function savePartial(item: TimelineItem & { kind: 'block' }): void {
 .actual-choice.is-skipped[aria-pressed='true']::before { box-shadow: inset 0 -2px 0 var(--label-2), 0 1px 3px rgba(0, 0, 0, 0.12); }
 .partial { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2); }
 .partial-label { flex-basis: 100%; color: var(--label-2); }
-.partial-input {
-  width: 6rem;
-  min-height: var(--tap-target);
-  padding: 0 var(--space-3);
-  border: 0.5px solid var(--separator);
-  border-radius: var(--radius-control);
-  background: var(--surface-2);
-  color: var(--label);
-  font: inherit;
-  font-size: 1.0625rem;
-  font-variant-numeric: tabular-nums;
-}
+.partial-input { width: 6rem; font-variant-numeric: tabular-nums; }
 @media (prefers-reduced-motion: reduce) {
   .actual-choice:active::before { transform: none; opacity: 0.7; }
 }

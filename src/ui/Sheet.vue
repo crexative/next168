@@ -16,6 +16,7 @@ const isCentered = useMediaQuery('(min-width: 768px)')
 const rendered = ref(false)
 const shown = ref(false)
 const panel = ref<HTMLElement | null>(null)
+const heading = ref<HTMLElement | null>(null)
 
 const FADE_MS = 150
 const FOCUSABLE = 'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'
@@ -96,7 +97,7 @@ function onKeydown(event: KeyboardEvent): void {
   const first = items[0]!
   const last = items[items.length - 1]!
   const active = document.activeElement
-  if (event.shiftKey && (active === first || active === panel.value)) {
+  if (event.shiftKey && (active === first || active === panel.value || active === heading.value)) {
     event.preventDefault()
     last.focus()
   } else if (!event.shiftKey && active === last) {
@@ -147,7 +148,8 @@ watch(() => props.open, async (open) => {
     rendered.value = true
     document.documentElement.dataset.sheetOpen = ''
     await animateIn(interrupted ? offset : undefined)
-    ;(focusables()[0] ?? panel.value)?.focus()
+    // The title, not the first control: opening a sheet must not light up a focus ring on its close button.
+    ;(heading.value ?? panel.value)?.focus({ preventScroll: true })
   } else if (rendered.value) {
     delete document.documentElement.dataset.sheetOpen
     if (await animateOut()) {
@@ -191,7 +193,7 @@ onBeforeUnmount(() => {
         >
           <span class="sheet-handle" :title="t('common.dragHandle')" aria-hidden="true" />
           <div class="sheet-header">
-            <h2 :id="titleId" class="t-headline">{{ title }}</h2>
+            <h2 :id="titleId" ref="heading" class="sheet-title t-headline" tabindex="-1">{{ title }}</h2>
             <button class="sheet-close" type="button" :aria-label="t('common.close')" @click="requestClose">
               <Icon name="x" :size="20" />
             </button>
@@ -218,8 +220,11 @@ onBeforeUnmount(() => {
   box-shadow: var(--shadow-floating);
   padding-bottom: var(--safe-bottom);
   outline: none;
+  /* Clips scrolled content to the rounded corners. */
+  overflow: hidden;
 }
 .sheet-grab { touch-action: none; padding-top: var(--space-2); cursor: grab; }
+.sheet-title:focus { outline: none; }
 .sheet-handle { display: block; width: 36px; height: 5px; margin: 0 auto var(--space-1); border-radius: 3px; background: var(--label-3); }
 .sheet-header { display: flex; align-items: center; justify-content: space-between; padding: 0 var(--space-2) 0 var(--space-4); }
 .sheet-close {
@@ -233,6 +238,8 @@ onBeforeUnmount(() => {
   background: transparent;
   color: var(--label-2);
 }
+/* Drawn inside the button so the ring never crowds the sheet's rounded corner. */
+.sheet-close:focus-visible { outline-offset: -2px; }
 .sheet-body { flex: 1; overflow-y: auto; overscroll-behavior: contain; padding: var(--space-2) var(--space-4) var(--space-4); }
 
 .sheet-root.is-centered { align-items: center; }
