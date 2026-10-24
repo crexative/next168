@@ -164,6 +164,14 @@ derived from a stable hash of the checkout's path, so runs in different worktree
 can never test each other's build. It never reuses a server that is already running. Set
 `PW_PORT_BASE=<port>` to pick the root port yourself (the sub-path server uses the next one).
 
+CI runs on Linux, whose fonts lay text out differently from macOS, so a green run on a Mac proves
+little for layout. Before pushing, reproduce CI's rendering with `npm run test:e2e:linux` (any
+`playwright test` arguments follow `--`, for example `npm run test:e2e:linux -- e2e/visual-integrity.spec.ts`).
+It needs a running Docker engine (`colima start --cpu 4 --memory 6`), runs inside Playwright's official image for
+the locked version plus DejaVu fonts as on GitHub's runners, keeps its own `node_modules` and build in Docker
+volumes, and writes reports back to `e2e/.results` and `e2e/.report`. Set `NEXT168_E2E_LINUX_PLATFORM=linux/amd64`
+to match CI's CPU architecture (slow under emulation).
+
 ## 🏗️ Architecture
 
 ### Project Structure
