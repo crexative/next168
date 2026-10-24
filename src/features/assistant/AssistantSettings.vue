@@ -14,6 +14,7 @@ const deleting = ref(false)
 
 const options = computed(() => (['rules', 'webllm'] as ProviderChoice[]).map((value) => ({ value, label: t(`assistant.providers.${value}`) })))
 const modelPresent = computed(() => assistant.availability.webllm === 'available')
+const modelState = computed(() => assistant.availability.webllm)
 
 onMounted(() => { void assistant.refresh() })
 
@@ -30,6 +31,13 @@ async function remove(): Promise<void> {
 <template>
   <ListGroup class="assistant-settings" :header="t('assistant.settings.header')" :footer="t('assistant.privacy')">
     <li class="settings-body">
+      <!-- The model's status lives here, one level below Settings, not on the assistant screen. -->
+      <p class="t-footnote t-secondary" data-testid="assistant-status">
+        <i18n-t keypath="assistant.status.line" scope="global" tag="span">
+          <template #rules><span data-testid="status-rules">{{ t('assistant.status.available') }}</span></template>
+          <template #model><span data-testid="status-webllm">{{ t(`assistant.status.${modelState}`) }}</span></template>
+        </i18n-t>
+      </p>
       <SegmentedControl :model-value="assistant.preference.value" :options="options" :label="t('assistant.settings.provider')" @update:model-value="assistant.choose($event)" />
       <p v-if="assistant.preference.value === 'webllm' && assistant.availability.webllm === 'downloadable'" class="t-footnote t-secondary">
         {{ t('assistant.settings.needsDownload') }} <a :href="viewHash('assistant')">{{ t('assistant.settings.openAssistant') }}</a>

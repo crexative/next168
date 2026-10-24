@@ -70,19 +70,27 @@ for (const size of Object.keys(SIZES) as (keyof typeof SIZES)[]) {
         await expect(page.getByTestId('onboarding')).toBeVisible()
       })
 
-      test('the assistant is one toolbar icon on Today and Insights', async ({ page }) => {
+      test('the assistant and Settings sit in one place on every tab: the toolbar on a phone, the sidebar footer on a desktop', async ({ page }) => {
         await start(page, size, theme, planned)
-        for (const [view, title] of [['today', 'Hoy'], ['insights', 'Resumen']] as const) {
+        const narrow = page.viewportSize()!.width < 768
+        for (const [view, title] of [['today', 'Hoy'], ['week', 'Semana'], ['tasks', 'Tareas'], ['insights', 'Resumen']] as const) {
           await open(page, view, title)
-          const entry = page.locator('#toolbar-actions').getByRole('link', { name: 'Preguntar al asistente' })
-          await expect(entry).toBeVisible()
-          await expect(page.locator('#main').getByRole('link', { name: 'Preguntar al asistente' })).toHaveCount(1)
-          const box = (await entry.boundingBox())!
-          expect(box.width).toBeGreaterThanOrEqual(44)
-          expect(box.height).toBeGreaterThanOrEqual(44)
+          const toolbar = page.locator('#toolbar-actions').getByRole('link', { name: 'Preguntar al asistente' })
+          if (narrow) {
+            await expect(toolbar).toBeVisible()
+            await expect(page.locator('#main').getByRole('link', { name: 'Preguntar al asistente' })).toHaveCount(1)
+            const box = (await toolbar.boundingBox())!
+            expect(box.width).toBeGreaterThanOrEqual(44)
+            expect(box.height).toBeGreaterThanOrEqual(44)
+          } else {
+            // No floating icon in the content: both are rows of the sidebar footer.
+            await expect(page.locator('#main').getByRole('link', { name: 'Preguntar al asistente' })).toHaveCount(0)
+            await expect(page.getByTestId('sidebar-footer').getByRole('link')).toHaveText(['Asistente', 'Ajustes'])
+          }
           await audit(page, `${size}/${theme}/${view} toolbar`)
         }
-        await page.locator('#toolbar-actions').getByRole('link', { name: 'Preguntar al asistente' }).click()
+        if (narrow) await page.locator('#toolbar-actions').getByRole('link', { name: 'Preguntar al asistente' }).click()
+        else await page.getByTestId('sidebar-footer').getByRole('link', { name: 'Asistente' }).click()
         await expect(page).toHaveURL(/#\/assistant$/)
       })
 

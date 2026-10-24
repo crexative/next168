@@ -154,7 +154,7 @@ async function remove(): Promise<void> {
 
 <template>
   <div v-if="planner.document" class="categories">
-    <ListGroup :header="t('categories.title')" :footer="t('categories.footer')">
+    <ListGroup :header="t('settings.categoriesTitle')" :footer="t('categories.footer')">
       <li v-for="category in categories" :key="category.id" class="category-row" :data-testid="`category-${category.id}`">
         <button class="category-button" type="button" :aria-label="t('categories.edit', { name: category.name })" @click="openEditor(category)">
           <span class="swatch" :style="{ background: categoryColor(category) }" aria-hidden="true" />

@@ -80,7 +80,7 @@ async function importWorkspace(event: Event) {
       <Button variant="tinted" :disabled="!planner.document" @click="downloadSnapshot">{{ t('connect.exportSnapshot') }}</Button>
       <label for="proposal-json">{{ t('connect.importProposal') }}</label>
       <textarea id="proposal-json" v-model="proposalJson" rows="7" spellcheck="false" :placeholder="t('connect.proposalPlaceholder')" />
-      <Button :disabled="busy || !proposalJson.trim() || !planner.writable" @click="importProposal">{{ t('connect.importProposal') }}</Button>
+      <Button variant="tinted" :disabled="busy || !proposalJson.trim() || !planner.writable" @click="importProposal">{{ t('connect.importProposal') }}</Button>
       <a href="#/proposals">{{ t('proposals.pending', { count: pendingCount }, pendingCount) }}</a>
     </section>
     <p v-if="status" role="status">{{ status }}</p>

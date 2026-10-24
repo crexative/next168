@@ -14,7 +14,7 @@
     "left": "Noch {duration}"
   },
   "preferences": {
-    "title": "Sprache und Region",
+    "title": "Allgemein",
     "language": "Sprache",
     "weekStart": "Woche beginnt am",
     "monday": "Montag",
@@ -23,6 +23,6 @@
     "clockAuto": "Automatisch",
     "clock12": "12 Stunden",
     "clock24": "24 Stunden",
-    "footer": "Uhrzeiten sehen so aus: {example}. Automatisch folgt deiner Region."
+    "footer": "Automatisch folgt Region und Erscheinungsbild deines Geräts. So sehen Uhrzeiten aus: {example}"
   }
 }

@@ -151,7 +151,7 @@ for (const theme of THEMES) {
           test.skip(testInfo.project.name !== 'phone', 'the narrow-width regression runs in the phone project')
           await page.setViewportSize({ width, height: 812 })
           await start(page, theme, { ...plannedDocument, settings: { ...plannedDocument.settings, locale } }, locale)
-          await open(page, 'settings/advanced')
+          await open(page, 'settings/calendars')
           await page.getByRole('button', { name: EVENT_COPY[locale].button, exact: true }).click()
           const times = page.getByRole('dialog').locator('input[type="time"]')
           await expect(times).toHaveCount(2)
@@ -191,7 +191,7 @@ for (const theme of THEMES) {
 
     test('every tab', async ({ page }) => {
       await start(page, theme, plannedDocument)
-      for (const view of ['today', 'week', 'tasks', 'insights', 'settings', 'settings/advanced', 'assistant', 'proposals', 'checkin']) {
+      for (const view of ['today', 'week', 'tasks', 'insights', 'settings', 'settings/calendars', 'settings/data', 'settings/advanced', 'assistant', 'proposals', 'checkin']) {
         await open(page, view)
         await audit(page, `${theme}/${view}`)
       }
@@ -242,6 +242,24 @@ for (const theme of THEMES) {
         await group.getByRole('radio', { name, exact: true }).click()
         await expect(group.getByRole('radio', { name, exact: true })).toHaveAttribute('aria-checked', 'true')
         await audit(page, `${theme}/settings appearance ${name}`)
+      }
+    })
+
+    test('the hidden sidebar, the tablet overlay and the Settings pages in Spanish', async ({ page }, testInfo) => {
+      test.skip(testInfo.project.name === 'phone', 'phones have the tab bar and no sidebar')
+      await start(page, theme, { ...plannedDocument, settings: { ...plannedDocument.settings, locale: 'es' } }, 'es')
+      for (const view of ['settings', 'settings/calendars', 'settings/data', 'settings/advanced', 'assistant']) {
+        await open(page, view)
+        await audit(page, `${theme}/es/${view}`)
+      }
+      for (const view of ['today', 'week', 'insights']) {
+        await open(page, view)
+        const toggle = page.getByTestId('sidebar-toggle')
+        // Desktop starts with the sidebar shown and hides it; the tablet starts collapsed and opens the overlay.
+        await toggle.click()
+        await expect(toggle).toHaveAttribute('aria-expanded', testInfo.project.name === 'desktop' ? 'false' : 'true')
+        await audit(page, `${theme}/es/${view} with the sidebar toggled`)
+        await toggle.click()
       }
     })
 
@@ -338,6 +356,7 @@ for (const theme of THEMES) {
       await auditSheet(page, `${theme}/new category`)
       await page.keyboard.press('Escape')
 
+      await open(page, 'settings/data')
       await page.getByRole('button', { name: 'Delete all data…' }).click()
       await auditSheet(page, `${theme}/delete everything`)
       await page.keyboard.press('Escape')
@@ -349,7 +368,7 @@ for (const theme of THEMES) {
       await expect(page.getByTestId('import-preview')).toBeVisible()
       await audit(page, `${theme}/import preview`)
 
-      await open(page, 'settings/advanced')
+      await open(page, 'settings/calendars')
       await page.getByRole('button', { name: 'New event', exact: true }).click()
       await auditSheet(page, `${theme}/new event`)
       await page.keyboard.press('Escape')
@@ -367,8 +386,8 @@ for (const theme of THEMES) {
       await open(page, 'assistant')
       const gym = { op: 'add_block', block: { categoryId: 'c-exercise', title: 'Gym', days: [4], start: 1080, end: 1140 } }
       await page.evaluate((op) => (window as unknown as { __next168Test: { answerWithProposal(summary: string, ops: unknown[]): void } }).__next168Test.answerWithProposal('Add a gym block on Thursday', [op]), gym)
-      await page.getByRole('textbox', { name: 'Ask the assistant' }).fill('Add a gym block on Thursday')
-      await page.getByRole('button', { name: 'Ask', exact: true }).click()
+      // Without the on-device model the suggested questions are the way to ask; the E2E hook answers any of them.
+      await page.getByTestId('suggestions').getByRole('button').first().click()
       await expect(page.getByTestId('proposal-card')).toBeVisible()
       await audit(page, `${theme}/assistant with a proposal`)
       await page.getByTestId('proposal-card').getByRole('button', { name: 'Review changes' }).click()

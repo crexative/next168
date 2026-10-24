@@ -26,8 +26,8 @@ async function askForProposal(page: Page): Promise<void> {
   await page.goto('./#/assistant')
   await expect(page.getByRole('heading', { level: 1, name: 'Assistant' })).toBeVisible()
   await page.evaluate((op) => (window as unknown as { __next168Test: { answerWithProposal(summary: string, ops: unknown[]): void } }).__next168Test.answerWithProposal('Add a gym block on Thursday', [op]), GYM)
-  await page.getByRole('textbox', { name: 'Ask the assistant' }).fill('Add a gym block on Thursday')
-  await page.getByRole('button', { name: 'Ask', exact: true }).click()
+  // Without the on-device model the suggested questions are the way to ask; the E2E hook answers any of them.
+  await page.getByTestId('suggestions').getByRole('button').first().click()
   await page.getByTestId('proposal-card').getByRole('button', { name: 'Review changes' }).click()
   await expect(page.getByRole('dialog', { name: 'Review proposal' })).toContainText('Gym')
 }
@@ -57,8 +57,10 @@ test.describe('entry points', () => {
       await page.clock.install({ time: NOW })
       await seedOnboarded(page, planned)
       await openTab(page, tab)
-      const entry = page.getByRole('link', { name: 'Ask the assistant' })
-      await expect(entry).toBeVisible()
+      // A toolbar icon on phones and tablets, a sidebar footer row on a desktop: one visible way in.
+      const entry = page.locator('a[href="#/assistant"]:visible')
+      await expect(entry).toHaveCount(1)
+      await expect(entry).toHaveAccessibleName(/^(Ask the assistant|Assistant)$/)
       await entry.click()
       await expect(page).toHaveURL(/#\/assistant$/)
       await expect(page.getByRole('heading', { level: 1, name: 'Assistant' })).toBeVisible()

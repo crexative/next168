@@ -1,12 +1,12 @@
 import { readFileSync, writeFileSync } from 'node:fs'
 import AxeBuilder from '@axe-core/playwright'
 import { expect, test, type Page } from '@playwright/test'
-import { LEGACY_BLOCK_COUNT, legacyData, openAdvanced, openTab, seedKey, V2_KEY } from './fixtures'
+import { LEGACY_BLOCK_COUNT, legacyData, openAdvanced, openSettingsPage, openTab, seedKey, V2_KEY } from './fixtures'
 import { storedPlanner, storedRecord } from './support/indexedDb'
 
 const LEGACY_KEYS = ['next168-data', 'next168-v2', 'next168-v2-backup', 'next168-v2-proposals', 'next168-tutorial-completed']
 // Device preferences kept beside the planner (export nudge, storage protection, last task category).
-const PREFERENCE_KEYS = ['next168-last-export', 'next168-first-seen', 'next168-export-snoozed', 'next168-persist-requested', 'next168-last-task-category', 'next168-appearance']
+const PREFERENCE_KEYS = ['next168-last-export', 'next168-first-seen', 'next168-export-snoozed', 'next168-persist-requested', 'next168-last-task-category', 'next168-appearance', 'next168-sidebar']
 
 const MONDAY_MORNING = new Date('2026-10-26T08:00:00Z')
 
@@ -201,7 +201,7 @@ test.describe('plan and measure', () => {
     await openAdvanced(page)
     await expect(page.getByTestId('data-mode')).toContainText('This browser')
     await expect(page.getByTestId('data-workspace')).toHaveText('ws-e2e')
-    await openTab(page, 'settings')
+    await openSettingsPage(page, 'data')
     const before = withoutBookkeeping(await storedDocument(page))
 
     const downloadPromise = page.waitForEvent('download')
@@ -213,8 +213,10 @@ test.describe('plan and measure', () => {
     expect(JSON.parse(readFileSync(exportPath, 'utf8')).format).toBe('next168-export')
 
     await page.evaluate((keys) => keys.forEach((key) => window.localStorage.setItem(key, 'x')), PREFERENCE_KEYS)
+    await openTab(page, 'settings')
     await page.getByRole('radiogroup', { name: 'Appearance' }).getByRole('radio', { name: 'Dark' }).click()
     await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark')
+    await openSettingsPage(page, 'data')
     await page.getByRole('button', { name: 'Delete all data…' }).click()
     const dialog = page.getByRole('dialog', { name: 'Delete everything?' })
     const confirm = dialog.getByRole('button', { name: 'Delete everything' })
@@ -239,7 +241,7 @@ test.describe('plan and measure', () => {
     await expect(page.getByTestId('data-workspace')).toHaveText(wiped.workspaceId)
     expect((await storedDocument(page)).categories).toEqual([])
     expect(await page.evaluate((keys) => keys.filter((key) => window.localStorage.getItem(key) !== null), LEGACY_KEYS)).toEqual([])
-    await openTab(page, 'settings')
+    await openSettingsPage(page, 'data')
 
     await page.getByLabel('Choose a Next168 export file').setInputFiles(exportPath)
     await expect(page.getByTestId('import-preview')).toContainText('File schema version 2')
@@ -253,7 +255,7 @@ test.describe('plan and measure', () => {
 
   test('importing a v1 file migrates it after a preview', async ({ page }, testInfo) => {
     await startWith(page, plannerDocument())
-    await openTab(page, 'settings')
+    await openSettingsPage(page, 'data')
     const v1Path = testInfo.outputPath('v1.json')
     writeFileSync(v1Path, JSON.stringify(legacyData))
     await page.getByLabel('Choose a Next168 export file').setInputFiles(v1Path)
@@ -274,7 +276,7 @@ test.describe('plan and measure', () => {
 
   test('an invalid file is rejected without touching the stored data', async ({ page }, testInfo) => {
     await startWith(page, plannerDocument())
-    await openTab(page, 'settings')
+    await openSettingsPage(page, 'data')
     const path = testInfo.outputPath('broken.json')
     writeFileSync(path, '{ not json')
     await page.getByLabel('Choose a Next168 export file').setInputFiles(path)

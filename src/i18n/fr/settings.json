@@ -1,7 +1,7 @@
 {
   "advanced": {
-    "title": "Intégrations et avancé",
-    "subtitle": "Langue et région, calendriers, assistant IA, stockage et détails techniques"
+    "title": "Avancé",
+    "subtitle": "Assistant sur l’appareil, stockage et détails techniques"
   },
   "exportNudge": {
     "never": "Vous n'avez pas encore exporté de copie.",
@@ -12,7 +12,14 @@
     "title": "Apparence",
     "auto": "Automatique",
     "light": "Clair",
-    "dark": "Sombre",
-    "footer": "Automatique suit le réglage de votre appareil."
-  }
+    "dark": "Sombre"
+  },
+  "calendars": {
+    "subtitle": "Voyez vos rendez-vous à côté de votre plan"
+  },
+  "data": {
+    "title": "Vos données",
+    "subtitle": "Exporter, importer ou effacer"
+  },
+  "categoriesTitle": "Catégories et objectifs"
 }

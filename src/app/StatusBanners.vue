@@ -83,7 +83,7 @@ const reload = () => reloadWhenReady(() => planner.settled())
 }
 .banners:empty { display: none; }
 @media (min-width: 1024px) {
-  .banners { inset-block-end: var(--space-6); inset-inline-start: calc(var(--sidebar-width) + var(--space-4)); }
+  .banners { inset-block-end: var(--space-6); inset-inline-start: calc(var(--sidebar-inset, var(--sidebar-width)) + var(--space-4)); }
 }
 .banner {
   display: flex;

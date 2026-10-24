@@ -78,7 +78,7 @@ function syncTime(iso: string): string { return new Intl.DateTimeFormat(displayL
 </script>
 <template>
   <div class="calendar-section">
-    <h2 class="section-header">{{ t('calendars.heading') }}</h2>
+    <!-- The page around it (Settings › Calendars) names the section. -->
     <p class="calendar-note">{{ t('calendars.intro') }}</p>
     <p v-if="error" role="alert" class="calendar-error">{{ t(error) }}</p>
     <label class="calendar-file">{{ t('calendars.importFile') }}<input type="file" accept=".ics,text/calendar" :disabled="!planner.writable || calendars.pending > 0" @change="importFile"></label>
@@ -105,7 +105,7 @@ function syncTime(iso: string): string { return new Intl.DateTimeFormat(displayL
     <CalendarOverlay :range="range" />
     <h3 class="t-headline">{{ t('calendars.events') }}</h3>
     <div class="calendar-actions">
-      <Button :disabled="!planner.writable" @click="edit()">{{ t('calendars.newEvent') }}</Button>
+      <Button variant="tinted" :disabled="!planner.writable" @click="edit()">{{ t('calendars.newEvent') }}</Button>
       <Button variant="plain" :disabled="events.length === 0" @click="downloadUpcoming">{{ t('calendars.downloadUpcoming') }}</Button>
     </div>
     <p v-if="events.length === 0" class="calendar-note">{{ t('calendars.noEvents') }}</p>

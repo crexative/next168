@@ -1,7 +1,7 @@
 {
   "advanced": {
-    "title": "Integraciones y avanzado",
-    "subtitle": "Idioma y región, calendarios, asistente de IA, almacenamiento y detalles técnicos"
+    "title": "Avanzado",
+    "subtitle": "Asistente en el dispositivo, almacenamiento y detalles técnicos"
   },
   "exportNudge": {
     "never": "Aún no has exportado una copia de tu semana.",
@@ -12,7 +12,14 @@
     "title": "Apariencia",
     "auto": "Automático",
     "light": "Claro",
-    "dark": "Oscuro",
-    "footer": "Automático sigue el modo de tu dispositivo."
-  }
+    "dark": "Oscuro"
+  },
+  "calendars": {
+    "subtitle": "Ve tus citas junto a tu plan"
+  },
+  "data": {
+    "title": "Tus datos",
+    "subtitle": "Exportar, importar o borrar"
+  },
+  "categoriesTitle": "Categorías y metas"
 }

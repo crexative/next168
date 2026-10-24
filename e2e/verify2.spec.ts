@@ -1,6 +1,6 @@
 import AxeBuilder from '@axe-core/playwright'
 import { expect, test, type Locator, type Page } from '@playwright/test'
-import { V2_KEY, openAdvanced, openTab, seedKey } from './fixtures'
+import { V2_KEY, openSettingsPage, openTab, seedKey } from './fixtures'
 
 // Second verification (SHA eb95fb3): geometry regressions, not just visibility.
 const NOW = new Date('2026-10-19T12:00:00Z')
@@ -21,7 +21,7 @@ const ics = [
 async function seedWithConflicts(page: Page, document = plan, calendar = ics): Promise<void> {
   await page.clock.install({ time: NOW })
   await seedKey(page, V2_KEY, JSON.stringify(document))
-  await openAdvanced(page)
+  await openSettingsPage(page, 'calendars')
   await page.getByLabel('Import .ics file', { exact: true }).setInputFiles({ name: 'conflicts.ics', mimeType: 'text/calendar', buffer: Buffer.from(calendar) })
   await expect(page.getByTestId('calendar-source')).toHaveCount(1)
   await openTab(page, 'week')
@@ -145,7 +145,8 @@ test('the Assistant screen keeps a 16 px side gutter', async ({ page }) => {
     return Array.from(window.document.querySelectorAll('main .composer, main .composer input, main .composer button, main .suggestions, main .back-button, main .notes p:last-child'))
       .map((node) => { const box = node.getBoundingClientRect(); return { name: `${node.tagName}.${node.className}`, left: box.left, right: width - box.right } })
   })
-  expect(edges.length).toBeGreaterThan(3)
+  // Back control, suggestions and the privacy note (the question box appears only with the on-device model).
+  expect(edges.length).toBeGreaterThanOrEqual(3)
   const main = await page.locator('main').evaluate((node) => node.getBoundingClientRect().left)
   for (const edge of edges) {
     expect(edge.left - main, `${edge.name} left gutter`).toBeGreaterThanOrEqual(15.5)

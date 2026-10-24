@@ -102,7 +102,7 @@ test.describe('materials', () => {
 test.describe('rows', () => {
   test('label and value never overlap: a long value wraps below its label', async ({ page }) => {
     await startWith(page)
-    // The data rows (mode, origin, workspace id) live under Integrations and advanced.
+    // The data rows (mode, origin, workspace id) live under Advanced › Technical details.
     await openView(page, 'settings/advanced')
     const rows = await page.locator('.list-row').evaluateAll((elements) => elements.map((row) => {
       const label = row.querySelector('.row-text')
@@ -151,8 +151,10 @@ test.describe('buttons', () => {
     await startWith(page)
     await openView(page, 'settings')
     const buttons = await buttonGeometry(page)
-    await openView(page, 'settings/advanced')
-    buttons.push(...await buttonGeometry(page))
+    for (const view of ['settings/calendars', 'settings/data', 'settings/advanced']) {
+      await openView(page, view)
+      buttons.push(...await buttonGeometry(page))
+    }
     expect(buttons.length).toBeGreaterThan(4)
     for (const button of buttons) {
       expect.soft(button.width, `"${button.text}" is ${button.width} px wide for a ${button.natural} px label`).toBeLessThanOrEqual(Math.max(button.natural, 44) + 1)
@@ -199,14 +201,14 @@ test.describe('buttons', () => {
 })
 
 test.describe('headings', () => {
-  // Settings has two pages: Categories and Data on top, everything else under Integrations and advanced.
+  // The Settings list (Categories and goals, General) and its Advanced page share one eyebrow style.
   test('every Settings group opens with the same eyebrow, inset like the others, and groups are spaced apart', async ({ page }) => {
     await startWith(page)
     const pages = [['settings', '#main .home'], ['settings/advanced', '[data-testid="settings-advanced"]']] as const
     const all: { text: string; size: string; weight: string; transform: string; color: string }[] = []
     for (const [view, container] of pages) {
       await openView(page, view)
-      const headers = await page.locator(`${container} h2:not(.advanced-title)`).evaluateAll((elements) => elements
+      const headers = await page.locator(`${container} h2:not(.subpage-title)`).evaluateAll((elements) => elements
         .filter((element) => element.getClientRects().length > 0)
         .map((element) => {
           const style = getComputedStyle(element)
@@ -214,14 +216,14 @@ test.describe('headings', () => {
           range.selectNodeContents(element)
           return { text: element.textContent?.trim() ?? '', size: style.fontSize, weight: style.fontWeight, transform: style.textTransform, color: style.color, textLeft: range.getBoundingClientRect().left }
         }))
-      expect(headers.length, view).toBeGreaterThanOrEqual(view === 'settings' ? 3 : 5)
+      expect(headers.length, view).toBeGreaterThanOrEqual(view === 'settings' ? 2 : 4)
       for (const header of headers) {
         expect.soft(Math.abs(header.textLeft - headers[0]!.textLeft), `${view}: "${header.text}" is inset like "${headers[0]!.text}"`).toBeLessThanOrEqual(1)
       }
       all.push(...headers)
       // Consecutive groups: the space between one group's end and the next one's eyebrow.
       const gaps = await page.locator(container).evaluate((root) => {
-        const groups = Array.from(root.children).filter((child) => child.getClientRects().length > 0 && child.querySelector('h2:not(.advanced-title)'))
+        const groups = Array.from(root.children).filter((child) => child.getClientRects().length > 0 && child.querySelector('h2:not(.subpage-title)'))
         return groups.slice(1).map((group, index) => group.getBoundingClientRect().top - groups[index]!.getBoundingClientRect().bottom)
       })
       expect(gaps.length, `${view}: groups measured`).toBeGreaterThanOrEqual(1)
@@ -276,25 +278,21 @@ test.describe('colour is never alone', () => {
 })
 
 test.describe('readable measure', () => {
-  test('content keeps a readable width on wide screens and the tab bar gathers in the middle', async ({ page }, testInfo) => {
+  test('text and list screens keep one 720 px measure, centred beside the sidebar; Week takes the full width', async ({ page }) => {
     await startWith(page)
-    const viewport = page.viewportSize()!
     const rem = 16
-    for (const [view, limit] of [['today', 44], ['tasks', 44], ['settings', 44], ['week', 64], ['insights', 64]] as const) {
+    for (const view of ['today', 'tasks', 'insights', 'settings']) {
       await openView(page, view)
       const box = (await page.locator('.view').boundingBox())!
       const main = (await page.locator('#main').boundingBox())!
-      expect.soft(box.width, `${view} width`).toBeLessThanOrEqual(limit * rem + 1)
+      expect.soft(box.width, `${view} width`).toBeLessThanOrEqual(45 * rem + 1)
       // Centered in the space beside the sidebar.
       expect.soft(Math.abs((box.x - main.x) - (main.x + main.width - box.x - box.width)), `${view} centered`).toBeLessThanOrEqual(1)
     }
-    if (testInfo.project.name === 'tablet') {
-      const items = await page.locator('.tabbar-item').evaluateAll((elements) => elements.map((element) => element.getBoundingClientRect().toJSON() as DOMRect))
-      const left = items[0]!.left
-      const right = viewport.width - items[items.length - 1]!.right
-      expect(Math.abs(left - right)).toBeLessThanOrEqual(1)
-      expect(left).toBeGreaterThan(viewport.width / 6)
-    }
+    await openView(page, 'week')
+    const week = (await page.locator('.view').boundingBox())!
+    const main = (await page.locator('#main').boundingBox())!
+    expect(Math.abs(week.width - main.width)).toBeLessThanOrEqual(1)
   })
 })
 
@@ -340,8 +338,15 @@ test.describe('time format', () => {
 
 test.describe('accessibility plumbing', () => {
   async function goTo(page: Page, name: string) {
+    // From 768 to 1023 px the sidebar starts collapsed: open it over the content first.
+    const toggle = page.getByTestId('sidebar-toggle')
+    const width = page.viewportSize()!.width
+    const overlay = width >= 768 && width < 1024
+    if (overlay) await toggle.click()
     const nav = page.locator('.tabbar:visible, .sidebar:visible').first()
     await nav.getByRole('link', { name, exact: true }).click()
+    // Choosing a destination closes the overlay; wait for that before the next step opens it again.
+    if (overlay) await expect(toggle).toHaveAttribute('aria-expanded', 'false')
   }
 
   test('each route has its own title; navigating focuses the new heading and announces it', async ({ page }) => {
@@ -411,10 +416,10 @@ test.describe('accessibility plumbing', () => {
 
   test('an undo offered before the workspace was replaced is withdrawn', async ({ page }) => {
     await startWith(page, { ...richDocument, events: [{ id: 'e-review', title: 'Design review', start: '2026-10-22T14:00:00.000Z', end: '2026-10-22T15:00:00.000Z', allDay: false, attendees: [] }] })
-    await openView(page, 'settings/advanced')
+    await openView(page, 'settings/calendars')
     await page.getByTestId('planner-event').getByRole('button', { name: 'Remove', exact: true }).click()
     await expect(page.locator('.toast')).toBeVisible()
-    await openView(page, 'settings')
+    await openView(page, 'settings/data')
     await expect(page.locator('.toast')).toBeVisible()
     await page.getByRole('button', { name: 'Delete all data…' }).click()
     await page.getByRole('dialog').getByRole('textbox').fill('DELETE')
@@ -437,6 +442,9 @@ test.describe('accessibility plumbing', () => {
     // The fill eases in over 100 ms.
     await expect.poll(() => circle.locator('.status-ring').evaluate((element) => getComputedStyle(element).backgroundColor)).not.toBe(idle)
     await expect(circle.locator('svg')).toHaveCount(1)
+    // On a tablet the navigation is in the collapsed sidebar: open it to see the current destination.
+    const toggle = page.getByTestId('sidebar-toggle')
+    if (await toggle.isVisible() && (await toggle.getAttribute('aria-expanded')) === 'false') await toggle.click()
     const current = await page.locator('[aria-current="page"]:visible').first().evaluate((element) => getComputedStyle(element).backgroundColor)
     expect(current).not.toBe('rgba(0, 0, 0, 0)')
     await openView(page, 'week')
@@ -581,17 +589,17 @@ test.describe('sheets', () => {
 test.describe('language and region settings', () => {
   test('language, first day of the week and 12/24 h are chosen in Settings and kept after a reload', async ({ page }) => {
     await startWith(page)
-    await openView(page, 'settings/advanced')
+    await openView(page, 'settings')
     await page.getByRole('radiogroup', { name: 'Week starts on' }).getByRole('radio', { name: 'Sunday' }).click()
     await page.getByRole('radiogroup', { name: 'Time format' }).getByRole('radio', { name: '24-hour' }).click()
-    await expect(page.locator('#main')).toContainText('Times read like 14:30.')
+    await expect(page.locator('#main')).toContainText('Times look like this: 14:30')
 
     await openView(page, 'week')
     await expect(page.locator('[data-date]').first()).toHaveAttribute('data-date', '2026-10-18')
     await openView(page, 'today')
     await expect(page.getByTestId('timeline-item').filter({ hasText: 'Deep work' }).getByTestId('timeline-start')).toHaveText('09:00')
 
-    await openView(page, 'settings/advanced')
+    await openView(page, 'settings')
     await page.getByTestId('preference-language').selectOption('es')
     await expect(page.getByRole('heading', { level: 1, name: 'Ajustes' })).toBeVisible()
     await expect(page.locator('html')).toHaveAttribute('lang', 'es')
@@ -604,7 +612,8 @@ test.describe('language and region settings', () => {
 })
 
 test.describe('large text and narrow screens', () => {
-  const MAIN_SCREENS = ['today', 'week', 'tasks', 'insights', 'settings']
+  // The four tabs, then Settings with its three sub-pages and the assistant (one level down, same rules).
+  const MAIN_SCREENS = ['today', 'week', 'tasks', 'insights', 'settings', 'settings/calendars', 'settings/data', 'settings/advanced', 'assistant']
 
   // Text that leaves its button or link, and text in a bar (toolbar, day strip, tab bar) drawn over other text.
   async function spilledText(page: Page): Promise<string[]> {
@@ -624,7 +633,7 @@ test.describe('large text and narrow screens', () => {
         }
         return rects
       }
-      for (const control of Array.from(document.querySelectorAll('#main button, #main a[href], .tabbar a'))) {
+      for (const control of Array.from(document.querySelectorAll('#main button, #main a[href], .tabbar a, #app-sidebar:not([inert]) a, .sidebar-toggle'))) {
         if (control.getClientRects().length === 0) continue
         const box = control.getBoundingClientRect()
         for (const { text, rect } of textRects(control)) {

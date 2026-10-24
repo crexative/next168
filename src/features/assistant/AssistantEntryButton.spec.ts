@@ -1,6 +1,7 @@
 // @vitest-environment happy-dom
 import { afterEach, expect, it } from 'vitest'
 import { createApp, nextTick } from 'vue'
+import { SHELL_TOOLBAR_ENTRIES } from '@/app/contracts'
 import { i18n } from '@/i18n'
 import AssistantEntryButton from './AssistantEntryButton.vue'
 
@@ -8,11 +9,13 @@ let host: HTMLElement | undefined
 let toolbar: HTMLElement | undefined
 afterEach(() => { host?.remove(); toolbar?.remove(); host = toolbar = undefined })
 
-function mount() {
+function mount(insideShell = false) {
   host = document.createElement('div')
   document.body.append(host)
   i18n.global.locale.value = 'en'
-  createApp(AssistantEntryButton).use(i18n).mount(host)
+  const app = createApp(AssistantEntryButton).use(i18n)
+  if (insideShell) app.provide(SHELL_TOOLBAR_ENTRIES, true)
+  app.mount(host)
 }
 
 it('is an icon link to the assistant with an accessible name', async () => {
@@ -34,4 +37,14 @@ it('moves itself into the shell toolbar when there is one', async () => {
   await nextTick()
   expect(toolbar.querySelector('[data-testid=assistant-entry]')).not.toBeNull()
   expect(host!.querySelector('[data-testid=assistant-entry]')).toBeNull()
+})
+
+it('renders nothing inside the app shell, which draws the one assistant entry on every tab', async () => {
+  toolbar = document.createElement('div')
+  toolbar.id = 'toolbar-actions'
+  document.body.append(toolbar)
+  mount(true)
+  await nextTick()
+  await nextTick()
+  expect(document.querySelector('[data-testid=assistant-entry]')).toBeNull()
 })
