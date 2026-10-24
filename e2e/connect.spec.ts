@@ -72,8 +72,7 @@ test('companion mode never opens the browser planner database (A11)', async ({ p
   const op = { op: 'add_block', block: { categoryId: 'focus', title: 'Card block', days: [2], start: 600, end: 660 } }
   // globalThis, not window: the companion type-checks this file without the DOM library.
   await page.evaluate((change) => (globalThis as unknown as { __next168Test: { answerWithProposal(summary: string, ops: unknown[]): void } }).__next168Test.answerWithProposal('Add a card block', [change]), op)
-  await page.getByRole('textbox', { name: 'Ask the assistant' }).fill('Add a card block')
-  await page.getByRole('button', { name: 'Ask', exact: true }).click()
+  await page.getByTestId('suggestions').getByRole('button').first().click()
   await page.getByTestId('proposal-card').getByRole('button', { name: 'Review changes' }).click()
   await page.getByRole('dialog').getByRole('button', { name: 'Approve', exact: true }).click()
   await expect(page.getByTestId('proposal-card')).toContainText('The changes were applied.')
@@ -85,7 +84,7 @@ test('companion mode never opens the browser planner database (A11)', async ({ p
   await writeFile(bundlePath, JSON.stringify({ format: 'next168-export', bundleVersion: 1, exportedAt: '2026-10-24T12:00:00.000Z', document: imported, calendarSourceTexts: {} }))
   await page.goto(`${companion.url}/#/settings/advanced`)
   await expect(page.getByTestId('data-mode')).toContainText('companion', { ignoreCase: true })
-  await page.goto(`${companion.url}/#/settings`)
+  await page.goto(`${companion.url}/#/settings/data`)
   await page.getByLabel('Choose a Next168 export file').setInputFiles(bundlePath)
   await page.getByRole('button', { name: 'Replace my data' }).click()
   await expect(page.getByTestId('data-notice')).toContainText('Imported and verified')

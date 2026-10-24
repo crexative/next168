@@ -29,7 +29,7 @@ it('offers a retry after a download failed online and succeeds on the second try
   i18n.global.locale.value = 'en'
   host = document.createElement('div'); document.body.append(host)
   app = createApp(AssistantView).use(pinia).use(i18n); app.mount(host)
-  await vi.waitFor(() => expect(host!.querySelector('[data-testid=status-webllm]')?.textContent).toBe('Download needed'))
+  await vi.waitFor(() => expect(assistant.availability.webllm).toBe('downloadable'))
 
   await assistant.prepareModel()
   await nextTick()
@@ -42,38 +42,62 @@ it('offers a retry after a download failed online and succeeds on the second try
   await vi.waitFor(() => expect(host!.querySelector('[data-testid=assistant-failure]')).toBeNull())
 })
 
-async function mountView(locale = 'en') {
-  assistant = createAssistant({ rules: new RulesProvider(), webllm: { id: 'webllm', availability: async () => 'unavailable', prepare: async () => undefined, ask: async () => ({ answer: '' }), dispose: async () => undefined } })
+async function mountView(model: Partial<AssistantProvider> = {}, preference?: 'webllm') {
+  if (preference) localStorage.setItem('next168-assistant-provider', preference)
+  assistant = createAssistant({ rules: new RulesProvider(), webllm: { id: 'webllm', availability: async () => 'unavailable', prepare: async () => undefined, ask: async () => ({ answer: 'From the model.' }), dispose: async () => undefined, ...model } })
   const pinia = createPinia(); setActivePinia(pinia)
-  configurePlannerStore({ repository: createTestRepositories().planner, now: fixedNow, newId: newTestId, locale: () => locale, timeZone: () => 'UTC' })
+  configurePlannerStore({ repository: createTestRepositories().planner, now: fixedNow, newId: newTestId, locale: () => 'en', timeZone: () => 'UTC' })
   await usePlannerStore().load()
-  i18n.global.locale.value = locale as typeof i18n.global.locale.value
+  i18n.global.locale.value = 'en'
   host = document.createElement('div'); document.body.append(host)
   app = createApp(AssistantView).use(pinia).use(i18n); app.mount(host)
+  await nextTick()
+  await vi.waitFor(() => expect(assistant.availability.webllm).not.toBe('checking'))
   await nextTick()
   return host
 }
 
-it('starts with a back control, the question box and three suggested questions, in that order', async () => {
+const order = (view: HTMLElement) => [...view.querySelectorAll('[data-testid=back-button], [data-testid=composer], [data-testid=suggestions], [data-testid=notes]')].map((element) => element.getAttribute('data-testid'))
+
+it('without the model offers only the suggested questions: no question box, no model status, no WebGPU', async () => {
   const view = await mountView()
-  const order = [...view.querySelectorAll('[data-testid=back-button], [data-testid=composer], [data-testid=suggestions], [data-testid=chat], [data-testid=notes]')].map((element) => element.getAttribute('data-testid'))
-  expect(order).toEqual(['back-button', 'composer', 'suggestions', 'chat', 'notes'])
+  expect(order(view)).toEqual(['back-button', 'suggestions', 'notes'])
   expect(view.querySelectorAll('[data-testid=suggestions] button')).toHaveLength(3)
+  expect(view.querySelector('input, textarea')).toBeNull()
+  expect(view.querySelector('[data-testid=assistant-status]')).toBeNull()
+  expect(view.textContent).not.toMatch(/WebGPU|On-device model|Not available/)
   expect(view.querySelector('.card')).toBeNull()
 })
 
-it('answers a suggested question with one tap and then hides the suggestions', async () => {
+it('without the model keeps the suggestions after an answer, so the screen never ends in a dead end', async () => {
   const view = await mountView()
   view.querySelector<HTMLButtonElement>('[data-testid=suggestions] button')!.click()
   await vi.waitFor(() => expect(view.querySelectorAll('[data-role=assistant]')).toHaveLength(1))
   expect(view.querySelector('[data-role=user]')!.textContent).toBe('How many free hours do I have?')
-  expect(view.querySelector('[data-testid=suggestions]')).toBeNull()
+  expect(view.querySelectorAll('[data-testid=suggestions] button')).toHaveLength(3)
 })
 
-it('keeps the model status as a footnote', async () => {
-  const view = await mountView()
-  const note = view.querySelector('[data-testid=assistant-status]')!
-  expect(note.className).toContain('t-footnote')
-  await vi.waitFor(() => expect(note.textContent).toBe('Quick answers: Ready · On-device model: Not available'))
-  expect(view.querySelector('footer.notes')!.contains(note)).toBe(true)
+it('with the model in use puts the question box at the bottom, under the conversation', async () => {
+  const view = await mountView({ availability: async () => 'available' }, 'webllm')
+  expect(order(view)).toEqual(['back-button', 'suggestions', 'composer', 'notes'])
+  const input = view.querySelector<HTMLInputElement>('#assistant-question')!
+  input.value = 'Move exercise to 7 am'
+  input.dispatchEvent(new Event('input'))
+  await nextTick()
+  view.querySelector<HTMLFormElement>('[data-testid=composer]')!.requestSubmit()
+  await vi.waitFor(() => expect(view.querySelector('[data-role=assistant]')?.textContent).toBe('From the model.'))
+  // The conversation sits above the box; the suggestions give way to it.
+  expect(view.querySelector('[data-testid=suggestions]')).toBeNull()
+  expect(view.querySelector('[data-testid=chat]')!.compareDocumentPosition(view.querySelector('[data-testid=composer]')!) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+})
+
+it('offers the download only after the person chose the on-device model in Settings', async () => {
+  const quick = await mountView({ availability: async () => 'downloadable' })
+  expect(quick.querySelector('[aria-labelledby=optin-title]')).toBeNull()
+  expect(quick.querySelector('[data-testid=composer]')).toBeNull()
+  app?.unmount(); host?.remove(); localStorage.clear()
+  const chosen = await mountView({ availability: async () => 'downloadable' }, 'webllm')
+  expect(chosen.querySelector('[aria-labelledby=optin-title]')).not.toBeNull()
+  // Not downloaded yet: still no box that could not act.
+  expect(chosen.querySelector('[data-testid=composer]')).toBeNull()
 })

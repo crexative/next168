@@ -26,7 +26,13 @@ onMounted(() => { void assistant.refresh() })
 
 const SUGGESTIONS = ['hours', 'next', 'overflow'] as const
 const suggestions = computed(() => SUGGESTIONS.map((key) => ({ key, text: t(`assistant.suggestions.${key}`) })))
-const modelDetail = computed(() => t(`assistant.status.webllmDetail.${modelState.value}`))
+
+// Free text only reaches something that can act on it: the on-device model. Without it the suggested questions
+// are the way to ask, so they stay. The model's status and the download live in Settings › Advanced; the
+// download card shows here only after the person chose the model there.
+const canType = computed(() => assistant.active.value === 'webllm')
+const showSuggestions = computed(() => !canType.value || assistant.messages.value.length === 0)
+const offerDownload = computed(() => assistant.preference.value === 'webllm' && modelState.value === 'downloadable' && !assistant.busy.value)
 
 // A count in the parameters picks the plural form of the answer ("1 task does not fit" / "2 tasks do not fit").
 function translate(key: string, params?: Record<string, unknown>): string {
@@ -52,34 +58,29 @@ async function submit(): Promise<void> {
   <div class="assistant">
     <BackButton current="assistant" fallback="today" />
 
-    <form class="composer" data-testid="composer" @submit.prevent="submit">
-      <label class="sr-only" for="assistant-question">{{ t('assistant.chat.label') }}</label>
-      <input id="assistant-question" v-model="question" class="input t-body" type="text" autocomplete="off" enterkeyhint="send" :placeholder="t('assistant.chat.placeholder')" :disabled="!planner.document">
-      <Button v-if="assistant.busy.value === 'asking'" variant="tinted" @click="assistant.cancel()">{{ t('assistant.progress.cancel') }}</Button>
-      <Button v-else type="submit" :disabled="!question.trim() || !planner.document">{{ t('assistant.chat.send') }}</Button>
-    </form>
-
-    <ul v-if="assistant.messages.value.length === 0" class="suggestions" :aria-label="t('assistant.suggestions.label')" data-testid="suggestions">
-      <li v-for="suggestion in suggestions" :key="suggestion.key">
-        <button class="suggestion t-subhead" type="button" :disabled="!planner.document || assistant.busy.value === 'asking'" @click="ask(suggestion.text)">{{ suggestion.text }}</button>
-      </li>
-    </ul>
-
     <section class="chat" data-testid="chat" :aria-label="t('assistant.chat.label')">
       <div v-if="failureMessage" class="failure-row">
         <p class="t-subhead failure" role="alert" data-testid="assistant-failure">{{ failureMessage }}</p>
         <Button v-if="canRetry" variant="tinted" data-testid="assistant-retry" @click="assistant.prepareModel()">{{ t('assistant.retry') }}</Button>
       </div>
-      <p v-if="assistant.busy.value === 'asking'" class="t-footnote t-secondary" role="status">{{ t('assistant.chat.thinking') }}</p>
       <ol class="messages" aria-live="polite">
         <li v-for="message in assistant.messages.value" :key="message.id" class="message" :class="`is-${message.role}`" :data-role="message.role">
           <p class="t-body bubble">{{ message.text }}</p>
           <ProposalCard v-if="message.proposal" :input="message.proposal" />
         </li>
       </ol>
+      <p v-if="assistant.busy.value === 'asking'" class="t-footnote t-secondary" role="status">{{ t('assistant.chat.thinking') }}</p>
     </section>
 
-    <section v-if="modelState === 'downloadable' && !assistant.busy.value" class="card" aria-labelledby="optin-title">
+    <ul v-if="showSuggestions" class="suggestions" :aria-label="t('assistant.suggestions.label')" data-testid="suggestions">
+      <li v-for="suggestion in suggestions" :key="suggestion.key">
+        <button class="suggestion t-subhead" type="button" :disabled="!planner.document || assistant.busy.value === 'asking'" @click="ask(suggestion.text)">{{ suggestion.text }}</button>
+      </li>
+    </ul>
+    <!-- Mount point: "Usar con tu IA" (branch feature/#3-use-with-any-ai) goes here, beside the suggested
+         questions: the way to ask anything else when the on-device model is not in use. -->
+
+    <section v-if="offerDownload" class="card" aria-labelledby="optin-title">
       <h2 id="optin-title" class="t-headline">{{ t('assistant.optIn.title') }}</h2>
       <p class="t-subhead">{{ t('assistant.optIn.body', { size: sizeLabel }) }}</p>
       <p class="t-footnote t-secondary">{{ t(onCellular ? 'assistant.optIn.cellular' : 'assistant.optIn.wifi') }}</p>
@@ -93,14 +94,15 @@ async function submit(): Promise<void> {
       <Button variant="tinted" @click="assistant.cancel()">{{ t('assistant.progress.cancel') }}</Button>
     </section>
 
+    <!-- At the bottom, under the conversation, like any chat. -->
+    <form v-if="canType" class="composer" data-testid="composer" @submit.prevent="submit">
+      <label class="sr-only" for="assistant-question">{{ t('assistant.chat.label') }}</label>
+      <input id="assistant-question" v-model="question" class="input t-body" type="text" autocomplete="off" enterkeyhint="send" :placeholder="t('assistant.chat.placeholder')" :disabled="!planner.document">
+      <Button v-if="assistant.busy.value === 'asking'" variant="tinted" @click="assistant.cancel()">{{ t('assistant.progress.cancel') }}</Button>
+      <Button v-else type="submit" :disabled="!question.trim() || !planner.document">{{ t('assistant.chat.send') }}</Button>
+    </form>
+
     <footer class="notes" data-testid="notes">
-      <p class="t-footnote t-secondary" data-testid="assistant-status">
-        <i18n-t keypath="assistant.status.line" scope="global" tag="span">
-          <template #rules><span data-testid="status-rules">{{ t('assistant.status.available') }}</span></template>
-          <template #model><span data-testid="status-webllm">{{ t(`assistant.status.${modelState}`) }}</span></template>
-        </i18n-t>
-      </p>
-      <p class="t-footnote t-secondary">{{ modelDetail }}</p>
       <p class="t-footnote t-secondary">{{ t('assistant.privacy') }}</p>
     </footer>
   </div>
@@ -112,6 +114,8 @@ async function submit(): Promise<void> {
 .card { display: flex; flex-direction: column; gap: var(--space-3); padding: var(--space-4); background: var(--surface); border-radius: var(--radius-card); }
 progress { width: 100%; accent-color: var(--tint); }
 .chat { display: flex; flex-direction: column; gap: var(--space-3); }
+/* An empty conversation leaves the flow (no gap) but stays in the page, so its live region announces the first answer. */
+.chat:not(:has(li, p)) { position: absolute; }
 .messages { display: flex; flex-direction: column; gap: var(--space-2); margin: 0; padding: 0; list-style: none; }
 .message { max-width: 90%; }
 .message.is-user { align-self: flex-end; }
