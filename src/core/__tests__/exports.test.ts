@@ -43,6 +43,25 @@ describe('calendar portability', () => {
     expect(text).not.toContain('DESCRIPTION:')
     expect(() => calendarExport([{ ...event, title: '\r\nBEGIN:EVIL', attendees: ['bad\r\nBEGIN:EVIL'] }], clock)).toThrow()
   })
+  it('escapes CRLF and delimiters in every text property so no content line can be injected', () => {
+    const hostile = 'Plan\r\nATTENDEE:mailto:evil@example.test\r\nEND:VEVENT;x,y'
+    const ics = calendarExport([{ ...event, title: hostile, location: hostile, notes: hostile, attendees: [] }], clock)
+    const unfolded = ics.replace(/\r\n[ \t]/g, '').split('\r\n')
+    expect(unfolded.filter((line) => line.startsWith('ATTENDEE'))).toEqual([])
+    expect(unfolded.filter((line) => line === 'END:VEVENT')).toHaveLength(1)
+    const fields = readIcs(ics)
+    for (const key of ['SUMMARY', 'LOCATION', 'DESCRIPTION']) expect(fields.get(key)).toEqual([hostile.replace(/\r\n/g, '\n')])
+  })
+
+  it('folds exactly at the 75-octet boundary', () => {
+    const fits = 'x'.repeat(75 - 'SUMMARY:'.length)
+    const exact = calendarExport([{ ...event, title: fits, notes: undefined, location: undefined, attendees: [] }], clock)
+    expect(exact.split('\r\n')).toContain(`SUMMARY:${fits}`)
+    const over = calendarExport([{ ...event, title: fits + 'y', notes: undefined, location: undefined, attendees: [] }], clock)
+    expect(over.split('\r\n')).toContain(`SUMMARY:${fits}`)
+    expect(over.split('\r\n')).toContain(' y')
+  })
+
   it('encodes calendar links with title, times, details, location and attendees', () => {
     const google = new URL(googleCalendarUrl(event))
     expect(google.origin).toBe('https://calendar.google.com')
