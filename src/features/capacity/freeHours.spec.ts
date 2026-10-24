@@ -84,8 +84,8 @@ describe('weekSplit', () => {
     expect(weekSplit(plannerDocument(), new Date('2026-03-04T15:00:00Z'), 'America/New_York').weekMinutes).toBe(167 * 60)
   })
 
-  it('formats hours with at most one decimal in the reader\'s locale', () => {
-    expect(formatHours(109.75, 'es')).toBe('109,8')
+  it('formats hours as whole numbers, never tenths', () => {
+    expect(formatHours(109.75, 'es')).toBe('110')
     expect(formatHours(39, 'en')).toBe('39')
   })
 })

@@ -3,7 +3,7 @@ import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 import type { MeasureState } from '@/core/stats'
 import Button from '@/ui/Button.vue'
-import { formatDuration } from '@/ui/format'
+import { formatDuration, formatWholeNumber } from '@/ui/format'
 
 type Day = { date: string; sleep: MeasureState; exercise: MeasureState; lateWork: MeasureState; stress: MeasureState }
 type Measures = {
@@ -42,7 +42,7 @@ const tiles = computed(() => {
     { id: 'late-work', key: 'lateWork', value: String(measures.lateWorkNights), pick: (day: Day) => day.lateWork },
     {
       id: 'stress', key: 'stress',
-      value: measures.averageStress === null ? t('insights.measures.none') : (Math.round(measures.averageStress * 10) / 10).toFixed(1),
+      value: measures.averageStress === null ? t('insights.measures.none') : formatWholeNumber(measures.averageStress, locale.value),
       pick: (day: Day) => day.stress,
     },
   ]

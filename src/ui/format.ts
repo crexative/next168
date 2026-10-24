@@ -73,7 +73,6 @@ export function formatHourOfDay(hour: number, locale: string): string {
   return new Intl.DateTimeFormat(locale, { timeZone: 'UTC', hour: 'numeric' }).format(Date.UTC(2000, 0, 1, ((hour % 24) + 24) % 24))
 }
 
-// "2 h 30 min", "45 min", "3 h": whole minutes, the sign left to the sentence around it.
 // Whole hours for parts of one span (past / planned / free in the week): each part is rounded along the running total,
 // so the parts never disagree with the rounded whole ("36 h", never "36,3 h", and the three still add up to 168).
 // This is the one rounding rule for free-time figures: the free-hours badge, Insights and the assistant use it.
@@ -89,17 +88,25 @@ export function wholeHourParts(minutes: readonly number[]): number[] {
   })
 }
 
-// Hours as a figure with at most one decimal ("39,5"), for amounts read in hours of the week.
+// The number rule: hours are never shown in tenths. Summaries, totals and goal progress read in whole hours ("54"),
+// short spans in "h min" (formatDuration). Any figure that is not an hour count goes through formatWholeNumber.
 export function formatHours(hours: number, locale: string = displayLocale.value): string {
-  return new Intl.NumberFormat(locale, { maximumFractionDigits: 1 }).format(hours)
+  return formatWholeNumber(hours, locale)
+}
+
+// A whole number in the reader's locale ("3", "1.234" or "1 234"); the one place a bare count is written.
+export function formatWholeNumber(value: number, locale: string = displayLocale.value): string {
+  return new Intl.NumberFormat(locale, { maximumFractionDigits: 0 }).format(Math.round(value))
 }
 
 // A whole number of hours in the duration format ("0 h", "36 h"), for parts made by wholeHourParts.
 export function formatWholeHours(hours: number, locale: string = displayLocale.value): string {
   const t = i18n.global.t as (key: string, named: Record<string, unknown>) => string
-  return t('common.duration.hours', { hours: new Intl.NumberFormat(locale, { maximumFractionDigits: 0 }).format(hours) })
+  return t('common.duration.hours', { hours: formatWholeNumber(hours, locale) })
 }
 
+// "2 h 30 min", "45 min", "3 h": whole minutes, the sign left to the sentence around it. For a span of time (a block,
+// a task, time left); totals and goal progress are summaries and read in whole hours (formatWholeHours).
 export function formatDuration(totalMinutes: number, locale: string = displayLocale.value): string {
   const rounded = Math.abs(Math.round(totalMinutes))
   const number = new Intl.NumberFormat(locale, { maximumFractionDigits: 0 })
