@@ -72,7 +72,7 @@ function syncTime(iso: string): string { return new Intl.DateTimeFormat(planner.
 </script>
 <template>
   <div class="calendar-section">
-    <h2 class="t-title2">{{ t('calendars.heading') }}</h2>
+    <h2 class="t-title-2">{{ t('calendars.heading') }}</h2>
     <p class="calendar-note">{{ t('calendars.intro') }}</p>
     <p v-if="error" role="alert" class="calendar-error">{{ t(error) }}</p>
     <label class="calendar-file">{{ t('calendars.importFile') }}<input type="file" accept=".ics,text/calendar" :disabled="!planner.writable || calendars.pending > 0" @change="importFile"></label>

@@ -33,6 +33,7 @@
   "location": "Ort",
   "notes": "Notizen",
   "attendees": "Teilnehmende (E-Mail-Adressen)",
+  "attendeesPlaceholder": "E-Mail-Adressen",
   "attendeesHint": "E-Mail-Adressen durch Kommas trennen",
   "formInvalid": "Gib Titel, gültiges Datum und Uhrzeit, positive Dauer und gültige E-Mail-Adressen ein (maximal 50).",
   "saveEvent": "Termin speichern",

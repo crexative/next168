@@ -54,6 +54,8 @@ function move(offset: number, event: KeyboardEvent): void {
   font-weight: 500;
   transition: background-color 0.15s, box-shadow 0.15s;
 }
+/* The ring fills the track's 2 px padding instead of spilling over its edge. */
+.segment:focus-visible { outline-offset: 0; }
 .segment.is-selected {
   background: var(--surface);
   font-weight: 600;

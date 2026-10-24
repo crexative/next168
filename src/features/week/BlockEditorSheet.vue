@@ -73,7 +73,7 @@ function submit(): void {
         <input
           :id="`${fieldId}-title`"
           v-model="title"
-          class="control"
+          class="input control"
           type="text"
           maxlength="120"
           autocomplete="off"
@@ -85,7 +85,7 @@ function submit(): void {
       </label>
       <label class="field" :for="`${fieldId}-category`">
         <span class="t-footnote field-label">{{ t('week.editor.category') }}</span>
-        <select :id="`${fieldId}-category`" v-model="categoryId" class="control">
+        <select :id="`${fieldId}-category`" v-model="categoryId" class="input control">
           <option v-for="category in document.categories" :key="category.id" :value="category.id">
             {{ category.icon ? `${category.icon} ` : '' }}{{ category.name }}
           </option>
@@ -94,14 +94,14 @@ function submit(): void {
       <div class="times">
         <label class="field" :for="`${fieldId}-start`">
           <span class="t-footnote field-label">{{ t('week.editor.start') }}</span>
-          <input :id="`${fieldId}-start`" v-model="startValue" class="control time" type="time" step="300" required>
+          <input :id="`${fieldId}-start`" v-model="startValue" class="input control time" type="time" step="300" required>
         </label>
         <label class="field" :for="`${fieldId}-end`">
           <span class="t-footnote field-label">
             {{ t('week.editor.end') }}
             <span v-if="endsNextDay" class="next-day" data-testid="next-day">{{ t('week.editor.nextDay') }}</span>
           </span>
-          <input :id="`${fieldId}-end`" v-model="endValue" class="control time" type="time" step="300" required>
+          <input :id="`${fieldId}-end`" v-model="endValue" class="input control time" type="time" step="300" required>
         </label>
       </div>
       <fieldset class="field days">
@@ -141,17 +141,7 @@ function submit(): void {
 .editor { display: flex; flex-direction: column; gap: var(--space-4); }
 .field { display: flex; flex-direction: column; gap: var(--space-1); min-width: 0; margin: 0; padding: 0; border: 0; }
 .field-label { display: flex; align-items: center; gap: var(--space-2); color: var(--label-2); }
-.control {
-  width: 100%;
-  min-height: var(--tap-target);
-  padding: 0 var(--space-3);
-  border: 0.5px solid var(--separator);
-  border-radius: var(--radius-control);
-  background: var(--surface-2);
-  color: var(--label);
-  font: inherit;
-  font-size: 1.0625rem;
-}
+.control { width: 100%; }
 .control[aria-invalid] { border-color: var(--danger); }
 .time { font-variant-numeric: tabular-nums; }
 .times { display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-3); }

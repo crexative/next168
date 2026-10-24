@@ -8,6 +8,7 @@ import DayColumn from './DayColumn.vue'
 import TimeAxis from './TimeAxis.vue'
 import { dragOffset, horizontalVelocity, targetIndex, type PointerSample } from './dayPager'
 import { formatDate } from './localTime'
+import type { BusyDetails } from './busyDetails'
 import type { BlockSegment, BusySegment } from './weekLayout'
 
 const props = defineProps<{
@@ -20,7 +21,7 @@ const props = defineProps<{
   nowMinute: number
   editable: boolean
 }>()
-const emit = defineEmits<{ select: [blockId: string]; create: [date: string, minute: number] }>()
+const emit = defineEmits<{ select: [blockId: string]; create: [date: string, minute: number]; inspect: [details: BusyDetails] }>()
 const index = defineModel<number>('index', { required: true })
 
 const { t, locale } = useI18n()
@@ -176,6 +177,7 @@ onBeforeUnmount(() => animation?.stop())
             :editable="editable"
             @select="(id) => emit('select', id)"
             @create="(day, minute) => emit('create', day, minute)"
+            @inspect="(details) => emit('inspect', details)"
           />
         </div>
       </div>

@@ -20,7 +20,8 @@
     "icons": "pwa-assets-generator",
     "e2e": "playwright test",
     "companion:build": "npm --prefix companion run build",
-    "companion:start": "node companion/dist/cli.js serve"
+    "companion:start": "node companion/dist/cli.js serve",
+    "test:e2e:linux": "bash scripts/e2e-linux.sh"
   },
   "dependencies": {
     "@mlc-ai/web-llm": "0.2.85",

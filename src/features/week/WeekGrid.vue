@@ -4,6 +4,7 @@ import type { Category } from '@/core/model'
 import DayColumn from './DayColumn.vue'
 import TimeAxis from './TimeAxis.vue'
 import { formatDate } from './localTime'
+import type { BusyDetails } from './busyDetails'
 import type { BlockSegment, BusySegment } from './weekLayout'
 
 defineProps<{
@@ -16,7 +17,7 @@ defineProps<{
   nowMinute: number
   editable: boolean
 }>()
-const emit = defineEmits<{ select: [blockId: string]; create: [date: string, minute: number] }>()
+const emit = defineEmits<{ select: [blockId: string]; create: [date: string, minute: number]; inspect: [details: BusyDetails] }>()
 
 const { locale } = useI18n()
 </script>
@@ -46,6 +47,7 @@ const { locale } = useI18n()
         :editable="editable"
         @select="(id) => emit('select', id)"
         @create="(day, minute) => emit('create', day, minute)"
+        @inspect="(details) => emit('inspect', details)"
       />
     </div>
   </div>
