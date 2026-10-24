@@ -15,8 +15,8 @@ const input: ProposalInput = {
 
 const state = vi.hoisted(() => ({ create: vi.fn(), open: vi.fn() }))
 
-vi.mock('@/repositories/browserRepositories', () => ({
-  createBrowserRepositories: () => ({ proposals: { create: state.create } }),
+vi.mock('@/features/proposals/repository', () => ({
+  getProposalRepository: () => ({ create: state.create }),
 }))
 vi.mock('@/features/proposals', () => ({ openProposalReview: state.open }))
 

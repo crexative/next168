@@ -2,11 +2,9 @@ import { afterEach, expect, it, vi } from 'vitest'
 import { createApp, nextTick, type App } from 'vue'
 import { createPinia, setActivePinia } from 'pinia'
 import type { ProposalRepository } from '@/core/model'
-import { STORAGE_KEYS } from '@/core/model'
 import { createEmptyDocument } from '@/core/documents'
 import { calendarExport } from '@/core/calendarExport'
-import { LocalStorageRepository } from '@/repositories/LocalStorageRepository'
-import { LocalStorageProposalRepository } from '@/repositories/LocalStorageProposalRepository'
+import { createTestRepositories, MemoryStore } from '@/repositories/testSupport'
 import { configurePlannerStore, usePlannerStore } from '@/stores/plannerStore'
 import { i18n } from '@/i18n'
 import ProposalsView from './ProposalsView.vue'
@@ -17,16 +15,15 @@ let app: App | undefined
 let host: HTMLElement | undefined
 afterEach(() => { app?.unmount(); host?.remove(); vi.restoreAllMocks() })
 it('shows the exact proposal without applying it, then commits only on the explicit Approve click', async () => {
-  const values = new Map<string, string>()
-  const storage = { getItem: (key: string) => values.get(key) ?? null, setItem: (key: string, value: string) => { values.set(key, value) }, removeItem: (key: string) => { values.delete(key) } }
+  const store = new MemoryStore()
   const now = () => new Date('2026-10-24T10:00:00Z')
   const newId = () => crypto.randomUUID()
   const document = createEmptyDocument({ now: now(), locale: 'en', timeZone: 'UTC' })
   document.categories = [{ id: 'focus', name: 'Focus', colorKey: 'blue', goal: { type: 'none', hoursPerWeek: 0 } }]
-  values.set(STORAGE_KEYS.document, JSON.stringify(document))
-  const runExclusive = async <T,>(task: () => Promise<T>) => task()
-  const plannerRepository = new LocalStorageRepository({ storage, events: new EventTarget(), runExclusive, now, newId, locale: () => 'en', timeZone: () => 'UTC' })
-  repository = new LocalStorageProposalRepository({ storage, runExclusive, now, newId })
+  store.data.set('document', JSON.stringify(document))
+  const repositories = createTestRepositories({ store })
+  const plannerRepository = repositories.planner
+  repository = repositories.proposals
   const event = { title: 'Holiday', allDay: true, start: '2026-10-24T00:00:00+14:00', end: '2026-10-25T00:00:00+14:00', attendees: [] }
   const proposal = await repository.create({ contractVersion: '1.0', workspaceId: document.workspaceId, baseRevision: 0, summary: 'A focused hour', ops: [
     { op: 'add_block', block: { categoryId: 'focus', title: 'Focused planning', days: [1], start: 540, end: 600 } },

@@ -15,8 +15,11 @@ export class IndexedDbCalendarSourceStore implements CalendarSourceStore {
     })
     try {
       return await new Promise<T>((resolve, reject) => {
-        const transaction = db.transaction('sources', mode)
+        // A readwrite transaction asks for a flushed commit, like the planner store: a browser kill after
+        // `complete` must not lose the text.
+        const transaction = mode === 'readwrite' ? db.transaction('sources', mode, { durability: 'strict' }) : db.transaction('sources', mode)
         const request = operation(transaction.objectStore('sources'))
+        transaction.commit?.()
         transaction.oncomplete = () => resolve(request.result)
         transaction.onabort = () => reject(new CalendarImportError('storage'))
         transaction.onerror = () => reject(new CalendarImportError('storage'))

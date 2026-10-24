@@ -220,7 +220,8 @@ export type ProposalInput = z.infer<typeof proposalInputSchema>
 export type Settings = z.infer<typeof settingsSchema>
 export type PlannerDocument = z.infer<typeof plannerDocumentSchema>
 
-// Storage keys (browser mode). v1 `next168-data` is read-only migration input and never written.
+// Legacy localStorage keys (import input only, removed by delete-all; never written) and the commit lock name.
+// The browser planner itself lives in IndexedDB `next168` (src/repositories/indexedDbStore.ts).
 export const STORAGE_KEYS = {
   legacyV1: 'next168-data',
   document: 'next168-v2',
@@ -254,7 +255,7 @@ export interface CalendarSourceStore {
   list(): Promise<string[]>
 }
 
-// Storage port (D4). Adapters: LocalStorageRepository (browser) and CompanionRepository (HTTP).
+// Storage port (D4). Adapters: BrowserPlannerRepository (IndexedDB) and CompanionRepository (HTTP).
 export type LoadResult =
   | { kind: 'ok'; document: PlannerDocument; migratedFrom?: number }
   | { kind: 'empty' }
@@ -268,7 +269,7 @@ export type SaveResult =
 
 // save() must be a serialized compare-and-swap: re-read the stored revision inside an exclusive lock
 // (Web Locks in browsers, an in-process mutex + atomic rename in the companion), write the backup of the
-// previous bytes first, then the new bytes; any failure leaves the previous document intact.
+// previous bytes and the new bytes atomically; any failure leaves the previous document intact.
 export interface PlannerRepository {
   load(): Promise<LoadResult>
   save(document: PlannerDocument, expectedRevision: number): Promise<SaveResult>
