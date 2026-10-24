@@ -1,0 +1,50 @@
+name: CI
+
+on:
+  pull_request:
+    branches: ['feature/#3-local-first-next168']
+  push:
+    branches: ['feature/#3-local-first-next168']
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+
+      - run: npm ci
+      - run: npm run type-check
+      - run: npx eslint .
+      - run: npx vitest run
+      - run: npm run build
+
+      - name: Install browsers
+        run: npx playwright install --with-deps chromium webkit
+
+      - name: End-to-end tests
+        run: npx playwright test
+
+      - name: Upload e2e artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: e2e-artifacts
+          path: |
+            e2e/artifacts
+            e2e/.report
+            e2e/.results
+          if-no-files-found: ignore
+          retention-days: 14

@@ -2,22 +2,55 @@ import { fileURLToPath, URL } from 'node:url'
 
 import { defineConfig } from 'vite'
 import vue from '@vitejs/plugin-vue'
-import vueDevTools from 'vite-plugin-vue-devtools'
+import { VitePWA } from 'vite-plugin-pwa'
 
-// https://vite.dev/config/
+const BRAND_TINT = '#5856D6'
+const GROUPED_BACKGROUND = '#F2F2F7'
+const MAX_PRECACHE_BYTES = 5 * 1024 * 1024
+
+// base './' lets the same build run at '/', at '/next168/' and inside the local companion.
 export default defineConfig({
-  base: '/next168/',
+  base: './',
   plugins: [
     vue(),
-    vueDevTools(),
+    VitePWA({
+      registerType: 'prompt',
+      injectRegister: false,
+      includeAssets: ['favicon.ico', 'apple-touch-icon-180x180.png'],
+      manifest: {
+        name: 'Next168',
+        short_name: 'Next168',
+        description: 'Plan your 168 hours. Local-first weekly planner.',
+        display: 'standalone',
+        start_url: './',
+        scope: './',
+        theme_color: BRAND_TINT,
+        background_color: GROUPED_BACKGROUND,
+        icons: [
+          { src: 'pwa-192x192.png', sizes: '192x192', type: 'image/png' },
+          { src: 'pwa-512x512.png', sizes: '512x512', type: 'image/png' },
+          { src: 'maskable-icon-512x512.png', sizes: '512x512', type: 'image/png', purpose: 'maskable' },
+        ],
+      },
+      workbox: {
+        globPatterns: ['**/*.{js,css,html,svg,png,ico,webmanifest}'],
+        maximumFileSizeToCacheInBytes: MAX_PRECACHE_BYTES,
+        navigateFallback: 'index.html',
+        navigateFallbackDenylist: [/\/api\//],
+        clientsClaim: true,
+        runtimeCaching: [
+          { urlPattern: ({ url }) => url.pathname.includes('/api/'), handler: 'NetworkOnly' },
+        ],
+      },
+    }),
   ],
   resolve: {
     alias: {
-      '@': fileURLToPath(new URL('./src', import.meta.url))
+      '@': fileURLToPath(new URL('./src', import.meta.url)),
     },
   },
   server: {
-    host: true, // Listen on all network interfaces
+    host: true,
     port: 5173,
   },
 })
