@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { blockSegmentsByDate, busySegmentsByDate, layoutDaySegments, splitByLocalDay } from './weekLayout'
+import { blockSegmentsByDate, busySegmentsByDate, layoutDaySegments, nearestHitTarget, splitByLocalDay } from './weekLayout'
 import type { ExternalOccurrence, PlannerEvent, TimeBlock } from '@/core/model'
 import { weekDates } from './localTime'
 import { deepWork, plannerDocument, sleep } from './testDocument'
@@ -175,5 +175,39 @@ describe('daylight saving changes', () => {
     expect(splitByLocalDay('2026-03-29T00:30:00Z', '2026-03-29T01:30:00Z', ['2026-03-29'], 'Europe/Berlin')).toEqual([
       { date: '2026-03-29', startMinute: 90, endMinute: 210, continuesBefore: false, continuesAfter: false },
     ])
+  })
+})
+
+describe('nearestHitTarget', () => {
+  const HOUR = 48
+  const gym = { kind: 'block' as const, id: 'gym', startMinute: 720, endMinute: 750, left: 0, width: 100 }
+  const tall = { kind: 'block' as const, id: 'work', startMinute: 540, endMinute: 660, left: 0, width: 100 }
+
+  it('reaches 10 px past a 30-minute block on each side, so every target is at least 44 px', () => {
+    const top = 12 * HOUR
+    const bottom = top + 24
+    expect(nearestHitTarget([gym], top - 10, 50, HOUR)).toBe(gym)
+    expect(nearestHitTarget([gym], bottom + 10, 50, HOUR)).toBe(gym)
+    expect(nearestHitTarget([gym], top - 11, 50, HOUR)).toBeUndefined()
+    expect(nearestHitTarget([gym], bottom + 11, 50, HOUR)).toBeUndefined()
+  })
+
+  it('does not grow an item that is already 44 px tall or more', () => {
+    expect(nearestHitTarget([tall], 9 * HOUR - 1, 50, HOUR)).toBeUndefined()
+    expect(nearestHitTarget([tall], 11 * HOUR + 1, 50, HOUR)).toBeUndefined()
+    expect(nearestHitTarget([tall], 10 * HOUR, 50, HOUR)).toBe(tall)
+  })
+
+  it('stays inside the lane the item occupies', () => {
+    const lane = { ...gym, left: 50, width: 50 }
+    expect(nearestHitTarget([lane], 12 * HOUR + 30, 49, HOUR)).toBeUndefined()
+    expect(nearestHitTarget([lane], 12 * HOUR + 30, 75, HOUR)).toBe(lane)
+  })
+
+  it('picks the item whose center is nearest when two reach the same point', () => {
+    const above = { ...gym, id: 'above', startMinute: 690, endMinute: 720 }
+    const y = 12 * HOUR - 2 // 2 px above Gym, 2 px below the end of the item above
+    expect(nearestHitTarget([above, gym], y, 50, HOUR)?.id).toBe('above')
+    expect(nearestHitTarget([above, gym], y + 6, 50, HOUR)?.id).toBe('gym')
   })
 })

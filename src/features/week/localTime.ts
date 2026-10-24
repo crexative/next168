@@ -59,6 +59,16 @@ export function formatHour(hour: number, locale: string): string {
   return formatHourOfDay(hour, locale)
 }
 
+// "6", "12p", "6a": the hour without the clock's words, for the seven-day overview where its axis is 2.5 rem wide.
+// A 12-hour clock keeps the first letter of its day period so morning and evening stay apart.
+export function formatHourCompact(hour: number, locale: string): string {
+  const parts = new Intl.DateTimeFormat(locale, { timeZone: 'UTC', hour: 'numeric' }).formatToParts(Date.UTC(2000, 0, 1, ((hour % 24) + 24) % 24))
+  const raw = parts.find((part) => part.type === 'hour')?.value ?? ''
+  const value = /^\d+$/.test(raw) ? String(Number(raw)) : raw
+  const period = parts.find((part) => part.type === 'dayPeriod')?.value.match(/\p{L}/u)?.[0]
+  return period ? `${value}${period.toLowerCase()}` : value
+}
+
 export function formatDate(date: string, locale: string, options: Intl.DateTimeFormatOptions): string {
   return new Intl.DateTimeFormat(locale, { ...options, timeZone: 'UTC' }).format(new Date(`${date}T12:00:00Z`))
 }

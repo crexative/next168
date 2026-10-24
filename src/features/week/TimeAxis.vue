@@ -1,10 +1,10 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { displayLocale } from '@/ui/format'
-import { formatHour } from './localTime'
+import { formatHour, formatHourCompact } from './localTime'
 
-withDefaults(defineProps<{ compact?: boolean }>(), { compact: false })
-const hours = computed(() => Array.from({ length: 24 }, (_, hour) => ({ hour, label: formatHour(hour, displayLocale.value) })))
+const props = withDefaults(defineProps<{ compact?: boolean }>(), { compact: false })
+const hours = computed(() => Array.from({ length: 24 }, (_, hour) => ({ hour, label: props.compact ? formatHourCompact(hour, displayLocale.value) : formatHour(hour, displayLocale.value) })))
 </script>
 
 <template>

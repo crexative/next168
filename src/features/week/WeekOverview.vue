@@ -27,7 +27,7 @@ const { t, locale } = useI18n()
 const legend = computed(() => {
   const used = new Set(props.dates.flatMap((date) => [
     ...(props.segments[date] ?? []).map((segment) => segment.occurrence.categoryId),
-    ...(props.tasks[date] ?? []).map((task) => task.categoryId),
+    ...(props.tasks[date] ?? []).map((task) => task.categoryId ?? ''),
   ]))
   return props.categories.filter((category) => used.has(category.id))
 })
@@ -89,9 +89,8 @@ const legend = computed(() => {
   top: calc(var(--safe-top) + var(--toolbar-height));
   z-index: 5;
   padding-block: var(--space-1);
-  background: var(--material);
-  -webkit-backdrop-filter: var(--material-filter);
-  backdrop-filter: var(--material-filter);
+  /* Opaque: the blocks scrolling under the header must not show through it. */
+  background: var(--bg);
 }
 .overview-day {
   display: flex;

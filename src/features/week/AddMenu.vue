@@ -2,9 +2,13 @@
 import { nextTick, onBeforeUnmount, ref, useId, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import Icon from '@/ui/Icon.vue'
+import type { AddKind } from './addKind'
 
 withDefaults(defineProps<{ variant?: 'toolbar' | 'fab'; placement?: 'below' | 'above' }>(), { variant: 'toolbar', placement: 'below' })
-const emit = defineEmits<{ choose: [kind: 'block' | 'event'] }>()
+const emit = defineEmits<{ choose: [kind: AddKind] }>()
+
+// One plain verb for each thing "+" can add, with what it is in a line.
+const KINDS = ['task', 'event', 'block'] as const
 
 const { t } = useI18n()
 const menuId = useId()
@@ -12,6 +16,7 @@ const open = ref(false)
 const root = ref<HTMLElement | null>(null)
 const trigger = ref<HTMLButtonElement | null>(null)
 const menu = ref<HTMLElement | null>(null)
+const hintId = (kind: AddKind) => `${menuId}-${kind}`
 
 function items(): HTMLButtonElement[] {
   return Array.from(menu.value?.querySelectorAll<HTMLButtonElement>('[role="menuitem"]') ?? [])
@@ -29,7 +34,7 @@ function close(restoreFocus = true): void {
   if (restoreFocus) trigger.value?.focus()
 }
 
-function choose(kind: 'block' | 'event'): void {
+function choose(kind: AddKind): void {
   close(false)
   emit('choose', kind)
 }
@@ -70,8 +75,20 @@ onBeforeUnmount(() => document.removeEventListener('pointerdown', onDocumentPoin
     </button>
     <Transition name="menu">
       <div v-if="open" :id="menuId" ref="menu" class="menu" role="menu" :aria-label="t('week.add')" @keydown.down="move(1, $event)" @keydown.up="move(-1, $event)" @keydown.tab="close(false)">
-        <button type="button" role="menuitem" class="menu-item t-body" data-testid="add-block" @click="choose('block')">{{ t('week.addMenu.block') }}</button>
-        <button type="button" role="menuitem" class="menu-item t-body" data-testid="add-event" @click="choose('event')">{{ t('week.addMenu.event') }}</button>
+        <button
+          v-for="kind in KINDS"
+          :key="kind"
+          type="button"
+          role="menuitem"
+          class="menu-item"
+          :aria-label="t(`week.addMenu.${kind}`)"
+          :aria-describedby="hintId(kind)"
+          :data-testid="`add-${kind}`"
+          @click="choose(kind)"
+        >
+          <span class="t-body">{{ t(`week.addMenu.${kind}`) }}</span>
+          <span :id="hintId(kind)" class="t-footnote t-secondary">{{ t(`week.addMenu.${kind}Hint`) }}</span>
+        </button>
       </div>
     </Transition>
   </div>
@@ -103,7 +120,9 @@ onBeforeUnmount(() => document.removeEventListener('pointerdown', onDocumentPoin
 .menu {
   position: absolute;
   z-index: 30;
+  width: max-content;
   min-width: 11rem;
+  max-width: min(18rem, calc(100vw - 2 * var(--space-4)));
   padding: var(--space-1);
   border-radius: var(--radius-card);
   background: var(--surface);
@@ -114,10 +133,12 @@ onBeforeUnmount(() => document.removeEventListener('pointerdown', onDocumentPoin
 .is-above .menu { bottom: 100%; inset-inline-end: 0; margin-bottom: var(--space-2); transform-origin: bottom right; }
 .menu-item {
   display: flex;
-  align-items: center;
+  flex-direction: column;
+  justify-content: center;
+  align-items: flex-start;
   width: 100%;
   min-height: var(--tap-target);
-  padding: 0 var(--space-3);
+  padding: var(--space-2) var(--space-3);
   border: 0;
   border-radius: var(--radius-control);
   background: transparent;

@@ -1,5 +1,5 @@
 {
-  "summary": "Noch keine Zeitblöcke auf diesem Gerät gespeichert | {count} Zeitblock auf diesem Gerät gespeichert | {count} Zeitblöcke auf diesem Gerät gespeichert",
+  "summary": "Noch keine Routinen auf diesem Gerät gespeichert | {count} Routine auf diesem Gerät gespeichert | {count} Routinen auf diesem Gerät gespeichert",
   "add": "Hinzufügen",
   "deleted": "„{title}“ gelöscht",
   "grid": {
@@ -17,9 +17,9 @@
     "days": "Wochentage"
   },
   "editor": {
-    "newTitle": "Neuer Block",
-    "editTitle": "Block bearbeiten",
-    "title": "Titel",
+    "newTitle": "Neue Routine",
+    "editTitle": "Routine bearbeiten",
+    "title": "Name",
     "titlePlaceholder": "Fokusarbeit, Sport, Familie…",
     "category": "Kategorie",
     "start": "Beginn",
@@ -27,10 +27,10 @@
     "nextDay": "+1 Tag",
     "days": "Wiederholt sich am",
     "save": "Sichern",
-    "delete": "Block löschen",
+    "delete": "Routine löschen",
     "hours": "{hours} Std.",
     "errors": {
-      "titleRequired": "Gib dem Block einen Titel.",
+      "titleRequired": "Gib der Routine einen Namen.",
       "categoryRequired": "Wähle eine Kategorie.",
       "timeRequired": "Gib eine Start- und Endzeit ein.",
       "zeroLength": "Beginn und Ende dürfen nicht gleich sein.",
@@ -39,20 +39,24 @@
       "saveFailed": "Speichern nicht möglich ({reason})."
     },
     "warnings": {
-      "goalOver": "{category} läge {hours} über der Wochengrenze. Du kannst trotzdem sichern."
+      "goalOver": "{category} läge {hours} über dem Wochenziel. Du kannst trotzdem sichern."
     }
   },
   "empty": {
     "noCategoriesTitle": "Beginne mit deinen Kategorien",
-    "noCategoriesDescription": "Jeder Block gehört zu einer Kategorie wie Schlaf, Arbeit oder Sport. Lege zuerst eine in den Einstellungen an.",
+    "noCategoriesDescription": "Jede Routine gehört zu einer Kategorie wie Schlaf, Arbeit oder Sport. Lege zuerst eine in den Einstellungen an.",
     "openSettings": "Einstellungen öffnen",
     "noBlocksTitle": "Plane deine 168 Stunden",
-    "noBlocksDescription": "Füge einen Block für etwas hinzu, das du jede Woche tust, etwa Schlafen oder Arbeiten.",
-    "addBlock": "Block hinzufügen"
+    "noBlocksDescription": "Füge eine Routine für etwas hinzu, das du jede Woche tust, etwa Schlafen oder Arbeiten.",
+    "addBlock": "Routine hinzufügen"
   },
   "addMenu": {
-    "block": "Block",
-    "event": "Termin"
+    "block": "Routine",
+    "event": "Termin",
+    "task": "Aufgabe",
+    "taskHint": "Etwas zu erledigen; findet selbst eine freie Lücke",
+    "eventHint": "Ein Termin mit Tag und Uhrzeit",
+    "blockHint": "Wiederholt sich jede Woche"
   },
   "nav": {
     "label": "Woche",
@@ -61,9 +65,8 @@
     "today": "Heute"
   },
   "view": {
-    "label": "Ansicht",
-    "day": "Tag",
-    "week": "Woche"
+    "showWeek": "Ganze Woche anzeigen",
+    "showDay": "Einen Tag anzeigen"
   },
   "overview": {
     "days": "Wochentage",
@@ -78,7 +81,7 @@
   },
   "status": {
     "done": "Erledigt",
-    "skipped": "Übersprungen",
+    "skipped": "Nein",
     "partial": "Teilweise"
   },
   "moved": {

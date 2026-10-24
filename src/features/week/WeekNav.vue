@@ -5,8 +5,10 @@ import Icon from '@/ui/Icon.vue'
 import './registerIcons'
 import { weekRangeLabel } from './weekNavigation'
 
-const props = defineProps<{ dates: string[]; today: string; isCurrent: boolean }>()
-const emit = defineEmits<{ previous: []; next: []; today: [] }>()
+// One compact toolbar: previous week, the range (with the free hours of the week under it), next week, "Today" only
+// when another week is shown, and - on a phone - the one button that switches between a day and the whole week.
+const props = defineProps<{ dates: string[]; today: string; isCurrent: boolean; view?: 'day' | 'week' }>()
+const emit = defineEmits<{ previous: []; next: []; today: []; 'toggle-view': [] }>()
 
 const { t, locale } = useI18n()
 const range = computed(() => weekRangeLabel(props.dates, locale.value, props.today))
@@ -17,14 +19,25 @@ const range = computed(() => weekRangeLabel(props.dates, locale.value, props.tod
     <button type="button" class="nav-button" :aria-label="t('week.nav.previous')" data-testid="week-previous" @click="emit('previous')">
       <Icon name="chevron-left" :size="24" />
     </button>
-    <!-- Announced when the week changes, so a screen reader hears where it landed. -->
-    <p class="range t-headline" data-testid="week-range" aria-live="polite">{{ range }}</p>
+    <div class="heading">
+      <!-- Announced when the week changes, so a screen reader hears where it landed. -->
+      <p class="range t-headline" data-testid="week-range" aria-live="polite">{{ range }}</p>
+      <div class="free-hours-slot" data-testid="week-free-hours-slot"><slot name="free-hours" /></div>
+    </div>
     <button type="button" class="nav-button" :aria-label="t('week.nav.next')" data-testid="week-next" @click="emit('next')">
       <Icon name="chevron-right" :size="24" />
     </button>
-    <button type="button" class="today-button t-subhead" data-testid="week-today" :disabled="isCurrent" @click="emit('today')">{{ t('week.nav.today') }}</button>
-    <!-- The free-hours badge, on its own line under the controls. -->
-    <div class="free-hours-slot" data-testid="week-free-hours-slot"><slot name="free-hours" /></div>
+    <button v-if="!isCurrent" type="button" class="today-button t-subhead" data-testid="week-today" @click="emit('today')">{{ t('week.nav.today') }}</button>
+    <button
+      v-if="view"
+      type="button"
+      class="nav-button view-button"
+      :aria-label="t(view === 'day' ? 'week.view.showWeek' : 'week.view.showDay')"
+      data-testid="week-view-toggle"
+      @click="emit('toggle-view')"
+    >
+      <Icon :name="view === 'day' ? 'columns-3' : 'calendar-1'" :size="22" />
+    </button>
   </div>
 </template>
 
@@ -40,6 +53,7 @@ const range = computed(() => weekRangeLabel(props.dates, locale.value, props.tod
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  flex: none;
   width: var(--tap-target);
   height: var(--tap-target);
   border: 0;
@@ -49,12 +63,13 @@ const range = computed(() => weekRangeLabel(props.dates, locale.value, props.tod
   transition: transform 0.1s var(--ease-out), opacity 0.1s;
 }
 .nav-button:active { transform: scale(0.97); }
-/* One line at normal sizes; with large text the range wraps between its words instead of spilling. */
-.range { min-width: 0; margin: 0; font-variant-numeric: tabular-nums; text-align: center; text-wrap: balance; }
+/* The range takes the room between the arrows; with large text it wraps between its words instead of spilling. */
+.heading { display: flex; flex: 1 1 8rem; flex-direction: column; min-width: 0; text-align: center; }
+.range { min-width: 0; margin: 0; font-variant-numeric: tabular-nums; text-wrap: balance; }
 .today-button {
+  flex: none;
   min-width: var(--tap-target);
   min-height: var(--tap-target);
-  margin-inline-start: auto;
   padding: 0 var(--space-3);
   border: 0;
   border-radius: var(--radius-control);
@@ -63,12 +78,10 @@ const range = computed(() => weekRangeLabel(props.dates, locale.value, props.tod
   font-weight: 600;
   transition: transform 0.1s var(--ease-out), opacity 0.1s;
 }
-.today-button:active:not(:disabled) { transform: scale(0.97); }
-/* Already on this week: the button says so by looking inert, and its label still reads "Today". */
-.today-button:disabled { background: transparent; color: var(--label-2); }
-.free-hours-slot { flex: 1 0 100%; min-width: 0; padding-block: var(--space-1); }
+.today-button:active { transform: scale(0.97); }
 .free-hours-slot:empty { display: none; }
+.free-hours-slot :deep(p) { color: var(--label-2); font-size: 0.8125rem; line-height: 1.38; }
 @media (prefers-reduced-motion: reduce) {
-  .nav-button:active, .today-button:active:not(:disabled) { transform: none; opacity: 0.7; }
+  .nav-button:active, .today-button:active { transform: none; opacity: 0.7; }
 }
 </style>

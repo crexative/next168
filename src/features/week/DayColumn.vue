@@ -10,7 +10,7 @@ import './registerIcons'
 import { statusOf } from './blockStatus'
 import { categoryColor } from './categoryColor'
 import { formatMinute, formatTime } from './localTime'
-import { HOUR_HEIGHT_PX, SLOT_MINUTES, STACK_EVENT_INSET_PERCENT, layoutDaySegments, type BlockSegment, type BusySegment, type DayPart, type LanePosition, type TaskSegment } from './weekLayout'
+import { HOUR_HEIGHT_PX, SLOT_MINUTES, STACK_EVENT_INSET_PERCENT, layoutDaySegments, nearestHitTarget, type BlockSegment, type HitTarget, type BusySegment, type DayPart, type LanePosition, type TaskSegment } from './weekLayout'
 import type { BusyDetails } from './busyDetails'
 
 const props = withDefaults(defineProps<{
@@ -28,7 +28,7 @@ const props = withDefaults(defineProps<{
   // The whole-week overview: shapes only, the text lives in the accessible names and the legend.
   compact?: boolean
 }>(), { tasks: () => [], actuals: () => [], hourHeight: HOUR_HEIGHT_PX, compact: false })
-const emit = defineEmits<{ select: [blockId: string]; create: [date: string, minute: number]; inspect: [details: BusyDetails] }>()
+const emit = defineEmits<{ select: [blockId: string]; 'select-task': [taskId: string]; create: [date: string, minute: number]; inspect: [details: BusyDetails] }>()
 
 const { t } = useI18n()
 const categoriesById = computed(() => new Map(props.categories.map((category) => [category.id, category])))
@@ -94,9 +94,22 @@ function blockLabel(segment: BlockSegment): string {
   return [segment.occurrence.title, timeRange(segment), name !== segment.occurrence.title ? name : ''].filter(Boolean).join(' ') + (status ? `, ${status}` : '')
 }
 
-// Tasks sit in the lane of the planned block they were fitted into.
+// A task sits in the lane of the planned block it was fitted into; one that fits any free time has no block around it.
+function hostOf(task: TaskSegment) {
+  if (task.categoryId === undefined) return undefined
+  return layout.value.blocks.find((block) => block.occurrence.categoryId === task.categoryId && block.startMinute <= task.startMinute && task.endMinute <= block.endMinute)
+}
+
+// A block whose first half hour already holds a task keeps only its title: the task is drawn under the title row
+// and a second line (its time range) would print under the task's own title.
+const EARLY_TASK_MINUTES = 30
+const crowdedBlocks = computed(() => new Set(props.tasks.flatMap((task) => {
+  const host = hostOf(task)
+  return host && task.startMinute - host.startMinute < EARLY_TASK_MINUTES ? [host.key] : []
+})))
+
 const taskBoxes = computed(() => props.tasks.map((task) => {
-  const host = layout.value.blocks.find((block) => block.occurrence.categoryId === task.categoryId && block.startMinute <= task.startMinute && task.endMinute <= block.endMinute)
+  const host = hostOf(task)
   const strip = host && !props.compact && task.startMinute - host.startMinute < (TITLE_STRIP_PX / props.hourHeight) * 60
     ? Math.min(TITLE_STRIP_PX - ((task.startMinute - host.startMinute) / 60) * props.hourHeight, ((task.endMinute - task.startMinute) / 60) * props.hourHeight - MIN_TASK_PX)
     : 0
@@ -111,7 +124,7 @@ const taskBoxes = computed(() => props.tasks.map((task) => {
       ...lanes,
       top: `${top}px`,
       height: `${height}px`,
-      '--block-color': categoryColor(categoriesById.value.get(task.categoryId)),
+      '--block-color': categoryColor(task.categoryId === undefined ? undefined : categoriesById.value.get(task.categoryId)),
     },
   }
 }))
@@ -134,11 +147,28 @@ function inspect(item: BusySegment): void {
   })
 }
 
+// The pressable things of this column with the lane each one occupies, for the 44 px hit rule below.
+const hitTargets = computed<HitTarget[]>(() => [
+  ...props.tasks.map((task) => {
+    const host = hostOf(task)
+    return { kind: 'task' as const, id: task.taskId, startMinute: task.startMinute, endMinute: task.endMinute, left: host?.left ?? 0, width: host?.width ?? 100 }
+  }),
+  ...layout.value.blocks.map((block) => ({ kind: 'block' as const, id: block.occurrence.blockId, startMinute: block.startMinute, endMinute: block.endMinute, left: block.left, width: block.width })),
+])
+
+// A press on empty time in the column: close to a short block or task (inside its 44 px target) it opens that one,
+// anywhere else it starts a new block.
 function onColumnClick(event: MouseEvent): void {
   if (!props.editable || event.target !== event.currentTarget) return
   const bounds = (event.currentTarget as HTMLElement).getBoundingClientRect()
-  const minute = Math.floor(((event.clientY - bounds.top) / props.hourHeight) * 60 / SLOT_MINUTES) * SLOT_MINUTES
-  emit('create', props.date, Math.max(0, Math.min(1440 - SLOT_MINUTES, minute)))
+  const y = event.clientY - bounds.top
+  const hit = props.compact ? undefined : nearestHitTarget(hitTargets.value, y, ((event.clientX - bounds.left) / bounds.width) * 100, props.hourHeight)
+  if (hit?.kind === 'task') emit('select-task', hit.id)
+  else if (hit) emit('select', hit.id)
+  else {
+    const minute = Math.floor((y / props.hourHeight) * 60 / SLOT_MINUTES) * SLOT_MINUTES
+    emit('create', props.date, Math.max(0, Math.min(1440 - SLOT_MINUTES, minute)))
+  }
 }
 </script>
 
@@ -163,7 +193,7 @@ function onColumnClick(event: MouseEvent): void {
       :key="segment.key"
       type="button"
       class="block"
-      :class="{ 'is-short': segment.endMinute - segment.startMinute < 45, 'is-beside': isBesideEvent(segment), 'is-done': statuses.get(segment.key) === 'done', 'continues-before': segment.continuesBefore, 'continues-after': segment.continuesAfter }"
+      :class="{ 'is-short': segment.endMinute - segment.startMinute < 45, 'is-beside': isBesideEvent(segment), 'is-crowded': crowdedBlocks.has(segment.key), 'is-done': statuses.get(segment.key) === 'done', 'is-skipped': statuses.get(segment.key) === 'skipped', 'continues-before': segment.continuesBefore, 'continues-after': segment.continuesAfter }"
       :style="segmentStyle(segment)"
       :data-block-id="segment.occurrence.blockId"
       :data-start-minute="segment.startMinute"
@@ -181,9 +211,10 @@ function onColumnClick(event: MouseEvent): void {
         <Icon :name="STATUS_ICON[statuses.get(segment.key)!]" :size="12" /><span class="status-text">{{ statusText(segment) }}</span>
       </span>
     </button>
-    <div
+    <button
       v-for="box in taskBoxes"
       :key="box.task.key"
+      type="button"
       class="task-chunk"
       :style="box.style"
       data-testid="week-task"
@@ -191,14 +222,16 @@ function onColumnClick(event: MouseEvent): void {
       :data-start-minute="box.task.startMinute"
       :data-end-minute="box.task.endMinute"
       :data-late="box.task.late || undefined"
-      role="img"
       :aria-label="t('week.task.label', { title: box.task.title, range: box.range }) + (box.task.late ? `, ${t('week.task.late')}` : '')"
+      :disabled="!editable"
+      :tabindex="compact ? -1 : undefined"
+      @click="emit('select-task', box.task.taskId)"
     >
       <span class="task-box" :class="{ 'is-late': box.task.late }">
         <Icon v-if="box.task.late && box.height >= TASK_LABEL_MIN_PX" name="triangle-alert" :size="12" />
         <span v-if="box.height >= TASK_LABEL_MIN_PX" class="task-title t-caption">{{ box.task.title }}</span>
       </span>
-    </div>
+    </button>
     <div v-if="nowMinute !== null" class="now-line" :style="{ top: `${(nowMinute / 60) * hourHeight}px` }" data-testid="now-line" aria-hidden="true" />
   </div>
 </template>
@@ -251,6 +284,9 @@ function onColumnClick(event: MouseEvent): void {
 .block-time { font-size: 0.75rem; line-height: 1.25; font-variant-numeric: tabular-nums; }
 .block-category { font-size: 0.75rem; line-height: 1.25; }
 .block-title, .block-time, .block-category { flex-shrink: 0; width: 100%; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/* Labels are drawn above the now-line (z-index 2): the line crosses the fill of a block, never its words. */
+.block-title, .block-time, .block-category, .block-status, .task-title { position: relative; z-index: 3; }
+.is-crowded .block-time, .is-crowded .block-category { display: none; }
 .block-mark { margin-inline-end: 1px; }
 .is-short { flex-direction: row; gap: var(--space-1); align-items: center; }
 .is-short .block-time, .is-short .block-category { display: none; }
@@ -290,10 +326,12 @@ function onColumnClick(event: MouseEvent): void {
   }
   .is-beside .block-time, .is-beside .block-category, .is-beside .block-mark { display: none; }
   .block.is-beside { padding-inline: 3px 0; }
+  /* A word is never broken in the middle: in the narrow strip the title is cut with an ellipsis. */
   .is-beside .block-title {
     max-width: calc(var(--title-strip) - 4px);
-    white-space: normal;
-    word-break: break-all;
+    min-width: 0;
+    overflow-wrap: normal;
+    word-break: normal;
   }
   .busy:not(.is-short) .busy-title { white-space: normal; overflow-wrap: anywhere; }
   .busy.is-short { gap: 2px; padding-inline: 2px; }
@@ -302,8 +340,10 @@ function onColumnClick(event: MouseEvent): void {
   .busy.is-short .conflict-text { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
   .busy.is-conflict:not(.is-short) { display: flex; flex-direction: column; justify-content: center; }
 }
-/* A placed task: a dashed outline inside the lane of its block. Taps go through to the block underneath. */
-.task-chunk { position: absolute; z-index: 1; pointer-events: none; }
+/* A placed task: a dashed outline inside the lane of its block; tapping it opens the task. It has no z-index, so its
+   words can be drawn above the now-line while the box stays under it. */
+.task-chunk { position: absolute; padding: 0; border: 0; background: transparent; color: inherit; text-align: start; cursor: pointer; }
+.task-chunk:disabled { cursor: default; }
 .task-box {
   position: absolute;
   inset: 0 4px 0 8px;
@@ -321,11 +361,15 @@ function onColumnClick(event: MouseEvent): void {
 .task-title { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
 .block-status { display: inline-flex; align-items: center; gap: 2px; color: var(--label-2); }
-.is-done .block-title { text-decoration: line-through; }
+/* One visual, one meaning: done is dimmed with its check mark; only "No" is struck through. */
+.block.is-done { opacity: 0.6; }
+.is-skipped .block-title { text-decoration: line-through; }
 .is-short .status-text, .is-beside .status-text { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
 .is-short .block-status { flex: none; }
 
 .is-compact .block { padding: 0; border-radius: 3px; }
+/* A short block or commute stays visible instead of shrinking to a sliver. */
+.is-compact .block, .is-compact .busy, .is-compact .task-chunk { min-height: 8px; }
 .is-compact .block::before { width: 2px; }
 .is-compact .block-title, .is-compact .block-time, .is-compact .block-status, .is-compact .conflict-text, .is-compact .busy-title { display: none; }
 .is-compact .busy { padding: 0; }

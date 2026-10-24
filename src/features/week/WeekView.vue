@@ -6,7 +6,6 @@ import { addLocalDays, localDateOf } from '@/core/time'
 import { usePlannerStore } from '@/stores/plannerStore'
 import Button from '@/ui/Button.vue'
 import EmptyState from '@/ui/EmptyState.vue'
-import SegmentedControl from '@/ui/SegmentedControl.vue'
 import { useUndoToast } from '@/ui/undoToast'
 import { useMediaQuery } from '@/ui/useMediaQuery'
 import EventSheet from '@/features/calendars/EventSheet.vue'
@@ -14,6 +13,8 @@ import FreeHoursBadge from '@/features/capacity/FreeHoursBadge.vue'
 import SetupWeekPrompt from '@/features/onboarding/SetupWeekPrompt.vue'
 import { setupWeekOffered } from '@/features/onboarding/reopen'
 import { defaultTaskCategoryId } from '@/features/onboarding/templates'
+import TaskSheet from '@/features/tasks/TaskSheet.vue'
+import type { AddKind } from './addKind'
 import AddMenu from './AddMenu.vue'
 import BlockEditorSheet from './BlockEditorSheet.vue'
 import BusyDetailsSheet from './BusyDetailsSheet.vue'
@@ -98,12 +99,11 @@ function showToday(): void {
   viewMode.value = 'day'
 }
 
-// Phone only: one day at a time, or all seven days at a glance.
+// Phone only: one day at a time, or all seven days at a glance (one toolbar button switches).
 const viewMode = ref<'day' | 'week'>('day')
-const modeOptions = computed(() => [
-  { value: 'day' as const, label: t('week.view.day') },
-  { value: 'week' as const, label: t('week.view.week') },
-])
+function toggleView(): void {
+  viewMode.value = viewMode.value === 'day' ? 'week' : 'day'
+}
 function pickDay(index: number): void {
   pagerIndex.value = index
   viewMode.value = 'day'
@@ -144,6 +144,9 @@ const detailsOpen = ref(false)
 const details = ref<BusyDetails | null>(null)
 const editorOpen = ref(false)
 const eventOpen = ref(false)
+const taskOpen = ref(false)
+// The task shown in the sheet; none means a new one.
+const editingTaskId = ref<string | undefined>()
 const saveError = ref<string | null>(null)
 const saving = ref(false)
 const draft = ref<BlockDraft>({ title: '', categoryId: '', start: null, end: null, days: [] })
@@ -164,10 +167,17 @@ function openNewFromButton(): void {
   openNew(date, date === today.value ? nextHour : 9 * 60)
 }
 
-function addFromMenu(kind: 'block' | 'event'): void {
+function addFromMenu(kind: AddKind): void {
   if (!planner.writable) return
   if (kind === 'event') eventOpen.value = true
+  else if (kind === 'task') openTask(undefined)
   else openNewFromButton()
+}
+
+function openTask(taskId: string | undefined): void {
+  if (!planner.writable) return
+  editingTaskId.value = taskId
+  taskOpen.value = true
 }
 
 function inspect(next: BusyDetails): void {
@@ -237,13 +247,19 @@ async function remove(blockId: string): Promise<void> {
       </div>
     </EmptyState>
     <template v-else>
-      <WeekNav :dates="dates" :today="today" :is-current="isCurrentWeek" @previous="showWeek(-1)" @next="showWeek(1)" @today="showToday">
+      <WeekNav
+        :dates="dates"
+        :today="today"
+        :is-current="isCurrentWeek"
+        :view="isWide ? undefined : viewMode"
+        @previous="showWeek(-1)"
+        @next="showWeek(1)"
+        @today="showToday"
+        @toggle-view="toggleView"
+      >
         <!-- Free hours count from now, so they belong to the current week only. -->
-        <template v-if="isCurrentWeek" #free-hours><FreeHoursBadge :document="document" :now="now" /></template>
+        <template v-if="isCurrentWeek" #free-hours><FreeHoursBadge :document="document" :now="now" :framed="false" /></template>
       </WeekNav>
-      <div v-if="!isWide" class="view-mode">
-        <SegmentedControl v-model="viewMode" :options="modeOptions" :label="t('week.view.label')" />
-      </div>
       <WeekGrid
         v-if="isWide"
         :dates="dates"
@@ -257,6 +273,7 @@ async function remove(blockId: string): Promise<void> {
         :now-minute="nowMinute"
         :editable="planner.writable"
         @select="openExisting"
+        @select-task="openTask"
         @create="openNew"
         @inspect="inspect"
       />
@@ -287,6 +304,7 @@ async function remove(blockId: string): Promise<void> {
         :now-minute="nowMinute"
         :editable="planner.writable"
         @select="openExisting"
+        @select-task="openTask"
         @create="openNew"
         @inspect="inspect"
       />
@@ -308,11 +326,11 @@ async function remove(blockId: string): Promise<void> {
       @delete="remove"
     />
     <EventSheet v-model:open="eventOpen" />
+    <TaskSheet v-model:open="taskOpen" :task-id="editingTaskId" />
   </div>
 </template>
 
 <style scoped>
-.view-mode { padding: var(--space-2) var(--space-4) 0; }
 /* The floating "+" sits above the tab bar and clear of the undo toast, which keeps the row just above the bar. */
 .fab-anchor {
   position: fixed;

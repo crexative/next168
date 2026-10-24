@@ -1,5 +1,5 @@
 {
-  "summary": "Nenhum bloco de tempo salvo neste dispositivo | {count} bloco de tempo salvo neste dispositivo | {count} blocos de tempo salvos neste dispositivo",
+  "summary": "Nenhuma rotina salva neste dispositivo | {count} rotina salva neste dispositivo | {count} rotinas salvas neste dispositivo",
   "add": "Adicionar",
   "deleted": "“{title}” excluído",
   "grid": {
@@ -17,9 +17,9 @@
     "days": "Dias da semana"
   },
   "editor": {
-    "newTitle": "Novo bloco",
-    "editTitle": "Editar bloco",
-    "title": "Título",
+    "newTitle": "Nova rotina",
+    "editTitle": "Editar rotina",
+    "title": "Nome",
     "titlePlaceholder": "Trabalho focado, Academia, Família…",
     "category": "Categoria",
     "start": "Começa",
@@ -27,10 +27,10 @@
     "nextDay": "+1 dia",
     "days": "Repete em",
     "save": "Salvar",
-    "delete": "Excluir bloco",
+    "delete": "Excluir rotina",
     "hours": "{hours} h",
     "errors": {
-      "titleRequired": "Dê um título ao bloco.",
+      "titleRequired": "Dê um nome à rotina.",
       "categoryRequired": "Escolha uma categoria.",
       "timeRequired": "Informe um horário de início e de fim.",
       "zeroLength": "Início e fim não podem ser no mesmo horário.",
@@ -39,20 +39,24 @@
       "saveFailed": "Não foi possível salvar ({reason})."
     },
     "warnings": {
-      "goalOver": "{category} ficaria {hours} acima do limite semanal. Você ainda pode salvar."
+      "goalOver": "{category} ficaria {hours} acima da meta semanal. Você ainda pode salvar."
     }
   },
   "empty": {
     "noCategoriesTitle": "Comece pelas suas categorias",
-    "noCategoriesDescription": "Cada bloco pertence a uma categoria como Sono, Trabalho ou Exercício. Adicione uma em Ajustes primeiro.",
+    "noCategoriesDescription": "Cada rotina pertence a uma categoria como Sono, Trabalho ou Exercício. Adicione uma em Ajustes primeiro.",
     "openSettings": "Abrir Ajustes",
     "noBlocksTitle": "Planeje suas 168 horas",
-    "noBlocksDescription": "Adicione um bloco para algo que você faz toda semana, como dormir ou trabalhar.",
-    "addBlock": "Adicionar um bloco"
+    "noBlocksDescription": "Adicione uma rotina para algo que você faz toda semana, como dormir ou trabalhar.",
+    "addBlock": "Adicionar uma rotina"
   },
   "addMenu": {
-    "block": "Bloco",
-    "event": "Evento"
+    "block": "Rotina",
+    "event": "Evento",
+    "task": "Tarefa",
+    "taskHint": "Algo a fazer; encontra um horário livre",
+    "eventHint": "Um compromisso com dia e hora",
+    "blockHint": "Repete toda semana"
   },
   "nav": {
     "label": "Semana",
@@ -61,9 +65,8 @@
     "today": "Hoje"
   },
   "view": {
-    "label": "Visualização",
-    "day": "Dia",
-    "week": "Semana"
+    "showWeek": "Ver a semana toda",
+    "showDay": "Ver um dia"
   },
   "overview": {
     "days": "Dias da semana",
@@ -78,8 +81,8 @@
   },
   "status": {
     "done": "Feito",
-    "skipped": "Ignorado",
-    "partial": "Parcial"
+    "skipped": "Não",
+    "partial": "Em parte"
   },
   "moved": {
     "tomorrow": "“{title}” passou para amanhã",

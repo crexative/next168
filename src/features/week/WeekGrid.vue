@@ -19,7 +19,7 @@ defineProps<{
   nowMinute: number
   editable: boolean
 }>()
-const emit = defineEmits<{ select: [blockId: string]; create: [date: string, minute: number]; inspect: [details: BusyDetails] }>()
+const emit = defineEmits<{ select: [blockId: string]; 'select-task': [taskId: string]; create: [date: string, minute: number]; inspect: [details: BusyDetails] }>()
 
 const { locale } = useI18n()
 </script>
@@ -50,6 +50,7 @@ const { locale } = useI18n()
         :now-minute="date === today ? nowMinute : null"
         :editable="editable"
         @select="(id) => emit('select', id)"
+        @select-task="(id) => emit('select-task', id)"
         @create="(day, minute) => emit('create', day, minute)"
         @inspect="(details) => emit('inspect', details)"
       />
@@ -67,9 +68,8 @@ const { locale } = useI18n()
   /* Full bleed: the strip spans the toolbar's width, the columns stay on the grid. */
   margin-inline: calc(var(--space-2) * -1) calc(var(--space-4) * -1);
   padding: var(--space-2) var(--space-4) var(--space-2) var(--space-2);
-  background: var(--material);
-  -webkit-backdrop-filter: var(--material-filter);
-  backdrop-filter: var(--material-filter);
+  /* Opaque: the blocks scrolling under the header must not show through it. */
+  background: var(--bg);
 }
 .day-heading { display: flex; flex-direction: column; align-items: center; gap: 2px; }
 .weekday { color: var(--label-2); text-transform: uppercase; }

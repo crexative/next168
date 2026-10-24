@@ -24,7 +24,7 @@ const props = defineProps<{
   nowMinute: number
   editable: boolean
 }>()
-const emit = defineEmits<{ select: [blockId: string]; create: [date: string, minute: number]; inspect: [details: BusyDetails] }>()
+const emit = defineEmits<{ select: [blockId: string]; 'select-task': [taskId: string]; create: [date: string, minute: number]; inspect: [details: BusyDetails] }>()
 const index = defineModel<number>('index', { required: true })
 
 const { t, locale } = useI18n()
@@ -205,6 +205,7 @@ onBeforeUnmount(() => {
             :now-minute="date === today ? nowMinute : null"
             :editable="editable"
             @select="(id) => emit('select', id)"
+            @select-task="(id) => emit('select-task', id)"
             @create="(day, minute) => emit('create', day, minute)"
             @inspect="(details) => emit('inspect', details)"
           />
@@ -222,9 +223,8 @@ onBeforeUnmount(() => {
   display: grid;
   grid-template-columns: repeat(7, minmax(0, 1fr));
   padding: var(--space-1) var(--space-2);
-  background: var(--material);
-  -webkit-backdrop-filter: var(--material-filter);
-  backdrop-filter: var(--material-filter);
+  /* Opaque: the blocks scrolling under the strip must not show through it. */
+  background: var(--bg);
 }
 .strip-day {
   display: flex;
