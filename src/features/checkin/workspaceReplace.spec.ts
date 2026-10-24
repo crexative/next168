@@ -40,7 +40,7 @@ function mount(component: object) {
 }
 
 beforeEach(() => { vi.useFakeTimers({ toFake: ['Date'] }); vi.setSystemTime(fixedNow()) })
-afterEach(() => { app?.unmount(); host?.remove(); app = undefined; vi.useRealTimers() })
+afterEach(() => { useUndoToast().dismiss(); app?.unmount(); host?.remove(); app = undefined; vi.useRealTimers() })
 
 async function setup(component: object, first: PlannerDocument) {
   const ctx = mount(component)
@@ -309,6 +309,42 @@ describe('onboarding and undo actions stay bound to what they were prepared for'
     await nextTick()
   }
 
+  it('immediately undoes task completion in the same workspace', async () => {
+    const { store } = await setup(TasksView, { ...workspace('ws-a'), revision: 1, categories: [category], tasks: [task] })
+    await clickTaskButton('button.check')
+    await store.settled()
+    expect(store.document?.tasks[0]?.doneAt).toBeDefined()
+    expect(useUndoToast().toast.value).not.toBeNull()
+    useUndoToast().undo()
+    await store.settled()
+    expect(store.document?.tasks).toEqual([task])
+    expect(store.document?.revision).toBe(3)
+    expect(store.error).toBeNull()
+  })
+
+  it('reopens a completed task in the same workspace', async () => {
+    const done = { ...task, doneAt: '2026-10-24T09:00:00.000Z' }
+    const { store } = await setup(TasksView, { ...workspace('ws-a'), revision: 1, categories: [category], tasks: [done] })
+    await clickTaskButton('[data-testid=done-task] button')
+    await store.settled()
+    expect(store.document?.tasks).toEqual([task])
+    expect(store.document?.revision).toBe(2)
+    expect(store.error).toBeNull()
+  })
+
+  it('immediately undoes task removal in the same workspace', async () => {
+    const { store } = await setup(TasksView, { ...workspace('ws-a'), revision: 1, categories: [category], tasks: [task] })
+    await clickTaskButton('button.remove')
+    await store.settled()
+    expect(store.document?.tasks).toEqual([])
+    expect(useUndoToast().toast.value).not.toBeNull()
+    useUndoToast().undo()
+    await store.settled()
+    expect(store.document?.tasks).toEqual([task])
+    expect(store.document?.revision).toBe(3)
+    expect(store.error).toBeNull()
+  })
+
   it('does not let a completed-task undo touch a replacement document', async () => {
     const { store } = await setup(TasksView, { ...workspace('ws-a'), revision: 1, categories: [category], tasks: [task] })
     await clickTaskButton('button.check')
@@ -344,18 +380,54 @@ describe('onboarding and undo actions stay bound to what they were prepared for'
     expect(store.error).toBeNull()
   })
 
-  it('does not let a deleted-category undo restore it into a replacement document', async () => {
-    const { store } = await setup(CategorySettings, { ...workspace('ws-a'), revision: 1, categories: [category] })
-    host.querySelector<HTMLButtonElement>('.category-button')!.click()
+  async function deleteCategory(first: PlannerDocument) {
+    const ctx = await setup(CategorySettings, first)
+    host.querySelector<HTMLButtonElement>('[data-testid=category-c-1] .category-button')!.click()
     await nextTick()
-    const del = [...document.body.querySelectorAll<HTMLButtonElement>('button')].find((candidate) => /^delete/i.test(candidate.textContent?.trim() ?? ''))!
+    const del = document.body.querySelector<HTMLButtonElement>('form.editor .danger-zone button')!
     del.click()
-    await store.settled()
+    await ctx.store.settled()
+    expect(useUndoToast().toast.value).not.toBeNull()
+    return ctx
+  }
+
+  it('immediately undoes deletion of the sole unreferenced category in the same workspace', async () => {
+    const { store } = await deleteCategory({ ...workspace('ws-a'), revision: 1, categories: [category] })
     expect(store.document?.categories).toEqual([])
-    store.document = { ...workspace('ws-b'), revision: 1, categories: [{ ...category, id: 'c-9', name: 'Other' }] }
     useUndoToast().undo()
     await store.settled()
-    expect(store.document?.categories.map((candidate) => candidate.id)).toEqual(['c-9'])
+    expect(store.document?.categories).toEqual([category])
+    expect(store.document?.revision).toBe(3)
+    expect(store.error).toBeNull()
+  })
+
+  it('immediately restores a deleted category and its moved blocks and tasks in the same workspace', async () => {
+    const other = { ...category, id: 'c-2', name: 'Other' }
+    const block = { id: 'b-1', categoryId: category.id, title: 'Work block', days: [1], start: 60, end: 120 }
+    const untouchedBlock = { ...block, id: 'b-2', categoryId: other.id, start: 120, end: 180 }
+    const untouchedTask = { ...task, id: 't-2', categoryId: other.id }
+    const { store } = await deleteCategory({ ...workspace('ws-a'), revision: 1, categories: [category, other], blocks: [block, untouchedBlock], tasks: [task, untouchedTask] })
+    expect(store.document?.categories).toEqual([other])
+    expect(store.document?.blocks).toEqual([{ ...block, categoryId: other.id }, untouchedBlock])
+    expect(store.document?.tasks).toEqual([{ ...task, categoryId: other.id }, untouchedTask])
+    useUndoToast().undo()
+    await store.settled()
+    expect(store.document?.categories).toEqual([other, category])
+    expect(store.document?.blocks).toEqual([block, untouchedBlock])
+    expect(store.document?.tasks).toEqual([task, untouchedTask])
+    expect(store.document?.revision).toBe(3)
+    expect(store.error).toBeNull()
+  })
+
+  it('does not let a deleted-category undo restore it into a replacement document', async () => {
+    const { store } = await deleteCategory({ ...workspace('ws-a'), revision: 1, categories: [category] })
+    expect(store.document?.categories).toEqual([])
+    const other = { ...category, id: 'c-9', name: 'Other' }
+    expect((await store.commit((draft) => { Object.assign(draft, workspace('ws-b', undefined, { categories: [other] })) })).ok).toBe(true)
+    const replaced = structuredClone(store.document)
+    useUndoToast().undo()
+    await store.settled()
+    expect(store.document).toEqual(replaced)
     expect(store.error).toBeNull()
   })
 })

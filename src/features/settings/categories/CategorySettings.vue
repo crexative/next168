@@ -116,13 +116,13 @@ async function save(): Promise<void> {
 }
 
 // What a removal left behind: the other categories and the blocks/tasks it moved. The undo only runs against exactly this.
-function removalFingerprint(draft: PlannerDocument, removed: ReturnType<typeof removeCategory>): string | undefined {
+function removalFingerprint(draft: PlannerDocument, removed: ReturnType<typeof removeCategory>): Pick<PlannerDocument, 'categories' | 'blocks' | 'tasks'> | undefined {
   if (!removed) return undefined
-  return snapshotOf({
+  return {
     categories: draft.categories,
     blocks: draft.blocks.filter((block) => removed.blockIds.includes(block.id)),
     tasks: draft.tasks.filter((task) => removed.taskIds.includes(task.id)),
-  })
+  }
 }
 
 async function remove(): Promise<void> {
@@ -131,7 +131,7 @@ async function remove(): Promise<void> {
   const target = isReferenced.value ? effectiveReassign.value : undefined
   const holder: { removed: ReturnType<typeof removeCategory>; after?: string } = { removed: null }
   const opened = editing.value && { ...editing.value }
-  const result = await planner.commit((draft) => { assertEditable(draft, opened); holder.removed = removeCategory(draft, id, target); holder.after = removalFingerprint(draft, holder.removed) })
+  const result = await planner.commit((draft) => { assertEditable(draft, opened); holder.removed = removeCategory(draft, id, target); holder.after = snapshotOf(removalFingerprint(draft, holder.removed)) })
   const snapshot = holder.removed
   if (!result.ok) refusedAsChanged(result)
   if (!result.ok || !snapshot) return
