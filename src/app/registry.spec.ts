@@ -26,7 +26,8 @@ describe('shell registry', () => {
 
     registry.registerSettingsSection({ id: 'data', component, titleKey: 'k', order: 20 })
     registry.registerSettingsSection({ id: 'language', component, titleKey: 'k', order: 10 })
-    expect(settingsSections.value.map((section) => section.id)).toEqual(['language', 'data'])
+    // The built-in language-and-region section (order 25) sits among the feature sections by its order.
+    expect(settingsSections.value.map((section) => section.id)).toEqual(['language', 'data', 'preferences'])
   })
 
   it('registers every feature module with the same registry', () => {

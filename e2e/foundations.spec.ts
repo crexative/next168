@@ -511,3 +511,28 @@ test.describe('sheets', () => {
     await expect(dialog).toHaveCount(0)
   })
 })
+
+test.describe('language and region settings', () => {
+  test('language, first day of the week and 12/24 h are chosen in Settings and kept after a reload', async ({ page }) => {
+    await startWith(page)
+    await openView(page, 'settings')
+    await page.getByRole('radiogroup', { name: 'Week starts on' }).getByRole('radio', { name: 'Sunday' }).click()
+    await page.getByRole('radiogroup', { name: 'Time format' }).getByRole('radio', { name: '24-hour' }).click()
+    await expect(page.locator('#main')).toContainText('Times read like 14:30.')
+
+    await openView(page, 'week')
+    await expect(page.locator('[data-date]').first()).toHaveAttribute('data-date', '2026-10-18')
+    await openView(page, 'today')
+    await expect(page.getByTestId('timeline-item').filter({ hasText: 'Deep work' }).getByTestId('timeline-start')).toHaveText('09:00')
+
+    await openView(page, 'settings')
+    await page.getByTestId('preference-language').selectOption('es')
+    await expect(page.getByRole('heading', { level: 1, name: 'Ajustes' })).toBeVisible()
+    await expect(page.locator('html')).toHaveAttribute('lang', 'es')
+
+    await page.reload()
+    await expect(page.getByRole('heading', { level: 1, name: 'Ajustes' })).toBeVisible()
+    await expect(page.getByRole('radiogroup', { name: 'La semana empieza el' }).getByRole('radio', { name: 'Domingo' })).toHaveAttribute('aria-checked', 'true')
+    await expect(page.getByRole('radiogroup', { name: 'Formato de hora' }).getByRole('radio', { name: '24 horas' })).toHaveAttribute('aria-checked', 'true')
+  })
+})

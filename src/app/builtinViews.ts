@@ -2,6 +2,7 @@ import { h } from 'vue'
 import type { ShellRegistry, ViewId } from './contracts'
 import PlaceholderView from './PlaceholderView.vue'
 import SettingsView from './SettingsView.vue'
+import PreferencesSettings from './settings/PreferencesSettings.vue'
 
 const TABS: { id: Extract<ViewId, 'today' | 'week' | 'tasks' | 'insights'>; icon: string }[] = [
   { id: 'today', icon: 'sun' },
@@ -21,4 +22,5 @@ export function registerBuiltinViews(registry: ShellRegistry): void {
     })
   })
   registry.registerView({ id: 'settings', titleKey: 'app.tabs.settings', icon: 'settings', component: SettingsView })
+  registry.registerSettingsSection({ id: 'preferences', titleKey: 'common.preferences.title', order: 25, component: PreferencesSettings })
 }
