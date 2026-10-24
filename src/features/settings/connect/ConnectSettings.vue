@@ -58,12 +58,12 @@ async function importWorkspace(event: Event) {
 
 <template>
   <div class="connect-settings">
-    <h2 class="t-title-2">{{ t('connect.title') }}</h2>
+    <h2 class="section-header">{{ t('connect.title') }}</h2>
     <section class="connect-card">
       <h3 class="t-headline">{{ t('connect.dataLocation') }}</h3>
-      <p>{{ t(companionMode ? 'connect.companionMode' : 'connect.browserMode') }}</p>
+      <p class="t-subhead t-secondary">{{ t(companionMode ? 'connect.companionMode' : 'connect.browserMode') }}</p>
       <p class="t-footnote t-secondary">{{ origin }} · {{ planner.document?.workspaceId }}</p>
-      <p>{{ t('connect.transferHint') }}</p>
+      <p class="t-subhead t-secondary">{{ t('connect.transferHint') }}</p>
       <label v-if="companionMode && empty" class="import-workspace">
         {{ t('connect.importWorkspace') }}
         <input type="file" accept="application/json,.json" :disabled="busy" @change="importWorkspace" />
@@ -71,7 +71,7 @@ async function importWorkspace(event: Event) {
     </section>
     <section v-if="companionMode" class="connect-card">
       <h3 class="t-headline">Claude Desktop</h3>
-      <p>{{ t('connect.desktopInstructions') }}</p>
+      <p class="t-subhead t-secondary">{{ t('connect.desktopInstructions') }}</p>
       <pre>{{ desktopConfig }}</pre>
       <h3 class="t-headline">Claude Code</h3>
       <pre>{{ codeCommand }}</pre>
@@ -79,8 +79,8 @@ async function importWorkspace(event: Event) {
       <p>{{ t('connect.rotateHint') }} <code>node companion/dist/cli.js token rotate</code></p>
     </section>
     <section class="connect-card">
-      <p>{{ t('connect.privacy') }}</p>
-      <p>{{ t('connect.chatgpt') }}</p>
+      <p class="t-subhead t-secondary">{{ t('connect.privacy') }}</p>
+      <p class="t-subhead t-secondary">{{ t('connect.chatgpt') }}</p>
       <Button variant="tinted" :disabled="!planner.document" @click="downloadSnapshot">{{ t('connect.exportSnapshot') }}</Button>
       <label for="proposal-json">{{ t('connect.importProposal') }}</label>
       <textarea id="proposal-json" v-model="proposalJson" rows="7" spellcheck="false" :placeholder="t('connect.proposalPlaceholder')" />

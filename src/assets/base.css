@@ -77,6 +77,17 @@ input[type='file']::file-selector-button {
 .t-footnote { font-size: 0.8125rem; line-height: 1.38; font-weight: 400; letter-spacing: 0.005em; }
 .t-caption { font-size: 0.75rem; line-height: 1.33; font-weight: 500; letter-spacing: 0.01em; }
 .t-secondary { color: var(--label-2); }
+/* Settings-like pages: every group opens with this eyebrow, inset to the rows' text; explanatory copy is .t-subhead.t-secondary. */
+.section-header {
+  margin: 0 0 var(--space-2);
+  padding-inline: var(--space-4);
+  color: var(--label-2);
+  font-size: 0.8125rem;
+  font-weight: 400;
+  line-height: 1.38;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+}
 
 .visually-hidden {
   position: absolute;

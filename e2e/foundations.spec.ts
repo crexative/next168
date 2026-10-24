@@ -189,3 +189,26 @@ test.describe('buttons', () => {
     }
   })
 })
+
+test.describe('headings', () => {
+  test('every Settings group opens with the same eyebrow, inset like the others, and sections are spaced apart', async ({ page }) => {
+    await startWith(page)
+    await openView(page, 'settings')
+    const headers = await page.locator('#main .settings-section h2').evaluateAll((elements) => elements
+      .filter((element) => element.getClientRects().length > 0)
+      .map((element) => {
+        const style = getComputedStyle(element)
+        const range = document.createRange()
+        range.selectNodeContents(element)
+        return { text: element.textContent?.trim() ?? '', size: style.fontSize, weight: style.fontWeight, transform: style.textTransform, color: style.color, textLeft: range.getBoundingClientRect().left }
+      }))
+    expect(headers.length).toBeGreaterThanOrEqual(5)
+    const [first] = headers
+    for (const header of headers) {
+      expect.soft(header, `"${header.text}" matches "${first!.text}"`).toMatchObject({ size: first!.size, weight: first!.weight, transform: 'uppercase', color: first!.color })
+      expect.soft(Math.abs(header.textLeft - first!.textLeft), `"${header.text}" is inset like "${first!.text}"`).toBeLessThanOrEqual(1)
+    }
+    const gaps = await page.locator('#main .settings-section + .settings-section').evaluateAll((sections) => sections.map((section) => parseFloat(getComputedStyle(section).marginTop)))
+    for (const gap of gaps) expect(gap).toBeGreaterThanOrEqual(24)
+  })
+})
