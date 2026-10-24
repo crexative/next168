@@ -265,6 +265,8 @@ test('onboarding does not ask the browser to protect storage; the first check-in
   await expect(page.getByRole('dialog')).toHaveCount(0)
 
   await page.goto('./#/checkin')
+  // An empty check-in saves nothing, so there must be something in it.
+  await page.locator('textarea').fill('Un buen día')
   await page.getByRole('button', { name: /Guardar/ }).first().click()
   await expect.poll(() => page.evaluate(() => (window as unknown as { __persistCalls: number[] }).__persistCalls.length)).toBe(1)
 })

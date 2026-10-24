@@ -146,11 +146,13 @@ test('delete all data leaves no calendar source, neither in the plan nor in the 
     }
   }))
   expect(await cachedKeys()).toHaveLength(1)
+  await openTab(page, 'settings')
   await page.getByRole('button', { name: 'Delete all data…' }).click()
   const dialog = page.getByRole('dialog', { name: 'Delete everything?' })
   await dialog.getByRole('textbox').fill('delete')
   await dialog.getByRole('button', { name: 'Delete everything' }).click()
   await expect(page.getByTestId('data-notice')).toContainText('All data was deleted')
+  await openAdvanced(page)
   await expect(page.getByTestId('calendar-source')).toHaveCount(0)
   expect(await cachedKeys()).toEqual([])
   expect(JSON.parse((await page.evaluate(key => window.localStorage.getItem(key), V2_KEY))!).calendarSources).toEqual([])

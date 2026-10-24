@@ -67,7 +67,7 @@ test.describe('plan and measure', () => {
     await page.getByLabel('Task', { exact: true }).fill('Book a health check')
     await page.getByRole('button', { name: 'Finish' }).click()
     await expect(page.getByRole('dialog', { name: 'Your week is ready' })).toBeVisible()
-    await page.getByRole('button', { name: 'Close' }).click()
+    await page.getByTestId('onboarding').getByRole('button', { name: 'Close' }).click()
     await expect(page.getByTestId('onboarding')).toBeHidden()
 
     const document = await storedDocument(page)
@@ -266,7 +266,10 @@ test.describe('plan and measure', () => {
     expect(edited).toMatchObject({ name: 'Deep study', goal: { type: 'min', hoursPerWeek: 3 } })
 
     await page.getByRole('button', { name: 'Edit Deep study' }).click()
-    await expect(page.getByRole('dialog')).toContainText('1 time blocks and 0 tasks use this category')
+    await expect(page.getByRole('dialog')).toContainText('This category has 1 block. To delete it, move everything to another category.')
+    // No destination is chosen for the person: deleting waits for one.
+    await expect(page.getByLabel('Move them to')).toHaveValue('')
+    await expect(page.getByRole('button', { name: 'Move and delete' })).toBeDisabled()
     await page.getByLabel('Move them to').selectOption('c-work')
     await page.getByRole('button', { name: 'Move and delete' }).click()
     const categoryIds = async () => (await storedDocument(page)).categories.map((category: { id: string }) => category.id)

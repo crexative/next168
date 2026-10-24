@@ -196,7 +196,7 @@ for (const theme of THEMES) {
     test('tasks quick add with its details, and the assistant page', async ({ page }) => {
       await start(page, theme, plannedDocument)
       await open(page, 'tasks')
-      await page.getByPlaceholder('Add task…').fill('A task with a rather long title that wraps onto a second line on a phone')
+      await page.getByPlaceholder('Add task…').fill('Reply to the long email thread')
       await expect(page.getByTestId('task-details')).toBeVisible()
       await audit(page, `${theme}/tasks quick add with details`)
       await open(page, 'assistant')

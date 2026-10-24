@@ -142,7 +142,7 @@ test('the Assistant screen keeps a 16 px side gutter', async ({ page }) => {
   await expect(page.getByRole('heading', { level: 1, name: 'Assistant' })).toBeVisible()
   const edges = await page.evaluate(() => {
     const width = window.innerWidth
-    return Array.from(window.document.querySelectorAll('main .list-card, main .composer, main .composer input, main .composer button, main section > p:last-child'))
+    return Array.from(window.document.querySelectorAll('main .composer, main .composer input, main .composer button, main .suggestions, main .back-button, main .notes p:last-child'))
       .map((node) => { const box = node.getBoundingClientRect(); return { name: `${node.tagName}.${node.className}`, left: box.left, right: width - box.right } })
   })
   expect(edges.length).toBeGreaterThan(3)

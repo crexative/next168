@@ -313,7 +313,7 @@ const stepTitle = computed(() => (finished.value ? t('onboarding.done.title') : 
 .chip { position: relative; display: flex; flex: 1; align-items: center; gap: var(--space-3); min-width: 0; min-height: var(--tap-target); padding: var(--space-1) var(--space-3); background: var(--surface-2); border-radius: var(--radius-control); }
 .chip-text { display: flex; flex-direction: column; min-width: 0; }
 .chip-name { overflow-wrap: anywhere; }
-.check-input { position: absolute; inset: 0; width: 100%; height: 100%; margin: 0; opacity: 0; cursor: pointer; }
+.check-input { position: absolute; inset: 0; z-index: 1; width: 100%; height: 100%; margin: 0; opacity: 0; cursor: pointer; }
 .check-box { display: inline-flex; align-items: center; justify-content: center; flex: none; width: 22px; height: 22px; border: 2px solid var(--label-3); border-radius: 6px; color: transparent; }
 .check-input:checked + .check-box { border-color: var(--tint); background: var(--tint); color: var(--tint-text); }
 .check-input:focus-visible + .check-box { outline: 2px solid var(--tint); outline-offset: 2px; }

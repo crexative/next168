@@ -103,7 +103,9 @@ async function decide(approve: boolean) {
 .review-head { display: flex; flex-direction: column; gap: var(--space-1); }
 .review-head p { margin: 0; overflow-wrap: anywhere; }
 .changes { display: flex; flex-direction: column; gap: var(--space-3); margin: 0; padding: 0; list-style: none; }
-.change { display: flex; flex-direction: column; gap: var(--space-2); padding: var(--space-3); background: var(--surface-2); border-radius: var(--radius-card); }
+.change { padding: var(--space-3); background: var(--surface-2); border-radius: var(--radius-card); }
+.change > * + * { margin-top: var(--space-2); }
+.change h3 { margin: 0; }
 .diff { display: grid; gap: var(--space-2); grid-template-columns: minmax(0, 1fr); }
 .side { display: flex; flex-direction: column; gap: var(--space-1); padding: var(--space-2) var(--space-3); border-radius: var(--radius-control); background: var(--surface); }
 .side h4 { margin: 0; text-transform: uppercase; }
