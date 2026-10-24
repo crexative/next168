@@ -2,14 +2,15 @@
 import { computed, reactive, ref, useId, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import type { PlannerEvent } from '@/core/model'
-import { localDateOf } from '@/core/time'
+import { addLocalDays, localDateOf, zonedInstant } from '@/core/time'
 import { usePlannerStore } from '@/stores/plannerStore'
 import Sheet from '@/ui/Sheet.vue'
 import Button from '@/ui/Button.vue'
 import Icon from '@/ui/Icon.vue'
 import './registerIcons'
 import { useCalendarStore, type CalendarIntent } from './calendarStore'
-import { buildEvent, draftFromEvent, minutesOf, timeOfDay, type EventDraft } from './eventDraft'
+import { buildEvent, draftFromEvent, minutesOf, type EventDraft } from './eventDraft'
+const { t: eventText } = useI18n({ useScope: 'local', messages: { en: { through: 'Through' }, es: { through: 'Hasta el' }, fr: { through: 'Jusqu’au' }, pt: { through: 'Até o dia' }, de: { through: 'Bis einschließlich' } } })
 const props = defineProps<{ open: boolean; event?: PlannerEvent }>()
 const emit = defineEmits<{ 'update:open': [boolean] }>()
 const { t } = useI18n(), planner = usePlannerStore(), calendars = useCalendarStore()
@@ -19,10 +20,25 @@ const moreId = useId()
 const draft = reactive<EventDraft>({ title: '', date: '', time: '09:00', allDay: false, duration: 60, location: '', notes: '', attendees: '' })
 const initial = ref(''), saving = ref(false), error = ref(''), attempted = ref(false), moreOpen = ref(false)
 const zone = computed(() => planner.document?.settings.timeZone ?? 'UTC')
-// The end is a time of day: it follows the start (the event keeps its length), and choosing an end sets the length.
+const startInstant = computed(() => {
+  try { return zonedInstant(draft.date, minutesOf(draft.time), zone.value) } catch { return undefined }
+})
+const endInstant = computed(() => startInstant.value && Number.isFinite(draft.duration)
+  ? new Date(startInstant.value.getTime() + draft.duration * 60000) : undefined)
+// Resolve both local endpoints before subtracting: a wall-clock hour may cross a DST gap or fold.
 const endTime = computed({
-  get: () => timeOfDay((minutesOf(draft.time) + draft.duration) % 1440),
-  set: (value: string) => { draft.duration = (minutesOf(value) - minutesOf(draft.time) + 1440) % 1440 },
+  get: () => endInstant.value ? new Intl.DateTimeFormat('en-GB', { timeZone: zone.value, hour: '2-digit', minute: '2-digit', hourCycle: 'h23' }).format(endInstant.value) : '',
+  set: (value: string) => {
+    if (!startInstant.value || !/^\d{2}:\d{2}$/.test(value)) { draft.duration = NaN; return }
+    const date = addLocalDays(draft.date, minutesOf(value) < minutesOf(draft.time) ? 1 : 0)
+    const end = zonedInstant(date, minutesOf(value), zone.value)
+    draft.duration = (end.getTime() - startInstant.value.getTime()) / 60000
+  },
+})
+// All-day storage uses an exclusive end; the date shown to a person is the last included day.
+const allDayEnd = computed({
+  get: () => { try { return addLocalDays(draft.date, draft.duration - 1) } catch { return '' } },
+  set: (value: string) => { draft.duration = (Date.parse(value) - Date.parse(draft.date)) / 86400000 + 1 },
 })
 const dirty = computed(() => JSON.stringify(draft) !== initial.value)
 const valid = computed(() => { try { buildEvent(draft, props.event?.id ?? 'preview', zone.value); return true } catch { return false } })
@@ -61,7 +77,8 @@ async function save(): Promise<void> {
       <label>{{ t('calendars.title') }}<input v-model="draft.title" required maxlength="120" autocomplete="off"></label>
       <label>{{ t('calendars.date') }}<input v-model="draft.date" type="date" required></label>
       <label class="checkbox"><input v-model="draft.allDay" type="checkbox" @change="draft.duration = draft.allDay ? 1 : 60">{{ t('calendars.allDay') }}</label>
-      <div v-if="!draft.allDay" class="time-range">
+      <label v-if="draft.allDay">{{ eventText('through') }}<input v-model="allDayEnd" type="date" :min="draft.date" required data-testid="event-end-date"></label>
+      <div v-else class="time-range">
         <label>{{ t('calendars.time') }}<input v-model="draft.time" type="time" required></label>
         <label>{{ t('calendars.until') }}<input v-model="endTime" type="time" required></label>
       </div>

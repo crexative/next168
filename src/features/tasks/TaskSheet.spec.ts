@@ -189,3 +189,19 @@ describe('adding a task from the sheet', () => {
     expect(store.document!.tasks).toEqual([])
   })
 })
+
+
+it.each([undefined, 't-1'])('refuses a stale category after Vue has flushed external changes (task %s)', async (taskId) => {
+  const { store, isOpen } = await open(taskId, taskId ? {} : { tasks: [] })
+  await set(titleField(), 'My edit')
+  await set(when(), 'c-work', 'change')
+  await store.commit((draft) => { draft.categories.find((category) => category.id === 'c-work')!.name = 'Renamed elsewhere' })
+  await nextTick()
+  const before = JSON.stringify(store.document)
+  save().click()
+  await store.settled()
+  await nextTick()
+  expect(JSON.stringify(store.document)).toBe(before)
+  expect(dialog().querySelector('[role=alert]')?.textContent).toContain('changed elsewhere')
+  expect(isOpen.value).toBe(true)
+})

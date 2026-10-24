@@ -158,13 +158,17 @@ const hitTargets = computed<HitTarget[]>(() => [
 
 // A press on empty time in the column: close to a short block or task (inside its 44 px target) it opens that one,
 // anywhere else it starts a new block.
-function onColumnClick(event: MouseEvent): void {
-  if (!props.editable || event.target !== event.currentTarget) return
-  const bounds = (event.currentTarget as HTMLElement).getBoundingClientRect()
+function onColumnClick(event: MouseEvent, blockId?: string): void {
+  if (!props.editable || (!blockId && event.target !== event.currentTarget)) return
+  // Native keyboard activation has no pointer coordinates and always opens the focused routine.
+  if (blockId && (event.detail === 0 || props.compact)) { emit('select', blockId); return }
+  const column = (event.currentTarget as HTMLElement).closest<HTMLElement>('.day-column')!
+  const bounds = column.getBoundingClientRect()
   const y = event.clientY - bounds.top
   const hit = props.compact ? undefined : nearestHitTarget(hitTargets.value, y, ((event.clientX - bounds.left) / bounds.width) * 100, props.hourHeight)
   if (hit?.kind === 'task') emit('select-task', hit.id)
   else if (hit) emit('select', hit.id)
+  else if (blockId) emit('select', blockId)
   else {
     const minute = Math.floor((y / props.hourHeight) * 60 / SLOT_MINUTES) * SLOT_MINUTES
     emit('create', props.date, Math.max(0, Math.min(1440 - SLOT_MINUTES, minute)))
@@ -183,7 +187,7 @@ function onColumnClick(event: MouseEvent): void {
       :style="itemStyle(item)"
       :title="item.title"
       data-testid="busy-overlay"
-      @click="inspect(item)"
+      @click.stop="inspect(item)"
     >
       <span v-if="conflicting.has(item.key)" class="conflict-mark t-caption" data-testid="calendar-conflict"><Icon name="triangle-alert" :size="12" /><span class="conflict-text">{{ t('week.grid.conflict') }}</span></span>
       <span class="busy-title t-caption">{{ item.title }}</span>
@@ -202,7 +206,7 @@ function onColumnClick(event: MouseEvent): void {
       :aria-label="blockLabel(segment)"
       :disabled="!editable"
       :tabindex="compact ? -1 : undefined"
-      @click="emit('select', segment.occurrence.blockId)"
+      @click.stop="onColumnClick($event, segment.occurrence.blockId)"
     >
       <span class="block-title"><CategoryMark class="block-mark" :category="categoriesById.get(segment.occurrence.categoryId)" />{{ ' ' }}{{ segment.occurrence.title }}</span>{{ ' ' }}
       <span class="block-time">{{ timeRange(segment) }}</span>{{ ' ' }}
@@ -226,7 +230,7 @@ function onColumnClick(event: MouseEvent): void {
       :aria-label="t('week.task.label', { title: box.task.title, range: box.range }) + (box.task.late ? `, ${t('week.task.late')}` : '')"
       :disabled="!editable"
       :tabindex="compact ? -1 : undefined"
-      @click="emit('select-task', box.task.taskId)"
+      @click.stop="emit('select-task', box.task.taskId)"
     >
       <span class="task-box" :class="{ 'is-late': box.task.late }">
         <Icon v-if="box.task.late && box.height >= TASK_LABEL_MIN_PX" name="triangle-alert" :size="12" />
