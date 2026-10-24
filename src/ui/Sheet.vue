@@ -6,7 +6,9 @@ import { prefersReducedMotion, useMediaQuery } from './useMediaQuery'
 import { registerUnsavedInput } from './unsavedGuard'
 import { releaseVelocity, rubberBand, shouldDismiss, springTo, type Sample } from './sheetMotion'
 
-const props = defineProps<{ open: boolean; title: string; dirty?: boolean }>()
+// A phone sheet ends with a dismiss button within the thumb's reach (`dismissLabel`, default "Cancel");
+// `noDismiss` leaves it out for a sheet whose own actions already include one.
+const props = defineProps<{ open: boolean; title: string; dirty?: boolean; dismissLabel?: string; noDismiss?: boolean }>()
 const emit = defineEmits<{ 'update:open': [open: boolean] }>()
 
 const { t } = useI18n()
@@ -19,12 +21,16 @@ const panel = ref<HTMLElement | null>(null)
 const heading = ref<HTMLElement | null>(null)
 
 const FADE_MS = 150
+// Hysteresis: a press becomes a drag only after this much travel, so taps keep working everywhere in the header.
+const DRAG_THRESHOLD_PX = 10
+const INTERACTIVE = 'button, a[href], input, select, textarea, label, [role="button"], [tabindex]:not([tabindex="-1"])'
 const FOCUSABLE = 'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'
 
 let offset = 0
 let animation: { stop(): void } | undefined
 let returnFocusTo: HTMLElement | null = null
 let releaseUnsaved: (() => void) | undefined
+let pressStart: { pointerId: number; pointerY: number } | undefined
 let dragStart: { pointerY: number; offset: number } | undefined
 let samples: Sample[] = []
 let exitVelocity = 0
@@ -110,21 +116,30 @@ function requestClose(): void {
   emit('update:open', false)
 }
 
+// A press on a control (the close button) is never a drag; elsewhere in the header it becomes one only after
+// DRAG_THRESHOLD_PX of travel, and only then is the pointer captured, so a plain click still reaches its target.
 function onGrabDown(event: PointerEvent): void {
-  if (isCentered.value) return
-  animation?.stop()
-  dragStart = { pointerY: event.clientY, offset }
-  samples = [{ time: event.timeStamp, y: event.clientY }]
-  ;(event.currentTarget as HTMLElement).setPointerCapture(event.pointerId)
+  if (isCentered.value || (event.pointerType === 'mouse' && event.button !== 0)) return
+  if ((event.target as Element | null)?.closest(INTERACTIVE)) return
+  pressStart = { pointerId: event.pointerId, pointerY: event.clientY }
 }
 
 function onGrabMove(event: PointerEvent): void {
-  if (!dragStart) return
+  if (!dragStart) {
+    if (!pressStart || pressStart.pointerId !== event.pointerId || Math.abs(event.clientY - pressStart.pointerY) < DRAG_THRESHOLD_PX) return
+    // Grabbing interrupts any running spring and tracks from where the sheet is now.
+    animation?.stop()
+    dragStart = { pointerY: event.clientY, offset }
+    samples = [{ time: event.timeStamp, y: event.clientY }]
+    ;(event.currentTarget as HTMLElement).setPointerCapture(event.pointerId)
+    return
+  }
   samples.push({ time: event.timeStamp, y: event.clientY })
   applyOffset(rubberBand(dragStart.offset + event.clientY - dragStart.pointerY, height()))
 }
 
 function onGrabUp(event: PointerEvent): void {
+  pressStart = undefined
   if (!dragStart) return
   dragStart = undefined
   const velocity = releaseVelocity([...samples, { time: event.timeStamp, y: event.clientY }])
@@ -200,6 +215,9 @@ onBeforeUnmount(() => {
           </div>
         </div>
         <div class="sheet-body"><slot /></div>
+        <div v-if="!isCentered && !noDismiss" class="sheet-footer">
+          <button class="sheet-dismiss t-body" type="button" @click="requestClose">{{ dismissLabel ?? t('common.cancel') }}</button>
+        </div>
       </div>
     </div>
   </Teleport>
@@ -241,6 +259,21 @@ onBeforeUnmount(() => {
 /* Drawn inside the button so the ring never crowds the sheet's rounded corner. */
 .sheet-close:focus-visible { outline-offset: -2px; }
 .sheet-body { flex: 1; overflow-y: auto; overscroll-behavior: contain; padding: var(--space-2) var(--space-4) var(--space-4); }
+/* Within the thumb's reach at the bottom of a phone sheet, always visible while the body scrolls. */
+.sheet-footer { flex: none; padding: var(--space-1) var(--space-4); border-top: 0.5px solid var(--separator); }
+.sheet-dismiss {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  min-height: var(--tap-target);
+  border: 0;
+  border-radius: var(--radius-control);
+  background: transparent;
+  color: var(--tint-label);
+  font-weight: 600;
+}
+.sheet-dismiss:focus-visible { outline-offset: -2px; }
 
 .sheet-root.is-centered { align-items: center; }
 .is-centered .sheet-panel {

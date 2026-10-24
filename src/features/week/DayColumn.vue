@@ -2,7 +2,10 @@
 import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 import type { BlockActual, Category } from '@/core/model'
+import CategoryMark from '@/ui/CategoryMark.vue'
 import Icon from '@/ui/Icon.vue'
+import { categoryStroke } from '@/ui/categoryVisual'
+import { displayLocale } from '@/ui/format'
 import './registerIcons'
 import { statusOf } from './blockStatus'
 import { categoryColor } from './categoryColor'
@@ -27,7 +30,7 @@ const props = withDefaults(defineProps<{
 }>(), { tasks: () => [], actuals: () => [], hourHeight: HOUR_HEIGHT_PX, compact: false })
 const emit = defineEmits<{ select: [blockId: string]; create: [date: string, minute: number]; inspect: [details: BusyDetails] }>()
 
-const { t, locale } = useI18n()
+const { t } = useI18n()
 const categoriesById = computed(() => new Map(props.categories.map((category) => [category.id, category])))
 const layout = computed(() => layoutDaySegments(props.segments, props.busy))
 
@@ -68,6 +71,7 @@ function segmentStyle(segment: BlockSegment & LanePosition) {
   return {
     ...itemStyle(segment),
     '--block-color': categoryColor(categoriesById.value.get(segment.occurrence.categoryId)),
+    '--block-stroke': categoryStroke(categoriesById.value.get(segment.occurrence.categoryId)),
     '--title-strip': `${STACK_EVENT_INSET_PERCENT}cqw`,
   }
 }
@@ -79,9 +83,15 @@ function statusText(segment: BlockSegment): string | undefined {
   return status ? t(`week.status.${status}`) : undefined
 }
 
+function categoryName(segment: BlockSegment): string {
+  return categoriesById.value.get(segment.occurrence.categoryId)?.name ?? ''
+}
+
+// The accessible name follows the visible text: title, time, the category when it differs from the title, then the status.
 function blockLabel(segment: BlockSegment): string {
+  const name = categoryName(segment)
   const status = statusText(segment)
-  return `${segment.occurrence.title} ${timeRange(segment)}${status ? `, ${status}` : ''}`
+  return [segment.occurrence.title, timeRange(segment), name !== segment.occurrence.title ? name : ''].filter(Boolean).join(' ') + (status ? `, ${status}` : '')
 }
 
 // Tasks sit in the lane of the planned block they were fitted into.
@@ -96,7 +106,7 @@ const taskBoxes = computed(() => props.tasks.map((task) => {
   return {
     task,
     height,
-    range: `${formatMinute(task.startMinute, locale.value)} – ${formatMinute(task.endMinute % 1440, locale.value)}`,
+    range: `${formatMinute(task.startMinute, displayLocale.value)} – ${formatMinute(task.endMinute % 1440, displayLocale.value)}`,
     style: {
       ...lanes,
       top: `${top}px`,
@@ -107,12 +117,12 @@ const taskBoxes = computed(() => props.tasks.map((task) => {
 }))
 
 function timeRange(segment: BlockSegment): string {
-  const range = `${formatTime(segment.occurrence.start, locale.value, props.timeZone)} – ${formatTime(segment.occurrence.end, locale.value, props.timeZone)}`
+  const range = `${formatTime(segment.occurrence.start, displayLocale.value, props.timeZone)} – ${formatTime(segment.occurrence.end, displayLocale.value, props.timeZone)}`
   return segment.continuesAfter || segment.continuesBefore ? t('week.grid.crossesMidnight', { range }) : range
 }
 
 function inspect(item: BusySegment): void {
-  const range = `${formatTime(item.start, locale.value, props.timeZone)} – ${formatTime(item.end, locale.value, props.timeZone)}`
+  const range = `${formatTime(item.start, displayLocale.value, props.timeZone)} – ${formatTime(item.end, displayLocale.value, props.timeZone)}`
   emit('inspect', {
     title: item.title,
     date: item.date,
@@ -164,8 +174,9 @@ function onColumnClick(event: MouseEvent): void {
       :tabindex="compact ? -1 : undefined"
       @click="emit('select', segment.occurrence.blockId)"
     >
-      <span class="block-title">{{ segment.occurrence.title }}</span>{{ ' ' }}
-      <span class="block-time">{{ timeRange(segment) }}</span>
+      <span class="block-title"><CategoryMark class="block-mark" :category="categoriesById.get(segment.occurrence.categoryId)" />{{ ' ' }}{{ segment.occurrence.title }}</span>{{ ' ' }}
+      <span class="block-time">{{ timeRange(segment) }}</span>{{ ' ' }}
+      <span v-if="categoryName(segment) && categoryName(segment) !== segment.occurrence.title" class="block-category">{{ categoryName(segment) }}</span>
       <span v-if="statuses.get(segment.key)" class="block-status t-caption" data-testid="block-status">
         <Icon :name="STATUS_ICON[statuses.get(segment.key)!]" :size="12" /><span class="status-text">{{ statusText(segment) }}</span>
       </span>
@@ -207,8 +218,13 @@ function onColumnClick(event: MouseEvent): void {
   position: absolute;
   display: flex;
   flex-direction: column;
+  /* Lines that do not fit the block's height (large text, short blocks) wrap into a second column outside the
+     block and are hidden whole, instead of being cut in half. */
+  flex-wrap: wrap;
+  align-content: flex-start;
   align-items: flex-start;
-  gap: 1px;
+  /* The column gap exceeds the inline padding, so a wrapped column never peeks in. */
+  gap: 1px var(--space-2);
   overflow: hidden;
   padding: 2px var(--space-1) 2px calc(3px + var(--space-1));
   border: 0;
@@ -225,7 +241,7 @@ function onColumnClick(event: MouseEvent): void {
   inset-block: 0;
   inset-inline-start: 0;
   width: 3px;
-  background: var(--block-color);
+  background: var(--block-stroke);
 }
 .block:active { transform: scale(0.97); }
 .block:disabled { cursor: default; }
@@ -233,9 +249,11 @@ function onColumnClick(event: MouseEvent): void {
 .continues-after { border-end-start-radius: 0; border-end-end-radius: 0; }
 .block-title { font-size: 0.8125rem; font-weight: 600; line-height: 1.25; }
 .block-time { font-size: 0.75rem; line-height: 1.25; font-variant-numeric: tabular-nums; }
-.block-title, .block-time { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.block-category { font-size: 0.75rem; line-height: 1.25; }
+.block-title, .block-time, .block-category { flex-shrink: 0; width: 100%; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.block-mark { margin-inline-end: 1px; }
 .is-short { flex-direction: row; gap: var(--space-1); align-items: center; }
-.is-short .block-time { display: none; }
+.is-short .block-time, .is-short .block-category { display: none; }
 
 .busy {
   position: absolute;
@@ -270,7 +288,7 @@ function onColumnClick(event: MouseEvent): void {
     inset-inline-start: calc(var(--stack-left) + 2px) !important;
     width: calc(var(--stack-width) - 4px) !important;
   }
-  .is-beside .block-time { display: none; }
+  .is-beside .block-time, .is-beside .block-category, .is-beside .block-mark { display: none; }
   .block.is-beside { padding-inline: 3px 0; }
   .is-beside .block-title {
     max-width: calc(var(--title-strip) - 4px);

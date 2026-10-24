@@ -1,5 +1,6 @@
 import { MINUTES_PER_DAY, type DayIndex } from '@/core/model'
 import { addLocalDays } from '@/core/time'
+import { formatClock, formatHourOfDay, formatMinuteOfDay } from '@/ui/format'
 
 const clockFormatters = new Map<string, Intl.DateTimeFormat>()
 
@@ -44,17 +45,18 @@ export function timeValueToMinute(value: string): number | null {
   return minute < MINUTES_PER_DAY && Number(match[2]) < 60 ? minute : null
 }
 
+// Time formatting lives in @/ui/format (one formatter app-wide); these names stay for existing callers.
 export function formatTime(instant: number | string | Date, locale: string, timeZone: string): string {
-  return new Intl.DateTimeFormat(locale, { timeZone, hour: 'numeric', minute: '2-digit' }).format(new Date(instant))
+  return formatClock(instant, locale, timeZone)
 }
 
 // Formats a nominal minute of day; UTC keeps it independent of the host zone.
 export function formatMinute(minute: number, locale: string): string {
-  return new Intl.DateTimeFormat(locale, { timeZone: 'UTC', hour: 'numeric', minute: '2-digit' }).format(Date.UTC(2000, 0, 1, 0, minute % MINUTES_PER_DAY))
+  return formatMinuteOfDay(minute, locale)
 }
 
 export function formatHour(hour: number, locale: string): string {
-  return new Intl.DateTimeFormat(locale, { timeZone: 'UTC', hour: 'numeric' }).format(Date.UTC(2000, 0, 1, hour))
+  return formatHourOfDay(hour, locale)
 }
 
 export function formatDate(date: string, locale: string, options: Intl.DateTimeFormatOptions): string {

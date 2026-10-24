@@ -6,5 +6,23 @@
   "delete": "Supprimer",
   "save": "Enregistrer",
   "dragHandle": "Faites glisser vers le bas pour fermer",
-  "askAssistant": "Demander à l'assistant"
+  "askAssistant": "Demander à l'assistant",
+  "duration": {
+    "minutes": "{minutes} min",
+    "hours": "{hours} h",
+    "both": "{hours} h {minutes} min",
+    "left": "Encore {duration}"
+  },
+  "preferences": {
+    "title": "Langue et région",
+    "language": "Langue",
+    "weekStart": "La semaine commence le",
+    "monday": "Lundi",
+    "sunday": "Dimanche",
+    "clock": "Format de l’heure",
+    "clockAuto": "Automatique",
+    "clock12": "12 heures",
+    "clock24": "24 heures",
+    "footer": "Les heures s’affichent ainsi : {example}. Automatique suit votre région."
+  }
 }

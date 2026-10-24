@@ -1,11 +1,10 @@
 <script setup lang="ts">
 import { computed } from 'vue'
-import { useI18n } from 'vue-i18n'
+import { displayLocale } from '@/ui/format'
 import { formatHour } from './localTime'
 
 withDefaults(defineProps<{ compact?: boolean }>(), { compact: false })
-const { locale } = useI18n()
-const hours = computed(() => Array.from({ length: 24 }, (_, hour) => ({ hour, label: formatHour(hour, locale.value) })))
+const hours = computed(() => Array.from({ length: 24 }, (_, hour) => ({ hour, label: formatHour(hour, displayLocale.value) })))
 </script>
 
 <template>

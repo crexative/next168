@@ -222,7 +222,7 @@ async function remove(blockId: string): Promise<void> {
     </Teleport>
 
     <EmptyState v-if="!hasCategories" icon="calendar-days" :title="t('week.empty.noCategoriesTitle')" :description="t('week.empty.noCategoriesDescription')">
-      <a class="empty-link t-headline" href="#/settings">{{ t('week.empty.openSettings') }}</a>
+      <Button variant="tinted" href="#/settings">{{ t('week.empty.openSettings') }}</Button>
     </EmptyState>
     <EmptyState v-else-if="!hasContent" icon="calendar-days" :title="t('week.empty.noBlocksTitle')" :description="t('week.empty.noBlocksDescription')">
       <Button :disabled="!planner.writable" @click="openNewFromButton">{{ t('week.empty.addBlock') }}</Button>

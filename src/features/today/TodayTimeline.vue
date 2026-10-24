@@ -3,8 +3,10 @@ import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 import type { BlockActual, Category } from '@/core/model'
 import { addLocalDays, localDateOf, zonedInstant, type DatedOccurrence } from '@/core/time'
+import CategoryMark from '@/ui/CategoryMark.vue'
+import { categoryStroke } from '@/ui/categoryVisual'
+import { displayLocale } from '@/ui/format'
 import Icon from '@/ui/Icon.vue'
-import { categoryColor } from '@/features/week/categoryColor'
 import { formatMinute, formatTime } from '@/features/week/localTime'
 import ActualChoices from './ActualChoices.vue'
 import { actualFor, type ActualStatus } from './actuals'
@@ -34,8 +36,12 @@ const { t, locale } = useI18n()
 
 const categoriesById = computed(() => new Map(props.categories.map((category) => [category.id, category])))
 
+function categoryOf(item: TimelineItem): Category | undefined {
+  return item.kind === 'block' || item.kind === 'task' ? categoriesById.value.get(item.categoryId) : undefined
+}
+
 function color(item: TimelineItem): string {
-  return item.kind === 'block' || item.kind === 'task' ? categoryColor(categoriesById.value.get(item.categoryId)) : 'var(--label-2)'
+  return item.kind === 'block' || item.kind === 'task' ? categoryStroke(categoryOf(item)) : 'var(--label-2)'
 }
 
 const dayBounds = computed(() => {
@@ -58,11 +64,11 @@ function isCarryOver(item: TimelineItem): boolean {
 }
 
 function startLabel(item: TimelineItem): string {
-  return startsBeforeToday(item) ? formatMinute(0, locale.value) : formatTime(item.start, locale.value, props.timeZone)
+  return startsBeforeToday(item) ? formatMinute(0, displayLocale.value) : formatTime(item.start, displayLocale.value, props.timeZone)
 }
 
 function endLabel(item: TimelineItem): string {
-  return endsAfterToday(item) ? formatMinute(0, locale.value) : formatTime(item.end, locale.value, props.timeZone)
+  return endsAfterToday(item) ? formatMinute(0, displayLocale.value) : formatTime(item.end, displayLocale.value, props.timeZone)
 }
 
 function hasStarted(item: TimelineItem): boolean {
@@ -111,12 +117,13 @@ function asksStatus(item: TimelineItem): item is TimelineItem & { kind: 'block' 
           <span class="row-bar" aria-hidden="true" />
           <div class="row-content">
             <p class="row-title t-body">
-              <span class="row-title-text">{{ item.title }}</span>
+              <span class="row-title-text"><CategoryMark v-if="categoryOf(item)" class="row-mark" :category="categoryOf(item)" />{{ item.title }}</span>
               <span v-if="item.conflict" class="badge is-conflict t-caption" data-testid="conflict-mark">
                 <Icon name="triangle-alert" :size="14" />{{ t('today.timeline.conflict') }}
               </span>
               <span v-if="item.kind === 'task' && item.late" class="badge is-late t-caption">{{ t('today.timeline.late') }}</span>
             </p>
+            <p v-if="categoryOf(item) && categoryOf(item)!.name !== item.title" class="row-kind t-footnote t-secondary" data-testid="timeline-category">{{ categoryOf(item)!.name }}</p>
             <p
               v-for="hint in continuationHints(item, now, timeZone, locale)"
               :key="hint.key"
@@ -156,13 +163,13 @@ function asksStatus(item: TimelineItem): item is TimelineItem & { kind: 'block' 
 .section-title { margin: 0 0 var(--space-2); }
 .all-day { display: flex; flex-wrap: wrap; gap: var(--space-2); margin: 0 0 var(--space-2); padding: 0; list-style: none; }
 .all-day-item { padding: var(--space-1) var(--space-3); border-radius: var(--radius-control); background: var(--surface); }
-.timeline { margin: 0; padding: 0; list-style: none; border-radius: var(--radius-card); background: var(--surface); }
+.timeline { margin: 0; padding: 0; list-style: none; border-radius: var(--radius-card); background: var(--surface); container: timeline / inline-size; }
 .row { display: grid; grid-template-columns: 4.5rem 3px minmax(0, 1fr); gap: var(--space-3); padding: var(--space-3) var(--space-4); }
 .row + .row { border-top: 0.5px solid var(--separator); }
 .row.is-task { grid-template-columns: 4.5rem 3px minmax(0, 1fr) auto; }
 .row.is-carry { grid-template-columns: 3px minmax(0, 1fr); align-items: center; padding-block: var(--space-2); }
 .is-carry .row-bar { align-self: stretch; }
-.row-time { display: flex; flex-direction: column; font-variant-numeric: tabular-nums; }
+.row-time { display: flex; flex-direction: column; align-items: flex-end; text-align: end; font-variant-numeric: tabular-nums; }
 .row-bar { border-radius: 2px; background: var(--item-color); }
 .is-task .row-bar { background: repeating-linear-gradient(to bottom, var(--item-color) 0 4px, transparent 4px 7px); }
 .is-event .row-bar, .is-external .row-bar { background: transparent; border-inline-start: 2px dashed var(--item-color); }
@@ -170,6 +177,7 @@ function asksStatus(item: TimelineItem): item is TimelineItem & { kind: 'block' 
 .row-content { display: flex; flex-direction: column; gap: var(--space-2); min-width: 0; }
 .row-title { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2); margin: 0; }
 .row-title-text { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.row-mark { margin-inline-end: var(--space-2); vertical-align: -0.1em; }
 .row-kind { margin: -0.25rem 0 0; }
 /* One line: the title gives way (with an ellipsis), the note never wraps. */
 .carry { display: flex; align-items: baseline; gap: var(--space-2); min-width: 0; margin: 0; white-space: nowrap; }
@@ -196,6 +204,15 @@ function asksStatus(item: TimelineItem): item is TimelineItem & { kind: 'block' 
 .task-ring { width: 22px; height: 22px; border: 2px solid var(--item-color); border-radius: 50%; transition: transform 0.1s var(--ease-out); }
 .task-check:active:not(:disabled) .task-ring { transform: scale(0.9); }
 .task-check:disabled { opacity: 0.4; cursor: not-allowed; }
+/* With large text the time column would leave the content a sliver: the times move above the title instead. */
+@container timeline (max-width: 18rem) {
+  .row { grid-template-columns: 3px minmax(0, 1fr); row-gap: var(--space-1); }
+  .row.is-task { grid-template-columns: 3px minmax(0, 1fr) auto; }
+  .row-time { grid-column: 2; flex-direction: row; flex-wrap: wrap; gap: 0 var(--space-2); align-items: baseline; text-align: start; }
+  .row-bar { grid-column: 1; grid-row: 1 / span 2; }
+  .row-content { grid-column: 2; }
+  .task-check { grid-column: 3; grid-row: 1 / span 2; }
+}
 @media (prefers-reduced-motion: reduce) {
   .task-check:active:not(:disabled) .task-ring { transform: none; opacity: 0.6; }
 }

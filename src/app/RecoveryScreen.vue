@@ -35,7 +35,7 @@ async function startFresh(): Promise<void> {
         <Button variant="plain" destructive @click="confirming = true">{{ t('app.recovery.startFresh') }}</Button>
       </div>
     </EmptyState>
-    <Sheet v-model:open="confirming" :title="t('app.recovery.confirmTitle')">
+    <Sheet v-model:open="confirming" :title="t('app.recovery.confirmTitle')" no-dismiss>
       <p class="t-body">{{ t('app.recovery.confirmBody') }}</p>
       <div class="actions">
         <Button variant="filled" destructive block @click="startFresh">{{ t('app.recovery.confirmAction') }}</Button>

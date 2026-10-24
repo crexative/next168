@@ -1,9 +1,12 @@
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import Icon from '@/ui/Icon.vue'
 import LargeTitle from '@/ui/LargeTitle.vue'
+import LiveAnnouncer from '@/ui/LiveAnnouncer.vue'
 import UndoToast from '@/ui/UndoToast.vue'
+import { announce } from '@/ui/announcer'
+import { dismissUndoWhenChanged } from '@/ui/undoToast'
 import { usePlannerStore } from '@/stores/plannerStore'
 import RecoveryScreen from './RecoveryScreen.vue'
 import StorageErrorScreen from './StorageErrorScreen.vue'
@@ -19,8 +22,32 @@ const { current } = useHashRoute(() => new Set(views.keys()))
 const currentView = computed(() => views.get(current.value) ?? views.get('today'))
 const settingsView = computed(() => views.get('settings'))
 
+// Readable measure on wide screens: planning grids and charts get a wider column than lists and forms.
+const WIDE_VIEWS: ReadonlySet<string> = new Set(['week', 'insights'])
+
 // A tab opens at its top: the previous view's offset would otherwise be clamped to whatever the new view allows.
 function scrollToTop(): void { window.scrollTo({ top: 0, behavior: 'instant' }) }
+
+const pageTitle = computed(() => currentView.value ? t(currentView.value.titleKey) : '')
+
+// Every route has its own document title ("Week · Next168"), kept in the current language.
+watch(pageTitle, (title) => {
+  window.document.title = title ? `${title} · ${t('app.name')}` : t('app.name')
+}, { immediate: true })
+
+// After a route change (not the first load) focus moves to the new page's heading and its name is announced,
+// so keyboard and screen-reader users land where sighted users look. A view that already gave way to a newer
+// one does neither.
+let navigated = false
+watch(current, () => { navigated = true })
+function onViewEntered(element: Element): void {
+  if (!navigated || (element as HTMLElement).dataset.view !== currentView.value?.id) return
+  element.querySelector<HTMLElement>('h1')?.focus({ preventScroll: true })
+  announce(pageTitle.value)
+}
+
+// An undo offered for one workspace must not apply to another (replaced, imported or deleted meanwhile).
+dismissUndoWhenChanged(() => planner.document?.workspaceId)
 </script>
 
 <template>
@@ -47,12 +74,14 @@ function scrollToTop(): void { window.scrollTo({ top: 0, behavior: 'instant' }) 
     </nav>
 
     <div class="content">
+      <!-- Early in the tab order, before the page, so its Undo is a few keystrokes away from anywhere. -->
+      <UndoToast />
       <StatusBanners />
       <main id="main" class="main" tabindex="-1">
         <RecoveryScreen v-if="planner.status === 'corrupt'" />
         <StorageErrorScreen v-else-if="planner.status === 'error'" />
-        <Transition v-else name="view" mode="out-in" @after-leave="scrollToTop">
-          <div v-if="currentView" :key="currentView.id" class="view">
+        <Transition v-else name="view" mode="out-in" @after-leave="scrollToTop" @after-enter="onViewEntered">
+          <div v-if="currentView" :key="currentView.id" class="view" :data-view="currentView.id" :data-measure="WIDE_VIEWS.has(currentView.id) ? 'wide' : 'readable'">
             <LargeTitle :title="t(currentView.titleKey)">
               <template #actions>
                 <a
@@ -84,7 +113,7 @@ function scrollToTop(): void { window.scrollTo({ top: 0, behavior: 'instant' }) 
         <span>{{ t(tab.titleKey) }}</span>
       </a>
     </nav>
-    <UndoToast />
+    <LiveAnnouncer />
   </div>
 </template>
 
@@ -92,13 +121,17 @@ function scrollToTop(): void { window.scrollTo({ top: 0, behavior: 'instant' }) 
 .shell { min-height: 100dvh; padding-inline: var(--safe-left) var(--safe-right); }
 /* --banners-height is the height of the fixed bottom notices (StatusBanners), so none of them covers the end of a page. */
 .content { padding-bottom: calc(var(--tabbar-height) + var(--safe-bottom) + var(--space-4) + var(--banners-height, 0px)); }
-.main { max-width: 1200px; margin-inline: auto; outline: none; }
+.main { outline: none; }
+.view { margin-inline: auto; }
+.view[data-measure='readable'] { max-width: 44rem; }
+.view[data-measure='wide'] { max-width: 64rem; }
 
 .tabbar {
   position: fixed;
   inset: auto 0 0;
   z-index: 20;
   display: flex;
+  justify-content: center;
   height: calc(var(--tabbar-height) + var(--safe-bottom));
   padding: 0 var(--safe-right) var(--safe-bottom) var(--safe-left);
   background: var(--material);
@@ -114,6 +147,9 @@ function scrollToTop(): void { window.scrollTo({ top: 0, behavior: 'instant' }) 
   align-items: center;
   justify-content: center;
   gap: 2px;
+  /* On a tablet the items gather in the middle instead of spreading to the screen edges. */
+  max-width: 7.5rem;
+  min-width: 0;
   min-height: var(--tap-target);
   color: var(--label-2);
   text-decoration: none;
@@ -121,6 +157,8 @@ function scrollToTop(): void { window.scrollTo({ top: 0, behavior: 'instant' }) 
   touch-action: manipulation;
 }
 .tabbar-item:active { transform: scale(0.97); }
+/* Like the system tab bar, labels stop growing at large text sizes (the icon and the accessible name stay). */
+.tabbar-item span { max-width: 100%; overflow: hidden; font-size: min(0.75rem, 15px); text-overflow: ellipsis; white-space: nowrap; }
 /* The bar touches the screen edges, so its items draw the focus ring inside themselves. */
 .tabbar-item:focus-visible { outline-offset: -2px; border-radius: var(--radius-control); }
 .tabbar-item[aria-current='page'] { color: var(--tint-label); }
@@ -132,6 +170,7 @@ function scrollToTop(): void { window.scrollTo({ top: 0, behavior: 'instant' }) 
   width: var(--tap-target);
   height: var(--tap-target);
   color: var(--tint-label);
+  text-decoration: none;
 }
 
 .sidebar { display: none; }

@@ -6,5 +6,23 @@
   "delete": "Delete",
   "save": "Save",
   "dragHandle": "Drag down to close",
-  "askAssistant": "Ask the assistant"
+  "askAssistant": "Ask the assistant",
+  "duration": {
+    "minutes": "{minutes} min",
+    "hours": "{hours} h",
+    "both": "{hours} h {minutes} min",
+    "left": "{duration} left"
+  },
+  "preferences": {
+    "title": "Language and region",
+    "language": "Language",
+    "weekStart": "Week starts on",
+    "monday": "Monday",
+    "sunday": "Sunday",
+    "clock": "Time format",
+    "clockAuto": "Automatic",
+    "clock12": "12-hour",
+    "clock24": "24-hour",
+    "footer": "Times read like {example}. Automatic follows your region."
+  }
 }

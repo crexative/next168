@@ -37,7 +37,8 @@ describe('NowCard', () => {
   it('names tomorrow and formats hours during an overnight block', async () => {
     const { text } = await render('2026-10-21T23:00:00Z')
     expect(text('now-title')).toBe('Sleep')
-    expect(text('now-left')).toBe('7 h 0 min left')
+    // A whole number of hours reads "7 h", never "7 h 0 min".
+    expect(text('now-left')).toBe('7 h left')
     expect(text('now-next')).toMatch(/^Next Deep work Tomorrow, 9:00\sAM$/)
   })
 

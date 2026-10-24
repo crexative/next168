@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { useI18n } from 'vue-i18n'
+import PreferencesSettings from '@/app/settings/PreferencesSettings.vue'
 import AssistantSettings from '@/features/assistant/AssistantSettings.vue'
 import CalendarsSection from './calendars/CalendarsSection.vue'
 import ConnectSettings from './connect/ConnectSettings.vue'
@@ -15,6 +16,7 @@ const { t } = useI18n()
   <div class="advanced" data-testid="settings-advanced">
     <BackButton current="settings" fallback="settings" :href="SETTINGS_HASH" :place="t('app.tabs.settings')" />
     <h2 class="t-title-2 advanced-title">{{ t('settings.advanced.title') }}</h2>
+    <section class="block" :aria-label="t('common.preferences.title')"><PreferencesSettings /></section>
     <section class="block" :aria-label="t('calendars.heading')"><CalendarsSection /></section>
     <section class="block" :aria-label="t('connect.title')"><ConnectSettings /></section>
     <section class="block" :aria-label="t('assistant.settings.header')"><AssistantSettings /></section>
@@ -26,6 +28,8 @@ const { t } = useI18n()
 <style scoped>
 .advanced { padding-inline: var(--space-4); }
 .advanced-title { margin-block: var(--space-1) var(--space-4); }
+/* Groups sit 24 px apart, as on every Settings-like page. */
+.block + .block { margin-top: var(--space-6); }
 /* The sections bring their own side gutter; inside this page they share the page's. */
-.advanced :deep(.calendar-section), .advanced :deep(.connect-settings), .advanced :deep(.assistant-settings) { padding-inline: 0; }
+.advanced :deep(.preferences), .advanced :deep(.calendar-section), .advanced :deep(.connect-settings), .advanced :deep(.assistant-settings) { padding-inline: 0; }
 </style>

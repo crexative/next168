@@ -116,7 +116,7 @@ test.describe('today', () => {
     await openSeeded(page, 'today', new Date('2026-10-21T23:00:00.000Z'))
     const card = page.getByTestId('now-card')
     await expect(card.getByTestId('now-title')).toHaveText('Sleep')
-    await expect(card.getByTestId('now-left')).toHaveText('7 h 0 min left')
+    await expect(card.getByTestId('now-left')).toHaveText('7 h left')
     await expect(card.getByTestId('now-next')).toContainText('Deep work')
     await expect(card.getByTestId('now-next')).toContainText('Tomorrow, 9:00 AM')
   })

@@ -57,9 +57,9 @@ async function importWorkspace(event: Event) {
 
 <template>
   <div class="connect-settings">
-    <h2 class="t-title-2">{{ t('connect.title') }}</h2>
+    <h2 class="section-header">{{ t('connect.title') }}</h2>
     <section v-if="companionMode && empty" class="connect-card">
-      <p>{{ t('connect.transferHint') }}</p>
+      <p class="t-subhead t-secondary">{{ t('connect.transferHint') }}</p>
       <label class="import-workspace">
         {{ t('connect.importWorkspace') }}
         <input type="file" accept="application/json,.json" :disabled="busy" @change="importWorkspace" />
@@ -67,7 +67,7 @@ async function importWorkspace(event: Event) {
     </section>
     <section v-if="companionMode" class="connect-card">
       <h3 class="t-headline">Claude Desktop</h3>
-      <p>{{ t('connect.desktopInstructions') }}</p>
+      <p class="t-subhead t-secondary">{{ t('connect.desktopInstructions') }}</p>
       <pre>{{ desktopConfig }}</pre>
       <h3 class="t-headline">Claude Code</h3>
       <pre>{{ codeCommand }}</pre>
@@ -75,8 +75,8 @@ async function importWorkspace(event: Event) {
       <p>{{ t('connect.rotateHint') }} <code>node companion/dist/cli.js token rotate</code></p>
     </section>
     <section class="connect-card">
-      <p>{{ t('connect.privacy') }}</p>
-      <p>{{ t('connect.chatgpt') }}</p>
+      <p class="t-subhead t-secondary">{{ t('connect.privacy') }}</p>
+      <p class="t-subhead t-secondary">{{ t('connect.chatgpt') }}</p>
       <Button variant="tinted" :disabled="!planner.document" @click="downloadSnapshot">{{ t('connect.exportSnapshot') }}</Button>
       <label for="proposal-json">{{ t('connect.importProposal') }}</label>
       <textarea id="proposal-json" v-model="proposalJson" rows="7" spellcheck="false" :placeholder="t('connect.proposalPlaceholder')" />
@@ -92,7 +92,7 @@ async function importWorkspace(event: Event) {
 .connect-card { display: grid; gap: var(--space-3); margin-block: var(--space-4); padding: var(--space-4); background: var(--surface); border-radius: var(--radius-card); }
 pre, code { white-space: pre-wrap; overflow-wrap: anywhere; font-size: 0.8125rem; }
 pre { background: var(--surface-2); border-radius: var(--radius-control); padding: var(--space-3); }
-textarea { width: 100%; border: 1px solid var(--separator); border-radius: var(--radius-control); background: var(--surface-2); color: var(--label); padding: var(--space-3); resize: vertical; }
+textarea { width: 100%; border: 1px solid var(--field-border); border-radius: var(--radius-control); background: var(--surface-2); color: var(--label); padding: var(--space-3); resize: vertical; }
 a { color: var(--tint-label); min-height: var(--tap-target); display: flex; align-items: center; }
 .import-workspace { display: grid; gap: var(--space-2); }
 input[type='file'] { min-height: var(--tap-target); max-width: 100%; }

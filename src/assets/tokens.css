@@ -17,23 +17,38 @@
   --success: #34c759;
   --warning: #ff9500;
 
-  --cat-blue: #007aff;
+  /* Category fills. Every pair, and each against --tint, stays apart (palette spec); pink is magenta so it never reads as red. */
+  --cat-blue: #0088ff;
   --cat-green: #34c759;
   --cat-orange: #ff9500;
-  --cat-pink: #ff2d55;
+  --cat-pink: #e5399e;
   --cat-purple: #af52de;
   --cat-teal: #30b0c7;
   --cat-yellow: #ffcc00;
   --cat-red: #ff3b30;
   --cat-gray: #8e8e93;
   --cat-fill-strength: 16%;
+  /* Category rings, bars and glyph outlines: the same hue at 3:1 or more on every surface. */
+  --cat-blue-stroke: #0088ff;
+  --cat-green-stroke: #2a9f47;
+  --cat-orange-stroke: #c97600;
+  --cat-pink-stroke: #e5399e;
+  --cat-purple-stroke: #af52de;
+  --cat-teal-stroke: #2997ab;
+  --cat-yellow-stroke: #a88700;
+  --cat-red-stroke: #ff3b30;
+  --cat-gray-stroke: #8a8a8f;
+  /* Text fields and other control outlines: 3:1 on --surface and --surface-2. */
+  --field-border: #8a8a8e;
 
   --scrim: rgba(0, 0, 0, 0.4);
   /* The select chevron in --label-2; an image cannot read a custom property, so each theme names its own. */
   --chevron-down: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%233c3c43' stroke-opacity='.6' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
   --shadow-floating: 0 10px 40px rgba(0, 0, 0, 0.18), 0 2px 8px rgba(0, 0, 0, 0.08);
-  --material: color-mix(in srgb, var(--surface) 72%, transparent);
-  --material-filter: blur(20px) saturate(180%);
+  /* Bars are a thick material: text scrolling underneath never reads through (86 % + a wide blur). */
+  --material: color-mix(in srgb, var(--surface) 86%, transparent);
+  --material-filter: blur(30px) saturate(120%);
+  --material-edge: var(--separator);
 
   --space-1: 0.25rem;
   --space-2: 0.5rem;
@@ -77,16 +92,26 @@
     --success: #30d158;
     --warning: #ff9f0a;
 
-    --cat-blue: #0a84ff;
+    --cat-blue: #1a94ff;
     --cat-green: #30d158;
     --cat-orange: #ff9f0a;
-    --cat-pink: #ff375f;
+    --cat-pink: #ff52b4;
     --cat-purple: #bf5af2;
     --cat-teal: #40c8e0;
     --cat-yellow: #ffd60a;
     --cat-red: #ff453a;
     --cat-gray: #98989d;
     --cat-fill-strength: 28%;
+    --cat-blue-stroke: #1a94ff;
+    --cat-green-stroke: #30d158;
+    --cat-orange-stroke: #ff9f0a;
+    --cat-pink-stroke: #ff52b4;
+    --cat-purple-stroke: #bf5af2;
+    --cat-teal-stroke: #40c8e0;
+    --cat-yellow-stroke: #ffd60a;
+    --cat-red-stroke: #ff453a;
+    --cat-gray-stroke: #98989d;
+    --field-border: #7c7c80;
 
     --scrim: rgba(0, 0, 0, 0.6);
     --shadow-floating: 0 10px 40px rgba(0, 0, 0, 0.6);
@@ -115,16 +140,26 @@
   --success: #30d158;
   --warning: #ff9f0a;
 
-  --cat-blue: #0a84ff;
+  --cat-blue: #1a94ff;
   --cat-green: #30d158;
   --cat-orange: #ff9f0a;
-  --cat-pink: #ff375f;
+  --cat-pink: #ff52b4;
   --cat-purple: #bf5af2;
   --cat-teal: #40c8e0;
   --cat-yellow: #ffd60a;
   --cat-red: #ff453a;
   --cat-gray: #98989d;
   --cat-fill-strength: 28%;
+  --cat-blue-stroke: #1a94ff;
+  --cat-green-stroke: #30d158;
+  --cat-orange-stroke: #ff9f0a;
+  --cat-pink-stroke: #ff52b4;
+  --cat-purple-stroke: #bf5af2;
+  --cat-teal-stroke: #40c8e0;
+  --cat-yellow-stroke: #ffd60a;
+  --cat-red-stroke: #ff453a;
+  --cat-gray-stroke: #98989d;
+  --field-border: #7c7c80;
 
   --scrim: rgba(0, 0, 0, 0.6);
   --shadow-floating: 0 10px 40px rgba(0, 0, 0, 0.6);
@@ -142,6 +177,31 @@
   :root {
     --material: var(--surface);
     --material-filter: none;
+    --label-2: rgba(60, 60, 67, 0.92);
+    --label-3: rgba(60, 60, 67, 0.62);
     --separator: var(--label-2);
+    --field-border: var(--label);
+    --cat-fill-strength: 24%;
+  }
+}
+
+/* The dark blocks above are more specific than :root, so increased contrast restates them for dark. */
+@media (prefers-contrast: more) and (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) {
+    --label-2: rgba(235, 235, 245, 0.86);
+    --label-3: rgba(235, 235, 245, 0.6);
+    --separator: var(--label-2);
+    --field-border: var(--label);
+    --cat-fill-strength: 36%;
+  }
+}
+
+@media (prefers-contrast: more) {
+  :root[data-theme='dark'] {
+    --label-2: rgba(235, 235, 245, 0.86);
+    --label-3: rgba(235, 235, 245, 0.6);
+    --separator: var(--label-2);
+    --field-border: var(--label);
+    --cat-fill-strength: 36%;
   }
 }

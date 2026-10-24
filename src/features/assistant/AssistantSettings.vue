@@ -41,9 +41,8 @@ async function remove(): Promise<void> {
 </template>
 
 <style scoped>
-/* Same side gutter as the other settings sections; the header and footer are already inset inside the group. */
+/* Same side gutter as the other settings sections. */
 .assistant-settings { padding-inline: var(--space-4); }
-.assistant-settings :deep(.list-header), .assistant-settings :deep(.list-footer) { padding-inline: 0; }
 .settings-body { display: flex; flex-direction: column; align-items: flex-start; gap: var(--space-3); padding: var(--space-4); }
 /* Full width like every other segmented control, so "On-device model" does not wrap. */
 .settings-body > .segmented { align-self: stretch; }

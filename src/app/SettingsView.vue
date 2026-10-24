@@ -8,7 +8,7 @@ const { settingsSections } = shell
 </script>
 
 <template>
-  <section v-for="section in settingsSections" :key="section.id" :aria-label="t(section.titleKey)">
+  <section v-for="section in settingsSections" :key="section.id" class="settings-section" :aria-label="t(section.titleKey)">
     <component :is="section.component" />
   </section>
   <EmptyState
@@ -18,3 +18,8 @@ const { settingsSections } = shell
     :description="t('app.placeholders.settings.description')"
   />
 </template>
+
+<style scoped>
+/* Groups are separated by more space than rows inside a group, so each section reads as one unit. */
+.settings-section + .settings-section { margin-top: var(--space-6); }
+</style>

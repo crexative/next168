@@ -9,6 +9,7 @@ import ActualChoices from './ActualChoices.vue'
 import { actualFor, type ActualStatus } from './actuals'
 import { formatSpan } from './duration'
 import type { NextUp } from './nextUp'
+import { displayLocale, formatDuration } from '@/ui/format'
 
 type CurrentOccurrence = DatedOccurrence & { minutesLeft: number; progress: number }
 
@@ -38,9 +39,7 @@ const progressPercent = computed(() => Math.round(Math.min(1, Math.max(0, props.
 
 const minutesLeft = computed(() => {
   const minutes = props.current?.minutesLeft ?? 0
-  return minutes >= 60
-    ? t('today.now.hoursMinutesLeft', { hours: Math.floor(minutes / 60), minutes: minutes % 60 })
-    : t('today.now.minutesLeft', { minutes })
+  return t('common.duration.left', { duration: formatDuration(minutes) })
 })
 
 // A free moment says how long it lasts, but only when the next thing starts today (otherwise "Después" names the day).
@@ -59,7 +58,7 @@ const nextWhen = computed(() => {
 })
 
 function time(instant: string): string {
-  return formatTime(instant, locale.value, props.timeZone)
+  return formatTime(instant, displayLocale.value, props.timeZone)
 }
 </script>
 

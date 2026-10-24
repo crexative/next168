@@ -7,6 +7,8 @@ import {
   type AskContext, type AssistantAnswer, type AssistantProvider, type Availability, type Translate,
 } from './provider'
 import { matchesIntent, mentionsHours, normalize } from './rulesLexicon'
+import { formatDate } from '@/features/week/localTime'
+import { displayLocaleFor, formatClock } from '@/ui/format'
 
 function mentionedCategory(question: string, categories: Category[]): Category | undefined {
   const text = normalize(question)
@@ -48,7 +50,7 @@ export function isChangeRequest(question: string): boolean {
 
 // Deterministic facts for a question, or undefined when no intent applies. Shared with the model
 // provider so that its answers can be checked against the same numbers.
-export function answerFromStats(question: string, { document, now, timeZone, translate: t }: AskContext): string | undefined {
+export function answerFromStats(question: string, { document, now, timeZone, locale, translate: t }: AskContext): string | undefined {
   const category = mentionedCategory(question, document.categories)
   const stats = computeStats(document)
 
@@ -57,7 +59,11 @@ export function answerFromStats(question: string, { document, now, timeZone, tra
     const parts: string[] = []
     if (current) parts.push(t('assistant.answers.currentBlock', { title: current.title, minutes: current.minutesLeft }))
     parts.push(next
-      ? t('assistant.answers.nextBlock', { title: next.title, date: next.date, time: new Intl.DateTimeFormat(undefined, { timeStyle: 'short', timeZone }).format(new Date(next.start)) })
+      ? t('assistant.answers.nextBlock', {
+        title: next.title,
+        date: formatDate(next.date, displayLocaleFor(locale), { weekday: 'long', day: 'numeric', month: 'long' }),
+        time: formatClock(next.start, displayLocaleFor(locale), timeZone),
+      })
       : t('assistant.answers.noNextBlock'))
     return parts.join(' ')
   }

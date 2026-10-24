@@ -26,6 +26,9 @@ button { cursor: pointer; -webkit-tap-highlight-color: transparent; }
 h1, h2, h3, p { margin: 0; }
 ul { margin: 0; padding: 0; list-style: none; }
 
+/* Bare links read as plain actions: tinted and semibold, never underlined. Styled links (rows, cards, tabs) set their own look. */
+a:not([class]) { color: var(--tint-label); font-weight: 600; text-decoration: none; }
+
 :focus-visible {
   outline: 2px solid var(--tint);
   outline-offset: 2px;
@@ -35,7 +38,7 @@ ul { margin: 0; padding: 0; list-style: none; }
 .input {
   min-height: var(--tap-target);
   padding: 0 var(--space-3);
-  border: 1px solid var(--separator);
+  border: 1px solid var(--field-border);
   border-radius: var(--radius-control);
   background-color: var(--surface-2);
   color: var(--label);
@@ -74,6 +77,17 @@ input[type='file']::file-selector-button {
 .t-footnote { font-size: 0.8125rem; line-height: 1.38; font-weight: 400; letter-spacing: 0.005em; }
 .t-caption { font-size: 0.75rem; line-height: 1.33; font-weight: 500; letter-spacing: 0.01em; }
 .t-secondary { color: var(--label-2); }
+/* Settings-like pages: every group opens with this eyebrow, inset to the rows' text; explanatory copy is .t-subhead.t-secondary. */
+.section-header {
+  margin: 0 0 var(--space-2);
+  padding-inline: var(--space-4);
+  color: var(--label-2);
+  font-size: 0.8125rem;
+  font-weight: 400;
+  line-height: 1.38;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+}
 
 .visually-hidden {
   position: absolute;
@@ -87,9 +101,30 @@ input[type='file']::file-selector-button {
 
 html[data-sheet-open] body { overflow: hidden; }
 
+/* A bar that extends the toolbar (Week's day strip) owns the bottom edge, so toolbar and strip read as one material. */
+.view:has([data-toolbar-extension]) .toolbar[data-collapsed] { box-shadow: none; }
+[data-toolbar-extension] { box-shadow: 0 0.5px 0 var(--material-edge); }
+
 @media (max-width: 767px) and (prefers-reduced-motion: no-preference) {
   #app { transition: transform var(--spring-duration) var(--ease-out); transform-origin: center top; }
   html[data-sheet-open] #app { transform: scale(0.96); }
+}
+
+/* Windows High Contrast and other forced palettes drop backgrounds and box shadows, so states and shapes that
+   relied on them are restated with system colours. !important beats the components' scoped rules on purpose. */
+@media (forced-colors: active) {
+  :focus-visible { outline-color: Highlight; }
+  button, [role='button'], [role='radio'] { outline: 1px solid ButtonText; outline-offset: -1px; }
+  button:focus-visible, [role='button']:focus-visible, [role='radio']:focus-visible { outline: 2px solid Highlight; outline-offset: 2px; }
+  [aria-pressed='true'], [role='radio'][aria-checked='true'], [aria-current='page'] {
+    forced-color-adjust: none;
+    background: Highlight !important;
+    color: HighlightText !important;
+  }
+  [aria-pressed='true'] *, [role='radio'][aria-checked='true'] *, [aria-current='page'] * { color: HighlightText !important; }
+  /* Category bars, the now-line and the progress fill carry position, not colour: draw them in the text colour. */
+  .row-bar, .now-line, .now-line::before, .block::before, [role='progressbar'] > * { forced-color-adjust: none; background: CanvasText !important; }
+  .toolbar, .tabbar, .sidebar, [data-toolbar-extension] { border-color: CanvasText; }
 }
 
 @media (prefers-reduced-motion: reduce) {

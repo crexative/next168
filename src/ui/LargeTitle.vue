@@ -25,7 +25,8 @@ onBeforeUnmount(() => observer?.disconnect())
       <div id="toolbar-actions" class="toolbar-actions"><slot name="actions" /></div>
     </div>
   </header>
-  <h1 ref="heading" class="large-title t-large-title">{{ title }}</h1>
+  <!-- Focusable by script only: the shell moves focus here after a route change. -->
+  <h1 ref="heading" class="large-title t-large-title" tabindex="-1">{{ title }}</h1>
 </template>
 
 <style scoped>
@@ -53,26 +54,22 @@ onBeforeUnmount(() => observer?.disconnect())
 }
 .toolbar-title {
   position: absolute;
-  inset-inline: 0;
+  /* Clear of the actions on both sides; at large text sizes it stops growing and truncates. */
+  inset-inline: calc(var(--tap-target) * 2 + var(--space-2) + var(--space-4));
+  overflow: hidden;
+  font-size: min(1.0625rem, 22px);
   text-align: center;
+  text-overflow: ellipsis;
+  white-space: nowrap;
   opacity: 0;
   transition: opacity 0.15s;
   pointer-events: none;
 }
 .toolbar[data-collapsed] .toolbar-title { opacity: 1; }
 .toolbar-actions { display: flex; align-items: center; gap: var(--space-2); position: relative; }
-.toolbar::after {
-  content: '';
-  position: absolute;
-  inset-inline: 0;
-  top: 100%;
-  height: 12px;
-  background: linear-gradient(var(--material), transparent);
-  opacity: 0;
-  pointer-events: none;
-  transition: opacity 0.15s;
-}
-.toolbar[data-collapsed]::after { opacity: 0.5; }
+/* The collapsed bar ends on a hairline; a page with its own bar under the toolbar draws the edge there instead (base.css). */
+.toolbar[data-collapsed] { box-shadow: 0 0.5px 0 var(--material-edge); }
+.large-title:focus { outline: none; }
 .large-title {
   padding: calc(var(--toolbar-height) + var(--space-2)) var(--space-4) var(--space-2);
 }

@@ -6,6 +6,7 @@ import { scheduleTasks } from '@/core/scheduler'
 import { localDateOf, type DatedOccurrence } from '@/core/time'
 import { usePlannerStore } from '@/stores/plannerStore'
 import AskAssistantLink from '@/ui/AskAssistantLink.vue'
+import Button from '@/ui/Button.vue'
 import EmptyState from '@/ui/EmptyState.vue'
 import { useUndoToast } from '@/ui/undoToast'
 import FreeHoursBadge from '@/features/capacity/FreeHoursBadge.vue'
@@ -101,7 +102,7 @@ function clear(occurrence: DatedOccurrence): void {
     </header>
     <AskAssistantLink class="assistant-entry" />
     <EmptyState v-if="!hasContent" icon="sun" :title="t('today.empty.title')" :description="t('today.empty.description')">
-      <a class="action-link t-headline" href="#/week">{{ t('today.empty.action') }}</a>
+      <Button variant="tinted" href="#/week">{{ t('today.empty.action') }}</Button>
     </EmptyState>
     <template v-else>
       <NowCard
@@ -134,7 +135,7 @@ function clear(occurrence: DatedOccurrence): void {
         @complete-task="complete"
       />
       <EmptyState v-else icon="calendar-days" :title="t('today.emptyDay.title')" :description="t('today.emptyDay.description')">
-        <a class="action-link t-headline" href="#/week">{{ t('today.emptyDay.action') }}</a>
+        <Button variant="tinted" href="#/week">{{ t('today.emptyDay.action') }}</Button>
       </EmptyState>
     </template>
   </div>
@@ -150,5 +151,4 @@ function clear(occurrence: DatedOccurrence): void {
 .stat + .stat { border-top: 0.5px solid var(--separator); }
 .day-progress { margin: 0; font-variant-numeric: tabular-nums; }
 .assistant-entry { margin: 0 var(--space-4) var(--space-4); }
-.action-link { display: inline-flex; align-items: center; min-height: var(--tap-target); color: var(--tint-label); }
 </style>

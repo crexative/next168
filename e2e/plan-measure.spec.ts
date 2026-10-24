@@ -110,7 +110,7 @@ test.describe('plan and measure', () => {
     const warning = page.getByTestId('overflow-text')
     await expect(warning).toContainText('1 h missing in Study')
     await expect(page.getByTestId('placed-task')).toContainText('Write report')
-    await expect(page.getByTestId('placed-task')).toContainText('07:00 PM–08:00 PM')
+    await expect(page.getByTestId('placed-task')).toContainText('7:00 PM–8:00 PM')
 
     await page.getByRole('button', { name: 'Complete Write report' }).click()
     await expect(page.getByTestId('done-task')).toContainText('Write report')

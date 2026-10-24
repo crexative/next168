@@ -44,7 +44,9 @@ describe('RulesProvider', () => {
 
   it('answers the next block', async () => {
     const { answer } = await ask("What's my next block?")
-    expect(answer).toMatch(/^Next: Deep work on 2026-10-26 at /)
+    // A readable date, never an ISO one, and the time in the shared clock format.
+    expect(answer).toMatch(/^Next: Deep work on Monday, October 26 at \d{1,2}:\d{2}( [AP]M)?\.$/)
+    expect(answer).not.toMatch(/\d{4}-\d{2}-\d{2}/)
   })
 
   it('answers which tasks overflow', async () => {

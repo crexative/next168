@@ -26,6 +26,7 @@ describe('shell registry', () => {
 
     registry.registerSettingsSection({ id: 'data', component, titleKey: 'k', order: 20 })
     registry.registerSettingsSection({ id: 'language', component, titleKey: 'k', order: 10 })
+    // Language and region lives inside Settings → Integrations and advanced, so the shell adds no section of its own.
     expect(settingsSections.value.map((section) => section.id)).toEqual(['language', 'data'])
   })
 
