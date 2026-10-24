@@ -88,7 +88,8 @@ function scrollToTop(): void { window.scrollTo({ top: 0, behavior: 'instant' }) 
 
 <style scoped>
 .shell { min-height: 100dvh; padding-inline: var(--safe-left) var(--safe-right); }
-.content { padding-bottom: calc(var(--tabbar-height) + var(--safe-bottom) + var(--space-4)); }
+/* --banners-height is the height of the fixed bottom notices (StatusBanners), so none of them covers the end of a page. */
+.content { padding-bottom: calc(var(--tabbar-height) + var(--safe-bottom) + var(--space-4) + var(--banners-height, 0px)); }
 .main { max-width: 1200px; margin-inline: auto; outline: none; }
 
 .tabbar {
@@ -150,7 +151,7 @@ function scrollToTop(): void { window.scrollTo({ top: 0, behavior: 'instant' }) 
 
 @media (min-width: 1024px) {
   .tabbar, .gear { display: none; }
-  .content { margin-inline-start: var(--sidebar-width); padding-bottom: var(--space-8); }
+  .content { margin-inline-start: var(--sidebar-width); padding-bottom: calc(var(--space-8) + var(--banners-height, 0px)); }
   .sidebar {
     position: fixed;
     inset: 0 auto 0 0;

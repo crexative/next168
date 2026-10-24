@@ -37,6 +37,11 @@ async function showDay(page: Page, weekday: string, date: string): Promise<Locat
   return target
 }
 
+// Columns under 9.5 rem stack events over blocks instead of sharing lanes (see verify3.spec.ts for that layout).
+async function isStacked(column: Locator): Promise<boolean> {
+  return column.evaluate((node) => node.getBoundingClientRect().width < 9.5 * 16)
+}
+
 // Box of `inner` relative to `outer`, and whether `inner` is what is painted at its own center.
 async function paint(inner: Locator, outer: Locator) {
   const outerBox = await outer.evaluate((node) => { node.scrollIntoView({ block: 'center' }); const b = node.getBoundingClientRect(); return { left: b.left, top: b.top, right: b.right, bottom: b.bottom } })
@@ -59,17 +64,23 @@ for (const [weekday, date, minutes] of [['Friday', '2026-10-23', 30], ['Thursday
     const block = column.locator('.block')
     await expect(busy).toHaveCount(1)
 
+    const stacked = await isStacked(column)
     const mark = await paint(busy.locator('[data-testid=calendar-conflict]'), busy)
     expect(mark, 'Conflict mark').toMatchObject({ inside: true, topmost: true })
     expect((await paint(busy.locator('.busy-title'), busy)), 'event title').toMatchObject({ inside: true, topmost: true })
     expect((await paint(block.locator('.block-title'), block)), 'block title').toMatchObject({ inside: true, topmost: true })
-    expect((await paint(block.locator('.block-time'), block)), 'block time').toMatchObject({ inside: true, topmost: true })
-    // The block time wraps instead of being cut off, and the block does not run over its own box.
-    const clipped = await block.evaluate((node) => node.scrollHeight > node.clientHeight + 1 || node.querySelector<HTMLElement>('.block-time')!.scrollWidth > node.querySelector<HTMLElement>('.block-time')!.clientWidth + 1)
-    expect(clipped, 'block content is cut off').toBe(false)
-    // Side by side: the event does not sit over the block.
-    const [blockBox, busyBox] = await Promise.all([block.boundingBox(), busy.boundingBox()])
-    expect(blockBox!.x + blockBox!.width, 'block ends before the event starts').toBeLessThanOrEqual(busyBox!.x + 0.5)
+    if (!stacked) {
+      expect((await paint(block.locator('.block-time'), block)), 'block time').toMatchObject({ inside: true, topmost: true })
+      // The block time wraps instead of being cut off, and the block does not run over its own box.
+      const clipped = await block.evaluate((node) => node.scrollHeight > node.clientHeight + 1 || node.querySelector<HTMLElement>('.block-time')!.scrollWidth > node.querySelector<HTMLElement>('.block-time')!.clientWidth + 1)
+      expect(clipped, 'block content is cut off').toBe(false)
+      // Side by side: the event does not sit over the block.
+      const [blockBox, busyBox] = await Promise.all([block.boundingBox(), busy.boundingBox()])
+      expect(blockBox!.x + blockBox!.width, 'block ends before the event starts').toBeLessThanOrEqual(busyBox!.x + 0.5)
+    } else {
+      // Stacked: the block keeps the whole width and only its title (the time stays in its accessible name).
+      await expect(block.locator('.block-time')).toBeHidden()
+    }
     // The mark is never clipped by the overlay (it keeps a non-colour cue: icon, text kept as the accessible name).
     expect(await busy.locator('[data-testid=calendar-conflict] svg').count()).toBe(1)
     await expect(busy.locator('[data-testid=calendar-conflict]')).toContainText('Conflict')
@@ -104,14 +115,18 @@ test('staggered overlaps keep all item boxes disjoint and every label topmost', 
     expect(box!.height).toBeGreaterThan(0)
     return box!
   }))
+  const stacked = await isStacked(column)
   for (const [index, box] of boxes.entries()) {
+    // Stacked columns put the event over a block on purpose; blocks still must not intersect each other.
     for (const other of boxes.slice(index + 1)) {
+      if (stacked && index === 0) continue // the event is the first item in the DOM
       const intersects = box.x < other.x + other.width && other.x < box.x + box.width && box.y < other.y + other.height && other.y < box.y + box.height
       expect(intersects, `items ${index} and ${boxes.indexOf(other)} intersect`).toBe(false)
     }
   }
   for (const block of await column.locator('.block').all()) {
     for (const label of ['.block-title', '.block-time']) {
+      if (!(await block.locator(label).isVisible())) continue
       expect(await paint(block.locator(label), block), label).toMatchObject({ inside: true, topmost: true })
     }
   }

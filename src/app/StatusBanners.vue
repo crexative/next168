@@ -1,10 +1,10 @@
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import Button from '@/ui/Button.vue'
 import Icon from '@/ui/Icon.vue'
 import { usePlannerStore } from '@/stores/plannerStore'
-import { reloadBlocked, reloadWhenReady, updateAvailable } from './updates'
+import { reloadBlocked, reloadWhenReady, updateDismissed, updateNoticeShown } from './updates'
 
 const { t } = useI18n()
 const planner = usePlannerStore()
@@ -15,11 +15,28 @@ const errorMessage = computed(() => {
   return code === 'conflict' ? t('app.storage.conflict') : t('app.storage.saveFailed', { reason: code })
 })
 
+// The notices float over the page; their height is published so the page keeps room for them at its end.
+const root = ref<HTMLElement | null>(null)
+let observer: ResizeObserver | undefined
+onMounted(() => {
+  if (!root.value || typeof ResizeObserver === 'undefined') return
+  const target = root.value
+  observer = new ResizeObserver(() => {
+    const height = target.getBoundingClientRect().height
+    window.document.documentElement.style.setProperty('--banners-height', height > 0 ? `${Math.ceil(height + 12)}px` : '0px')
+  })
+  observer.observe(target)
+})
+onBeforeUnmount(() => {
+  observer?.disconnect()
+  window.document.documentElement.style.removeProperty('--banners-height')
+})
+
 const reload = () => reloadWhenReady(() => planner.settled())
 </script>
 
 <template>
-  <div class="banners">
+  <div ref="root" class="banners">
     <div v-if="planner.status === 'readonly' && planner.error === 'no-web-locks'" class="banner" role="status">
       <Icon name="info" :size="20" />
       <p class="t-subhead">{{ t('app.storage.readonlyNoLocks') }}</p>
@@ -39,10 +56,13 @@ const reload = () => reloadWhenReady(() => planner.settled())
       <p class="t-subhead">{{ errorMessage }}</p>
       <Button variant="plain" @click="planner.dismissError()">{{ t('common.dismiss') }}</Button>
     </div>
-    <div v-if="updateAvailable" class="banner" role="status" data-testid="update-banner">
+    <div v-if="updateNoticeShown" class="banner" role="status" data-testid="update-banner">
       <Icon name="refresh-cw" :size="20" />
       <p class="t-subhead">{{ reloadBlocked ? t('app.update.blocked') : t('app.update.available') }}</p>
       <Button variant="tinted" @click="reload">{{ t('app.update.reload') }}</Button>
+      <button type="button" class="banner-close" data-testid="update-banner-close" :aria-label="t('common.dismiss')" @click="updateDismissed = true">
+        <Icon name="x" :size="20" />
+      </button>
     </div>
   </div>
 </template>
@@ -76,6 +96,19 @@ const reload = () => reloadWhenReady(() => planner.settled())
   pointer-events: auto;
 }
 .banner p { flex: 1; }
+.banner > .banner-close {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: var(--tap-target);
+  height: var(--tap-target);
+  margin-inline-end: calc(var(--space-2) * -1);
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--label-2);
+}
 .banner.is-error { border: 1px solid var(--danger); }
 .banner > :first-child { color: var(--label-2); }
 .is-error > :first-child { color: var(--danger-label); }

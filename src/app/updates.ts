@@ -1,10 +1,13 @@
-import { ref } from 'vue'
+import { computed, ref } from 'vue'
 import { hasUnsavedInput } from '@/ui/unsavedGuard'
 
 export const BROADCAST_CHANNEL = 'next168'
 
 export const updateAvailable = ref(false)
 export const reloadBlocked = ref(false)
+// The notice can be closed; a later update announcement shows it again.
+export const updateDismissed = ref(false)
+export const updateNoticeShown = computed(() => updateAvailable.value && !updateDismissed.value)
 
 let channel: BroadcastChannel | undefined
 type CanReload = () => Promise<boolean>
@@ -14,6 +17,7 @@ let applyUpdate: ((canReload: CanReload) => Promise<void>) | undefined
 export function announceUpdate(apply: (canReload: CanReload) => Promise<void>): void {
   applyUpdate = apply
   updateAvailable.value = true
+  updateDismissed.value = false
   channel?.postMessage({ type: 'update-available' })
 }
 
@@ -21,7 +25,7 @@ export function listenForUpdates(): () => void {
   if (typeof BroadcastChannel === 'undefined') return () => undefined
   channel = new BroadcastChannel(BROADCAST_CHANNEL)
   channel.onmessage = (event: MessageEvent) => {
-    if (event.data?.type === 'update-available') updateAvailable.value = true
+    if (event.data?.type === 'update-available') { updateAvailable.value = true; updateDismissed.value = false }
   }
   return () => { channel?.close(); channel = undefined }
 }
@@ -48,6 +52,7 @@ export function createUpdateApplier(skipWaiting: () => Promise<void>, reload: ()
     onActivated: (): void => {
       hasActivated = true
       updateAvailable.value = true
+      updateDismissed.value = false
       activated?.()
     },
   }
