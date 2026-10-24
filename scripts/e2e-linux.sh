@@ -5,7 +5,7 @@
 #
 # The working tree (tracked and untracked, minus ignored files) is copied into a fresh container,
 # so no Docker file sharing is needed and the host's macOS node_modules and build are never touched.
-# node_modules and dist live in Docker volumes (one pair per checkout path) to keep reruns fast.
+# node_modules (root and companion, as in CI) and dist live in Docker volumes (one pair per checkout path) to keep reruns fast.
 # Reports and traces come back to e2e/.results and e2e/.report.
 #   NEXT168_E2E_LINUX_PLATFORM=linux/amd64 matches CI's CPU architecture (slow under emulation).
 set -euo pipefail
@@ -32,21 +32,25 @@ FROM $base_image
 RUN apt-get update && apt-get install -y --no-install-recommends fonts-dejavu-core && rm -rf /var/lib/apt/lists/*
 DOCKERFILE
 
-
 container="$(docker create --init --ipc=host "${platform_args[@]}" \
   -e CI=true \
   -v "next168-e2e-linux-node-modules-$slot:/work/node_modules" \
+  -v "next168-e2e-linux-companion-node-modules-$slot:/work/companion/node_modules" \
   -v "next168-e2e-linux-dist-$slot:/work/dist" \
   -w /work \
   "$image" \
   bash -c '
     set -euo pipefail
-    lock="$(sha256sum package-lock.json | cut -d" " -f1)"
-    if [ "$(cat node_modules/.linux-lock 2>/dev/null || true)" != "$lock" ]; then
-      find node_modules -mindepth 1 -delete
-      npm ci --no-audit --no-fund
-      echo "$lock" > node_modules/.linux-lock
-    fi
+    install() { # <prefix>: npm ci into its volume-backed node_modules unless the lockfile is unchanged
+      lock="$(sha256sum "$1/package-lock.json" | cut -d" " -f1)"
+      if [ "$(cat "$1/node_modules/.linux-lock" 2>/dev/null || true)" != "$lock" ]; then
+        find "$1/node_modules" -mindepth 1 -delete
+        npm --prefix "$1" ci --no-audit --no-fund
+        echo "$lock" > "$1/node_modules/.linux-lock"
+      fi
+    }
+    install .
+    install companion
     npx playwright test "$@"
   ' -- "$@")"
 trap 'docker rm -f -v "$container" >/dev/null 2>&1 || true' EXIT
