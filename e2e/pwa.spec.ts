@@ -1,9 +1,12 @@
 import { expect, test, type Page } from '@playwright/test'
 import { LEGACY_BLOCK_COUNT, onlyProject, seedLegacy } from './fixtures'
+import { previewPorts } from './support/ports'
+
+const ports = previewPorts()
 
 const BASES = [
-  { name: 'root', url: 'http://127.0.0.1:4173/' },
-  { name: 'subpath', url: 'http://127.0.0.1:4174/next168/' },
+  { name: 'root', url: `http://127.0.0.1:${ports.root}/` },
+  { name: 'subpath', url: `http://127.0.0.1:${ports.subpath}/next168/` },
 ]
 
 async function waitForActiveServiceWorker(page: Page): Promise<void> {

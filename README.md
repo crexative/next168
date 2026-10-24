@@ -146,6 +146,18 @@ npm run type-check   # Run TypeScript type checking
 npm run lint         # Run ESLint with auto-fix
 ```
 
+### Testing
+
+```bash
+npx vitest run                      # unit tests
+npx playwright test                 # end-to-end: desktop, tablet and phone (webkit-phone when WebKit is installed)
+```
+
+Playwright builds the app and serves it itself, on two preview ports (root and `/next168/` sub-path)
+derived from a stable hash of the checkout's path, so runs in different worktrees at the same time
+can never test each other's build. It never reuses a server that is already running. Set
+`PW_PORT_BASE=<port>` to pick the root port yourself (the sub-path server uses the next one).
+
 ## 🏗️ Architecture
 
 ### Project Structure
