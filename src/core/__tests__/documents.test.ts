@@ -45,6 +45,19 @@ describe('documents and migration', () => {
     expect(migrateToCurrent({ schemaVersion: 99 }, env)).toMatchObject({ kind: 'unsupported' })
     expect(migrateToCurrent(document(), env)).toEqual({ kind: 'ok', document: document() })
   })
+  it('migrates free-text v1 colors instead of rejecting the whole document', () => {
+    const categories = [
+      { ...sampleV1.categories[0]!, id: 'short', color: '#abc' },
+      { ...sampleV1.categories[0]!, id: 'named', color: 'red' },
+    ]
+    const result = migrateToCurrent({ categories, timeBlocks: [] }, env)
+    expect(result.kind).toBe('ok')
+    if (result.kind !== 'ok') return
+    expect(result.document.categories[0]).toMatchObject({ customColor: '#aabbcc' })
+    expect(result.document.categories[1]).toMatchObject({ colorKey: 'gray' })
+    expect(result.document.categories[1]!.customColor).toBeUndefined()
+  })
+
   it('migrates the longest v1-valid block title without truncation', () => {
     const legacy = { categories: sampleV1.categories, timeBlocks: [{ id: 'long-title', categoryId: 'work', title: 'x'.repeat(100), dayOfWeek: 1, startTime: '09:00', endTime: '10:00', durationMinutes: 60 }] }
     const result = migrateToCurrent(JSON.stringify(legacy), env)

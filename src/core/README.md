@@ -42,4 +42,4 @@ Run `npx vitest run --coverage src/core`, `npm run type-check`, and `npx eslint 
 
 ## Contract incompatibility retained for recovery
 
-The legacy block editor accepts titles up to 100 characters (`src/components/WeeklyCalendar.vue:404,522`), while the frozen v2 schema accepts at most 80. Migrating an 81–100-character legacy title returns `corrupt` with the original raw input, rather than truncating or silently discarding it. Lossless migration of those records needs an architect-approved contract resolution. The v2 collection limits are also enforced without truncation.
+The legacy block editor accepts titles up to 100 characters; the v2 schema allows 120, so every v1-valid title migrates intact, and a longer one returns `corrupt` with the original raw input rather than being truncated. Legacy colors were free text: `#RGB`/`#RRGGBB` are kept as `customColor`, anything else migrates to the gray palette color. The v2 collection limits are enforced without truncation.

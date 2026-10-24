@@ -5,7 +5,7 @@ import { COLOR_KEYS, dayIndexSchema, type ColorKey, type LoadResult } from './mo
 const legacyTime = z.string().regex(/^(?:[01]\d|2[0-3]):[0-5]\d$/)
 const legacySchema = z.object({
   categories: z.array(z.object({
-    id: z.string(), name: z.string(), color: z.string().regex(/^#[\da-fA-F]{6}$/),
+    id: z.string(), name: z.string(), color: z.string(),
     weeklyHourLimit: z.number(), icon: z.string().optional(),
   })),
   timeBlocks: z.array(z.object({
@@ -26,6 +26,13 @@ function nearestColor(hex: string): ColorKey {
     return distance(key) < distance(best) ? key : best
   })
 }
+// The v1 editor stored free text (max 7 chars); only #RGB and #RRGGBB carry a recoverable color.
+function legacyHex(color: string): string | undefined {
+  const value = color.trim()
+  if (/^#[\da-fA-F]{6}$/.test(value)) return value
+  if (/^#[\da-fA-F]{3}$/.test(value)) return '#' + [...value.slice(1)].map((digit) => digit + digit).join('')
+  return undefined
+}
 const minutes = (time: string) => Number(time.slice(0, 2)) * 60 + Number(time.slice(3))
 
 export function migrateToCurrent(raw: unknown, env: DocumentEnvironment): LoadResult {
@@ -38,10 +45,13 @@ export function migrateToCurrent(raw: unknown, env: DocumentEnvironment): LoadRe
     }
     const legacy = legacySchema.parse(value)
     const document = createEmptyDocument(env)
-    document.categories = legacy.categories.map((category) => ({
-      id: category.id, name: category.name, icon: category.icon, colorKey: nearestColor(category.color),
-      customColor: category.color, goal: { type: 'max', hoursPerWeek: category.weeklyHourLimit },
-    }))
+    document.categories = legacy.categories.map((category) => {
+      const hex = legacyHex(category.color)
+      return {
+        id: category.id, name: category.name, icon: category.icon, colorKey: hex ? nearestColor(hex) : 'gray',
+        customColor: hex, goal: { type: 'max', hoursPerWeek: category.weeklyHourLimit },
+      }
+    })
     document.blocks = legacy.timeBlocks.map((block) => ({
       id: block.id, categoryId: block.categoryId, title: block.title, notes: block.description,
       days: [...new Set([block.dayOfWeek, ...(block.repeatDays ?? [])])],
