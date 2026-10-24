@@ -34,6 +34,10 @@ export function validateDocument(raw: unknown): PlannerDocument {
   for (const item of [...doc.blocks, ...doc.tasks]) {
     if (!categoryIds.has(item.categoryId)) throw new Error('document.missingCategory')
   }
+  // All-day events cover whole local dates with an exclusive end (RFC 5545), so they must span at least one date.
+  for (const event of doc.events) {
+    if (event.allDay && event.end.slice(0, 10) <= event.start.slice(0, 10)) throw new Error('document.allDayEventWithoutDates')
+  }
   // Actuals deliberately retain references to deleted template blocks and categories.
   return doc
 }
