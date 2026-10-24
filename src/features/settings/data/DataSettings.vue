@@ -100,7 +100,9 @@ async function confirmImport(): Promise<void> {
   if (!chosen) return
   busy.value = true
   const hash = previewHash
-  const result = await planner.commit((draft) => { assertDocumentHash(draft, hash); replaceContent(draft, chosen.document) })
+  // Bound to the planner shown when the user confirmed: a delete-all after that refuses the commit and the texts.
+  const epoch = calendarLifecycle()?.capturePurgeEpoch()
+  const result = await planner.commit((draft) => { assertDocumentHash(draft, hash); replaceContent(draft, chosen.document) }, { purgeEpoch: epoch })
   if (!result.ok) {
     const changed = refusedAsChanged(result.reason)
     if (changed) { planner.dismissError(); closePreview() }
@@ -108,7 +110,15 @@ async function confirmImport(): Promise<void> {
     busy.value = false
     return
   }
-  await replaceSourceTexts(calendarSourceStore(), chosen.bundle.calendarSourceTexts)
+  const replaceTexts = () => replaceSourceTexts(calendarSourceStore(), chosen.bundle.calendarSourceTexts)
+  const lifecycle = calendarLifecycle()
+  const written = lifecycle ? await lifecycle.writeIfUnpurged(epoch, replaceTexts) : (await replaceTexts(), true)
+  if (!written) {
+    notice.value = { tone: 'error', text: t('data.changedElsewhere') }
+    closePreview()
+    busy.value = false
+    return
+  }
   const verified = await verifyStored(chosen.bundle, () => activePlannerRepository().load(), calendarSourceStore())
   notice.value = verified.ok
     ? { tone: 'ok', text: t('data.import.verified', { hash: verified.hash.slice(0, 12) }) }

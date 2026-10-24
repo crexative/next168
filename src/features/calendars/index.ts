@@ -2,7 +2,7 @@ import type { CalendarSourceStore } from '@/core/model'
 import type { ShellRegistry } from '@/app/contracts'
 import { setExternalOccurrenceSource } from '@/features/week/externalOccurrences'
 import { provideCalendarLifecycle, provideCalendarSourceStore } from '@/features/settings/data/calendarSourceHook'
-import { calendarServices, calendarTextRevision, cancelCalendarRefreshes } from './calendarStore'
+import { calendarServices, calendarTextRevision, cancelCalendarRefreshes, capturePurgeEpoch, writeIfUnpurged } from './calendarStore'
 import { calendarSourceRevision, expandCalendarSources } from './occurrenceSource'
 
 export { useCalendarEvents } from './useCalendarEvents'
@@ -29,5 +29,5 @@ const currentTexts: CalendarSourceStore = {
 export default function registerCalendars(_registry: ShellRegistry): void {
   setExternalOccurrenceSource(expandCalendarSources, calendarSourceRevision)
   provideCalendarSourceStore(currentTexts)
-  provideCalendarLifecycle({ cancelRefreshes: cancelCalendarRefreshes, textsChanged: () => { calendarTextRevision.value++ } })
+  provideCalendarLifecycle({ cancelRefreshes: cancelCalendarRefreshes, textsChanged: () => { calendarTextRevision.value++ }, capturePurgeEpoch, writeIfUnpurged })
 }

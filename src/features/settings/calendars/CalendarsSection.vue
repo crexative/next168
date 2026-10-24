@@ -48,10 +48,12 @@ function changeColor(source: CalendarSource, event: Event): void {
   void run(() => calendars.updateSource(source.id, { colorKey: (event.target as HTMLSelectElement).value as ColorKey }))
 }
 function removeSource(source: CalendarSource): void {
+  // Captured at the click: the undo restores only into the planner the source was removed from.
+  const intent = calendars.captureIntent()
   void run(async () => {
     const text = await calendarServices().texts.get(source.id)
-    await calendars.removeSource(source.id)
-    if (text !== undefined) toast.show({ message: t('calendars.removed'), onUndo: () => { void run(() => calendars.restoreSource(source, text)) } })
+    await calendars.removeSource(source.id, intent)
+    if (text !== undefined) toast.show({ message: t('calendars.removed'), onUndo: () => { void run(() => calendars.restoreSource(source, text, intent)) } })
   })
 }
 function edit(event?: PlannerEvent): void { editingEvent.value = event; sheetOpen.value = true }
