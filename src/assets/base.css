@@ -26,6 +26,9 @@ button { cursor: pointer; -webkit-tap-highlight-color: transparent; }
 h1, h2, h3, p { margin: 0; }
 ul { margin: 0; padding: 0; list-style: none; }
 
+/* Bare links read as plain actions: tinted and semibold, never underlined. Styled links (rows, cards, tabs) set their own look. */
+a:not([class]) { color: var(--tint-label); font-weight: 600; text-decoration: none; }
+
 :focus-visible {
   outline: 2px solid var(--tint);
   outline-offset: 2px;

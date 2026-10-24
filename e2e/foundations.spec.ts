@@ -127,3 +127,65 @@ test.describe('rows', () => {
     await expect(workspace).toHaveText(richDocument.workspaceId)
   })
 })
+
+test.describe('buttons', () => {
+  async function buttonGeometry(page: Page) {
+    return page.locator('.ui-button').evaluateAll((elements) => elements.filter((element) => element.getClientRects().length > 0).map((element) => {
+      const button = element as HTMLElement
+      const width = button.getBoundingClientRect().width
+      const previous = button.style.width
+      button.style.width = 'max-content'
+      const natural = button.getBoundingClientRect().width
+      button.style.width = previous
+      const parent = button.parentElement!.getBoundingClientRect().width
+      const style = getComputedStyle(button)
+      return { text: button.textContent?.trim() ?? '', width, natural, parent, plain: button.classList.contains('is-plain'), paddingLeft: style.paddingLeft, decoration: style.textDecorationLine }
+    }))
+  }
+
+  test('primary and secondary buttons hug their label above 480 px; plain ones sit flush', async ({ page }, testInfo) => {
+    test.skip(testInfo.project.name === 'phone', 'the wide-screen rule')
+    await startWith(page)
+    await openView(page, 'settings')
+    const buttons = await buttonGeometry(page)
+    expect(buttons.length).toBeGreaterThan(4)
+    for (const button of buttons) {
+      expect.soft(button.width, `"${button.text}" is ${button.width} px wide for a ${button.natural} px label`).toBeLessThanOrEqual(Math.max(button.natural, 44) + 1)
+      if (button.plain) expect.soft(button.paddingLeft, `"${button.text}" is plain and flush`).toBe('0px')
+    }
+    await openView(page, 'week')
+    await page.locator('[data-block-id="b-gym"]').first().click()
+    const save = page.getByRole('dialog').getByRole('button', { name: 'Save', exact: true })
+    await expect(save).toBeVisible()
+    const [saveBox, bodyBox] = await Promise.all([save.boundingBox(), page.locator('.sheet-body').boundingBox()])
+    expect(saveBox!.width).toBeLessThan(bodyBox!.width / 2)
+  })
+
+  test('on a phone the sheet\'s primary action spans the width for the thumb', async ({ page }, testInfo) => {
+    test.skip(testInfo.project.name !== 'phone')
+    await startWith(page)
+    await openView(page, 'week')
+    await page.getByRole('button', { name: 'Add block' }).click()
+    const save = page.getByRole('dialog').getByRole('button', { name: 'Save', exact: true })
+    await expect(save).toBeVisible()
+    const [saveBox, bodyBox] = await Promise.all([save.boundingBox(), page.locator('.sheet-body').boundingBox()])
+    expect(saveBox!.width).toBeGreaterThan(bodyBox!.width - 2 * 16 - 2)
+  })
+
+  test('empty states offer a tinted call to action and no link is underlined', async ({ page }) => {
+    await startWith(page, { ...richDocument, blocks: [], tasks: [] })
+    await openView(page, 'today')
+    const action = page.getByRole('link', { name: 'Plan your week' })
+    await expect(action).toBeVisible()
+    await expect(action).toHaveClass(/ui-button/)
+    await expect(action).toHaveClass(/is-tinted/)
+    expect(await action.evaluate((element) => getComputedStyle(element).backgroundColor)).not.toBe('rgba(0, 0, 0, 0)')
+    for (const view of ['today', 'settings', 'tasks']) {
+      await openView(page, view)
+      const underlined = await page.locator('#main a').evaluateAll((links) => links
+        .filter((link) => link.getClientRects().length > 0 && getComputedStyle(link).textDecorationLine.includes('underline'))
+        .map((link) => link.textContent?.trim()))
+      expect(underlined, `${view}: underlined links`).toEqual([])
+    }
+  })
+})

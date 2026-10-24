@@ -143,7 +143,7 @@ async function remove(blockId: string): Promise<void> {
     </Teleport>
 
     <EmptyState v-if="!hasCategories" icon="calendar-days" :title="t('week.empty.noCategoriesTitle')" :description="t('week.empty.noCategoriesDescription')">
-      <a class="empty-link t-headline" href="#/settings">{{ t('week.empty.openSettings') }}</a>
+      <Button variant="tinted" href="#/settings">{{ t('week.empty.openSettings') }}</Button>
     </EmptyState>
     <EmptyState v-else-if="blockCount === 0" icon="calendar-days" :title="t('week.empty.noBlocksTitle')" :description="t('week.empty.noBlocksDescription')">
       <Button :disabled="!planner.writable" @click="openNewFromButton">{{ t('week.empty.addBlock') }}</Button>
@@ -207,12 +207,6 @@ async function remove(blockId: string): Promise<void> {
   transition: transform 0.1s var(--ease-out);
 }
 .add-button:active { transform: scale(0.97); }
-.empty-link {
-  display: inline-flex;
-  align-items: center;
-  min-height: var(--tap-target);
-  color: var(--tint-label);
-}
 @media (prefers-reduced-motion: reduce) {
   .add-button:active { transform: none; opacity: 0.7; }
 }

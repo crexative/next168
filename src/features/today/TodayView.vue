@@ -6,6 +6,7 @@ import { scheduleTasks } from '@/core/scheduler'
 import { localDateOf, type DatedOccurrence } from '@/core/time'
 import { usePlannerStore } from '@/stores/plannerStore'
 import AskAssistantLink from '@/ui/AskAssistantLink.vue'
+import Button from '@/ui/Button.vue'
 import EmptyState from '@/ui/EmptyState.vue'
 import Icon from '@/ui/Icon.vue'
 import { useExternalOccurrences } from '@/features/week/externalOccurrences'
@@ -50,7 +51,7 @@ function clear(occurrence: DatedOccurrence): void {
     <p class="date-label t-headline t-secondary" data-testid="today-date">{{ dateLabel }}</p>
     <AskAssistantLink class="assistant-entry" />
     <EmptyState v-if="!hasContent" icon="sun" :title="t('today.empty.title')" :description="t('today.empty.description')">
-      <a class="action-link t-headline" href="#/week">{{ t('today.empty.action') }}</a>
+      <Button variant="tinted" href="#/week">{{ t('today.empty.action') }}</Button>
     </EmptyState>
     <template v-else>
       <NowCard
@@ -81,7 +82,7 @@ function clear(occurrence: DatedOccurrence): void {
         @clear="clear"
       />
       <EmptyState v-else icon="calendar-days" :title="t('today.emptyDay.title')" :description="t('today.emptyDay.description')">
-        <a class="action-link t-headline" href="#/week">{{ t('today.emptyDay.action') }}</a>
+        <Button variant="tinted" href="#/week">{{ t('today.emptyDay.action') }}</Button>
       </EmptyState>
     </template>
   </div>
@@ -91,7 +92,6 @@ function clear(occurrence: DatedOccurrence): void {
 .today-view { padding-bottom: var(--space-6); }
 .date-label { margin: calc(var(--space-2) * -1) var(--space-4) var(--space-4); }
 .assistant-entry { margin: 0 var(--space-4) var(--space-4); }
-.action-link { display: inline-flex; align-items: center; min-height: var(--tap-target); color: var(--tint-label); }
 .checkin-row {
   display: flex;
   align-items: center;

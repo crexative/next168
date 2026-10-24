@@ -200,7 +200,7 @@ function lateText(task: Task): string {
       :title="t('tasks.noCategories.title')"
       :description="t('tasks.noCategories.description')"
     >
-      <a class="link t-headline" href="#/settings">{{ t('tasks.noCategories.action') }}</a>
+      <Button variant="tinted" href="#/settings">{{ t('tasks.noCategories.action') }}</Button>
     </EmptyState>
 
     <form v-else class="add" :aria-label="t('tasks.add.title')" @submit.prevent="addTask">
@@ -306,7 +306,6 @@ function lateText(task: Task): string {
 .warnings ul { display: flex; flex-direction: column; gap: var(--space-2); }
 .warning { display: flex; gap: var(--space-3); padding: var(--space-3) var(--space-4); border-radius: var(--radius-card); background: color-mix(in srgb, var(--warning) 18%, var(--surface)); }
 .warning-icon { flex: none; color: var(--label); margin-top: 2px; }
-.link { display: inline-flex; align-items: center; min-height: var(--tap-target); color: var(--tint-label); }
 .done-row { position: relative; display: flex; align-items: center; justify-content: space-between; gap: var(--space-2); padding: var(--space-1) var(--space-1) var(--space-1) var(--space-4); }
 /* Inset like every other grouped list separator. */
 .done-row + .done-row::before { content: ''; position: absolute; top: 0; right: 0; left: var(--space-4); border-top: 1px solid var(--separator); }

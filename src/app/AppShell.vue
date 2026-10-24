@@ -130,6 +130,7 @@ function scrollToTop(): void { window.scrollTo({ top: 0, behavior: 'instant' }) 
   width: var(--tap-target);
   height: var(--tap-target);
   color: var(--tint-label);
+  text-decoration: none;
 }
 
 .sidebar { display: none; }
