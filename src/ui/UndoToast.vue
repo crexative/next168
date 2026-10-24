@@ -68,8 +68,9 @@ onBeforeUnmount(() => {
   inset-inline: 0;
   bottom: calc(var(--tabbar-height) + var(--safe-bottom) + var(--space-3));
   z-index: 40;
-  display: flex;
-  justify-content: center;
+  /* One cell: a toast replacing another cross-fades over it instead of sharing the row, where each would be squeezed. */
+  display: grid;
+  justify-items: center;
   padding: 0 var(--space-4);
   pointer-events: none;
 }
@@ -78,6 +79,7 @@ onBeforeUnmount(() => {
   align-items: center;
   gap: var(--space-4);
   /* Never wider than the region, whatever the text width: the Undo button and its focus ring stay on screen. */
+  grid-area: 1 / 1;
   min-width: 0;
   max-width: min(28rem, 100%);
   padding: var(--space-1) var(--space-1) var(--space-1) var(--space-4);
