@@ -43,7 +43,7 @@ it('places tasks around imported calendar events, not on top of them', async () 
   await vi.waitFor(() => expect(host.textContent).toMatch(/12:00\s?PM–1:00\s?PM/))
 })
 
-it('files a quickly added task under the first non-Sleep category', async () => {
+it('offers a quickly added task "any free slot" by default, with Work but not Sleep as a choice', async () => {
   const pinia = createPinia()
   setActivePinia(pinia)
   configurePlannerStore({ repository: createTestRepositories().planner, now: fixedNow, newId: newTestId, locale: () => 'en', timeZone: () => 'UTC' })
@@ -59,17 +59,42 @@ it('files a quickly added task under the first non-Sleep category', async () => 
   const app = createApp(TasksView).use(pinia).use(i18n)
   app.mount(host)
   cleanup = () => { app.unmount(); host.remove() }
-  const categorySelect = () => Array.from(host.querySelectorAll('select')).find(select => select.querySelector('option[value="work"]'))
-  // The category appears once there is a title to file.
-  expect(categorySelect()).toBeUndefined()
+  const when = () => host.querySelector<HTMLSelectElement>('[data-testid=task-when]')
+  // "When?" appears once there is a title to file.
+  expect(when()).toBeNull()
   const title = host.querySelector<HTMLInputElement>('input[type=text]')!
   title.value = 'Call the bank'
   title.dispatchEvent(new Event('input'))
-  await vi.waitFor(() => expect(categorySelect()).toBeDefined())
-  expect(categorySelect()!.value).toBe('work')
+  await vi.waitFor(() => expect(when()).not.toBeNull())
+  expect(when()!.value).toBe('')
+  expect([...when()!.options].map(option => option.value)).toEqual(['', 'work'])
 })
 
-it('shows a task split around a busy slot as one row with its total duration, its fragments and one delete action', async () => {
+it('places a task with no category in time no routine covers, and keeps it out of a block of another category', async () => {
+  const pinia = createPinia()
+  setActivePinia(pinia)
+  configurePlannerStore({ repository: createTestRepositories().planner, now: fixedNow, newId: newTestId, locale: () => 'en', timeZone: () => 'UTC' })
+  const planner = usePlannerStore()
+  await planner.load()
+  await planner.commit(draft => {
+    draft.categories.push({ id: 'work', name: 'Work', colorKey: 'blue', goal: { type: 'none', hoursPerWeek: 0 } })
+    // Saturday 12:00-14:00 is work; now is 12:00 on Saturday.
+    draft.blocks.push({ id: 'focus', categoryId: 'work', title: 'Focus', days: [6], start: 720, end: 840 })
+    draft.tasks.push({ id: 'gift', title: 'Buy a gift for mum', durationMin: 60, priority: 2, createdAt: fixedNow().toISOString() })
+  })
+  i18n.global.locale.value = 'en'
+  const host = document.createElement('div')
+  document.body.append(host)
+  const app = createApp(TasksView).use(pinia).use(i18n)
+  app.mount(host)
+  cleanup = () => { app.unmount(); host.remove() }
+  await vi.waitFor(() => expect(host.querySelectorAll('[data-testid=placed-task]')).toHaveLength(1))
+  const text = host.querySelector('[data-testid=placed-task]')!.textContent!.replace(/\s+/g, ' ')
+  expect(text).toMatch(/(?<!\d)2:00\s?PM–3:00\s?PM/)
+  expect(text).not.toMatch(/Work/)
+})
+
+it('shows a task split around a busy slot as one row with its total duration and its fragments', async () => {
   const pinia = createPinia()
   setActivePinia(pinia)
   configurePlannerStore({ repository: createTestRepositories().planner, now: fixedNow, newId: newTestId, locale: () => 'en', timeZone: () => 'UTC' })
@@ -94,5 +119,6 @@ it('shows a task split around a busy slot as one row with its total duration, it
   expect(rows).toHaveLength(1)
   const text = rows[0]!.textContent!.replace(/\s+/g, ' ')
   expect(text).toMatch(/(?<!\d)1:00\s?PM–1:46\s?PM, 2:46\s?PM–3:00\s?PM · Work · 1 h/)
-  expect(rows[0]!.querySelectorAll('button[aria-label^="Remove"]')).toHaveLength(1)
+  // The row has one circle to complete it and the text that opens it; removing is a swipe or the task sheet.
+  expect(rows[0]!.querySelectorAll('button')).toHaveLength(2)
 })

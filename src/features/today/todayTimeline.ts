@@ -49,7 +49,7 @@ export function buildTimeline({ document, today, timeZone, external, placements 
       if (!task) return []
       return placement.chunks.filter((chunk) => intersects(chunk.start, chunk.end, from, to)).map((chunk): TimelineItem => ({
         kind: 'task', key: `task:${task.id}@${chunk.start}`, title: task.title, start: chunk.start, end: chunk.end,
-        conflict: false, taskId: task.id, categoryId: task.categoryId, late: placement.late,
+        conflict: false, taskId: task.id, categoryId: task.categoryId ?? '', late: placement.late,
       }))
     }),
     ...document.events.filter((event) => !event.allDay && intersects(event.start, event.end, from, to)).map((event): TimelineItem => ({

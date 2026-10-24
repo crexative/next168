@@ -1,28 +1,21 @@
 {
-  "swipeComplete": "Erledigt",
   "today": "Heute",
   "due": "fällig {date}",
   "completed": "„{title}“ erledigt",
   "removed": "„{title}“ entfernt",
   "overflow": "In {category} fehlen diese Woche {duration}.",
-  "overflowHint": "Fügen Sie etwa {duration} zu den {category}-Blöcken hinzu, verkürzen Sie die Aufgabe oder teilen Sie sie.",
+  "overflowHint": "Fügen Sie etwa {duration} zu Ihren {category}-Routinen hinzu, verkürzen Sie die Aufgabe oder teilen Sie sie.",
   "late": "Sie liegt nach dem Fälligkeitsdatum ({date}).",
-  "lateHint": "Verschieben Sie das Datum, erhöhen Sie die Priorität oder schaffen Sie früher Zeit in der Kategorie.",
+  "lateHint": "Verschieben Sie das Datum, erhöhen Sie die Priorität oder schaffen Sie früher Zeit.",
   "warnings": "Planungshinweise",
   "unplaced": "Nicht eingeplant",
-  "unplacedHint": "In den nächsten 7 Tagen gibt es in dieser Kategorie keine freie Zeit.",
+  "unplacedHint": "In den nächsten 7 Tagen gibt es keinen freien Zeitraum.",
   "recentDone": "Zuletzt erledigt",
   "reopen": "Wieder öffnen",
   "complete": "{title} erledigen",
-  "remove": "{title} entfernen",
-  "noCategories": {
-    "title": "Legen Sie zuerst eine Kategorie an",
-    "description": "Aufgaben werden in die freie Zeit ihrer Kategorie eingepasst.",
-    "action": "Einstellungen öffnen"
-  },
   "empty": {
     "title": "Nichts zu tun",
-    "description": "Fügen Sie oben eine Aufgabe hinzu; sie wird in die freie Zeit ihrer Kategorie eingepasst."
+    "description": "Fügen Sie oben eine Aufgabe hinzu; sie findet von selbst einen freien Zeitraum."
   },
   "add": {
     "title": "Aufgabe hinzufügen",
@@ -30,15 +23,27 @@
     "titlePlaceholder": "Aufgabe hinzufügen…",
     "duration": "Dauer",
     "category": "Kategorie",
-    "dueDate": "Fällig am (optional)",
+    "dueDate": "Fällig am",
     "priority": "Priorität",
     "submit": "Aufgabe hinzufügen",
-    "details": "Details zu dieser Aufgabe"
+    "details": "Details zu dieser Aufgabe",
+    "more": "Weitere Optionen",
+    "when": "Wann?",
+    "anyFreeTime": "In jeder freien Lücke",
+    "during": "Während {category}"
   },
   "priority": {
     "1": "Hoch",
     "2": "Mittel",
     "3": "Niedrig"
   },
-  "changedElsewhere": "Das wurde anderswo geändert und deshalb neu geladen. Bitte prüfen und erneut versuchen."
+  "changedElsewhere": "Das wurde anderswo geändert und deshalb neu geladen. Bitte prüfen und erneut versuchen.",
+  "swipeRemove": "Entfernen",
+  "overflowAny": "Diese Woche fehlen {duration} freie Zeit.",
+  "overflowAnyHint": "Schaffen Sie diese Woche Zeit, verkürzen Sie die Aufgabe oder teilen Sie sie.",
+  "sheet": {
+    "new": "Neue Aufgabe",
+    "edit": "Aufgabe bearbeiten",
+    "delete": "Aufgabe entfernen"
+  }
 }

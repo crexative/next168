@@ -1,28 +1,21 @@
 {
-  "swipeComplete": "Done",
   "today": "Today",
   "due": "due {date}",
   "completed": "Completed “{title}”",
   "removed": "Removed “{title}”",
   "overflow": "{duration} missing in {category} this week.",
-  "overflowHint": "Add about {duration} to {category} blocks, shorten the task, or split it.",
+  "overflowHint": "Add about {duration} to your {category} routines, shorten the task, or split it.",
   "late": "This lands after its due date ({date}).",
-  "lateHint": "Move the due date, raise its priority, or free up earlier time in its category.",
+  "lateHint": "Move the due date, raise its priority, or free up earlier time.",
   "warnings": "Scheduling warnings",
   "unplaced": "Not scheduled",
-  "unplacedHint": "No free time in this category in the next 7 days.",
+  "unplacedHint": "No free slot in the next 7 days.",
   "recentDone": "Recently done",
   "reopen": "Reopen",
   "complete": "Complete {title}",
-  "remove": "Remove {title}",
-  "noCategories": {
-    "title": "Create a category first",
-    "description": "Tasks are fitted into the free time of their category.",
-    "action": "Open settings"
-  },
   "empty": {
     "title": "Nothing to do",
-    "description": "Add a task above and it is fitted into free time of its category."
+    "description": "Add a task above and it finds a free slot on its own."
   },
   "add": {
     "title": "Add task",
@@ -30,15 +23,27 @@
     "titlePlaceholder": "Add task…",
     "duration": "Duration",
     "category": "Category",
-    "dueDate": "Due date (optional)",
+    "dueDate": "Due date",
     "priority": "Priority",
     "submit": "Add task",
-    "details": "Details for this task"
+    "details": "Details for this task",
+    "more": "More options",
+    "when": "When?",
+    "anyFreeTime": "Any free slot",
+    "during": "During {category}"
   },
   "priority": {
     "1": "High",
     "2": "Medium",
     "3": "Low"
   },
-  "changedElsewhere": "This changed elsewhere, so it was reloaded. Please review it and try again."
+  "changedElsewhere": "This changed elsewhere, so it was reloaded. Please review it and try again.",
+  "swipeRemove": "Delete",
+  "overflowAny": "{duration} of free time missing this week.",
+  "overflowAnyHint": "Free up time this week, shorten the task, or split it.",
+  "sheet": {
+    "new": "New task",
+    "edit": "Edit task",
+    "delete": "Delete task"
+  }
 }

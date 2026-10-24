@@ -48,7 +48,7 @@ export const timeBlockSchema = z.object({
 export const taskSchema = z.object({
   id,
   title: text(120),
-  categoryId: id,
+  categoryId: id.optional(),
   durationMin: z.number().int().min(15).max(180),
   dueDate: isoDate.optional(),
   priority: z.union([z.literal(1), z.literal(2), z.literal(3)]),

@@ -1,28 +1,21 @@
 {
-  "swipeComplete": "Hecho",
   "today": "Hoy",
   "due": "vence {date}",
   "completed": "Completada «{title}»",
   "removed": "Eliminada «{title}»",
   "overflow": "Faltan {duration} en {category} esta semana.",
-  "overflowHint": "Añade unos {duration} a los bloques de {category}, acorta la tarea o divídela.",
+  "overflowHint": "Añade unos {duration} a tus rutinas de {category}, acorta la tarea o divídela.",
   "late": "Cae después de su fecha límite ({date}).",
-  "lateHint": "Mueve la fecha límite, sube su prioridad o libera tiempo antes en su categoría.",
+  "lateHint": "Mueve la fecha límite, sube su prioridad o libera tiempo antes.",
   "warnings": "Avisos de planificación",
   "unplaced": "Sin programar",
-  "unplacedHint": "No hay tiempo libre en esta categoría en los próximos 7 días.",
+  "unplacedHint": "No hay hueco libre en los próximos 7 días.",
   "recentDone": "Hechas recientemente",
   "reopen": "Reabrir",
   "complete": "Completar {title}",
-  "remove": "Eliminar {title}",
-  "noCategories": {
-    "title": "Crea primero una categoría",
-    "description": "Las tareas se encajan en el tiempo libre de su categoría.",
-    "action": "Abrir ajustes"
-  },
   "empty": {
     "title": "Nada pendiente",
-    "description": "Añade una tarea arriba y se encajará en el tiempo libre de su categoría."
+    "description": "Añade una tarea arriba y encontrará un hueco libre por sí sola."
   },
   "add": {
     "title": "Añadir tarea",
@@ -30,15 +23,27 @@
     "titlePlaceholder": "Añadir tarea…",
     "duration": "Duración",
     "category": "Categoría",
-    "dueDate": "Fecha límite (opcional)",
+    "dueDate": "Fecha límite",
     "priority": "Prioridad",
     "submit": "Añadir tarea",
-    "details": "Detalles de esta tarea"
+    "details": "Detalles de esta tarea",
+    "more": "Más opciones",
+    "when": "¿Cuándo?",
+    "anyFreeTime": "En cualquier hueco libre",
+    "during": "Durante {category}"
   },
   "priority": {
     "1": "Alta",
     "2": "Media",
     "3": "Baja"
   },
-  "changedElsewhere": "Esto cambió en otro lugar, así que se volvió a cargar. Revísalo e inténtalo de nuevo."
+  "changedElsewhere": "Esto cambió en otro lugar, así que se volvió a cargar. Revísalo e inténtalo de nuevo.",
+  "swipeRemove": "Eliminar",
+  "overflowAny": "Faltan {duration} de tiempo libre esta semana.",
+  "overflowAnyHint": "Libera tiempo en tu semana, acorta la tarea o divídela.",
+  "sheet": {
+    "new": "Nueva tarea",
+    "edit": "Editar tarea",
+    "delete": "Eliminar tarea"
+  }
 }

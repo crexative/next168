@@ -180,3 +180,62 @@ describe('movedOnFromToday', () => {
     expect(movedOnFromToday(before, same, '2026-10-22', 'UTC')).toEqual([])
   })
 })
+
+describe('a task with no category fits any free time', () => {
+  const anytime = (document: PlannerDocument, durationMin = 60) => {
+    const task = { ...document.tasks[0]!, id: 'gift', title: 'Gift', durationMin }
+    delete (task as { categoryId?: string }).categoryId
+    return { ...document, tasks: [task] }
+  }
+  const work = [{ id: 'job', categoryId: 'work', title: 'Job', days: [...EVERY_DAY], start: 540, end: 1020 }]
+
+  it('goes before a routine block, never inside it, whatever the block category is', () => {
+    const document = anytime(planner(work), 120)
+    const [placement] = scheduleTasks({ document, busy: [], now: at('06:00'), timeZone: 'UTC', days: 1 })
+    expect(placement!.chunks).toEqual([{ start: '2026-10-21T06:00:00.000Z', end: '2026-10-21T08:00:00.000Z' }])
+    // A task of another category reaches the very same time only through its own blocks.
+    expect(scheduleTasks({ document: { ...document, tasks: [{ ...document.tasks[0]!, categoryId: 'work' }] }, busy: [], now: at('06:00'), timeZone: 'UTC', days: 1 })[0]!.chunks[0]!.start).toBe('2026-10-21T09:00:00.000Z')
+  })
+
+  it('treats the block end as free (half-open ranges) and splits around the block', () => {
+    const document = anytime(planner(work), 180)
+    const [placement] = scheduleTasks({ document, busy: [], now: at('07:00'), timeZone: 'UTC', days: 1 })
+    expect(placement!.chunks).toEqual([
+      { start: '2026-10-21T07:00:00.000Z', end: '2026-10-21T09:00:00.000Z' },
+      { start: '2026-10-21T17:00:00.000Z', end: '2026-10-21T18:00:00.000Z' },
+    ])
+    expect(placement!.overflowMinutes).toBe(0)
+  })
+
+  it('keeps out of a block that started yesterday and runs past midnight, and of a calendar event', () => {
+    const sleep = [{ id: 'night', categoryId: 'work', title: 'Night', days: [...EVERY_DAY], start: 1320, end: 360 }]
+    const document = anytime(planner(sleep), 60)
+    const busy = [{ start: '2026-10-21T06:00:00.000Z', end: '2026-10-21T07:00:00.000Z' }]
+    const [placement] = scheduleTasks({ document, busy, now: at('00:30'), timeZone: 'UTC', days: 1 })
+    expect(placement!.chunks).toEqual([{ start: '2026-10-21T07:00:00.000Z', end: '2026-10-21T08:00:00.000Z' }])
+  })
+
+  it('reports the missing minutes when no moment of the horizon is free', () => {
+    const allDay = [{ id: 'all', categoryId: 'work', title: 'All', days: [...EVERY_DAY], start: 0, end: 1 }, { id: 'rest', categoryId: 'work', title: 'Rest', days: [...EVERY_DAY], start: 1, end: 0 }]
+    const [placement] = scheduleTasks({ document: anytime(planner(allDay), 60), busy: [], now: at('08:00'), timeZone: 'UTC', days: 1 })
+    expect(placement).toMatchObject({ chunks: [], overflowMinutes: 60 })
+  })
+
+  it('is placed on the 15-minute grid by the stable scheduler, in the same free time, and kept while valid', () => {
+    const document = anytime(planner(work), 60)
+    const first = scheduleStable({ document, busy: [], now: at('06:07'), timeZone: 'UTC', days: 1 })
+    expect(first[0]!.chunks).toEqual([{ start: '2026-10-21T06:15:00.000Z', end: '2026-10-21T07:15:00.000Z' }])
+    const later = scheduleStable({ document, busy: [], now: at('06:20'), timeZone: 'UTC', days: 1, previous: byId(first) })
+    expect(later[0]).toEqual(first[0])
+    // The kept placement stops being valid once a block would cover it.
+    const covered = { ...document, blocks: [{ ...work[0]!, start: 360, end: 480 }] }
+    expect(scheduleStable({ document: covered, busy: [], now: at('06:20'), timeZone: 'UTC', days: 1, previous: byId(first) })[0]!.chunks[0]!.start).toBe('2026-10-21T08:00:00.000Z')
+  })
+
+  it('finds the free hour either side of the spring-forward gap', () => {
+    const document = anytime(planner([{ id: 'early', categoryId: 'work', title: 'Early', days: [...EVERY_DAY], start: 0, end: 120 }]), 60)
+    // New York, 2026-03-08: 02:00 does not exist, 03:00 EDT = 07:00Z; the block ends at the gap.
+    const [placement] = scheduleTasks({ document, busy: [], now: new Date('2026-03-08T05:00:00Z'), timeZone: 'America/New_York', days: 1 })
+    expect(placement!.chunks[0]!.start).toBe('2026-03-08T07:00:00.000Z')
+  })
+})
