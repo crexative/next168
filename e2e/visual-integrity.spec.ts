@@ -1,4 +1,4 @@
-import { expect, test, type Page } from '@playwright/test'
+import { expect, test, type Page, type TestInfo } from '@playwright/test'
 import { legacyData, seedKey, V2_KEY } from './fixtures'
 import { visualIntegrityViolations } from './support/visualIntegrity'
 
@@ -251,3 +251,59 @@ for (const theme of THEMES) {
     })
   })
 }
+
+// The overlap rule judges what a user can see: a field a scroll container has scrolled out of sight is not
+// under the button that occupies its page coordinates, but a visible collision still is an overlap.
+test.describe('visual integrity guard: overlapping controls', () => {
+  const stage = (closeTop: number, fields: string) => `
+    <style>
+      body { margin: 0; font: 16px sans-serif; }
+      .stage { position: relative; width: 300px; height: 300px; }
+      .close { position: absolute; right: 0; top: ${closeTop}px; width: 44px; height: 44px; }
+      .body { position: absolute; top: 44px; left: 0; width: 300px; height: 200px; overflow-y: auto; }
+      input { display: block; box-sizing: border-box; width: 300px; height: 44px; margin: 0 0 12px; }
+    </style>
+    <div class="stage"><button class="close" aria-label="Close">x</button><div class="body">${fields}</div></div>`
+  const fiveFields = '<input aria-label="Name">'.repeat(5)
+
+  const phoneOnly = (testInfo: TestInfo) => test.skip(testInfo.project.name !== 'phone', 'the guard self-test runs once, in the phone project')
+
+  test('a field scrolled above its container does not overlap the button at those coordinates', async ({ page }, testInfo) => {
+    phoneOnly(testInfo)
+    await page.setContent(stage(0, fiveFields))
+    await page.locator('.body').evaluate((element) => { element.scrollTop = 44 })
+    const rects = await page.evaluate(() => ({
+      close: document.querySelector('.close')!.getBoundingClientRect(),
+      first: document.querySelector('.body input')!.getBoundingClientRect(),
+      body: document.querySelector('.body')!.getBoundingClientRect(),
+    }))
+    expect(rects.first.bottom, 'the first field is entirely above the scroll container').toBeLessThanOrEqual(rects.body.top)
+    expect(rects.first.top, 'in the same rows as the close button').toBeLessThan(rects.close.bottom)
+    expect(await visualIntegrityViolations(page, { focusRings: false })).toEqual([])
+  })
+
+  test('a button over a field the container shows is reported', async ({ page }, testInfo) => {
+    phoneOnly(testInfo)
+    await page.setContent(stage(60, fiveFields))
+    expect(await visualIntegrityViolations(page, { focusRings: false })).toEqual([
+      '<button.close> "Close" overlaps <input> "Name"',
+    ])
+  })
+
+  test('a field only partly scrolled out still collides through the part that shows', async ({ page }, testInfo) => {
+    phoneOnly(testInfo)
+    await page.setContent(stage(30, fiveFields))
+    await page.locator('.body').evaluate((element) => { element.scrollTop = 20 })
+    expect(await visualIntegrityViolations(page, { focusRings: false })).toEqual([
+      '<button.close> "Close" overlaps <input> "Name"',
+    ])
+  })
+
+  test('two fields that overlap inside the container are reported', async ({ page }, testInfo) => {
+    phoneOnly(testInfo)
+    await page.setContent(stage(0, '<input aria-label="Name"><input aria-label="Name" style="margin-top: -20px">'))
+    expect(await visualIntegrityViolations(page, { focusRings: false })).toEqual([
+      '<input> "Name" overlaps <input> "Name"',
+    ])
+  })
+})

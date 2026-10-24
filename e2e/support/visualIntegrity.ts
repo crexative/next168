@@ -390,11 +390,22 @@ export function auditInPage(options: { focusRings: boolean }): string[] {
     if (control instanceof HTMLInputElement || control instanceof HTMLTextAreaElement) checkInput(control)
   }
 
+  // Only the part of a control a scroll container currently shows can collide with another control; one
+  // scrolled out of sight sits under its neighbours in page coordinates without anyone seeing an overlap.
+  function shownRect(control: Element): Box | null {
+    const rect = control.getBoundingClientRect()
+    const area = scrolledInto(control)
+    const box: Box = { left: Math.max(rect.left, area.left), top: Math.max(rect.top, area.top), right: Math.min(rect.right, area.right), bottom: Math.min(rect.bottom, area.bottom) }
+    return box.left < box.right && box.top < box.bottom ? box : null
+  }
+
   const formControls = controls.filter((control) => control.matches(FORM_CONTROL) && Number(getComputedStyle(control).opacity) > 0)
   formControls.forEach((first, index) => {
     for (const second of formControls.slice(index + 1)) {
       if (first.contains(second) || second.contains(first) || layerOf(first) !== layerOf(second)) continue
-      if (intersects(first.getBoundingClientRect(), second.getBoundingClientRect())) violations.push(`${describe(first)} overlaps ${describe(second)}`)
+      const firstShown = shownRect(first)
+      const secondShown = shownRect(second)
+      if (firstShown && secondShown && intersects(firstShown, secondShown)) violations.push(`${describe(first)} overlaps ${describe(second)}`)
     }
   })
 
