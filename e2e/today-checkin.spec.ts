@@ -382,7 +382,13 @@ for (const theme of THEMES) {
 
 test.describe('check-in answers can be withdrawn', () => {
   test('Borrar clears stress, and the saved entry loses the field but keeps what was derived', async ({ page }) => {
-    const saved = { ...plan, checkIns: [...plan.checkIns, { date: '2026-10-21', bedtime: 1320, wake: 360, exercise: 'yes', stress: 3 }] }
+    // Tonight's gym was marked done on Hoy, so the check-in derives "exercise: yes" from the timeline (an unmarked
+    // block would leave it unknown, and the saved answer would be dropped).
+    const gymDone = {
+      date: '2026-10-21', blockId: 'b-gym', categoryId: 'c-exercise', plannedStartAt: '2026-10-21T18:00:00.000Z',
+      plannedEndAt: '2026-10-21T19:00:00.000Z', plannedMinutes: 60, status: 'done',
+    }
+    const saved = { ...plan, actuals: [gymDone], checkIns: [...plan.checkIns, { date: '2026-10-21', bedtime: 1320, wake: 360, exercise: 'yes', stress: 3 }] }
     await start(page, SIZES[0], 'light', saved, '2026-10-21T20:30:00.000Z')
     await open(page, 'checkin', 'Cierre del día')
     const stress = page.getByRole('radiogroup', { name: 'Estrés hoy' })
