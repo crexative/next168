@@ -37,7 +37,7 @@ export const categorySchema = z.object({
 export const timeBlockSchema = z.object({
   id,
   categoryId: id,
-  title: text(80),
+  title: text(120), // v1 accepted 100; keep headroom so migration is lossless
   notes: optionalText(500),
   days: z.array(dayIndexSchema).min(1).max(7),
   start: minuteSchema,
@@ -118,7 +118,7 @@ export interface ExternalOccurrence {
 
 const blockFields = z.object({
   categoryId: id,
-  title: text(80),
+  title: text(120),
   notes: optionalText(500),
   days: z.array(dayIndexSchema).min(1).max(7),
   start: minuteSchema,
