@@ -7,6 +7,7 @@ import { localDateOf } from '@/core/time'
 import { formatDuration } from '@/features/insights/format'
 import { categoryColor } from '@/features/insights/categoryColor'
 import { assertEntry, CHANGED_ELSEWHERE, snapshotOf } from '@/features/insights/entryGuard'
+import { useExternalOccurrences } from '@/features/week/externalOccurrences'
 import { usePlannerStore } from '@/stores/plannerStore'
 import Button from '@/ui/Button.vue'
 import EmptyState from '@/ui/EmptyState.vue'
@@ -32,10 +33,16 @@ const document = computed(() => planner.document)
 const categories = computed(() => document.value?.categories ?? [])
 const categoryById = computed(() => new Map(categories.value.map((category) => [category.id, category])))
 
+// The same calendar occurrences Week and Today show are busy time for placement.
+const external = useExternalOccurrences(() => document.value
+  ? { fromDate: localDateOf(now.value, document.value.settings.timeZone), days: 7, timeZone: document.value.settings.timeZone }
+  : null)
+
 const plan = computed(() => {
   const doc = document.value
   if (!doc) return null
-  return planTasks(doc, scheduleTasks({ document: doc, busy: [], now: now.value, timeZone: doc.settings.timeZone }))
+  const busy = external.value.filter((item) => item.busy && !item.allDay).map((item) => ({ start: item.start, end: item.end }))
+  return planTasks(doc, scheduleTasks({ document: doc, busy, now: now.value, timeZone: doc.settings.timeZone }))
 })
 const done = computed(() => recentDone(document.value?.tasks ?? []))
 
