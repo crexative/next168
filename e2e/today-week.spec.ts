@@ -62,15 +62,21 @@ async function settled(page: Page): Promise<void> {
   await expect.poll(() => page.getByTestId('pager-track').evaluate((element) => element.style.transform)).toMatch(/\+ 0px\)\)$/)
 }
 
-// Records every transform the pager track shows, one sample per frame, starting now or at the next pointer release.
+// Records every transform the pager track is given, synchronously through a style mutation observer (no frame
+// sampling, so a transform applied and replaced between two frames is still seen), starting now or at the next
+// pointer release, before the page's own handlers run. The 'now' recording starts with the current transform.
 async function recordTrackTransforms(page: Page, from: 'now' | 'release' = 'now'): Promise<void> {
   await page.evaluate((start) => {
     const track = document.querySelector<HTMLElement>('[data-testid="pager-track"]')!
     const samples: string[] = []
     ;(window as unknown as { __transforms: string[] }).__transforms = samples
-    const sample = () => { samples.push(track.style.transform); requestAnimationFrame(sample) }
-    if (start === 'now') requestAnimationFrame(sample)
-    else window.addEventListener('pointerup', () => requestAnimationFrame(sample), { capture: true, once: true })
+    const observer = new MutationObserver(() => { samples.push(track.style.transform) })
+    const begin = () => {
+      if (start === 'now') samples.push(track.style.transform)
+      observer.observe(track, { attributes: true, attributeFilter: ['style'] })
+    }
+    if (start === 'now') begin()
+    else window.addEventListener('pointerup', begin, { capture: true, once: true })
   }, from)
 }
 
@@ -99,6 +105,19 @@ test.describe('today', () => {
 
     await page.clock.runFor(5 * 60_000)
     await expect(card.getByTestId('now-left')).toHaveText('40 min left')
+    expect(await card.boundingBox()).toEqual(before)
+  })
+
+  test('a status notice arriving late does not move the Now card', async ({ page }) => {
+    await openSeeded(page, 'today')
+    const card = page.getByTestId('now-card')
+    const before = await card.boundingBox()
+    await page.evaluate(() => {
+      const channel = new BroadcastChannel('next168')
+      channel.postMessage({ type: 'update-available' })
+      channel.close()
+    })
+    await expect(page.getByTestId('update-banner')).toBeVisible()
     expect(await card.boundingBox()).toEqual(before)
   })
 
