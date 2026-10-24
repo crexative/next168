@@ -173,6 +173,32 @@ for (const theme of THEMES) {
       }
     })
 
+    // Resumen: every row state (missing, kept, at the cap, over) and a row that only carries what was done.
+    for (const locale of ['en', 'es'] as const) {
+      test(`Summary rows in every goal state, and with no goals (${locale})`, async ({ page }) => {
+        const goals: Record<string, unknown> = {
+          'c-work': { type: 'max', hoursPerWeek: 8 }, 'c-sleep': { type: 'min', hoursPerWeek: 70 },
+          'c-exercise': { type: 'max', hoursPerWeek: 3 }, 'c-study': { type: 'none', hoursPerWeek: 0 },
+        }
+        const withGoals = (byId: Record<string, unknown>) => plannedDocument.categories.map((category) => ({ ...category, goal: byId[category.id] }))
+        const done = { date: '2026-10-20', blockId: 'b-study', categoryId: 'c-study', plannedStartAt: '2026-10-20T19:30:00.000Z', plannedEndAt: '2026-10-20T21:00:00.000Z', plannedMinutes: 90, status: 'done' }
+        const settings = { ...plannedDocument.settings, locale }
+        await start(page, theme, { ...plannedDocument, settings, categories: withGoals(goals), actuals: [done] }, locale)
+        await open(page, 'insights')
+        await expect(page.getByTestId('goal-state')).toHaveCount(3)
+        await expect(page.getByTestId('actual-line')).toHaveCount(1)
+        await audit(page, `${theme}/${locale}/summary with every goal state`)
+      })
+
+      test(`Summary with no goals invites setting one (${locale})`, async ({ page }) => {
+        const none = plannedDocument.categories.map((category) => ({ ...category, goal: { type: 'none', hoursPerWeek: 0 } }))
+        await start(page, theme, { ...plannedDocument, settings: { ...plannedDocument.settings, locale }, categories: none }, locale)
+        await open(page, 'insights')
+        await expect(page.getByTestId('goals-empty')).toBeVisible()
+        await audit(page, `${theme}/${locale}/summary without goals`)
+      })
+    }
+
     for (const [label, categories] of [['no categories', []], ['categories, no blocks', plannedDocument.categories]] as const) {
       test(`empty Today and Week offer "Set up my week" (${label})`, async ({ page }) => {
         await start(page, theme, { ...firstRunDocument, categories, settings: { ...firstRunDocument.settings, onboardingDone: true } })

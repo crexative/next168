@@ -39,7 +39,8 @@ test.describe('assistant without WebGPU', () => {
     await ask(page, 'How many hours of work this week?')
     await expect(page.locator('[data-role=assistant]').last()).toHaveText('Work: 13 h planned this week.')
     await ask(page, 'How many unassigned hours do I have?')
-    await expect(page.locator('[data-role=assistant]').last()).toContainText('Your routine leaves 99 h of the 168 h unassigned (69 h planned).')
+    // The live number only: the routine's unassigned hours belong to the Summary, not to this answer.
+    await expect(page.locator('[data-role=assistant]').last()).toHaveText(/^\d+ h free this week\.$/)
   })
 
   test('quick answers do not change the plan', async ({ page }) => {

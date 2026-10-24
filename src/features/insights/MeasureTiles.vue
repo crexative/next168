@@ -87,8 +87,9 @@ const tiles = computed(() => {
 .measures { display: flex; flex-direction: column; gap: var(--space-3); }
 .measures h2 { margin-bottom: calc(var(--space-2) * -1); }
 .range { margin: 0; }
-.tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(14rem, 1fr)); gap: var(--space-3); }
-.tile { display: flex; flex-direction: column; gap: var(--space-1); padding: var(--space-4); background: var(--surface); border-radius: var(--radius-card); }
+/* min() lets a tile shrink to the column: at 200 % text 14rem is wider than a phone screen. */
+.tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(14rem, 100%), 1fr)); gap: var(--space-3); }
+.tile { display: flex; min-width: 0; flex-direction: column; gap: var(--space-1); padding: var(--space-4); background: var(--surface); border-radius: var(--radius-card); }
 .dots { display: flex; justify-content: space-between; margin-top: var(--space-2); }
 .dot-item { display: flex; flex-direction: column; align-items: center; gap: 2px; }
 .dot { width: 12px; height: 12px; border-radius: 50%; border: 2px solid var(--label-3); box-sizing: border-box; }
