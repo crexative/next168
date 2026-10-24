@@ -44,6 +44,9 @@ describe('companion HTTP and official MCP SDK client', () => {
     const listing = await sdk.listTools()
     expect(listing.tools.map(tool => tool.name).sort()).toEqual(['get_week', 'list_categories', 'list_blocks', 'list_tasks', 'list_events', 'get_stats', 'propose_changes', 'get_proposal'].sort())
     expect(listing.tools.find(tool => tool.name === 'get_week')?.annotations?.readOnlyHint).toBe(true)
+    const eventsTool = listing.tools.find(tool => tool.name === 'list_events')!
+    expect(eventsTool.description).not.toMatch(/S3|until .* integrated/i)
+    expect(eventsTool.description).toContain('external-calendar-expansion-unavailable')
     const { document } = await payload(await api('/api/document'))
     document.categories = [{ id: 'focus', name: 'Focus', colorKey: 'blue', goal: { type: 'none', hoursPerWeek: 0 } }]; document.revision++
     expect((await api('/api/document', 'PUT', { document }, { 'If-Match': '0' })).status).toBe(200)
