@@ -86,7 +86,9 @@ async function submit(): Promise<void> {
 </template>
 
 <style scoped>
-.assistant { display: flex; flex-direction: column; gap: var(--space-4); max-width: 40rem; }
+/* Same 16 px side gutter as the other screens; the group header and footer are already inset inside the group. */
+.assistant { display: flex; flex-direction: column; gap: var(--space-4); max-width: 40rem; padding: 0 var(--space-4) var(--space-6); }
+.assistant :deep(.list-header), .assistant :deep(.list-footer) { padding-inline: 0; }
 .card { display: flex; flex-direction: column; gap: var(--space-3); padding: var(--space-4); background: var(--surface); border-radius: var(--radius-card); }
 progress { width: 100%; accent-color: var(--tint); }
 .chat { display: flex; flex-direction: column; gap: var(--space-3); }
