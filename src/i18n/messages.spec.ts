@@ -39,6 +39,7 @@ describe('i18n catalogs', () => {
   it.each(SUPPORTED_LOCALES)('%s overflow hint does not put an indefinite article before the category name', (locale) => {
     const hint = (messages[locale]?.tasks as { overflowHint: string }).overflowHint
     expect(hint).toContain('{category}')
-    expect(hint).not.toMatch(/\b(a|an|un|une|uma|ein|einem|einen|eine)\b[^,.{]*\{category\}/i)
+    const indefinite = { en: 'an?', es: 'una?', fr: 'une?', pt: 'uma?', de: 'einem|einen|eine|ein' }[locale]
+    expect(hint).not.toMatch(new RegExp(`\\b(${indefinite})\\b[^,.{]*\\{category\\}`, 'i'))
   })
 })
