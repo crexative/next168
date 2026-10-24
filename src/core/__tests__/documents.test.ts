@@ -76,8 +76,10 @@ describe('documents and migration', () => {
     const raw = JSON.stringify(legacy)
     expect(migrateToCurrent(raw, env)).toMatchObject({ kind: 'corrupt', raw })
   })
-  it('rejects invalid legacy times rather than coercing them', () => {
-    expect(migrateToCurrent({ categories: [], timeBlocks: [{ id: 'x', categoryId: 'x', title: 'X', dayOfWeek: 1, startTime: '25:00', endTime: '06:00', durationMinutes: 1 }] }, env)).toMatchObject({ kind: 'corrupt' })
+  it.each(['25:00', '07:60', '7:30', '07:5', ' 07:30'])('rejects the invalid legacy time %s rather than coercing it', (startTime) => {
+    const categories = [{ id: 'x', name: 'X', color: '#007AFF', weeklyHourLimit: 1 }]
+    expect(migrateToCurrent({ categories, timeBlocks: [{ id: 'b', categoryId: 'x', title: 'X', dayOfWeek: 1, startTime, endTime: '09:00', durationMinutes: 1 }] }, env)).toMatchObject({ kind: 'corrupt' })
+    expect(migrateToCurrent({ categories, timeBlocks: [{ id: 'b', categoryId: 'x', title: 'X', dayOfWeek: 1, startTime: '07:30', endTime: '09:00', durationMinutes: 1 }] }, env)).toMatchObject({ kind: 'ok' })
   })
   it('rejects duplicate ids, dangling references, dates, actual identities and invalid zones', () => {
     const doc = document()
