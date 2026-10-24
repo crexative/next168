@@ -5,6 +5,7 @@ import {
   WEBLLM_MODEL_ID, WebLlmProvider, classifyFailure, quoteFacts,
   type WebLlmDependencies, type WebLlmEngine, type WebLlmModule,
 } from './WebLlmProvider'
+import { applyProposal, buildProposal } from '@/core/proposals'
 import { contextFor, plannerWithBlocks } from './testSupport'
 
 const capable: DeviceCapabilities = { webGpu: true, shaderF16: true, maxBufferSize: 2 ** 31, deviceMemoryGb: 8, storageQuotaBytes: 50e9, storageUsageBytes: 1e9 }
@@ -194,6 +195,47 @@ describe('WebLlmProvider prepare and ask', () => {
     expect(reply.answer).toBe('Add "Gym" on Thursday, 18:00–19:00')
   })
 
+  it.each([
+    ['delete_block', 'Deep work', undefined],
+    ['delete_block', 'Review', undefined],
+    ['move_block', 'Deep work', undefined],
+    ['move_block', 'Review', undefined],
+    ['move_block', 'Deep work', 'thursday'],
+  ])('returns no proposal for %s of %s on an absent source day (%s)', async (intent, title, fromDay) => {
+    const document = plannerWithBlocks()
+    const before = structuredClone(document)
+    const { provider } = setup({ engine: fakeEngine(() => JSON.stringify({ intent, title, day: 'thursday', fromDay, start: '10:00' })) })
+    await provider.prepare(vi.fn(), signal())
+    const reply = await provider.ask(`${intent === 'delete_block' ? 'Delete' : 'Move'} ${title} on Thursday`, contextFor(document), signal())
+    expect(reply.proposal).toBeUndefined()
+    expect(reply.answer).toBe(`"${title}" occurs on ${title === 'Deep work' ? 'Monday, Tuesday, Wednesday' : 'Friday'}. Which occurrence would you like to change?`)
+    expect(document).toEqual(before)
+  })
+
+  it.each([
+    ['10:00', undefined, 600, 840],
+    ['23:00', undefined, 1380, 180],
+    ['10:00', '11:30', 600, 690],
+  ])('moves only Tuesday to Thursday at %s (end %s) through proposal application', async (start, end, expectedStart, expectedEnd) => {
+    const document = plannerWithBlocks()
+    document.blocks[0]!.notes = 'Keep focus'
+    const before = structuredClone(document)
+    const { provider } = setup({ engine: fakeEngine(() => JSON.stringify({ intent: 'move_block', title: 'Deep work', fromDay: 'tuesday', day: 'thursday', start, end })) })
+    await provider.prepare(vi.fn(), signal())
+    const reply = await provider.ask(`Move Tuesday Deep work to Thursday at ${start}`, contextFor(document), signal())
+    expect(reply.proposal).toBeDefined()
+    const clock = { now: () => new Date('2026-10-24T12:00:00Z') }
+    const proposal = await buildProposal(reply.proposal, document, 'assistant', clock, () => 'move-proposal')
+    const applied = await applyProposal(document, proposal, () => 'moved-occurrence', clock)
+    if (applied.kind !== 'applied') throw new Error('expected the move to apply')
+    expect(applied.document.blocks).toEqual([
+      { ...before.blocks[0], days: [1, 3] },
+      ...before.blocks.slice(1),
+      { id: 'moved-occurrence', categoryId: 'work', title: 'Deep work', notes: 'Keep focus', days: [4], start: expectedStart, end: expectedEnd },
+    ])
+    expect(document).toEqual(before)
+  })
+
   it('asks the model for a small intent, with examples and names but no ids or computed facts', async () => {
     const proposing = fakeEngine(() => '{"intent":"none"}')
     const { provider } = setup({ engine: proposing })
@@ -201,7 +243,7 @@ describe('WebLlmProvider prepare and ask', () => {
     await provider.ask('Add a gym block', context(), signal())
     const request = proposing.engine.create.mock.calls[0]![0] as { messages: { content: string }[]; response_format: { schema: string }; max_tokens: number }
     expect(Object.keys(JSON.parse(request.response_format.schema).properties)).toEqual(['intent', 'title', 'categoryName', 'day', 'fromDay', 'start', 'end', 'durationHours', 'durationMinutes', 'dueDate'])
-    expect(request.messages[0]!.content).toContain('Categories: Work, Study')
+    expect(request.messages[0]!.content).toContain('Categories: ["Work","Study"]')
     expect(request.messages[0]!.content).toContain('Request: Add a two hour Study block')
     expect(request.messages[0]!.content).not.toContain('work-am')
     expect(request.messages[1]!.content).toBe('Add a gym block')

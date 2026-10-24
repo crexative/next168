@@ -113,6 +113,7 @@
       "needsDetails": "Für diese Änderung brauche ich mehr Angaben: was, welcher Tag und welche Uhrzeit. Bitte fragen Sie erneut mit diesen Angaben.",
       "unknownCategory": "Die Kategorie „{category}“ habe ich nicht gefunden. Ihre Kategorien sind: {categories}.",
       "unknownBlock": "Einen Block namens „{title}“ habe ich in Ihrem Plan nicht gefunden.",
+      "absentDay": "\"{title}\" findet an diesen Tagen statt: {days}. Welchen Termin möchtest du ändern?",
       "ambiguousBlock": "Mehrere Blöcke passen zu „{title}“. Bitte nennen Sie den Tag.",
       "notDelete": "Ich war nicht sicher, ob Sie einen Block entfernen wollten, daher wurde nichts geändert. Sagen Sie „lösche“ oder „entferne“ und den Namen des Blocks."
     }

@@ -113,6 +113,7 @@
       "needsDetails": "I need more detail to make that change: what, which day and what time. Please ask again with those.",
       "unknownCategory": "I could not find the category \"{category}\". Your categories are: {categories}.",
       "unknownBlock": "I could not find a block called \"{title}\" in your plan.",
+      "absentDay": "\"{title}\" occurs on {days}. Which occurrence would you like to change?",
       "ambiguousBlock": "More than one block matches \"{title}\". Please say which day it is on.",
       "notDelete": "I was not sure you wanted to remove a block, so nothing was changed. Say \"delete\" or \"remove\" and the name of the block."
     }

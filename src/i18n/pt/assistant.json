@@ -113,6 +113,7 @@
       "needsDetails": "Preciso de mais detalhes para fazer essa alteração: o quê, que dia e que horas. Peça de novo com esses dados.",
       "unknownCategory": "Não encontrei a categoria \"{category}\". As suas categorias são: {categories}.",
       "unknownBlock": "Não encontrei um bloco chamado \"{title}\" no seu plano.",
+      "absentDay": "\"{title}\" ocorre nos dias {days}. Qual ocorrência você gostaria de alterar?",
       "ambiguousBlock": "Mais de um bloco corresponde a \"{title}\". Diga em que dia está.",
       "notDelete": "Não tive certeza de que queria remover um bloco, por isso não alterei nada. Diga \"remove\" ou \"apaga\" e o nome do bloco."
     }
