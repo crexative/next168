@@ -1,17 +1,19 @@
 <script setup lang="ts">
 import { useI18n } from 'vue-i18n'
-import type { Category } from '@/core/model'
+import type { BlockActual, Category } from '@/core/model'
 import DayColumn from './DayColumn.vue'
 import TimeAxis from './TimeAxis.vue'
 import { formatDate } from './localTime'
 import type { BusyDetails } from './busyDetails'
-import type { BlockSegment, BusySegment } from './weekLayout'
+import type { BlockSegment, BusySegment, TaskSegment } from './weekLayout'
 
 defineProps<{
   dates: string[]
   today: string
   segments: Record<string, BlockSegment[]>
   busy: Record<string, BusySegment[]>
+  tasks: Record<string, TaskSegment[]>
+  actuals: BlockActual[]
   categories: Category[]
   timeZone: string
   nowMinute: number
@@ -41,6 +43,8 @@ const { locale } = useI18n()
         :label="formatDate(date, locale, { weekday: 'long', day: 'numeric', month: 'long' })"
         :segments="segments[date] ?? []"
         :busy="busy[date] ?? []"
+        :tasks="tasks[date] ?? []"
+        :actuals="actuals"
         :categories="categories"
         :time-zone="timeZone"
         :now-minute="date === today ? nowMinute : null"

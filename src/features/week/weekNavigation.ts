@@ -15,7 +15,7 @@ export function weekRangeLabel(dates: readonly string[], locale: string, today: 
   if (!first || !last) return ''
   const withYear = first.slice(0, 4) !== today.slice(0, 4) || last.slice(0, 4) !== today.slice(0, 4)
   const format = new Intl.DateTimeFormat(locale, { day: 'numeric', month: 'short', ...(withYear ? { year: 'numeric' as const } : {}), timeZone: 'UTC' })
-  return format.formatRange(new Date(`${first}T12:00:00Z`), new Date(`${last}T12:00:00Z`))
+  return (format as Intl.DateTimeFormat & { formatRange(start: Date, end: Date): string }).formatRange(new Date(`${first}T12:00:00Z`), new Date(`${last}T12:00:00Z`))
 }
 
 // The weekday kept when paging between weeks; the current week opens on today.

@@ -1,6 +1,6 @@
 {
   "summary": "Noch keine Zeitblöcke auf diesem Gerät gespeichert | {count} Zeitblock auf diesem Gerät gespeichert | {count} Zeitblöcke auf diesem Gerät gespeichert",
-  "add": "Block hinzufügen",
+  "add": "Hinzufügen",
   "deleted": "„{title}“ gelöscht",
   "grid": {
     "conflict": "Konflikt",
@@ -49,5 +49,42 @@
     "noBlocksTitle": "Plane deine 168 Stunden",
     "noBlocksDescription": "Füge einen Block für etwas hinzu, das du jede Woche tust, etwa Schlafen oder Arbeiten.",
     "addBlock": "Block hinzufügen"
+  },
+  "addMenu": {
+    "block": "Block",
+    "event": "Termin"
+  },
+  "nav": {
+    "label": "Woche",
+    "previous": "Vorherige Woche",
+    "next": "Nächste Woche",
+    "today": "Heute"
+  },
+  "view": {
+    "label": "Ansicht",
+    "day": "Tag",
+    "week": "Woche"
+  },
+  "overview": {
+    "days": "Wochentage",
+    "open": "{day} öffnen",
+    "legend": "Kategorien",
+    "task": "Aufgabe",
+    "event": "Termin"
+  },
+  "task": {
+    "label": "Aufgabe: {title}, {range}",
+    "late": "überfällig"
+  },
+  "status": {
+    "done": "Erledigt",
+    "skipped": "Übersprungen",
+    "partial": "Teilweise"
+  },
+  "moved": {
+    "tomorrow": "„{title}“ auf morgen verschoben",
+    "tomorrowMany": "{count} Aufgaben auf morgen verschoben",
+    "later": "„{title}“ auf {day} verschoben",
+    "laterMany": "{count} Aufgaben auf einen anderen Tag verschoben"
   }
 }
