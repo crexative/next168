@@ -19,7 +19,7 @@ export function useExternalOccurrences(range: () => OccurrenceRange | null): Ref
     let active = true
     onCleanup(() => { active = false })
     const current = range()
-    occurrences.value = []
+    // The previous occurrences stay until the new expansion resolves, so a refresh never flashes an empty overlay.
     const expanded = current ? await source(current).catch(() => []) : []
     if (active) occurrences.value = expanded
   }, { immediate: true })

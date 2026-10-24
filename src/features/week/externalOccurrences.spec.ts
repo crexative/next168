@@ -31,3 +31,25 @@ it('discards superseded results when ranges change and when the consumer stops',
     expect(occurrences.value).toEqual([])
   } finally { scope.stop() }
 })
+
+it('keeps the previous occurrences while a new expansion is pending', async () => {
+  const pending: ((events: ExternalOccurrence[]) => void)[] = []
+  const revision = ref(0)
+  const range = ref({ fromDate: '2026-10-24', days: 7, timeZone: 'UTC' })
+  setExternalOccurrenceSource(() => new Promise(resolve => { pending.push(resolve) }), () => revision.value)
+  const scope = effectScope()
+  const occurrences = scope.run(() => useExternalOccurrences(() => range.value))!
+  try {
+    pending[0]!([event])
+    await nextTick(); await nextTick()
+    expect(occurrences.value).toEqual([event])
+
+    revision.value++
+    await nextTick()
+    expect(pending).toHaveLength(2)
+    expect(occurrences.value).toEqual([event])
+    pending[1]!([{ ...event, title: 'Renamed' }])
+    await nextTick(); await nextTick()
+    expect(occurrences.value.map(item => item.title)).toEqual(['Renamed'])
+  } finally { scope.stop() }
+})
