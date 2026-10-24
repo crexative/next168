@@ -1,20 +1,29 @@
 {
-  "title": "Registro del día",
+  "title": "Cierre del día",
   "intro": "Un minuto al final del día. Todo se queda en este dispositivo.",
   "date": "Fecha en que despertaste",
   "bedtime": "Hora de acostarte",
   "wake": "Hora de despertar",
   "workEnd": "Fin del trabajo",
   "exercise": {
-    "label": "Ejercicio",
+    "label": "¿Hiciste ejercicio?",
     "yes": "Sí",
     "no": "No",
-    "not-planned": "No previsto",
-    "unanswered": "Omitir"
+    "not-planned": "No previsto"
   },
-  "stress": "Estrés, de 1 calma a 5 alto",
+  "stress": "Estrés hoy (1 calma – 5 alto)",
   "note": "Nota (opcional)",
-  "save": "Guardar registro",
-  "saved": "Guardado",
-  "changedElsewhere": "Esto cambió en otro lugar, así que se volvió a cargar. Revísalo e inténtalo de nuevo."
+  "save": "Guardar cierre",
+  "changedElsewhere": "Esto cambió en otro lugar, así que se volvió a cargar. Revísalo e inténtalo de nuevo.",
+  "planHint": "Las horas salen de tu plan; cámbialas si fue distinto.",
+  "card": {
+    "description": "Sueño, ejercicio y estrés en un minuto",
+    "doneStreak": "Hecho ✓ · racha {count}",
+    "savedStreak": "Guardado ✓ · racha {count}",
+    "remind": "Recordarme a las {time}",
+    "remindBlocked": "Las notificaciones están bloqueadas en este navegador. Actívalas en sus ajustes para recibir el recordatorio."
+  },
+  "reminder": {
+    "body": "¿Cómo fue hoy? Te lleva un minuto."
+  }
 }

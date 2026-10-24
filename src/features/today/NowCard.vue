@@ -1,19 +1,32 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
-import type { Category } from '@/core/model'
+import type { BlockActual, Category } from '@/core/model'
 import { addLocalDays, localDateOf, type DatedOccurrence } from '@/core/time'
 import { categoryColor } from '@/features/week/categoryColor'
 import { formatDate, formatTime } from '@/features/week/localTime'
+import ActualChoices from './ActualChoices.vue'
+import { actualFor, type ActualStatus } from './actuals'
+import { formatSpan } from './duration'
+import type { NextUp } from './nextUp'
 
 type CurrentOccurrence = DatedOccurrence & { minutesLeft: number; progress: number }
 
 const props = defineProps<{
   current: CurrentOccurrence | null
-  next: DatedOccurrence | null
+  next: NextUp | null
   categories: Category[]
+  actuals: BlockActual[]
+  // False for a block that started before the plan existed: there is nothing to report on it.
+  askable: boolean
+  writable: boolean
+  now: Date
   today: string
   timeZone: string
+}>()
+const emit = defineEmits<{
+  record: [occurrence: DatedOccurrence, status: ActualStatus, actualMinutes?: number]
+  clear: [occurrence: DatedOccurrence]
 }>()
 
 const { t, locale } = useI18n()
@@ -28,6 +41,12 @@ const minutesLeft = computed(() => {
   return minutes >= 60
     ? t('today.now.hoursMinutesLeft', { hours: Math.floor(minutes / 60), minutes: minutes % 60 })
     : t('today.now.minutesLeft', { minutes })
+})
+
+// A free moment says how long it lasts, but only when the next thing starts today (otherwise "Después" names the day).
+const freeFor = computed(() => {
+  if (props.current || !props.next || localDateOf(props.next.start, props.timeZone) !== props.today) return ''
+  return t('today.now.freeFor', { duration: formatSpan(t, (Date.parse(props.next.start) - props.now.getTime()) / 60000) })
 })
 
 const nextWhen = computed(() => {
@@ -63,8 +82,19 @@ function time(instant: string): string {
       >
         <span class="progress-fill" :style="{ width: `${progressPercent}%` }" />
       </div>
+      <ActualChoices
+        v-if="askable"
+        :occurrence="current"
+        :actual="actualFor(actuals, current)"
+        :writable="writable"
+        @record="(status, minutes) => emit('record', current!, status, minutes)"
+        @clear="emit('clear', current!)"
+      />
     </template>
-    <h2 v-else class="t-title-2 now-title" data-testid="now-title">{{ t('today.now.free') }}</h2>
+    <template v-else>
+      <h2 class="t-title-2 now-title" data-testid="now-title">{{ t('today.now.free') }}</h2>
+      <p v-if="freeFor" class="now-meta tabular t-subhead now-left" data-testid="now-free-for">{{ freeFor }}</p>
+    </template>
     <p class="now-next t-subhead" data-testid="now-next">
       <template v-if="next">
         <span class="now-next-label">{{ t('today.now.next') }}</span>

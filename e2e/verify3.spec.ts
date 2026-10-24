@@ -20,9 +20,9 @@ const ics = [
   'END:VCALENDAR', '',
 ].join('\r\n')
 
-async function seed(page: Page, locale = 'en'): Promise<void> {
-  await page.clock.install({ time: NOW })
-  await seedKey(page, V2_KEY, JSON.stringify({ ...plan, settings: { ...plan.settings, locale } }))
+async function seed(page: Page, locale = 'en', at = NOW, checkIns: { date: string }[] = []): Promise<void> {
+  await page.clock.install({ time: at })
+  await seedKey(page, V2_KEY, JSON.stringify({ ...plan, checkIns, settings: { ...plan.settings, locale } }))
 }
 
 async function importEvents(page: Page, contents = ics): Promise<void> {
@@ -187,7 +187,8 @@ test.describe('update notice on a phone', () => {
   test("the first row's buttons end up clear of a tall notice, and the notice can be dismissed", async ({ page }) => {
     await page.setViewportSize({ width: 375, height: 700 })
     // French wraps the notice onto three lines, the tallest case; the page must still end clear of it.
-    await seed(page, 'fr')
+    // After Deep work ended, with an earlier check-in showing the plan existed, its row asks how it went.
+    await seed(page, 'fr', new Date('2026-10-21T12:00:00.000Z'), [{ date: '2026-10-20' }])
     await page.goto('./#/today')
     await expect(page.getByTestId('timeline-item').first()).toBeVisible()
     await page.waitForFunction(() => window.document.getAnimations().length === 0)

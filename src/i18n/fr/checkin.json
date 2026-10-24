@@ -6,15 +6,24 @@
   "wake": "Heure du réveil",
   "workEnd": "Fin du travail",
   "exercise": {
-    "label": "Exercice",
+    "label": "Avez-vous fait du sport ?",
     "yes": "Oui",
     "no": "Non",
-    "not-planned": "Non prévu",
-    "unanswered": "Passer"
+    "not-planned": "Non prévu"
   },
-  "stress": "Stress, de 1 calme à 5 élevé",
+  "stress": "Stress aujourd’hui (1 calme – 5 élevé)",
   "note": "Note (facultatif)",
   "save": "Enregistrer le bilan",
-  "saved": "Enregistré",
-  "changedElsewhere": "Ceci a changé ailleurs et a donc été rechargé. Vérifiez-le puis réessayez."
+  "changedElsewhere": "Ceci a changé ailleurs et a donc été rechargé. Vérifiez-le puis réessayez.",
+  "planHint": "Les heures viennent de votre plan ; changez-les si c’était différent.",
+  "card": {
+    "description": "Sommeil, sport et stress en une minute",
+    "doneStreak": "Fait ✓ · série {count}",
+    "savedStreak": "Enregistré ✓ · série {count}",
+    "remind": "Me rappeler à {time}",
+    "remindBlocked": "Les notifications sont bloquées dans ce navigateur. Activez-les dans ses réglages pour recevoir le rappel."
+  },
+  "reminder": {
+    "body": "Comment s’est passée la journée ? Cela prend une minute."
+  }
 }
