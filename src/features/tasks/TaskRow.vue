@@ -57,10 +57,14 @@ function onUp(): void {
 
 <style scoped>
 .task-row { position: relative; overflow: hidden; background: var(--success); }
-.task-row + .task-row { border-top: 1px solid var(--separator); }
+/* The separator belongs to the row's surface: on the green swipe track behind it, a translucent line turned green. */
+.task-row + .task-row .task-content::before { content: ''; position: absolute; top: 0; right: 0; left: calc(var(--space-1) + var(--tap-target) + var(--space-2)); border-top: 1px solid var(--separator); }
 .swipe-hint { position: absolute; inset-block: 0; inset-inline-end: var(--space-4); display: flex; align-items: center; gap: var(--space-1); color: #fff; }
-.task-content { position: relative; display: flex; align-items: center; gap: var(--space-2); min-height: var(--tap-target); padding: var(--space-1) var(--space-1) var(--space-1) 0; background: var(--surface); touch-action: pan-y; }
+.task-content { position: relative; display: flex; align-items: center; gap: var(--space-2); min-height: var(--tap-target); padding: var(--space-1); background: var(--surface); touch-action: pan-y; }
 .check, .remove { display: inline-flex; align-items: center; justify-content: center; flex: none; width: var(--tap-target); height: var(--tap-target); border: 0; background: transparent; color: var(--label-2); }
+/* The row clips its content for the swipe, so these round buttons draw their focus ring inside. */
+.check, .remove { border-radius: 50%; }
+.check:focus-visible, .remove:focus-visible { outline-offset: -2px; }
 .check-ring { width: 22px; height: 22px; border: 2px solid; border-radius: 50%; }
 .task-text { display: flex; flex: 1; flex-direction: column; gap: 2px; min-width: 0; padding-block: var(--space-1); }
 .title { overflow-wrap: anywhere; }
