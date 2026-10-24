@@ -4,6 +4,7 @@ import { useI18n } from 'vue-i18n'
 import { COLOR_KEYS } from '@/core/model'
 import { formatDuration } from '@/features/insights/format'
 import { minuteToTime } from '@/features/checkin/checkInForm'
+import { assertEntry, CHANGED_ELSEWHERE, snapshotOf } from '@/features/insights/entryGuard'
 import { usePlannerStore } from '@/stores/plannerStore'
 import Button from '@/ui/Button.vue'
 import Icon from '@/ui/Icon.vue'
@@ -26,8 +27,15 @@ const choices = reactive<TemplateChoice[]>(CATEGORY_TEMPLATES.map((template) => 
 })))
 const firstTask = reactive<FirstTaskChoice>({ title: '', templateId: '', durationMin: 60 })
 
-// The wizard's picks describe a first-run workspace; start over when another one replaces it.
-watch(() => planner.document?.workspaceId, () => {
+// The wizard's picks describe one first-run workspace: its id plus the content it was opened on.
+function identityOf(document: typeof planner.document): string | undefined {
+  return document ? snapshotOf({ workspaceId: document.workspaceId, categories: document.categories, blocks: document.blocks, tasks: document.tasks }) : undefined
+}
+let wizardIdentity = identityOf(planner.document)
+
+// Start over when another workspace (or other content under the same id) replaces it.
+watch(() => identityOf(planner.document), (identity) => {
+  wizardIdentity = identity
   step.value = 0
   choices.forEach((choice, index) => Object.assign(choice, { selected: false, name: t(`onboarding.templates.${CATEGORY_TEMPLATES[index]!.id}`), colorKey: CATEGORY_TEMPLATES[index]!.colorKey, sketch: true }))
   Object.assign(firstTask, { title: '', templateId: '', durationMin: 60 })
@@ -59,12 +67,15 @@ async function requestPersistence(): Promise<void> {
 
 async function complete(withChoices: boolean): Promise<void> {
   saving.value = true
+  const opened = wizardIdentity
   const result = withChoices
     ? buildOnboardingResult(choices, { ...firstTask, templateId: taskTemplateId.value }, { newId: () => crypto.randomUUID(), now: new Date() })
     : { categories: [], blocks: [], tasks: [] }
   const committed = await planner.commit((draft) => {
     // The wizard only ever completes a first run; never push its picks into a workspace that already finished it.
     if (draft.settings.onboardingDone) throw new Error('onboarding-done')
+    // Checked in the commit itself: the watcher may not have reset the wizard yet when a replacement lands.
+    assertEntry({ workspaceId: draft.workspaceId, categories: draft.categories, blocks: draft.blocks, tasks: draft.tasks }, opened)
     draft.categories.push(...result.categories)
     draft.blocks.push(...result.blocks)
     draft.tasks.push(...result.tasks)
@@ -73,6 +84,9 @@ async function complete(withChoices: boolean): Promise<void> {
   saving.value = false
   if (committed.ok) {
     await requestPersistence()
+  } else if (committed.reason === CHANGED_ELSEWHERE) {
+    // The picks belonged to a workspace that was replaced; the watcher restarts the wizard for the new one.
+    planner.dismissError()
   }
 }
 

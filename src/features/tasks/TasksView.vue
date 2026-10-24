@@ -105,28 +105,59 @@ async function addTask(): Promise<void> {
   }
 }
 
-function setDoneAt(taskId: string, doneAt: string | undefined): Promise<unknown> {
-  return planner.commit((draft) => {
-    const task = draft.tasks.find((candidate) => candidate.id === taskId)
-    if (!task) return
-    if (doneAt) task.doneAt = doneAt
-    else delete task.doneAt
+// An undo is bound to the entries its own action left behind; anything else means another document and nothing is written.
+function undoCommit(mutator: Parameters<typeof planner.commit>[0]): void {
+  void planner.commit(mutator).then((result) => { if (!result.ok && result.reason === CHANGED_ELSEWHERE) planner.dismissError() })
+}
+
+// Bound to the row that was clicked: a task that changed or was replaced meanwhile is left alone.
+function reopen(task: Task): void {
+  const shown = snapshotOf(task)
+  undoCommit((draft) => {
+    const target = draft.tasks.find((candidate) => candidate.id === task.id)
+    if (!target) return
+    assertEntry(target, shown)
+    delete target.doneAt
   })
 }
 
 async function complete(task: Task): Promise<void> {
+  const holder: { after?: string } = {}
   const result = await planner.commit((draft) => {
     const target = draft.tasks.find((candidate) => candidate.id === task.id)
-    if (target) target.doneAt = new Date().toISOString()
+    if (!target) return
+    target.doneAt = new Date().toISOString()
+    holder.after = snapshotOf(target)
   })
-  if (result.ok) toast.show({ message: t('tasks.completed', { title: task.title }), onUndo: () => { void setDoneAt(task.id, undefined) } })
+  if (!result.ok) return
+  const after = holder.after
+  toast.show({
+    message: t('tasks.completed', { title: task.title }),
+    onUndo: () => undoCommit((draft) => {
+      const target = draft.tasks.find((candidate) => candidate.id === task.id)
+      if (!target) return
+      assertEntry(target, after)
+      delete target.doneAt
+    }),
+  })
 }
 
 async function remove(task: Task): Promise<void> {
-  const result = await planner.commit((draft) => { draft.tasks = draft.tasks.filter((candidate) => candidate.id !== task.id) })
-  if (result.ok) {
-    toast.show({ message: t('tasks.removed', { title: task.title }), onUndo: () => { void planner.commit((draft) => { draft.tasks.push(task) }) } })
-  }
+  const holder: { category?: string } = {}
+  const result = await planner.commit((draft) => {
+    holder.category = snapshotOf(draft.categories.find((candidate) => candidate.id === task.categoryId))
+    draft.tasks = draft.tasks.filter((candidate) => candidate.id !== task.id)
+  })
+  if (!result.ok) return
+  const category = holder.category
+  toast.show({
+    message: t('tasks.removed', { title: task.title }),
+    onUndo: () => undoCommit((draft) => {
+      assertEntry(draft.tasks.find((candidate) => candidate.id === task.id), undefined)
+      assertEntry(draft.categories.find((candidate) => candidate.id === task.categoryId), category)
+      draft.tasks.push(task)
+    }),
+  })
 }
 
 function overflowText(task: Task, minutes: number): string {
@@ -241,7 +272,7 @@ function lateText(task: Task): string {
     <ListGroup v-if="done.length" :header="t('tasks.recentDone')">
       <li v-for="task in done" :key="task.id" class="done-row" data-testid="done-task">
         <span class="t-body done-title">{{ task.title }}</span>
-        <Button variant="plain" @click="setDoneAt(task.id, undefined)">{{ t('tasks.reopen') }}</Button>
+        <Button variant="plain" @click="reopen(task)">{{ t('tasks.reopen') }}</Button>
       </li>
     </ListGroup>
   </div>

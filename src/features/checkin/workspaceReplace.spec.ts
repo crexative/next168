@@ -9,6 +9,8 @@ import { createTestRepositories, fixedNow, newTestId, testDocument } from '@/rep
 import CheckInView from './CheckInView.vue'
 import CategorySettings from '@/features/settings/categories/CategorySettings.vue'
 import TasksView from '@/features/tasks/TasksView.vue'
+import OnboardingHost from '@/features/onboarding/OnboardingHost.vue'
+import { useUndoToast } from '@/ui/undoToast'
 import DataSettings from '@/features/settings/data/DataSettings.vue'
 import { buildExportFile } from '@/features/settings/data/dataTransfer'
 
@@ -254,5 +256,106 @@ describe('forms bind to their own entry, confirmations to the content hash', () 
     await nextTick()
     expect(store.document?.checkIns).toEqual([{ date: TODAY, note: 'content B' }])
     expect(host.querySelector('[data-testid=import-preview]')).toBeNull()
+  })
+})
+
+describe('onboarding and undo actions stay bound to what they were prepared for', () => {
+  const category = { id: 'c-1', name: 'Work', colorKey: 'blue' as const, goal: { type: 'none' as const, hoursPerWeek: 0 } }
+  const task = { id: 't-1', title: 'Existing', categoryId: 'c-1', durationMin: 30, priority: 2 as const, createdAt: '2026-10-01T00:00:00.000Z' }
+  const firstRun = (id: string) => ({ ...workspace(id), revision: 1, settings: { ...testDocument().settings, onboardingDone: false } })
+
+  async function atFinish(first: PlannerDocument) {
+    const ctx = await setup(OnboardingHost, first)
+    const click = async (label: string) => {
+      const button = [...document.body.querySelectorAll<HTMLButtonElement>('.onboarding button')].find((candidate) => candidate.textContent?.trim() === label)!
+      button.click()
+      await nextTick()
+    }
+    return { ...ctx, click }
+  }
+
+  it('rejects old wizard picks after a different first-run workspace replaces it', async () => {
+    const { store, click } = await atFinish(firstRun('ws-a'))
+    const sleep = document.body.querySelector<HTMLInputElement>('.onboarding input[aria-label="Use Sleep"]')!
+    sleep.click()
+    await nextTick()
+    await click('Next')
+    await click('Next')
+    store.document = firstRun('ws-b')
+    // The watcher has not flushed yet: Finish was prepared for ws-a.
+    await click('Finish')
+    await store.settled()
+    expect(store.document?.workspaceId).toBe('ws-b')
+    expect(store.document?.categories).toEqual([])
+    expect(store.document?.settings.onboardingDone).toBe(false)
+    expect(store.error).toBeNull()
+  })
+
+  it('still completes after an unrelated commit in the same workspace', async () => {
+    const { store, click } = await atFinish(firstRun('ws-a'))
+    document.body.querySelector<HTMLInputElement>('.onboarding input[aria-label="Use Sleep"]')!.click()
+    await nextTick()
+    await click('Next')
+    await click('Next')
+    await store.commit((draft) => { draft.checkIns.push({ date: TODAY, note: 'x' }) })
+    await click('Finish')
+    await store.settled()
+    expect(store.document?.settings.onboardingDone).toBe(true)
+    expect(store.document?.categories.map((candidate) => candidate.name)).toContain('Sleep')
+  })
+
+  async function clickTaskButton(selector: string) {
+    host.querySelector<HTMLButtonElement>(selector)!.click()
+    await nextTick()
+  }
+
+  it('does not let a completed-task undo touch a replacement document', async () => {
+    const { store } = await setup(TasksView, { ...workspace('ws-a'), revision: 1, categories: [category], tasks: [task] })
+    await clickTaskButton('button.check')
+    await store.settled()
+    expect(store.document?.tasks[0]?.doneAt).toBeDefined()
+    const replaced = { ...workspace('ws-a'), revision: 1, categories: [category], tasks: [{ ...task, doneAt: '2026-10-20T00:00:00.000Z' }] }
+    store.document = replaced
+    useUndoToast().undo()
+    await store.settled()
+    expect(store.document?.tasks[0]?.doneAt).toBe('2026-10-20T00:00:00.000Z')
+    expect(store.error).toBeNull()
+  })
+
+  it('does not reopen a done task that was replaced after the row was rendered', async () => {
+    const done = { ...task, doneAt: '2026-10-24T09:00:00.000Z' }
+    const { store } = await setup(TasksView, { ...workspace('ws-a'), revision: 1, categories: [category], tasks: [done] })
+    const reopen = host.querySelector<HTMLButtonElement>('[data-testid=done-task] button')!
+    store.document = { ...workspace('ws-a'), revision: 1, categories: [category], tasks: [{ ...done, doneAt: '2026-10-20T00:00:00.000Z' }] }
+    reopen.click()
+    await store.settled()
+    expect(store.document?.tasks[0]?.doneAt).toBe('2026-10-20T00:00:00.000Z')
+  })
+
+  it('does not let a removed-task undo re-add the task to a replacement document', async () => {
+    const { store } = await setup(TasksView, { ...workspace('ws-a'), revision: 1, categories: [category], tasks: [task] })
+    await clickTaskButton('button.remove')
+    await store.settled()
+    expect(store.document?.tasks).toEqual([])
+    store.document = { ...workspace('ws-b'), revision: 1, categories: [{ ...category, name: 'Other' }] }
+    useUndoToast().undo()
+    await store.settled()
+    expect(store.document?.tasks).toEqual([])
+    expect(store.error).toBeNull()
+  })
+
+  it('does not let a deleted-category undo restore it into a replacement document', async () => {
+    const { store } = await setup(CategorySettings, { ...workspace('ws-a'), revision: 1, categories: [category] })
+    host.querySelector<HTMLButtonElement>('.category-button')!.click()
+    await nextTick()
+    const del = [...document.body.querySelectorAll<HTMLButtonElement>('button')].find((candidate) => /^delete/i.test(candidate.textContent?.trim() ?? ''))!
+    del.click()
+    await store.settled()
+    expect(store.document?.categories).toEqual([])
+    store.document = { ...workspace('ws-b'), revision: 1, categories: [{ ...category, id: 'c-9', name: 'Other' }] }
+    useUndoToast().undo()
+    await store.settled()
+    expect(store.document?.categories.map((candidate) => candidate.id)).toEqual(['c-9'])
+    expect(store.error).toBeNull()
   })
 })
