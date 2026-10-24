@@ -34,7 +34,9 @@ export function splitByLocalDay(start: string, end: string, dates: string[], tim
     const to = Math.min(endAt, dayEnd)
     if (from >= to) return []
     const startMinute = from === dayStart ? 0 : localMinuteOf(from, timeZone)
-    const endMinute = to === dayEnd ? MINUTES_PER_DAY : localMinuteOf(to, timeZone)
+    let endMinute = to === dayEnd ? MINUTES_PER_DAY : localMinuteOf(to, timeZone)
+    // The repeated hour after a backward clock change makes the wall clock run backwards; keep the elapsed time visible.
+    if (endMinute <= startMinute) endMinute = Math.min(MINUTES_PER_DAY, startMinute + Math.max(1, Math.ceil((to - from) / 60_000)))
     if (endMinute <= startMinute) return []
     return [{ date, startMinute, endMinute, continuesBefore: startAt < dayStart, continuesAfter: endAt > dayEnd }]
   })

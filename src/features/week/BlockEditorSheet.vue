@@ -7,7 +7,7 @@ import Sheet from '@/ui/Sheet.vue'
 import { validateBlockDraft, type BlockDraft, type DraftError } from './blockEditing'
 import { formatDate, minuteToTimeValue, orderedDays, timeValueToMinute } from './localTime'
 
-const props = defineProps<{ open: boolean; draft: BlockDraft; document: PlannerDocument; saveError?: string | null }>()
+const props = defineProps<{ open: boolean; draft: BlockDraft; document: PlannerDocument; saveError?: string | null; saving?: boolean }>()
 const emit = defineEmits<{ 'update:open': [open: boolean]; save: [block: TimeBlock]; delete: [blockId: string] }>()
 
 const { t, locale } = useI18n()
@@ -60,6 +60,7 @@ function hours(minutes: number): string {
 
 function submit(): void {
   titleTouched.value = true
+  if (props.saving) return
   if (validation.value.block) emit('save', validation.value.block)
 }
 </script>
@@ -129,7 +130,7 @@ function submit(): void {
       </div>
 
       <div class="actions">
-        <Button type="submit" block :disabled="!validation.block">{{ t('week.editor.save') }}</Button>
+        <Button type="submit" block :disabled="!validation.block || saving">{{ t('week.editor.save') }}</Button>
         <Button v-if="isEditing" variant="plain" destructive block @click="emit('delete', draft.id!)">{{ t('week.editor.delete') }}</Button>
       </div>
     </form>

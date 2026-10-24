@@ -54,14 +54,18 @@ function statusOf(occurrence: DatedOccurrence): ActualStatus | undefined {
 
 function choose(item: TimelineItem & { kind: 'block' }, status: ActualStatus): void {
   const current = actualFor(props.actuals, item.occurrence)
+  if (current?.status === status) {
+    partialKey.value = null
+    emit('clear', item.occurrence)
+    return
+  }
   if (status === 'partial') {
     partialKey.value = item.key
     partialMinutes.value = current?.status === 'partial' ? current.actualMinutes ?? 0 : Math.round(item.occurrence.plannedMinutes / 2)
     return
   }
   partialKey.value = null
-  if (current?.status === status) emit('clear', item.occurrence)
-  else emit('record', item.occurrence, status)
+  emit('record', item.occurrence, status)
 }
 
 function savePartial(item: TimelineItem & { kind: 'block' }): void {

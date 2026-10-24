@@ -56,3 +56,19 @@ describe('week layout', () => {
     ])
   })
 })
+
+describe('daylight saving changes', () => {
+  it('keeps an event that sits inside the repeated hour when the clocks go back', () => {
+    // 00:45Z is 02:45 CEST and 01:15Z is 02:15 CET: the wall clock moves backwards but 30 minutes elapsed.
+    expect(splitByLocalDay('2026-10-25T00:45:00Z', '2026-10-25T01:15:00Z', ['2026-10-25'], 'Europe/Berlin')).toEqual([
+      { date: '2026-10-25', startMinute: 165, endMinute: 195, continuesBefore: false, continuesAfter: false },
+    ])
+  })
+
+  it('keeps an event that spans the skipped hour when the clocks go forward', () => {
+    // 00:30Z is 01:30 CET and 01:30Z is 03:30 CEST.
+    expect(splitByLocalDay('2026-03-29T00:30:00Z', '2026-03-29T01:30:00Z', ['2026-03-29'], 'Europe/Berlin')).toEqual([
+      { date: '2026-03-29', startMinute: 90, endMinute: 210, continuesBefore: false, continuesAfter: false },
+    ])
+  })
+})

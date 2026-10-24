@@ -32,7 +32,8 @@ const timeline = computed(() => {
   const placements = scheduleTasks({ document: document.value, busy, now: now.value, timeZone: timeZone.value })
   return buildTimeline({ document: document.value, today: today.value, timeZone: timeZone.value, external: external.value, placements })
 })
-const hasBlocks = computed(() => (document.value?.blocks.length ?? 0) > 0)
+// Blocks, placed tasks, events and calendar occurrences all count as planned content.
+const hasContent = computed(() => (document.value?.blocks.length ?? 0) > 0 || timeline.value.items.length > 0 || timeline.value.allDay.length > 0)
 
 function record(occurrence: DatedOccurrence, status: ActualStatus, actualMinutes?: number): void {
   void planner.commit((draft) => recordActual(draft, occurrence, status, actualMinutes))
@@ -46,7 +47,7 @@ function clear(occurrence: DatedOccurrence): void {
 <template>
   <div v-if="document" class="today-view">
     <p class="date-label t-headline t-secondary" data-testid="today-date">{{ dateLabel }}</p>
-    <EmptyState v-if="!hasBlocks" icon="sun" :title="t('today.empty.title')" :description="t('today.empty.description')">
+    <EmptyState v-if="!hasContent" icon="sun" :title="t('today.empty.title')" :description="t('today.empty.description')">
       <a class="action-link t-headline" href="#/week">{{ t('today.empty.action') }}</a>
     </EmptyState>
     <template v-else>

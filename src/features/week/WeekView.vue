@@ -44,6 +44,7 @@ watch(dates, (next, previous) => {
 
 const editorOpen = ref(false)
 const saveError = ref<string | null>(null)
+const saving = ref(false)
 const draft = ref<BlockDraft>({ title: '', categoryId: '', start: null, end: null, days: [] })
 
 function openNew(date: string, start: number): void {
@@ -71,10 +72,16 @@ function openExisting(blockId: string): void {
 }
 
 async function save(block: TimeBlock): Promise<void> {
-  const toSave = draft.value.id ? block : { ...block, id: crypto.randomUUID() }
-  const result = await planner.commit((next) => upsertBlock(next, toSave))
-  if (result.ok) editorOpen.value = false
-  else saveError.value = result.reason
+  if (saving.value) return
+  saving.value = true
+  try {
+    const toSave = draft.value.id ? block : { ...block, id: crypto.randomUUID() }
+    const result = await planner.commit((next) => upsertBlock(next, toSave))
+    if (result.ok) editorOpen.value = false
+    else saveError.value = result.reason
+  } finally {
+    saving.value = false
+  }
 }
 
 async function remove(blockId: string): Promise<void> {
@@ -142,6 +149,7 @@ async function remove(blockId: string): Promise<void> {
       :draft="draft"
       :document="document"
       :save-error="saveError"
+      :saving="saving"
       @save="save"
       @delete="remove"
     />
