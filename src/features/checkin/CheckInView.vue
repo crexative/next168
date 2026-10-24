@@ -20,7 +20,7 @@ import {
 } from './checkInForm'
 import { markCheckInSaved } from './checkinFlash'
 import ChoiceRow from './ChoiceRow.vue'
-import { deriveExercise } from './exerciseFromPlan'
+import { deriveExercise, tracksExercise } from './exerciseFromPlan'
 import { suggestFromPlan } from './planAnchors'
 import TimeFact from './TimeFact.vue'
 
@@ -31,9 +31,9 @@ const blockStatus = useBlockStatus()
 
 const timeZone = computed(() => planner.document?.settings.timeZone ?? 'UTC')
 // The check-in closes the day on screen: no date to pick, the date is in the title area (until 04:00 that is the day
-// before). It is read once, so a form left open past midnight still saves for the day it shows.
-const date = checkInDateFor(new Date(), timeZone.value)
-const dateLabel = computed(() => formatDate(date, locale.value, { weekday: 'long', day: 'numeric', month: 'long' }))
+// before). Capture only after the document loads, then retain it across midnight and the 04:00 boundary.
+const date = ref('')
+const dateLabel = computed(() => date.value ? formatDate(date.value, locale.value, { weekday: 'long', day: 'numeric', month: 'long' }) : '')
 const form = reactive<CheckInFormState>(formFromCheckIn('', undefined))
 const changedElsewhere = ref(false)
 // The stored entry of the form's date as it was when the form was loaded.
@@ -50,18 +50,22 @@ function entryFor(on: string) {
 }
 
 function load(): void {
-  const entry = entryFor(date)
-  const suggestion = planner.document ? suggestFromPlan(planner.document, date) : { worksThatDay: true }
+  const entry = entryFor(date.value)
+  const suggestion = planner.document ? suggestFromPlan(planner.document, date.value) : { worksThatDay: true }
   worksThatDay.value = suggestion.worksThatDay
   fromPlan.value = !entry && ('bedtime' in suggestion || 'wake' in suggestion || 'workEnd' in suggestion)
-  Object.assign(form, entry ? formFromCheckIn(date, entry) : withPlanTimes(formFromCheckIn(date, entry), suggestion))
+  Object.assign(form, entry ? formFromCheckIn(date.value, entry) : withPlanTimes(formFromCheckIn(date.value, entry), suggestion))
   formSnapshot = snapshotOf(entry)
   loaded = true
 }
 
+watch(() => planner.document, (document) => {
+  if (document && !date.value) date.value = checkInDateFor(new Date(), document.settings.timeZone)
+}, { immediate: true })
+
 // The form follows its own entry: unrelated commits (another entry, tasks, settings) leave typed values alone;
 // imported, restored or synced content that changes this entry reloads the form.
-watch(() => (planner.document ? { stored: snapshotOf(entryFor(date)) } : null), (next) => {
+watch(() => (planner.document ? { stored: snapshotOf(entryFor(date.value)) } : null), (next) => {
   if (!next) return
   if (!loaded || next.stored !== formSnapshot) load()
 }, { immediate: true })
@@ -69,7 +73,7 @@ watch(() => (planner.document ? { stored: snapshotOf(entryFor(date)) } : null), 
 // Today's blocks that are over and not yet marked. Those seen unmarked stay listed while they are answered, so a
 // tap that marks one shows its answer in place (and the toast can undo it) instead of making the row vanish.
 const since = computed(() => planner.document ? planSince(planner.document, readPlanSince(planner.document.workspaceId)) : undefined)
-const candidates = computed(() => planner.document ? blocksToMark(planner.document, date, now.value, since.value) : [])
+const candidates = computed(() => planner.document ? blocksToMark(planner.document, date.value, now.value, since.value) : [])
 const keyOf = (occurrence: { blockId: string; start: string }) => `${occurrence.blockId}@${occurrence.start}`
 const seenUnmarked = ref(new Set<string>())
 watch(() => planner.document?.workspaceId, () => { seenUnmarked.value = new Set() })
@@ -96,7 +100,9 @@ async function save(): Promise<void> {
   const result = await planner.commit((draft) => {
     // Exercise is read from the timeline as it stands when the commit runs, so it never disagrees with it.
     const derived = deriveExercise(draft, form.date)
-    const next = checkInFromForm({ ...form, exercise: derived ?? form.exercise })
+    // Legacy answers survive only when the plan has no exercise blocks. Unmarked tracked blocks clear the answer.
+    const exercise = derived ?? (tracksExercise(draft) ? '' : form.exercise)
+    const next = checkInFromForm({ ...form, exercise })
     assertEntry(draft.checkIns.find((checkIn) => checkIn.date === next.date), snapshot)
     draft.checkIns = isEmptyCheckIn(next)
       ? draft.checkIns.filter((checkIn) => checkIn.date !== next.date)

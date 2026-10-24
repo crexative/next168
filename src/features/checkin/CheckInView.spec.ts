@@ -26,7 +26,7 @@ let host: HTMLElement
 
 let repos: ReturnType<typeof createTestRepositories>
 
-async function mount(first: PlannerDocument) {
+async function mount(first: PlannerDocument, cold = false) {
   const pinia = createPinia()
   setActivePinia(pinia)
   repos = createTestRepositories()
@@ -35,7 +35,7 @@ async function mount(first: PlannerDocument) {
   host = document.createElement('div')
   document.body.appendChild(host)
   await repos.planner.save(first, 0)
-  await store.load()
+  if (!cold) await store.load()
   i18n.global.locale.value = 'en'
   app = createApp(CheckInView).use(pinia).use(i18n)
   app.mount(host)
@@ -46,7 +46,7 @@ async function mount(first: PlannerDocument) {
 const clock = (value: string | null | undefined) => value?.replace(/\s+/g, ' ').trim()
 const text = (testId: string) => clock(host.querySelector(`[data-testid="${testId}"]`)?.textContent)
 const radios = (group: number) => host.querySelectorAll('[role="radiogroup"]')[group]!.querySelectorAll<HTMLButtonElement>('[role="radio"]')
-const submit = () => host.querySelector<HTMLButtonElement>('button[type=submit]')!.click()
+const submit = () => host.querySelector<HTMLButtonElement>('.checkin-form > button[type=submit]')!.click()
 
 async function editFact(testId: string, value: string): Promise<void> {
   host.querySelector<HTMLButtonElement>(`[data-testid="${testId}"] button`)!.click()
@@ -58,8 +58,8 @@ async function editFact(testId: string, value: string): Promise<void> {
   await nextTick()
 }
 
-beforeEach(() => { vi.useFakeTimers({ toFake: ['Date'] }); vi.setSystemTime(fixedNow()); window.location.hash = '' })
-afterEach(() => { useUndoToast().dismiss(); document.querySelector('.toolbar-inner')?.remove(); app?.unmount(); host?.remove(); app = undefined; vi.useRealTimers(); i18n.global.locale.value = 'en' })
+beforeEach(() => { vi.useFakeTimers({ toFake: ['Date', 'setTimeout', 'clearTimeout'] }); vi.setSystemTime(fixedNow()); window.location.hash = '' })
+afterEach(() => { useUndoToast().dismiss(); document.querySelector('.toolbar-inner')?.remove(); app?.unmount(); host?.remove(); app = undefined; vi.runOnlyPendingTimers(); vi.useRealTimers(); i18n.global.locale.value = 'en' })
 
 describe('check-in form', () => {
   it('has a back control to Today, since the check-in has no tab', async () => {
@@ -169,6 +169,47 @@ describe('check-in form', () => {
     submit()
     await store.settled()
     expect(store.document?.checkIns.map((checkIn) => checkIn.date)).toEqual(['2026-10-24'])
+  })
+
+  it.each([
+    ['America/Bogota', '2026-10-25T00:30:00Z', '2026-10-24', 'Saturday, October 24'],
+    ['America/Bogota', '2026-10-25T05:30:00Z', '2026-10-24', 'Saturday, October 24'],
+    ['America/Bogota', '2026-10-25T08:59:00Z', '2026-10-24', 'Saturday, October 24'],
+    ['America/Bogota', '2026-10-25T09:00:00Z', '2026-10-25', 'Sunday, October 25'],
+    ['Europe/Madrid', '2026-03-29T01:30:00Z', '2026-03-28', 'Saturday, March 28'],
+    ['Europe/Madrid', '2026-03-29T02:00:00Z', '2026-03-29', 'Sunday, March 29'],
+    ['Europe/Madrid', '2026-10-25T02:59:00Z', '2026-10-24', 'Saturday, October 24'],
+    ['Europe/Madrid', '2026-10-25T03:00:00Z', '2026-10-25', 'Sunday, October 25'],
+  ])('captures the planner day on cold load in %s at %s', async (timeZone, instant, date, label) => {
+    vi.setSystemTime(new Date(instant))
+    const store = await mount({ ...planned, settings: { ...planned.settings, timeZone }, checkIns: [{ date, note: 'stored for this day' }] }, true)
+    expect(host.querySelector('form')).toBeNull()
+    await store.load()
+    await nextTick()
+    expect(text('checkin-date')).toBe(label)
+    expect(host.querySelector<HTMLTextAreaElement>('textarea')!.value).toBe('stored for this day')
+    submit()
+    await store.settled()
+    expect(store.document?.checkIns).toEqual([{ date, note: 'stored for this day' }])
+  })
+
+  it('captures at document arrival, then keeps the displayed day across midnight and 04:00', async () => {
+    vi.setSystemTime(new Date('2026-10-25T08:59:00Z')) // 03:59 in Bogota
+    const store = await mount({ ...planned, settings: { ...planned.settings, timeZone: 'America/Bogota' } }, true)
+    vi.setSystemTime(new Date('2026-10-25T09:00:00Z')) // The document arrives at 04:00.
+    await store.load()
+    await nextTick()
+    expect(text('checkin-date')).toBe('Sunday, October 25')
+    for (const instant of ['2026-10-26T05:30:00Z', '2026-10-26T09:00:00Z']) {
+      vi.setSystemTime(new Date(instant))
+      document.dispatchEvent(new Event('visibilitychange'))
+      await store.commit((draft) => { draft.settings.weekStartsOn = 0 })
+      await nextTick()
+      expect(text('checkin-date')).toBe('Sunday, October 25')
+    }
+    submit()
+    await store.settled()
+    expect(store.document?.checkIns.map((entry) => entry.date)).toEqual(['2026-10-25'])
   })
 
   it('saves with one tap on stress, returns to Today and leaves the confirmation for its card', async () => {
@@ -316,6 +357,70 @@ describe('check-in blocks to mark', () => {
     submit()
     await store.settled()
     expect(store.document?.checkIns.at(-1)).toMatchObject({ date: '2026-10-24', exercise: 'yes' })
+  })
+
+  it.each(['click', 'Enter'])('saving partial minutes by %s leaves the wrap-up open and unsaved', async (method) => {
+    expect(consumeSavedFlag()).toBe(false)
+    window.location.hash = '#/checkin'
+    const store = await mount(trained)
+    const note = host.querySelector<HTMLTextAreaElement>('textarea')!
+    note.value = 'draft wrap-up'
+    note.dispatchEvent(new Event('input'))
+    circle('Gym')!.dispatchEvent(new MouseEvent('contextmenu', { bubbles: true, cancelable: true }))
+    await nextTick()
+    host.querySelector<HTMLButtonElement>('[data-testid="status-partial"]')!.click()
+    await nextTick()
+    const panel = host.querySelector<HTMLElement>('[data-testid="status-minutes"]')!
+    const input = panel.querySelector<HTMLInputElement>('input')!
+    input.value = '25'
+    input.dispatchEvent(new Event('input', { bubbles: true }))
+    if (method === 'click') panel.querySelector<HTMLButtonElement>('button')!.click()
+    else input.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true, cancelable: true }))
+    await store.settled()
+    await nextTick()
+    expect(store.document?.actuals).toMatchObject([{ blockId: 'gym', status: 'partial', actualMinutes: 25 }])
+    expect(store.document?.checkIns).toEqual(trained.checkIns)
+    expect(window.location.hash).toBe('#/checkin')
+    expect(consumeSavedFlag()).toBe(false)
+    expect(note.value).toBe('draft wrap-up')
+    expect(host.querySelector('form form')).toBeNull()
+    expect(panel.tagName).not.toBe('FORM')
+    submit()
+    await store.settled()
+    expect(store.document?.checkIns.at(-1)).toMatchObject({ date: '2026-10-24', exercise: 'yes', note: 'draft wrap-up' })
+    expect(window.location.hash).toBe('#/today')
+  })
+
+  it('clears a saved exercise answer after the last mark is removed, including a queued clear', async () => {
+    const store = await mount(trained)
+    circle('Gym')!.click()
+    await store.settled()
+    submit()
+    await store.settled()
+    await nextTick()
+    expect(store.document?.checkIns.at(-1)).toMatchObject({ exercise: 'yes' })
+    circle('Gym')!.click()
+    submit()
+    await store.settled()
+    expect(store.document?.actuals).toEqual([])
+    expect(store.document?.checkIns.at(-1)).not.toHaveProperty('exercise')
+    const persisted = await repos.planner.load()
+    expect(persisted.kind).toBe('ok')
+    if (persisted.kind === 'ok') expect(persisted.document.checkIns.at(-1)).not.toHaveProperty('exercise')
+  })
+
+  it.each(['yes', 'no', 'not-planned'] as const)('clears a stale %s answer when planned exercise is unmarked', async (exercise) => {
+    const store = await mount({ ...trained, checkIns: [{ date: '2026-10-24', exercise, note: 'keep me' }] })
+    submit()
+    await store.settled()
+    expect(store.document?.checkIns).toEqual([{ date: '2026-10-24', note: 'keep me' }])
+  })
+
+  it.each([false, true])('preserves a legacy answer only without exercise blocks (category present: %s)', async (categoryPresent) => {
+    const store = await mount({ ...planned, categories: categoryPresent ? trained.categories : planned.categories, checkIns: [{ date: '2026-10-24', exercise: 'yes' }] })
+    submit()
+    await store.settled()
+    expect(store.document?.checkIns).toEqual([{ date: '2026-10-24', exercise: 'yes' }])
   })
 
   it('forgets which blocks it listed when the workspace is replaced', async () => {

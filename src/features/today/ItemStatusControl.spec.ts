@@ -9,19 +9,23 @@ afterEach(() => { unmount(); vi.useRealTimers() })
 
 type Props = { title: string; status?: 'done' | 'partial' | 'skipped'; writable: boolean; plannedMinutes?: number; actualMinutes?: number; itemKey: string }
 
-function mount(initial: Partial<Props> = {}) {
+function mount(initial: Partial<Props> = {}, inForm = false) {
   const props = reactive<Props>({ title: 'Deep work', writable: true, plannedMinutes: 120, itemKey: 'a', ...initial })
   const record = vi.fn()
   const clear = vi.fn()
   i18n.global.locale.value = 'en'
   const host = document.createElement('div')
   document.body.append(host)
-  const app = createApp({ render: () => h(ItemStatusControl, { ...props, onRecord: record, onClear: clear }) }).use(i18n)
+  const outerSubmit = vi.fn((event: Event) => event.preventDefault())
+  const app = createApp({ render: () => {
+    const control = h(ItemStatusControl, { ...props, onRecord: record, onClear: clear })
+    return inForm ? h('form', { onSubmit: outerSubmit }, [control]) : control
+  } }).use(i18n)
   app.mount(host)
   unmount = () => { app.unmount(); host.remove() }
   const circle = () => host.querySelector<HTMLButtonElement>('[data-testid="status-control"]')!
   const menu = () => host.querySelector<HTMLElement>('[data-testid="status-menu"]')
-  return { host, props, record, clear, circle, menu }
+  return { host, props, record, clear, circle, menu, outerSubmit }
 }
 
 function pointer(target: Element, type: string, init: { x?: number; y?: number } = {}) {
@@ -214,13 +218,13 @@ describe('ItemStatusControl menu', () => {
 })
 
 describe('ItemStatusControl partly done', () => {
-  async function openMinutes(initial: Partial<Props> = {}) {
-    const mounted = mount(initial)
+  async function openMinutes(initial: Partial<Props> = {}, inForm = false) {
+    const mounted = mount(initial, inForm)
     mounted.circle().dispatchEvent(new MouseEvent('contextmenu', { bubbles: true, cancelable: true }))
     await flush()
     mounted.menu()!.querySelector<HTMLButtonElement>('[data-testid="status-partial"]')!.click()
     await flush()
-    const form = () => mounted.host.querySelector<HTMLFormElement>('[data-testid="status-minutes"]')
+    const form = () => mounted.host.querySelector<HTMLElement>('[data-testid="status-minutes"]')
     const input = () => form()!.querySelector<HTMLInputElement>('input')!
     return { ...mounted, form, input }
   }
@@ -231,10 +235,33 @@ describe('ItemStatusControl partly done', () => {
     expect(input().max).toBe('120')
     input().value = '45'
     input().dispatchEvent(new Event('input'))
-    form()!.dispatchEvent(new Event('submit', { cancelable: true }))
+    form()!.querySelector<HTMLButtonElement>('button')!.click()
     await flush()
     expect(record).toHaveBeenCalledWith('partial', 45)
     expect(form()).toBeNull()
+  })
+
+  it.each(['click', 'Enter'])('isolates minutes saved by %s inside a surrounding form', async (method) => {
+    const { host, form, input, record, outerSubmit } = await openMinutes({}, true)
+    expect(host.querySelector('form form')).toBeNull()
+    input().value = '45'
+    input().dispatchEvent(new Event('input', { bubbles: true }))
+    if (method === 'click') form()!.querySelector<HTMLButtonElement>('button')!.click()
+    else input().dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true, cancelable: true }))
+    await flush()
+    expect(record).toHaveBeenCalledExactlyOnceWith('partial', 45)
+    expect(outerSubmit).not.toHaveBeenCalled()
+    expect(form()).toBeNull()
+  })
+
+  it.each([-5, 125, 23])('keeps invalid minutes %s open without recording', async (minutes) => {
+    const { form, input, record } = await openMinutes()
+    input().value = String(minutes)
+    input().dispatchEvent(new Event('input'))
+    form()!.querySelector<HTMLButtonElement>('button')!.click()
+    await flush()
+    expect(record).not.toHaveBeenCalled()
+    expect(form()).not.toBeNull()
   })
 
   it('swaps the menu for the minutes inside one panel, so the two never overlap while fading', async () => {

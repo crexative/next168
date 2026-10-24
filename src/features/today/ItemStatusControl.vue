@@ -36,6 +36,7 @@ const menu = ref<HTMLElement | null>(null)
 const panel = ref<'menu' | 'minutes' | null>(null)
 const above = ref(false)
 const minutes = ref(0)
+const minutesInput = ref<HTMLInputElement | null>(null)
 
 const hasMenu = computed(() => props.plannedMinutes !== undefined)
 const label = computed(() => {
@@ -137,6 +138,7 @@ function askMinutes(): void {
 }
 
 function saveMinutes(): void {
+  if (!props.writable || panel.value !== 'minutes' || !minutesInput.value?.reportValidity()) return
   close(false)
   emit('record', 'partial', minutes.value)
   trigger.value?.focus()
@@ -209,7 +211,7 @@ onBeforeUnmount(() => {
     >
       <span class="status-ring"><Icon v-if="status === 'done'" name="check" :size="14" /></span>
     </button>
-    <!-- One panel whose content swaps from the menu to the minutes form, so the two never overlap while fading. -->
+    <!-- One panel whose content swaps from the menu to the minutes editor, so the two never overlap while fading. -->
     <Transition name="status-panel">
       <div
         v-if="panel !== null"
@@ -229,11 +231,12 @@ onBeforeUnmount(() => {
           <button type="button" role="menuitem" class="menu-item t-body" data-testid="status-skipped" @click="choose('skipped')">{{ t('today.status.skipped') }}</button>
           <button v-if="status" type="button" role="menuitem" class="menu-item t-body" data-testid="status-clear" @click="clearAnswer">{{ t('today.status.clear') }}</button>
         </template>
-        <form v-else class="minutes-form" data-testid="status-minutes" @submit.prevent="saveMinutes">
+        <div v-else class="minutes-form" data-testid="status-minutes" @keydown.enter.stop.prevent="saveMinutes">
           <label class="minutes-label t-footnote" :for="inputId">{{ t('today.status.minutesLabel', { planned: plannedMinutes }) }}</label>
           <div class="minutes-row">
             <input
               :id="inputId"
+              ref="minutesInput"
               v-model.number="minutes"
               class="input minutes-input"
               type="number"
@@ -242,9 +245,9 @@ onBeforeUnmount(() => {
               :max="plannedMinutes"
               step="5"
             >
-            <Button type="submit" variant="tinted">{{ t('today.status.save') }}</Button>
+            <Button type="button" variant="tinted" @click="saveMinutes">{{ t('today.status.save') }}</Button>
           </div>
-        </form>
+        </div>
       </div>
     </Transition>
   </span>
