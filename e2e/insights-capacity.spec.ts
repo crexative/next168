@@ -1,6 +1,7 @@
 import AxeBuilder from '@axe-core/playwright'
 import { expect, test, type Page } from '@playwright/test'
 import { openTab, seedKey, V2_KEY } from './fixtures'
+import { storedPlanner } from './support/indexedDb'
 import { onboardedDocument } from './support/seed'
 
 const MONDAY_MORNING = new Date('2026-10-26T08:00:00Z')
@@ -150,7 +151,7 @@ test.describe('category colours', () => {
     await dialog.getByRole('textbox', { name: 'Name' }).fill('Reading')
     await dialog.getByRole('button', { name: 'Save' }).click()
     await expect(dialog).toBeHidden()
-    const stored = await page.evaluate((key) => JSON.parse(window.localStorage.getItem(key)!), V2_KEY)
+    const stored = await storedPlanner<{ categories: { name: string; colorKey: string }[] }>(page)
     expect(stored.categories.at(-1)).toMatchObject({ name: 'Reading', colorKey: 'blue' })
   })
 })

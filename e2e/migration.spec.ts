@@ -1,5 +1,6 @@
 import { expect, test } from '@playwright/test'
 import { LEGACY_BLOCK_COUNT, LEGACY_KEY, V2_KEY, legacyData, onlyProject, openTab, seedKey, seedLegacy, storedValue } from './fixtures'
+import { storedPlanner, storedRecord } from './support/indexedDb'
 
 test.beforeEach(onlyProject('desktop'))
 
@@ -10,7 +11,7 @@ test('v1 data is migrated, shown as a count, and the legacy bytes stay untouched
   await expect(page.getByTestId('block-count')).toHaveAttribute('data-count', String(LEGACY_BLOCK_COUNT))
   expect(await storedValue(page, LEGACY_KEY)).toBe(legacyBytes)
 
-  const migrated = JSON.parse((await storedValue(page, V2_KEY))!)
+  const migrated = await storedPlanner(page)
   expect(migrated.schemaVersion).toBe(2)
   expect(migrated.blocks).toHaveLength(LEGACY_BLOCK_COUNT)
   const deepWork = migrated.blocks.find((block: { id: string }) => block.id === 'b-1')
@@ -35,7 +36,8 @@ test('corrupt v2 data shows the recovery screen and is never overwritten', async
   expect(await storedValue(page, V2_KEY)).toBe(corrupt)
   await page.getByRole('button', { name: 'Yes, start empty' }).click()
   await expect(page.getByTestId('recovery')).toBeHidden()
-  expect(await storedValue(page, 'next168-v2-backup')).toBe(corrupt)
+  expect(await storedRecord(page, 'backup')).toBe(corrupt)
+  expect(await storedValue(page, 'next168-v2-backup')).toBeNull()
 })
 
 test('data from a newer schema opens read-only and is left untouched', async ({ page }) => {
@@ -53,4 +55,21 @@ test('a write to the legacy key from an older tab raises a banner', async ({ pag
   await older.goto('./')
   await older.evaluate((key) => window.localStorage.setItem(key, '{"categories":[],"timeBlocks":[]}'), LEGACY_KEY)
   await expect(page.getByText('An older version of Next168 is open in another tab')).toBeVisible()
+})
+
+test('delete-all in another tab does not raise the older-version banner (A10)', async ({ page, context }) => {
+  await seedLegacy(page)
+  await openTab(page, 'week')
+  await expect(page.getByTestId('block-count')).toHaveAttribute('data-count', String(LEGACY_BLOCK_COUNT))
+  const other = await context.newPage()
+  await openTab(other, 'settings')
+  await other.getByRole('button', { name: 'Delete all data…' }).click()
+  const dialog = other.getByRole('dialog', { name: 'Delete everything?' })
+  await dialog.getByRole('textbox').fill('delete')
+  await dialog.getByRole('button', { name: 'Delete everything' }).click()
+  await expect(other.getByTestId('data-notice')).toContainText('All data was deleted')
+  // The purge removed the v1 key; that removal reaches the first tab as a storage event with no new value.
+  expect(await page.evaluate((key) => window.localStorage.getItem(key), LEGACY_KEY)).toBeNull()
+  await expect(page.getByTestId('block-count')).toHaveAttribute('data-count', '0')
+  await expect(page.getByText('An older version of Next168 is open in another tab')).toHaveCount(0)
 })

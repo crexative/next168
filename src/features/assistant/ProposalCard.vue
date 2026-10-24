@@ -3,14 +3,15 @@ import { computed, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import type { ChangeProposal, ProposalInput } from '@/core/model'
 import { openProposalReview } from '@/features/proposals'
+import { getProposalRepository } from '@/features/proposals/repository'
 import { lastDecision } from '@/features/proposals/reviewState'
-import { createBrowserRepositories } from '@/repositories/browserRepositories'
 import Button from '@/ui/Button.vue'
 
 const props = defineProps<{ input: ProposalInput }>()
 
 const { t } = useI18n()
-const proposals = createBrowserRepositories().proposals
+// The active mode's repository: in companion mode the proposal goes to the companion, never to the browser store.
+const proposals = getProposalRepository()
 
 const stored = ref<ChangeProposal | null>(null)
 const failed = ref(false)

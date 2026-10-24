@@ -1,16 +1,16 @@
 <script setup lang="ts">
 import { computed, onMounted, ref, shallowRef } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { STORAGE_KEYS } from '@/core/model'
-import { createBrowserRepositories } from '@/repositories/browserRepositories'
+import { STORAGE_KEYS, type PlannerDocument } from '@/core/model'
 import { assertDocumentHash, CHANGED_ELSEWHERE, documentHash } from '@/features/insights/entryGuard'
-import { usePlannerStore } from '@/stores/plannerStore'
+import { activePlannerRepository, usePlannerStore } from '@/stores/plannerStore'
 import Button from '@/ui/Button.vue'
 import Icon from '@/ui/Icon.vue'
 import ListGroup from '@/ui/ListGroup.vue'
 import ListRow from '@/ui/ListRow.vue'
 import Sheet from '@/ui/Sheet.vue'
-import { calendarSourceStore } from './calendarSourceHook'
+import { useUndoToast } from '@/ui/undoToast'
+import { calendarLifecycle, calendarSourceStore } from './calendarSourceHook'
 import {
   buildExportFile, freshDocument, MAX_IMPORT_BYTES, matchesConfirmation, previewImport, replaceContent,
   replaceSourceTexts, verifyStored, type ImportPreview,
@@ -131,7 +131,7 @@ async function confirmImport(): Promise<void> {
     return
   }
   await replaceSourceTexts(calendarSourceStore(), chosen.bundle.calendarSourceTexts)
-  const verified = await verifyStored(chosen.bundle, () => createBrowserRepositories().planner.load(), calendarSourceStore())
+  const verified = await verifyStored(chosen.bundle, () => activePlannerRepository().load(), calendarSourceStore())
   notice.value = verified.ok
     ? { tone: 'ok', text: t('data.import.verified', { hash: verified.hash.slice(0, 12) }) }
     : { tone: 'error', text: t(`data.import.verifyFailed.${verified.reason}`) }
@@ -139,6 +139,7 @@ async function confirmImport(): Promise<void> {
   busy.value = false
 }
 
+// Companion mode only: the browser repository clears these in its own delete-all.
 async function removeLeftovers(): Promise<void> {
   const purge = () => LEFTOVER_KEYS.forEach((key) => window.localStorage.removeItem(key))
   if (navigator.locks) await navigator.locks.request(STORAGE_KEYS.lockName, { mode: 'exclusive' }, purge)
@@ -151,10 +152,24 @@ async function deleteEverything(): Promise<void> {
   if (!current || !hash || !canDelete.value) return
   busy.value = true
   const fresh = freshDocument(current, new Date())
-  const result = await planner.commit((draft) => { assertDocumentHash(draft, hash); replaceContent(draft, fresh) })
+  const replace = (draft: PlannerDocument) => { assertDocumentHash(draft, hash); replaceContent(draft, fresh) }
+  let result
+  if (planner.canDeleteAll()) {
+    // Browser: one transaction replaces the planner and drops backup and proposals; calendar texts and
+    // legacy keys are cleared under the same lock hold, and resume on the next load if interrupted.
+    calendarLifecycle()?.cancelRefreshes()
+    result = await planner.deleteAll(replace)
+    if (result.ok) calendarLifecycle()?.textsChanged()
+  } else {
+    result = await planner.commit(replace)
+    if (result.ok) {
+      await replaceSourceTexts(calendarSourceStore(), {})
+      await removeLeftovers()
+    }
+  }
   if (result.ok) {
-    await replaceSourceTexts(calendarSourceStore(), {})
-    await removeLeftovers()
+    // An undo offered for the deleted planner would write its old content into the fresh one.
+    useUndoToast().dismiss()
     closeDelete()
     closePreview()
     notice.value = { tone: 'ok', text: t('data.deleteAll.done') }

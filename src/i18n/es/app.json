@@ -46,7 +46,13 @@
     "legacyChanged": "Hay una versión anterior de Next168 abierta en otra pestaña. Los cambios hechos allí no se trasladan.",
     "conflict": "Otra pestaña cambió tus datos primero. Se cargó la última versión; inténtalo de nuevo.",
     "saveFailed": "No se pudo guardar ({reason}). Tus datos anteriores no han cambiado.",
-    "loadFailed": "No se pudieron leer tus datos ({reason})."
+    "loadFailed": "No se pudieron leer tus datos ({reason}).",
+    "unavailableTitle": "Next168 no puede usar el almacenamiento de este navegador",
+    "unavailableBody": "Next168 se detuvo para que no se pierda nada. Tus datos en este dispositivo no cambiaron. Vuelve a intentarlo en un momento.",
+    "lastChangeNotSaved": "Tu último cambio no se guardó. Todo lo anterior está a salvo.",
+    "retry": "Reintentar",
+    "exportCopy": "Exportar una copia",
+    "exportWithoutCalendars": "Algunos textos de calendario no se pudieron leer y se exportaron vacíos."
   },
   "recovery": {
     "title": "No se pueden leer tus datos guardados",

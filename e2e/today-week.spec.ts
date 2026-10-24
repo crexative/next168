@@ -1,6 +1,7 @@
 import AxeBuilder from '@axe-core/playwright'
 import { expect, test, type Locator, type Page } from '@playwright/test'
-import { V2_KEY, openTab, seedKey, storedValue } from './fixtures'
+import { V2_KEY, openTab, seedKey } from './fixtures'
+import { storedPlanner } from './support/indexedDb'
 import { installTransformRecorder } from './support/transformRecorder'
 
 // Wednesday 2026-10-21 10:15 UTC; the browser and the document both use UTC.
@@ -44,7 +45,7 @@ function block(page: Page, date: string, blockId: string, startMinute?: number):
 }
 
 async function storedDocument(page: Page) {
-  return JSON.parse((await storedValue(page, V2_KEY))!)
+  return storedPlanner(page)
 }
 
 async function swipe(page: Page, distance: number, durationMs: number, steps = 6): Promise<void> {

@@ -1,5 +1,6 @@
 import { expect, test, type Page } from '@playwright/test'
-import { V2_KEY, openTab, storedValue } from './fixtures'
+import { openTab } from './fixtures'
+import { storedPlanner } from './support/indexedDb'
 import { seedOnboarded } from './support/seed'
 
 // WebGPU is off: only the always-on rules provider is available, so a proposal can only come from
@@ -16,7 +17,7 @@ const planned = {
 }
 
 async function storedBlocks(page: Page): Promise<{ title: string }[]> {
-  return JSON.parse((await storedValue(page, V2_KEY))!).blocks
+  return (await storedPlanner<{ blocks: { title: string }[] }>(page)).blocks
 }
 
 async function askForProposal(page: Page): Promise<void> {

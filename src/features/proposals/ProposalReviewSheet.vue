@@ -2,6 +2,7 @@
 import { computed, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { previewProposal, type ProposalPreview } from '@/core/proposals'
+import { failureReason, isStorageFailure } from '@/repositories/storageCommit'
 import { usePlannerStore } from '@/stores/plannerStore'
 import Button from '@/ui/Button.vue'
 import Sheet from '@/ui/Sheet.vue'
@@ -25,6 +26,9 @@ const summaryContext = computed(() => ({
 }))
 const summarize = (value: unknown) => summarizeEntity(value, summaryContext.value)
 
+// The sheet is mounted outside the shell, so the storage error screen cannot cover it: it closes instead.
+watch(() => planner.status, (status) => { if (status === 'error') open.value = false })
+
 watch(reviewing, async (proposal) => {
   if (!proposal) return
   preview.value = undefined; message.value = ''; open.value = true
@@ -47,7 +51,12 @@ async function decide(approve: boolean) {
       lastDecision.value = { kind: result.kind, id: proposal.id, tick: (lastDecision.value?.tick ?? 0) + 1 }
       open.value = false
     } else message.value = t('proposals.notFound')
-  } catch { message.value = t('proposals.decisionError') }
+  } catch (failure) {
+    const reason = failureReason(failure)
+    // Nothing was written (the approval is one transaction); the planner blocks editing until storage works.
+    if (isStorageFailure(reason)) planner.reportStorageFailure(reason)
+    else message.value = t('proposals.decisionError')
+  }
   finally { busy.value = false }
 }
 </script>

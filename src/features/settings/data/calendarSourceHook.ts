@@ -10,3 +10,18 @@ export function provideCalendarSourceStore(next: CalendarSourceStore | undefined
 export function calendarSourceStore(): CalendarSourceStore | undefined {
   return store
 }
+
+// Delete-all cancels this tab's calendar refreshes first and announces the removed texts afterwards.
+export interface CalendarLifecycle {
+  cancelRefreshes(): void
+  textsChanged(): void
+}
+let lifecycle: CalendarLifecycle | undefined
+
+export function provideCalendarLifecycle(next: CalendarLifecycle | undefined): void {
+  lifecycle = next
+}
+
+export function calendarLifecycle(): CalendarLifecycle | undefined {
+  return lifecycle
+}

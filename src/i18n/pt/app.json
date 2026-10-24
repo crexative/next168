@@ -46,7 +46,13 @@
     "legacyChanged": "Uma versão antiga do Next168 está aberta em outra aba. As alterações feitas lá não são aproveitadas.",
     "conflict": "Outra aba alterou seus dados primeiro. A versão mais recente foi carregada — tente novamente.",
     "saveFailed": "Não foi possível salvar ({reason}). Seus dados anteriores não foram alterados.",
-    "loadFailed": "Não foi possível ler seus dados ({reason})."
+    "loadFailed": "Não foi possível ler seus dados ({reason}).",
+    "unavailableTitle": "O Next168 não consegue usar o armazenamento deste navegador",
+    "unavailableBody": "O Next168 parou para que nada se perca. Seus dados neste dispositivo não foram alterados. Tente novamente em instantes.",
+    "lastChangeNotSaved": "Sua última alteração não foi salva. Tudo o que veio antes está seguro.",
+    "retry": "Tentar novamente",
+    "exportCopy": "Exportar uma cópia",
+    "exportWithoutCalendars": "Alguns textos de calendário não puderam ser lidos e foram exportados vazios."
   },
   "recovery": {
     "title": "Não foi possível ler seus dados salvos",
