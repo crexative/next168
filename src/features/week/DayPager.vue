@@ -116,6 +116,11 @@ function selectDay(next: number): void {
   if (next !== index.value) settleOn(next)
 }
 
+// The accessible name starts with the visible text ("M 19") and then spells the day out.
+function dayLabel(date: string): string {
+  const short = `${formatDate(date, locale.value, { weekday: 'narrow' })} ${formatDate(date, locale.value, { day: 'numeric' })}`
+  return `${short}, ${formatDate(date, locale.value, { weekday: 'long', day: 'numeric', month: 'long' })}`
+}
 watch(index, () => { if (!gesture && !animation) applyOffset(offset) })
 onMounted(() => applyOffset(0))
 onBeforeUnmount(() => animation?.stop())
@@ -132,10 +137,10 @@ onBeforeUnmount(() => animation?.stop())
         :class="{ 'is-today': date === today }"
         :aria-pressed="position === index"
         :aria-current="date === today ? 'date' : undefined"
-        :aria-label="formatDate(date, locale, { weekday: 'long', day: 'numeric', month: 'long' })"
+        :aria-label="dayLabel(date)"
         @click="selectDay(position)"
       >
-        <span class="t-caption strip-weekday">{{ formatDate(date, locale, { weekday: 'narrow' }) }}</span>
+        <span class="t-caption strip-weekday">{{ formatDate(date, locale, { weekday: 'narrow' }) }}</span>{{ ' ' }}
         <span class="strip-number">{{ formatDate(date, locale, { day: 'numeric' }) }}</span>
       </button>
     </div>

@@ -316,3 +316,18 @@ test('axe finds no serious or critical issues on seeded Today and Week', async (
     }
   }
 })
+
+test('day-strip buttons carry their visible text in their accessible name', async ({ page }, testInfo) => {
+  test.skip(testInfo.project.name !== 'phone')
+  await page.clock.install({ time: NOW })
+  await seedKey(page, V2_KEY, JSON.stringify(seededDocument))
+  await openTab(page, 'week')
+  const days = page.locator('.strip-day')
+  await expect(days).toHaveCount(7)
+  for (const day of await days.all()) {
+    const visible = (await day.innerText()).replace(/\s+/g, ' ').trim()
+    expect(await day.getAttribute('aria-label')).toContain(visible)
+  }
+  const results = await new AxeBuilder({ page: page as unknown as ConstructorParameters<typeof AxeBuilder>[0]['page'] }).include('.day-strip').withRules(['label-content-name-mismatch']).analyze()
+  expect(results.violations.map((violation) => `${violation.id} ${violation.nodes.map((node) => node.html.slice(0, 160)).join(' | ')}`)).toEqual([])
+})
