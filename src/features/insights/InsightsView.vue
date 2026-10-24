@@ -2,6 +2,7 @@
 import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { localDateOf } from '@/core/time'
+import type { Category } from '@/core/model'
 import { computeStats, planVsActual, sevenDayMeasures } from '@/core/stats'
 import EmptyState from '@/ui/EmptyState.vue'
 import { usePlannerStore } from '@/stores/plannerStore'
@@ -24,17 +25,21 @@ const freeHours = computed(() => (document.value ? freeHoursWhole(document.value
 const stats = computed(() => (document.value ? computeStats(document.value) : null))
 const plannedMinutes = computed(() => Object.fromEntries((stats.value?.categories ?? []).map((row) => [row.categoryId, row.plannedMinutes])))
 
-// One row per goal; a category without a goal only gets a row when something was marked done in it.
+// One row per goal or retained actual, including history whose category has been removed.
 const rows = computed(() => {
   const doc = document.value
   if (!doc || !stats.value) return []
   const actuals = planVsActual(doc.actuals)
-  return stats.value.categories.flatMap((row) => {
-    const category = doc.categories.find((candidate) => candidate.id === row.categoryId)!
-    const actual = actuals[row.categoryId]
+  const categoryIds = new Set([...doc.categories.map((category) => category.id), ...Object.keys(actuals)])
+  return [...categoryIds].flatMap((categoryId) => {
+    const category: Category = doc.categories.find((candidate) => candidate.id === categoryId) ?? {
+      id: categoryId, name: 'Categoría eliminada', colorKey: 'gray', goal: { type: 'none', hoursPerWeek: 0 },
+    }
+    const actual = actuals[categoryId]
     if (category.goal.type === 'none' && !actual) return []
-    const progress = goalProgress(category.goal, row.plannedMinutes)
-    return [{ category, progress, hours: goalHours(progress.line, row.plannedMinutes), actual }]
+    const planned = plannedMinutes.value[categoryId] ?? 0
+    const progress = goalProgress(category.goal, planned)
+    return [{ category, progress, hours: goalHours(progress.line, planned), actual }]
   })
 })
 
@@ -69,7 +74,7 @@ function doneText(row: Row): string {
   <div v-if="document && stats" class="insights">
     <AssistantEntryButton />
     <EmptyState
-      v-if="document.categories.length === 0"
+      v-if="document.categories.length === 0 && rows.length === 0"
       icon="chart-no-axes-column"
       :title="t('insights.empty.title')"
       :description="t('insights.empty.description')"

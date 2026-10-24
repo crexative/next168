@@ -15,11 +15,12 @@ const segments = computed(() => capacity.value.segments.map((segment) => {
   const category = props.categories.find((candidate) => candidate.id === segment.categoryId)!
   return { ...segment, name: category.name, color: categoryColor(category), duration: formatTotal(segment.minutes) }
 }))
-const unassignedDuration = computed(() => formatTotal(capacity.value.availableMinutes))
 // Assigned and unassigned hours are rounded together, so the two figures always add up to the 168.
+const roundedHours = computed(() => wholeHourParts([capacity.value.plannedMinutes, capacity.value.availableMinutes]) as [number, number])
+const unassignedDuration = computed(() => formatWholeHours(roundedHours.value[1]))
 const headline = computed(() => {
-  const [assigned, unassigned] = wholeHourParts([capacity.value.plannedMinutes, capacity.value.availableMinutes]) as [number, number]
-  return t('insights.bar.summary', { assigned: formatWholeHours(assigned), unassigned: formatWholeHours(unassigned) })
+  const [assigned] = roundedHours.value
+  return t('insights.bar.summary', { assigned: formatWholeHours(assigned), unassigned: unassignedDuration.value })
 })
 const weekLabel = computed(() => formatTotal(WEEK_MINUTES))
 </script>

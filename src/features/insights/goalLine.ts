@@ -49,7 +49,7 @@ const wholeHours = (minutes: number) => Math.round(minutes / 60)
 // while the goal is still open, and `planned` is derived from it, so planned and amount always add up to the goal.
 export function goalHours(line: GoalLine, plannedMinutes: number): GoalHours {
   if (line.kind === 'none') return { planned: wholeHours(plannedMinutes), goal: 0, amount: 0, state: null }
-  const goal = Math.max(1, wholeHours(line.goalMinutes))
+  const goal = line.goalMinutes === 0 ? 0 : Math.max(1, wholeHours(line.goalMinutes))
   const rest = (minutes: number) => Math.min(goal, Math.max(1, Math.ceil(minutes / 60)))
   switch (line.kind) {
     case 'minMissing': return { planned: goal - rest(line.leftMinutes), goal, amount: rest(line.leftMinutes), state: 'attention' }
