@@ -30,7 +30,7 @@ function onUp(): void {
 </script>
 
 <template>
-  <li class="task-row">
+  <li class="task-row" :class="{ 'is-swiping': offset < 0 }">
     <span class="swipe-hint t-subhead" aria-hidden="true"><Icon name="check" :size="18" /> {{ t('tasks.swipeComplete') }}</span>
     <div
       class="task-content"
@@ -56,7 +56,10 @@ function onUp(): void {
 </template>
 
 <style scoped>
-.task-row { position: relative; overflow: hidden; background: var(--success); }
+.task-row { position: relative; overflow: hidden; }
+/* The green swipe track exists only while swiping: at rest its anti-aliased edge bled green around the card's rounded corners. */
+.task-row::before { content: ''; position: absolute; inset: 0; background: var(--success); visibility: hidden; }
+.task-row.is-swiping::before { visibility: visible; }
 /* The separator belongs to the row's surface: on the green swipe track behind it, a translucent line turned green. */
 .task-row + .task-row .task-content::before { content: ''; position: absolute; top: 0; right: 0; left: calc(var(--space-1) + var(--tap-target) + var(--space-2)); border-top: 1px solid var(--separator); }
 .swipe-hint { position: absolute; inset-block: 0; inset-inline-end: var(--space-4); display: flex; align-items: center; gap: var(--space-1); color: #fff; }
