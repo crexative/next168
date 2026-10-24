@@ -105,6 +105,12 @@ export function formatWholeHours(hours: number, locale: string = displayLocale.v
   return t('common.duration.hours', { hours: formatWholeNumber(hours, locale) })
 }
 
+// A total in the number rule's words: "2 h 30 min" up to 10 h, whole hours from there ("36 h"). For legends and sums.
+export function formatTotal(totalMinutes: number, locale: string = displayLocale.value): string {
+  const minutes = Math.abs(totalMinutes)
+  return minutes < 10 * 60 ? formatDuration(minutes, locale) : formatWholeHours(Math.round(minutes / 60), locale)
+}
+
 // "2 h 30 min", "45 min", "3 h": whole minutes, the sign left to the sentence around it. For a span of time (a block,
 // a task, time left); totals and goal progress are summaries and read in whole hours (formatWholeHours).
 export function formatDuration(totalMinutes: number, locale: string = displayLocale.value): string {

@@ -354,10 +354,10 @@ test.describe('accessibility plumbing', () => {
 
     // A quick second navigation wins: focus and the one announcement are for the last page only.
     await goTo(page, 'Tasks')
-    await goTo(page, 'Insights')
-    await expect(page.getByRole('heading', { level: 1, name: 'Insights' })).toBeFocused()
-    await expect(page.getByTestId('live-announcer')).toHaveText('Insights')
-    await expect(page).toHaveTitle('Insights · Next168')
+    await goTo(page, 'Summary')
+    await expect(page.getByRole('heading', { level: 1, name: 'Summary' })).toBeFocused()
+    await expect(page.getByTestId('live-announcer')).toHaveText('Summary')
+    await expect(page).toHaveTitle('Summary · Next168')
   })
 
   async function deleteGym(page: Page) {

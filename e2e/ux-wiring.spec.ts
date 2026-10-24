@@ -72,7 +72,7 @@ for (const size of Object.keys(SIZES) as (keyof typeof SIZES)[]) {
 
       test('the assistant is one toolbar icon on Today and Insights', async ({ page }) => {
         await start(page, size, theme, planned)
-        for (const [view, title] of [['today', 'Hoy'], ['insights', 'Análisis']] as const) {
+        for (const [view, title] of [['today', 'Hoy'], ['insights', 'Resumen']] as const) {
           await open(page, view, title)
           const entry = page.locator('#toolbar-actions').getByRole('link', { name: 'Preguntar al asistente' })
           await expect(entry).toBeVisible()
@@ -116,7 +116,7 @@ for (const size of Object.keys(SIZES) as (keyof typeof SIZES)[]) {
         await page.getByRole('button', { name: 'Hoy', exact: true }).click()
         await expect(slot.getByTestId('free-hours')).toHaveText(todayBadge)
 
-        await open(page, 'insights', 'Análisis')
+        await open(page, 'insights', 'Resumen')
         // The "this week, from now" card is gone; one live line says the same figure the badge does.
         await expect(page.getByTestId('week-split')).toHaveCount(0)
         await expect(page.getByTestId('free-hours-live')).toHaveText(`Esta semana te quedan ${hoursIn(todayBadge)} h libres.`)

@@ -24,6 +24,16 @@ function weekday(date: string, style: 'short' | 'narrow'): string {
   return new Intl.DateTimeFormat(locale.value, { weekday: style, timeZone: 'UTC' }).format(new Date(`${date}T12:00:00Z`))
 }
 
+// The window rolls (today and the six days before), so it is named by its dates, not by a weekday.
+const range = computed(() => {
+  const first = props.measures.days[0]?.date
+  const last = props.measures.days.at(-1)?.date
+  if (!first || !last) return ''
+  // formatRange is in every supported browser but not yet in the project's TypeScript lib.
+  const format = new Intl.DateTimeFormat(locale.value, { day: 'numeric', month: 'short', timeZone: 'UTC' }) as Intl.DateTimeFormat & { formatRange(start: Date, end: Date): string }
+  return format.formatRange(new Date(`${first}T12:00:00Z`), new Date(`${last}T12:00:00Z`))
+})
+
 const tiles = computed(() => {
   const { measures } = props
   return [
@@ -52,6 +62,7 @@ const tiles = computed(() => {
 <template>
   <section class="measures" :aria-label="t('insights.measures.title')">
     <h2 class="t-headline">{{ t('insights.measures.title') }}</h2>
+    <p v-if="range" class="t-footnote t-secondary range" data-testid="measures-range">{{ range }}</p>
     <div v-if="hasData" class="tiles">
       <article v-for="tile in tiles" :key="tile.id" class="tile" :data-testid="`measure-${tile.id}`">
         <h3 class="t-footnote t-secondary">{{ t(`insights.measures.${tile.key}`) }}</h3>
@@ -74,6 +85,8 @@ const tiles = computed(() => {
 
 <style scoped>
 .measures { display: flex; flex-direction: column; gap: var(--space-3); }
+.measures h2 { margin-bottom: calc(var(--space-2) * -1); }
+.range { margin: 0; }
 .tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(14rem, 1fr)); gap: var(--space-3); }
 .tile { display: flex; flex-direction: column; gap: var(--space-1); padding: var(--space-4); background: var(--surface); border-radius: var(--radius-card); }
 .dots { display: flex; justify-content: space-between; margin-top: var(--space-2); }

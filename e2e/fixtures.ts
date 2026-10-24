@@ -7,7 +7,7 @@ export const TABS = ['today', 'week', 'tasks', 'insights', 'settings'] as const
 export type TabName = (typeof TABS)[number]
 
 export const TAB_TITLES: Record<TabName, string> = {
-  today: 'Today', week: 'Week', tasks: 'Tasks', insights: 'Insights', settings: 'Settings',
+  today: 'Today', week: 'Week', tasks: 'Tasks', insights: 'Summary', settings: 'Settings',
 }
 
 // Real v1 shape: block 1 repeats with a duplicate day, block 2 crosses midnight.

@@ -29,7 +29,7 @@ it('returns to the screen the person came from', async () => {
   trail.value = { from: 'insights', to: 'assistant' }
   await nextTick()
   expect(link.getAttribute('href')).toBe('#/insights')
-  expect(link.getAttribute('aria-label')).toBe('Back to Insights')
+  expect(link.getAttribute('aria-label')).toBe('Back to Summary')
 })
 
 it('ignores a trail that does not end here or starts on an unknown screen', () => {

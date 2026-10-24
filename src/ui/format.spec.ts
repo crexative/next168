@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it } from 'vitest'
 import { i18n } from '@/i18n'
 import {
-  displayLocale, formatClock, formatDuration, formatHourOfDay, formatMinuteOfDay, hourCycle, resolveDisplayLocale, setHourCycle,
+  displayLocale, formatClock, formatDuration, formatHourOfDay, formatMinuteOfDay, formatTotal, hourCycle, resolveDisplayLocale, setHourCycle,
   wholeHourParts,
 } from './format'
 
@@ -88,6 +88,16 @@ describe('duration', () => {
       i18n.global.locale.value = language
       expect(formatDuration(150), language).toBe('2 h 30 min')
     }
+  })
+})
+
+describe('totals', () => {
+  it('keep minutes under 10 h and read in whole hours from there', () => {
+    expect(formatTotal(150)).toBe('2 h 30 min')
+    expect(formatTotal(9 * 60 + 59)).toBe('9 h 59 min')
+    expect(formatTotal(10 * 60 + 29)).toBe('10 h')
+    expect(formatTotal(35 * 60 + 30)).toBe('36 h')
+    expect(formatTotal(168 * 60)).toBe('168 h')
   })
 })
 

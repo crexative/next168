@@ -4,7 +4,7 @@
     "today": "Aujourd’hui",
     "week": "Semaine",
     "tasks": "Tâches",
-    "insights": "Analyses",
+    "insights": "Résumé",
     "settings": "Réglages"
   },
   "navigation": {
@@ -27,7 +27,7 @@
       "description": "Les tâches seront placées dans le temps libre de leur catégorie."
     },
     "insights": {
-      "title": "Aucune analyse",
+      "title": "Pas encore de résumé",
       "description": "Voyez comment vos 168 heures sont utilisées dès que vous planifiez votre semaine."
     },
     "settings": {
