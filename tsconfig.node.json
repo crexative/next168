@@ -1,6 +1,7 @@
 {
   "extends": "@tsconfig/node22/tsconfig.json",
   "include": [
+    "config/**/*.ts",
     "vite.config.*",
     "vitest.config.*",
     "eslint.config.*",

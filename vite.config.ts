@@ -3,13 +3,14 @@ import { fileURLToPath, URL } from 'node:url'
 import { defineConfig } from 'vite'
 import vue from '@vitejs/plugin-vue'
 import { VitePWA } from 'vite-plugin-pwa'
+import { readPreviewHttps } from './config/lanHttps'
 
 const BRAND_TINT = '#5856D6'
 const GROUPED_BACKGROUND = '#F2F2F7'
 const MAX_PRECACHE_BYTES = 5 * 1024 * 1024
 
 // base './' lets the same build run at '/', at '/next168/' and inside the local companion.
-export default defineConfig({
+export default defineConfig(({ isPreview }) => ({
   base: './',
   plugins: [
     vue(),
@@ -61,4 +62,7 @@ export default defineConfig({
     host: true,
     port: 5173,
   },
-})
+  preview: {
+    https: isPreview ? readPreviewHttps(process.env) : undefined,
+  },
+}))

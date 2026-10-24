@@ -11,6 +11,8 @@
     "dev": "vite",
     "build": "run-p type-check \"build-only {@}\" --",
     "preview": "vite preview",
+    "lan:cert": "node scripts/lan-cert.mjs",
+    "preview:lan": "node scripts/preview-lan.mjs",
     "build-only": "vite build",
     "type-check": "vue-tsc --build",
     "lint": "eslint . --fix",

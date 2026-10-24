@@ -142,9 +142,15 @@ npm run dev
 npm run dev          # Start Vite dev server
 npm run build        # Type-check and build for production
 npm run preview      # Preview production build
+npm run lan:cert     # Create local certificates for phone installation
+npm run preview:lan  # Preview production build over HTTPS on the LAN (port 4443)
 npm run type-check   # Run TypeScript type checking
 npm run lint         # Run ESLint with auto-fix
 ```
+
+To install the PWA on a real Android phone or iPhone, follow
+[Install Next168 on a phone](docs/install-on-a-phone.md) for local HTTPS, CA trust,
+offline checks, and the Android USB alternative. No hosting account is needed.
 
 ### Testing
 
