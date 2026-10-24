@@ -2,10 +2,11 @@
 import { computed, reactive, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { Pencil } from 'lucide-vue-next'
-import { COLOR_KEYS, type Goal } from '@/core/model'
+import { COLOR_KEYS, type Goal, type PlannerDocument } from '@/core/model'
+import { computeStats } from '@/core/stats'
 import { formatDuration, formatHoursDecimal } from '@/features/insights/format'
 import { minuteToTime } from '@/features/checkin/checkInForm'
-import { assertEntry, CHANGED_ELSEWHERE, snapshotOf } from '@/features/insights/entryGuard'
+import { assertDocumentHash, CHANGED_ELSEWHERE, documentHash } from '@/features/insights/entryGuard'
 import { usePlannerStore } from '@/stores/plannerStore'
 import Button from '@/ui/Button.vue'
 import Icon from '@/ui/Icon.vue'
@@ -25,57 +26,68 @@ const LAST_STEP = 2
 const { t, locale } = useI18n()
 const planner = usePlannerStore()
 
-function freshChoices(): TemplateChoice[] {
-  return CATEGORY_TEMPLATES.map((template) => ({
-    templateId: template.id,
-    selected: template.preselected === true,
-    name: t(`onboarding.templates.${template.id}`),
-    colorKey: template.colorKey,
-    sketch: true,
-    goal: { ...template.goal },
-  }))
+function freshChoices(document: PlannerDocument | null): TemplateChoice[] {
+  const categories = document?.categories ?? []
+  const remaining = new Set(categories.map((category) => category.id))
+  const choices = CATEGORY_TEMPLATES.map((template): TemplateChoice => {
+    const name = t(`onboarding.templates.${template.id}`)
+    const available = categories.filter((category) => remaining.has(category.id))
+    const existing = available.find((category) => [name.toLowerCase(), template.id].includes(category.name.trim().toLowerCase()))
+      ?? available.find((category) => category.icon === template.icon)
+    if (existing) remaining.delete(existing.id)
+    return {
+      templateId: template.id,
+      existingCategoryId: existing?.id,
+      selected: !!existing || (categories.length === 0 && template.preselected === true),
+      name: existing?.name ?? name,
+      colorKey: existing?.colorKey ?? template.colorKey,
+      sketch: !existing,
+      goal: { ...(existing?.goal ?? template.goal) },
+    }
+  })
+  return [...choices, ...categories.filter((category) => remaining.has(category.id)).map((category): TemplateChoice => ({
+    templateId: `category:${category.id}`, existingCategoryId: category.id,
+    selected: true, name: category.name, colorKey: category.colorKey, sketch: false, goal: { ...category.goal },
+  }))]
 }
 
 const step = ref(0)
-const choices = reactive<TemplateChoice[]>(freshChoices())
+const choices = reactive<TemplateChoice[]>([])
 const firstTask = reactive<FirstTaskChoice>({ title: '', templateId: '', durationMin: 60 })
 // One editor open at a time: the name and colour of a row (step 1) or the goal of a category (step 2).
 const editingId = ref<string | null>(null)
 // What the last finished wizard saved, shown until the person leaves it.
 const finished = ref<{ categories: number; blocks: number; task: string } | null>(null)
+const changedElsewhere = ref(false)
+const existingPlannedMinutes = ref(0)
+let openedDocument: PlannerDocument | null = null
+let wizardIdentity: string | undefined
+let initialChoices = ''
 
 function resetWizard(): void {
   step.value = 0
   editingId.value = null
-  choices.splice(0, choices.length, ...freshChoices())
+  changedElsewhere.value = false
+  openedDocument = planner.document ? structuredClone(planner.document) : null
+  wizardIdentity = documentHash(openedDocument)
+  existingPlannedMinutes.value = openedDocument ? computeStats(openedDocument).plannedMinutes : 0
+  choices.splice(0, choices.length, ...freshChoices(openedDocument))
+  initialChoices = JSON.stringify(choices)
   Object.assign(firstTask, { title: '', templateId: '', durationMin: 60 })
 }
 
-// The wizard's picks describe one first-run workspace: its id plus the content it was opened on.
-function identityOf(document: typeof planner.document): string | undefined {
-  return document ? snapshotOf({ workspaceId: document.workspaceId, categories: document.categories, blocks: document.blocks, tasks: document.tasks }) : undefined
-}
-let wizardIdentity = identityOf(planner.document)
-
-// Start over when another workspace (or other content under the same id) replaces it.
-watch(() => identityOf(planner.document), (identity) => {
-  wizardIdentity = identity
-  if (finished.value === null) resetWizard()
-})
-
-// Opened again from "Set up my week": start from a clean first step.
-watch(() => planner.document?.settings.onboardingDone, (done, previous) => {
-  if (done === false && previous === true) { finished.value = null; resetWizard() }
-})
-
 const wizardOpen = computed(() => planner.status === 'ready' && planner.document?.settings.onboardingDone === false)
+// Bind each opening to its document and revision. Later writes must be refused, never silently rebased.
+watch(wizardOpen, (open) => {
+  if (open) { finished.value = null; resetWizard() }
+}, { immediate: true })
 const open = computed(() => wizardOpen.value || finished.value !== null)
 const picked = computed(() => choices.filter((choice) => choice.selected))
 const taskTemplateId = computed(() => defaultTaskTemplateId(choices, firstTask.templateId))
 const saving = ref(false)
 // Leaving a wizard the person has changed asks first; an untouched one just closes.
-const dirty = computed(() => finished.value === null && (step.value > 0 || JSON.stringify(choices) !== JSON.stringify(freshChoices())))
-const planned = computed(() => plannedMinutes(choices))
+const dirty = computed(() => finished.value === null && (step.value > 0 || JSON.stringify(choices) !== initialChoices))
+const planned = computed(() => existingPlannedMinutes.value + plannedMinutes(choices))
 const free = computed(() => Math.max(0, WEEK_MINUTES - planned.value))
 const over = computed(() => Math.max(0, planned.value - WEEK_MINUTES))
 const goalInvalid = computed(() => picked.value.some((choice) => !goalHoursValid(choice.goal)))
@@ -88,13 +100,31 @@ function dayNames(days: number[]): string {
   return days.map((day) => format.format(new Date(Date.UTC(2024, 0, 7 + day)))).join(', ')
 }
 
-function presetText(templateId: string): string {
-  const { preset } = templateOf(templateId)
-  return `${minuteToTime(preset.start)}–${minuteToTime(preset.end)} · ${dayNames(preset.days)}`
+function storedBlocks(choice: TemplateChoice) {
+  return openedDocument?.blocks.filter((block) => block.categoryId === choice.existingCategoryId) ?? []
 }
 
-function weeklyText(templateId: string): string {
-  return t('onboarding.perWeek', { hours: formatHoursDecimal(presetWeeklyMinutes(templateOf(templateId).preset)) })
+function canSketch(choice: TemplateChoice): boolean {
+  return !!templateOf(choice.templateId) && storedBlocks(choice).length === 0
+}
+
+function presetText(choice: TemplateChoice): string {
+  const saved = storedBlocks(choice)
+  const preset = templateOf(choice.templateId)?.preset
+  return (saved.length ? saved : preset ? [preset] : [])
+    .map((block) => `${minuteToTime(block.start)}–${minuteToTime(block.end)} · ${dayNames(block.days)}`).join('; ')
+}
+
+function weeklyText(choice: TemplateChoice): string {
+  const saved = storedBlocks(choice).reduce((sum, block) => sum + presetWeeklyMinutes(block), 0)
+  const preset = templateOf(choice.templateId)?.preset
+  const minutes = choice.existingCategoryId ? saved + (choice.sketch && preset ? presetWeeklyMinutes(preset) : 0) : preset ? presetWeeklyMinutes(preset) : 0
+  return t('onboarding.perWeek', { hours: formatHoursDecimal(minutes) })
+}
+
+function choiceColor(choice: TemplateChoice): string {
+  const existing = openedDocument?.categories.find((category) => category.id === choice.existingCategoryId)
+  return (existing?.colorKey === choice.colorKey && existing.customColor) || `var(--cat-${choice.colorKey})`
 }
 
 function goalText(goal: Goal): string {
@@ -110,7 +140,7 @@ function toggleEditor(id: string): void {
 }
 
 function setGoalType(choice: TemplateChoice, type: Goal['type']): void {
-  choice.goal = { type, hoursPerWeek: type === 'none' ? 0 : choice.goal.hoursPerWeek || templateOf(choice.templateId).goal.hoursPerWeek || 1 }
+  choice.goal = { type, hoursPerWeek: type === 'none' ? 0 : choice.goal.hoursPerWeek || templateOf(choice.templateId)?.goal.hoursPerWeek || 1 }
 }
 
 function setGoalHours(choice: TemplateChoice, value: string): void {
@@ -122,15 +152,17 @@ const goalOptions = computed(() => (['max', 'min', 'none'] as const).map((value)
 async function complete(withChoices: boolean): Promise<void> {
   saving.value = true
   const opened = wizardIdentity
-  const existing = planner.document?.categories ?? []
+  const existing = openedDocument?.categories ?? []
   const result = withChoices
     ? buildOnboardingResult(choices, { ...firstTask, templateId: taskTemplateId.value }, { newId: () => crypto.randomUUID(), now: new Date(), existing })
-    : { categories: [], blocks: [], tasks: [] }
+    : { categories: [], categoryUpdates: [], blocks: [], tasks: [] }
   const committed = await planner.commit((draft) => {
-    // The wizard only ever completes a first run; never push its picks into a workspace that already finished it.
+    assertDocumentHash(draft, opened)
+    // Never push picks into a workspace that already finished this wizard.
     if (draft.settings.onboardingDone) throw new Error('onboarding-done')
-    // Checked in the commit itself: the watcher may not have reset the wizard yet when a replacement lands.
-    assertEntry({ workspaceId: draft.workspaceId, categories: draft.categories, blocks: draft.blocks, tasks: draft.tasks }, opened)
+    for (const update of result.categoryUpdates) {
+      Object.assign(draft.categories.find((category) => category.id === update.id)!, update.patch)
+    }
     draft.categories.push(...result.categories)
     draft.blocks.push(...result.blocks)
     draft.tasks.push(...result.tasks)
@@ -142,9 +174,10 @@ async function complete(withChoices: boolean): Promise<void> {
     if (withChoices && (result.blocks.length > 0 || result.tasks.length > 0)) {
       finished.value = { categories: result.categories.length, blocks: result.blocks.length, task: result.tasks[0]?.title ?? '' }
     }
-  } else if (committed.reason === CHANGED_ELSEWHERE) {
-    // The picks belonged to a workspace that was replaced; the watcher restarts the wizard for the new one.
+  } else if (committed.reason === CHANGED_ELSEWHERE || committed.reason === 'conflict') {
     planner.dismissError()
+    resetWizard()
+    changedElsewhere.value = true
   }
 }
 
@@ -189,6 +222,7 @@ const stepTitle = computed(() => (finished.value ? t('onboarding.done.title') : 
     <div v-else class="onboarding" data-testid="onboarding" :data-step="step">
       <p class="t-caption t-secondary">{{ t('onboarding.progress', { step: step + 1, total: LAST_STEP + 1 }) }}</p>
       <p class="t-subhead t-secondary">{{ t(`onboarding.steps.${step}.description`) }}</p>
+      <p v-if="changedElsewhere" class="t-footnote error" role="alert">{{ t('onboarding.changedElsewhere') }}</p>
 
       <p v-if="step < 2" class="counter t-subhead" role="status" data-testid="week-counter" :data-over="over > 0 || undefined">
         <span class="counter-planned">{{ t('onboarding.counter', { planned: formatHoursDecimal(planned) }) }}</span>
@@ -202,10 +236,10 @@ const stepTitle = computed(() => (finished.value ? t('onboarding.done.title') : 
             <label class="chip">
               <input v-model="choice.selected" class="check-input" type="checkbox" :aria-label="t('onboarding.useCategory', { name: displayName(choice) })" @change="editingId = null">
               <span class="check-box" aria-hidden="true"><Icon name="check" :size="16" /></span>
-              <span class="color-dot" aria-hidden="true" :style="{ backgroundColor: `var(--cat-${choice.colorKey})` }" />
+              <span class="color-dot" aria-hidden="true" :style="{ backgroundColor: choiceColor(choice) }" />
               <span class="chip-text">
                 <span class="t-body chip-name">{{ displayName(choice) }}</span>
-                <span class="t-footnote t-secondary">{{ weeklyText(choice.templateId) }}</span>
+                <span class="t-footnote t-secondary">{{ weeklyText(choice) }}</span>
               </span>
             </label>
             <button
@@ -240,11 +274,11 @@ const stepTitle = computed(() => (finished.value ? t('onboarding.done.title') : 
         <ul v-else class="choices">
           <li v-for="choice in picked" :key="choice.templateId" class="choice sketch" :data-template="choice.templateId">
             <label class="sketch-label">
-              <input v-model="choice.sketch" class="check-input" type="checkbox">
+              <input v-model="choice.sketch" class="check-input" type="checkbox" :disabled="!canSketch(choice)">
               <span class="check-box" aria-hidden="true"><Icon name="check" :size="16" /></span>
               <span class="sketch-text">
                 <span class="t-body">{{ displayName(choice) }}</span>
-                <span class="t-footnote t-secondary preset">{{ presetText(choice.templateId) }}</span>
+                <span class="t-footnote t-secondary preset">{{ presetText(choice) }}</span>
               </span>
             </label>
             <button

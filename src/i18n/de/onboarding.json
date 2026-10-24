@@ -33,6 +33,7 @@
   "finish": "Fertig",
   "noTaskCategory": "Keine Kategorie, Aufgabe überspringen",
   "notNow": "Jetzt nicht",
+  "changedElsewhere": "Dein Plan wurde während der Einrichtung geändert. Es wurde nichts gespeichert. Prüfe die aktuellen Werte und versuche es erneut.",
   "counter": "{planned} von 168 h geplant",
   "counterFree": "{free} h frei",
   "counterOver": "Du liegst {over} h über den 168",

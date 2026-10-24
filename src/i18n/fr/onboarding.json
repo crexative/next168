@@ -33,6 +33,7 @@
   "finish": "Terminer",
   "noTaskCategory": "Aucune catégorie, ignorer la tâche",
   "notNow": "Pas maintenant",
+  "changedElsewhere": "Votre planning a changé pendant la configuration. Rien n’a été enregistré. Vérifiez les valeurs actuelles et réessayez.",
   "counter": "{planned} h sur 168 planifiées",
   "counterFree": "{free} h libres",
   "counterOver": "Vous dépassez les 168 h de {over} h",
