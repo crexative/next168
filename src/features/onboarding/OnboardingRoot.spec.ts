@@ -59,15 +59,11 @@ async function clickWizard(label: string): Promise<void> {
   await nextTick()
 }
 
-async function saveCheckIn(date: string): Promise<void> {
+// The check-in closes today: there is no date to pick, so a second save edits the same day's entry.
+async function saveCheckIn(text: string): Promise<void> {
   const form = mounted!.host.querySelector<HTMLFormElement>('form.checkin-form')!
-  const dateInput = form.querySelector<HTMLInputElement>('input[type=date]')!
-  dateInput.value = date
-  dateInput.dispatchEvent(new Event('input'))
-  dateInput.dispatchEvent(new Event('change'))
-  await nextTick()
   const note = form.querySelector('textarea')!
-  note.value = 'A day worth keeping'
+  note.value = text
   note.dispatchEvent(new Event('input'))
   await nextTick()
   form.dispatchEvent(new Event('submit', { cancelable: true }))
@@ -95,12 +91,12 @@ it.each([
   await prepareAssistant()
   expect(persist).not.toHaveBeenCalled()
 
-  await saveCheckIn('2026-10-23')
+  await saveCheckIn('A day worth keeping')
   expect(mounted.store.document!.checkIns).toHaveLength(1)
   expect(persist).toHaveBeenCalledTimes(1)
   expect(localStorage.getItem(PERSIST_REQUESTED_KEY)).not.toBeNull()
-  await saveCheckIn('2026-10-24')
-  expect(mounted.store.document!.checkIns).toHaveLength(2)
+  await saveCheckIn('Added the same evening')
+  expect(mounted.store.document!.checkIns).toEqual([expect.objectContaining({ note: 'Added the same evening' })])
   expect(persist).toHaveBeenCalledTimes(1)
   await prepareAssistant()
   expect(persist).toHaveBeenCalledTimes(1)

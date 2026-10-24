@@ -1,23 +1,33 @@
 {
   "title": "Bilan du jour",
   "intro": "Une minute en fin de journée. Tout reste sur cet appareil.",
-  "date": "Date de votre réveil",
-  "bedtime": "Heure du coucher",
-  "wake": "Heure du réveil",
-  "workEnd": "Fin du travail",
-  "exercise": {
-    "label": "Avez-vous fait du sport ?",
-    "yes": "Oui",
-    "no": "Non",
-    "not-planned": "Non prévu"
+  "bedtime": {
+    "sentence": "Hier soir, au lit à {time}",
+    "question": "À quelle heure était le coucher hier soir ?"
   },
-  "stress": "Stress aujourd’hui (1 calme – 5 élevé)",
+  "wake": {
+    "sentence": "Aujourd’hui, réveil à {time}",
+    "question": "À quelle heure était le réveil aujourd’hui ?"
+  },
+  "workEnd": {
+    "sentence": "Aujourd’hui, fin du travail à {time}",
+    "question": "À quelle heure s’est terminé le travail aujourd’hui ?"
+  },
+  "change": "Modifier",
+  "stress": "Stress aujourd’hui",
+  "stressLow": "calme",
+  "stressHigh": "élevé",
+  "stressScale": "1 est calme, 5 est un stress élevé",
   "clear": "Effacer",
   "clearAnswer": "Effacer : {question}",
   "note": "Note (facultatif)",
+  "pending": {
+    "title": "Pas encore marqués",
+    "hint": "Touchez le cercle si vous l’avez fait. Appui long pour choisir À moitié ou Non."
+  },
   "save": "Enregistrer le bilan",
   "changedElsewhere": "Ceci a changé ailleurs et a donc été rechargé. Vérifiez-le puis réessayez.",
-  "planHint": "Les heures viennent de votre plan ; changez-les si c’était différent.",
+  "planHint": "Les heures viennent de votre plan ; touchez-en une pour la changer.",
   "card": {
     "description": "Sommeil, sport et stress en une minute",
     "doneStreak": "Fait ✓ · série {count}",

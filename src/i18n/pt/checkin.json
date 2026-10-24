@@ -1,23 +1,33 @@
 {
   "title": "Fechamento do dia",
   "intro": "Um minuto no fim do dia. Tudo fica neste dispositivo.",
-  "date": "Data em que acordou",
-  "bedtime": "Hora de dormir",
-  "wake": "Hora de acordar",
-  "workEnd": "Fim do trabalho",
-  "exercise": {
-    "label": "Você se exercitou?",
-    "yes": "Sim",
-    "no": "Não",
-    "not-planned": "Não planejado"
+  "bedtime": {
+    "sentence": "Ontem à noite você foi dormir à {time} | Ontem à noite você foi dormir às {time}",
+    "question": "A que horas você foi dormir ontem à noite?"
   },
-  "stress": "Estresse hoje (1 calmo – 5 alto)",
+  "wake": {
+    "sentence": "Hoje você acordou à {time} | Hoje você acordou às {time}",
+    "question": "A que horas você acordou hoje?"
+  },
+  "workEnd": {
+    "sentence": "Hoje você terminou de trabalhar à {time} | Hoje você terminou de trabalhar às {time}",
+    "question": "A que horas você terminou de trabalhar hoje?"
+  },
+  "change": "Alterar",
+  "stress": "Estresse hoje",
+  "stressLow": "calmo",
+  "stressHigh": "alto",
+  "stressScale": "1 é calmo, 5 é estresse alto",
   "clear": "Limpar",
   "clearAnswer": "Limpar: {question}",
   "note": "Nota (opcional)",
+  "pending": {
+    "title": "Ainda sem marcar",
+    "hint": "Toque no círculo se você fez. Mantenha pressionado para escolher Pela metade ou Não."
+  },
   "save": "Salvar fechamento",
   "changedElsewhere": "Isto mudou noutro lugar, por isso foi recarregado. Reveja e tente novamente.",
-  "planHint": "Os horários vêm do seu plano; mude-os se foi diferente.",
+  "planHint": "Os horários vêm do seu plano; toque em um para mudar.",
   "card": {
     "description": "Sono, exercício e estresse em um minuto",
     "doneStreak": "Feito ✓ · sequência {count}",

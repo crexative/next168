@@ -1,23 +1,33 @@
 {
   "title": "Tagesabschluss",
   "intro": "Eine Minute am Tagesende. Alles bleibt auf diesem Gerät.",
-  "date": "Datum des Aufwachens",
-  "bedtime": "Schlafenszeit",
-  "wake": "Aufstehzeit",
-  "workEnd": "Arbeitsende",
-  "exercise": {
-    "label": "Hast du dich bewegt?",
-    "yes": "Ja",
-    "no": "Nein",
-    "not-planned": "Nicht geplant"
+  "bedtime": {
+    "sentence": "Gestern Abend bist du um {time} ins Bett gegangen",
+    "question": "Wann bist du gestern Abend ins Bett gegangen?"
   },
-  "stress": "Stress heute (1 ruhig – 5 hoch)",
+  "wake": {
+    "sentence": "Heute bist du um {time} aufgestanden",
+    "question": "Wann bist du heute aufgestanden?"
+  },
+  "workEnd": {
+    "sentence": "Heute hast du um {time} aufgehört zu arbeiten",
+    "question": "Wann hast du heute aufgehört zu arbeiten?"
+  },
+  "change": "Ändern",
+  "stress": "Stress heute",
+  "stressLow": "ruhig",
+  "stressHigh": "hoch",
+  "stressScale": "1 ist ruhig, 5 ist viel Stress",
   "clear": "Löschen",
   "clearAnswer": "Löschen: {question}",
   "note": "Notiz (optional)",
+  "pending": {
+    "title": "Noch nicht markiert",
+    "hint": "Tippe auf den Kreis, wenn du es gemacht hast. Gedrückt halten für Teilweise oder Nein."
+  },
   "save": "Abschluss speichern",
   "changedElsewhere": "Das wurde anderswo geändert und deshalb neu geladen. Bitte prüfen und erneut versuchen.",
-  "planHint": "Die Zeiten stammen aus deinem Plan; ändere sie, wenn es anders war.",
+  "planHint": "Die Zeiten stammen aus deinem Plan; tippe auf eine, um sie zu ändern.",
   "card": {
     "description": "Schlaf, Bewegung und Stress in einer Minute",
     "doneStreak": "Erledigt ✓ · Serie {count}",

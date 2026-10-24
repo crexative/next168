@@ -6,6 +6,7 @@ import { i18n } from '@/i18n'
 import type { PlannerDocument } from '@/core/model'
 import { configurePlannerStore, usePlannerStore } from '@/stores/plannerStore'
 import { createTestRepositories, fixedNow, newTestId, testDocument } from '@/repositories/testSupport'
+import { useUndoToast } from '@/ui/undoToast'
 import CheckInView from './CheckInView.vue'
 import { consumeSavedFlag } from './checkinFlash'
 
@@ -23,10 +24,12 @@ const planned: PlannerDocument = {
 let app: App | undefined
 let host: HTMLElement
 
+let repos: ReturnType<typeof createTestRepositories>
+
 async function mount(first: PlannerDocument) {
   const pinia = createPinia()
   setActivePinia(pinia)
-  const repos = createTestRepositories()
+  repos = createTestRepositories()
   configurePlannerStore({ repository: repos.planner, now: fixedNow, newId: newTestId, locale: () => 'en', timeZone: () => 'UTC' })
   const store = usePlannerStore()
   host = document.createElement('div')
@@ -40,10 +43,23 @@ async function mount(first: PlannerDocument) {
   return store
 }
 
-const input = (label: string) => [...host.querySelectorAll('label')].find((node) => node.textContent?.includes(label))?.querySelector('input')
+const clock = (value: string | null | undefined) => value?.replace(/\s+/g, ' ').trim()
+const text = (testId: string) => clock(host.querySelector(`[data-testid="${testId}"]`)?.textContent)
+const radios = (group: number) => host.querySelectorAll('[role="radiogroup"]')[group]!.querySelectorAll<HTMLButtonElement>('[role="radio"]')
+const submit = () => host.querySelector<HTMLButtonElement>('button[type=submit]')!.click()
+
+async function editFact(testId: string, value: string): Promise<void> {
+  host.querySelector<HTMLButtonElement>(`[data-testid="${testId}"] button`)!.click()
+  await nextTick()
+  const field = host.querySelector<HTMLInputElement>(`[data-testid="${testId}"] input`)!
+  field.value = value
+  field.dispatchEvent(new Event('input'))
+  field.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true, cancelable: true }))
+  await nextTick()
+}
 
 beforeEach(() => { vi.useFakeTimers({ toFake: ['Date'] }); vi.setSystemTime(fixedNow()); window.location.hash = '' })
-afterEach(() => { app?.unmount(); host?.remove(); app = undefined; vi.useRealTimers(); i18n.global.locale.value = 'en' })
+afterEach(() => { useUndoToast().dismiss(); document.querySelector('.toolbar-inner')?.remove(); app?.unmount(); host?.remove(); app = undefined; vi.useRealTimers(); i18n.global.locale.value = 'en' })
 
 describe('check-in form', () => {
   it('has a back control to Today, since the check-in has no tab', async () => {
@@ -54,92 +70,146 @@ describe('check-in form', () => {
     expect(host.querySelector('form')!.contains(back)).toBe(false)
   })
 
-  it('labels both questions visibly and names the radio groups after them', async () => {
+  it('puts the back control top-leading in the shell toolbar when there is one, not under the title', async () => {
+    const toolbar = document.createElement('div')
+    toolbar.className = 'toolbar-inner'
+    document.body.appendChild(toolbar)
     await mount(planned)
-    const groups = [...host.querySelectorAll('[role="radiogroup"]')]
-    const names = groups.map((group) => host.querySelector(`#${CSS.escape(group.getAttribute('aria-labelledby')!)}`)?.textContent)
-    expect(names).toEqual(['Did you exercise?', 'Stress today (1 calm – 5 high)'])
-    expect(groups[0]!.querySelectorAll('[role="radio"]')).toHaveLength(3)
-    expect(groups[1]!.querySelectorAll('[role="radio"]')).toHaveLength(5)
-    // Nothing is picked yet, yet each row stays reachable with Tab through its first choice.
-    expect(groups.map((group) => [...group.querySelectorAll('[role="radio"]')].filter((radio) => radio.getAttribute('tabindex') === '0').length)).toEqual([1, 1])
-  })
-
-  it('prefills bedtime and wake from the plan and says where they come from', async () => {
-    await mount(planned)
-    expect(input('Bedtime')?.value).toBe('22:00')
-    expect(input('Wake-up')?.value).toBe('06:00')
-    expect(host.querySelector('[data-testid="plan-hint"]')?.textContent).toContain('Times come from your plan')
-  })
-
-  it('hides "Work ended" on a day without work and fills it from the plan on a work day', async () => {
-    await mount(planned)
-    expect(input('Work ended')).toBeUndefined()
-    const date = host.querySelector<HTMLInputElement>('input[type=date]')!
-    date.value = '2026-10-23'
-    date.dispatchEvent(new Event('input'))
-    date.dispatchEvent(new Event('change'))
     await nextTick()
-    expect(input('Work ended')?.value).toBe('17:00')
+    expect(toolbar.querySelector('[data-testid="back-button"]')).not.toBeNull()
+    expect(host.querySelector('[data-testid="back-button"]')).toBeNull()
+    expect(toolbar.querySelector('.toolbar-back')?.classList.contains('is-in-toolbar')).toBe(true)
+  })
+
+  it('names the day in a line of its own and has no date field to pick', async () => {
+    await mount(planned)
+    expect(text('checkin-date')).toBe('Saturday, October 24')
+    expect(host.querySelector('input[type=date]')).toBeNull()
+    expect(host.textContent).not.toContain('Date you woke up')
+  })
+
+  it('says the night and the morning as sentences, prefilled from the plan, and says where they come from', async () => {
+    await mount(planned)
+    expect(text('fact-bedtime')).toBe('You went to bed at 10:00 PM last night')
+    expect(text('fact-wake')).toBe('You woke up at 6:00 AM today')
+    expect(host.querySelector('[data-testid="plan-hint"]')?.textContent).toContain('Times come from your plan')
+    expect(host.querySelector('[data-testid="fact-bedtime"] button')?.getAttribute('aria-label')).toBe('You went to bed at 10:00 PM last night. Change')
+  })
+
+  it('opens the time of a sentence when it is tapped, and goes back to the sentence once it is set', async () => {
+    await mount(planned)
+    host.querySelector<HTMLButtonElement>('[data-testid="fact-bedtime"] button')!.click()
+    await nextTick()
+    const field = host.querySelector<HTMLInputElement>('[data-testid="fact-bedtime"] input')!
+    expect(field.value).toBe('22:00')
+    expect(host.querySelector('[data-testid="fact-bedtime"] label')?.textContent).toBe('When did you go to bed last night?')
+    expect(window.document.activeElement).toBe(field)
+    field.value = '23:30'
+    field.dispatchEvent(new Event('input'))
+    field.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true, cancelable: true }))
+    await nextTick()
+    expect(host.querySelector('[data-testid="fact-bedtime"] input')).toBeNull()
+    expect(text('fact-bedtime')).toBe('You went to bed at 11:30 PM last night')
+    expect(window.document.activeElement).toBe(host.querySelector('[data-testid="fact-bedtime"] button'))
+  })
+
+  it('asks the question while a time is unknown, and agrees the Spanish article with the hour', async () => {
+    await mount({ ...planned, blocks: [] })
+    i18n.global.locale.value = 'es'
+    await nextTick()
+    expect(text('fact-bedtime')).toBe('¿A qué hora te acostaste anoche?')
+    await editFact('fact-bedtime', '01:30')
+    expect(text('fact-bedtime')).toBe('Anoche te acostaste a la 1:30')
+    await editFact('fact-bedtime', '23:00')
+    expect(text('fact-bedtime')).toBe('Anoche te acostaste a las 23:00')
+  })
+
+  it('hides "work ended" on a day without work and shows it for a stored time', async () => {
+    await mount(planned)
+    expect(host.querySelector('[data-testid="fact-work-end"]')).toBeNull()
+    app!.unmount(); host.remove()
+    await mount({ ...planned, checkIns: [{ date: '2026-10-24', workEnd: 1080 }] })
+    expect(text('fact-work-end')).toBe('You finished work at 6:00 PM today')
+  })
+
+  it('fills "work ended" from the plan on a day with work', async () => {
+    vi.setSystemTime(new Date('2026-10-23T12:00:00Z'))
+    await mount(planned)
+    expect(text('fact-work-end')).toBe('You finished work at 5:00 PM today')
   })
 
   it('shows a saved check-in exactly as stored, without the plan’s times', async () => {
     await mount({ ...planned, checkIns: [{ date: '2026-10-24', bedtime: 1410, wake: 420 }] })
-    expect(input('Bedtime')?.value).toBe('23:30')
-    expect(input('Wake-up')?.value).toBe('07:00')
+    expect(text('fact-bedtime')).toBe('You went to bed at 11:30 PM last night')
+    expect(text('fact-wake')).toBe('You woke up at 7:00 AM today')
     expect(host.querySelector('[data-testid="plan-hint"]')).toBeNull()
   })
 
-  it('saves in four taps, returns to Today and leaves the confirmation for its card', async () => {
+  it('asks only stress, with its end words, and no second exercise question', async () => {
+    await mount(planned)
+    const groups = [...host.querySelectorAll('[role="radiogroup"]')]
+    expect(groups).toHaveLength(1)
+    expect(host.querySelector(`#${CSS.escape(groups[0]!.getAttribute('aria-labelledby')!)}`)?.textContent).toBe('Stress today')
+    expect(radios(0)).toHaveLength(5)
+    expect(host.textContent).not.toContain('Did you exercise?')
+    const ends = host.querySelector('[data-testid="choice-ends"]')!
+    expect([...ends.querySelectorAll('[aria-hidden="true"]')].map((node) => node.textContent)).toEqual(['calm', 'high'])
+    expect(groups[0]!.getAttribute('aria-describedby')).toBe(ends.id)
+    expect(ends.querySelector('.visually-hidden')?.textContent).toBe('1 is calm, 5 is high stress')
+    // Nothing is picked yet, yet the row stays reachable with Tab through its first choice.
+    expect([...radios(0)].filter((radio) => radio.getAttribute('tabindex') === '0')).toHaveLength(1)
+  })
+
+  it('saves with one tap on stress, returns to Today and leaves the confirmation for its card', async () => {
     const store = await mount(planned)
-    const radio = (group: number, index: number) => host.querySelectorAll('[role="radiogroup"]')[group]!.querySelectorAll<HTMLButtonElement>('[role="radio"]')[index]!
-    radio(0, 0).click()
-    radio(1, 1).click()
+    radios(0)[1]!.click()
     await nextTick()
-    host.querySelector<HTMLButtonElement>('button[type=submit]')!.click()
+    submit()
     await store.settled()
-    expect(store.document?.checkIns).toEqual([{ date: '2026-10-24', bedtime: 1320, wake: 360, exercise: 'yes', stress: 2 }])
+    expect(store.document?.checkIns).toEqual([{ date: '2026-10-24', bedtime: 1320, wake: 360, stress: 2 }])
     expect(window.location.hash).toBe('#/today')
     expect(consumeSavedFlag()).toBe(true)
   })
 
+  it('saves the times as changed', async () => {
+    const store = await mount(planned)
+    await editFact('fact-bedtime', '23:15')
+    await editFact('fact-wake', '07:30')
+    submit()
+    await store.settled()
+    expect(store.document?.checkIns).toEqual([{ date: '2026-10-24', bedtime: 1395, wake: 450 }])
+  })
+
   it('moves the selection with the arrow keys', async () => {
     await mount(planned)
-    const first = host.querySelectorAll('[role="radiogroup"]')[0]!.querySelectorAll<HTMLButtonElement>('[role="radio"]')
+    const first = radios(0)
     first[0]!.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowRight', bubbles: true }))
     await nextTick()
     expect(first[0]!.getAttribute('aria-checked')).toBe('false')
     expect(first[1]!.getAttribute('aria-checked')).toBe('true')
   })
 
-  it('clears an optional answer and removes its stored field on save', async () => {
-    const store = await mount({ ...planned, checkIns: [{ date: '2026-10-24', bedtime: 1320, wake: 360, exercise: 'yes', stress: 3, note: 'ok' }] })
-    const clear = (group: number) => host.querySelectorAll('.choice-row')[group]!.querySelector<HTMLButtonElement>('[data-testid="choice-clear"]')
-    const checked = (group: number) => host.querySelectorAll('[role="radiogroup"]')[group]!.querySelectorAll('[aria-checked="true"]').length
-    expect([checked(0), checked(1)]).toEqual([1, 1])
-    clear(0)!.click()
-    clear(1)!.click()
+  it('clears the optional answer and removes its stored field on save', async () => {
+    const store = await mount({ ...planned, checkIns: [{ date: '2026-10-24', bedtime: 1320, wake: 360, stress: 3, note: 'ok' }] })
+    const clear = () => host.querySelector<HTMLButtonElement>('[data-testid="choice-clear"]')
+    expect([...radios(0)].filter((radio) => radio.getAttribute('aria-checked') === 'true')).toHaveLength(1)
+    clear()!.click()
     await nextTick()
-    expect([checked(0), checked(1)]).toEqual([0, 0])
+    expect([...radios(0)].filter((radio) => radio.getAttribute('aria-checked') === 'true')).toHaveLength(0)
     // Nothing left to clear, and focus did not vanish with the button.
-    expect([clear(0), clear(1)]).toEqual([null, null])
-    host.querySelector<HTMLButtonElement>('button[type=submit]')!.click()
+    expect(clear()).toBeNull()
+    expect(window.document.activeElement?.getAttribute('role')).toBe('radio')
+    submit()
     await store.settled()
     expect(store.document?.checkIns).toEqual([{ date: '2026-10-24', bedtime: 1320, wake: 360, note: 'ok' }])
   })
 
-  it('offers no clear action while a question is unanswered', async () => {
+  it('offers no clear action while the question is unanswered, and names the question when it is', async () => {
     await mount(planned)
     expect(host.querySelectorAll('[data-testid="choice-clear"]')).toHaveLength(0)
-  })
-
-  it('names the question in the clear action and returns focus to the row', async () => {
-    await mount({ ...planned, checkIns: [{ date: '2026-10-24', exercise: 'no' }] })
-    const clear = host.querySelector<HTMLButtonElement>('[data-testid="choice-clear"]')!
-    expect(clear.getAttribute('aria-label')).toBe('Clear: Did you exercise?')
-    clear.click()
-    await nextTick()
-    expect(window.document.activeElement?.getAttribute('role')).toBe('radio')
+    app!.unmount(); host.remove()
+    await mount({ ...planned, checkIns: [{ date: '2026-10-24', stress: 4 }] })
+    expect(host.querySelector('[data-testid="choice-clear"]')?.getAttribute('aria-label')).toBe('Clear: Stress today')
   })
 
   it('keeps what was typed through unrelated commits and reloads when its own entry changes elsewhere', async () => {
@@ -155,22 +225,110 @@ describe('check-in form', () => {
     expect(host.querySelector<HTMLTextAreaElement>('textarea')!.value).toBe('synced from another device')
   })
 
-  it('keeps a stored work-end time visible on a day without work', async () => {
-    await mount({ ...planned, checkIns: [{ date: '2026-10-24', workEnd: 1080 }] })
-    expect(input('Work ended')?.value).toBe('18:00')
-  })
-
-  it('does not accept a date after today', async () => {
-    await mount(planned)
-    expect(host.querySelector<HTMLInputElement>('input[type=date]')!.max).toBe('2026-10-24')
-  })
-
   it('removes the entry when every answer has been cleared', async () => {
-    const store = await mount({ ...planned, checkIns: [{ date: '2026-10-24', exercise: 'yes', stress: 3 }] })
+    const store = await mount({ ...planned, checkIns: [{ date: '2026-10-24', stress: 3 }] })
     host.querySelectorAll<HTMLButtonElement>('[data-testid="choice-clear"]').forEach((button) => button.click())
     await nextTick()
-    host.querySelector<HTMLButtonElement>('button[type=submit]')!.click()
+    submit()
     await store.settled()
     expect(store.document?.checkIns).toEqual([])
+  })
+})
+
+// Saturday 2026-10-24, now 12:00 UTC: Gym 08:00–09:00 and Run 10:00–11:00 are over, Yoga 11:50–13:00 is in its last
+// minutes' reach only after 12:50, and an older check-in shows the plan existed before today.
+const exerciseCategory = { id: 'exercise', name: 'Exercise', colorKey: 'green' as const, icon: '🏃', goal: { type: 'min' as const, hoursPerWeek: 4 } }
+const trained: PlannerDocument = {
+  ...planned, categories: [...planned.categories, exerciseCategory],
+  checkIns: [{ date: '2026-10-20' }],
+  blocks: [
+    ...planned.blocks,
+    { id: 'gym', categoryId: 'exercise', title: 'Gym', days: [6], start: 480, end: 540 },
+    { id: 'run', categoryId: 'exercise', title: 'Run', days: [6], start: 600, end: 660 },
+    { id: 'yoga', categoryId: 'exercise', title: 'Yoga', days: [6], start: 710, end: 780 },
+  ],
+}
+const circle = (title: string) => [...host.querySelectorAll<HTMLElement>('[data-testid="checkin-block"]')].find((row) => row.textContent?.includes(title))?.querySelector<HTMLButtonElement>('[data-testid="status-control"]')
+const listed = () => [...host.querySelectorAll('[data-testid="checkin-block"] .t-body')].map((node) => node.textContent)
+
+describe('check-in blocks to mark', () => {
+  it('lists today’s finished blocks that are still unmarked, with the timeline’s circle, and nothing else', async () => {
+    await mount(trained)
+    // Yoga is mid-way (ends 13:00) and Sleep has its own sentences.
+    expect(listed()).toEqual(['Gym', 'Run'])
+    expect(text('checkin-blocks')).toContain('Not marked yet')
+    expect(circle('Gym')!.getAttribute('aria-label')).toBe('Mark Gym as done')
+    expect(host.querySelector('[data-testid="checkin-block"] .tabular')?.textContent?.replace(/\s/g, ' ')).toBe('8:00 AM – 9:00 AM')
+  })
+
+  it('leaves out blocks that are already marked, and the whole list when nothing is left', async () => {
+    const answered = (blockId: string, plannedStartAt: string, plannedEndAt: string) => ({
+      date: '2026-10-24', blockId, categoryId: 'exercise', plannedStartAt, plannedEndAt, plannedMinutes: 60, status: 'done' as const,
+    })
+    await mount({ ...trained, actuals: [answered('gym', '2026-10-24T08:00:00.000Z', '2026-10-24T09:00:00.000Z')] })
+    expect(listed()).toEqual(['Run'])
+    app!.unmount(); host.remove()
+    await mount({ ...trained, actuals: [answered('gym', '2026-10-24T08:00:00.000Z', '2026-10-24T09:00:00.000Z'), answered('run', '2026-10-24T10:00:00.000Z', '2026-10-24T11:00:00.000Z')] })
+    expect(host.querySelector('[data-testid="checkin-blocks"]')).toBeNull()
+  })
+
+  it('does not ask about blocks that started before the plan was first seen, nor when it was never seen', async () => {
+    window.localStorage.setItem(`next168-plan-since:${trained.workspaceId}`, String(Date.parse('2026-10-24T09:30:00Z')))
+    await mount({ ...trained, checkIns: [] })
+    // Gym (08:00) began before the plan existed; Run (10:00) did not.
+    expect(listed()).toEqual(['Run'])
+    app!.unmount(); host.remove()
+    window.localStorage.clear()
+    await mount({ ...trained, checkIns: [] })
+    expect(host.querySelector('[data-testid="checkin-blocks"]')).toBeNull()
+  })
+
+  it('keeps a block listed while it is answered here, showing its answer, so the toast can undo it', async () => {
+    const store = await mount(trained)
+    circle('Gym')!.click()
+    await store.settled()
+    await nextTick()
+    expect(listed()).toEqual(['Gym', 'Run'])
+    expect(circle('Gym')!.getAttribute('data-status')).toBe('done')
+    expect(useUndoToast().toast.value?.message).toBe('Gym: Done')
+    useUndoToast().undo()
+    await store.settled()
+    await nextTick()
+    expect(store.document?.actuals).toEqual([])
+    expect(circle('Gym')!.getAttribute('data-status')).toBe('none')
+  })
+
+  it('derives exercise from the blocks: a done block is a yes, saved with the check-in', async () => {
+    const store = await mount(trained)
+    circle('Gym')!.click()
+    await store.settled()
+    submit()
+    await store.settled()
+    expect(store.document?.checkIns.at(-1)).toMatchObject({ date: '2026-10-24', exercise: 'yes' })
+  })
+
+  it('derives a no when every exercise block was skipped', async () => {
+    const store = await mount({ ...trained, blocks: trained.blocks.filter((block) => block.id !== 'run' && block.id !== 'yoga') })
+    circle('Gym')!.dispatchEvent(new MouseEvent('contextmenu', { bubbles: true, cancelable: true }))
+    await nextTick()
+    host.querySelector<HTMLButtonElement>('[data-testid="status-skipped"]')!.click()
+    await store.settled()
+    submit()
+    await store.settled()
+    expect(store.document?.checkIns.at(-1)).toMatchObject({ exercise: 'no' })
+  })
+
+  it('states nothing while an exercise block is still unmarked, and reads the timeline as it stands when saving', async () => {
+    const store = await mount(trained)
+    submit()
+    await store.settled()
+    expect(store.document?.checkIns.at(-1)).not.toHaveProperty('exercise')
+    window.location.hash = ''
+    // Marked elsewhere (another tab) after this form loaded: the save still agrees with the timeline.
+    await store.commit((draft) => { draft.actuals.push({ date: '2026-10-24', blockId: 'run', categoryId: 'exercise', plannedStartAt: '2026-10-24T10:00:00.000Z', plannedEndAt: '2026-10-24T11:00:00.000Z', plannedMinutes: 60, status: 'partial', actualMinutes: 30 }) })
+    await nextTick()
+    submit()
+    await store.settled()
+    expect(store.document?.checkIns.at(-1)).toMatchObject({ exercise: 'yes' })
   })
 })

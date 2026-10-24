@@ -1,23 +1,33 @@
 {
   "title": "Cierre del día",
   "intro": "Un minuto al final del día. Todo se queda en este dispositivo.",
-  "date": "Fecha en que despertaste",
-  "bedtime": "Hora de acostarte",
-  "wake": "Hora de despertar",
-  "workEnd": "Fin del trabajo",
-  "exercise": {
-    "label": "¿Hiciste ejercicio?",
-    "yes": "Sí",
-    "no": "No",
-    "not-planned": "No previsto"
+  "bedtime": {
+    "sentence": "Anoche te acostaste a la {time} | Anoche te acostaste a las {time}",
+    "question": "¿A qué hora te acostaste anoche?"
   },
-  "stress": "Estrés hoy (1 calma – 5 alto)",
+  "wake": {
+    "sentence": "Hoy te levantaste a la {time} | Hoy te levantaste a las {time}",
+    "question": "¿A qué hora te levantaste hoy?"
+  },
+  "workEnd": {
+    "sentence": "Hoy terminaste de trabajar a la {time} | Hoy terminaste de trabajar a las {time}",
+    "question": "¿A qué hora terminaste de trabajar hoy?"
+  },
+  "change": "Cambiar",
+  "stress": "Estrés hoy",
+  "stressLow": "calma",
+  "stressHigh": "alto",
+  "stressScale": "1 es calma y 5 es estrés alto",
   "clear": "Borrar",
   "clearAnswer": "Borrar: {question}",
   "note": "Nota (opcional)",
+  "pending": {
+    "title": "Aún sin marcar",
+    "hint": "Toca el círculo si lo hiciste. Mantén pulsado para elegir A medias o No."
+  },
   "save": "Guardar cierre",
   "changedElsewhere": "Esto cambió en otro lugar, así que se volvió a cargar. Revísalo e inténtalo de nuevo.",
-  "planHint": "Las horas salen de tu plan; cámbialas si fue distinto.",
+  "planHint": "Las horas salen de tu plan; toca una para cambiarla.",
   "card": {
     "description": "Sueño, ejercicio y estrés en un minuto",
     "doneStreak": "Hecho ✓ · racha {count}",

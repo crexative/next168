@@ -5,10 +5,12 @@ import { useI18n } from 'vue-i18n'
 // A visible question over a row of radio choices. Unlike the shared segmented control, nothing needs to be selected:
 // an unanswered question is just a row with no choice picked, and the first choice is still reachable with Tab.
 // Radios cannot be unpicked, so an answer is withdrawn with an explicit "Clear" action next to the question.
-const props = defineProps<{ modelValue: T | ''; options: { value: T; label: string }[]; label: string }>()
+// `ends` names the two ends of a scale ("calm" … "high"); `scale` is the same said in full for assistive technology.
+const props = defineProps<{ modelValue: T | ''; options: { value: T; label: string }[]; label: string; ends?: { low: string; high: string; scale: string } }>()
 const emit = defineEmits<{ 'update:modelValue': [value: T | ''] }>()
 const { t } = useI18n()
 const labelId = useId()
+const endsId = useId()
 const group = ref<HTMLElement | null>(null)
 
 // The button disappears with the answer, so focus moves to the row's first choice instead of falling to the page.
@@ -47,7 +49,7 @@ function move(offset: number, event: KeyboardEvent): void {
         {{ t('checkin.clear') }}
       </button>
     </div>
-    <div ref="group" class="choices" role="radiogroup" :aria-labelledby="labelId">
+    <div ref="group" class="choices" role="radiogroup" :aria-labelledby="labelId" :aria-describedby="ends ? endsId : undefined">
       <button
         v-for="option in options"
         :key="option.value"
@@ -64,6 +66,11 @@ function move(offset: number, event: KeyboardEvent): void {
         {{ option.label }}
       </button>
     </div>
+    <p v-if="ends" :id="endsId" class="ends t-footnote t-secondary" data-testid="choice-ends">
+      <span aria-hidden="true">{{ ends.low }}</span>
+      <span aria-hidden="true">{{ ends.high }}</span>
+      <span class="visually-hidden">{{ ends.scale }}</span>
+    </p>
   </div>
 </template>
 
@@ -83,6 +90,7 @@ function move(offset: number, event: KeyboardEvent): void {
   white-space: nowrap;
 }
 .question { min-height: var(--tap-target); }
+.ends { display: flex; justify-content: space-between; gap: var(--space-3); margin: 0; padding-inline: var(--space-2); }
 .choices { display: flex; gap: 2px; padding: 2px; border-radius: var(--radius-control); background: color-mix(in srgb, var(--label-2) 14%, transparent); }
 .choice {
   flex: 1;
