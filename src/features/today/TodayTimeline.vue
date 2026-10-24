@@ -124,8 +124,7 @@ function savePartial(item: TimelineItem & { kind: 'block' }): void {
         <span class="row-bar" aria-hidden="true" />
         <div class="row-content">
           <p class="row-title t-body">
-            <CategoryMark v-if="categoryOf(item)" :category="categoryOf(item)" />
-            <span class="row-title-text">{{ item.title }}</span>
+            <span class="row-title-text"><CategoryMark v-if="categoryOf(item)" class="row-mark" :category="categoryOf(item)" />{{ item.title }}</span>
             <span v-if="item.conflict" class="badge is-conflict t-caption" data-testid="conflict-mark">
               <Icon name="triangle-alert" :size="14" />{{ t('today.timeline.conflict') }}
             </span>
@@ -180,7 +179,7 @@ function savePartial(item: TimelineItem & { kind: 'block' }): void {
 .section-title { margin: 0 0 var(--space-2); }
 .all-day { display: flex; flex-wrap: wrap; gap: var(--space-2); margin: 0 0 var(--space-2); padding: 0; list-style: none; }
 .all-day-item { padding: var(--space-1) var(--space-3); border-radius: var(--radius-control); background: var(--surface); }
-.timeline { margin: 0; padding: 0; list-style: none; border-radius: var(--radius-card); background: var(--surface); }
+.timeline { margin: 0; padding: 0; list-style: none; border-radius: var(--radius-card); background: var(--surface); container: timeline / inline-size; }
 .row { display: grid; grid-template-columns: 4.5rem 3px minmax(0, 1fr); gap: var(--space-3); padding: var(--space-3) var(--space-4); }
 .row + .row { border-top: 0.5px solid var(--separator); }
 .row-time { display: flex; flex-direction: column; align-items: flex-end; text-align: end; font-variant-numeric: tabular-nums; }
@@ -190,7 +189,8 @@ function savePartial(item: TimelineItem & { kind: 'block' }): void {
 .is-past .row-title-text { color: var(--label-2); }
 .row-content { display: flex; flex-direction: column; gap: var(--space-2); min-width: 0; }
 .row-title { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2); margin: 0; }
-.row-title-text { flex: 1 1 8rem; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.row-title-text { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.row-mark { margin-inline-end: var(--space-2); vertical-align: -0.1em; }
 .row-kind { margin: -0.25rem 0 0; }
 .badge { display: inline-flex; align-items: center; gap: 2px; padding: 1px var(--space-2); border-radius: 999px; }
 .badge.is-conflict { background: color-mix(in srgb, var(--danger) 14%, transparent); color: var(--danger-label); }
@@ -225,6 +225,13 @@ function savePartial(item: TimelineItem & { kind: 'block' }): void {
 .partial { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2); }
 .partial-label { flex-basis: 100%; color: var(--label-2); }
 .partial-input { width: 6rem; font-variant-numeric: tabular-nums; }
+/* With large text the time column would leave the content a sliver: the times move above the title instead. */
+@container timeline (max-width: 18rem) {
+  .row { grid-template-columns: 3px minmax(0, 1fr); row-gap: var(--space-1); }
+  .row-time { grid-column: 2; flex-direction: row; flex-wrap: wrap; gap: 0 var(--space-2); align-items: baseline; text-align: start; }
+  .row-bar { grid-column: 1; grid-row: 1 / span 2; }
+  .row-content { grid-column: 2; }
+}
 @media (prefers-reduced-motion: reduce) {
   .actual-choice:active::before { transform: none; opacity: 0.7; }
 }

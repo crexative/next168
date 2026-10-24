@@ -54,8 +54,13 @@ onBeforeUnmount(() => observer?.disconnect())
 }
 .toolbar-title {
   position: absolute;
-  inset-inline: 0;
+  /* Clear of the actions on both sides; at large text sizes it stops growing and truncates. */
+  inset-inline: calc(var(--tap-target) * 2 + var(--space-2) + var(--space-4));
+  overflow: hidden;
+  font-size: min(1.0625rem, 22px);
   text-align: center;
+  text-overflow: ellipsis;
+  white-space: nowrap;
   opacity: 0;
   transition: opacity 0.15s;
   pointer-events: none;

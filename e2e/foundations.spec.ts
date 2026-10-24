@@ -1,5 +1,6 @@
 import { expect, test, type Page } from '@playwright/test'
 import { V2_KEY, seedKey } from './fixtures'
+import { visualIntegrityViolations } from './support/visualIntegrity'
 
 // UX foundations (#3, slice A): shared materials, rows, buttons, category marks, measure, time format and the
 // accessibility plumbing. Geometry and accessibility assertions only; no screenshot baselines.
@@ -363,6 +364,8 @@ test.describe('accessibility plumbing', () => {
     await expect(page.locator('[data-date="2026-10-21"] [data-block-id="b-gym"]')).not.toHaveCount(0)
 
     await deleteGym(page)
+    // The toast may appear under the resting pointer, which holds it; move away first.
+    await page.mouse.move(1, 1)
     await page.clock.runFor(15_100)
     await expect(toast).toHaveCount(0)
   })
@@ -534,5 +537,90 @@ test.describe('language and region settings', () => {
     await expect(page.getByRole('heading', { level: 1, name: 'Ajustes' })).toBeVisible()
     await expect(page.getByRole('radiogroup', { name: 'La semana empieza el' }).getByRole('radio', { name: 'Domingo' })).toHaveAttribute('aria-checked', 'true')
     await expect(page.getByRole('radiogroup', { name: 'Formato de hora' }).getByRole('radio', { name: '24 horas' })).toHaveAttribute('aria-checked', 'true')
+  })
+})
+
+test.describe('large text and narrow screens', () => {
+  const MAIN_SCREENS = ['today', 'week', 'tasks', 'insights', 'settings']
+
+  // Known findings on screens other slices are rebuilding in this deliverable; any other violation fails.
+  const OWNED_ELSEWHERE: { view: string; pattern: RegExp; owner: string }[] = [
+    { view: 'tasks', pattern: /clips its placeholder/, owner: 'slice E: one-field quick add with a short placeholder' },
+    { view: 'insights', pattern: /^<span\.t-body\.name> ".*" overflows horizontally/, owner: 'slice D: Insights rewrite' },
+  ]
+
+  // Text that leaves its button or link, and text in a bar (toolbar, day strip, tab bar) drawn over other text.
+  async function spilledText(page: Page): Promise<string[]> {
+    return page.evaluate(() => {
+      const problems: string[] = []
+      const textRects = (root: Element) => {
+        const rects: { text: string; rect: DOMRect; owner: Element }[] = []
+        const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT)
+        for (let node = walker.nextNode(); node; node = walker.nextNode()) {
+          const owner = node.parentElement
+          if (!owner || !(node.textContent ?? '').trim() || owner.closest('[aria-hidden="true"] .visually-hidden, .visually-hidden')) continue
+          const style = getComputedStyle(owner)
+          if (style.visibility !== 'visible' || style.textOverflow === 'ellipsis' || Number(style.opacity) === 0) continue
+          const range = document.createRange()
+          range.selectNodeContents(node)
+          for (const rect of Array.from(range.getClientRects())) if (rect.width > 0 && rect.height > 0) rects.push({ text: node.textContent!.trim(), rect, owner })
+        }
+        return rects
+      }
+      for (const control of Array.from(document.querySelectorAll('#main button, #main a[href], .tabbar a'))) {
+        if (control.getClientRects().length === 0) continue
+        const box = control.getBoundingClientRect()
+        for (const { text, rect } of textRects(control)) {
+          if (rect.left < box.left - 1 || rect.right > box.right + 1) problems.push(`"${text}" spills out of its control`)
+        }
+      }
+      for (const bar of Array.from(document.querySelectorAll('.toolbar, [data-toolbar-extension]'))) {
+        const rects = textRects(bar).filter(({ owner }) => getComputedStyle(owner.closest('.toolbar-title') ?? owner).opacity !== '0')
+        rects.forEach((first, index) => {
+          for (const second of rects.slice(index + 1)) {
+            if (first.owner === second.owner) continue
+            const a = first.rect, b = second.rect
+            if (a.left < b.right - 1 && a.right > b.left + 1 && a.top < b.bottom - 1 && a.bottom > b.top + 1) problems.push(`"${first.text}" overlaps "${second.text}"`)
+          }
+        })
+      }
+      return problems
+    })
+  }
+
+  async function auditScreens(page: Page, state: string) {
+    for (const view of MAIN_SCREENS) {
+      await openView(page, view)
+      await page.waitForFunction(() => document.getAnimations().every((animation) => animation.playState !== 'running'))
+      const violations = (await visualIntegrityViolations(page))
+        .filter((violation) => !OWNED_ELSEWHERE.some((known) => known.view === view && known.pattern.test(violation)))
+      expect.soft(violations, `${state}/${view}`).toEqual([])
+      expect.soft(await spilledText(page), `${state}/${view}: text outside its control or over other text in a bar`).toEqual([])
+      // Scrolled, the toolbar shows its collapsed title next to its actions.
+      await page.mouse.wheel(0, 600)
+      await page.waitForFunction(() => document.getAnimations().every((animation) => animation.playState !== 'running'))
+      expect.soft(await spilledText(page), `${state}/${view} scrolled: text over other text in a bar`).toEqual([])
+      const overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth)
+      expect.soft(overflow, `${state}/${view} scrolls sideways`).toBeLessThanOrEqual(0)
+    }
+  }
+
+  test('at 200 % text the main screens wrap: nothing is clipped and nothing overflows', async ({ page }) => {
+    await startWith(page, { ...richDocument, settings: { ...richDocument.settings, locale: 'es' } }, 'es')
+    await page.addInitScript(() => {
+      document.addEventListener('DOMContentLoaded', () => {
+        const style = document.createElement('style')
+        style.textContent = 'html { font-size: 200% !important; }'
+        document.head.append(style)
+      })
+    })
+    await auditScreens(page, '200%')
+  })
+
+  test('German at 320 px fits', async ({ page }, testInfo) => {
+    test.skip(testInfo.project.name !== 'phone')
+    await page.setViewportSize({ width: 320, height: 640 })
+    await startWith(page, { ...richDocument, settings: { ...richDocument.settings, locale: 'de' } }, 'de')
+    await auditScreens(page, 'de-320')
   })
 })

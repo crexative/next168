@@ -147,6 +147,7 @@ dismissUndoWhenChanged(() => planner.document?.workspaceId)
   gap: 2px;
   /* On a tablet the items gather in the middle instead of spreading to the screen edges. */
   max-width: 7.5rem;
+  min-width: 0;
   min-height: var(--tap-target);
   color: var(--label-2);
   text-decoration: none;
@@ -154,6 +155,8 @@ dismissUndoWhenChanged(() => planner.document?.workspaceId)
   touch-action: manipulation;
 }
 .tabbar-item:active { transform: scale(0.97); }
+/* Like the system tab bar, labels stop growing at large text sizes (the icon and the accessible name stay). */
+.tabbar-item span { max-width: 100%; overflow: hidden; font-size: min(0.75rem, 15px); text-overflow: ellipsis; white-space: nowrap; }
 /* The bar touches the screen edges, so its items draw the focus ring inside themselves. */
 .tabbar-item:focus-visible { outline-offset: -2px; border-radius: var(--radius-control); }
 .tabbar-item[aria-current='page'] { color: var(--tint-label); }

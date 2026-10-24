@@ -212,15 +212,16 @@ onBeforeUnmount(() => animation?.stop())
   color: var(--label);
   touch-action: manipulation;
 }
-.strip-weekday { color: var(--label-2); }
+.strip-weekday { color: var(--label-2); font-size: min(0.75rem, 15px); }
 .strip-number {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 2rem;
-  height: 2rem;
-  border-radius: 1rem;
-  font-size: 1.25rem;
+  /* Seven days share the width: like the system calendar, the strip stops growing at large text sizes. */
+  width: min(2rem, 40px);
+  height: min(2rem, 40px);
+  border-radius: 50%;
+  font-size: min(1.25rem, 22px);
   font-weight: 700;
   font-variant-numeric: tabular-nums;
 }

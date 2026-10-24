@@ -151,8 +151,13 @@ function onColumnClick(event: MouseEvent): void {
   position: absolute;
   display: flex;
   flex-direction: column;
+  /* Lines that do not fit the block's height (large text, short blocks) wrap into a second column outside the
+     block and are hidden whole, instead of being cut in half. */
+  flex-wrap: wrap;
+  align-content: flex-start;
   align-items: flex-start;
-  gap: 1px;
+  /* The column gap exceeds the inline padding, so a wrapped column never peeks in. */
+  gap: 1px var(--space-2);
   overflow: hidden;
   padding: 2px var(--space-1) 2px calc(3px + var(--space-1));
   border: 0;
@@ -178,7 +183,7 @@ function onColumnClick(event: MouseEvent): void {
 .block-title { font-size: 0.8125rem; font-weight: 600; line-height: 1.25; }
 .block-time { font-size: 0.75rem; line-height: 1.25; font-variant-numeric: tabular-nums; }
 .block-category { font-size: 0.75rem; line-height: 1.25; }
-.block-title, .block-time, .block-category { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.block-title, .block-time, .block-category { flex-shrink: 0; width: 100%; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .block-mark { margin-inline-end: 1px; }
 .is-short { flex-direction: row; gap: var(--space-1); align-items: center; }
 .is-short .block-time, .is-short .block-category { display: none; }
