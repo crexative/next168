@@ -57,7 +57,7 @@ trap 'docker rm -f -v "$container" >/dev/null 2>&1 || true' EXIT
 
 # Files deleted in the working tree but still tracked are skipped.
 git ls-files -z --cached --others --exclude-standard --deduplicate \
-  | while IFS= read -r -d '' file; do [[ -e "$file" ]] && printf '%s\0' "$file"; done \
+  | while IFS= read -r -d '' file; do if [[ -e "$file" ]]; then printf '%s\0' "$file"; fi; done \
   | COPYFILE_DISABLE=1 tar --no-xattrs --null -T - -cf - \
   | docker cp - "$container:/work"
 
