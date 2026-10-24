@@ -1,0 +1,245 @@
+<script setup lang="ts">
+import { computed, onBeforeUnmount, onMounted, reactive, ref } from 'vue'
+import { useI18n } from 'vue-i18n'
+import type { Category, Task } from '@/core/model'
+import { scheduleTasks } from '@/core/scheduler'
+import { localDateOf } from '@/core/time'
+import { formatDuration } from '@/features/insights/format'
+import { categoryColor } from '@/features/insights/categoryColor'
+import { usePlannerStore } from '@/stores/plannerStore'
+import Button from '@/ui/Button.vue'
+import EmptyState from '@/ui/EmptyState.vue'
+import Icon from '@/ui/Icon.vue'
+import ListGroup from '@/ui/ListGroup.vue'
+import SegmentedControl from '@/ui/SegmentedControl.vue'
+import { useUndoToast } from '@/ui/undoToast'
+import { planTasks, recentDone } from './grouping'
+import TaskRow from './TaskRow.vue'
+
+const DURATIONS = [15, 30, 45, 60, 90, 120, 150, 180]
+
+const { t, locale } = useI18n()
+const planner = usePlannerStore()
+const toast = useUndoToast()
+
+const now = ref(new Date())
+let ticker: ReturnType<typeof setInterval> | undefined
+onMounted(() => { ticker = setInterval(() => { now.value = new Date() }, 60_000) })
+onBeforeUnmount(() => clearInterval(ticker))
+
+const document = computed(() => planner.document)
+const categories = computed(() => document.value?.categories ?? [])
+const categoryById = computed(() => new Map(categories.value.map((category) => [category.id, category])))
+
+const plan = computed(() => {
+  const doc = document.value
+  if (!doc) return null
+  return planTasks(doc, scheduleTasks({ document: doc, busy: [], now: now.value, timeZone: doc.settings.timeZone }))
+})
+const done = computed(() => recentDone(document.value?.tasks ?? []))
+
+const form = reactive({ title: '', durationMin: 60, categoryId: '', dueDate: '', priority: '2' as '1' | '2' | '3' })
+const effectiveCategoryId = computed(() => (categoryById.value.has(form.categoryId) ? form.categoryId : categories.value[0]?.id ?? ''))
+const canAdd = computed(() => planner.writable && form.title.trim().length > 0 && effectiveCategoryId.value !== '')
+
+const priorityOptions = computed(() => (['1', '2', '3'] as const).map((value) => ({ value, label: t(`tasks.priority.${value}`) })))
+
+function dayLabel(date: string): string {
+  const today = localDateOf(now.value, document.value!.settings.timeZone)
+  const label = new Intl.DateTimeFormat(locale.value, { weekday: 'long', day: 'numeric', month: 'short', timeZone: 'UTC' }).format(new Date(`${date}T12:00:00Z`))
+  return date === today ? `${t('tasks.today')} · ${label}` : label
+}
+
+function timeRange(start: string, end: string): string {
+  const format = new Intl.DateTimeFormat(locale.value, { hour: '2-digit', minute: '2-digit', timeZone: document.value!.settings.timeZone })
+  return `${format.format(new Date(start))}–${format.format(new Date(end))}`
+}
+
+function dueLabel(date: string): string {
+  return new Intl.DateTimeFormat(locale.value, { day: 'numeric', month: 'short', timeZone: 'UTC' }).format(new Date(`${date}T12:00:00Z`))
+}
+
+function categoryOf(task: Task): Category | undefined {
+  return categoryById.value.get(task.categoryId)
+}
+
+function describe(task: Task): string {
+  const parts = [categoryOf(task)?.name ?? '', formatDuration(t, task.durationMin)]
+  if (task.dueDate) parts.push(t('tasks.due', { date: dueLabel(task.dueDate) }))
+  return parts.filter(Boolean).join(' · ')
+}
+
+async function addTask(): Promise<void> {
+  if (!canAdd.value) return
+  const task: Task = {
+    id: crypto.randomUUID(),
+    title: form.title.trim(),
+    categoryId: effectiveCategoryId.value,
+    durationMin: form.durationMin,
+    priority: Number(form.priority) as Task['priority'],
+    createdAt: new Date().toISOString(),
+    ...(form.dueDate ? { dueDate: form.dueDate } : {}),
+  }
+  const result = await planner.commit((draft) => { draft.tasks.push(task) })
+  if (result.ok) {
+    form.title = ''
+    form.dueDate = ''
+  }
+}
+
+function setDoneAt(taskId: string, doneAt: string | undefined): Promise<unknown> {
+  return planner.commit((draft) => {
+    const task = draft.tasks.find((candidate) => candidate.id === taskId)
+    if (!task) return
+    if (doneAt) task.doneAt = doneAt
+    else delete task.doneAt
+  })
+}
+
+async function complete(task: Task): Promise<void> {
+  const result = await planner.commit((draft) => {
+    const target = draft.tasks.find((candidate) => candidate.id === task.id)
+    if (target) target.doneAt = new Date().toISOString()
+  })
+  if (result.ok) toast.show({ message: t('tasks.completed', { title: task.title }), onUndo: () => { void setDoneAt(task.id, undefined) } })
+}
+
+async function remove(task: Task): Promise<void> {
+  const result = await planner.commit((draft) => { draft.tasks = draft.tasks.filter((candidate) => candidate.id !== task.id) })
+  if (result.ok) {
+    toast.show({ message: t('tasks.removed', { title: task.title }), onUndo: () => { void planner.commit((draft) => { draft.tasks.push(task) }) } })
+  }
+}
+
+function overflowText(task: Task, minutes: number): string {
+  return t('tasks.overflow', { duration: formatDuration(t, minutes), category: categoryOf(task)?.name ?? '' })
+}
+
+function overflowHint(task: Task, minutes: number): string {
+  return t('tasks.overflowHint', { duration: formatDuration(t, minutes), category: categoryOf(task)?.name ?? '' })
+}
+
+function lateText(task: Task): string {
+  return t('tasks.late', { date: task.dueDate ? dueLabel(task.dueDate) : '' })
+}
+</script>
+
+<template>
+  <div v-if="document && plan" class="tasks">
+    <EmptyState
+      v-if="categories.length === 0"
+      icon="list-checks"
+      :title="t('tasks.noCategories.title')"
+      :description="t('tasks.noCategories.description')"
+    >
+      <a class="link t-headline" href="#/settings">{{ t('tasks.noCategories.action') }}</a>
+    </EmptyState>
+
+    <form v-else class="add" :aria-label="t('tasks.add.title')" @submit.prevent="addTask">
+      <label class="field">
+        <span class="t-footnote t-secondary">{{ t('tasks.add.titleLabel') }}</span>
+        <input v-model="form.title" class="input" type="text" maxlength="120" autocomplete="off" :placeholder="t('tasks.add.titlePlaceholder')">
+      </label>
+      <div class="field-row">
+        <label class="field">
+          <span class="t-footnote t-secondary">{{ t('tasks.add.duration') }}</span>
+          <select v-model.number="form.durationMin" class="input">
+            <option v-for="minutes in DURATIONS" :key="minutes" :value="minutes">{{ formatDuration(t, minutes) }}</option>
+          </select>
+        </label>
+        <label class="field">
+          <span class="t-footnote t-secondary">{{ t('tasks.add.category') }}</span>
+          <select :value="effectiveCategoryId" class="input" @change="form.categoryId = ($event.target as HTMLSelectElement).value">
+            <option v-for="category in categories" :key="category.id" :value="category.id">{{ category.name }}</option>
+          </select>
+        </label>
+        <label class="field">
+          <span class="t-footnote t-secondary">{{ t('tasks.add.dueDate') }}</span>
+          <input v-model="form.dueDate" class="input" type="date">
+        </label>
+      </div>
+      <SegmentedControl v-model="form.priority" :options="priorityOptions" :label="t('tasks.add.priority')" />
+      <Button type="submit" block :disabled="!canAdd">
+        <Icon name="plus" :size="20" /> {{ t('tasks.add.submit') }}
+      </Button>
+    </form>
+
+    <section v-if="plan.warnings.length" class="warnings" :aria-label="t('tasks.warnings')" data-testid="task-warnings">
+      <ul>
+        <li v-for="warning in plan.warnings" :key="warning.task.id" class="warning" :data-testid="`warning-${warning.task.id}`">
+          <Icon name="triangle-alert" :size="20" class="warning-icon" />
+          <div>
+            <p class="t-headline">{{ warning.task.title }}</p>
+            <p v-if="warning.placement.overflowMinutes > 0" class="t-subhead" data-testid="overflow-text">
+              {{ overflowText(warning.task, warning.placement.overflowMinutes) }}
+            </p>
+            <p v-if="warning.placement.overflowMinutes > 0" class="t-footnote t-secondary">
+              {{ overflowHint(warning.task, warning.placement.overflowMinutes) }}
+            </p>
+            <p v-if="warning.placement.late" class="t-subhead" data-testid="late-text">{{ lateText(warning.task) }}</p>
+            <p v-if="warning.placement.late" class="t-footnote t-secondary">{{ t('tasks.lateHint') }}</p>
+          </div>
+        </li>
+      </ul>
+    </section>
+
+    <ListGroup v-for="day in plan.days" :key="day.date" :header="dayLabel(day.date)">
+      <TaskRow
+        v-for="entry in day.entries"
+        :key="`${entry.task.id}-${entry.chunk.start}`"
+        :title="entry.task.title"
+        :subtitle="`${timeRange(entry.chunk.start, entry.chunk.end)} · ${describe(entry.task)}`"
+        :color="categoryOf(entry.task) ? categoryColor(categoryOf(entry.task)!) : 'var(--cat-gray)'"
+        :complete-label="t('tasks.complete', { title: entry.task.title })"
+        :remove-label="t('tasks.remove', { title: entry.task.title })"
+        data-testid="placed-task"
+        @complete="complete(entry.task)"
+        @remove="remove(entry.task)"
+      />
+    </ListGroup>
+
+    <ListGroup v-if="plan.unplaced.length" :header="t('tasks.unplaced')" :footer="t('tasks.unplacedHint')">
+      <TaskRow
+        v-for="task in plan.unplaced"
+        :key="task.id"
+        :title="task.title"
+        :subtitle="describe(task)"
+        :color="categoryOf(task) ? categoryColor(categoryOf(task)!) : 'var(--cat-gray)'"
+        :complete-label="t('tasks.complete', { title: task.title })"
+        :remove-label="t('tasks.remove', { title: task.title })"
+        @complete="complete(task)"
+        @remove="remove(task)"
+      />
+    </ListGroup>
+
+    <EmptyState
+      v-if="categories.length > 0 && document.tasks.every((task) => task.doneAt)"
+      icon="list-checks"
+      :title="t('tasks.empty.title')"
+      :description="t('tasks.empty.description')"
+    />
+
+    <ListGroup v-if="done.length" :header="t('tasks.recentDone')">
+      <li v-for="task in done" :key="task.id" class="done-row" data-testid="done-task">
+        <span class="t-body done-title">{{ task.title }}</span>
+        <Button variant="plain" @click="setDoneAt(task.id, undefined)">{{ t('tasks.reopen') }}</Button>
+      </li>
+    </ListGroup>
+  </div>
+</template>
+
+<style scoped>
+.tasks { padding: 0 var(--space-4) var(--space-6); }
+.add { display: flex; flex-direction: column; gap: var(--space-3); padding: var(--space-4); background: var(--surface); border-radius: var(--radius-card); }
+.field { display: flex; flex: 1; flex-direction: column; gap: var(--space-1); min-width: 8rem; }
+.field-row { display: flex; flex-wrap: wrap; gap: var(--space-3); }
+.input { min-height: var(--tap-target); padding: 0 var(--space-3); border: 1px solid var(--separator); border-radius: var(--radius-control); background: var(--surface-2); }
+.warnings { margin-top: var(--space-4); }
+.warnings ul { display: flex; flex-direction: column; gap: var(--space-2); }
+.warning { display: flex; gap: var(--space-3); padding: var(--space-3) var(--space-4); border-radius: var(--radius-card); background: color-mix(in srgb, var(--warning) 18%, var(--surface)); }
+.warning-icon { flex: none; color: var(--label); margin-top: 2px; }
+.link { display: inline-flex; align-items: center; min-height: var(--tap-target); color: var(--tint-label); }
+.done-row { display: flex; align-items: center; justify-content: space-between; gap: var(--space-2); padding: var(--space-1) var(--space-1) var(--space-1) var(--space-4); }
+.done-row + .done-row { border-top: 1px solid var(--separator); }
+.done-title { color: var(--label-2); text-decoration: line-through; overflow-wrap: anywhere; }
+</style>
