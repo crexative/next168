@@ -98,6 +98,13 @@ function openExisting(blockId: string): void {
   editorOpen.value = true
 }
 
+function openConflict(blockId: string): void {
+  detailsOpen.value = false
+  // Remove the old modal before opening the editor so its focus restoration cannot steal editor focus.
+  details.value = null
+  openExisting(blockId)
+}
+
 async function save(block: TimeBlock): Promise<void> {
   if (saving.value) return
   saving.value = true
@@ -173,7 +180,7 @@ async function remove(blockId: string): Promise<void> {
       />
     </template>
 
-    <BusyDetailsSheet v-model:open="detailsOpen" :details="details" />
+    <BusyDetailsSheet v-if="details" v-model:open="detailsOpen" :details="details" :editable="planner.writable" @select="openConflict" />
     <BlockEditorSheet
       v-model:open="editorOpen"
       :draft="draft"

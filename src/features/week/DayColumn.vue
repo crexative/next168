@@ -5,7 +5,7 @@ import type { Category } from '@/core/model'
 import Icon from '@/ui/Icon.vue'
 import { categoryColor } from './categoryColor'
 import { formatTime } from './localTime'
-import { HOUR_HEIGHT_PX, SLOT_MINUTES, layoutDaySegments, type BlockSegment, type BusySegment, type DayPart, type LanePosition } from './weekLayout'
+import { HOUR_HEIGHT_PX, SLOT_MINUTES, STACK_EVENT_INSET_PERCENT, layoutDaySegments, type BlockSegment, type BusySegment, type DayPart, type LanePosition } from './weekLayout'
 import type { BusyDetails } from './busyDetails'
 
 const props = defineProps<{
@@ -29,7 +29,6 @@ const conflicting = computed(() => new Set(props.busy
   .filter((item) => item.kind === 'external' && props.segments.some((segment) => segment.startMinute < item.endMinute && item.startMinute < segment.endMinute))
   .map((item) => item.key)))
 
-const conflictingItems = computed(() => props.busy.filter((item) => conflicting.value.has(item.key)))
 const SHORT_EVENT_MINUTES = 45
 
 function verticalStyle(startMinute: number, endMinute: number) {
@@ -37,7 +36,7 @@ function verticalStyle(startMinute: number, endMinute: number) {
 }
 
 function isBesideEvent(segment: BlockSegment): boolean {
-  return conflictingItems.value.some((item) => segment.startMinute < item.endMinute && item.startMinute < segment.endMinute)
+  return props.busy.some((item) => segment.startMinute < item.endMinute && item.startMinute < segment.endMinute)
 }
 
 function itemStyle(item: DayPart & LanePosition) {
@@ -55,6 +54,7 @@ function segmentStyle(segment: BlockSegment & LanePosition) {
   return {
     ...itemStyle(segment),
     '--block-color': categoryColor(categoriesById.value.get(segment.occurrence.categoryId)),
+    '--title-strip': `${STACK_EVENT_INSET_PERCENT}cqw`,
   }
 }
 
@@ -72,7 +72,7 @@ function inspect(item: BusySegment): void {
     calendar: item.kind === 'event' ? t('week.details.ownEvent') : item.calendar ?? t('week.details.calendarFallback'),
     conflictsWith: props.segments
       .filter((segment) => segment.startMinute < item.endMinute && item.startMinute < segment.endMinute)
-      .map((segment) => segment.occurrence.title),
+      .map((segment) => ({ blockId: segment.occurrence.blockId, title: segment.occurrence.title })),
   })
 }
 
@@ -193,14 +193,22 @@ function onColumnClick(event: MouseEvent): void {
 @container (max-width: 4.5rem) {
   .conflict-text { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
 }
-/* Columns too narrow for two readable lanes (about 4 rem each): planned blocks keep the whole width and each
-   calendar event is a full-width band over them. The block keeps its title; its time is in the accessible name. */
+/* In narrow columns the event band leaves the block's leading title strip available for pointer input. */
 @container day-column (max-width: 9.5rem) {
   .block, .busy {
     inset-inline-start: calc(var(--stack-left) + 2px) !important;
     width: calc(var(--stack-width) - 4px) !important;
   }
   .is-beside .block-time { display: none; }
+  .block.is-beside { padding-inline: 3px 0; }
+  .is-beside .block-title {
+    max-width: calc(var(--title-strip) - 4px);
+    white-space: normal;
+    word-break: break-all;
+  }
+  .busy:not(.is-short) .busy-title { white-space: normal; overflow-wrap: anywhere; }
+  .busy.is-short { gap: 2px; padding-inline: 2px; }
+  .busy.is-short .busy-title { text-overflow: clip; }
   /* A one-line band keeps the title; the word lives in the details and the accessible name. */
   .busy.is-short .conflict-text { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
   .busy.is-conflict:not(.is-short) { display: flex; flex-direction: column; justify-content: center; }

@@ -4,8 +4,8 @@ import Sheet from '@/ui/Sheet.vue'
 import { formatDate } from './localTime'
 import type { BusyDetails } from './busyDetails'
 
-defineProps<{ open: boolean; details: BusyDetails | null }>()
-const emit = defineEmits<{ 'update:open': [open: boolean] }>()
+defineProps<{ open: boolean; details: BusyDetails | null; editable: boolean }>()
+const emit = defineEmits<{ 'update:open': [open: boolean]; select: [blockId: string] }>()
 
 const { t, locale } = useI18n()
 
@@ -22,8 +22,8 @@ const { t, locale } = useI18n()
         <dt class="t-footnote">{{ t('week.details.calendar') }}</dt>
         <dd class="t-body">{{ details.calendar }}</dd>
       </div>
-      <div v-for="title in details.conflictsWith" :key="title" class="conflict" data-testid="busy-details-conflict">
-        <dd class="t-body">{{ t('week.details.conflictsWith', { title }) }}</dd>
+      <div v-for="block in details.conflictsWith" :key="block.blockId" class="conflict" data-testid="busy-details-conflict">
+        <dd><button type="button" class="conflict-button t-body" :disabled="!editable" @click="emit('select', block.blockId)">{{ t('week.details.conflictsWith', { title: block.title }) }}</button></dd>
       </div>
     </dl>
   </Sheet>
@@ -33,5 +33,17 @@ const { t, locale } = useI18n()
 .details { display: flex; flex-direction: column; gap: var(--space-3); }
 dt { color: var(--label-2); }
 dd { margin: 0; overflow-wrap: anywhere; }
-.conflict dd { color: var(--danger-label); font-weight: 600; }
+.conflict-button {
+  display: block;
+  width: 100%;
+  min-height: var(--tap-target);
+  padding: var(--space-1) 0;
+  border: 0;
+  background: transparent;
+  color: var(--danger-label);
+  font-weight: 600;
+  text-align: start;
+  cursor: pointer;
+}
+.conflict-button:disabled { cursor: default; }
 </style>

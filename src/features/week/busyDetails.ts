@@ -4,5 +4,5 @@ export interface BusyDetails {
   date: string
   range: string
   calendar: string
-  conflictsWith: string[]
+  conflictsWith: { blockId: string; title: string }[]
 }

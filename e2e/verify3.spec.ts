@@ -25,22 +25,33 @@ async function seed(page: Page, locale = 'en'): Promise<void> {
   await seedKey(page, V2_KEY, JSON.stringify({ ...plan, settings: { ...plan.settings, locale } }))
 }
 
-async function importEvents(page: Page): Promise<void> {
+async function importEvents(page: Page, contents = ics): Promise<void> {
   await openTab(page, 'settings')
-  await page.getByLabel('Import .ics file', { exact: true }).setInputFiles({ name: 'conflicts.ics', mimeType: 'text/calendar', buffer: Buffer.from(ics) })
+  await page.getByLabel('Import .ics file', { exact: true }).setInputFiles({ name: 'conflicts.ics', mimeType: 'text/calendar', buffer: Buffer.from(contents) })
   await expect(page.getByTestId('calendar-source')).toHaveCount(1)
 }
 
-// Characters of the element's text that fit its box, measured with the element's own font.
+// Count painted characters, including wrapped text; an overlapping event must not count as visible block text.
 async function visibleCharacters(locator: Locator): Promise<number> {
   return locator.evaluate((node) => {
-    const style = window.getComputedStyle(node)
-    const probe = window.document.createElement('canvas').getContext('2d')!
-    probe.font = `${style.fontWeight} ${style.fontSize} ${style.fontFamily}`
-    const text = node.textContent ?? ''
-    if (node.scrollWidth <= node.clientWidth) return text.length
+    const button = node.closest('button')!
+    const textBox = node.getBoundingClientRect()
+    const buttonBox = button.getBoundingClientRect()
+    const walker = document.createTreeWalker(node, NodeFilter.SHOW_TEXT)
+    const range = document.createRange()
     let fits = 0
-    while (fits < text.length && probe.measureText(`${text.slice(0, fits + 1)}…`).width <= node.clientWidth) fits += 1
+    while (walker.nextNode()) {
+      const text = walker.currentNode
+      for (let offset = 0; offset < (text.textContent?.length ?? 0); offset++) {
+        if (!text.textContent![offset]!.trim()) continue
+        range.setStart(text, offset)
+        range.setEnd(text, offset + 1)
+        const rect = range.getBoundingClientRect()
+        if (rect.width <= 0 || rect.left < textBox.left - 0.5 || rect.right > textBox.right + 0.5 || rect.bottom > Math.min(textBox.bottom, buttonBox.bottom) + 0.5) continue
+        const hit = document.elementFromPoint(rect.left + rect.width / 2, rect.top + rect.height / 2)
+        if (hit && button.contains(hit)) fits += 1
+      }
+    }
     return fits
   })
 }
@@ -55,6 +66,7 @@ async function isTopmost(locator: Locator): Promise<boolean> {
 
 test.describe('Week at tablet widths', () => {
   test.beforeEach(onlyProject('desktop'))
+  test.use({ hasTouch: true })
 
   for (const [width, height] of [[768, 1024], [1024, 900]] as const) {
     test(`an event over a block stays readable and opens its details at ${width} px`, async ({ page }) => {
@@ -69,18 +81,19 @@ test.describe('Week at tablet widths', () => {
         await event.scrollIntoViewIfNeeded()
         await expect(event).toHaveCount(1)
 
-        // The event is a band over the block, not a sliver beside it, and keeps a readable title.
+        // The inset band leaves a leading block strip; both titles keep at least six painted characters.
         const columnBox = (await column.boundingBox())!
-        expect((await event.boundingBox())!.width, `${title} width`).toBeGreaterThan(columnBox.width - 8)
+        const eventBox = (await event.boundingBox())!
+        expect(eventBox.x).toBeGreaterThan(columnBox.x)
+        expect(eventBox.width, `${title} width`).toBeGreaterThan(columnBox.width / 2)
         expect(await visibleCharacters(event.locator('.busy-title')), `${title} visible characters`).toBeGreaterThanOrEqual(6)
         const block = column.locator('.block')
         expect(await visibleCharacters(block.locator('.block-title')), 'block title visible characters').toBeGreaterThanOrEqual(6)
         expect((await block.boundingBox())!.width).toBeGreaterThan(columnBox.width - 8)
         await expect(event.getByTestId('calendar-conflict')).toBeVisible()
 
-        // A longer event also keeps the word "Conflict" readable, inside the band.
-        if (minutes >= 45) {
-          const eventBox = (await event.boundingBox())!
+        // Wider bands keep the word; narrow ones retain the icon and its accessible text.
+        if (minutes >= 45 && eventBox.width > 74) {
           const textBox = (await event.locator('.conflict-text').boundingBox())!
           expect(textBox.width).toBeGreaterThan(20)
           expect(textBox.x + textBox.width).toBeLessThanOrEqual(eventBox.x + eventBox.width + 0.5)
@@ -96,6 +109,66 @@ test.describe('Week at tablet widths', () => {
         await expect(dialog).toHaveCount(0)
       }
     })
+
+    for (const kind of ['external', 'own'] as const) {
+      test(`a fully overlapped block opens from its strip and the ${kind} event conflict at ${width} px`, async ({ page }) => {
+        await page.setViewportSize({ width, height })
+        await page.clock.install({ time: NOW })
+        const event = { id: 'exact', title: 'Team sync', start: '2026-10-21T09:00:00Z', end: '2026-10-21T10:00:00Z', allDay: false, attendees: [] }
+        await seedKey(page, V2_KEY, JSON.stringify({
+          ...plan,
+          blocks: plan.blocks.map((block) => ({ ...block, end: 600 })),
+          events: kind === 'own' ? [event] : [],
+        }))
+        if (kind === 'external') {
+          await importEvents(page, [
+            'BEGIN:VCALENDAR', 'VERSION:2.0', 'BEGIN:VEVENT', 'UID:exact@e2e',
+            'DTSTART:20261021T090000Z', 'DTEND:20261021T100000Z', 'SUMMARY:Team sync',
+            'END:VEVENT', 'END:VCALENDAR', '',
+          ].join('\r\n'))
+        }
+        await openTab(page, 'week')
+
+        const column = page.locator('.day-column[data-date="2026-10-21"]')
+        const block = column.locator('[data-block-id="b-work"]')
+        const band = column.locator('.busy')
+        await block.scrollIntoViewIfNeeded()
+        const blockBox = (await block.boundingBox())!
+        const bandBox = (await band.boundingBox())!
+        expect((await column.boundingBox())!.width).toBeLessThan(9.5 * 16)
+        expect(bandBox.y).toBeCloseTo(blockBox.y, 0)
+        expect(bandBox.height).toBeCloseTo(blockBox.height, 0)
+        const stripWidth = bandBox.x - blockBox.x
+        expect(stripWidth).toBeGreaterThan(0)
+        expect(bandBox.x + bandBox.width).toBeLessThanOrEqual(blockBox.x + blockBox.width + 0.5)
+        expect(await visibleCharacters(block.locator('.block-title'))).toBeGreaterThanOrEqual(6)
+        expect(await visibleCharacters(band.locator('.busy-title'))).toBeGreaterThanOrEqual(6)
+
+        const point = { x: blockBox.x + stripWidth / 2, y: blockBox.y + blockBox.height / 2 }
+        expect(await page.evaluate(({ x, y }) => document.elementFromPoint(x, y)?.closest('[data-block-id]')?.getAttribute('data-block-id'), point)).toBe('b-work')
+        await page.touchscreen.tap(point.x, point.y)
+        const editor = page.getByRole('dialog', { name: 'Edit block', exact: true })
+        await expect(editor).toBeVisible()
+        await expect(editor.getByLabel('Title', { exact: true })).toHaveValue('Deep work')
+        await expect(editor.getByLabel('Starts', { exact: true })).toHaveValue('09:00')
+        await expect(editor.getByLabel('Ends', { exact: true })).toHaveValue('10:00')
+        await editor.getByRole('button', { name: 'Close', exact: true }).click()
+        await expect(editor).toHaveCount(0)
+
+        await band.scrollIntoViewIfNeeded()
+        const tapBox = (await band.boundingBox())!
+        await page.touchscreen.tap(tapBox.x + tapBox.width / 2, tapBox.y + tapBox.height / 2)
+        const details = page.getByRole('dialog', { name: 'Team sync', exact: true })
+        await expect(details).toBeVisible()
+        const conflict = details.getByRole('button', { name: 'Conflicts with Deep work', exact: true })
+        await conflict.tap()
+        await expect(details).toHaveCount(0)
+        await expect(editor).toBeVisible()
+        await expect(editor.getByLabel('Title', { exact: true })).toHaveValue('Deep work')
+        await expect(editor.getByLabel('Starts', { exact: true })).toHaveValue('09:00')
+        await expect(editor.getByLabel('Ends', { exact: true })).toHaveValue('10:00')
+      })
+    }
   }
 })
 

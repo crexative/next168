@@ -45,7 +45,8 @@ it('opens the event details with the full title, range, calendar and the block i
   app.mount(host)
 
   const overlay = host.querySelector<HTMLButtonElement>('button.busy')!
-  expect(overlay.style.getPropertyValue('--stack-width')).toBe('100%')
+  expect(overlay.style.getPropertyValue('--stack-left')).toBe('28%')
+  expect(overlay.style.getPropertyValue('--stack-width')).toBe('72%')
   overlay.click()
-  expect(inspected).toEqual([{ title: 'Team sync with the vendor', date, range: '9:30 AM – 10:30 AM', calendar: 'Work calendar', conflictsWith: [deepWork.title] }])
+  expect(inspected).toEqual([{ title: 'Team sync with the vendor', date, range: '9:30 AM – 10:30 AM', calendar: 'Work calendar', conflictsWith: [{ blockId: deepWork.id, title: deepWork.title }] }])
 })

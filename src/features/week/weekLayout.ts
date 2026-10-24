@@ -37,6 +37,8 @@ export interface LanePosition {
   stackWidth: number
 }
 
+export const STACK_EVENT_INSET_PERCENT = 28
+
 // Splits an instant range at local midnights so overnight items render on every day they touch.
 export function splitByLocalDay(start: string, end: string, dates: string[], timeZone: string): DayPart[] {
   const startAt = Date.parse(start)
@@ -58,14 +60,16 @@ export function splitByLocalDay(start: string, end: string, dates: string[], tim
 
 // Side-by-side lanes for items that overlap within one day (overlapping blocks can come from migrated data).
 type Lanes = Omit<LanePosition, 'stackLeft' | 'stackWidth'>
-function assignLanes<T extends { startMinute: number; endMinute: number }>(items: T[]): (T & Lanes)[] {
+function assignLanes<T extends { startMinute: number; endMinute: number }>(items: T[], leadingInset: (cluster: readonly T[]) => number = () => 0): (T & Lanes)[] {
   const sorted = [...items].sort((a, b) => a.startMinute - b.startMinute || b.endMinute - a.endMinute)
   const result: (T & Lanes)[] = []
   let cluster: (T & Lanes)[] = []
   let clusterEnd = -1
   const closeCluster = () => {
     const lanes = Math.max(1, ...cluster.map((item) => item.lane + 1))
-    cluster.forEach((item) => { item.lanes = lanes; item.left = (item.lane / lanes) * 100; item.width = 100 / lanes })
+    const inset = leadingInset(cluster)
+    const width = (100 - inset) / lanes
+    cluster.forEach((item) => { item.lanes = lanes; item.left = inset + item.lane * width; item.width = width })
     result.push(...cluster)
     cluster = []
   }
@@ -90,7 +94,9 @@ export function layoutDaySegments(blocks: BlockSegment[], busy: BusySegment[]): 
     ...busy.map((segment) => ({ startMinute: segment.startMinute, endMinute: segment.endMinute, type: 'busy' as const, segment })),
   ])
   const stacked = new Map<string, Lanes>()
-  for (const item of [...assignLanes(blocks), ...assignLanes(busy)]) stacked.set(item.key, item)
+  // Every event in a connected cluster shares the inset so its event lanes stay disjoint.
+  const stackedBusy = assignLanes(busy, (cluster) => cluster.some((event) => blocks.some((block) => block.startMinute < event.endMinute && event.startMinute < block.endMinute)) ? STACK_EVENT_INSET_PERCENT : 0)
+  for (const item of [...assignLanes(blocks), ...stackedBusy]) stacked.set(item.key, item)
   const result: ReturnType<typeof layoutDaySegments> = { blocks: [], busy: [] }
   for (const item of items) {
     const { lane, lanes, left, width } = item
