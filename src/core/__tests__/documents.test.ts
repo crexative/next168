@@ -34,6 +34,12 @@ describe('documents and migration', () => {
     const result = migrateToCurrent({ categories: [{ id: 'c', name: 'C', color: '#007AFF', weeklyHourLimit: 0 }], timeBlocks: [] }, env)
     expect(result).toMatchObject({ kind: 'ok', document: { categories: [{ colorKey: 'blue', customColor: '#007AFF' }] } })
   })
+  it.each([
+    ['#e11d48', 'pink'], ['#16a34a', 'green'], ['#f59e0b', 'orange'], ['#8b5cf6', 'purple'], ['#9ca3af', 'gray'], ['#0ea5e9', 'teal'],
+  ])('maps the off-palette v1 color %s to the nearest palette key %s', (color, key) => {
+    const result = migrateToCurrent({ categories: [{ id: 'c', name: 'C', color, weeklyHourLimit: 0 }], timeBlocks: [] }, env)
+    expect(result).toMatchObject({ kind: 'ok', document: { categories: [{ colorKey: key, customColor: color }] } })
+  })
   it.each(['{bad', 'null', '{}', '[]', '"text"', '{"categories":[],"timeBlocks":[{}]}'])('never accepts corrupt input %s', (raw) => {
     expect(parseDocument(raw).kind).not.toBe('ok')
     expect(migrateToCurrent(raw, env).kind).not.toBe('ok')
@@ -70,8 +76,10 @@ describe('documents and migration', () => {
     const raw = JSON.stringify(legacy)
     expect(migrateToCurrent(raw, env)).toMatchObject({ kind: 'corrupt', raw })
   })
-  it('rejects invalid legacy times rather than coercing them', () => {
-    expect(migrateToCurrent({ categories: [], timeBlocks: [{ id: 'x', categoryId: 'x', title: 'X', dayOfWeek: 1, startTime: '25:00', endTime: '06:00', durationMinutes: 1 }] }, env)).toMatchObject({ kind: 'corrupt' })
+  it.each(['25:00', '07:60', '7:30', '07:5', ' 07:30'])('rejects the invalid legacy time %s rather than coercing it', (startTime) => {
+    const categories = [{ id: 'x', name: 'X', color: '#007AFF', weeklyHourLimit: 1 }]
+    expect(migrateToCurrent({ categories, timeBlocks: [{ id: 'b', categoryId: 'x', title: 'X', dayOfWeek: 1, startTime, endTime: '09:00', durationMinutes: 1 }] }, env)).toMatchObject({ kind: 'corrupt' })
+    expect(migrateToCurrent({ categories, timeBlocks: [{ id: 'b', categoryId: 'x', title: 'X', dayOfWeek: 1, startTime: '07:30', endTime: '09:00', durationMinutes: 1 }] }, env)).toMatchObject({ kind: 'ok' })
   })
   it('rejects duplicate ids, dangling references, dates, actual identities and invalid zones', () => {
     const doc = document()
