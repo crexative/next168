@@ -1,7 +1,7 @@
 {
   "title": "Data",
   "where": {
-    "title": "Where your data lives",
+    "title": "Technical details",
     "footer": "Data stays in this browser profile and origin. To move it, export here and import there.",
     "mode": "Storage",
     "origin": "Address",
@@ -12,7 +12,6 @@
     }
   },
   "ios": {
-    "title": "iPhone and iPad",
     "body": "Export before using Add to Home Screen: the installed app has its own storage. Then open the installed app and import the file there."
   },
   "persistence": {
@@ -21,13 +20,11 @@
     "unknown": "Unknown",
     "granted": "Yes",
     "notGranted": "Not yet",
-    "request": "Ask the browser to protect it"
-  },
-  "transfer": {
-    "title": "Export and import"
+    "request": "Ask the browser to protect it",
+    "footer": "Asks the browser not to clear your data when the device runs low on space."
   },
   "export": {
-    "action": "Export JSON",
+    "action": "Export backup",
     "done": "Exported {fileName}.",
     "failed": "Could not export ({reason})."
   },

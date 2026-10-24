@@ -13,7 +13,7 @@ import SegmentedControl from '@/ui/SegmentedControl.vue'
 import Sheet from '@/ui/Sheet.vue'
 import { useUndoToast } from '@/ui/undoToast'
 import {
-  categoryUsage, formFromCategory, goalFromForm, removeCategory, restoreCategory, validateCategoryForm,
+  categoryUsage, formFromCategory, goalFromForm, removeCategory, restoreCategory, usageSummary, validateCategoryForm,
   type CategoryForm,
 } from './categoryEditing'
 
@@ -30,8 +30,10 @@ const changedElsewhere = ref(false)
 
 const usage = computed(() => (editing.value?.id && planner.document ? categoryUsage(planner.document, editing.value.id) : { blocks: 0, tasks: 0 }))
 const isReferenced = computed(() => usage.value.blocks + usage.value.tasks > 0)
+const usageText = computed(() => usageSummary((key, count) => t(key, { count }, count), (key, params) => t(key, params), usage.value))
 const reassignOptions = computed(() => categories.value.filter((category) => category.id !== editing.value?.id))
-const effectiveReassign = computed(() => (reassignOptions.value.some((category) => category.id === reassignTo.value) ? reassignTo.value : reassignOptions.value[0]?.id ?? ''))
+// Nothing is chosen for the person: moving everything somewhere is a decision, so the destination starts empty.
+const effectiveReassign = computed(() => (reassignOptions.value.some((category) => category.id === reassignTo.value) ? reassignTo.value : ''))
 const error = computed(() => (submitted.value ? validateCategoryForm(form) : null))
 const goalOptions = computed(() => (['max', 'min', 'none'] as const).map((value) => ({ value, label: t(`categories.goalType.${value}`) })))
 const dirty = computed(() => {
@@ -200,15 +202,16 @@ async function remove(): Promise<void> {
 
         <section v-if="editing?.id" class="danger-zone" :aria-label="t('categories.deleteTitle')">
           <template v-if="isReferenced">
-            <p class="t-subhead">{{ t('categories.inUse', { blocks: usage.blocks, tasks: usage.tasks }) }}</p>
+            <p class="t-subhead" data-testid="category-usage">{{ t('categories.inUse', { items: usageText }) }}</p>
             <label v-if="reassignOptions.length" class="field">
               <span class="t-footnote t-secondary">{{ t('categories.reassignTo') }}</span>
               <select :value="effectiveReassign" class="input" @change="reassignTo = ($event.target as HTMLSelectElement).value">
+                <option value="" disabled>{{ t('categories.chooseTarget') }}</option>
                 <option v-for="category in reassignOptions" :key="category.id" :value="category.id">{{ category.name }}</option>
               </select>
             </label>
             <p v-else class="t-footnote t-secondary">{{ t('categories.noReassignTarget') }}</p>
-            <Button variant="plain" destructive block :disabled="!reassignOptions.length || !planner.writable" @click="remove">
+            <Button variant="plain" destructive block :disabled="!effectiveReassign || !planner.writable" @click="remove">
               {{ t('categories.reassignAndDelete') }}
             </Button>
           </template>

@@ -1,7 +1,7 @@
 {
   "title": "Daten",
   "where": {
-    "title": "Wo Ihre Daten liegen",
+    "title": "Technische Details",
     "footer": "Die Daten bleiben in diesem Browserprofil und dieser Herkunft. Zum Umziehen hier exportieren und dort importieren.",
     "mode": "Speicher",
     "origin": "Adresse",
@@ -12,7 +12,6 @@
     }
   },
   "ios": {
-    "title": "iPhone und iPad",
     "body": "Exportieren Sie vor „Zum Home-Bildschirm“: Die installierte App hat einen eigenen Speicher. Öffnen Sie danach die installierte App und importieren Sie die Datei dort."
   },
   "persistence": {
@@ -21,13 +20,11 @@
     "unknown": "Unbekannt",
     "granted": "Ja",
     "notGranted": "Noch nicht",
-    "request": "Browser um Schutz bitten"
-  },
-  "transfer": {
-    "title": "Export und Import"
+    "request": "Browser um Schutz bitten",
+    "footer": "Bittet den Browser, deine Daten nicht zu löschen, wenn dem Gerät der Speicher ausgeht."
   },
   "export": {
-    "action": "JSON exportieren",
+    "action": "Kopie exportieren",
     "done": "{fileName} exportiert.",
     "failed": "Export nicht möglich ({reason})."
   },

@@ -1,7 +1,7 @@
 {
   "title": "Dados",
   "where": {
-    "title": "Onde ficam seus dados",
+    "title": "Detalhes técnicos",
     "footer": "Os dados ficam neste perfil e origem do navegador. Para movê-los, exporte aqui e importe lá.",
     "mode": "Armazenamento",
     "origin": "Endereço",
@@ -12,7 +12,6 @@
     }
   },
   "ios": {
-    "title": "iPhone e iPad",
     "body": "Exporte antes de usar Adicionar à Tela de Início: o app instalado tem armazenamento próprio. Depois abra o app instalado e importe o arquivo lá."
   },
   "persistence": {
@@ -21,13 +20,11 @@
     "unknown": "Desconhecido",
     "granted": "Sim",
     "notGranted": "Ainda não",
-    "request": "Pedir ao navegador que proteja"
-  },
-  "transfer": {
-    "title": "Exportar e importar"
+    "request": "Pedir ao navegador que proteja",
+    "footer": "Pede ao navegador que não apague seus dados quando o dispositivo ficar sem espaço."
   },
   "export": {
-    "action": "Exportar JSON",
+    "action": "Exportar cópia",
     "done": "{fileName} exportado.",
     "failed": "Não foi possível exportar ({reason})."
   },

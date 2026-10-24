@@ -2,7 +2,6 @@ import type { CalendarSourceStore } from '@/core/model'
 import type { ShellRegistry } from '@/app/contracts'
 import { setExternalOccurrenceSource } from '@/features/week/externalOccurrences'
 import { provideCalendarSourceStore } from '@/features/settings/data/calendarSourceHook'
-import CalendarsSection from '@/features/settings/calendars/CalendarsSection.vue'
 import { calendarServices, calendarTextRevision } from './calendarStore'
 import { calendarSourceRevision, expandCalendarSources } from './occurrenceSource'
 
@@ -25,8 +24,9 @@ const currentTexts: CalendarSourceStore = {
   list: () => calendarServices().texts.list(),
 }
 
-export default function registerCalendars(registry: ShellRegistry): void {
-  registry.registerSettingsSection({ id: 'calendars', component: CalendarsSection, titleKey: 'calendars.heading', order: 30 })
+// The calendars section itself lives under Settings → Integrations and advanced (features/settings).
+// eslint-disable-next-line @typescript-eslint/no-unused-vars -- the registry contract stays; this slice adds no view or section of its own
+export default function registerCalendars(_registry: ShellRegistry): void {
   setExternalOccurrenceSource(expandCalendarSources, calendarSourceRevision)
   provideCalendarSourceStore(currentTexts)
 }

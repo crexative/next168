@@ -1,0 +1,11 @@
+{
+  "advanced": {
+    "title": "Intégrations et avancé",
+    "subtitle": "Calendriers, assistant IA, stockage et détails techniques"
+  },
+  "exportNudge": {
+    "never": "Vous n'avez pas encore exporté de copie.",
+    "overdue": "Cela fait {days} jours que vous n'avez pas exporté de copie.",
+    "action": "Exporter une copie"
+  }
+}

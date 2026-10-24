@@ -15,7 +15,6 @@ const planner = usePlannerStore()
 const proposalJson = ref('')
 const status = ref('')
 const busy = ref(false)
-const origin = location.origin
 const desktopConfig = JSON.stringify({ mcpServers: { next168: { command: 'node', args: ['/absolute/path/to/next168/companion/dist/cli.js', 'mcp'] } } }, null, 2)
 const codeCommand = 'claude mcp add --transport stdio next168 -- node /absolute/path/to/next168/companion/dist/cli.js mcp'
 const empty = computed(() => planner.document && !planner.document.categories.length && !planner.document.blocks.length && !planner.document.tasks.length && !planner.document.events.length)
@@ -59,12 +58,9 @@ async function importWorkspace(event: Event) {
 <template>
   <div class="connect-settings">
     <h2 class="t-title-2">{{ t('connect.title') }}</h2>
-    <section class="connect-card">
-      <h3 class="t-headline">{{ t('connect.dataLocation') }}</h3>
-      <p>{{ t(companionMode ? 'connect.companionMode' : 'connect.browserMode') }}</p>
-      <p class="t-footnote t-secondary">{{ origin }} · {{ planner.document?.workspaceId }}</p>
+    <section v-if="companionMode && empty" class="connect-card">
       <p>{{ t('connect.transferHint') }}</p>
-      <label v-if="companionMode && empty" class="import-workspace">
+      <label class="import-workspace">
         {{ t('connect.importWorkspace') }}
         <input type="file" accept="application/json,.json" :disabled="busy" @change="importWorkspace" />
       </label>

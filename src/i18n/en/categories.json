@@ -36,11 +36,17 @@
     "hoursRange": "Use between 0.5 and 168 hours."
   },
   "deleteTitle": "Delete category",
-  "inUse": "{blocks} time blocks and {tasks} tasks use this category. Move them to another category to delete it.",
+  "inUse": "This category has {items}. To delete it, move everything to another category.",
   "reassignTo": "Move them to",
   "noReassignTarget": "Create another category first.",
   "reassignAndDelete": "Move and delete",
   "delete": "Delete category",
   "deleted": "Deleted “{name}”",
-  "changedElsewhere": "This changed elsewhere, so it was reloaded. Please review it and try again."
+  "changedElsewhere": "This changed elsewhere, so it was reloaded. Please review it and try again.",
+  "usage": {
+    "and": "{first} and {second}",
+    "blocks": "no blocks | {count} block | {count} blocks",
+    "tasks": "no tasks | {count} task | {count} tasks"
+  },
+  "chooseTarget": "Choose a category"
 }
