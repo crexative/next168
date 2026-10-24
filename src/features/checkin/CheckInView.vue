@@ -119,7 +119,8 @@ async function save(): Promise<void> {
 </template>
 
 <style scoped>
-.checkin { display: flex; flex-direction: column; gap: var(--space-4); max-width: 36rem; margin-inline: auto; padding: 0 var(--space-4) var(--space-6); }
+/* Starts under the large title like Assistant; centred, it drifted away from its own title on wide windows. */
+.checkin { display: flex; flex-direction: column; gap: var(--space-4); max-width: 36rem; padding: 0 var(--space-4) var(--space-6); }
 .times { display: flex; flex-wrap: wrap; gap: var(--space-3); }
 .field { display: flex; flex: 1; flex-direction: column; gap: var(--space-1); min-width: 8rem; }
 /* The form sits on the page background, not in a card. */
