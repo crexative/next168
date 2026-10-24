@@ -96,7 +96,7 @@ async function importWorkspace(event: Event) {
 .connect-card { display: grid; gap: var(--space-3); margin-block: var(--space-4); padding: var(--space-4); background: var(--surface); border-radius: var(--radius-card); }
 pre, code { white-space: pre-wrap; overflow-wrap: anywhere; font-size: 0.8125rem; }
 pre { background: var(--surface-2); border-radius: var(--radius-control); padding: var(--space-3); }
-textarea { width: 100%; border: 1px solid var(--separator); border-radius: var(--radius-control); background: var(--surface-2); color: var(--label); padding: var(--space-3); resize: vertical; }
+textarea { width: 100%; border: 1px solid var(--field-border); border-radius: var(--radius-control); background: var(--surface-2); color: var(--label); padding: var(--space-3); resize: vertical; }
 a { color: var(--tint-label); min-height: var(--tap-target); display: flex; align-items: center; }
 .import-workspace { display: grid; gap: var(--space-2); }
 input[type='file'] { min-height: var(--tap-target); max-width: 100%; }

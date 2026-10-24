@@ -67,7 +67,7 @@ onBeforeUnmount(() => { clearInterval(timer); document.removeEventListener('visi
 <style scoped>
 .pairing-overlay { position: fixed; inset: 0; z-index: 200; background: var(--bg); display: grid; place-items: center; padding: var(--space-4); }
 .pairing-card { width: min(100%, 28rem); display: grid; gap: var(--space-4); border-radius: var(--radius-card); background: var(--surface); padding: var(--space-6); }
-input { width: 100%; min-height: var(--tap-target); padding: var(--space-2); border: 1px solid var(--separator); border-radius: var(--radius-control); background: var(--surface-2); color: var(--label); }
+input { width: 100%; min-height: var(--tap-target); padding: var(--space-2); border: 1px solid var(--field-border); border-radius: var(--radius-control); background: var(--surface-2); color: var(--label); }
 .proposal-badge { position: fixed; z-index: 40; inset-inline-end: var(--space-4); bottom: calc(var(--tabbar-height) + var(--safe-bottom) + var(--space-3)); min-height: var(--tap-target); display: flex; align-items: center; padding: var(--space-2) var(--space-4); border-radius: var(--radius-control); background: var(--tint); color: var(--tint-text); text-decoration: none; box-shadow: var(--shadow-floating); }
 @media (min-width: 1024px) { .proposal-badge { bottom: var(--space-4); } }
 </style>

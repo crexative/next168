@@ -35,7 +35,7 @@ ul { margin: 0; padding: 0; list-style: none; }
 .input {
   min-height: var(--tap-target);
   padding: 0 var(--space-3);
-  border: 1px solid var(--separator);
+  border: 1px solid var(--field-border);
   border-radius: var(--radius-control);
   background-color: var(--surface-2);
   color: var(--label);
@@ -86,6 +86,10 @@ input[type='file']::file-selector-button {
 }
 
 html[data-sheet-open] body { overflow: hidden; }
+
+/* A bar that extends the toolbar (Week's day strip) owns the bottom edge, so toolbar and strip read as one material. */
+.view:has([data-toolbar-extension]) .toolbar[data-collapsed] { box-shadow: none; }
+[data-toolbar-extension] { box-shadow: 0 0.5px 0 var(--material-edge); }
 
 @media (max-width: 767px) and (prefers-reduced-motion: no-preference) {
   #app { transition: transform var(--spring-duration) var(--ease-out); transform-origin: center top; }

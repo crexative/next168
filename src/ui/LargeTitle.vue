@@ -61,18 +61,8 @@ onBeforeUnmount(() => observer?.disconnect())
 }
 .toolbar[data-collapsed] .toolbar-title { opacity: 1; }
 .toolbar-actions { display: flex; align-items: center; gap: var(--space-2); position: relative; }
-.toolbar::after {
-  content: '';
-  position: absolute;
-  inset-inline: 0;
-  top: 100%;
-  height: 12px;
-  background: linear-gradient(var(--material), transparent);
-  opacity: 0;
-  pointer-events: none;
-  transition: opacity 0.15s;
-}
-.toolbar[data-collapsed]::after { opacity: 0.5; }
+/* The collapsed bar ends on a hairline; a page with its own bar under the toolbar draws the edge there instead (base.css). */
+.toolbar[data-collapsed] { box-shadow: 0 0.5px 0 var(--material-edge); }
 .large-title {
   padding: calc(var(--toolbar-height) + var(--space-2)) var(--space-4) var(--space-2);
 }

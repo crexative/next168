@@ -24,7 +24,7 @@ const { locale } = useI18n()
 
 <template>
   <div class="week-grid">
-    <div class="grid-header" aria-hidden="true">
+    <div class="grid-header" aria-hidden="true" data-toolbar-extension>
       <span />
       <span v-for="date in dates" :key="date" class="day-heading" :class="{ 'is-today': date === today }">
         <span class="t-caption weekday">{{ formatDate(date, locale, { weekday: 'short' }) }}</span>
@@ -60,7 +60,9 @@ const { locale } = useI18n()
   position: sticky;
   top: calc(var(--safe-top) + var(--toolbar-height));
   z-index: 5;
-  padding-block: var(--space-2);
+  /* Full bleed: the strip spans the toolbar's width, the columns stay on the grid. */
+  margin-inline: calc(var(--space-2) * -1) calc(var(--space-4) * -1);
+  padding: var(--space-2) var(--space-4) var(--space-2) var(--space-2);
   background: var(--material);
   -webkit-backdrop-filter: var(--material-filter);
   backdrop-filter: var(--material-filter);

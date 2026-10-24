@@ -132,7 +132,7 @@ onBeforeUnmount(() => animation?.stop())
 
 <template>
   <div class="pager" :data-active-date="dates[index]">
-    <div class="day-strip" role="group" :aria-label="t('week.pager.days')">
+    <div class="day-strip" role="group" data-toolbar-extension :aria-label="t('week.pager.days')">
       <button
         v-for="(date, position) in dates"
         :key="date"
