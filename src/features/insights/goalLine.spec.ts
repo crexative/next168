@@ -44,6 +44,15 @@ describe('goalProgress at the cap', () => {
 describe('goalHours', () => {
   const hours = (goal: Parameters<typeof goalProgress>[0], plannedMinutes: number) => goalHours(goalProgress(goal, plannedMinutes).line, plannedMinutes)
 
+  it.each([
+    { type: 'min' as const, planned: 0, expected: { planned: 0, goal: 0, amount: 0, state: 'ok' } },
+    { type: 'min' as const, planned: 60, expected: { planned: 1, goal: 0, amount: 0, state: 'ok' } },
+    { type: 'max' as const, planned: 0, expected: { planned: 0, goal: 0, amount: 0, state: 'ok' } },
+    { type: 'max' as const, planned: 30, expected: { planned: 1, goal: 0, amount: 1, state: 'attention' } },
+  ])('preserves a zero-hour $type goal with $planned planned minutes', ({ type, planned, expected }) => {
+    expect(hours({ type, hoursPerWeek: 0 }, planned)).toEqual(expected)
+  })
+
   it('reads a missing minimum in whole hours that add up to the goal: 3 h 30 min of 4 h is "3 of 4 · 1 to go"', () => {
     expect(hours({ type: 'min', hoursPerWeek: 4 }, h(3.5))).toEqual({ planned: 3, goal: 4, amount: 1, state: 'attention' })
     expect(hours({ type: 'min', hoursPerWeek: 49 }, 0)).toEqual({ planned: 0, goal: 49, amount: 49, state: 'attention' })

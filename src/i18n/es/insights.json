@@ -14,6 +14,7 @@
     "live": "Esta semana te queda {hours} h libre. | Esta semana te quedan {hours} h libres."
   },
   "goals": {
+    "deletedCategory": "Categoría eliminada",
     "title": "Tus metas esta semana",
     "empty": "Aún no tienes metas. Ponlas en cada categoría, en Ajustes.",
     "line": {

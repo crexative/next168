@@ -14,6 +14,7 @@
     "live": "Diese Woche bleiben dir noch {hours} h frei."
   },
   "goals": {
+    "deletedCategory": "Gelöschte Kategorie",
     "title": "Ihre Ziele diese Woche",
     "empty": "Noch keine Ziele. Legen Sie eines je Kategorie unter Einstellungen fest.",
     "line": {
