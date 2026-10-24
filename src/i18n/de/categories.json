@@ -41,5 +41,6 @@
   "noReassignTarget": "Legen Sie zuerst eine weitere Kategorie an.",
   "reassignAndDelete": "Verschieben und löschen",
   "delete": "Kategorie löschen",
-  "deleted": "„{name}“ gelöscht"
+  "deleted": "„{name}“ gelöscht",
+  "changedElsewhere": "Das wurde anderswo geändert und deshalb neu geladen. Bitte prüfen und erneut versuchen."
 }

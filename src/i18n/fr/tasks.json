@@ -38,5 +38,6 @@
     "1": "Haute",
     "2": "Moyenne",
     "3": "Basse"
-  }
+  },
+  "changedElsewhere": "Ceci a changé ailleurs et a donc été rechargé. Vérifiez-le puis réessayez."
 }

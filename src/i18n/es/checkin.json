@@ -15,5 +15,6 @@
   "stress": "Estrés, de 1 calma a 5 alto",
   "note": "Nota (opcional)",
   "save": "Guardar registro",
-  "saved": "Guardado"
+  "saved": "Guardado",
+  "changedElsewhere": "Esto cambió en otro lugar, así que se volvió a cargar. Revísalo e inténtalo de nuevo."
 }

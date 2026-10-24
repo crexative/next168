@@ -38,5 +38,6 @@
     "1": "Alta",
     "2": "Média",
     "3": "Baixa"
-  }
+  },
+  "changedElsewhere": "Isto mudou noutro lugar, por isso foi recarregado. Reveja e tente novamente."
 }

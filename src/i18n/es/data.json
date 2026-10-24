@@ -69,5 +69,6 @@
     "confirmAction": "Borrar todo",
     "done": "Se borraron todos los datos.",
     "failed": "No se pudo borrar ({reason}). No se cambió nada."
-  }
+  },
+  "changedElsewhere": "Tus datos cambiaron mientras tanto, así que no se reemplazó nada. Inténtalo de nuevo."
 }

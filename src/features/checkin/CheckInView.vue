@@ -2,7 +2,7 @@
 import { computed, reactive, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { localDateOf } from '@/core/time'
-import { assertDocument, stampKey, stampOf, type DocumentStamp } from '@/features/insights/workspaceGuard'
+import { assertEntry, CHANGED_ELSEWHERE, snapshotOf } from '@/features/insights/entryGuard'
 import { usePlannerStore } from '@/stores/plannerStore'
 import Button from '@/ui/Button.vue'
 import SegmentedControl from '@/ui/SegmentedControl.vue'
@@ -18,31 +18,28 @@ const timeZone = computed(() => planner.document?.settings.timeZone ?? 'UTC')
 const today = computed(() => localDateOf(new Date(), timeZone.value))
 const form = reactive<CheckInFormState>(formFromCheckIn('', undefined))
 const saved = ref(false)
-// What the form was loaded from: the document state and the stored entry for its date.
-let formStamp: DocumentStamp | undefined
-let formStored: string | undefined
+const changedElsewhere = ref(false)
+// The stored entry of the form's date as it was when the form was loaded.
+let formSnapshot: string | undefined
+let loaded = false
 
-function storedEntry(date: string): string | undefined {
-  const entry = planner.document?.checkIns.find((checkIn) => checkIn.date === date)
-  return entry ? JSON.stringify(entry) : undefined
+function entryFor(date: string) {
+  return planner.document?.checkIns.find((checkIn) => checkIn.date === date)
 }
 
 function loadDate(date: string): void {
-  Object.assign(form, formFromCheckIn(date, planner.document?.checkIns.find((checkIn) => checkIn.date === date)))
-  formStamp = stampOf(planner.document)
-  formStored = storedEntry(date)
+  const entry = entryFor(date)
+  Object.assign(form, formFromCheckIn(date, entry))
+  formSnapshot = snapshotOf(entry)
+  loaded = true
   saved.value = false
 }
 
-// Replaced content (import, restored backup with the same workspace id, delete-all, another tab) invalidates
-// whatever the form holds; a plain revision bump that leaves this entry alone only moves the stamp.
-watch(() => stampKey(planner.document), (_, previous) => {
-  const document = planner.document
-  if (!document) return
-  const date = form.date || today.value
-  const replaced = previous === undefined || formStamp?.workspaceId !== document.workspaceId || storedEntry(date) !== formStored
-  if (replaced) loadDate(date)
-  else formStamp = stampOf(document)
+// The form follows its own entry: unrelated commits (another entry, tasks, settings) leave typed values alone;
+// imported, restored or synced content that changes this entry reloads the form.
+watch(() => (planner.document ? { stored: snapshotOf(entryFor(form.date || today.value)) } : null), (next) => {
+  if (!next) return
+  if (!loaded || next.stored !== formSnapshot) loadDate(form.date || today.value)
 }, { immediate: true })
 
 function onDateChange(): void {
@@ -64,11 +61,10 @@ const stressWithNone = computed(() => [{ value: '0' as const, label: '–' }, ..
 
 async function save(): Promise<void> {
   const next = checkInFromForm(form)
-  const stamp = formStamp
-  const stored = formStored
+  const snapshot = formSnapshot
+  changedElsewhere.value = false
   const result = await planner.commit((draft) => {
-    assertDocument(draft, stamp)
-    if (JSON.stringify(draft.checkIns.find((checkIn) => checkIn.date === next.date)) !== stored) throw new Error('workspace-changed')
+    assertEntry(draft.checkIns.find((checkIn) => checkIn.date === next.date), snapshot)
     draft.checkIns = isEmptyCheckIn(next)
       ? draft.checkIns.filter((checkIn) => checkIn.date !== next.date)
       : upsertCheckIn(draft.checkIns, next)
@@ -76,6 +72,10 @@ async function save(): Promise<void> {
   if (result.ok) {
     saved.value = true
     window.location.hash = '#/insights'
+  } else if (result.reason === CHANGED_ELSEWHERE) {
+    planner.dismissError()
+    loadDate(form.date || today.value)
+    changedElsewhere.value = true
   }
 }
 </script>
@@ -114,6 +114,7 @@ async function save(): Promise<void> {
 
     <Button type="submit" block :disabled="!planner.writable || !form.date">{{ t('checkin.save') }}</Button>
     <p v-if="saved" class="t-subhead" role="status">{{ t('checkin.saved') }}</p>
+    <p v-if="changedElsewhere" class="t-subhead" role="alert">{{ t('checkin.changedElsewhere') }}</p>
   </form>
 </template>
 

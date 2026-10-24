@@ -15,5 +15,6 @@
   "stress": "Stress, 1 calm to 5 high",
   "note": "Note (optional)",
   "save": "Save check-in",
-  "saved": "Saved"
+  "saved": "Saved",
+  "changedElsewhere": "This changed elsewhere, so it was reloaded. Please review it and try again."
 }

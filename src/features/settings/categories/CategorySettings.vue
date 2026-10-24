@@ -4,7 +4,7 @@ import { useI18n } from 'vue-i18n'
 import { COLOR_KEYS, type Category, type ColorKey, type Goal, type PlannerDocument } from '@/core/model'
 import { categoryColor } from '@/features/insights/categoryColor'
 import { formatHoursDecimal } from '@/features/insights/format'
-import { assertDocument, stampKey, stampOf, type DocumentStamp } from '@/features/insights/workspaceGuard'
+import { assertEntry, CHANGED_ELSEWHERE, snapshotOf } from '@/features/insights/entryGuard'
 import { usePlannerStore } from '@/stores/plannerStore'
 import Button from '@/ui/Button.vue'
 import Icon from '@/ui/Icon.vue'
@@ -22,10 +22,11 @@ const planner = usePlannerStore()
 const toast = useUndoToast()
 
 const categories = computed(() => planner.document?.categories ?? [])
-const editing = ref<{ id: string | null; stamp: DocumentStamp | undefined; stored: string | undefined } | null>(null)
+const editing = ref<{ id: string | null; stored: string | undefined } | null>(null)
 const form = reactive<CategoryForm>({ name: '', colorKey: 'blue', goalType: 'none', hours: 1 })
 const reassignTo = ref('')
 const submitted = ref(false)
+const changedElsewhere = ref(false)
 
 const usage = computed(() => (editing.value?.id && planner.document ? categoryUsage(planner.document, editing.value.id) : { blocks: 0, tasks: 0 }))
 const isReferenced = computed(() => usage.value.blocks + usage.value.tasks > 0)
@@ -40,19 +41,24 @@ const dirty = computed(() => {
   return (Object.keys(baseline) as (keyof CategoryForm)[]).some((key) => baseline[key] !== form[key])
 })
 
-function storedCategory(id: string | null): string | undefined {
-  const category = id ? planner.document?.categories.find((candidate) => candidate.id === id) : undefined
-  return category ? JSON.stringify(category) : undefined
+function storedCategory(id: string | null): Category | undefined {
+  return id ? planner.document?.categories.find((candidate) => candidate.id === id) : undefined
 }
 
-// An open editor refers to the exact document state it was opened in: close it when its category changed
-// underneath (import, restore, another tab), otherwise just follow the new revision.
-watch(() => stampKey(planner.document), () => {
+// An open editor is bound to the stored value of its own category: reload it when that changes underneath
+// (import, restore, another tab), close it when the category is gone, ignore every unrelated commit.
+function followStored(): void {
   const current = editing.value
-  if (!current) return
-  if (current.stamp?.workspaceId !== planner.document?.workspaceId || storedCategory(current.id) !== current.stored) editing.value = null
-  else current.stamp = stampOf(planner.document)
-})
+  if (!current?.id) return
+  const stored = storedCategory(current.id)
+  if (snapshotOf(stored) === current.stored) return
+  changedElsewhere.value = true
+  if (!stored) { editing.value = null; return }
+  Object.assign(form, formFromCategory(stored))
+  submitted.value = false
+  current.stored = snapshotOf(stored)
+}
+watch(() => snapshotOf(storedCategory(editing.value?.id ?? null)), followStored)
 
 function goalSummary(goal: Goal): string {
   if (goal.type === 'none') return t('categories.goalSummary.none')
@@ -62,15 +68,27 @@ function goalSummary(goal: Goal): string {
 function openEditor(category?: Category): void {
   Object.assign(form, category ? formFromCategory(category) : { name: '', colorKey: 'blue' as ColorKey, goalType: 'none' as Goal['type'], hours: 1 })
   submitted.value = false
+  changedElsewhere.value = false
   reassignTo.value = ''
-  editing.value = { id: category?.id ?? null, stamp: stampOf(planner.document), stored: storedCategory(category?.id ?? null) }
+  editing.value = { id: category?.id ?? null, stored: snapshotOf(storedCategory(category?.id ?? null)) }
 }
 
 // Inside the queued commit: the category must still be exactly what the editor was opened on.
 function assertEditable(draft: PlannerDocument, opened: NonNullable<typeof editing.value> | null): void {
-  assertDocument(draft, opened?.stamp)
-  const category = opened?.id ? draft.categories.find((candidate) => candidate.id === opened.id) : undefined
-  if ((category ? JSON.stringify(category) : undefined) !== opened?.stored) throw new Error('workspace-changed')
+  if (!opened) throw new Error(CHANGED_ELSEWHERE)
+  assertEntry(opened.id ? draft.categories.find((candidate) => candidate.id === opened.id) : undefined, opened.stored)
+}
+
+// A refused save reloads the editor from what is stored now (or closes it when the category is gone).
+function refusedAsChanged(result: { ok: boolean; reason?: string }): void {
+  if (result.ok || result.reason !== CHANGED_ELSEWHERE) return
+  planner.dismissError()
+  const current = editing.value
+  const stored = current?.id ? storedCategory(current.id) : undefined
+  changedElsewhere.value = true
+  if (!current?.id || !stored) { editing.value = null; return }
+  Object.assign(form, formFromCategory(stored))
+  current.stored = snapshotOf(stored)
 }
 
 function closeEditor(): void {
@@ -81,7 +99,7 @@ async function save(): Promise<void> {
   submitted.value = true
   if (validateCategoryForm(form)) return
   const id = editing.value?.id ?? crypto.randomUUID()
-  const opened = editing.value
+  const opened = editing.value && { ...editing.value }
   const next = { name: form.name.trim(), colorKey: form.colorKey, goal: goalFromForm(form) }
   const result = await planner.commit((draft) => {
     assertEditable(draft, opened)
@@ -94,6 +112,7 @@ async function save(): Promise<void> {
     }
   })
   if (result.ok) closeEditor()
+  else refusedAsChanged(result)
 }
 
 async function remove(): Promise<void> {
@@ -101,9 +120,10 @@ async function remove(): Promise<void> {
   if (!id) return
   const target = isReferenced.value ? effectiveReassign.value : undefined
   const holder: { removed: ReturnType<typeof removeCategory> } = { removed: null }
-  const opened = editing.value
+  const opened = editing.value && { ...editing.value }
   const result = await planner.commit((draft) => { assertEditable(draft, opened); holder.removed = removeCategory(draft, id, target) })
   const snapshot = holder.removed
+  if (!result.ok) refusedAsChanged(result)
   if (!result.ok || !snapshot) return
   closeEditor()
   toast.show({
@@ -131,6 +151,8 @@ async function remove(): Promise<void> {
     <Button variant="plain" :disabled="!planner.writable" @click="openEditor()">
       <Icon name="plus" :size="20" /> {{ t('categories.add') }}
     </Button>
+
+    <p v-if="changedElsewhere" class="t-subhead" role="alert">{{ t('categories.changedElsewhere') }}</p>
 
     <Sheet :open="editing !== null" :title="editing?.id ? t('categories.editTitle') : t('categories.addTitle')" :dirty="dirty" @update:open="closeEditor">
       <form class="editor" @submit.prevent="save">

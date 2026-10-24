@@ -41,5 +41,6 @@
   "noReassignTarget": "Créez d'abord une autre catégorie.",
   "reassignAndDelete": "Déplacer et supprimer",
   "delete": "Supprimer la catégorie",
-  "deleted": "« {name} » supprimée"
+  "deleted": "« {name} » supprimée",
+  "changedElsewhere": "Ceci a changé ailleurs et a donc été rechargé. Vérifiez-le puis réessayez."
 }

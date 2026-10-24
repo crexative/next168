@@ -15,5 +15,6 @@
   "stress": "Estresse, de 1 calmo a 5 alto",
   "note": "Nota (opcional)",
   "save": "Salvar registro",
-  "saved": "Salvo"
+  "saved": "Salvo",
+  "changedElsewhere": "Isto mudou noutro lugar, por isso foi recarregado. Reveja e tente novamente."
 }

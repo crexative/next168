@@ -69,5 +69,6 @@
     "confirmAction": "Alles löschen",
     "done": "Alle Daten wurden gelöscht.",
     "failed": "Löschen nicht möglich ({reason}). Es wurde nichts geändert."
-  }
+  },
+  "changedElsewhere": "Deine Daten haben sich inzwischen geändert, daher wurde nichts ersetzt. Bitte versuche es erneut."
 }

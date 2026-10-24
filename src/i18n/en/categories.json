@@ -41,5 +41,6 @@
   "noReassignTarget": "Create another category first.",
   "reassignAndDelete": "Move and delete",
   "delete": "Delete category",
-  "deleted": "Deleted “{name}”"
+  "deleted": "Deleted “{name}”",
+  "changedElsewhere": "This changed elsewhere, so it was reloaded. Please review it and try again."
 }

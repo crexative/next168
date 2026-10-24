@@ -41,5 +41,6 @@
   "noReassignTarget": "Crea antes otra categoría.",
   "reassignAndDelete": "Mover y eliminar",
   "delete": "Eliminar categoría",
-  "deleted": "Eliminada «{name}»"
+  "deleted": "Eliminada «{name}»",
+  "changedElsewhere": "Esto cambió en otro lugar, así que se volvió a cargar. Revísalo e inténtalo de nuevo."
 }

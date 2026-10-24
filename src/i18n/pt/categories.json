@@ -41,5 +41,6 @@
   "noReassignTarget": "Crie outra categoria primeiro.",
   "reassignAndDelete": "Mover e excluir",
   "delete": "Excluir categoria",
-  "deleted": "“{name}” excluída"
+  "deleted": "“{name}” excluída",
+  "changedElsewhere": "Isto mudou noutro lugar, por isso foi recarregado. Reveja e tente novamente."
 }

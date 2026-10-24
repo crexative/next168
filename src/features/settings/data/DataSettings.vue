@@ -1,9 +1,9 @@
 <script setup lang="ts">
-import { computed, onMounted, ref, shallowRef, watch } from 'vue'
+import { computed, onMounted, ref, shallowRef } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { STORAGE_KEYS } from '@/core/model'
 import { createBrowserRepositories } from '@/repositories/browserRepositories'
-import { assertDocument, stampKey, stampOf, type DocumentStamp } from '@/features/insights/workspaceGuard'
+import { assertDocumentHash, CHANGED_ELSEWHERE, documentHash } from '@/features/insights/entryGuard'
 import { usePlannerStore } from '@/stores/plannerStore'
 import Button from '@/ui/Button.vue'
 import Icon from '@/ui/Icon.vue'
@@ -32,22 +32,29 @@ const persisted = ref<boolean | null>(null)
 const busy = ref(false)
 const deleteOpen = ref(false)
 const typed = ref('')
-// The document state the open preview / delete confirmation was computed for; checked again inside the commit.
-let previewStamp: DocumentStamp | undefined
-let deleteStamp: DocumentStamp | undefined
-
-// A preview or delete confirmation was computed against the workspace that has just been replaced.
-watch(() => stampKey(planner.document), () => { preview.value = null; previewStamp = undefined; closeDelete() })
+// Canonical hash of the whole document the open import preview / delete confirmation was computed for;
+// checked again inside the commit, whatever metadata the replacing content carries.
+let previewHash: string | undefined
+let deleteHash: string | undefined
 
 function openDelete(): void {
-  deleteStamp = stampOf(planner.document)
+  deleteHash = documentHash(planner.document)
   deleteOpen.value = true
 }
 
 function closeDelete(): void {
   deleteOpen.value = false
-  deleteStamp = undefined
+  deleteHash = undefined
   typed.value = ''
+}
+
+function closePreview(): void {
+  preview.value = null
+  previewHash = undefined
+}
+
+function refusedAsChanged(reason: string): string | null {
+  return reason === CHANGED_ELSEWHERE ? t('data.changedElsewhere') : null
 }
 
 const phrase = computed(() => t('data.deleteAll.phrase'))
@@ -96,7 +103,7 @@ async function onFileChosen(event: Event): Promise<void> {
   const input = event.target as HTMLInputElement
   const file = input.files?.[0]
   input.value = ''
-  preview.value = null
+  closePreview()
   notice.value = null
   const current = planner.document
   if (!file || !current) return
@@ -105,7 +112,7 @@ async function onFileChosen(event: Event): Promise<void> {
     return
   }
   const result = previewImport(await file.text(), current, new Date())
-  if (result.kind === 'ok') { preview.value = result.preview; previewStamp = stampOf(current) }
+  if (result.kind === 'ok') { preview.value = result.preview; previewHash = documentHash(current) }
   else if (result.kind === 'unsupported') notice.value = { tone: 'error', text: t('data.import.unsupported', { version: String(result.version) }) }
   else notice.value = { tone: 'error', text: t('data.import.invalid', { reason: result.reason }) }
 }
@@ -114,10 +121,12 @@ async function confirmImport(): Promise<void> {
   const chosen = preview.value
   if (!chosen) return
   busy.value = true
-  const stamp = previewStamp
-  const result = await planner.commit((draft) => { assertDocument(draft, stamp); replaceContent(draft, chosen.document) })
+  const hash = previewHash
+  const result = await planner.commit((draft) => { assertDocumentHash(draft, hash); replaceContent(draft, chosen.document) })
   if (!result.ok) {
-    notice.value = { tone: 'error', text: t('data.import.failed', { reason: result.reason }) }
+    const changed = refusedAsChanged(result.reason)
+    if (changed) { planner.dismissError(); closePreview() }
+    notice.value = { tone: 'error', text: changed ?? t('data.import.failed', { reason: result.reason }) }
     busy.value = false
     return
   }
@@ -126,7 +135,7 @@ async function confirmImport(): Promise<void> {
   notice.value = verified.ok
     ? { tone: 'ok', text: t('data.import.verified', { hash: verified.hash.slice(0, 12) }) }
     : { tone: 'error', text: t(`data.import.verifyFailed.${verified.reason}`) }
-  preview.value = null
+  closePreview()
   busy.value = false
 }
 
@@ -138,19 +147,21 @@ async function removeLeftovers(): Promise<void> {
 
 async function deleteEverything(): Promise<void> {
   const current = planner.document
-  const stamp = deleteStamp
-  if (!current || !stamp || !canDelete.value) return
+  const hash = deleteHash
+  if (!current || !hash || !canDelete.value) return
   busy.value = true
   const fresh = freshDocument(current, new Date())
-  const result = await planner.commit((draft) => { assertDocument(draft, stamp); replaceContent(draft, fresh) })
+  const result = await planner.commit((draft) => { assertDocumentHash(draft, hash); replaceContent(draft, fresh) })
   if (result.ok) {
     await replaceSourceTexts(calendarSourceStore(), {})
     await removeLeftovers()
     closeDelete()
-    preview.value = null
+    closePreview()
     notice.value = { tone: 'ok', text: t('data.deleteAll.done') }
   } else {
-    notice.value = { tone: 'error', text: t('data.deleteAll.failed', { reason: result.reason }) }
+    const changed = refusedAsChanged(result.reason)
+    if (changed) { planner.dismissError(); closeDelete() }
+    notice.value = { tone: 'error', text: changed ?? t('data.deleteAll.failed', { reason: result.reason }) }
   }
   busy.value = false
 }
@@ -202,7 +213,7 @@ async function deleteEverything(): Promise<void> {
       </ul>
       <p class="t-footnote t-secondary">{{ t('data.import.replaceWarning') }}</p>
       <div class="actions">
-        <Button variant="plain" :disabled="busy" @click="preview = null">{{ t('common.cancel') }}</Button>
+        <Button variant="plain" :disabled="busy" @click="closePreview">{{ t('common.cancel') }}</Button>
         <Button destructive :disabled="busy || !planner.writable" @click="confirmImport">{{ t('data.import.replace') }}</Button>
       </div>
     </section>

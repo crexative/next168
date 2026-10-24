@@ -69,5 +69,6 @@
     "confirmAction": "Tout supprimer",
     "done": "Toutes les données ont été supprimées.",
     "failed": "Suppression impossible ({reason}). Rien n'a été modifié."
-  }
+  },
+  "changedElsewhere": "Vos données ont changé entre-temps, rien n’a donc été remplacé. Réessayez."
 }

@@ -69,5 +69,6 @@
     "confirmAction": "Delete everything",
     "done": "All data was deleted.",
     "failed": "Could not delete ({reason}). Nothing was changed."
-  }
+  },
+  "changedElsewhere": "Your data changed in the meantime, so nothing was replaced. Please try again."
 }

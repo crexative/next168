@@ -6,7 +6,7 @@ import { scheduleTasks } from '@/core/scheduler'
 import { localDateOf } from '@/core/time'
 import { formatDuration } from '@/features/insights/format'
 import { categoryColor } from '@/features/insights/categoryColor'
-import { assertDocument, stampKey, stampOf, type DocumentStamp } from '@/features/insights/workspaceGuard'
+import { assertEntry, CHANGED_ELSEWHERE, snapshotOf } from '@/features/insights/entryGuard'
 import { usePlannerStore } from '@/stores/plannerStore'
 import Button from '@/ui/Button.vue'
 import EmptyState from '@/ui/EmptyState.vue'
@@ -41,12 +41,14 @@ const done = computed(() => recentDone(document.value?.tasks ?? []))
 
 const form = reactive({ title: '', durationMin: 60, categoryId: '', dueDate: '', priority: '2' as '1' | '2' | '3' })
 const effectiveCategoryId = computed(() => (categoryById.value.has(form.categoryId) ? form.categoryId : categories.value[0]?.id ?? ''))
-// Typed values and the picked category belong to the workspace they were entered in.
-let formStamp: DocumentStamp | undefined = stampOf(document.value)
-watch(() => stampKey(document.value), () => {
-  formStamp = stampOf(document.value)
-  Object.assign(form, { title: '', durationMin: 60, categoryId: '', dueDate: '', priority: '2' })
-})
+const changedElsewhere = ref(false)
+// The quick-add form depends on one stored entry: the category it files the task under. Other commits (completing
+// a task, editing another category) never touch what is typed; the snapshot only follows what the form displays.
+const formCategory = { id: '', snapshot: undefined as string | undefined }
+watch(() => ({ id: effectiveCategoryId.value, snapshot: snapshotOf(categoryById.value.get(effectiveCategoryId.value)) }), (next) => {
+  formCategory.id = next.id
+  formCategory.snapshot = next.snapshot
+}, { immediate: true })
 const canAdd = computed(() => planner.writable && form.title.trim().length > 0 && effectiveCategoryId.value !== '')
 
 const priorityOptions = computed(() => (['1', '2', '3'] as const).map((value) => ({ value, label: t(`tasks.priority.${value}`) })))
@@ -78,20 +80,28 @@ function describe(task: Task): string {
 
 async function addTask(): Promise<void> {
   if (!canAdd.value) return
-  const stamp = formStamp
+  const { id: categoryId, snapshot } = formCategory
+  changedElsewhere.value = false
   const task: Task = {
     id: crypto.randomUUID(),
     title: form.title.trim(),
-    categoryId: effectiveCategoryId.value,
+    categoryId,
     durationMin: form.durationMin,
     priority: Number(form.priority) as Task['priority'],
     createdAt: new Date().toISOString(),
     ...(form.dueDate ? { dueDate: form.dueDate } : {}),
   }
-  const result = await planner.commit((draft) => { assertDocument(draft, stamp); draft.tasks.push(task) })
+  const result = await planner.commit((draft) => {
+    assertEntry(draft.categories.find((category) => category.id === categoryId), snapshot)
+    draft.tasks.push(task)
+  })
   if (result.ok) {
     form.title = ''
     form.dueDate = ''
+  } else if (result.reason === CHANGED_ELSEWHERE) {
+    planner.dismissError()
+    form.categoryId = ''
+    changedElsewhere.value = true
   }
 }
 
@@ -167,6 +177,7 @@ function lateText(task: Task): string {
         </label>
       </div>
       <SegmentedControl v-model="form.priority" :options="priorityOptions" :label="t('tasks.add.priority')" />
+      <p v-if="changedElsewhere" class="t-subhead" role="alert">{{ t('tasks.changedElsewhere') }}</p>
       <Button type="submit" block :disabled="!canAdd">
         <Icon name="plus" :size="20" /> {{ t('tasks.add.submit') }}
       </Button>

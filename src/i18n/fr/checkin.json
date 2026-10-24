@@ -15,5 +15,6 @@
   "stress": "Stress, de 1 calme à 5 élevé",
   "note": "Note (facultatif)",
   "save": "Enregistrer le bilan",
-  "saved": "Enregistré"
+  "saved": "Enregistré",
+  "changedElsewhere": "Ceci a changé ailleurs et a donc été rechargé. Vérifiez-le puis réessayez."
 }

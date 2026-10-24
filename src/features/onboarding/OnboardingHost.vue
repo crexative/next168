@@ -4,7 +4,6 @@ import { useI18n } from 'vue-i18n'
 import { COLOR_KEYS } from '@/core/model'
 import { formatDuration } from '@/features/insights/format'
 import { minuteToTime } from '@/features/checkin/checkInForm'
-import { assertDocument, stampKey, stampOf, type DocumentStamp } from '@/features/insights/workspaceGuard'
 import { usePlannerStore } from '@/stores/plannerStore'
 import Button from '@/ui/Button.vue'
 import Icon from '@/ui/Icon.vue'
@@ -28,8 +27,6 @@ const choices = reactive<TemplateChoice[]>(CATEGORY_TEMPLATES.map((template) => 
 const firstTask = reactive<FirstTaskChoice>({ title: '', templateId: '', durationMin: 60 })
 
 // The wizard's picks describe a first-run workspace; start over when another one replaces it.
-let wizardStamp: DocumentStamp | undefined = stampOf(planner.document)
-watch(() => stampKey(planner.document), () => { wizardStamp = stampOf(planner.document) })
 watch(() => planner.document?.workspaceId, () => {
   step.value = 0
   choices.forEach((choice, index) => Object.assign(choice, { selected: false, name: t(`onboarding.templates.${CATEGORY_TEMPLATES[index]!.id}`), colorKey: CATEGORY_TEMPLATES[index]!.colorKey, sketch: true }))
@@ -62,12 +59,12 @@ async function requestPersistence(): Promise<void> {
 
 async function complete(withChoices: boolean): Promise<void> {
   saving.value = true
-  const stamp = wizardStamp
   const result = withChoices
     ? buildOnboardingResult(choices, { ...firstTask, templateId: taskTemplateId.value }, { newId: () => crypto.randomUUID(), now: new Date() })
     : { categories: [], blocks: [], tasks: [] }
   const committed = await planner.commit((draft) => {
-    assertDocument(draft, stamp)
+    // The wizard only ever completes a first run; never push its picks into a workspace that already finished it.
+    if (draft.settings.onboardingDone) throw new Error('onboarding-done')
     draft.categories.push(...result.categories)
     draft.blocks.push(...result.blocks)
     draft.tasks.push(...result.tasks)

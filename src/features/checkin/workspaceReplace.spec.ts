@@ -10,6 +10,7 @@ import CheckInView from './CheckInView.vue'
 import CategorySettings from '@/features/settings/categories/CategorySettings.vue'
 import TasksView from '@/features/tasks/TasksView.vue'
 import DataSettings from '@/features/settings/data/DataSettings.vue'
+import { buildExportFile } from '@/features/settings/data/dataTransfer'
 
 const TODAY = '2026-10-24'
 
@@ -95,7 +96,7 @@ describe('other forms after the workspace is replaced', () => {
     title.value = 'Stale task'
     title.dispatchEvent(new Event('input'))
     await nextTick()
-    store.document = { ...workspace('ws-b'), revision: 1, categories: [category] }
+    store.document = { ...workspace('ws-b'), revision: 1, categories: [{ ...category, name: 'Replaced' }] }
     host.querySelector('form')!.dispatchEvent(new Event('submit', { cancelable: true }))
     await store.settled()
     expect(store.document?.tasks).toEqual([])
@@ -129,7 +130,7 @@ describe('content replaced under the same workspace id (restored backup)', () =>
     title.value = 'Stale task'
     title.dispatchEvent(new Event('input'))
     await nextTick()
-    store.document = { ...workspace('ws-a'), revision: 1, updatedAt: '2026-01-01T00:00:00.000Z', categories: [category] }
+    store.document = { ...workspace('ws-a'), revision: 1, updatedAt: '2026-01-01T00:00:00.000Z', categories: [{ ...category, name: 'Replaced' }] }
     host.querySelector('form')!.dispatchEvent(new Event('submit', { cancelable: true }))
     await store.settled()
     expect(store.document?.tasks).toEqual([])
@@ -147,19 +148,19 @@ describe('content replaced under the same workspace id (restored backup)', () =>
   })
 })
 
-describe('data settings confirmations', () => {
-  async function openDelete(first: PlannerDocument) {
-    const ctx = await setup(DataSettings, first)
-    const button = [...host.querySelectorAll<HTMLButtonElement>('button')].find((candidate) => candidate.textContent?.includes('Delete'))!
-    button.click()
-    await nextTick()
-    const input = document.body.querySelector<HTMLInputElement>('form.confirm input')!
-    input.value = 'DELETE'
-    input.dispatchEvent(new Event('input'))
-    await nextTick()
-    return ctx
-  }
+async function openDelete(first: PlannerDocument) {
+  const ctx = await setup(DataSettings, first)
+  const button = [...host.querySelectorAll<HTMLButtonElement>('button')].find((candidate) => candidate.textContent?.includes('Delete'))!
+  button.click()
+  await nextTick()
+  const input = document.body.querySelector<HTMLInputElement>('form.confirm input')!
+  input.value = 'DELETE'
+  input.dispatchEvent(new Event('input'))
+  await nextTick()
+  return ctx
+}
 
+describe('data settings confirmations', () => {
   it('does not erase a replacement workspace when a stale delete confirmation is submitted', async () => {
     const { store } = await openDelete({ ...workspace('ws-a', 'a note'), revision: 1 })
     store.document = { ...workspace('ws-b', 'b note'), revision: 1 }
@@ -176,5 +177,82 @@ describe('data settings confirmations', () => {
     document.body.querySelector('form.confirm')!.dispatchEvent(new Event('submit', { cancelable: true }))
     await store.settled()
     expect(store.document?.checkIns).toEqual([{ date: TODAY, note: 'restored note' }])
+  })
+})
+
+describe('forms bind to their own entry, confirmations to the content hash', () => {
+  const category = { id: 'c-1', name: 'Work', colorKey: 'blue' as const, goal: { type: 'none' as const, hoursPerWeek: 0 } }
+  const task = { id: 't-1', title: 'Existing', categoryId: 'c-1', durationMin: 30, priority: 2 as const, createdAt: '2026-10-01T00:00:00.000Z' }
+
+  it('keeps an unsaved quick-add draft when another task is completed', async () => {
+    const { store } = await setup(TasksView, { ...workspace('ws-a'), revision: 1, categories: [category], tasks: [task] })
+    const title = host.querySelector<HTMLInputElement>('input[type=text], input:not([type])')!
+    title.value = 'Unsaved draft'
+    title.dispatchEvent(new Event('input'))
+    await nextTick()
+    await store.commit((draft) => { draft.tasks[0]!.doneAt = '2026-10-24T10:00:00.000Z' })
+    await store.settled()
+    await nextTick()
+    expect(store.document?.tasks[0]?.doneAt).toBeDefined()
+    expect(title.value).toBe('Unsaved draft')
+    host.querySelector('form')!.dispatchEvent(new Event('submit', { cancelable: true }))
+    await store.settled()
+    expect(store.document?.tasks.map((candidate) => candidate.title)).toContain('Unsaved draft')
+  })
+
+  it('keeps the check-in form through an unrelated commit but reloads it when its own entry changes', async () => {
+    const { store } = await setup(CheckInView, { ...workspace('ws-a', 'stored note'), revision: 1 })
+    const note = () => host.querySelector<HTMLTextAreaElement>('textarea')!
+    note().value = 'typed note'
+    note().dispatchEvent(new Event('input'))
+    await store.commit((draft) => { draft.tasks.push({ id: 't-9', title: 'Other', categoryId: 'c-1', durationMin: 15, priority: 2, createdAt: '2026-10-01T00:00:00.000Z' }) })
+    await nextTick()
+    expect(note().value).toBe('typed note')
+
+    // Same workspace id, revision and write time: only the entry itself differs.
+    store.document = { ...store.document!, checkIns: [{ date: TODAY, note: 'replaced note' }] }
+    await nextTick()
+    expect(note().value).toBe('replaced note')
+  })
+
+  it('refuses a check-in save when its entry changed and says so', async () => {
+    const { store } = await setup(CheckInView, { ...workspace('ws-a', 'stored note'), revision: 1 })
+    store.document = { ...store.document!, checkIns: [{ date: TODAY, note: 'replaced note' }] }
+    host.querySelector('form')!.dispatchEvent(new Event('submit', { cancelable: true }))
+    await store.settled()
+    await nextTick()
+    expect(store.document?.checkIns).toEqual([{ date: TODAY, note: 'replaced note' }])
+    expect(host.querySelector('[role=alert]')?.textContent).toContain('changed elsewhere')
+    expect(store.error).toBeNull()
+  })
+
+  it('refuses a delete-all confirmation when different content replaced the document with identical metadata', async () => {
+    const first = { ...workspace('ws-a', 'content A'), revision: 1 }
+    const { store } = await openDelete(first)
+    await nextTick()
+    store.document = { ...first, checkIns: [{ date: TODAY, note: 'content B' }] }
+    await nextTick()
+    document.body.querySelector('form.confirm')!.dispatchEvent(new Event('submit', { cancelable: true }))
+    await store.settled()
+    await nextTick()
+    expect(store.document?.checkIns).toEqual([{ date: TODAY, note: 'content B' }])
+    expect(document.body.querySelector('.sheet-root.is-shown')).toBeNull()
+  })
+
+  it('refuses an import-replace confirmation when the document was replaced with identical metadata', async () => {
+    const first = { ...workspace('ws-a', 'content A'), revision: 1 }
+    const { store } = await setup(DataSettings, first)
+    const exported = await buildExportFile({ ...workspace('ws-z', 'imported'), revision: 1 }, {} as never, { now: () => new Date(fixedNow()) })
+    const input = host.querySelector<HTMLInputElement>('input[type=file]')!
+    Object.defineProperty(input, 'files', { configurable: true, value: [new File([exported.json], 'backup.json', { type: 'application/json' })] })
+    input.dispatchEvent(new Event('change'))
+    for (let i = 0; i < 10; i++) await nextTick()
+    const replace = host.querySelector<HTMLButtonElement>('[data-testid=import-preview] button.destructive, [data-testid=import-preview] button:last-of-type')!
+    store.document = { ...first, checkIns: [{ date: TODAY, note: 'content B' }] }
+    replace.click()
+    await store.settled()
+    await nextTick()
+    expect(store.document?.checkIns).toEqual([{ date: TODAY, note: 'content B' }])
+    expect(host.querySelector('[data-testid=import-preview]')).toBeNull()
   })
 })

@@ -38,5 +38,6 @@
     "1": "High",
     "2": "Medium",
     "3": "Low"
-  }
+  },
+  "changedElsewhere": "This changed elsewhere, so it was reloaded. Please review it and try again."
 }

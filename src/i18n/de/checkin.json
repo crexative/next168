@@ -15,5 +15,6 @@
   "stress": "Stress, 1 ruhig bis 5 hoch",
   "note": "Notiz (optional)",
   "save": "Check-in speichern",
-  "saved": "Gespeichert"
+  "saved": "Gespeichert",
+  "changedElsewhere": "Das wurde anderswo geändert und deshalb neu geladen. Bitte prüfen und erneut versuchen."
 }

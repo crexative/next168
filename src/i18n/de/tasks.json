@@ -38,5 +38,6 @@
     "1": "Hoch",
     "2": "Mittel",
     "3": "Niedrig"
-  }
+  },
+  "changedElsewhere": "Das wurde anderswo geändert und deshalb neu geladen. Bitte prüfen und erneut versuchen."
 }
