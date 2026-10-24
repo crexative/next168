@@ -33,7 +33,7 @@ const rows = computed(() => {
   const categoryIds = new Set([...doc.categories.map((category) => category.id), ...Object.keys(actuals)])
   return [...categoryIds].flatMap((categoryId) => {
     const category: Category = doc.categories.find((candidate) => candidate.id === categoryId) ?? {
-      id: categoryId, name: 'Categoría eliminada', colorKey: 'gray', goal: { type: 'none', hoursPerWeek: 0 },
+      id: categoryId, name: t('insights.goals.deletedCategory'), colorKey: 'gray', goal: { type: 'none', hoursPerWeek: 0 },
     }
     const actual = actuals[categoryId]
     if (category.goal.type === 'none' && !actual) return []

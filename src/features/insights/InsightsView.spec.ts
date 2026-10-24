@@ -96,15 +96,20 @@ describe('Summary: your goals this week', () => {
         plannedMinutes: 60, status: 'partial', actualMinutes: 30,
       },
     ]
-    await mount({ ...base, categories: hasCurrentCategories ? base.categories : [], blocks: hasCurrentCategories ? base.blocks : [], actuals }, 'es')
+    await mount({ ...base, categories: hasCurrentCategories ? base.categories : [], blocks: hasCurrentCategories ? base.blocks : [], actuals }, 'en')
     const retained = row('deleted-category')
     expect(retained).not.toBeNull()
-    expect(retained!.querySelector('.name')?.textContent).toBe('Categoría eliminada')
-    expect(text('actual-line', retained!)).toBe('Hecho: 1 h 30 min de 2 h')
+    expect(retained!.querySelector('.name')?.textContent).toBe('Deleted category')
+    expect(text('actual-line', retained!)).toBe('Done: 1 h 30 min of 2 h')
     expect(retained!.querySelector('[data-testid="goal-line"]')).toBeNull()
     expect(retained!.querySelector('[data-testid="goal-state"]')).toBeNull()
     expect(host.querySelectorAll('[data-testid="goal-row-deleted-category"]')).toHaveLength(1)
     expect(usePlannerStore().document!.categories.some((category) => category.id === 'deleted-category')).toBe(false)
+
+    i18n.global.locale.value = 'es'
+    await nextTick()
+    expect(retained!.querySelector('.name')?.textContent).toBe('Categoría eliminada')
+    expect(text('actual-line', retained!)).toBe('Hecho: 1 h 30 min de 2 h')
   })
 
   it('has one row per goal, with one line in whole hours and one mark', async () => {

@@ -14,6 +14,7 @@
     "live": "{hours} h free left this week."
   },
   "goals": {
+    "deletedCategory": "Deleted category",
     "title": "Your goals this week",
     "empty": "No goals yet. Set one on a category in Settings.",
     "line": {
