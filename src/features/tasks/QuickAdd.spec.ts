@@ -1,7 +1,10 @@
 // @vitest-environment happy-dom
 import { afterEach, beforeEach, expect, it, vi } from 'vitest'
-import { nextTick } from 'vue'
-import { fixedNow, testDocument } from '@/repositories/testSupport'
+import { createApp, nextTick } from 'vue'
+import { createPinia, setActivePinia } from 'pinia'
+import { i18n } from '@/i18n'
+import { configurePlannerStore, usePlannerStore } from '@/stores/plannerStore'
+import { createTestRepositories, fixedNow, newTestId, testDocument } from '@/repositories/testSupport'
 import { mountWithPlanner, SLEEP, WORK, type Mounted } from '@/features/settings/testSupport'
 import { LAST_TASK_CATEGORY_KEY } from './lastCategory'
 import TasksView from './TasksView.vue'
@@ -105,4 +108,33 @@ it('adds a task when there are no categories at all', async () => {
   await type('Call the bank')
   await submit()
   expect(mounted.store.document!.tasks).toMatchObject([{ title: 'Call the bank' }])
+})
+
+it('still offers the remembered choice when the planner finishes loading after the view started', async () => {
+  localStorage.setItem(LAST_TASK_CATEGORY_KEY, 'c-study')
+  const pinia = createPinia()
+  setActivePinia(pinia)
+  const repos = createTestRepositories()
+  configurePlannerStore({ repository: repos.planner, now: fixedNow, newId: newTestId, locale: () => 'en', timeZone: () => 'UTC' })
+  await repos.planner.save({ ...testDocument(), ...done, categories: [WORK, STUDY], revision: 1 }, 0)
+  const store = usePlannerStore()
+  i18n.global.locale.value = 'en'
+  const host = document.createElement('div')
+  document.body.append(host)
+  const app = createApp(TasksView).use(pinia).use(i18n)
+  app.mount(host)
+  await nextTick()
+  // Nothing is shown yet: the document is not loaded.
+  expect(host.querySelector('form.add')).toBeNull()
+  await store.load()
+  await nextTick()
+  const input = host.querySelector<HTMLInputElement>('form.add input[type=text]')!
+  input.value = 'x'
+  input.dispatchEvent(new Event('input'))
+  await nextTick()
+  expect(host.querySelector<HTMLSelectElement>('[data-testid=task-when]')!.value).toBe('c-study')
+  // Because it differs from the defaults, "More options" is already open: the choice is never hidden.
+  expect(host.querySelector<HTMLElement>('[data-testid=task-more-options]')!.style.display).not.toBe('none')
+  app.unmount()
+  host.remove()
 })

@@ -29,7 +29,7 @@
     "details": "Détails de cette tâche",
     "more": "Plus d'options",
     "when": "Quand ?",
-    "anyFreeTime": "N'importe quel créneau libre",
+    "anyFreeTime": "Tout créneau libre",
     "during": "Pendant {category}"
   },
   "priority": {

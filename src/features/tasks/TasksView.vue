@@ -49,8 +49,11 @@ const done = computed(() => recentDone(document.value?.tasks ?? []))
 
 // The title is typed first; the length and, one level deeper, when the task may go, its due date and its priority.
 // The choice of the last task added is offered again (a category that is gone, or Sleep, is never remembered).
-const form = ref<TaskDraft>({ ...newDraft(), categoryId: resolveWhen(categories.value, readLastTaskCategory()) })
+// The planner may still be loading when this view starts, so the remembered choice is only checked against the
+// categories once they are there (effectiveCategoryId) and never decided up front.
+const form = ref<TaskDraft>({ ...newDraft(), categoryId: readLastTaskCategory() })
 const effectiveCategoryId = computed(() => resolveWhen(categories.value, form.value.categoryId))
+const shownDraft = computed<TaskDraft>(() => ({ ...form.value, categoryId: effectiveCategoryId.value }))
 // One field to start; the details appear once there is something to file.
 const detailsOpen = computed(() => form.value.title.trim().length > 0)
 const changedElsewhere = ref(false)
@@ -153,7 +156,7 @@ function lateText(task: Task): string {
         <input v-model="form.title" class="input" type="text" maxlength="120" autocomplete="off" enterkeyhint="done" :placeholder="t('tasks.add.titlePlaceholder')">
       </label>
       <div v-if="detailsOpen" class="details" role="group" :aria-label="t('tasks.add.details')" data-testid="task-details">
-        <TaskOptions :draft="form" :categories="categories" @patch="form = { ...form, ...$event }" />
+        <TaskOptions :draft="shownDraft" :categories="categories" @patch="form = { ...form, ...$event }" />
         <Button type="submit" block :disabled="!canAdd">
           <Icon name="plus" :size="20" /> {{ t('tasks.add.submit') }}
         </Button>

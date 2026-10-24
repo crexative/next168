@@ -127,6 +127,25 @@ describe('editing a task', () => {
 })
 
 describe('adding a task from the sheet', () => {
+  it('adds one task when the button is pressed twice before the first save finishes', async () => {
+    const { store } = await open(undefined, { tasks: [] })
+    await set(titleField(), 'Call the bank')
+    save().click()
+    save().click()
+    await store.settled()
+    expect(store.document!.tasks).toHaveLength(1)
+  })
+
+  it('writes nothing into a replacement workspace, even when it is saved before the sheet has noticed the change', async () => {
+    const { store } = await open(undefined, { tasks: [] })
+    await set(titleField(), 'Stale task')
+    store.document = testDocument({ workspaceId: 'ws-b', categories: [WORK, STUDY], tasks: [], revision: 1 })
+    save().click()
+    await store.settled()
+    expect(store.document!.tasks).toEqual([])
+    expect(store.error).toBeNull()
+  })
+
   it('starts with the last choice, saves without a category by default, and needs a title', async () => {
     localStorage.setItem(LAST_TASK_CATEGORY_KEY, 'c-work')
     const { store } = await open(undefined, { tasks: [] })
