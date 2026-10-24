@@ -13,6 +13,7 @@ import TodayView from './TodayView.vue'
 // Saturday 2026-10-24. Family 10:00–14:00, Reading 15:00–16:00, Sleep 22:00–06:00, plus one task inside Family.
 const base: PlannerDocument = {
   ...testDocument({ workspaceId: 'ws-today' }), revision: 1,
+  settings: { ...testDocument().settings, onboardingDone: true },
   categories: [
     { id: 'family', name: 'Family', colorKey: 'pink', goal: { type: 'none', hoursPerWeek: 0 } },
     { id: 'sleep', name: 'Sleep', colorKey: 'purple', icon: '😴', goal: { type: 'none', hoursPerWeek: 0 } },
@@ -63,6 +64,14 @@ describe('Today header and cards', () => {
     await mount('2026-10-24T12:00:00Z')
     expect(text('today-subtitle')).toBe('Saturday, October 24 · 23 h free this week')
     expect(host.querySelector('[data-testid="free-hours"], [data-testid="day-progress"], .today-stats')).toBeNull()
+  })
+
+  it('says only the date while the first-run setup is open, then the free hours once it is done', async () => {
+    const store = await mount('2026-10-24T12:00:00Z', { ...base, settings: { ...base.settings, onboardingDone: false } })
+    expect(text('today-subtitle')).toBe('Saturday, October 24')
+    await store.commit((draft) => { draft.settings.onboardingDone = true })
+    await nextTick()
+    expect(text('today-subtitle')).toBe('Saturday, October 24 · 23 h free this week')
   })
 
   it('keeps the subtitle number in step with the plan: whole hours, never tenths', async () => {

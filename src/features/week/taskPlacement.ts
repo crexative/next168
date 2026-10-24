@@ -1,6 +1,6 @@
 import { ref, shallowRef, watch } from 'vue'
 import type { PlannerDocument, TaskPlacement } from '@/core/model'
-import { movedOnFromToday, scheduleStable, type MovedTask } from '@/core/scheduling'
+import { fitTasks, movedOnFromToday, type MovedTask } from '@/core/scheduling'
 import { localDateOf } from '@/core/time'
 
 // What Week showed last, per workspace, so a task keeps its time while it is still valid. It lives for the
@@ -55,7 +55,7 @@ export function useTaskPlacements(source: () => PlacementSource | null) {
     const workspaceId = input.document.workspaceId
     const before = forWorkspace(shown, workspaceId)
     const keep = forWorkspace(pinned, workspaceId)
-    const next = scheduleStable({ ...input, previous: before, pinned: keep })
+    const next = fitTasks({ ...input, previous: before, pinned: keep })
     const today = localDateOf(input.now, input.timeZone)
     const moved = movedOnFromToday(before, next, today, input.timeZone)
     if (moved.length) {

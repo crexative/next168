@@ -26,17 +26,17 @@ beforeEach(resetPlacementMemory)
 describe('useTaskPlacements', () => {
   it('keeps the task where it was while the clock moves on', async () => {
     const view = mountPlacements(at('09:07'))
-    expect(first(view.placements.value)).toBe('2026-10-21T09:15')
+    expect(first(view.placements.value)).toBe('2026-10-21T09:10')
     view.now.value = at('09:20')
     await nextTick()
-    expect(first(view.placements.value)).toBe('2026-10-21T09:15')
+    expect(first(view.placements.value)).toBe('2026-10-21T09:10')
     view.scope.stop()
   })
 
   it('remembers the day for the next time Week is opened', () => {
     mountPlacements(at('09:07')).scope.stop()
     const reopened = mountPlacements(at('09:20'))
-    expect(first(reopened.placements.value)).toBe('2026-10-21T09:15')
+    expect(first(reopened.placements.value)).toBe('2026-10-21T09:10')
     reopened.scope.stop()
   })
 
@@ -45,7 +45,7 @@ describe('useTaskPlacements', () => {
     expect(view.notice.value).toBeNull()
     view.now.value = at('10:05')
     await nextTick()
-    expect(first(view.placements.value)).toBe('2026-10-21T09:15')
+    expect(first(view.placements.value)).toBe('2026-10-21T09:10')
     view.now.value = at('11:20')
     await nextTick()
     expect(first(view.placements.value)).toBe('2026-10-22T09:00')
@@ -55,7 +55,7 @@ describe('useTaskPlacements', () => {
 
     keepWhereTheyWere(notice)
     view.recompute()
-    expect(first(view.placements.value)).toBe('2026-10-21T09:15')
+    expect(first(view.placements.value)).toBe('2026-10-21T09:10')
     view.scope.stop()
   })
 })

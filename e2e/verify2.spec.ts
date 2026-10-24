@@ -162,7 +162,7 @@ test('the update banner never covers the page title or the date line', async ({ 
   const banner = page.getByTestId('update-banner')
   await expect(banner).toBeVisible()
   const bannerBox = (await banner.boundingBox())!
-  for (const target of [page.getByRole('heading', { level: 1, name: 'Today' }), page.getByTestId('today-date')]) {
+  for (const target of [page.getByRole('heading', { level: 1, name: 'Today' }), page.getByTestId('today-subtitle')]) {
     const box = (await target.boundingBox())!
     const overlap = bannerBox.x < box.x + box.width && box.x < bannerBox.x + bannerBox.width && bannerBox.y < box.y + box.height && box.y < bannerBox.y + bannerBox.height
     expect(overlap, 'banner overlaps the title area').toBe(false)

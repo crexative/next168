@@ -36,7 +36,8 @@ const reassignOptions = computed(() => categories.value.filter((category) => cat
 const effectiveReassign = computed(() => (reassignOptions.value.some((category) => category.id === reassignTo.value) ? reassignTo.value : ''))
 const error = computed(() => (submitted.value ? validateCategoryForm(form) : null))
 const sharingCategory = computed(() => categorySharingColor(categories.value, form.colorKey, editing.value?.id ?? null))
-const goalOptions = computed(() => (['max', 'min', 'none'] as const).map((value) => ({ value, label: t(`categories.goalType.${value}`) })))
+// In the order people think of a weekly goal: at least, at most, or none (the glossary's "meta").
+const goalOptions = computed(() => (['min', 'max', 'none'] as const).map((value) => ({ value, label: t(`categories.goalType.${value}`) })))
 const dirty = computed(() => {
   const original = editing.value?.id ? categories.value.find((category) => category.id === editing.value!.id) : undefined
   if (!original) return form.name !== ''

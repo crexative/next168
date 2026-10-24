@@ -2,7 +2,7 @@
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import type { Category, Task } from '@/core/model'
-import { scheduleTasks } from '@/core/scheduler'
+import { fitTasks } from '@/core/scheduling'
 import { localDateOf } from '@/core/time'
 import { displayLocale, formatDuration } from '@/ui/format'
 import { categoryColor } from '@/features/insights/categoryColor'
@@ -43,7 +43,7 @@ const plan = computed(() => {
   const doc = document.value
   if (!doc) return null
   const busy = external.value.filter((item) => item.busy && !item.allDay).map((item) => ({ start: item.start, end: item.end }))
-  return planTasks(doc, scheduleTasks({ document: doc, busy, now: now.value, timeZone: doc.settings.timeZone }))
+  return planTasks(doc, fitTasks({ document: doc, busy, now: now.value, timeZone: doc.settings.timeZone }))
 })
 const done = computed(() => recentDone(document.value?.tasks ?? []))
 

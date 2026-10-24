@@ -1,5 +1,4 @@
 {
-  "title": "Categorias",
   "footer": "As metas são guias: passar de um limite avisa, nunca bloqueia.",
   "empty": "Ainda sem categorias.",
   "add": "Adicionar categoria",
@@ -21,12 +20,12 @@
   },
   "goal": "Meta semanal",
   "goalType": {
-    "max": "No máximo",
     "min": "No mínimo",
+    "max": "No máximo",
     "none": "Sem meta"
   },
   "goalSummary": {
-    "none": "Sem meta semanal",
+    "none": "Sem meta",
     "max": "No máximo {hours} h por semana",
     "min": "No mínimo {hours} h por semana"
   },
@@ -46,7 +45,7 @@
   "colorInUse": "{name} já usa esta cor. Você pode mantê-la mesmo assim.",
   "usage": {
     "and": "{first} e {second}",
-    "blocks": "nenhum bloco | {count} bloco | {count} blocos",
+    "blocks": "nenhuma rotina | {count} rotina | {count} rotinas",
     "tasks": "nenhuma tarefa | {count} tarefa | {count} tarefas"
   },
   "chooseTarget": "Escolha uma categoria"

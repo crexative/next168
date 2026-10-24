@@ -1,10 +1,12 @@
 // @vitest-environment node
 import { describe, expect, it } from 'vitest'
 import type { PlannerDocument, TaskPlacement } from './model'
-import { movedOnFromToday, scheduleStable } from './scheduling'
+import { fitTasks, movedOnFromToday, PLACEMENT_STEP_MINUTES, scheduleStable as scheduleOnGrid, type StableScheduleInput } from './scheduling'
 import { scheduleTasks } from './scheduler'
 
 const EVERY_DAY = [0, 1, 2, 3, 4, 5, 6] as const
+// The grid mechanics are exercised on a 15-minute step (any step works the same); the app's step is five minutes.
+const scheduleStable = (input: StableScheduleInput) => scheduleOnGrid({ snapMinutes: 15, ...input })
 
 function planner(blocks: PlannerDocument['blocks'], durationMin = 60): PlannerDocument {
   return {
@@ -237,5 +239,32 @@ describe('a task with no category fits any free time', () => {
     // New York, 2026-03-08: 02:00 does not exist, 03:00 EDT = 07:00Z; the block ends at the gap.
     const [placement] = scheduleTasks({ document, busy: [], now: new Date('2026-03-08T05:00:00Z'), timeZone: 'America/New_York', days: 1 })
     expect(placement!.chunks[0]!.start).toBe('2026-03-08T07:00:00.000Z')
+  })
+})
+
+describe('fitTasks: the one placement every screen uses', () => {
+  const document = planner([{ id: 'b', categoryId: 'work', title: 'Deep work', days: [...EVERY_DAY], start: 540, end: 720 }])
+  const at = (time: string) => new Date(`2026-10-21T${time}:00Z`)
+  const start = (placements: TaskPlacement[]) => placements[0]!.chunks[0]!.start.slice(11, 16)
+
+  it('steps by five minutes', () => {
+    expect(PLACEMENT_STEP_MINUTES).toBe(5)
+  })
+
+  it('starts a re-fitted task on the next five minutes from now, not at the exact minute', () => {
+    expect(start(fitTasks({ document, busy: [], now: at('09:31'), timeZone: 'UTC' }))).toBe('09:35')
+    expect(start(fitTasks({ document, busy: [], now: at('09:35'), timeZone: 'UTC' }))).toBe('09:35')
+    expect(start(scheduleTasks({ document, busy: [], now: at('09:31'), timeZone: 'UTC' }))).toBe('09:31')
+  })
+
+  it('keeps a placement that is under way until it really ends, even within the last five minutes', () => {
+    const [first] = fitTasks({ document, busy: [], now: at('09:07'), timeZone: 'UTC' })
+    const later = fitTasks({ document, busy: [], now: new Date('2026-10-21T10:06:30Z'), timeZone: 'UTC', previous: new Map([[first!.taskId, first!]]) })
+    expect(later[0]!.chunks[0]!.start).toBe(first!.chunks[0]!.start)
+  })
+
+  it('starts after a busy slot on the five-minute grid too', () => {
+    const busy = [{ start: '2026-10-21T09:00:00.000Z', end: '2026-10-21T09:47:00.000Z' }]
+    expect(start(fitTasks({ document, busy, now: at('08:00'), timeZone: 'UTC' }))).toBe('09:50')
   })
 })

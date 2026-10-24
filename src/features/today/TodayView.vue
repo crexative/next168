@@ -2,7 +2,7 @@
 import { computed, nextTick, onMounted, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { currentAndNext } from '@/core/now'
-import { scheduleTasks } from '@/core/scheduler'
+import { fitTasks, placementClock } from '@/core/scheduling'
 import { localDateOf, type DatedOccurrence } from '@/core/time'
 import { usePlannerStore } from '@/stores/plannerStore'
 import Button from '@/ui/Button.vue'
@@ -22,7 +22,6 @@ import NowCard from './NowCard.vue'
 import TodayTimeline from './TodayTimeline.vue'
 import type { ActualStatus } from './actuals'
 import { nextUp } from './nextUp'
-import { placementClock } from './placementClock'
 import { isAskable, planSince, readPlanSince, stampPlanSince } from './planSince'
 import { completeTask, reopenTask } from './taskCompletion'
 import { buildTimeline } from './todayTimeline'
@@ -41,14 +40,17 @@ const external = useExternalOccurrences(() => document.value ? { fromDate: today
 const nowAndNext = computed(() => document.value ? currentAndNext(document.value, now.value, timeZone.value) : { current: null, next: null })
 // Free hours from now to the end of the week, in whole hours: the one figure Today keeps from the old header card.
 const freeHours = computed(() => document.value ? weekSplitHours(weekSplit(document.value, now.value, timeZone.value)).freeAhead : 0)
-const subtitle = computed(() => t('today.header.subtitle', { date: dateLabel.value, hours: formatWholeHours(freeHours.value) }))
+// While the first-run setup is open the week is still being decided, so its free hours would mislead: date only.
+const subtitle = computed(() => document.value?.settings.onboardingDone === false
+  ? dateLabel.value
+  : t('today.header.subtitle', { date: dateLabel.value, hours: formatWholeHours(freeHours.value) }))
 
 // Tasks are re-fitted on five-minute steps, so the plan does not shift every minute and starts on tidy times.
 const fitFrom = computed(() => placementClock(now.value).getTime())
 const timeline = computed(() => {
   if (!document.value) return { items: [], allDay: [] }
   const busy = external.value.filter((item) => item.busy && !item.allDay).map((item) => ({ start: item.start, end: item.end }))
-  const placements = scheduleTasks({ document: document.value, busy, now: new Date(fitFrom.value), timeZone: timeZone.value })
+  const placements = fitTasks({ document: document.value, busy, now: new Date(fitFrom.value), timeZone: timeZone.value })
   return buildTimeline({ document: document.value, today: today.value, timeZone: timeZone.value, external: external.value, placements })
 })
 // Blocks, placed tasks, events and calendar occurrences all count as planned content.

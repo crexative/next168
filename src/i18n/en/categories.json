@@ -1,6 +1,5 @@
 {
-  "title": "Categories",
-  "footer": "Goals are guides: going over a cap warns you, it never blocks you.",
+  "footer": "A goal guides you: going over \"at most\" warns you, it never blocks you.",
   "empty": "No categories yet.",
   "add": "Add category",
   "edit": "Edit {name}",
@@ -21,12 +20,12 @@
   },
   "goal": "Weekly goal",
   "goalType": {
-    "max": "At most",
     "min": "At least",
+    "max": "At most",
     "none": "No goal"
   },
   "goalSummary": {
-    "none": "No weekly goal",
+    "none": "No goal",
     "max": "At most {hours} h per week",
     "min": "At least {hours} h per week"
   },
@@ -46,7 +45,7 @@
   "colorInUse": "{name} already uses this colour. You can still keep it.",
   "usage": {
     "and": "{first} and {second}",
-    "blocks": "no blocks | {count} block | {count} blocks",
+    "blocks": "no routines | {count} routine | {count} routines",
     "tasks": "no tasks | {count} task | {count} tasks"
   },
   "chooseTarget": "Choose a category"

@@ -81,9 +81,9 @@ for (const theme of THEMES) {
         await openWeek(page, theme, size)
         const chunks = taskChunks(page)
         await expect(chunks).toHaveCount(2)
-        // Snapped to the quarter hour, first in priority order: 10:15 Informe, then 11:15 Responder correos.
-        expect(await startMinuteOf(chunks.nth(0))).toBe(615)
-        expect(await startMinuteOf(chunks.nth(1))).toBe(675)
+        // On the five-minute grid, first in priority order: 10:10 Informe, then 11:10 Responder correos.
+        expect(await startMinuteOf(chunks.nth(0))).toBe(610)
+        expect(await startMinuteOf(chunks.nth(1))).toBe(670)
         await expect(chunks.nth(0)).toHaveAttribute('aria-label', /^Tarea: Informe, /)
 
         // Geometry: the chunk lies inside the block it was fitted into, with a dashed outline.
@@ -298,15 +298,15 @@ test.describe('week on desktop', () => {
 test.describe('stable task times', () => {
   test.beforeEach(onlyProject('desktop'))
 
-  test('a task keeps its slot while the clock moves on, and snaps to the quarter hour', async ({ page }) => {
+  test('a task keeps its slot while the clock moves on, and starts on the five-minute grid', async ({ page }) => {
     await openWeek(page, 'light', 'desktop', plannerDocument(), NOW)
     const first = taskChunks(page).nth(0)
-    expect(await startMinuteOf(first)).toBe(615)
-    expect((await startMinuteOf(first)) % 15).toBe(0)
+    expect(await startMinuteOf(first)).toBe(610)
+    expect((await startMinuteOf(first)) % 5).toBe(0)
 
     await page.clock.fastForward(13 * 60_000)
-    await expect(taskChunks(page).nth(0)).toHaveAttribute('data-start-minute', '615')
-    await expect(taskChunks(page).nth(1)).toHaveAttribute('data-start-minute', '675')
+    await expect(taskChunks(page).nth(0)).toHaveAttribute('data-start-minute', '610')
+    await expect(taskChunks(page).nth(1)).toHaveAttribute('data-start-minute', '670')
   })
 
   test('a task that moves to another day says so, and Deshacer keeps it where it was', async ({ page }) => {
@@ -318,12 +318,12 @@ test.describe('stable task times', () => {
     await openWeek(page, 'light', 'desktop', document, new Date('2026-10-21T09:07:00.000Z'))
     const chunk = taskChunks(page)
     await expect(chunk).toHaveCount(1)
-    expect(await startMinuteOf(chunk)).toBe(555)
+    expect(await startMinuteOf(chunk)).toBe(550)
     await expect(page.getByRole('status').getByText('pasó a mañana')).toHaveCount(0)
 
     // Still under way at 09:50: it stays.
     await page.clock.fastForward(43 * 60_000)
-    await expect(taskChunks(page)).toHaveAttribute('data-start-minute', '555')
+    await expect(taskChunks(page)).toHaveAttribute('data-start-minute', '550')
     await expect(page.getByText('pasó a mañana')).toHaveCount(0)
 
     // Past its end it moves on to tomorrow, and the notice offers to undo.
@@ -335,7 +335,7 @@ test.describe('stable task times', () => {
 
     await page.getByRole('button', { name: 'Deshacer' }).click()
     await expect(taskChunks(page, WEDNESDAY)).toHaveCount(1)
-    expect(await startMinuteOf(taskChunks(page, WEDNESDAY))).toBe(555)
+    expect(await startMinuteOf(taskChunks(page, WEDNESDAY))).toBe(550)
     await expect(taskChunks(page, '2026-10-22')).toHaveCount(0)
     await expect(page.getByText('«Informe» pasó a mañana')).toHaveCount(0)
   })

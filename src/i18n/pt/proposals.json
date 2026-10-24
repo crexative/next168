@@ -15,7 +15,7 @@
   "stale": "Seu plano mudou. Peça uma nova proposta com a revisão atual.",
   "invalid": "Esta proposta não pode ser aplicada. Solicite outra.",
   "overGoal": "Esta mudança ultrapassa a meta de uma categoria.",
-  "overlap": "Alguns blocos se sobrepõem.",
+  "overlap": "Algumas rotinas se sobrepõem.",
   "before": "Antes",
   "after": "Depois",
   "approve": "Aprovar",
@@ -26,11 +26,11 @@
   "notFound": "Esta proposta não existe mais.",
   "decisionError": "Não foi possível salvar a decisão. Recarregue antes de tentar novamente.",
   "durabilityWarning": "A mudança foi confirmada, mas a durabilidade ou o estado precisa de verificação. Mantenha o companion ativo e recarregue antes de tentar novamente.",
-  "currentBlocks": "Blocos semanais atuais",
+  "currentBlocks": "Sua rotina atual",
   "operations": {
-    "add_block": "Adicionar bloco",
-    "update_block": "Editar bloco",
-    "delete_block": "Excluir bloco",
+    "add_block": "Adicionar rotina",
+    "update_block": "Editar rotina",
+    "delete_block": "Excluir rotina",
     "add_task": "Adicionar tarefa",
     "update_task": "Editar tarefa",
     "complete_task": "Concluir tarefa",
@@ -59,7 +59,7 @@
   "goal": {
     "max": "No máximo {hours} h por semana",
     "min": "Pelo menos {hours} h por semana",
-    "none": "Sem meta semanal"
+    "none": "Sem meta"
   },
   "nothing": "Nada",
   "loading": "Carregando proposta…"

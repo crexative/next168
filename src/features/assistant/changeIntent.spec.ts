@@ -197,7 +197,7 @@ describe('move_block and delete_block', () => {
   })
 
   it('reports a block that does not exist', () => {
-    expect(message({ intent: 'move_block', title: 'Yoga', day: 'thursday' })).toBe('I could not find a block called "Yoga" in your plan.')
+    expect(message({ intent: 'move_block', title: 'Yoga', day: 'thursday' })).toBe('I could not find a routine called "Yoga" in your plan.')
     expect(message({ intent: 'delete_block', title: 'Yoga' }, 'Delete Yoga')).toContain('"Yoga"')
   })
 

@@ -65,7 +65,7 @@
     "summary": {
       "add_block": "„{title}“ am {day} hinzufügen, {start}–{end}",
       "move_block": "„{title}“ auf {day} verschieben, {start}–{end}",
-      "delete_block": "Den Block „{title}“ entfernen",
+      "delete_block": "Die Routine „{title}“ entfernen",
       "delete_block_day": "„{title}“ am {day} entfernen",
       "add_task": "Die Aufgabe „{title}“ hinzufügen ({minutes} Min.)"
     },
@@ -74,9 +74,9 @@
       "noChange": "Daraus konnte ich keine Änderung an Ihrem Plan machen. Versuchen Sie zum Beispiel: „Füge am Donnerstag um 18:00 einen einstündigen Arbeitsblock hinzu“.",
       "needsDetails": "Für diese Änderung brauche ich mehr Angaben: was, welcher Tag und welche Uhrzeit. Bitte fragen Sie erneut mit diesen Angaben.",
       "unknownCategory": "Die Kategorie „{category}“ habe ich nicht gefunden. Ihre Kategorien sind: {categories}.",
-      "unknownBlock": "Einen Block namens „{title}“ habe ich in Ihrem Plan nicht gefunden.",
+      "unknownBlock": "Ich habe keine Routine namens „{title}“ in Ihrem Plan gefunden.",
       "absentDay": "„{title}“ findet an diesen Tagen statt: {days}. Welchen Termin möchten Sie ändern?",
-      "ambiguousBlock": "Mehrere Blöcke passen zu „{title}“. Bitte nennen Sie den Tag.",
+      "ambiguousBlock": "Mehr als eine Routine passt zu „{title}“. Nennen Sie den Tag.",
       "notDelete": "Ich war nicht sicher, ob Sie einen Block entfernen wollten, daher wurde nichts geändert. Sagen Sie „lösche“ oder „entferne“ und den Namen des Blocks."
     }
   },
@@ -90,8 +90,8 @@
     "minStillNeeded": "{category}: {planned} geplant, {amount} fehlen bis zum Ziel von {goal}.",
     "minReached": "{category}: {planned} geplant, das Ziel von {goal} ist erreicht.",
     "currentBlock": "Jetzt: {title}, noch {left}.",
-    "nextBlock": "Als Nächstes: {title} am {date} um {time}.",
-    "noNextBlock": "Kein anstehender Block in der kommenden Woche.",
+    "nextBlock": "Als Nächstes am {date} um {time}: {title}.",
+    "noNextBlock": "Diese Woche ist nichts weiter geplant.",
     "noOverflow": "Alle offenen Aufgaben passen in deine freie Zeit.",
     "overflow": "{count} Aufgabe passt nicht oder ist überfällig: {titles}. {amount} nicht eingeplant. | {count} Aufgaben passen nicht oder sind überfällig: {titles}. {amount} nicht eingeplant.",
     "freeHours": "Diese Woche bleiben dir noch {free} frei.",

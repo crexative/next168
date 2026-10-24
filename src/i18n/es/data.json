@@ -19,7 +19,6 @@
     "unknown": "Desconocido",
     "granted": "Sí",
     "notGranted": "Todavía no",
-    "request": "Pedir al navegador que lo proteja",
     "footer": "Pide al navegador que no borre tus datos cuando el dispositivo se quede sin espacio."
   },
   "export": {
@@ -44,7 +43,7 @@
     "migrated": "migrado desde la versión {from}",
     "counts": {
       "categories": "ninguna categoría | {count} categoría | {count} categorías",
-      "blocks": "ningún bloque | {count} bloque | {count} bloques",
+      "blocks": "ninguna rutina | {count} rutina | {count} rutinas",
       "tasks": "ninguna tarea | {count} tarea | {count} tareas",
       "checkIns": "ningún cierre del día | {count} cierre del día | {count} cierres del día",
       "actuals": "ningún dato | {count} dato de plan frente a realidad | {count} datos de plan frente a realidad",
@@ -56,7 +55,7 @@
   },
   "deleteAll": {
     "title": "Borrar todos los datos",
-    "footer": "Elimina tu plan, tareas, registros y copias de seguridad de este dispositivo. No se puede deshacer.",
+    "footer": "Elimina tu plan, tareas, cierres del día y copias de seguridad de este dispositivo. No se puede deshacer.",
     "action": "Borrar todos los datos…",
     "phrase": "BORRAR",
     "confirmTitle": "¿Borrar todo?",

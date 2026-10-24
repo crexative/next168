@@ -19,7 +19,6 @@
     "unknown": "Unknown",
     "granted": "Yes",
     "notGranted": "Not yet",
-    "request": "Ask the browser to protect it",
     "footer": "Asks the browser not to clear your data when the device runs low on space."
   },
   "export": {
@@ -44,7 +43,7 @@
     "migrated": "migrated from version {from}",
     "counts": {
       "categories": "no categories | {count} category | {count} categories",
-      "blocks": "no time blocks | {count} time block | {count} time blocks",
+      "blocks": "no routines | {count} routine | {count} routines",
       "tasks": "no tasks | {count} task | {count} tasks",
       "checkIns": "no day wrap-ups | {count} day wrap-up | {count} day wrap-ups",
       "actuals": "no records | {count} plan-vs-actual record | {count} plan-vs-actual records",
@@ -56,7 +55,7 @@
   },
   "deleteAll": {
     "title": "Delete all data",
-    "footer": "Removes your plan, tasks, check-ins and backups from this device. This cannot be undone.",
+    "footer": "Removes your plan, tasks, day wrap-ups and backups from this device. This cannot be undone.",
     "action": "Delete all data…",
     "phrase": "DELETE",
     "confirmTitle": "Delete everything?",

@@ -65,7 +65,7 @@
     "summary": {
       "add_block": "Ajouter « {title} » le {day}, {start}–{end}",
       "move_block": "Déplacer « {title} » au {day}, {start}–{end}",
-      "delete_block": "Supprimer le bloc « {title} »",
+      "delete_block": "Retirer la routine « {title} »",
       "delete_block_day": "Supprimer « {title} » le {day}",
       "add_task": "Ajouter la tâche « {title} » ({minutes} min)"
     },
@@ -74,9 +74,9 @@
       "noChange": "Je n'ai pas pu en faire une modification de votre plan. Essayez par exemple : « Ajoute un bloc Travail d'une heure jeudi à 18:00 ».",
       "needsDetails": "Il me faut plus de détails pour faire ce changement : quoi, quel jour et à quelle heure. Reformulez avec ces informations.",
       "unknownCategory": "Je n'ai pas trouvé la catégorie « {category} ». Vos catégories sont : {categories}.",
-      "unknownBlock": "Je n'ai pas trouvé de bloc nommé « {title} » dans votre plan.",
+      "unknownBlock": "Je n'ai trouvé aucune routine nommée « {title} » dans votre plan.",
       "absentDay": "« {title} » a lieu les jours suivants : {days}. Quelle occurrence souhaitez-vous modifier ?",
-      "ambiguousBlock": "Plusieurs blocs correspondent à « {title} ». Précisez le jour.",
+      "ambiguousBlock": "Plusieurs routines correspondent à « {title} ». Précisez le jour.",
       "notDelete": "Je n'étais pas sûr que vous vouliez supprimer un bloc, donc rien n'a été modifié. Dites « supprime » ou « retire » et le nom du bloc."
     }
   },
@@ -90,8 +90,8 @@
     "minStillNeeded": "{category} : {planned} planifiées, il manque {amount} pour atteindre l'objectif de {goal}.",
     "minReached": "{category} : {planned} planifiées, l'objectif de {goal} est atteint.",
     "currentBlock": "Maintenant : {title}, encore {left}.",
-    "nextBlock": "Ensuite : {title} le {date} à {time}.",
-    "noNextBlock": "Aucun bloc à venir dans la semaine.",
+    "nextBlock": "Ensuite, le {date} à {time} : {title}.",
+    "noNextBlock": "Rien d'autre n'est prévu cette semaine.",
     "noOverflow": "Toutes les tâches en cours tiennent dans votre temps libre.",
     "overflow": "{count} tâche ne tient pas ou est en retard : {titles}. {amount} non planifiées. | {count} tâches ne tiennent pas ou sont en retard : {titles}. {amount} non planifiées.",
     "freeHours": "Cette semaine, il te reste {free} libre. | Cette semaine, il te reste {free} libres.",

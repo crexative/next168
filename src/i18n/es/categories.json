@@ -1,6 +1,5 @@
 {
-  "title": "Categorías",
-  "footer": "Los objetivos son guías: pasarse de un tope avisa, nunca bloquea.",
+  "footer": "Una meta orienta: pasarte de «como máximo» te avisa, nunca te bloquea.",
   "empty": "Aún no hay categorías.",
   "add": "Añadir categoría",
   "edit": "Editar {name}",
@@ -19,16 +18,16 @@
     "red": "Rojo",
     "gray": "Gris"
   },
-  "goal": "Objetivo semanal",
+  "goal": "Meta semanal",
   "goalType": {
-    "max": "Máximo",
-    "min": "Mínimo",
-    "none": "Sin objetivo"
+    "min": "Al menos",
+    "max": "Como máximo",
+    "none": "Sin meta"
   },
   "goalSummary": {
-    "none": "Sin objetivo semanal",
-    "max": "Máximo {hours} h por semana",
-    "min": "Mínimo {hours} h por semana"
+    "none": "Sin meta",
+    "max": "Como máximo {hours} h por semana",
+    "min": "Al menos {hours} h por semana"
   },
   "hours": "Horas por semana",
   "errors": {
@@ -46,7 +45,7 @@
   "colorInUse": "{name} ya usa este color. Puedes mantenerlo igualmente.",
   "usage": {
     "and": "{first} y {second}",
-    "blocks": "ningún bloque | {count} bloque | {count} bloques",
+    "blocks": "ninguna rutina | {count} rutina | {count} rutinas",
     "tasks": "ninguna tarea | {count} tarea | {count} tareas"
   },
   "chooseTarget": "Elige una categoría"

@@ -10,7 +10,6 @@
   "navigation": {
     "tabs": "Navigation principale",
     "sidebar": "Barre latérale",
-    "toolbarActions": "Actions",
     "showSidebar": "Afficher la barre latérale",
     "hideSidebar": "Masquer la barre latérale"
   },
@@ -48,7 +47,6 @@
     "legacyChanged": "Une ancienne version de Next168 est ouverte dans un autre onglet. Les modifications faites là-bas ne sont pas reprises.",
     "conflict": "Un autre onglet a modifié vos données en premier. La dernière version a été chargée — réessayez.",
     "saveFailed": "Enregistrement impossible ({reason}). Vos données précédentes sont intactes.",
-    "loadFailed": "Impossible de lire vos données ({reason}).",
     "unavailableTitle": "Next168 ne peut pas utiliser le stockage de ce navigateur",
     "unavailableBody": "Next168 s’est arrêté pour que rien ne soit perdu. Vos données sur cet appareil n’ont pas été modifiées. Réessayez dans un instant.",
     "lastChangeNotSaved": "Votre dernière modification n’a pas été enregistrée. Tout ce qui précède est en sécurité.",

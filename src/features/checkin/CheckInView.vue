@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { localDateOf } from '@/core/time'
+import { checkInDateFor } from './evening'
 import { assertEntry, CHANGED_ELSEWHERE, snapshotOf } from '@/features/insights/entryGuard'
 import BackButton from '@/features/settings/BackButton.vue'
 import { actualFor } from '@/features/today/actuals'
@@ -30,9 +30,9 @@ const now = useNow()
 const blockStatus = useBlockStatus()
 
 const timeZone = computed(() => planner.document?.settings.timeZone ?? 'UTC')
-// The check-in closes the day on screen: no date to pick, the date is in the title area. It is read once, so a
-// form left open past midnight still saves for the day it shows.
-const date = localDateOf(new Date(), timeZone.value)
+// The check-in closes the day on screen: no date to pick, the date is in the title area (until 04:00 that is the day
+// before). It is read once, so a form left open past midnight still saves for the day it shows.
+const date = checkInDateFor(new Date(), timeZone.value)
 const dateLabel = computed(() => formatDate(date, locale.value, { weekday: 'long', day: 'numeric', month: 'long' }))
 const form = reactive<CheckInFormState>(formFromCheckIn('', undefined))
 const changedElsewhere = ref(false)

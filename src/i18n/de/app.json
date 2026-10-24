@@ -10,7 +10,6 @@
   "navigation": {
     "tabs": "Hauptnavigation",
     "sidebar": "Seitenleiste",
-    "toolbarActions": "Aktionen",
     "showSidebar": "Seitenleiste einblenden",
     "hideSidebar": "Seitenleiste ausblenden"
   },
@@ -48,7 +47,6 @@
     "legacyChanged": "Eine ältere Version von Next168 ist in einem anderen Tab geöffnet. Änderungen dort werden nicht übernommen.",
     "conflict": "Ein anderer Tab hat deine Daten zuerst geändert. Die neueste Version wurde geladen — bitte versuche es erneut.",
     "saveFailed": "Speichern nicht möglich ({reason}). Deine bisherigen Daten sind unverändert.",
-    "loadFailed": "Deine Daten konnten nicht gelesen werden ({reason}).",
     "unavailableTitle": "Next168 kann den Speicher dieses Browsers nicht nutzen",
     "unavailableBody": "Next168 hat angehalten, damit nichts verloren geht. Deine Daten auf diesem Gerät wurden nicht verändert. Versuche es gleich noch einmal.",
     "lastChangeNotSaved": "Deine letzte Änderung wurde nicht gespeichert. Alles davor ist sicher.",

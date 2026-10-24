@@ -6,7 +6,7 @@ import { seedOnboarded } from './support/seed'
 test.use({ locale: 'es-CO' })
 
 const THEMES = ['light', 'dark'] as const
-const TAB_NAMES = ['Hoy', 'Semana', 'Tareas', 'Análisis'] as const
+const TAB_NAMES = ['Hoy', 'Semana', 'Tareas', 'Resumen'] as const
 const TAB_ROUTES = ['today', 'week', 'tasks', 'insights'] as const
 const MEASURE = 720
 

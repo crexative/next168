@@ -3,11 +3,14 @@ import { scheduleTasks } from './scheduler'
 import { taskWindows } from './schedulingWindows'
 import { addLocalDays, datedOccurrences, localDateOf, zonedInstant } from './time'
 
-// Stable task placement on top of scheduleTasks (which stays minute-exact for Today and Tasks):
-// - chunks start on a 15-minute grid at block boundaries, after "now", and after busy intervals or tasks;
+// Stable task placement on top of scheduleTasks:
+// - chunks start on a five-minute grid at block boundaries, after "now", and after busy intervals or tasks;
 // - a placement that was shown before is kept while it is still valid, so a task does not slide along with the clock.
+// fitTasks is the one way Today, Week, Tasks and the assistant fit tasks into free time, so a task shows the same
+// start everywhere ("12:35", never the minute the plan happened to be recalculated).
 
-export const PLACEMENT_SNAP_MINUTES = 15
+export const PLACEMENT_STEP_MINUTES = 5
+export const PLACEMENT_SNAP_MINUTES = PLACEMENT_STEP_MINUTES
 
 const MINUTE_MS = 60_000
 
@@ -24,6 +27,11 @@ export interface MovedTask { taskId: string; from: string; to: string }
 interface Interval { start: number; end: number }
 
 const ceilTo = (value: number, step: number) => Math.ceil(value / step) * step
+
+// Tasks are fitted from this instant on: now, rounded up to the next five minutes (exactly on a step stays put).
+export function placementClock(now: Date): Date {
+  return new Date(ceilTo(now.getTime(), PLACEMENT_STEP_MINUTES * MINUTE_MS))
+}
 
 function snapEnd(iso: string, snapMs: number): string {
   const at = Date.parse(iso)
@@ -110,6 +118,12 @@ export function scheduleStable(input: StableScheduleInput): TaskPlacement[] {
   }
   const placed = new Map([...rest, ...kept.values()].map((placement) => [placement.taskId, placement]))
   return document.tasks.flatMap((task) => placed.get(task.id) ?? [])
+}
+
+// Fits the open tasks into free time on the shared five-minute grid: a new chunk starts at the next grid point
+// after now. `now` itself stays exact, so a placement under way is kept until it really ends.
+export function fitTasks(input: StableScheduleInput): TaskPlacement[] {
+  return scheduleStable(input)
 }
 
 // A task that was set for today and now starts on a later day has "moved on".

@@ -1,5 +1,4 @@
 {
-  "title": "Kategorien",
   "footer": "Ziele sind Richtwerte: Eine Überschreitung warnt, blockiert aber nie.",
   "empty": "Noch keine Kategorien.",
   "add": "Kategorie hinzufügen",
@@ -21,8 +20,8 @@
   },
   "goal": "Wochenziel",
   "goalType": {
-    "max": "Höchstens",
     "min": "Mindestens",
+    "max": "Höchstens",
     "none": "Kein Ziel"
   },
   "goalSummary": {
@@ -46,7 +45,7 @@
   "colorInUse": "{name} nutzt diese Farbe bereits. Sie können sie trotzdem behalten.",
   "usage": {
     "and": "{first} und {second}",
-    "blocks": "keine Blöcke | {count} Block | {count} Blöcke",
+    "blocks": "keine Routinen | {count} Routine | {count} Routinen",
     "tasks": "keine Aufgaben | {count} Aufgabe | {count} Aufgaben"
   },
   "chooseTarget": "Kategorie wählen"

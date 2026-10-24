@@ -43,7 +43,7 @@
       "invalid": "No entendí esos cambios. Copia de nuevo para que tu IA conozca el formato y pídele que lo intente otra vez.",
       "wrongWorkspace": "Estos cambios son de otro plan. Copia de nuevo y empieza un chat nuevo con tu IA.",
       "stale": "Tu plan cambió después de copiarlo para tu IA. Copia de nuevo y pídele que repita los cambios.",
-      "unusable": "Algunos cambios no encajan con tu plan actual, por ejemplo un bloque que ya no existe. Copia de nuevo y pídele a tu IA que lo intente otra vez.",
+      "unusable": "Algunos cambios no encajan con tu plan actual, por ejemplo una rutina que ya no existe. Copia de nuevo y pídele a tu IA que lo intente otra vez.",
       "saveFailed": "No se pudieron guardar los cambios. Inténtalo de nuevo."
     }
   },

@@ -39,7 +39,7 @@
   },
   "changedElsewhere": "Esto cambió en otro lugar, así que se volvió a cargar. Revísalo e inténtalo de nuevo.",
   "swipeRemove": "Eliminar",
-  "overflowAny": "Faltan {duration} de tiempo libre esta semana.",
+  "overflowAny": "Faltan {duration} libres esta semana.",
   "overflowAnyHint": "Libera tiempo en tu semana, acorta la tarea o divídela.",
   "sheet": {
     "new": "Nueva tarea",

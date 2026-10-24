@@ -17,23 +17,23 @@ async function openWork(): Promise<void> {
   await nextTick()
 }
 
-it('says "1 block and 1 task", "2 blocks" and "3 tasks" with the right plural of each', async () => {
+it('says "1 routine and 1 task", "2 routines" and "3 tasks" with the right plural of each', async () => {
   const plural = (key: string, count: number) => i18n.global.t(key, { count }, count)
   const join = (key: string, params: Record<string, unknown>) => i18n.global.t(key, params)
   i18n.global.locale.value = 'en'
-  expect(usageSummary(plural, join, { blocks: 1, tasks: 1 })).toBe('1 block and 1 task')
-  expect(usageSummary(plural, join, { blocks: 2, tasks: 0 })).toBe('2 blocks')
+  expect(usageSummary(plural, join, { blocks: 1, tasks: 1 })).toBe('1 routine and 1 task')
+  expect(usageSummary(plural, join, { blocks: 2, tasks: 0 })).toBe('2 routines')
   expect(usageSummary(plural, join, { blocks: 0, tasks: 3 })).toBe('3 tasks')
   i18n.global.locale.value = 'es'
-  expect(usageSummary(plural, join, { blocks: 1, tasks: 2 })).toBe('1 bloque y 2 tareas')
-  expect(usageSummary(plural, join, { blocks: 2, tasks: 1 })).toBe('2 bloques y 1 tarea')
+  expect(usageSummary(plural, join, { blocks: 1, tasks: 2 })).toBe('1 rutina y 2 tareas')
+  expect(usageSummary(plural, join, { blocks: 2, tasks: 1 })).toBe('2 rutinas y 1 tarea')
 })
 
 it('starts the move destination empty and only deletes once one is chosen', async () => {
   mounted = await mountWithPlanner(CategorySettings, { categories: [WORK, SLEEP], blocks: blocks(1), tasks: tasks(2) })
   await openWork()
   const zone = document.body.querySelector('.danger-zone')!
-  expect(zone.querySelector('[data-testid=category-usage]')!.textContent).toBe('This category has 1 block and 2 tasks. To delete it, move everything to another category.')
+  expect(zone.querySelector('[data-testid=category-usage]')!.textContent).toBe('This category has 1 routine and 2 tasks. To delete it, move everything to another category.')
   const select = zone.querySelector<HTMLSelectElement>('select')!
   expect(select.value).toBe('')
   const remove = zone.querySelector<HTMLButtonElement>('button')!
@@ -42,4 +42,15 @@ it('starts the move destination empty and only deletes once one is chosen', asyn
   select.dispatchEvent(new Event('change'))
   await nextTick()
   expect(remove.disabled).toBe(false)
+})
+
+it('offers the weekly goal as "At least", "At most" or "No goal", in that order (Spanish: "Al menos", "Como máximo", "Sin meta")', async () => {
+  mounted = await mountWithPlanner(CategorySettings, { categories: [WORK, SLEEP] })
+  await openWork()
+  const labels = () => [...document.body.querySelectorAll('[role=dialog] [role=radiogroup][aria-label="Weekly goal"] [role=radio]')].map((radio) => radio.textContent?.trim())
+  expect(labels()).toEqual(['At least', 'At most', 'No goal'])
+  i18n.global.locale.value = 'es'
+  await nextTick()
+  expect([...document.body.querySelectorAll('[role=dialog] [role=radiogroup][aria-label="Meta semanal"] [role=radio]')].map((radio) => radio.textContent?.trim())).toEqual(['Al menos', 'Como máximo', 'Sin meta'])
+  i18n.global.locale.value = 'en'
 })

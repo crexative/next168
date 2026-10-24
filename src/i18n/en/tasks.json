@@ -39,7 +39,7 @@
   },
   "changedElsewhere": "This changed elsewhere, so it was reloaded. Please review it and try again.",
   "swipeRemove": "Delete",
-  "overflowAny": "{duration} of free time missing this week.",
+  "overflowAny": "{duration} free missing this week.",
   "overflowAnyHint": "Free up time this week, shorten the task, or split it.",
   "sheet": {
     "new": "New task",

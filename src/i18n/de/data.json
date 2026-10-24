@@ -19,7 +19,6 @@
     "unknown": "Unbekannt",
     "granted": "Ja",
     "notGranted": "Noch nicht",
-    "request": "Browser um Schutz bitten",
     "footer": "Bittet den Browser, deine Daten nicht zu löschen, wenn dem Gerät der Speicher ausgeht."
   },
   "export": {
@@ -44,7 +43,7 @@
     "migrated": "migriert von Version {from}",
     "counts": {
       "categories": "keine Kategorien | {count} Kategorie | {count} Kategorien",
-      "blocks": "keine Blöcke | {count} Block | {count} Blöcke",
+      "blocks": "keine Routinen | {count} Routine | {count} Routinen",
       "tasks": "keine Aufgaben | {count} Aufgabe | {count} Aufgaben",
       "checkIns": "keine Tagesabschlüsse | {count} Tagesabschluss | {count} Tagesabschlüsse",
       "actuals": "keine Ist-Daten | {count} Plan-Ist-Eintrag | {count} Plan-Ist-Einträge",
@@ -56,7 +55,7 @@
   },
   "deleteAll": {
     "title": "Alle Daten löschen",
-    "footer": "Entfernt Plan, Aufgaben, Check-ins und Sicherungen von diesem Gerät. Das lässt sich nicht rückgängig machen.",
+    "footer": "Entfernt Plan, Aufgaben, Tagesabschlüsse und Sicherungen von diesem Gerät. Das lässt sich nicht rückgängig machen.",
     "action": "Alle Daten löschen…",
     "phrase": "LÖSCHEN",
     "confirmTitle": "Alles löschen?",

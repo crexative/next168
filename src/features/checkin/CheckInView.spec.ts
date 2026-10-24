@@ -160,6 +160,17 @@ describe('check-in form', () => {
     expect([...radios(0)].filter((radio) => radio.getAttribute('tabindex') === '0')).toHaveLength(1)
   })
 
+  it('after midnight and before 04:00 closes the day before, and saves it there', async () => {
+    vi.setSystemTime(new Date('2026-10-25T00:30:00Z'))
+    const store = await mount(planned)
+    expect(text('checkin-date')).toBe('Saturday, October 24')
+    radios(0)[1]!.click()
+    await nextTick()
+    submit()
+    await store.settled()
+    expect(store.document?.checkIns.map((checkIn) => checkIn.date)).toEqual(['2026-10-24'])
+  })
+
   it('saves with one tap on stress, returns to Today and leaves the confirmation for its card', async () => {
     const store = await mount(planned)
     radios(0)[1]!.click()

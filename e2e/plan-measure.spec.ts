@@ -263,7 +263,7 @@ test.describe('plan and measure', () => {
     const preview = page.getByTestId('import-preview')
     await expect(page.getByTestId('import-version')).toContainText('migrated from version 1')
     await expect(page.getByTestId('count-categories')).toHaveText('2 categories')
-    await expect(page.getByTestId('count-blocks')).toHaveText(`${LEGACY_BLOCK_COUNT} time blocks`)
+    await expect(page.getByTestId('count-blocks')).toHaveText(`${LEGACY_BLOCK_COUNT} routines`)
     expect((await storedDocument(page)).categories).toHaveLength(4)
     await preview.getByRole('button', { name: 'Replace my data' }).click()
     await expect(page.getByTestId('data-notice')).toContainText('Imported and verified')
@@ -300,7 +300,7 @@ test.describe('plan and measure', () => {
     expect(edited).toMatchObject({ name: 'Deep study', goal: { type: 'min', hoursPerWeek: 3 } })
 
     await page.getByRole('button', { name: 'Edit Deep study' }).click()
-    await expect(page.getByRole('dialog')).toContainText('This category has 1 block. To delete it, move everything to another category.')
+    await expect(page.getByRole('dialog')).toContainText('This category has 1 routine. To delete it, move everything to another category.')
     // No destination is chosen for the person: deleting waits for one.
     await expect(page.getByLabel('Move them to')).toHaveValue('')
     await expect(page.getByRole('button', { name: 'Move and delete' })).toBeDisabled()

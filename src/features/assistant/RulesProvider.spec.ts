@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { computeStats } from '@/core/stats'
 import { freeHoursAhead } from '@/features/capacity/freeHours'
 import { formatDuration, type AssistantProvider } from './provider'
+import { setHourCycle } from '@/ui/format'
 import { RulesProvider } from './RulesProvider'
 import { contextFor, plannerWithBlocks } from './testSupport'
 
@@ -67,8 +68,23 @@ describe('RulesProvider', () => {
   it('answers the next block', async () => {
     const { answer } = await ask("What's my next block?")
     // A readable date, never an ISO one, and the time in the shared clock format.
-    expect(answer).toMatch(/^Next: Deep work on Monday, October 26 at \d{1,2}:\d{2}( [AP]M)?\.$/)
+    expect(answer).toMatch(/^Next up on Monday, October 26 at \d{1,2}:\d{2}( [AP]M)?: Deep work\.$/)
     expect(answer).not.toMatch(/\d{4}-\d{2}-\d{2}/)
+  })
+
+  it('never ends a sentence on a 12-hour clock that already ends in a period ("p. m..")', async () => {
+    setHourCycle('h12')
+    try {
+      for (const locale of ['en', 'es', 'fr', 'pt', 'de']) {
+        const { answer } = await ask("What's my next block?", locale)
+        expect(answer, locale).not.toMatch(/\.\./)
+        expect(answer, locale).toMatch(/Deep work\.$/)
+      }
+      // The Spanish 12-hour clock itself ends in a period, so it must not close the sentence.
+      expect((await ask("What's my next block?", 'es')).answer).toMatch(/a las \d{1,2}:\d{2}\s?[ap]\.\s?m\.: Deep work\.$/)
+    } finally {
+      setHourCycle('auto')
+    }
   })
 
   it('answers which tasks overflow', async () => {

@@ -2,11 +2,10 @@
 import { computed, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import type { PlannerDocument } from '@/core/model'
-import { localDateOf } from '@/core/time'
 import Icon from '@/ui/Icon.vue'
 import { formatMinute } from '@/features/week/localTime'
 import { justSaved } from './checkinFlash'
-import { checkInCardVisible, checkInDoneToday } from './evening'
+import { checkInCardVisible, checkInDateFor, checkInDoneToday } from './evening'
 import { disableReminder, enableReminder, REMINDER_MINUTE, reminderEnabled, reminderSupported } from './reminder'
 import { checkInStreak } from './streak'
 
@@ -14,7 +13,8 @@ const props = defineProps<{ document: PlannerDocument; now: Date }>()
 const { t, locale } = useI18n()
 
 const timeZone = computed(() => props.document.settings.timeZone)
-const today = computed(() => localDateOf(props.now, timeZone.value))
+// The day the check-in closes (until 04:00, the day before), so the streak counts last night's entry.
+const today = computed(() => checkInDateFor(props.now, timeZone.value))
 const done = computed(() => checkInDoneToday(props.document, props.now))
 const visible = computed(() => checkInCardVisible(props.document, props.now))
 const streak = computed(() => checkInStreak(props.document.checkIns, today.value))

@@ -15,7 +15,7 @@
   "stale": "Tu plan cambió. Solicita una propuesta nueva con la revisión actual.",
   "invalid": "Esta propuesta no se puede aplicar. Solicita otra.",
   "overGoal": "Este cambio supera la meta de una categoría.",
-  "overlap": "Algunos bloques se superponen.",
+  "overlap": "Algunas rutinas se cruzan.",
   "before": "Antes",
   "after": "Después",
   "approve": "Aprobar",
@@ -26,11 +26,11 @@
   "notFound": "Esta propuesta ya no existe.",
   "decisionError": "No se pudo guardar la decisión. Recarga antes de reintentar.",
   "durabilityWarning": "El cambio se confirmó, pero falta verificar la durabilidad del disco o el estado. Mantén el companion activo y recarga antes de reintentar.",
-  "currentBlocks": "Bloques semanales actuales",
+  "currentBlocks": "Tu rutina actual",
   "operations": {
-    "add_block": "Añadir bloque",
-    "update_block": "Editar bloque",
-    "delete_block": "Eliminar bloque",
+    "add_block": "Añadir rutina",
+    "update_block": "Editar rutina",
+    "delete_block": "Eliminar rutina",
     "add_task": "Añadir tarea",
     "update_task": "Editar tarea",
     "complete_task": "Completar tarea",
@@ -54,12 +54,12 @@
     "location": "Lugar",
     "attendees": "Asistentes",
     "notes": "Notas",
-    "goal": "Objetivo"
+    "goal": "Meta"
   },
   "goal": {
     "max": "Como máximo {hours} h por semana",
     "min": "Al menos {hours} h por semana",
-    "none": "Sin objetivo semanal"
+    "none": "Sin meta"
   },
   "nothing": "Nada",
   "loading": "Cargando propuesta…"

@@ -15,7 +15,7 @@
   "stale": "Your planner changed. Ask for a fresh proposal using the current revision.",
   "invalid": "This proposal cannot be applied. Request a new proposal.",
   "overGoal": "This change goes over a category goal.",
-  "overlap": "Some planned blocks overlap.",
+  "overlap": "Some routines overlap.",
   "before": "Before",
   "after": "After",
   "approve": "Approve",
@@ -26,11 +26,11 @@
   "notFound": "This proposal no longer exists.",
   "decisionError": "The decision could not be saved. Reload before trying again.",
   "durabilityWarning": "The change committed, but disk durability or proposal status needs a check. Keep the companion running and reload before retrying.",
-  "currentBlocks": "Current weekly blocks",
+  "currentBlocks": "Your current routine",
   "operations": {
-    "add_block": "Add block",
-    "update_block": "Edit block",
-    "delete_block": "Delete block",
+    "add_block": "Add routine",
+    "update_block": "Edit routine",
+    "delete_block": "Delete routine",
     "add_task": "Add task",
     "update_task": "Edit task",
     "complete_task": "Complete task",
@@ -59,7 +59,7 @@
   "goal": {
     "max": "At most {hours} h per week",
     "min": "At least {hours} h per week",
-    "none": "No weekly goal"
+    "none": "No goal"
   },
   "nothing": "Nothing",
   "loading": "Loading proposal…"

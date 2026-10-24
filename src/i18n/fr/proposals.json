@@ -15,7 +15,7 @@
   "stale": "Votre planning a changé. Demandez une proposition basée sur la révision actuelle.",
   "invalid": "Cette proposition ne peut pas être appliquée. Demandez-en une autre.",
   "overGoal": "Ce changement dépasse l’objectif d’une catégorie.",
-  "overlap": "Certains blocs se chevauchent.",
+  "overlap": "Certaines routines se chevauchent.",
   "before": "Avant",
   "after": "Après",
   "approve": "Approuver",
@@ -26,11 +26,11 @@
   "notFound": "Cette proposition n’existe plus.",
   "decisionError": "Enregistrement impossible. Rechargez avant de réessayer.",
   "durabilityWarning": "Le changement est validé, mais la durabilité ou l’état doit être vérifié. Gardez le companion actif et rechargez avant de réessayer.",
-  "currentBlocks": "Blocs hebdomadaires actuels",
+  "currentBlocks": "Votre routine actuelle",
   "operations": {
-    "add_block": "Ajouter un bloc",
-    "update_block": "Modifier un bloc",
-    "delete_block": "Supprimer un bloc",
+    "add_block": "Ajouter une routine",
+    "update_block": "Modifier la routine",
+    "delete_block": "Supprimer la routine",
     "add_task": "Ajouter une tâche",
     "update_task": "Modifier une tâche",
     "complete_task": "Terminer une tâche",
@@ -59,7 +59,7 @@
   "goal": {
     "max": "Au plus {hours} h par semaine",
     "min": "Au moins {hours} h par semaine",
-    "none": "Aucun objectif hebdomadaire"
+    "none": "Sans objectif"
   },
   "nothing": "Rien",
   "loading": "Chargement de la proposition…"

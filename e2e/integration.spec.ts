@@ -77,20 +77,20 @@ test.describe('Week and Today ergonomics', () => {
     expect(await page.evaluate(() => window.scrollY)).toBeGreaterThan(0)
   })
 
-  test('Done / Partial / Skipped sit in the Now card as three 44 px targets on one row', async ({ page }) => {
+  test('near the end of the current block the Now card offers one 44 px circle to mark it', async ({ page }) => {
     await page.clock.install({ time: NOW })
     // An earlier check-in shows the plan existed before today, so the current block can be asked about.
     await seedOnboarded(page, { ...planned, checkIns: [{ date: '2026-10-25' }] })
     await openTab(page, 'today')
-    const buttons = page.getByTestId('now-card').getByRole('group', { name: /Deep work/ }).getByRole('button')
-    await expect(buttons).toHaveCount(3)
-    const tops = new Set<number>()
-    for (const button of await buttons.all()) {
-      const box = (await button.boundingBox())!
-      expect(box.height).toBeGreaterThanOrEqual(44)
-      expect(box.width).toBeGreaterThanOrEqual(44)
-      tops.add(Math.round(box.y))
-    }
-    expect(tops.size).toBe(1)
+    const card = page.getByTestId('now-card')
+    await expect(card.getByTestId('now-title')).toHaveText('Deep work')
+    // Mid-block (11:30 of 09:00–12:00) nothing is asked yet; from 11:50 the circle is there.
+    await expect(card.getByTestId('status-control')).toHaveCount(0)
+    await page.clock.runFor(21 * 60_000)
+    const circle = card.getByTestId('status-control')
+    await expect(circle).toBeVisible()
+    const box = (await circle.boundingBox())!
+    expect(box.height).toBeGreaterThanOrEqual(44)
+    expect(box.width).toBeGreaterThanOrEqual(44)
   })
 })

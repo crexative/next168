@@ -65,19 +65,19 @@
     "summary": {
       "add_block": "Añadir \"{title}\" el {day}, {start}–{end}",
       "move_block": "Mover \"{title}\" al {day}, {start}–{end}",
-      "delete_block": "Quitar el bloque \"{title}\"",
+      "delete_block": "Quitar la rutina \"{title}\"",
       "delete_block_day": "Quitar \"{title}\" el {day}",
       "add_task": "Añadir la tarea \"{title}\" ({minutes} min)"
     },
     "problem": {
       "alreadyThere": "\"{title}\" ya está programado ahí a esa hora. No hace falta cambiar nada.",
-      "noChange": "No pude convertir eso en un cambio de tu plan. Prueba, por ejemplo: \"Añade un bloque de Trabajo de una hora el jueves a las 18:00\".",
+      "noChange": "No pude convertir eso en un cambio de tu plan. Prueba, por ejemplo: \"Añade una rutina de Trabajo de una hora el jueves a las 18:00\".",
       "needsDetails": "Necesito más detalle para hacer ese cambio: qué, qué día y a qué hora. Vuelve a pedirlo con esos datos.",
       "unknownCategory": "No encontré la categoría \"{category}\". Tus categorías son: {categories}.",
-      "unknownBlock": "No encontré un bloque llamado \"{title}\" en tu plan.",
+      "unknownBlock": "No encontré una rutina llamada \"{title}\" en tu plan.",
       "absentDay": "\"{title}\" se repite los días {days}. ¿Qué ocurrencia quieres cambiar?",
-      "ambiguousBlock": "Hay más de un bloque que coincide con \"{title}\". Indica en qué día está.",
-      "notDelete": "No estaba seguro de que quisieras quitar un bloque, así que no cambié nada. Di \"elimina\" o \"quita\" y el nombre del bloque."
+      "ambiguousBlock": "Hay más de una rutina que coincide con \"{title}\". Indica en qué día está.",
+      "notDelete": "No estaba seguro de que quisieras quitar una rutina, así que no cambié nada. Di \"elimina\" o \"quita\" y el nombre de la rutina."
     }
   },
   "answers": {
@@ -90,8 +90,8 @@
     "minStillNeeded": "{category}: {planned} planificadas, faltan {amount} para llegar a la meta de {goal}.",
     "minReached": "{category}: {planned} planificadas, la meta de {goal} está cumplida.",
     "currentBlock": "Ahora: {title}, quedan {left}.",
-    "nextBlock": "Siguiente: {title} el {date} a las {time}.",
-    "noNextBlock": "No hay ningún bloque próximo en la semana.",
+    "nextBlock": "Lo siguiente, el {date} a las {time}: {title}.",
+    "noNextBlock": "No hay nada más planificado esta semana.",
     "noOverflow": "Todas las tareas pendientes caben en tu tiempo libre.",
     "overflow": "{count} tarea no cabe o va tarde: {titles}. Quedan {amount} sin programar. | {count} tareas no caben o van tarde: {titles}. Quedan {amount} sin programar.",
     "freeHours": "Esta semana te queda {free} libre. | Esta semana te quedan {free} libres.",

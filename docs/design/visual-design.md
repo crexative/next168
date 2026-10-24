@@ -26,7 +26,7 @@ Purpose and simplicity (one primary thing per screen), familiarity (iOS Calendar
 | Summary (Resumen) | 168-hour stacked bar, one row per goal, 7-day measures from the Day wrap-up | Statistics |
 | Settings (gear, not a tab on phone) | Categories, language, data export/import, AI assistant, connect your LLM | Categories tab, language dropdown |
 
-Phone: translucent bottom tab bar (4 tabs, SF-style line icons, label under icon). Desktop ≥1024 px: translucent left sidebar with the same items plus Settings at the bottom; content max width 1200 px.
+Phone: translucent bottom tab bar (4 tabs, SF-style line icons, label under icon), with the assistant (✦) and Settings (⚙) in the toolbar. From 768 px: a left sidebar with the same items and the assistant and Settings as footer rows; it can be hidden with ⌘\ / Ctrl+\ (an overlay with a scrim from 768 to 1023 px). Text and list screens use one centred 720 px column; Week uses the full width.
 
 ## Tokens
 
@@ -68,7 +68,7 @@ Each screen opens with a large title ("Today", "Week") that collapses into the t
 
 ## Materials
 
-- Toolbar, tab bar and sidebar: `background: color-mix(in srgb, var(--surface) 72%, transparent); backdrop-filter: blur(20px) saturate(180%)`; content scrolls underneath; a scroll-edge fade replaces the hard 1 px divider and appears only when content is under the bar.
+- Toolbar, tab bar and sidebar: `background: color-mix(in srgb, var(--surface) 86%, transparent); backdrop-filter: blur(30px) saturate(120%)`; content scrolls underneath; a scroll-edge fade replaces the hard 1 px divider and appears only when content is under the bar.
 - Sheets: solid `--surface` with a dimming scrim (modal) and the page scaled to 0.96 behind on phone.
 - Never glass on glass. `prefers-reduced-transparency: reduce` → solid surfaces; `prefers-contrast: more` → solid surfaces plus `--separator` borders at full opacity.
 
@@ -96,7 +96,7 @@ First run: "Plan your 168 hours" with three steps (pick categories from template
 
 ## Acceptance for the visual slice
 
-1. Screenshots at 390×844 and 1440×900, light and dark, for Today, Week, Tasks, Insights, Settings and the block sheet, compared side by side with `main`.
+1. Screenshots at 390×844 and 1440×900, light and dark, for Today, Week, Tasks, Summary, Settings and the routine sheet, compared side by side with `main`.
 2. Lighthouse accessibility ≥ 95 on Today and Week; all text contrast ≥ 4.5:1 (3:1 for ≥ 18.66 px bold) in both themes.
 3. With `prefers-reduced-motion: reduce` emulated, no transform animation runs (checked in Playwright).
 4. With `prefers-reduced-transparency: reduce` emulated, chrome has no `backdrop-filter`.

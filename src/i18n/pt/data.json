@@ -19,7 +19,6 @@
     "unknown": "Desconhecido",
     "granted": "Sim",
     "notGranted": "Ainda não",
-    "request": "Pedir ao navegador que proteja",
     "footer": "Pede ao navegador que não apague seus dados quando o dispositivo ficar sem espaço."
   },
   "export": {
@@ -44,7 +43,7 @@
     "migrated": "migrado da versão {from}",
     "counts": {
       "categories": "nenhuma categoria | {count} categoria | {count} categorias",
-      "blocks": "nenhum bloco | {count} bloco | {count} blocos",
+      "blocks": "nenhuma rotina | {count} rotina | {count} rotinas",
       "tasks": "nenhuma tarefa | {count} tarefa | {count} tarefas",
       "checkIns": "nenhum fechamento do dia | {count} fechamento do dia | {count} fechamentos do dia",
       "actuals": "nenhum dado | {count} dado de planejado e realizado | {count} dados de planejado e realizado",
@@ -56,7 +55,7 @@
   },
   "deleteAll": {
     "title": "Apagar todos os dados",
-    "footer": "Remove seu plano, tarefas, registros e backups deste dispositivo. Não pode ser desfeito.",
+    "footer": "Remove seu plano, tarefas, fechamentos do dia e backups deste dispositivo. Não pode ser desfeito.",
     "action": "Apagar todos os dados…",
     "phrase": "APAGAR",
     "confirmTitle": "Apagar tudo?",

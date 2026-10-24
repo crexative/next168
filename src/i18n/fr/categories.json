@@ -1,6 +1,5 @@
 {
-  "title": "Catégories",
-  "footer": "Les objectifs sont des repères : dépasser un plafond avertit, sans jamais bloquer.",
+  "footer": "Un objectif guide : dépasser « au plus » avertit, sans jamais bloquer.",
   "empty": "Aucune catégorie pour l'instant.",
   "add": "Ajouter une catégorie",
   "edit": "Modifier {name}",
@@ -21,12 +20,12 @@
   },
   "goal": "Objectif hebdomadaire",
   "goalType": {
-    "max": "Au plus",
     "min": "Au moins",
-    "none": "Aucun objectif"
+    "max": "Au plus",
+    "none": "Sans objectif"
   },
   "goalSummary": {
-    "none": "Pas d'objectif hebdomadaire",
+    "none": "Sans objectif",
     "max": "Au plus {hours} h par semaine",
     "min": "Au moins {hours} h par semaine"
   },
@@ -46,7 +45,7 @@
   "colorInUse": "{name} utilise déjà cette couleur. Vous pouvez la garder.",
   "usage": {
     "and": "{first} et {second}",
-    "blocks": "aucun bloc | {count} bloc | {count} blocs",
+    "blocks": "aucune routine | {count} routine | {count} routines",
     "tasks": "aucune tâche | {count} tâche | {count} tâches"
   },
   "chooseTarget": "Choisissez une catégorie"

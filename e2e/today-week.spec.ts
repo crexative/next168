@@ -85,7 +85,7 @@ async function runningTransformAnimations(page: Page): Promise<number> {
 test.describe('today', () => {
   test('the Now card shows the current block, minutes left and the next block, and refreshes', async ({ page }) => {
     await openSeeded(page, 'today')
-    await expect(page.getByTestId('today-date')).toHaveText('Wednesday, October 21')
+    await expect(page.getByTestId('today-subtitle')).toContainText('Wednesday, October 21')
     const card = page.getByTestId('now-card')
     await expect(card.getByTestId('now-title')).toHaveText('Deep work')
     await expect(card.getByTestId('now-left')).toHaveText('45 min left')
@@ -122,10 +122,11 @@ test.describe('today', () => {
   })
 
   test('marking an occurrence done stores its snapshot and survives a reload', async ({ page }) => {
-    await openSeeded(page, 'today')
-    const choices = page.getByRole('group', { name: 'How did Deep work go?' })
-    await choices.getByRole('button', { name: 'Done' }).click()
-    await expect(choices.getByRole('button', { name: 'Done' })).toHaveAttribute('aria-pressed', 'true')
+    // The status circle appears in the block's last ten minutes.
+    await openSeeded(page, 'today', new Date('2026-10-21T10:55:00.000Z'))
+    const circle = page.getByTestId('now-card').getByTestId('status-control')
+    await circle.click()
+    await expect(circle).toHaveAttribute('data-status', 'done')
     await expect.poll(async () => (await storedDocument(page)).actuals).toEqual([{
       date: WEDNESDAY,
       blockId: 'b-work',
@@ -137,16 +138,18 @@ test.describe('today', () => {
     }])
 
     await page.reload()
-    await expect(page.getByRole('group', { name: 'How did Deep work go?' }).getByRole('button', { name: 'Done' })).toHaveAttribute('aria-pressed', 'true')
-    // Last night's sleep is a single quiet line without a question; Gym has not started yet.
-    await expect(page.getByRole('group', { name: 'How did Sleep go?' })).toHaveCount(0)
-    await expect(page.getByRole('group', { name: 'How did Gym go?' })).toHaveCount(0)
+    await expect(page.getByTestId('now-card').getByTestId('status-control')).toHaveAttribute('data-status', 'done')
+    // Last night's sleep is a single quiet line without a circle; Gym has not started yet.
+    const rows = page.getByTestId('timeline-item')
+    await expect(rows.filter({ hasText: 'Sleep' }).getByTestId('status-control')).toHaveCount(0)
+    await expect(rows.filter({ hasText: 'Gym' }).getByTestId('status-control')).toHaveCount(0)
   })
 
   test('a partial actual records the minutes spent', async ({ page }, testInfo) => {
     test.skip(testInfo.project.name !== 'desktop')
-    await openSeeded(page, 'today')
-    await page.getByRole('group', { name: 'How did Deep work go?' }).getByRole('button', { name: 'Partial' }).click()
+    await openSeeded(page, 'today', new Date('2026-10-21T10:55:00.000Z'))
+    await page.getByTestId('now-card').getByTestId('status-control').click({ button: 'right' })
+    await page.getByRole('menuitem', { name: 'Partly' }).click()
     await page.getByLabel('Minutes spent (planned 120)').fill('50')
     await page.getByRole('button', { name: 'Save', exact: true }).click()
     await expect.poll(async () => (await storedDocument(page)).actuals[0]).toMatchObject({ status: 'partial', actualMinutes: 50, plannedMinutes: 120 })

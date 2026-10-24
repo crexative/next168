@@ -24,7 +24,7 @@ const currentTexts: CalendarSourceStore = {
   list: () => calendarServices().texts.list(),
 }
 
-// The calendars section itself lives under Settings → Integrations and advanced (features/settings).
+// The calendars section itself is the Settings › Calendars page (features/settings).
 // eslint-disable-next-line @typescript-eslint/no-unused-vars -- the registry contract stays; this slice adds no view or section of its own
 export default function registerCalendars(_registry: ShellRegistry): void {
   setExternalOccurrenceSource(expandCalendarSources, calendarSourceRevision)

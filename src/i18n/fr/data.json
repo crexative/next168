@@ -19,7 +19,6 @@
     "unknown": "Inconnu",
     "granted": "Oui",
     "notGranted": "Pas encore",
-    "request": "Demander au navigateur de le protéger",
     "footer": "Demande au navigateur de ne pas effacer vos données quand l'appareil manque de place."
   },
   "export": {
@@ -44,7 +43,7 @@
     "migrated": "migré depuis la version {from}",
     "counts": {
       "categories": "aucune catégorie | {count} catégorie | {count} catégories",
-      "blocks": "aucun bloc | {count} bloc | {count} blocs",
+      "blocks": "aucune routine | {count} routine | {count} routines",
       "tasks": "aucune tâche | {count} tâche | {count} tâches",
       "checkIns": "aucun bilan du jour | {count} bilan du jour | {count} bilans du jour",
       "actuals": "aucune mesure | {count} mesure prévu/réel | {count} mesures prévu/réel",
@@ -56,7 +55,7 @@
   },
   "deleteAll": {
     "title": "Supprimer toutes les données",
-    "footer": "Supprime votre plan, vos tâches, bilans et sauvegardes de cet appareil. Action irréversible.",
+    "footer": "Supprime votre plan, vos tâches, bilans du jour et sauvegardes de cet appareil. Action irréversible.",
     "action": "Supprimer toutes les données…",
     "phrase": "SUPPRIMER",
     "confirmTitle": "Tout supprimer ?",

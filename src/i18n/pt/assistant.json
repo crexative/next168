@@ -65,7 +65,7 @@
     "summary": {
       "add_block": "Adicionar \"{title}\" em {day}, {start}–{end}",
       "move_block": "Mover \"{title}\" para {day}, {start}–{end}",
-      "delete_block": "Remover o bloco \"{title}\"",
+      "delete_block": "Remover a rotina \"{title}\"",
       "delete_block_day": "Remover \"{title}\" em {day}",
       "add_task": "Adicionar a tarefa \"{title}\" ({minutes} min)"
     },
@@ -74,9 +74,9 @@
       "noChange": "Não consegui transformar isso numa alteração do seu plano. Tente, por exemplo: \"Adiciona um bloco de Trabalho de uma hora na quinta às 18:00\".",
       "needsDetails": "Preciso de mais detalhes para fazer essa alteração: o quê, que dia e que horas. Peça de novo com esses dados.",
       "unknownCategory": "Não encontrei a categoria \"{category}\". As suas categorias são: {categories}.",
-      "unknownBlock": "Não encontrei um bloco chamado \"{title}\" no seu plano.",
+      "unknownBlock": "Não encontrei uma rotina chamada \"{title}\" no seu plano.",
       "absentDay": "\"{title}\" ocorre nos dias {days}. Qual ocorrência você gostaria de alterar?",
-      "ambiguousBlock": "Mais de um bloco corresponde a \"{title}\". Diga em que dia está.",
+      "ambiguousBlock": "Mais de uma rotina corresponde a \"{title}\". Diga em que dia está.",
       "notDelete": "Não tive certeza de que queria remover um bloco, por isso não alterei nada. Diga \"remove\" ou \"apaga\" e o nome do bloco."
     }
   },
@@ -90,8 +90,8 @@
     "minStillNeeded": "{category}: {planned} planejadas, faltam {amount} para chegar à meta de {goal}.",
     "minReached": "{category}: {planned} planejadas, a meta de {goal} foi atingida.",
     "currentBlock": "Agora: {title}, faltam {left}.",
-    "nextBlock": "Próximo: {title} em {date} às {time}.",
-    "noNextBlock": "Nenhum bloco próximo na semana.",
+    "nextBlock": "A seguir, em {date} às {time}: {title}.",
+    "noNextBlock": "Não há mais nada planejado esta semana.",
     "noOverflow": "Todas as tarefas pendentes cabem no seu tempo livre.",
     "overflow": "{count} tarefa não cabe ou está atrasada: {titles}. {amount} sem agendar. | {count} tarefas não cabem ou estão atrasadas: {titles}. {amount} sem agendar.",
     "freeHours": "Esta semana, resta {free} livre. | Esta semana, restam {free} livres.",

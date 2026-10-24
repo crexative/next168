@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { placementClock } from './placementClock'
+import { placementClock } from './scheduling'
 
 const iso = (value: string) => placementClock(new Date(value)).toISOString()
 

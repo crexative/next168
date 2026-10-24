@@ -1,5 +1,5 @@
 import { currentAndNext } from '@/core/now'
-import { scheduleTasks } from '@/core/scheduler'
+import { fitTasks } from '@/core/scheduling'
 import { computeStats } from '@/core/stats'
 import type { Category, PlannerDocument } from '@/core/model'
 import { freeHoursWhole } from '@/features/capacity/freeHours'
@@ -69,7 +69,7 @@ export function answerFromStats(question: string, { document, now, timeZone, loc
     return parts.join(' ')
   }
   if (matchesIntent('overflow', question)) {
-    const late = scheduleTasks({ document, busy: [], now, timeZone })
+    const late = fitTasks({ document, busy: [], now, timeZone })
     const overflowing = late.filter((placement) => placement.overflowMinutes > 0 || placement.late)
     if (overflowing.length === 0) return t('assistant.answers.noOverflow')
     const titles = overflowing.map((placement) => document.tasks.find((task) => task.id === placement.taskId)?.title ?? placement.taskId)

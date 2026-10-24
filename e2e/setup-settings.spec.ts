@@ -232,7 +232,7 @@ for (const size of SIZES) {
       await start(page, size, theme, planned())
       await page.goto('./#/settings')
       await page.getByRole('button', { name: 'Editar Trabajo' }).click()
-      await expect(page.getByTestId('category-usage')).toHaveText('Esta categoría tiene 1 bloque y 1 tarea. Para eliminarla, mueve todo a otra categoría.')
+      await expect(page.getByTestId('category-usage')).toHaveText('Esta categoría tiene 1 rutina y 1 tarea. Para eliminarla, mueve todo a otra categoría.')
       const destination = page.getByLabel('Moverlos a')
       await expect(destination).toHaveValue('')
       await expect(page.getByRole('button', { name: 'Mover y eliminar' })).toBeDisabled()

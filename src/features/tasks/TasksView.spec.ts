@@ -107,18 +107,19 @@ it('shows a task split around a busy slot as one row with its total duration and
     draft.blocks.push({ id: 'focus', categoryId: 'work', title: 'Focus', days: [6], start: 780, end: 900 })
     draft.tasks.push({ id: 'task', categoryId: 'work', title: 'Review open pull requests', durationMin: 60, priority: 1, createdAt: fixedNow().toISOString() })
   })
-  await calendars.importFile('Team', 'BEGIN:VCALENDAR\r\nVERSION:2.0\r\nBEGIN:VEVENT\r\nUID:busy\r\nDTSTART:20261024T134600Z\r\nDTEND:20261024T144600Z\r\nSUMMARY:Standup\r\nEND:VEVENT\r\nEND:VCALENDAR')
+  await calendars.importFile('Team', 'BEGIN:VCALENDAR\r\nVERSION:2.0\r\nBEGIN:VEVENT\r\nUID:busy\r\nDTSTART:20261024T134500Z\r\nDTEND:20261024T144500Z\r\nSUMMARY:Standup\r\nEND:VEVENT\r\nEND:VCALENDAR')
   i18n.global.locale.value = 'en'
   const host = document.createElement('div')
   document.body.append(host)
   const app = createApp(TasksView).use(pinia).use(i18n)
   app.mount(host)
   cleanup = () => { app.unmount(); host.remove() }
-  await vi.waitFor(() => expect(host.textContent).toMatch(/(?<!\d)2:46\s?PM/))
+  await vi.waitFor(() => expect(host.textContent).toMatch(/(?<!\d)2:45\s?PM/))
   const rows = host.querySelectorAll('[data-testid=placed-task]')
   expect(rows).toHaveLength(1)
   const text = rows[0]!.textContent!.replace(/\s+/g, ' ')
-  expect(text).toMatch(/(?<!\d)1:00\s?PM–1:46\s?PM, 2:46\s?PM–3:00\s?PM · Work · 1 h/)
+  // Fragments start on the shared five-minute grid (the busy slot ends on it here).
+  expect(text).toMatch(/(?<!\d)1:00\s?PM–1:45\s?PM, 2:45\s?PM–3:00\s?PM · Work · 1 h/)
   // The row has one circle to complete it and the text that opens it; removing is a swipe or the task sheet.
   expect(rows[0]!.querySelectorAll('button')).toHaveLength(2)
 })
