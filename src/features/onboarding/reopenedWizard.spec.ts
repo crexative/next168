@@ -139,9 +139,11 @@ describe('reopened onboarding', () => {
   it('saves once when "Finish" is pressed twice while the save is pending', async () => {
     const { store } = await open()
     await click('Next')
+    const commit = vi.spyOn(store, 'commit')
     const finishButton = button('Finish')
     finishButton.click(); finishButton.click()
     await store.settled(); await nextTick()
+    expect(commit).toHaveBeenCalledTimes(1)
     expect(store.document!.revision).toBe(3)
     expect(store.document!.blocks.filter((block) => block.categoryId === work.id)).toHaveLength(1)
   })

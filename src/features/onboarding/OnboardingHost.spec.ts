@@ -51,6 +51,18 @@ describe('onboarding wizard', () => {
     expect(root().textContent).not.toMatch(/planned|\bfree\b/i)
   })
 
+  it('keeps the two counter figures adding up to the 168 hours when the sum is a half hour', async () => {
+    mounted = await mountWithPlanner(OnboardingHost, firstRun())
+    box('Exercise').click()
+    await nextTick()
+    await openLine('exercise')
+    await editField('Ends', '18:30')
+    await saveEditor()
+    // 96 h + 3 x 30 min = 97,5 h: each figure alone would round up (98 and 71) and add up to 169.
+    expect(counter()).toBe('98 h assigned · 70 h unassigned')
+    expect(counter()).not.toMatch(/[.,]\d/)
+  })
+
   it('shows each routine as days and one clock range, the commute there and back (ON2)', async () => {
     mounted = await mountWithPlanner(OnboardingHost, firstRun())
     expect(lines('work')).toEqual([expect.stringMatching(/^Mon–Fri · 9:00\sAM–5:00\sPM$/)])
@@ -120,6 +132,18 @@ describe('onboarding wizard', () => {
     expect(counter()).toBe('56 h assigned · 112 h unassigned')
     box('Work').click()
     await nextTick()
+    expect(lines('work')).toEqual([expect.stringMatching(/^Mon–Fri · 9:00\sAM–5:00\sPM$/)])
+  })
+
+  it('opens the editor on another routine before the previous editor finished closing, with that routine\'s values', async () => {
+    mounted = await mountWithPlanner(OnboardingHost, firstRun())
+    await openLine('work')
+    editor().dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }))
+    await nextTick()
+    await openLine('sleep')
+    const field = (label: string) => ([...editor().querySelectorAll('label')].find((item) => item.textContent?.trim().startsWith(label))!.querySelector('input') as HTMLInputElement).value
+    expect([field('Title'), field('Starts'), field('Ends')]).toEqual(['Sleep', '23:00', '07:00'])
+    await saveEditor()
     expect(lines('work')).toEqual([expect.stringMatching(/^Mon–Fri · 9:00\sAM–5:00\sPM$/)])
   })
 
