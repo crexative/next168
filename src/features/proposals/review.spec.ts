@@ -51,9 +51,13 @@ it('shows the exact proposal without applying it, then commits only on the expli
   const eventSummary = window.document.querySelectorAll('[data-testid="change-after"]')[1]!
   expect(eventSummary.textContent).toContain('Oct 24, 2026 – Oct 24, 2026')
   expect(eventSummary.textContent).not.toContain('Oct 23')
-  const raw = window.document.querySelector<HTMLDetailsElement>('[role="dialog"] details.raw')!
-  expect(raw.open).toBe(false)
-  expect(raw.querySelector('pre')?.textContent).toContain('"categoryId"')
+  const raw = window.document.querySelector<HTMLElement>('[role="dialog"] .raw')!
+  const toggle = raw.querySelector<HTMLButtonElement>('.raw-toggle')!
+  expect(toggle.getAttribute('aria-expanded')).toBe('false')
+  expect(raw.querySelector('pre')).toBeNull()
+  toggle.click()
+  await vi.waitFor(() => expect(raw.querySelector('pre')?.textContent).toContain('"categoryId"'))
+  expect(toggle.getAttribute('aria-expanded')).toBe('true')
   expect(approve).not.toHaveBeenCalled()
   expect(planner.document?.blocks).toHaveLength(0)
   expect(planner.document?.events).toHaveLength(0)

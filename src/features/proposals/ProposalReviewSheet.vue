@@ -18,6 +18,13 @@ const preview = ref<ProposalPreview>()
 const open = ref(false)
 const busy = ref(false)
 const message = ref('')
+// The raw change is only put on the page while it is asked for.
+const rawOpen = ref(new Set<number>())
+function toggleRaw(index: number): void {
+  const next = new Set(rawOpen.value)
+  if (!next.delete(index)) next.add(index)
+  rawOpen.value = next
+}
 const summaryContext = computed(() => ({
   categories: planner.document?.categories ?? [],
   locale: locale.value,
@@ -28,7 +35,7 @@ const summarize = (value: unknown) => summarizeEntity(value, summaryContext.valu
 
 watch(reviewing, async (proposal) => {
   if (!proposal) return
-  preview.value = undefined; message.value = ''; open.value = true
+  preview.value = undefined; message.value = ''; rawOpen.value = new Set(); open.value = true
   await planner.load()
   if (planner.document && planner.status === 'ready' && reviewing.value === proposal) preview.value = await previewProposal(planner.document, proposal)
 })
@@ -83,10 +90,10 @@ async function decide(approve: boolean) {
               <p v-else class="t-subhead t-secondary">{{ t('proposals.nothing') }}</p>
             </section>
           </div>
-          <details class="raw">
-            <summary class="t-footnote">{{ t('proposals.details') }}</summary>
-            <pre>{{ JSON.stringify({ before: change.before, after: change.after }, null, 2) }}</pre>
-          </details>
+          <div class="raw">
+            <button class="raw-toggle t-footnote" type="button" :aria-expanded="rawOpen.has(index)" @click="toggleRaw(index)">{{ t('proposals.details') }}</button>
+            <pre v-if="rawOpen.has(index)">{{ JSON.stringify({ before: change.before, after: change.after }, null, 2) }}</pre>
+          </div>
         </li>
       </ul>
       <p v-if="message" class="t-subhead" role="status">{{ message }}</p>
@@ -113,7 +120,7 @@ async function decide(approve: boolean) {
 .side.is-after { box-shadow: inset 3px 0 0 var(--tint); }
 dl.summary { display: grid; gap: 2px; margin: 0; }
 .summary dd { margin: 0 0 var(--space-1); overflow-wrap: anywhere; }
-.raw summary { display: flex; align-items: center; min-height: var(--tap-target); color: var(--tint-label); cursor: pointer; }
+.raw-toggle { display: inline-flex; align-items: center; min-height: var(--tap-target); padding: 0; border: 0; background: transparent; color: var(--tint-label); }
 pre { margin: 0; font-size: 0.8125rem; white-space: pre-wrap; overflow-wrap: anywhere; background: var(--surface); padding: var(--space-2); border-radius: var(--radius-control); }
 .warnings { display: flex; flex-direction: column; gap: var(--space-2); margin: 0; padding: 0; list-style: none; }
 .notice { display: flex; align-items: flex-start; gap: var(--space-2); margin: 0; padding: var(--space-3); border-radius: var(--radius-control); background: color-mix(in srgb, var(--warning) 18%, var(--surface)); }

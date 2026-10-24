@@ -289,6 +289,9 @@ for (const theme of THEMES) {
     await page.goto('./#/settings')
     await expect(page.getByTestId('proposal-badge')).toBeVisible()
     await expect(page.locator('main h2').first()).toBeVisible()
+    // The shell scrolls a new view to its top once the old one has left: wait for that before going to the end.
+    await expect(page.locator('.view-enter-active, .view-leave-active')).toHaveCount(0)
+    await calm(page)
     await page.evaluate(() => window.scrollTo(0, document.documentElement.scrollHeight))
     await calm(page)
     const clearance = await page.evaluate(() => {
