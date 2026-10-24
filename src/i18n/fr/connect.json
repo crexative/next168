@@ -11,11 +11,44 @@
   "customHome": "Pour NEXT168_HOME ou NEXT168_PORT personnalisés, utilisez les mêmes variables dans le client MCP.",
   "rotateHint": "Pour révoquer le jeton MCP, exécutez cette commande et reconnectez les clients :",
   "privacy": "Les assistants cloud reçoivent les données renvoyées par les outils. Le texte du planning est une donnée, pas une instruction. Approuvez uniquement les changements compris. Un assistant contrôlant votre navigateur ou session système sort de cette protection.",
-  "chatgpt": "ChatGPT ne peut pas joindre directement ce serveur local. Un OpenAI Secure MCP Tunnel volontaire changerait cette limite ; Next168 ne crée ni n’active de tunnel.",
+  "chatgpt": "ChatGPT, Gemini et les autres IA web ne peuvent pas joindre cette option locale (MCP). Utilise plutôt « Utiliser avec ton IA » dans Réglages.",
   "exportSnapshot": "Exporter instantané + prompt",
   "importProposal": "Importer une proposition JSON",
   "proposalPlaceholder": "Collez l’objet de proposition renvoyé par votre assistant.",
   "importError": "Proposition invalide, autre espace ou ancienne révision. Exportez un nouvel instantané et demandez une nouvelle proposition.",
   "importVerified": "Espace importé et vérifié par relecture de son empreinte.",
-  "workspaceImportError": "Import échoué ou vérification différente. Gardez la sauvegarde d’origine et examinez l’espace avant de réessayer."
+  "workspaceImportError": "Import échoué ou vérification différente. Gardez la sauvegarde d’origine et examinez l’espace avant de réessayer.",
+  "anyAi": {
+    "title": "Utiliser avec ton IA (ChatGPT, Claude, Gemini…)",
+    "subtitle": "Planifie ta semaine en discutant avec l’IA que tu utilises déjà, sur n’importe quel appareil. Sans compte ni serveur.",
+    "steps": {
+      "copy": "Touche « Copier pour ton IA » et colle le texte dans une nouvelle conversation ChatGPT, Claude, Gemini ou autre.",
+      "chat": "Parle de ta semaine. Quand tu veux des changements, demande : « donne-moi les changements dans le bloc next168 ».",
+      "paste": "Copie sa réponse complète, colle-la ci-dessous et vérifie les changements avant de les approuver."
+    },
+    "copy": "Copier pour ton IA",
+    "copied": "Copié. Colle-le maintenant dans ta conversation.",
+    "manual": "Ton navigateur a bloqué la copie. Sélectionne tout le texte ci-dessous et copie-le.",
+    "manualLabel": "Texte à copier pour ton IA",
+    "copyAgain": "Copier à nouveau",
+    "pasteLabel": "Colle la réponse de ton IA",
+    "pastePlaceholder": "Colle ici la réponse complète, avec le texte autour des changements.",
+    "review": "Vérifier les changements",
+    "safety": "Tu partages ton plan avec l’IA de ton choix. Rien ne change dans Next168 tant que tu n’approuves pas.",
+    "errors": {
+      "empty": "Colle d’abord la réponse de ton IA.",
+      "tooLarge": "Ce texte est trop long. Colle seulement la dernière réponse de ton IA.",
+      "none": "Je n’ai trouvé aucune proposition. Demande à ton IA : « donne-moi les changements dans le bloc next168 ».",
+      "malformed": "Les changements de cette réponse sont coupés ou abîmés. Demande à ton IA de les renvoyer dans un seul bloc next168.",
+      "invalid": "Je n’ai pas compris ces changements. Copie à nouveau pour que ton IA connaisse le format, puis demande-lui de réessayer.",
+      "wrongWorkspace": "Ces changements concernent un autre plan. Copie à nouveau et commence une nouvelle conversation avec ton IA.",
+      "stale": "Ton plan a changé après la copie pour ton IA. Copie à nouveau et demande-lui de refaire les changements.",
+      "unusable": "Certains changements ne correspondent pas à ton plan actuel, par exemple un bloc qui n’existe plus. Copie à nouveau et demande à ton IA de réessayer.",
+      "saveFailed": "Les changements n’ont pas pu être enregistrés. Réessaie."
+    }
+  },
+  "local": {
+    "title": "Claude Desktop ou Claude Code (sur cet ordinateur)",
+    "hint": "Pour les utilisateurs avancés : se connecte directement au companion Next168 qui tourne sur cet ordinateur."
+  }
 }

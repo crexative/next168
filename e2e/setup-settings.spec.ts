@@ -182,7 +182,7 @@ for (const size of SIZES) {
       await expect(general.getByLabel('Idioma')).toBeVisible()
       for (const name of ['La semana empieza el', 'Formato de hora', 'Apariencia']) await expect(general.getByRole('radiogroup', { name })).toBeVisible()
       await expect(general.locator('.list-footer')).not.toContainText('m..')
-      await expect(page.getByTestId('settings-more').getByRole('link')).toHaveText([/^Calendarios/, /^Tus datos/, /^Avanzado/])
+      await expect(page.getByTestId('settings-more').getByRole('link')).toHaveText([/^Calendarios/, /^Usar con tu IA/, /^Tus datos/, /^Avanzado/])
       await expect(page.getByRole('button', { name: /Borrar todos los datos/ })).toHaveCount(0)
       await expect(page.locator('main')).not.toContainText(/MCP|JSON|WebGPU|instantánea|Espacio de trabajo/)
       await expect(page.locator('main .ui-button.is-filled')).toHaveCount(0)

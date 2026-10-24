@@ -24,6 +24,7 @@ it('orders the list as Categories and goals, General, then Calendars, Your data 
   expect(headings()).toEqual(['Categories and goals', 'General'])
   expect(links()).toEqual([
     ['#/settings/calendars', 'Calendars'],
+    ['#/settings/ai', 'Use with your AI (ChatGPT, Claude, Gemini…)'],
     ['#/settings/data', 'Your data'],
     ['#/settings/advanced', 'Advanced'],
   ])

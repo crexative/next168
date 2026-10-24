@@ -9,7 +9,7 @@ test.beforeEach(({}, testInfo) => {
 })
 
 const NOW = new Date('2026-10-21T10:15:00.000Z')
-const ROUTES = ['today', 'week', 'tasks', 'insights', 'settings', 'settings/advanced', 'checkin', 'assistant', 'proposals'] as const
+const ROUTES = ['today', 'week', 'tasks', 'insights', 'settings', 'settings/calendars', 'settings/ai', 'settings/data', 'settings/advanced', 'checkin', 'assistant', 'proposals'] as const
 const LOCALES = ['es', 'de', 'en'] as const
 // A decimal separator followed by digits right before an hour unit, in any of the five languages.
 const FRACTIONAL_HOURS = /\d[.,]\d+\s?(h|Std\.?|hrs?)\b/i

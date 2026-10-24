@@ -613,7 +613,7 @@ test.describe('language and region settings', () => {
 
 test.describe('large text and narrow screens', () => {
   // The four tabs, then Settings with its three sub-pages and the assistant (one level down, same rules).
-  const MAIN_SCREENS = ['today', 'week', 'tasks', 'insights', 'settings', 'settings/calendars', 'settings/data', 'settings/advanced', 'assistant']
+  const MAIN_SCREENS = ['today', 'week', 'tasks', 'insights', 'settings', 'settings/calendars', 'settings/ai', 'settings/data', 'settings/advanced', 'assistant']
 
   // Text that leaves its button or link, and text in a bar (toolbar, day strip, tab bar) drawn over other text.
   async function spilledText(page: Page): Promise<string[]> {

@@ -4,6 +4,7 @@ import { useI18n } from 'vue-i18n'
 import { usePlannerStore } from '@/stores/plannerStore'
 import Button from '@/ui/Button.vue'
 import BackButton from '@/features/settings/BackButton.vue'
+import AnyAiPanel from './anyAi/AnyAiPanel.vue'
 import ProposalCard from './ProposalCard.vue'
 import { WEBLLM_DOWNLOAD_BYTES } from './WebLlmProvider'
 import { useAssistant } from './useAssistant'
@@ -77,8 +78,8 @@ async function submit(): Promise<void> {
         <button class="suggestion t-subhead" type="button" :disabled="!planner.document || assistant.busy.value === 'asking'" @click="ask(suggestion.text)">{{ suggestion.text }}</button>
       </li>
     </ul>
-    <!-- Mount point: "Usar con tu IA" (branch feature/#3-use-with-any-ai) goes here, beside the suggested
-         questions: the way to ask anything else when the on-device model is not in use. -->
+    <!-- "Usar con tu IA": beside the suggested questions, the way to ask anything else (and the one AI entry). -->
+    <AnyAiPanel collapsible />
 
     <section v-if="offerDownload" class="card" aria-labelledby="optin-title">
       <h2 id="optin-title" class="t-headline">{{ t('assistant.optIn.title') }}</h2>

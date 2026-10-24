@@ -11,11 +11,44 @@
   "customHome": "If you use a custom NEXT168_HOME or NEXT168_PORT, set the same environment variables in the MCP client configuration.",
   "rotateHint": "To revoke the MCP token, run this command and reconnect your clients:",
   "privacy": "Cloud assistants receive whatever the tools return. Planner text is data, never an instruction to the assistant. Only approve changes you understand. An assistant controlling your own browser or OS session is outside this protection boundary.",
-  "chatgpt": "ChatGPT cannot reach this local-only server directly. An opt-in OpenAI Secure MCP Tunnel would change that boundary; Next168 does not enable or implement a tunnel.",
+  "chatgpt": "ChatGPT, Gemini and other web AIs can’t reach this local option (MCP). Use “Use with your AI” in Settings instead.",
   "exportSnapshot": "Export snapshot + prompt",
   "importProposal": "Import proposal JSON",
   "proposalPlaceholder": "Paste the proposal object returned by your assistant.",
   "importError": "Invalid proposal, wrong workspace or stale revision. Export a fresh snapshot and ask for a new proposal.",
   "importVerified": "Workspace imported and verified by reading back its content hash.",
-  "workspaceImportError": "Import failed or read-back verification did not match. Keep your original backup and inspect the workspace before trying again."
+  "workspaceImportError": "Import failed or read-back verification did not match. Keep your original backup and inspect the workspace before trying again.",
+  "anyAi": {
+    "title": "Use with your AI (ChatGPT, Claude, Gemini…)",
+    "subtitle": "Plan your week by chatting with the AI you already use, on any device. No account, no server.",
+    "steps": {
+      "copy": "Tap “Copy for your AI” and paste it into a new chat in ChatGPT, Claude, Gemini or any other.",
+      "chat": "Talk about your week. When you want changes, ask: “give me the changes in the next168 block”.",
+      "paste": "Copy its whole reply, paste it below and review the changes before approving them."
+    },
+    "copy": "Copy for your AI",
+    "copied": "Copied. Now paste it into your chat.",
+    "manual": "Your browser blocked copying. Select all the text below and copy it.",
+    "manualLabel": "Text to copy for your AI",
+    "copyAgain": "Copy again",
+    "pasteLabel": "Paste your AI’s reply",
+    "pastePlaceholder": "Paste the whole reply here, including the text around the changes.",
+    "review": "Review changes",
+    "safety": "You share your plan with the AI you choose. Nothing changes in Next168 until you approve it.",
+    "errors": {
+      "empty": "Paste your AI’s reply first.",
+      "tooLarge": "That text is too long. Paste only your AI’s last reply.",
+      "none": "I didn’t find any changes. Ask your AI: “give me the changes in the next168 block”.",
+      "malformed": "The changes in that reply are cut off or damaged. Ask your AI to send them again in a single next168 block.",
+      "invalid": "I couldn’t understand those changes. Copy again so your AI knows the format, then ask it to try again.",
+      "wrongWorkspace": "These changes were made for a different plan. Copy again and start a new chat with your AI.",
+      "stale": "Your plan changed after you copied it for your AI. Copy again and ask your AI to repeat the changes.",
+      "unusable": "Some changes don’t fit your current plan, for example a block that no longer exists. Copy again and ask your AI to try again.",
+      "saveFailed": "The changes couldn’t be saved. Try again."
+    }
+  },
+  "local": {
+    "title": "Claude Desktop or Claude Code (on this computer)",
+    "hint": "For advanced users: connects directly to the Next168 companion running on this computer."
+  }
 }

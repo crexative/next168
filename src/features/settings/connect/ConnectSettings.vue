@@ -58,6 +58,10 @@ async function importWorkspace(event: Event) {
 <template>
   <div class="connect-settings">
     <h2 class="section-header">{{ t('connect.title') }}</h2>
+    <template v-if="companionMode">
+      <h3 class="t-headline local-title">{{ t('connect.local.title') }}</h3>
+      <p class="t-subhead t-secondary local-hint">{{ t('connect.local.hint') }}</p>
+    </template>
     <section v-if="companionMode && empty" class="connect-card">
       <p class="t-subhead t-secondary">{{ t('connect.transferHint') }}</p>
       <label class="import-workspace">
@@ -89,6 +93,8 @@ async function importWorkspace(event: Event) {
 
 <style scoped>
 .connect-settings { padding: var(--space-4); }
+.local-title { margin-top: var(--space-6); }
+.local-hint { margin-top: var(--space-1); }
 .connect-card { display: grid; gap: var(--space-3); margin-block: var(--space-4); padding: var(--space-4); background: var(--surface); border-radius: var(--radius-card); }
 pre, code { white-space: pre-wrap; overflow-wrap: anywhere; font-size: 0.8125rem; }
 pre { background: var(--surface-2); border-radius: var(--radius-control); padding: var(--space-3); }

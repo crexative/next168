@@ -56,6 +56,27 @@ test('a stale proposal cannot be approved', async ({ page, companion }) => {
   await expect(page.getByRole('button', { name: 'Approve', exact: true })).toBeDisabled()
   expect((await companion.workspace.document()).events).toHaveLength(0)
 })
+test('Use with your AI in companion mode: a pasted reply becomes a companion proposal, and the local option keeps its heading', async ({ page, companion }, testInfo) => {
+  test.skip(testInfo.project.name !== 'desktop', 'one browser is enough to prove the companion path')
+  const document = await companion.workspace.document()
+  document.settings.onboardingDone = true
+  document.categories = [{ id: 'focus', name: 'Focus', colorKey: 'blue', goal: { type: 'none', hoursPerWeek: 0 } }]
+  document.revision++
+  await companion.workspace.save(document, 0)
+  await page.goto(`${companion.url}/#pair=${companion.pairingCode}`)
+  await expect(page.getByRole('heading', { name: 'Pair this browser' })).toBeHidden()
+  await page.goto(`${companion.url}/#/settings/advanced`)
+  await expect(page.getByRole('heading', { name: 'Claude Desktop or Claude Code (on this computer)' })).toBeVisible()
+  // Pasting a reply goes through the one AI entry, Settings › Use with your AI.
+  await page.goto(`${companion.url}/#/settings/ai`)
+  const proposal = { contractVersion: '1.0', workspaceId: document.workspaceId, baseRevision: 1, summary: 'Add a focus hour', ops: [{ op: 'add_block', block: { categoryId: 'focus', title: 'Pasted focus', days: [2], start: 600, end: 660 } }] }
+  await page.getByTestId('any-ai-paste').fill(`Here you go!\n\n\`\`\`next168\n${JSON.stringify(proposal)}\n\`\`\`\n`)
+  await page.getByTestId('any-ai-review').click()
+  await expect(page.getByTestId('proposal-review')).toContainText('Add a focus hour')
+  expect((await companion.workspace.document()).blocks).toHaveLength(0)
+  await page.getByRole('dialog').getByRole('button', { name: 'Approve', exact: true }).click()
+  await expect.poll(async () => (await companion.workspace.document()).blocks.map((block) => block.title)).toEqual(['Pasted focus'])
+})
 test('companion mode never opens the browser planner database (A11)', async ({ page, companion }, testInfo) => {
   test.skip(testInfo.project.name !== 'desktop', 'one browser is enough to prove the storage boundary')
   const document = await companion.workspace.document()
