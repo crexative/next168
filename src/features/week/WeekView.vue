@@ -121,7 +121,7 @@ watch(notice, (moved) => {
     message: movedMessage(moved),
     onUndo: () => { keepWhereTheyWere(moved); recompute() },
   })
-})
+}, { immediate: true })
 
 // Open on the current hour once the grid is first shown; later changes keep the reader's position.
 const root = ref<HTMLElement | null>(null)

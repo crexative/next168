@@ -2,6 +2,7 @@
 import { describe, expect, it } from 'vitest'
 import type { PlannerDocument, TaskPlacement } from './model'
 import { movedOnFromToday, scheduleStable } from './scheduling'
+import { scheduleTasks } from './scheduler'
 
 const EVERY_DAY = [0, 1, 2, 3, 4, 5, 6] as const
 
@@ -21,6 +22,101 @@ const byId = (placements: TaskPlacement[]) => new Map(placements.map((placement)
 const start = (placements: TaskPlacement[]) => placements[0]!.chunks[0]!.start.slice(11, 16)
 
 describe('scheduleStable', () => {
+  it('snaps block starts without changing minute-exact scheduler callers', () => {
+    const input = { document: planner([{ ...morning[0]!, start: 545 }]), busy: [], now: at('08:00'), timeZone: 'UTC' }
+    expect(start(scheduleTasks(input))).toBe('09:05')
+    expect(start(scheduleStable(input))).toBe('09:15')
+    expect(start(scheduleStable({ ...input, snapMinutes: 30 }))).toBe('09:30')
+  })
+
+  it('snaps starts after newly placed tasks without rounding their durations', () => {
+    const document = planner(morning, 20)
+    document.tasks.push({ ...document.tasks[0]!, id: 'second', durationMin: 35 })
+    const placements = scheduleStable({ document, busy: [], now: at('08:00'), timeZone: 'UTC' })
+    expect(placements.map((item) => item.chunks)).toEqual([
+      [{ start: '2026-10-21T09:00:00.000Z', end: '2026-10-21T09:20:00.000Z' }],
+      [{ start: '2026-10-21T09:30:00.000Z', end: '2026-10-21T10:05:00.000Z' }],
+    ])
+  })
+
+  it('snaps every split chunk after events and busy intervals', () => {
+    const document = planner([{ ...morning[0]!, start: 545 }], 90)
+    document.events.push({ id: 'e', title: 'Meeting', start: '2026-10-21T09:40:00Z', end: '2026-10-21T10:07:00Z', allDay: false, attendees: [] })
+    const busy = [{ start: '2026-10-21T10:40:00Z', end: '2026-10-21T11:07:00Z' }]
+    const [placement] = scheduleStable({ document, busy, now: at('09:07'), timeZone: 'UTC' })
+    expect(placement!.chunks).toEqual([
+      { start: '2026-10-21T09:15:00.000Z', end: '2026-10-21T09:40:00.000Z' },
+      { start: '2026-10-21T10:15:00.000Z', end: '2026-10-21T10:40:00.000Z' },
+      { start: '2026-10-21T11:15:00.000Z', end: '2026-10-21T11:55:00.000Z' },
+    ])
+    expect(placement!.overflowMinutes).toBe(0)
+  })
+
+  it.each([
+    { name: 'cross-midnight block', blockStart: 1435, blockEnd: 65, now: '2026-10-21T22:00:00Z', zone: 'UTC', expectedStart: '2026-10-22T00:00:00.000Z', expectedEnd: '2026-10-22T01:00:00.000Z' },
+    { name: 'spring DST gap', blockStart: 115, blockEnd: 245, now: '2026-03-08T05:00:00Z', zone: 'America/New_York', expectedStart: '2026-03-08T07:00:00.000Z', expectedEnd: '2026-03-08T08:00:00.000Z' },
+    { name: 'autumn DST fold', blockStart: 115, blockEnd: 185, now: '2026-11-01T04:00:00Z', zone: 'America/New_York', expectedStart: '2026-11-01T06:00:00.000Z', expectedEnd: '2026-11-01T07:00:00.000Z' },
+  ])('snaps actual instants within a $name', ({ blockStart, blockEnd, now, zone, expectedStart, expectedEnd }) => {
+    const document = planner([{ ...morning[0]!, start: blockStart, end: blockEnd }])
+    const [placement] = scheduleStable({ document, busy: [], now: new Date(now), timeZone: zone, days: 2 })
+    expect(placement!.chunks).toEqual([{ start: expectedStart, end: expectedEnd }])
+    expect(placement!.overflowMinutes).toBe(0)
+  })
+
+  it('reports no fit for a block shorter than a grid step', () => {
+    const document = planner([{ ...morning[0]!, start: 545, end: 555 }], 10)
+    const [placement] = scheduleStable({ document, busy: [], now: at('08:00'), timeZone: 'UTC', days: 1 })
+    expect(placement!.chunks).toEqual([])
+    expect(placement!.overflowMinutes).toBe(10)
+  })
+
+  it('keeps a minute-exact block end and reports the minutes lost to snapping', () => {
+    const document = planner([{ ...morning[0]!, start: 545, end: 607 }], 60)
+    const [placement] = scheduleStable({ document, busy: [], now: at('08:00'), timeZone: 'UTC', days: 1 })
+    expect(placement!.chunks).toEqual([{ start: '2026-10-21T09:15:00.000Z', end: '2026-10-21T10:07:00.000Z' }])
+    expect(placement!.overflowMinutes).toBe(8)
+  })
+
+  it('moves a chunk that cannot fit after snapping to the next block', () => {
+    const document = planner([{ ...morning[0]!, start: 545, end: 563 }, { ...morning[0]!, id: 'later', start: 660, end: 720 }], 15)
+    const [placement] = scheduleStable({ document, busy: [], now: at('08:00'), timeZone: 'UTC', days: 1 })
+    expect(placement!.chunks).toEqual([{ start: '2026-10-21T11:00:00.000Z', end: '2026-10-21T11:15:00.000Z' }])
+    expect(placement!.overflowMinutes).toBe(0)
+  })
+
+  it('does not extend a one-day horizon when now rounds across midnight', () => {
+    const document = planner([{ ...morning[0]!, start: 1425, end: 1439 }], 10)
+    const [placement] = scheduleStable({ document, busy: [], now: new Date('2026-10-21T23:59:01Z'), timeZone: 'UTC', days: 1 })
+    expect(placement!.chunks).toEqual([])
+    expect(placement!.overflowMinutes).toBe(10)
+  })
+
+  it('reserves the grid gap after a kept task without changing its duration', () => {
+    const document = planner(morning, 20)
+    const previous = byId(scheduleStable({ document, busy: [], now: at('08:00'), timeZone: 'UTC' }))
+    document.tasks.push({ ...document.tasks[0]!, id: 'second', durationMin: 30 })
+    const placements = scheduleStable({ document, busy: [], now: at('09:07'), timeZone: 'UTC', previous })
+    expect(placements[0]).toEqual(previous.get('report'))
+    expect(placements[1]!.chunks).toEqual([{ start: '2026-10-21T09:30:00.000Z', end: '2026-10-21T10:00:00.000Z' }])
+  })
+
+  it('replaces a remembered off-grid placement', () => {
+    const document = planner([{ ...morning[0]!, start: 545 }])
+    const input = { document, busy: [], now: at('08:00'), timeZone: 'UTC' }
+    const previous = byId(scheduleTasks(input))
+    expect(start(scheduleStable({ ...input, previous }))).toBe('09:15')
+  })
+
+  it('applies block lead-ins only to their category and merges overlapping windows', () => {
+    const document = planner([
+      ...morning,
+      { ...morning[0]!, id: 'nested', start: 545, end: 605 },
+      { ...morning[0]!, id: 'other', categoryId: 'other', start: 545, end: 605 },
+    ])
+    expect(scheduleStable({ document, busy: [], now: at('08:00'), timeZone: 'UTC' })[0]!.chunks)
+      .toEqual([{ start: '2026-10-21T09:00:00.000Z', end: '2026-10-21T10:00:00.000Z' }])
+  })
+
   it('starts chunks on the 15-minute grid instead of at the exact minute', () => {
     expect(start(scheduleStable({ document: planner(morning), busy: [], now: at('10:07'), timeZone: 'UTC' }))).toBe('10:15')
     expect(start(scheduleStable({ document: planner(morning), busy: [], now: at('10:16'), timeZone: 'UTC' }))).toBe('10:30')
