@@ -1,0 +1,99 @@
+import { describe, expect, it } from 'vitest'
+import type { ProposalInput } from '@/core/model'
+import { ProposalError } from './LocalStorageProposalRepository'
+import { createTestRepositories, KEYS, testDocument } from './testSupport'
+
+const category = { id: 'work', name: 'Work', colorKey: 'blue' as const, goal: { type: 'max' as const, hoursPerWeek: 40 } }
+
+async function setup() {
+  const repos = createTestRepositories()
+  await repos.planner.save(testDocument({ revision: 1, categories: [category] }), 0)
+  const input: ProposalInput = {
+    contractVersion: '1.0', workspaceId: 'workspace-1', baseRevision: 1, summary: 'Add focus block',
+    ops: [{ op: 'add_block', block: { categoryId: 'work', title: 'Focus', days: [1], start: 540, end: 600 } }],
+  }
+  return { ...repos, input }
+}
+
+const storedDocument = (storage: Map<string, string>) => JSON.parse(storage.get(KEYS.document)!)
+
+describe('proposal repository', () => {
+  it('stores a pending proposal bound to the workspace and the ops hash', async () => {
+    const { proposals, input } = await setup()
+    const proposal = await proposals.create(input, 'mcp', 'client')
+    expect(proposal).toMatchObject({ status: 'pending', workspaceId: 'workspace-1', baseRevision: 1, clientName: 'client' })
+    expect(proposal.contentHash).toMatch(/^[0-9a-f]{64}$/)
+    expect(await proposals.list('pending')).toHaveLength(1)
+  })
+
+  it('rejects a proposal for another workspace before storing it', async () => {
+    const { proposals, input, storage } = await setup()
+    await expect(proposals.create({ ...input, workspaceId: 'other' }, 'mcp')).rejects.toMatchObject({ code: 'workspace-mismatch' })
+    expect(storage.data.has(KEYS.proposals)).toBe(false)
+  })
+
+  it('approve commits the document and the applied id, then marks the proposal applied', async () => {
+    const { proposals, input, storage } = await setup()
+    const proposal = await proposals.create(input, 'assistant')
+    expect(await proposals.approve(proposal.id, proposal.contentHash, 1)).toEqual({ kind: 'applied', revision: 2 })
+    const document = storedDocument(storage.data)
+    expect(document.revision).toBe(2)
+    expect(document.blocks).toHaveLength(1)
+    expect(document.appliedProposalIds).toEqual([proposal.id])
+    expect((await proposals.list('applied'))[0]).toMatchObject({ appliedRevision: 2 })
+  })
+
+  it('a second approve returns the recorded result without applying again', async () => {
+    const { proposals, input, storage } = await setup()
+    const proposal = await proposals.create(input, 'assistant')
+    await proposals.approve(proposal.id, proposal.contentHash, 1)
+    expect(await proposals.approve(proposal.id, proposal.contentHash, 1)).toEqual({ kind: 'applied', revision: 2 })
+    expect(storedDocument(storage.data).blocks).toHaveLength(1)
+  })
+
+  it('concurrent approvals apply exactly once', async () => {
+    const { proposals, input, storage } = await setup()
+    const proposal = await proposals.create(input, 'assistant')
+    const decisions = await Promise.all([
+      proposals.approve(proposal.id, proposal.contentHash, 1),
+      proposals.approve(proposal.id, proposal.contentHash, 1),
+    ])
+    expect(decisions).toEqual([{ kind: 'applied', revision: 2 }, { kind: 'applied', revision: 2 }])
+    expect(storedDocument(storage.data).blocks).toHaveLength(1)
+  })
+
+  it('repairs only the status when the response was lost after the document commit', async () => {
+    const { proposals, input, storage } = await setup()
+    const proposal = await proposals.create(input, 'assistant')
+    storage.failWritesTo.add(KEYS.proposals)
+    await expect(proposals.approve(proposal.id, proposal.contentHash, 1)).rejects.toBeDefined()
+    expect(storedDocument(storage.data).revision).toBe(2)
+    storage.failWritesTo.clear()
+
+    expect(await proposals.approve(proposal.id, proposal.contentHash, 1)).toMatchObject({ kind: 'applied' })
+    expect(storedDocument(storage.data).blocks).toHaveLength(1)
+    expect((await proposals.list('applied'))).toHaveLength(1)
+  })
+
+  it('marks a proposal stale when the document moved on', async () => {
+    const { proposals, planner, input } = await setup()
+    const proposal = await proposals.create(input, 'mcp')
+    await planner.save(testDocument({ revision: 2, categories: [category] }), 1)
+    expect(await proposals.approve(proposal.id, proposal.contentHash, 1)).toEqual({ kind: 'stale', currentRevision: 2 })
+    expect((await proposals.list('stale'))).toHaveLength(1)
+  })
+
+  it('refuses an approval bound to different content', async () => {
+    const { proposals, input } = await setup()
+    const proposal = await proposals.create(input, 'mcp')
+    await expect(proposals.approve(proposal.id, 'f'.repeat(64), 1)).rejects.toBeInstanceOf(ProposalError)
+  })
+
+  it('reject is final and unknown ids are not found', async () => {
+    const { proposals, input } = await setup()
+    const proposal = await proposals.create(input, 'mcp')
+    expect(await proposals.reject(proposal.id)).toEqual({ kind: 'rejected' })
+    expect(await proposals.approve(proposal.id, proposal.contentHash, 1)).toEqual({ kind: 'rejected' })
+    expect(await proposals.reject('missing')).toEqual({ kind: 'not-found' })
+  })
+})
