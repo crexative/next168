@@ -29,9 +29,11 @@ async function run(operation: () => Promise<unknown>): Promise<void> {
 async function importFile(event: Event): Promise<void> {
   const input = event.target as HTMLInputElement, file = input.files?.[0]
   if (!file) return
+  // Captured at the gesture, before the file read: a delete-all during the read refuses the import.
+  const intent = calendars.captureIntent()
   await run(async () => {
     if (file.size > MAX_ICS_BYTES) throw new CalendarImportError('size')
-    await calendars.importFile(file.name.replace(/\.ics$/i, '').slice(0, 80) || t('calendars.untitled'), await file.text())
+    await calendars.importFile(file.name.replace(/\.ics$/i, '').slice(0, 80) || t('calendars.untitled'), await file.text(), intent)
   })
   input.value = ''
 }
@@ -58,12 +60,13 @@ function removeSource(source: CalendarSource): void {
 }
 function edit(event?: PlannerEvent): void { editingEvent.value = event; sheetOpen.value = true }
 function removeEvent(event: PlannerEvent): void {
+  // The undo is bound to the planner the event was removed from, not to whatever is shown when it is clicked.
+  const intent = calendars.captureIntent()
   void run(async () => {
-    const result = await planner.commit(doc => { doc.events = doc.events.filter(item => item.id !== event.id) })
-    if (!result.ok) throw new CalendarImportError('save')
-    toast.show({ message: t('calendars.removed'), onUndo: () => { void run(async () => {
-      if (!(await planner.commit(doc => { if (!doc.events.some(item => item.id === event.id)) doc.events.push(event) })).ok) throw new CalendarImportError('save')
-    }) } })
+    await calendars.commitWithIntent(doc => { doc.events = doc.events.filter(item => item.id !== event.id) }, intent)
+    toast.show({ message: t('calendars.removed'), onUndo: () => { void run(() => calendars.commitWithIntent(doc => {
+      if (!doc.events.some(item => item.id === event.id)) doc.events.push(event)
+    }, intent)) } })
   })
 }
 function downloadUpcoming(): void {
