@@ -24,7 +24,7 @@ const weekLabel = computed(() => formatDuration(WEEK_MINUTES))
   <section class="week-bar" :aria-label="t('insights.bar.title')">
     <h2 class="t-headline">{{ t('insights.bar.title') }}</h2>
     <p class="available" data-testid="capacity-available">{{ headline }}</p>
-    <div class="cells" role="group" :aria-label="`${t('insights.bar.title')} (${weekLabel})`" data-testid="week-bar">
+    <div class="cells" :style="{ gap: `min(2px, ${capacity.gapPercent}%)` }" role="group" :aria-label="`${t('insights.bar.title')} (${weekLabel})`" data-testid="week-bar">
       <i
         v-for="segment in segments"
         :key="segment.categoryId"
@@ -62,8 +62,8 @@ const weekLabel = computed(() => formatDuration(WEEK_MINUTES))
 <style scoped>
 .week-bar { display: flex; flex-direction: column; gap: var(--space-2); padding: var(--space-4); background: var(--surface); border-radius: var(--radius-card); }
 .available { margin: 0; font-size: 1.75rem; line-height: 1.15; font-weight: 700; letter-spacing: -0.02em; overflow-wrap: anywhere; }
-.cells { display: flex; gap: 2px; height: 28px; overflow: hidden; border-radius: 8px; }
-.segment { display: block; flex: 0 1 auto; flex-basis: 0; min-width: 2px; }
+.cells { display: flex; height: 28px; overflow: hidden; border-radius: 8px; }
+.segment { display: block; flex: 0 1 auto; flex-basis: 0; min-width: 0; }
 .is-available { background: var(--surface-2); box-shadow: inset 0 0 0 1px var(--separator); }
 .legend { display: flex; flex-direction: column; gap: var(--space-1); margin: var(--space-1) 0 0; padding: 0; list-style: none; }
 .legend-item { display: flex; align-items: center; gap: var(--space-2); min-width: 0; }

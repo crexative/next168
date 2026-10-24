@@ -14,6 +14,7 @@ export interface Capacity {
   plannedMinutes: number
   availableMinutes: number
   availablePercent: number
+  gapPercent: number
   overbooked: boolean
 }
 
@@ -26,11 +27,17 @@ export function buildCapacity(categories: Pick<Category, 'id'>[], plannedByCateg
     .filter((segment) => segment.minutes > 0)
   const rawTotal = planned.reduce((sum, segment) => sum + segment.minutes, 0)
   const denominator = Math.max(rawTotal, WEEK_MINUTES)
+  const segments = planned.map((segment) => ({ ...segment, percent: (segment.minutes / denominator) * 100 }))
+  const availableMinutes = Math.max(0, WEEK_MINUTES - rawTotal)
+  const availablePercent = (availableMinutes / denominator) * 100
+  const shares = [...segments.map((segment) => segment.percent), availablePercent].filter((percent) => percent > 0)
   return {
-    segments: planned.map((segment) => ({ ...segment, percent: (segment.minutes / denominator) * 100 })),
+    segments,
     plannedMinutes: Math.min(rawTotal, WEEK_MINUTES),
-    availableMinutes: Math.max(0, WEEK_MINUTES - rawTotal),
-    availablePercent: (Math.max(0, WEEK_MINUTES - rawTotal) / denominator) * 100,
+    availableMinutes,
+    availablePercent,
+    // Gaps together consume less than 10% of the bar, even with 100 categories.
+    gapPercent: shares.length > 1 ? Math.min(...shares) / 10 : 0,
     overbooked: rawTotal > WEEK_MINUTES,
   }
 }

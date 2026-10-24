@@ -4,6 +4,34 @@ import { buildCapacity, WEEK_MINUTES } from './capacity'
 const categories = [{ id: 'sleep' }, { id: 'work' }, { id: 'idle' }]
 
 describe('buildCapacity', () => {
+  it.each([
+    { name: '100 categories', minutes: Array.from({ length: 100 }, () => 60) },
+    { name: 'one category', minutes: [40 * 60] },
+    { name: 'tiny and large categories', minutes: [1, 99, 6000] },
+    { name: 'one available minute', minutes: [WEEK_MINUTES - 1] },
+    { name: 'zero planned minutes', minutes: [0] },
+  ])('fits $name into a phone bar without losing time or Available', ({ minutes }) => {
+    const input = minutes.map((value, index) => ({ id: `category-${index}`, minutes: value }))
+    const capacity = buildCapacity(input, Object.fromEntries(input.map(({ id, minutes }) => [id, minutes])))
+    const shares = [...capacity.segments.map((segment) => segment.percent), capacity.availablePercent].filter((percent) => percent > 0)
+
+    // A 375 px phone leaves less room for the bar after the page/card padding.
+    const barWidth = 280
+    const gapWidth = Math.min(2, barWidth * capacity.gapPercent / 100)
+    const totalGaps = gapWidth * (shares.length - 1)
+    expect(totalGaps).toBeGreaterThanOrEqual(0)
+    expect(totalGaps).toBeLessThan(barWidth / 10)
+    const widths = shares.map((percent) => (barWidth - totalGaps) * percent / 100)
+    expect(widths.every((width) => width > 0)).toBe(true)
+    expect(widths.reduce((sum, width) => sum + width, totalGaps)).toBeCloseTo(barWidth)
+    if (shares.length > 1) expect(gapWidth).toBeLessThan(Math.min(...widths))
+    else expect(gapWidth).toBe(0)
+
+    expect(capacity.segments.map(({ categoryId, minutes }) => ({ id: categoryId, minutes }))).toEqual(input.filter(({ minutes }) => minutes > 0))
+    expect(capacity.plannedMinutes + capacity.availableMinutes).toBe(WEEK_MINUTES)
+    expect(capacity.availableMinutes).toBe(WEEK_MINUTES - minutes.reduce((sum, value) => sum + value, 0))
+  })
+
   it('sizes one segment per planned category and leaves the rest available', () => {
     const capacity = buildCapacity(categories, { sleep: 56 * 60, work: 40 * 60, idle: 0 })
     expect(capacity.segments.map((segment) => segment.categoryId)).toEqual(['sleep', 'work'])

@@ -43,6 +43,49 @@ async function expectNothingClipped(page: Page): Promise<void> {
 }
 
 test.describe('insights capacity', () => {
+  test('100 planned categories fit the bar on a 375 px phone @smoke', async ({ page }) => {
+    await page.setViewportSize({ width: 375, height: 812 })
+    const categories = Array.from({ length: 100 }, (_, index) => ({
+      ...study, id: `c-${index}`, name: `Category ${index + 1}`,
+    }))
+    const blocks = categories.map((category, index) => ({
+      id: `b-${index}`, categoryId: category.id, title: category.name,
+      days: [Math.floor(index / 24)], start: (index % 24) * 60, end: ((index + 1) % 24) * 60,
+    }))
+    await start(page, { categories, blocks })
+    await openTab(page, 'insights')
+
+    await expect(page.getByTestId('capacity-available')).toHaveText('68 h available of 168')
+    const bar = page.getByTestId('week-bar')
+    await expect(bar.locator('[data-segment]')).toHaveCount(101)
+    for (const category of categories) {
+      await expect(bar.getByRole('img', { name: `${category.name}: 1 h planned`, exact: true })).toHaveCount(1)
+      await expect(page.getByTestId(`legend-${category.id}`)).toHaveText(`${category.name}1 h`)
+    }
+    await expect(bar.getByRole('img', { name: 'Available: 68 h', exact: true })).toBeVisible()
+    await expect(page.getByTestId('legend-available')).toHaveText('Available68 h')
+
+    const geometry = await bar.evaluate((element) => {
+      const barBox = element.getBoundingClientRect()
+      return {
+        left: barBox.left, right: barBox.right, width: barBox.width,
+        segments: Array.from(element.querySelectorAll('[data-segment]'), (segment) => {
+          const box = segment.getBoundingClientRect()
+          return { id: segment.getAttribute('data-segment'), left: box.left, right: box.right, width: box.width }
+        }),
+      }
+    })
+    expect(geometry.width).toBeGreaterThan(0)
+    expect(geometry.left).toBeGreaterThanOrEqual(0)
+    expect(geometry.right).toBeLessThanOrEqual(375)
+    for (const segment of geometry.segments) {
+      expect(segment.width, `${segment.id} has visible width`).toBeGreaterThan(0)
+      expect(segment.left, `${segment.id} starts inside the bar`).toBeGreaterThanOrEqual(geometry.left - 0.5)
+      expect(segment.right, `${segment.id} ends inside the bar`).toBeLessThanOrEqual(geometry.right + 0.5)
+    }
+    await expectNothingClipped(page)
+  })
+
   test('shows the disk-usage bar with the legend, the Available value and per-category goals, nothing clipped', async ({ page }) => {
     await start(page, { categories: [sleep, work, study], blocks })
     await openTab(page, 'insights')
