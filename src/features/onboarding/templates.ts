@@ -19,7 +19,7 @@ export interface CategoryTemplate {
   preselected?: boolean
 }
 
-const SLEEP_ICON = '😴'
+export const SLEEP_ICON = '😴'
 const EVERY_DAY: DayIndex[] = [0, 1, 2, 3, 4, 5, 6]
 const WEEKDAYS: DayIndex[] = [1, 2, 3, 4, 5]
 const at = (hours: number, minutes = 0) => hours * 60 + minutes

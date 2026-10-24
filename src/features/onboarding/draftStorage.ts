@@ -1,103 +1,185 @@
-import type { DayIndex } from '@/core/model'
-import type { BlockPreset, TemplateChoice } from './templates'
+import type { PlannerDocument } from '@/core/model'
+import { isKnownScreen } from './setupFlow'
+import type { Answers, CategoryDraft, RangeDraft, SetupState } from './setupModel'
+import { MAX_NAME_LENGTH } from './setupModel'
+import { TOPIC_IDS } from './setupTopics'
 
-// An unfinished wizard survives a reload of the tab (sessionStorage), but only for the exact workspace revision it was
-// started on: anything written since, here or in another tab, makes the draft stale and it is dropped, never applied.
-const STORAGE_KEY = 'next168-onboarding-draft'
-const MAX_NAME_LENGTH = 60
+// The unfinished setup survives a reload of the tab (sessionStorage). A draft belongs to the exact stored content it was
+// started on: when storage no longer holds that, the draft is dropped, never applied to something it was not made for.
+const DRAFT_KEY = 'next168-setup-draft'
+const TAB_KEY = 'next168-setup-tab'
+const DISMISSED_KEY = 'next168-setup-dismissed'
+const LEGACY_DRAFT_KEY = 'next168-onboarding-draft'
 const LAST_MINUTE = 24 * 60 - 1
+// What a finished or discarded draft is overwritten with before it is removed, so a removal that fails can never
+// bring the old draft back.
+const TOMBSTONE = JSON.stringify({ version: 2, submitted: true })
 
-export interface WizardDraft {
-  identity: string
-  step: number
-  taskTitle: string
-  choices: { templateId: string; selected: boolean; name: string; routine: BlockPreset[] }[]
+export type DraftBinding =
+  | { kind: 'unsaved'; tabNonce: string }
+  | { kind: 'stored'; workspaceId: string; fingerprint: string }
+
+export interface SetupDraft extends SetupState {
+  version: 2
+  binding: DraftBinding
+  // Whether the flow was on screen when the tab went away: a reload then reopens it.
+  open: boolean
 }
 
-type DraftStorage = Pick<Storage, 'getItem' | 'setItem' | 'removeItem'>
+type KeyValueStorage = Pick<Storage, 'getItem' | 'setItem' | 'removeItem'>
 
-function browserStorage(): DraftStorage | undefined {
+function session(): KeyValueStorage | undefined {
+  try { return typeof sessionStorage === 'undefined' ? undefined : sessionStorage } catch { return undefined }
+}
+
+function local(): KeyValueStorage | undefined {
+  try { return typeof localStorage === 'undefined' ? undefined : localStorage } catch { return undefined }
+}
+
+// One per tab, created on first use: it binds a draft to "storage was proven empty" in this tab only.
+export function tabNonce(storage: KeyValueStorage | undefined = session()): string {
   try {
-    return typeof sessionStorage === 'undefined' ? undefined : sessionStorage
+    const existing = storage?.getItem(TAB_KEY)
+    if (existing) return existing
+    const fresh = crypto.randomUUID()
+    storage?.setItem(TAB_KEY, fresh)
+    return fresh
   } catch {
-    return undefined
+    return 'no-storage'
   }
 }
 
-export function draftIdentity(document: { workspaceId: string; revision: number }): string {
-  return `${document.workspaceId}:${document.revision}`
+export function bindingFor(stored: boolean, document: Pick<PlannerDocument, 'workspaceId'>, fingerprint: string, storage?: KeyValueStorage): DraftBinding {
+  return stored ? { kind: 'stored', workspaceId: document.workspaceId, fingerprint } : { kind: 'unsaved', tabNonce: tabNonce(storage) }
 }
 
+export function sameBinding(a: DraftBinding, b: DraftBinding): boolean {
+  if (a.kind === 'unsaved' && b.kind === 'unsaved') return a.tabNonce === b.tabNonce
+  if (a.kind === 'stored' && b.kind === 'stored') return a.workspaceId === b.workspaceId && a.fingerprint === b.fingerprint
+  return false
+}
+
+// ---------- Validation (temporarily invalid input is accepted: a reload mid-edit loses nothing) ----------
+
+const isObject = (value: unknown): value is Record<string, unknown> => typeof value === 'object' && value !== null && !Array.isArray(value)
 const isMinute = (value: unknown): value is number => Number.isInteger(value) && (value as number) >= 0 && (value as number) <= LAST_MINUTE
-const isDay = (value: unknown): value is DayIndex => Number.isInteger(value) && (value as number) >= 0 && (value as number) <= 6
+const TRI = ['unanswered', 'yes', 'no']
+const WORK_STUDY = ['unanswered', 'work', 'study', 'both', 'neither']
+const LABELS = ['there', 'back', 'weeknights', 'weekend']
 
-function validBlock(value: unknown): value is BlockPreset {
-  const block = value as BlockPreset | null
-  return !!block && isMinute(block.start) && isMinute(block.end) && block.start !== block.end
-    && Array.isArray(block.days) && block.days.length > 0 && block.days.every(isDay) && new Set(block.days).size === block.days.length
+function validRange(value: unknown): value is RangeDraft {
+  if (!isObject(value)) return false
+  const days = value.days
+  return typeof value.key === 'string' && value.key !== ''
+    && (value.blockId === undefined || (typeof value.blockId === 'string' && value.blockId !== ''))
+    && Array.isArray(days) && days.every((day) => Number.isInteger(day) && day >= 0 && day <= 6) && new Set(days).size === days.length
+    && isMinute(value.start) && isMinute(value.end)
+    && typeof value.accepted === 'boolean' && typeof value.touched === 'boolean'
+    && (value.label === undefined || LABELS.includes(value.label as string))
 }
 
-function validDraft(value: unknown, identity: string, lastStep: number): value is WizardDraft {
-  const draft = value as WizardDraft | null
-  return !!draft && draft.identity === identity
-    && Number.isInteger(draft.step) && draft.step >= 0 && draft.step <= lastStep
-    && typeof draft.taskTitle === 'string'
-    && Array.isArray(draft.choices) && draft.choices.every((choice) => !!choice && typeof choice.templateId === 'string' && typeof choice.selected === 'boolean'
-      && typeof choice.name === 'string' && choice.name.length <= MAX_NAME_LENGTH && Array.isArray(choice.routine) && choice.routine.every(validBlock))
+function validCategory(value: unknown): value is CategoryDraft {
+  if (!isObject(value)) return false
+  return typeof value.key === 'string' && value.key !== ''
+    && (value.categoryId === undefined || (typeof value.categoryId === 'string' && value.categoryId !== ''))
+    && (value.topic === undefined || TOPIC_IDS.includes(value.topic as never))
+    && typeof value.name === 'string' && value.name.length <= MAX_NAME_LENGTH
+    && typeof value.suggested === 'boolean' && typeof value.removed === 'boolean' && typeof value.keepOverride === 'boolean'
+    && Array.isArray(value.ranges) && value.ranges.length <= 50 && value.ranges.every(validRange)
 }
 
-export function saveDraft(draft: WizardDraft, storage: DraftStorage | undefined = browserStorage()): void {
+function validAnswers(value: unknown, keys: Set<string>): value is Answers {
+  if (!isObject(value)) return false
+  return TRI.includes(value.sleep as string) && WORK_STUDY.includes(value.workStudy as string) && TRI.includes(value.commute as string) && TRI.includes(value.exercise as string)
+    && (value.more === null || (Array.isArray(value.more) && value.more.every((key) => typeof key === 'string' && keys.has(key))))
+}
+
+export function parseSetupState(value: unknown): SetupState | null {
+  if (!isObject(value) || !Array.isArray(value.categories) || !value.categories.every(validCategory)) return null
+  const categories = value.categories as CategoryDraft[]
+  const keys = new Set(categories.map((category) => category.key))
+  if (keys.size !== categories.length) return null
+  if (!validAnswers(value.answers, keys) || typeof value.sleepSplit !== 'boolean' || !Number.isInteger(value.counter) || (value.counter as number) < 0) return null
+  const state: SetupState = { screen: 'sleep', answers: value.answers, sleepSplit: value.sleepSplit, categories, counter: value.counter as number }
+  if (typeof value.screen !== 'string' || !isKnownScreen(state, value.screen)) return null
+  state.screen = value.screen
+  return state
+}
+
+export function parseDraft(raw: string): SetupDraft | 'submitted' | null {
+  let value: unknown
+  try { value = JSON.parse(raw) } catch { return null }
+  if (!isObject(value) || value.version !== 2) return null
+  if (value.submitted === true) return 'submitted'
+  const binding = value.binding
+  const validBinding = isObject(binding) && (
+    (binding.kind === 'unsaved' && typeof binding.tabNonce === 'string')
+    || (binding.kind === 'stored' && typeof binding.workspaceId === 'string' && typeof binding.fingerprint === 'string'))
+  const state = parseSetupState(value)
+  if (!validBinding || !state || typeof value.open !== 'boolean') return null
+  return { ...state, version: 2, binding: binding as DraftBinding, open: value.open }
+}
+
+// Every stored id in the draft must exist in the baseline, a block under the category it was drafted for; a draft that
+// was made on proven-empty storage holds no ids at all.
+export function idsMatchBaseline(draft: SetupState, document: PlannerDocument | null, stored: boolean): boolean {
+  const ids = draft.categories.flatMap((category) => [category.categoryId, ...category.ranges.map((range) => range.blockId)]).filter((id) => id !== undefined)
+  if (!stored || !document) return ids.length === 0
+  return draft.categories.every((category) => {
+    if (category.categoryId !== undefined && !document.categories.some((candidate) => candidate.id === category.categoryId)) return false
+    return category.ranges.every((range) => range.blockId === undefined
+      || document.blocks.some((block) => block.id === range.blockId && block.categoryId === category.categoryId))
+  })
+}
+
+// ---------- Storage ----------
+
+export function draftOf(state: SetupState, binding: DraftBinding, open: boolean): SetupDraft {
+  return { ...structuredClone(state), version: 2, binding, open }
+}
+
+// False when the browser would not keep it (unavailable or full): the flow works on and says so once.
+export function saveDraft(draft: SetupDraft, storage: KeyValueStorage | undefined = session()): boolean {
   try {
-    storage?.setItem(STORAGE_KEY, JSON.stringify(draft))
+    if (!storage) return false
+    storage.setItem(DRAFT_KEY, JSON.stringify(draft))
+    return true
   } catch {
-    // Without storage the wizard still works; a reload simply starts over.
+    return false
   }
 }
 
-export function clearDraft(storage: DraftStorage | undefined = browserStorage()): void {
+export function loadDraft(storage: KeyValueStorage | undefined = session()): SetupDraft | null {
   try {
-    storage?.removeItem(STORAGE_KEY)
-  } catch {
-    // Nothing to clear.
-  }
-}
-
-// The saved draft when it belongs to `identity` and is well formed; a stale or damaged one is removed.
-export function loadDraft(identity: string, lastStep: number, storage: DraftStorage | undefined = browserStorage()): WizardDraft | null {
-  let parsed: unknown
-  try {
-    const raw = storage?.getItem(STORAGE_KEY)
+    storage?.removeItem(LEGACY_DRAFT_KEY)
+    const raw = storage?.getItem(DRAFT_KEY)
     if (!raw) return null
-    parsed = JSON.parse(raw)
+    const parsed = parseDraft(raw)
+    if (parsed === null || parsed === 'submitted') {
+      if (parsed === null) clearDraft(storage)
+      return null
+    }
+    return parsed
   } catch {
-    clearDraft(storage)
     return null
   }
-  if (validDraft(parsed, identity, lastStep)) return parsed
-  clearDraft(storage)
-  return null
 }
 
-// Carries the saved picks onto freshly built choices. Only what the person changed comes back: ticks, and for a routine
-// the wizard creates, its name and times. A template the saved draft does not know keeps its defaults.
-export function applyDraft(choices: TemplateChoice[], draft: WizardDraft): void {
-  for (const saved of draft.choices) {
-    const choice = choices.find((candidate) => candidate.templateId === saved.templateId)
-    if (!choice) continue
-    choice.selected = saved.selected
-    if (choice.sketch && saved.routine.length > 0 && saved.name.trim() !== '') {
-      choice.name = saved.name
-      choice.routine = saved.routine.map((block) => ({ start: block.start, end: block.end, days: [...block.days] }))
-    }
-  }
+// Invalidates the draft first, then tries to remove it: a removal that throws leaves a tombstone, never a stale draft.
+export function clearDraft(storage: KeyValueStorage | undefined = session()): void {
+  try { storage?.setItem(DRAFT_KEY, TOMBSTONE) } catch { /* Nothing more can be done. */ }
+  try { storage?.removeItem(DRAFT_KEY) } catch { /* The tombstone is already in place. */ }
 }
 
-export function draftOf(identity: string, step: number, taskTitle: string, choices: readonly TemplateChoice[]): WizardDraft {
-  return {
-    identity, step, taskTitle,
-    choices: choices.map((choice) => ({
-      templateId: choice.templateId, selected: choice.selected, name: choice.name,
-      routine: choice.routine.map((block) => ({ start: block.start, end: block.end, days: [...block.days] })),
-    })),
-  }
+// Closing the flow sets this for the workspace, so it does not open by itself again on this device.
+export function markDismissed(workspaceKey: string, storage: KeyValueStorage | undefined = local()): void {
+  try { storage?.setItem(DISMISSED_KEY, workspaceKey) } catch { /* A reload may offer the flow once more. */ }
+}
+
+export function isDismissed(workspaceKey: string, storage: KeyValueStorage | undefined = local()): boolean {
+  try { return storage?.getItem(DISMISSED_KEY) === workspaceKey } catch { return false }
+}
+
+export function clearDismissed(storage: KeyValueStorage | undefined = local()): void {
+  try { storage?.removeItem(DISMISSED_KEY) } catch { /* Harmless. */ }
 }
