@@ -1,10 +1,11 @@
 {
   "title": "Propostas",
-  "pending": "{count} propostas pendentes",
+  "pending": "{count} proposta pendente | {count} propostas pendentes",
   "description": "Assistentes sugerem mudanças. Você decide o que entra na sua semana.",
   "loadError": "Não foi possível carregar propostas. Verifique a conexão do companion.",
   "untitled": "Mudanças sugeridas",
   "from": "De {source}",
+  "sources": {"mcp": "Claude via MCP", "assistant": "Assistente no dispositivo", "import": "Arquivo importado"},
   "review": "Revisar proposta",
   "revision": "Baseada na revisão {revision}",
   "stale": "Seu plano mudou. Peça uma nova proposta com a revisão atual.",

@@ -1,10 +1,11 @@
 {
   "title": "Vorschläge",
-  "pending": "{count} offene Vorschläge",
+  "pending": "{count} offener Vorschlag | {count} offene Vorschläge",
   "description": "Assistenten schlagen Änderungen vor. Du entscheidest über deine Woche.",
   "loadError": "Vorschläge konnten nicht geladen werden. Prüfe die Companion-Verbindung.",
   "untitled": "Vorgeschlagene Änderungen",
   "from": "Von {source}",
+  "sources": {"mcp": "Claude über MCP", "assistant": "Assistent auf dem Gerät", "import": "Importierte Datei"},
   "review": "Vorschlag prüfen",
   "revision": "Basiert auf Revision {revision}",
   "stale": "Deine Planung hat sich geändert. Fordere einen neuen Vorschlag zur aktuellen Revision an.",

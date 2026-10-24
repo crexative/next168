@@ -59,8 +59,8 @@ onBeforeUnmount(() => { clearInterval(timer); document.removeEventListener('visi
       <Button type="submit" :disabled="busy || !code.trim()">{{ t('connect.pair') }}</Button>
     </form>
   </div>
-  <a v-else-if="pendingCount > 0" class="proposal-badge" href="#/proposals" data-testid="proposal-badge" :aria-label="t('proposals.pending', { count: pendingCount })">
-    {{ t('proposals.pending', { count: pendingCount }) }}
+  <a v-else-if="pendingCount > 0" class="proposal-badge" href="#/proposals" data-testid="proposal-badge" :aria-label="t('proposals.pending', { count: pendingCount }, pendingCount)">
+    {{ t('proposals.pending', { count: pendingCount }, pendingCount) }}
   </a>
 </template>
 

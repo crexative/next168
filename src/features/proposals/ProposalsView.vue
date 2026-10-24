@@ -37,7 +37,7 @@ onBeforeUnmount(() => clearInterval(timer))
     <p v-if="message" role="status">{{ message }}</p>
     <p v-if="companionWarnings.length" role="status">{{ t('proposals.durabilityWarning') }}</p>
     <ListGroup :header="t('proposals.title')">
-      <ListRow v-for="proposal in proposals" :key="proposal.id" :title="proposal.summary || t('proposals.untitled')" :subtitle="t('proposals.from', { source: proposal.clientName || proposal.source })" interactive @click="openProposalReview(proposal)" />
+      <ListRow v-for="proposal in proposals" :key="proposal.id" :title="proposal.summary || t('proposals.untitled')" :subtitle="t('proposals.from', { source: proposal.clientName || t(`proposals.sources.${proposal.source}`) })" interactive @click="openProposalReview(proposal)" />
       <ListRow v-if="proposals.length === 0" :title="t('proposals.empty')" />
     </ListGroup>
     <ListGroup v-if="planner.document?.blocks.length" :header="t('proposals.currentBlocks')" data-testid="applied-blocks">
