@@ -3,7 +3,7 @@ import { scheduleTasks } from './scheduler'
 import { addLocalDays, datedOccurrences, localDateOf, zonedInstant } from './time'
 
 // Stable task placement on top of scheduleTasks (which stays minute-exact for Today and Tasks):
-// - chunks start on a 15-minute grid (the "now" cut-off and the end of every busy interval are rounded up);
+// - chunks start on a 15-minute grid at block boundaries, after "now", and after busy intervals or tasks;
 // - a placement that was shown before is kept while it is still valid, so a task does not slide along with the clock.
 
 export const PLACEMENT_SNAP_MINUTES = 15
@@ -54,7 +54,6 @@ export function scheduleStable(input: StableScheduleInput): TaskPlacement[] {
   const snapMs = (input.snapMinutes ?? PLACEMENT_SNAP_MINUTES) * MINUTE_MS
   const snappedDocument: PlannerDocument = { ...document, events: document.events.map((event) => ({ ...event, end: snapEnd(event.end, snapMs) })) }
   const snappedBusy = busy.map((item) => ({ ...item, end: snapEnd(item.end, snapMs) }))
-  const cutoff = new Date(ceilTo(Math.ceil(now.getTime() / MINUTE_MS) * MINUTE_MS, snapMs))
   const fromDate = localDateOf(now, timeZone)
 
   const occupied: Interval[] = [...snappedBusy, ...snappedDocument.events].map((item) => ({ start: Date.parse(item.start), end: Date.parse(item.end) }))
@@ -73,7 +72,7 @@ export function scheduleStable(input: StableScheduleInput): TaskPlacement[] {
     const stillAhead = pin
       ? chunks.every((chunk) => localDateOf(new Date(chunk.start), timeZone) === fromDate)
       : chunks.every((chunk) => chunk.end > now.getTime())
-    const fits = chunks.every((chunk) => chunk.end > chunk.start && inside(chunk, windows)
+    const fits = chunks.every((chunk) => chunk.start === ceilTo(chunk.start, snapMs) && chunk.end > chunk.start && inside(chunk, windows)
       && !occupied.some((other) => chunk.start < other.end && other.start < chunk.end))
     if (!stillAhead || !fits || minutes !== task.durationMin) continue
     const dueEnd = task.dueDate ? zonedInstant(addLocalDays(task.dueDate, 1), 0, timeZone).getTime() : Infinity
@@ -82,13 +81,26 @@ export function scheduleStable(input: StableScheduleInput): TaskPlacement[] {
     occupied.push(...chunks)
   }
 
-  const rest = scheduleTasks({
-    document: { ...snappedDocument, tasks: document.tasks.filter((task) => !kept.has(task.id)) },
-    busy: [...snappedBusy, ...[...kept.values()].flatMap((placement) => placement.chunks)],
-    now: cutoff,
-    timeZone,
-    days,
-  })
+  const rest: TaskPlacement[] = []
+  const schedulingBusy = [...snappedBusy, ...[...kept.values()].flatMap((placement) =>
+    placement.chunks.map((chunk) => ({ ...chunk, end: snapEnd(chunk.end, snapMs) })))]
+  for (const task of open) {
+    if (kept.has(task.id)) continue
+    // Exclude the lead-in to the next grid point without moving block ends or changing the local-day horizon.
+    const leadIns = mergedWindows(document, task.categoryId, fromDate, days, timeZone).flatMap((window) => {
+      const start = Math.max(window.start, now.getTime())
+      const end = Math.min(window.end, ceilTo(start, snapMs))
+      return end > start ? [{ start: new Date(start).toISOString(), end: new Date(end).toISOString() }] : []
+    })
+    const [placement] = scheduleTasks({
+      document: { ...snappedDocument, tasks: [task] },
+      busy: [...schedulingBusy, ...leadIns], now, timeZone, days,
+    })
+    if (!placement) continue
+    rest.push(placement)
+    // Reserve through the next grid point before placing another task; durations themselves stay exact.
+    schedulingBusy.push(...placement.chunks.map((chunk) => ({ ...chunk, end: snapEnd(chunk.end, snapMs) })))
+  }
   const placed = new Map([...rest, ...kept.values()].map((placement) => [placement.taskId, placement]))
   return document.tasks.flatMap((task) => placed.get(task.id) ?? [])
 }

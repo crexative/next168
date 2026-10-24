@@ -1,14 +1,17 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { createPinia, setActivePinia } from 'pinia'
-import { createApp, nextTick } from 'vue'
+import { createApp, h, nextTick } from 'vue'
 import { i18n } from '@/i18n'
 import { configurePlannerStore, usePlannerStore } from '@/stores/plannerStore'
 import { createTestRepositories, fixedNow, newTestId } from '@/repositories/testSupport'
 import WeekView from './WeekView.vue'
+import UndoToast from '@/ui/UndoToast.vue'
+import { useUndoToast } from '@/ui/undoToast'
+import { resetPlacementMemory } from './taskPlacement'
 
 let cleanup = () => undefined as void
 const realMatchMedia = window.matchMedia
-afterEach(() => { cleanup(); vi.useRealTimers(); window.matchMedia = realMatchMedia })
+afterEach(() => { cleanup(); useUndoToast().dismiss(); resetPlacementMemory(); vi.useRealTimers(); window.matchMedia = realMatchMedia })
 
 // A narrow screen: nothing matches (min-width: 768px), as on a phone.
 function usePhoneScreen(): void {
@@ -27,6 +30,50 @@ async function addBlockFromMenu(): Promise<void> {
 }
 
 describe('WeekView saving', () => {
+  it('shows the moved-task notice on reopen and Undo restores its expired slot', async () => {
+    vi.useFakeTimers({ toFake: ['Date'] })
+    vi.setSystemTime(new Date('2026-10-21T08:00:00Z'))
+    const { planner } = createTestRepositories()
+    configurePlannerStore({ repository: planner, now: fixedNow, newId: newTestId, locale: () => 'en', timeZone: () => 'UTC' })
+    const pinia = createPinia()
+    setActivePinia(pinia)
+    const store = usePlannerStore()
+    await store.load()
+    await store.commit((draft) => {
+      draft.categories.push({ id: 'work', name: 'Work', colorKey: 'blue', goal: { type: 'none', hoursPerWeek: 0 } })
+      draft.blocks.push({ id: 'focus', categoryId: 'work', title: 'Focus', start: 540, end: 600, days: [0, 1, 2, 3, 4, 5, 6] })
+      draft.tasks.push({ id: 'report', title: 'Report', categoryId: 'work', durationMin: 60, priority: 1, createdAt: '2026-10-20T08:00:00.000Z' })
+    })
+    i18n.global.locale.value = 'es'
+    const mount = () => {
+      const host = globalThis.document.createElement('div')
+      globalThis.document.body.append(host)
+      const app = createApp({ render: () => [h(WeekView), h(UndoToast)] })
+      app.use(pinia).use(i18n).mount(host)
+      cleanup = () => { app.unmount(); host.remove() }
+      return host
+    }
+    const first = mount()
+    await tick()
+    expect(first.querySelector('[data-date="2026-10-21"] [data-testid="week-task"]')?.getAttribute('data-start-minute')).toBe('540')
+    expect(first.querySelector('.toast')).toBeNull()
+    cleanup()
+
+    vi.setSystemTime(new Date('2026-10-21T10:05:00Z'))
+    const reopened = mount()
+    await tick()
+    expect(reopened.querySelector('[data-date="2026-10-21"] [data-testid="week-task"]')).toBeNull()
+    expect(reopened.querySelector('[data-date="2026-10-22"] [data-testid="week-task"]')).not.toBeNull()
+    expect(reopened.querySelector('[role="status"]')?.textContent).toContain('pasó a mañana')
+    const undo = reopened.querySelector<HTMLButtonElement>('.toast-action')!
+    expect(undo?.textContent).toBe('Deshacer')
+    undo.click()
+    await tick()
+    expect(reopened.querySelector('[data-date="2026-10-21"] [data-testid="week-task"]')?.getAttribute('data-start-minute')).toBe('540')
+    expect(reopened.querySelector('[data-date="2026-10-22"] [data-testid="week-task"]')).toBeNull()
+    expect(useUndoToast().toast.value).toBeNull()
+  })
+
   it('opens the selected conflicting block by id and removes the event sheet', async () => {
     vi.useFakeTimers({ toFake: ['Date'] })
     vi.setSystemTime(new Date('2026-10-21T10:15:00Z'))
@@ -157,9 +204,17 @@ describe('WeekView saving', () => {
 
     const trigger = globalThis.document.querySelector<HTMLElement>('[data-testid="week-add"]')!
     expect(trigger.getAttribute('aria-expanded')).toBe('false')
+    expect(globalThis.document.querySelector('[role="menu"]')).toBeNull()
+    globalThis.document.body.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true }))
     trigger.click()
     await tick()
     expect(trigger.getAttribute('aria-expanded')).toBe('true')
+    globalThis.document.body.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true }))
+    await tick()
+    expect(trigger.getAttribute('aria-expanded')).toBe('false')
+    expect(globalThis.document.querySelector('[role="menu"]')).toBeNull()
+    trigger.click()
+    await tick()
     const entries = [...globalThis.document.querySelectorAll('[role="menuitem"]')].map((item) => item.textContent?.trim())
     expect(entries).toEqual(['Block', 'Event'])
     globalThis.document.querySelector<HTMLElement>('[data-testid="add-event"]')!.click()
@@ -266,6 +321,8 @@ describe('WeekView saving', () => {
 
     expect(host.querySelector('[data-testid="week-overview"]')).toBeNull()
     expect(host.querySelector('.pager')).not.toBeNull()
+    expect(host.querySelector('.pager')?.getAttribute('data-active-date')).toBe('2026-10-21')
+    expect(host.querySelector<HTMLElement>('[data-testid="pager-track"]')?.style.transform).toBe('translateX(calc(-200% + 0px))')
     // The thumb-zone "+" replaces the toolbar one on a phone.
     expect(host.querySelector('.fab-anchor [data-testid="week-add"]')).not.toBeNull()
     expect(globalThis.document.querySelector('#toolbar-actions [data-testid="week-add"]')).toBeNull()
@@ -280,5 +337,13 @@ describe('WeekView saving', () => {
     await tick()
     expect(host.querySelector('[data-testid="week-overview"]')).toBeNull()
     expect(host.querySelector('.pager')?.getAttribute('data-active-date')).toBe('2026-10-22')
+    expect(host.querySelector<HTMLElement>('[data-testid="pager-track"]')?.style.transform).toBe('translateX(calc(-300% + 0px))')
+    host.querySelector<HTMLElement>('[data-testid="week-next"]')!.click()
+    await tick()
+    expect(host.querySelector('.pager')?.getAttribute('data-active-date')).toBe('2026-10-29')
+    host.querySelector<HTMLElement>('[data-testid="week-today"]')!.click()
+    await tick()
+    expect(host.querySelector('.pager')?.getAttribute('data-active-date')).toBe('2026-10-21')
+    expect(host.querySelector<HTMLElement>('[data-testid="pager-track"]')?.style.transform).toBe('translateX(calc(-200% + 0px))')
   })
 })
