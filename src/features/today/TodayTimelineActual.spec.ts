@@ -50,7 +50,11 @@ describe('TodayTimeline partial status', () => {
     input.value = '35'
     input.dispatchEvent(new Event('input'))
     if (method === 'click') panel.querySelector<HTMLButtonElement>('button')!.click()
-    else input.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true, cancelable: true }))
+    else {
+      const enter = new KeyboardEvent('keydown', { key: 'Enter', bubbles: true, cancelable: true })
+      input.dispatchEvent(enter)
+      expect(enter.defaultPrevented).toBe(true)
+    }
     await nextTick()
     expect(onRecord).toHaveBeenCalledExactlyOnceWith(expect.objectContaining({ blockId: 'deep' }), 'partial', 35)
   })

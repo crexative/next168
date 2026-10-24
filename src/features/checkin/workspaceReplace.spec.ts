@@ -123,6 +123,7 @@ describe('content replaced under the same workspace id (restored backup)', () =>
     host.querySelector('form')!.dispatchEvent(new Event('submit', { cancelable: true }))
     await store.settled()
     expect(store.document?.checkIns).toEqual([{ date: TODAY, note: 'restored backup note' }])
+    expect(store.document?.revision).toBe(1)
   })
 
   it('does not let a queued task be added to a different document with the same id and revision', async () => {
@@ -225,7 +226,8 @@ describe('forms bind to their own entry, confirmations to the content hash', () 
     const note = () => host.querySelector<HTMLTextAreaElement>('textarea')!
     note().value = 'typed note'
     note().dispatchEvent(new Event('input'))
-    await store.commit((draft) => { draft.tasks.push({ id: 't-9', title: 'Other', categoryId: 'c-1', durationMin: 15, priority: 2, createdAt: '2026-10-01T00:00:00.000Z' }) })
+    const result = await store.commit((draft) => { draft.settings.weekStartsOn = 0 })
+    expect(result.ok).toBe(true)
     await nextTick()
     expect(note().value).toBe('typed note')
 

@@ -375,7 +375,11 @@ describe('check-in blocks to mark', () => {
     input.value = '25'
     input.dispatchEvent(new Event('input', { bubbles: true }))
     if (method === 'click') panel.querySelector<HTMLButtonElement>('button')!.click()
-    else input.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true, cancelable: true }))
+    else {
+      const enter = new KeyboardEvent('keydown', { key: 'Enter', bubbles: true, cancelable: true })
+      input.dispatchEvent(enter)
+      expect(enter.defaultPrevented).toBe(true)
+    }
     await store.settled()
     await nextTick()
     expect(store.document?.actuals).toMatchObject([{ blockId: 'gym', status: 'partial', actualMinutes: 25 }])

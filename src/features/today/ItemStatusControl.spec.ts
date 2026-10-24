@@ -117,12 +117,14 @@ describe('ItemStatusControl menu', () => {
     pointer(circle(), 'pointerup')
     circle().click()
     expect(record).not.toHaveBeenCalled()
+    await flush()
+    expect(menu()).not.toBeNull()
     // The next real tap works again: closing the menu with a tap on the circle, then tapping once more.
     circle().click()
     await flush()
     expect(menu()).toBeNull()
     circle().click()
-    expect(record).toHaveBeenCalledWith('done')
+    expect(record).toHaveBeenCalledExactlyOnceWith('done')
   })
 
   it('does not open when the finger lifts early or moves like a scroll', async () => {
@@ -247,7 +249,11 @@ describe('ItemStatusControl partly done', () => {
     input().value = '45'
     input().dispatchEvent(new Event('input', { bubbles: true }))
     if (method === 'click') form()!.querySelector<HTMLButtonElement>('button')!.click()
-    else input().dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true, cancelable: true }))
+    else {
+      const enter = new KeyboardEvent('keydown', { key: 'Enter', bubbles: true, cancelable: true })
+      input().dispatchEvent(enter)
+      expect(enter.defaultPrevented).toBe(true)
+    }
     await flush()
     expect(record).toHaveBeenCalledExactlyOnceWith('partial', 45)
     expect(outerSubmit).not.toHaveBeenCalled()
