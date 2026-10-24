@@ -86,7 +86,7 @@ async function addMore(): Promise<void> {
     <ul class="cards">
       <template v-for="row in visibleRows" :key="row.category.key">
         <li v-if="row.status === 'removed'" class="removed" :data-removed="row.category.key">
-          <span class="t-body">{{ t('onboarding.summary.removed', { name: row.category.name }) }}</span>
+          <span class="t-body" :data-testid="hasTasks(row.category.key) ? 'kept-for-tasks' : 'removed-note'">{{ hasTasks(row.category.key) ? t('onboarding.summary.keptForTasks', { name: row.category.name }) : t('onboarding.summary.removed', { name: row.category.name }) }}</span>
           <Button variant="plain" data-testid="card-undo" @click="undo(row.category.key)">{{ t('onboarding.summary.undo') }}</Button>
         </li>
         <SummaryCard

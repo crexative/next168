@@ -87,7 +87,7 @@ function onEscape(event: KeyboardEvent): void {
 
     <button :ref="(element) => { rows.end = element as HTMLElement }" class="row t-body" type="button" data-field="end" :aria-expanded="open === 'end'" @click="emit('toggle', open === 'end' ? null : 'end')">
       <span class="label">{{ endLabel ?? t('onboarding.guided.range.end') }}</span>
-      <span class="value">{{ time(range.end) }}<template v-if="nextDay"> {{ t('onboarding.guided.range.nextDay') }}</template></span>
+      <span class="value">{{ nextDay ? `${time(range.end)} ${t('onboarding.guided.range.nextDay')}` : time(range.end) }}</span>
       <Icon name="chevron-right" :size="18" />
     </button>
     <TimeChips v-if="open === 'end'" field="end" :value="range.end" :start="range.start" :lengths="lengths" @pick="pick('end', $event)" />
