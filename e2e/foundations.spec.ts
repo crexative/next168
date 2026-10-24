@@ -345,6 +345,8 @@ test.describe('accessibility plumbing', () => {
     await page.locator('[data-date="2026-10-21"] [data-block-id="b-gym"]').first().click()
     await page.getByRole('dialog').getByRole('button', { name: 'Delete block' }).click()
     await expect(page.locator('.toast')).toBeVisible()
+    // The closing sheet keeps focus trapped until it is gone.
+    await expect(page.getByRole('dialog')).toHaveCount(0)
   }
 
   test('the undo toast stays 15 s, holds while pointed at, and Cmd/Ctrl+Z undoes', async ({ page }) => {
