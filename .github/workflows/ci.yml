@@ -31,6 +31,12 @@ jobs:
       - run: npx vitest run
       - run: npm run build
 
+      - name: Install companion
+        run: npm --prefix companion ci
+
+      - name: Type-check and test companion
+        run: npm --prefix companion test
+
       - name: Install browsers
         run: npx playwright install --with-deps chromium webkit
 

@@ -1,6 +1,6 @@
 {
   "extends": "../tsconfig.node.json",
-  "include": ["src/**/*.ts", "test/**/*.ts", "../src/core/**/*.ts"],
+  "include": ["src/**/*.ts", "test/**/*.ts", "../src/core/**/*.ts", "../e2e/connect.spec.ts"],
   "exclude": ["../src/core/**/*.test.ts", "../src/core/**/*.spec.ts"],
   "compilerOptions": { "strict": true, "noUncheckedIndexedAccess": true, "allowImportingTsExtensions": true }
 }

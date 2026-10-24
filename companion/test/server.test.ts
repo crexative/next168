@@ -102,6 +102,17 @@ describe('companion HTTP and official MCP SDK client', () => {
     expect((await api('/api/calendars/one', 'DELETE')).status).toBe(200)
     expect((await api('/api/calendars/one')).status).toBe(404)
   })
+  it.each(['both', 'primary-only', 'backup-only', 'neither'] as const)('deletes calendar primary and backup when %s exists', async state => {
+    const file = join(home, 'calendars', 'one.ics')
+    if (state === 'both' || state === 'primary-only') await writeFile(file, 'current calendar')
+    if (state === 'both' || state === 'backup-only') await writeFile(`${file}.bak`, 'previous calendar')
+
+    expect((await api('/api/calendars/one', 'DELETE')).status).toBe(200)
+    await expect(readFile(file)).rejects.toMatchObject({ code: 'ENOENT' })
+    await expect(readFile(`${file}.bak`)).rejects.toMatchObject({ code: 'ENOENT' })
+    expect((await api('/api/calendars/one')).status).toBe(404)
+    expect(await (await api('/api/calendars')).json()).toEqual({ ids: [] })
+  })
   it('returns 409 for a stale approval and enforces token rotation on the running server', async () => {
     const document = await running.workspace.document()
     const proposal = await running.workspace.create({ contractVersion: '1.0', workspaceId: document.workspaceId, baseRevision: 0, summary: 'Meeting', ops: [{ op: 'add_event', event: { title: 'Meeting', start: '2026-10-26T10:00:00Z', end: '2026-10-26T11:00:00Z', allDay: false, attendees: [] } }] }, 'mcp')

@@ -157,7 +157,11 @@ export async function startCompanion(options: Options) {
           json(response, 200, { ok: true }); return
         }
         if (method === 'DELETE') {
-          await workspace.mutex.run(async () => { await unlink(file).catch(error => { if (error.code !== 'ENOENT') throw error }) })
+          await workspace.mutex.run(async () => {
+            for (const target of [file, `${file}.bak`]) {
+              await unlink(target).catch(error => { if (error.code !== 'ENOENT') throw error })
+            }
+          })
           json(response, 200, { ok: true }); return
         }
       }
