@@ -114,6 +114,58 @@ async function auditSheet(page: Page, state: string): Promise<void> {
   await audit(page, state)
 }
 
+// "Usar con tu IA": the closed row, the open panel, every error state and the Settings section. The clipboard is
+// removed so the by-hand copy text is on the page too.
+// At 200 % text the shell around the panel (title, tab bar) is audited elsewhere; here only the panel itself: nothing
+// wider than its box or the screen, and every control a full 44 px target.
+async function panelFits(page: Page, state: string): Promise<void> {
+  await settle(page)
+  const problems = await page.getByTestId('any-ai').evaluate((panel) => {
+    const found: string[] = []
+    const width = document.documentElement.clientWidth
+    for (const element of [panel as HTMLElement, ...Array.from(panel.querySelectorAll<HTMLElement>('*'))]) {
+      const rect = element.getBoundingClientRect()
+      if (rect.width === 0 && rect.height === 0) continue
+      const name = `${element.tagName.toLowerCase()}.${element.className} "${(element.textContent ?? '').trim().slice(0, 24)}"`
+      if (element.scrollWidth > element.clientWidth + 1 && getComputedStyle(element).overflowX === 'visible' && element.clientWidth > 0) found.push(`${name} overflows (${element.scrollWidth} > ${element.clientWidth})`)
+      if (rect.right > width + 0.5 || rect.left < -0.5) found.push(`${name} leaves the screen`)
+      if (element.matches('button, textarea') && rect.height < 43.5) found.push(`${name} is ${rect.height}px high`)
+    }
+    return found
+  })
+  expect.soft(problems, state).toEqual([])
+}
+
+async function anyAiStates(page: Page, theme: string, label: string, includeSettings = true): Promise<void> {
+  const check = includeSettings ? audit : panelFits
+  await open(page, 'assistant')
+  await check(page, `${theme}/${label}/assistant with the use-with-your-AI row closed`)
+  await page.getByTestId('any-ai-toggle').click()
+  await expect(page.getByTestId('any-ai-copy')).toBeVisible()
+  await check(page, `${theme}/${label}/use with your AI open`)
+  await page.getByTestId('any-ai-copy').click()
+  await expect(page.getByTestId('any-ai-manual')).toBeVisible()
+  await check(page, `${theme}/${label}/use with your AI, text to copy by hand`)
+  const reply = (overrides: Record<string, unknown>) => `Listo:\n\`\`\`next168\n${JSON.stringify({ contractVersion: '1.0', workspaceId: 'workspace-visual', baseRevision: 1, summary: 'Mover', ops: [{ op: 'update_block', id: 'b-gym', patch: { days: [4] } }], ...overrides })}\n\`\`\``
+  await page.getByTestId('any-ai-paste').fill('Sin cambios aquí, solo texto largo que ocupa varias líneas para comprobar que el campo y el mensaje no se cortan en ninguna pantalla.')
+  await expect(page.getByTestId('any-ai-review')).toBeEnabled()
+  await page.getByTestId('any-ai-review').click()
+  await expect(page.getByTestId('any-ai-error')).toBeVisible()
+  await check(page, `${theme}/${label}/use with your AI, no proposal found`)
+  await page.getByTestId('any-ai-paste').fill(reply({ baseRevision: 99 }))
+  await page.getByTestId('any-ai-review').click()
+  await expect(page.getByTestId('any-ai-copy-again')).toBeVisible()
+  await check(page, `${theme}/${label}/use with your AI, stale reply with Copy again`)
+  if (!includeSettings) return
+  await open(page, 'settings/advanced')
+  await expect(page.getByTestId('any-ai-copy')).toBeVisible()
+  await check(page, `${theme}/${label}/settings connect section with the use-with-your-AI panel`)
+}
+
+async function withoutClipboard(page: Page): Promise<void> {
+  await page.addInitScript(() => Object.defineProperty(navigator, 'clipboard', { configurable: true, value: undefined }))
+}
+
 for (const theme of THEMES) {
   test.describe(`visual integrity (${theme})`, () => {
     for (const locale of LOCALES) {
@@ -164,6 +216,32 @@ for (const theme of THEMES) {
         })
       }
     }
+
+    for (const locale of LOCALES) {
+      test(`use with your AI at 320 px (${locale})`, async ({ page }, testInfo) => {
+        test.skip(testInfo.project.name !== 'phone', 'the narrow-width regression runs in the phone project')
+        await page.setViewportSize({ width: 320, height: 640 })
+        await start(page, theme, { ...plannedDocument, settings: { ...plannedDocument.settings, locale } }, locale)
+        await withoutClipboard(page)
+        await anyAiStates(page, theme, `${locale}/320`)
+      })
+    }
+
+    test('use with your AI in German at 200 % text on a 320 px phone', async ({ page }, testInfo) => {
+      test.skip(testInfo.project.name !== 'phone', 'the narrow-width regression runs in the phone project')
+      await page.setViewportSize({ width: 320, height: 640 })
+      await start(page, theme, { ...plannedDocument, settings: { ...plannedDocument.settings, locale: 'de' } }, 'de')
+      await withoutClipboard(page)
+      await page.addInitScript(() => { document.addEventListener('DOMContentLoaded', () => { document.documentElement.style.fontSize = '200%' }) })
+      // Settings at 200 % text is audited with the rest of that page, not here.
+      await anyAiStates(page, theme, 'de/320/200%', false)
+    })
+
+    test('use with your AI (Spanish): the row, the open panel, copy by hand, errors and Settings', async ({ page }) => {
+      await start(page, theme, { ...plannedDocument, settings: { ...plannedDocument.settings, locale: 'es' } }, 'es')
+      await withoutClipboard(page)
+      await anyAiStates(page, theme, 'es')
+    })
 
     test('every tab', async ({ page }) => {
       await start(page, theme, plannedDocument)

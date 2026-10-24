@@ -34,7 +34,7 @@
   },
   "chat": {
     "label": "Interroger l'assistant",
-    "placeholder": "Posez une question sur votre semaine…",
+    "placeholder": "Posez une question…",
     "send": "Demander",
     "thinking": "Réflexion…"
   },

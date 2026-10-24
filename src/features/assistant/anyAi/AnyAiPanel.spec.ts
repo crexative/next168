@@ -32,7 +32,7 @@ const gymToThursday = (overrides: Record<string, unknown> = {}) => `Sure! I move
 const stubClipboard = (writeText: (text: string) => Promise<void>) => vi.stubGlobal('navigator', { ...navigator, clipboard: { writeText } })
 
 it('copies the prompt for the current plan and says so', async () => {
-  const writeText = vi.fn(async () => undefined)
+  const writeText = vi.fn<(text: string) => Promise<void>>(async () => undefined)
   stubClipboard(writeText)
   mounted = await mountWithPlanner(AnyAiPanel, { categories: [WORK], blocks: [GYM] })
   await click('any-ai-copy')
@@ -93,7 +93,7 @@ it('says what to do for a reply without changes, keeps the text, and opens nothi
 })
 
 it('refuses a reply for an older revision with a "Copy again" that copies the current plan', async () => {
-  const writeText = vi.fn(async () => undefined)
+  const writeText = vi.fn<(text: string) => Promise<void>>(async () => undefined)
   stubClipboard(writeText)
   mounted = await mountWithPlanner(AnyAiPanel, { categories: [WORK], blocks: [GYM] })
   await click('any-ai-copy')
@@ -160,7 +160,7 @@ it('uses the newest read of the imported calendars when an older read finishes l
   expand.mockReset()
   expand.mockImplementationOnce(() => new Promise((resolve) => { finishOld = resolve }))
   expand.mockResolvedValue([occurrence('Fresh meeting')])
-  const writeText = vi.fn(async () => undefined)
+  const writeText = vi.fn<(text: string) => Promise<void>>(async () => undefined)
   stubClipboard(writeText)
   vi.useFakeTimers({ toFake: ['Date'], now: new Date('2026-10-21T10:00:00Z') })
   try {

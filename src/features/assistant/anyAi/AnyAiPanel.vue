@@ -132,6 +132,8 @@ button.head:active { opacity: 0.6; }
 .chevron { flex: none; color: var(--label-3); }
 .chevron.is-open { transform: rotate(90deg); }
 .body { display: flex; flex-direction: column; gap: var(--space-4); }
+.steps li { overflow-wrap: anywhere; }
+.any-ai :deep(.ui-button) { overflow-wrap: anywhere; }
 .steps { display: flex; flex-direction: column; gap: var(--space-2); margin: 0; padding-inline-start: var(--space-5); }
 .group { display: flex; flex-direction: column; align-items: flex-start; gap: var(--space-2); }
 .group > p, .group > label { margin: 0; overflow-wrap: anywhere; }
