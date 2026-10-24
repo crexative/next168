@@ -32,6 +32,8 @@ describe('proposal repository', () => {
   it('rejects a proposal for another workspace before storing it', async () => {
     const { proposals, input, storage } = await setup()
     await expect(proposals.create({ ...input, workspaceId: 'other' }, 'mcp')).rejects.toMatchObject({ code: 'workspace-mismatch' })
+    await expect(proposals.create(input, 'mcp', 'x'.repeat(81))).rejects.toMatchObject({ code: 'proposal-invalid' })
+    expect(await proposals.list()).toHaveLength(0)
     expect(storage.data.has(KEYS.proposals)).toBe(false)
   })
 
@@ -162,6 +164,8 @@ describe('proposal repository', () => {
     await planner.save(testDocument({ revision: 2, categories: [category] }), 1)
     expect(await proposals.approve(proposal.id, proposal.contentHash, 1)).toEqual({ kind: 'stale', currentRevision: 2 })
     expect((await proposals.list('stale'))).toHaveLength(1)
+    expect(await proposals.reject(proposal.id)).toEqual({ kind: 'rejected' })
+    expect((await proposals.list()).map((stored) => stored.status)).toEqual(['rejected'])
   })
 
   it('refuses an approval bound to different content', async () => {

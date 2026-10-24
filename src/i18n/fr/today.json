@@ -1,0 +1,49 @@
+{
+  "now": {
+    "label": "Maintenant",
+    "eyebrow": "Maintenant",
+    "freeEyebrow": "En ce moment",
+    "free": "Temps libre",
+    "minutesLeft": "Encore {minutes} min",
+    "hoursMinutesLeft": "Encore {hours} h {minutes} min",
+    "progress": "Avancement du bloc en cours",
+    "next": "Ensuite",
+    "nothingNext": "Rien d'autre de prévu cette semaine",
+    "tomorrowAt": "Demain, {time}",
+    "dayAt": "{day}, {time}"
+  },
+  "checkin": {
+    "title": "Bilan du soir",
+    "description": "Sommeil, sport, fin du travail et stress en moins d'une minute"
+  },
+  "timeline": {
+    "label": "Chronologie du jour",
+    "title": "Chronologie",
+    "allDay": "Toute la journée",
+    "conflict": "Conflit",
+    "late": "En retard",
+    "kinds": {
+      "task": "Tâche",
+      "event": "Événement",
+      "external": "Calendrier"
+    }
+  },
+  "actual": {
+    "question": "Comment s'est passé {title} ?",
+    "done": "Fait",
+    "partial": "Partiel",
+    "skipped": "Sauté",
+    "minutesLabel": "Minutes passées (prévu {planned})",
+    "savePartial": "Enregistrer"
+  },
+  "empty": {
+    "title": "Rien de prévu pour l'instant",
+    "description": "Ajoutez des blocs de temps à votre semaine et Aujourd'hui affichera ce qui se passe maintenant et ensuite.",
+    "action": "Planifier la semaine"
+  },
+  "emptyDay": {
+    "title": "Une journée libre",
+    "description": "Aucun bloc, tâche ou événement aujourd'hui.",
+    "action": "Ouvrir la semaine"
+  }
+}
