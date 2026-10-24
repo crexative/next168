@@ -12,6 +12,8 @@
     "not-planned": "Não planejado"
   },
   "stress": "Estresse hoje (1 calmo – 5 alto)",
+  "clear": "Limpar",
+  "clearAnswer": "Limpar: {question}",
   "note": "Nota (opcional)",
   "save": "Salvar fechamento",
   "changedElsewhere": "Isto mudou noutro lugar, por isso foi recarregado. Reveja e tente novamente.",

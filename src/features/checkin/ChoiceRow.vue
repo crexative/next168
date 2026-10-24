@@ -1,11 +1,21 @@
 <script setup lang="ts" generic="T extends string">
-import { useId } from 'vue'
+import { ref, useId } from 'vue'
+import { useI18n } from 'vue-i18n'
 
 // A visible question over a row of radio choices. Unlike the shared segmented control, nothing needs to be selected:
 // an unanswered question is just a row with no choice picked, and the first choice is still reachable with Tab.
+// Radios cannot be unpicked, so an answer is withdrawn with an explicit "Clear" action next to the question.
 const props = defineProps<{ modelValue: T | ''; options: { value: T; label: string }[]; label: string }>()
-const emit = defineEmits<{ 'update:modelValue': [value: T] }>()
+const emit = defineEmits<{ 'update:modelValue': [value: T | ''] }>()
+const { t } = useI18n()
 const labelId = useId()
+const group = ref<HTMLElement | null>(null)
+
+// The button disappears with the answer, so focus moves to the row's first choice instead of falling to the page.
+function clear(): void {
+  emit('update:modelValue', '')
+  group.value?.querySelector<HTMLElement>('[role=radio]')?.focus()
+}
 
 function tabbable(value: T): boolean {
   return props.modelValue === '' ? value === props.options[0]?.value : value === props.modelValue
@@ -24,8 +34,20 @@ function move(offset: number, event: KeyboardEvent): void {
 
 <template>
   <div class="choice-row">
-    <span :id="labelId" class="t-footnote t-secondary">{{ label }}</span>
-    <div class="choices" role="radiogroup" :aria-labelledby="labelId">
+    <div class="question">
+      <span :id="labelId" class="t-footnote t-secondary">{{ label }}</span>
+      <button
+        v-if="modelValue !== ''"
+        type="button"
+        class="clear t-footnote"
+        data-testid="choice-clear"
+        :aria-label="t('checkin.clearAnswer', { question: label })"
+        @click="clear"
+      >
+        {{ t('checkin.clear') }}
+      </button>
+    </div>
+    <div ref="group" class="choices" role="radiogroup" :aria-labelledby="labelId">
       <button
         v-for="option in options"
         :key="option.value"
@@ -47,6 +69,18 @@ function move(offset: number, event: KeyboardEvent): void {
 
 <style scoped>
 .choice-row { display: flex; flex-direction: column; gap: var(--space-1); }
+.question { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; column-gap: var(--space-3); }
+/* A text button with a full tap target; the negative margin keeps it from making the question row taller. */
+.clear {
+  min-height: var(--tap-target);
+  margin-block: calc((var(--tap-target) - 1.25rem) / -2);
+  padding: 0 var(--space-2);
+  margin-inline-end: calc(var(--space-2) * -1);
+  border: 0;
+  background: transparent;
+  color: var(--tint-label);
+  font-weight: 600;
+}
 .choices { display: flex; gap: 2px; padding: 2px; border-radius: var(--radius-control); background: color-mix(in srgb, var(--label-2) 14%, transparent); }
 .choice {
   flex: 1;

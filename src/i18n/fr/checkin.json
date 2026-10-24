@@ -12,6 +12,8 @@
     "not-planned": "Non prévu"
   },
   "stress": "Stress aujourd’hui (1 calme – 5 élevé)",
+  "clear": "Effacer",
+  "clearAnswer": "Effacer : {question}",
   "note": "Note (facultatif)",
   "save": "Enregistrer le bilan",
   "changedElsewhere": "Ceci a changé ailleurs et a donc été rechargé. Vérifiez-le puis réessayez.",
