@@ -1,0 +1,209 @@
+import { z } from 'zod'
+
+// Contract for planner document schema v2 (docs/architecture/deliverable-1.md §3).
+// Slices implement behavior against these schemas; changing them is an architecture change.
+
+export const SCHEMA_VERSION = 2 as const
+export const MINUTES_PER_DAY = 1440
+export const MINUTES_PER_WEEK = 7 * MINUTES_PER_DAY
+export const TOTAL_WEEK_HOURS = 168
+
+const id = z.string().min(1).max(64)
+const text = (max: number) => z.string().trim().min(1).max(max)
+const optionalText = (max: number) => z.string().max(max).optional()
+const isoDate = z.iso.date()
+const isoDateTime = z.iso.datetime({ offset: true })
+
+export const minuteSchema = z.number().int().min(0).max(MINUTES_PER_DAY - 1)
+export const dayIndexSchema = z.number().int().min(0).max(6)
+
+export const COLOR_KEYS = ['blue', 'green', 'orange', 'pink', 'purple', 'teal', 'yellow', 'red', 'gray'] as const
+export const colorKeySchema = z.enum(COLOR_KEYS)
+
+export const goalSchema = z.object({
+  type: z.enum(['max', 'min', 'none']),
+  hoursPerWeek: z.number().min(0).max(TOTAL_WEEK_HOURS),
+})
+
+export const categorySchema = z.object({
+  id,
+  name: text(60),
+  colorKey: colorKeySchema,
+  icon: optionalText(16),
+  goal: goalSchema,
+})
+
+export const timeBlockSchema = z.object({
+  id,
+  categoryId: id,
+  title: text(80),
+  notes: optionalText(500),
+  days: z.array(dayIndexSchema).min(1).max(7),
+  start: minuteSchema,
+  end: minuteSchema,
+}).refine((b) => b.start !== b.end, { message: 'block.zeroLength', path: ['end'] })
+  .refine((b) => new Set(b.days).size === b.days.length, { message: 'block.duplicateDays', path: ['days'] })
+
+export const taskSchema = z.object({
+  id,
+  title: text(120),
+  categoryId: id,
+  durationMin: z.number().int().min(15).max(180),
+  dueDate: isoDate.optional(),
+  priority: z.union([z.literal(1), z.literal(2), z.literal(3)]),
+  doneAt: isoDateTime.optional(),
+  createdAt: isoDateTime,
+})
+
+export const checkInSchema = z.object({
+  date: isoDate,
+  bedtime: minuteSchema.optional(),
+  wake: minuteSchema.optional(),
+  workEnd: minuteSchema.optional(),
+  exercise: z.enum(['yes', 'no', 'not-planned']).optional(),
+  stress: z.number().int().min(1).max(5).optional(),
+  note: optionalText(280),
+})
+
+export const blockActualSchema = z.object({
+  date: isoDate,
+  blockId: id,
+  status: z.enum(['done', 'partial', 'skipped']),
+  minutes: z.number().int().min(0).max(MINUTES_PER_DAY).optional(),
+})
+
+export const plannerEventSchema = z.object({
+  id,
+  title: text(120),
+  start: isoDateTime,
+  end: isoDateTime,
+  allDay: z.boolean(),
+  location: optionalText(200),
+  notes: optionalText(2000),
+  attendees: z.array(z.email()).max(50),
+}).refine((e) => Date.parse(e.end) > Date.parse(e.start), { message: 'event.endBeforeStart', path: ['end'] })
+
+export const calendarSourceSchema = z.object({
+  id,
+  name: text(80),
+  kind: z.enum(['file', 'url']),
+  url: z.url({ protocol: /^(https?|webcal)$/ }).optional(),
+  colorKey: colorKeySchema,
+  lastSyncedAt: isoDateTime.optional(),
+  lastError: optionalText(200),
+})
+
+export const externalEventSchema = z.object({
+  sourceId: id,
+  uid: z.string().min(1).max(512),
+  title: z.string().max(300),
+  start: isoDateTime,
+  end: isoDateTime,
+  allDay: z.boolean(),
+  busy: z.boolean(),
+})
+
+const blockFields = z.object({
+  categoryId: id,
+  title: text(80),
+  notes: optionalText(500),
+  days: z.array(dayIndexSchema).min(1).max(7),
+  start: minuteSchema,
+  end: minuteSchema,
+})
+
+export const proposalOpSchema = z.discriminatedUnion('op', [
+  z.object({ op: z.literal('add_block'), block: blockFields }),
+  z.object({ op: z.literal('update_block'), id, patch: blockFields.partial() }),
+  z.object({ op: z.literal('delete_block'), id }),
+  z.object({ op: z.literal('add_task'), task: taskSchema.omit({ id: true, createdAt: true, doneAt: true }) }),
+  z.object({ op: z.literal('update_task'), id, patch: taskSchema.omit({ id: true, createdAt: true, doneAt: true }).partial() }),
+  z.object({ op: z.literal('complete_task'), id }),
+  z.object({ op: z.literal('add_event'), event: z.object({
+    title: text(120), start: isoDateTime, end: isoDateTime, allDay: z.boolean(),
+    location: optionalText(200), notes: optionalText(2000), attendees: z.array(z.email()).max(50),
+  }) }),
+  z.object({ op: z.literal('update_category_goal'), id, goal: goalSchema }),
+])
+
+export const MAX_OPS_PER_PROPOSAL = 50
+
+export const changeProposalSchema = z.object({
+  id,
+  source: z.enum(['mcp', 'assistant', 'import']),
+  clientName: optionalText(80),
+  baseRevision: z.number().int().min(0),
+  summary: z.string().max(500),
+  ops: z.array(proposalOpSchema).min(1).max(MAX_OPS_PER_PROPOSAL),
+  status: z.enum(['pending', 'applied', 'rejected', 'stale']),
+  createdAt: isoDateTime,
+  decidedAt: isoDateTime.optional(),
+})
+
+// What an assistant (MCP client, on-device model or pasted JSON) may submit.
+export const proposalInputSchema = z.object({
+  contractVersion: z.literal('1.0'),
+  baseRevision: z.number().int().min(0),
+  summary: z.string().max(500),
+  ops: z.array(proposalOpSchema).min(1).max(MAX_OPS_PER_PROPOSAL),
+})
+
+export const settingsSchema = z.object({
+  locale: z.string().min(2).max(10),
+  weekStartsOn: z.union([z.literal(0), z.literal(1)]),
+  timeZone: z.string().min(1).max(64),
+  onboardingDone: z.boolean(),
+  theme: z.enum(['system', 'light', 'dark']),
+})
+
+export const plannerDocumentSchema = z.object({
+  schemaVersion: z.literal(SCHEMA_VERSION),
+  revision: z.number().int().min(0),
+  updatedAt: isoDateTime,
+  settings: settingsSchema,
+  categories: z.array(categorySchema).max(100),
+  blocks: z.array(timeBlockSchema).max(1000),
+  tasks: z.array(taskSchema).max(5000),
+  checkIns: z.array(checkInSchema).max(3660),
+  actuals: z.array(blockActualSchema).max(50000),
+  events: z.array(plannerEventSchema).max(5000),
+  calendarSources: z.array(calendarSourceSchema).max(20),
+  externalEvents: z.array(externalEventSchema).max(20000),
+  proposals: z.array(changeProposalSchema).max(200),
+})
+
+export type Minute = z.infer<typeof minuteSchema>
+export type DayIndex = z.infer<typeof dayIndexSchema>
+export type ColorKey = z.infer<typeof colorKeySchema>
+export type Goal = z.infer<typeof goalSchema>
+export type Category = z.infer<typeof categorySchema>
+export type TimeBlock = z.infer<typeof timeBlockSchema>
+export type Task = z.infer<typeof taskSchema>
+export type CheckIn = z.infer<typeof checkInSchema>
+export type BlockActual = z.infer<typeof blockActualSchema>
+export type PlannerEvent = z.infer<typeof plannerEventSchema>
+export type CalendarSource = z.infer<typeof calendarSourceSchema>
+export type ExternalEvent = z.infer<typeof externalEventSchema>
+export type ProposalOp = z.infer<typeof proposalOpSchema>
+export type ChangeProposal = z.infer<typeof changeProposalSchema>
+export type ProposalInput = z.infer<typeof proposalInputSchema>
+export type Settings = z.infer<typeof settingsSchema>
+export type PlannerDocument = z.infer<typeof plannerDocumentSchema>
+
+// Storage port (D4). Adapters: LocalStorageRepository (browser) and CompanionRepository (HTTP).
+export type LoadResult =
+  | { kind: 'ok'; document: PlannerDocument; migratedFrom?: number }
+  | { kind: 'empty' }
+  | { kind: 'corrupt'; raw: string; reason: string }
+  | { kind: 'unsupported'; schemaVersion: unknown }
+
+export type SaveResult =
+  | { kind: 'ok'; revision: number }
+  | { kind: 'conflict'; currentRevision: number }
+  | { kind: 'error'; reason: string }
+
+export interface PlannerRepository {
+  load(): Promise<LoadResult>
+  save(document: PlannerDocument, expectedRevision: number): Promise<SaveResult>
+  subscribe(onExternalChange: () => void): () => void
+}
