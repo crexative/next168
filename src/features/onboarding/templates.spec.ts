@@ -3,7 +3,8 @@ import { createEmptyDocument } from '@/core/documents'
 import { validateDocument } from '@/core/documents'
 import { computeStats } from '@/core/stats'
 import { overlaps } from '@/core/time'
-import { buildOnboardingResult, CATEGORY_TEMPLATES, defaultTaskTemplateId, type TemplateChoice } from './templates'
+import type { Category } from '@/core/model'
+import { buildOnboardingResult, CATEGORY_TEMPLATES, defaultTaskCategoryId, defaultTaskTemplateId, type TemplateChoice } from './templates'
 
 const NOW = new Date('2026-10-24T12:00:00Z')
 let counter = 0
@@ -56,5 +57,19 @@ describe('onboarding templates', () => {
     expect(defaultTaskTemplateId(pick('sleep', 'work', 'exercise'), 'exercise')).toBe('exercise')
     expect(defaultTaskTemplateId(pick('sleep', 'work'), 'learning')).toBe('work')
     expect(defaultTaskTemplateId(pick('sleep'), '')).toBe('')
+  })
+
+  it('defaults the task form category to the first non-Sleep category, keeping an explicit choice', () => {
+    const categories: Category[] = [
+      { id: 'c-sleep', name: 'Sleep', colorKey: 'purple', icon: '😴', goal: { type: 'min', hoursPerWeek: 49 } },
+      { id: 'c-work', name: 'Work', colorKey: 'blue', goal: { type: 'none', hoursPerWeek: 0 } },
+      { id: 'c-gym', name: 'Gym', colorKey: 'green', goal: { type: 'none', hoursPerWeek: 0 } },
+    ]
+    expect(defaultTaskCategoryId(categories, '')).toBe('c-work')
+    expect(defaultTaskCategoryId(categories, 'c-gym')).toBe('c-gym')
+    expect(defaultTaskCategoryId(categories, 'gone')).toBe('c-work')
+    expect(defaultTaskCategoryId([{ ...categories[0]!, name: 'Rest' }, categories[1]!], '')).toBe('c-work')
+    expect(defaultTaskCategoryId(categories.slice(0, 1), '')).toBe('c-sleep')
+    expect(defaultTaskCategoryId([], '')).toBe('')
   })
 })

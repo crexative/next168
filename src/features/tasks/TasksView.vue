@@ -6,6 +6,7 @@ import { scheduleTasks } from '@/core/scheduler'
 import { localDateOf } from '@/core/time'
 import { formatDuration } from '@/features/insights/format'
 import { categoryColor } from '@/features/insights/categoryColor'
+import { defaultTaskCategoryId } from '@/features/onboarding/templates'
 import { assertEntry, CHANGED_ELSEWHERE, snapshotOf } from '@/features/insights/entryGuard'
 import { useExternalOccurrences } from '@/features/week/externalOccurrences'
 import { usePlannerStore } from '@/stores/plannerStore'
@@ -47,7 +48,7 @@ const plan = computed(() => {
 const done = computed(() => recentDone(document.value?.tasks ?? []))
 
 const form = reactive({ title: '', durationMin: 60, categoryId: '', dueDate: '', priority: '2' as '1' | '2' | '3' })
-const effectiveCategoryId = computed(() => (categoryById.value.has(form.categoryId) ? form.categoryId : categories.value[0]?.id ?? ''))
+const effectiveCategoryId = computed(() => defaultTaskCategoryId(categories.value, form.categoryId))
 const changedElsewhere = ref(false)
 // The quick-add form depends on one stored entry: the category it files the task under. Other commits (completing
 // a task, editing another category) never touch what is typed; the snapshot only follows what the form displays.

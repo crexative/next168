@@ -15,12 +15,13 @@ export interface CategoryTemplate {
   preset: BlockPreset
 }
 
+const SLEEP_ICON = '😴'
 const EVERY_DAY: DayIndex[] = [0, 1, 2, 3, 4, 5, 6]
 const WEEKDAYS: DayIndex[] = [1, 2, 3, 4, 5]
 const at = (hours: number, minutes = 0) => hours * 60 + minutes
 
 export const CATEGORY_TEMPLATES: CategoryTemplate[] = [
-  { id: 'sleep', icon: '😴', colorKey: 'purple', goal: { type: 'min', hoursPerWeek: 49 }, preset: { start: at(23), end: at(7), days: EVERY_DAY } },
+  { id: 'sleep', icon: SLEEP_ICON, colorKey: 'purple', goal: { type: 'min', hoursPerWeek: 49 }, preset: { start: at(23), end: at(7), days: EVERY_DAY } },
   { id: 'work', icon: '💼', colorKey: 'blue', goal: { type: 'max', hoursPerWeek: 40 }, preset: { start: at(9), end: at(17), days: WEEKDAYS } },
   { id: 'exercise', icon: EXERCISE_ICON, colorKey: 'green', goal: { type: 'min', hoursPerWeek: 4 }, preset: { start: at(18), end: at(19), days: [1, 3, 5] } },
   { id: 'learning', icon: '📚', colorKey: 'orange', goal: { type: 'min', hoursPerWeek: 5 }, preset: { start: at(20), end: at(21), days: [2, 4] } },
@@ -53,7 +54,23 @@ export interface OnboardingResult {
 // an explicit choice among the picked categories is kept, and nothing is chosen when only Sleep is picked.
 export function defaultTaskTemplateId(choices: TemplateChoice[], current: string): string {
   const picked = choices.filter((choice) => choice.selected)
-  return picked.some((choice) => choice.templateId === current) ? current : picked.find((choice) => choice.templateId !== 'sleep')?.templateId ?? ''
+  return picked.some((choice) => choice.templateId === current) ? current : firstNonSleep(picked, (choice) => choice.templateId === 'sleep')?.templateId ?? ''
+}
+
+// The one rule behind every "default category for a task": the first category that is not Sleep.
+export function firstNonSleep<T>(items: T[], isSleep: (item: T) => boolean): T | undefined {
+  return items.find((item) => !isSleep(item))
+}
+
+// A stored category is Sleep when it keeps the Sleep template's icon or is named Sleep (names are editable, icons rarely).
+export function isSleepCategory(category: Pick<Category, 'name' | 'icon'>): boolean {
+  return category.icon === SLEEP_ICON || category.name.trim().toLowerCase() === 'sleep'
+}
+
+// The task form's category: an existing choice is kept; otherwise the first non-Sleep category, and Sleep only when it is all there is.
+export function defaultTaskCategoryId(categories: Category[], current: string): string {
+  if (categories.some((category) => category.id === current)) return current
+  return (firstNonSleep(categories, isSleepCategory) ?? categories[0])?.id ?? ''
 }
 
 export function buildOnboardingResult(

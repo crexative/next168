@@ -42,3 +42,24 @@ it('places tasks around imported calendar events, not on top of them', async () 
   await calendars.removeSource(planner.document!.calendarSources[0]!.id)
   await vi.waitFor(() => expect(host.textContent).toMatch(/12:00\s?PM–01:00\s?PM/))
 })
+
+it('files a quickly added task under the first non-Sleep category', async () => {
+  const pinia = createPinia()
+  setActivePinia(pinia)
+  configurePlannerStore({ repository: createTestRepositories().planner, now: fixedNow, newId: newTestId, locale: () => 'en', timeZone: () => 'UTC' })
+  const planner = usePlannerStore()
+  await planner.load()
+  await planner.commit(draft => {
+    draft.categories.push({ id: 'sleep', name: 'Sleep', colorKey: 'purple', icon: '😴', goal: { type: 'min', hoursPerWeek: 49 } })
+    draft.categories.push({ id: 'work', name: 'Work', colorKey: 'blue', goal: { type: 'none', hoursPerWeek: 0 } })
+  })
+  i18n.global.locale.value = 'en'
+  const host = document.createElement('div')
+  document.body.append(host)
+  const app = createApp(TasksView).use(pinia).use(i18n)
+  app.mount(host)
+  cleanup = () => { app.unmount(); host.remove() }
+  const categorySelect = () => Array.from(host.querySelectorAll('select')).find(select => select.querySelector('option[value="work"]'))
+  await vi.waitFor(() => expect(categorySelect()).toBeDefined())
+  expect(categorySelect()!.value).toBe('work')
+})
