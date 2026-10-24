@@ -33,6 +33,7 @@
   "location": "Ubicación",
   "notes": "Notas",
   "attendees": "Asistentes (correos electrónicos)",
+  "attendeesPlaceholder": "Correos electrónicos",
   "attendeesHint": "Separa los correos con comas",
   "formInvalid": "Introduce un título, fecha y hora válidas, duración positiva y correos válidos (hasta 50).",
   "saveEvent": "Guardar evento",

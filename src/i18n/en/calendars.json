@@ -33,6 +33,7 @@
   "location": "Location",
   "notes": "Notes",
   "attendees": "Attendees (email addresses)",
+  "attendeesPlaceholder": "Email addresses",
   "attendeesHint": "Separate email addresses with commas",
   "formInvalid": "Enter a title, valid date/time, positive duration, and valid attendee emails (up to 50).",
   "saveEvent": "Save event",

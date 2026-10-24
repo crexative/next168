@@ -13,6 +13,26 @@ test.use({ launchOptions: { args: ['--disable-features=WebGPU'] } })
 const NOW = new Date('2026-10-21T10:15:00.000Z')
 const THEMES = ['light', 'dark'] as const
 const LANGUAGE_KEY = 'next168-language'
+const NARROW_WIDTHS = [320, 375] as const
+const EVENT_COPY = {
+  en: { button: 'New event', hint: 'Separate email addresses with commas' },
+  es: { button: 'Nuevo evento', hint: 'Separa los correos con comas' },
+  fr: { button: 'Nouvel événement', hint: 'Séparez les adresses par des virgules' },
+  pt: { button: 'Novo evento', hint: 'Separe os endereços por vírgulas' },
+  de: { button: 'Neuer Termin', hint: 'E-Mail-Adressen durch Kommas trennen' },
+} as const
+const LOCALES = Object.keys(EVENT_COPY) as (keyof typeof EVENT_COPY)[]
+
+async function widenInputFonts(page: Page): Promise<void> {
+  // Exercise the Linux CI failure on every OS, including systems with narrower default fonts.
+  await page.addStyleTag({ content: `
+    .onboarding input.name, .onboarding select.color, .event-form input[inputmode="email"] {
+      font-family: Verdana, "DejaVu Sans", sans-serif !important;
+      font-size: 1.16875rem !important; /* 110% of the shared 17 px input font. */
+    }
+  ` })
+  await page.evaluate(() => document.fonts.ready)
+}
 
 const plannedDocument = {
   schemaVersion: 2,
@@ -95,6 +115,50 @@ async function auditSheet(page: Page, state: string): Promise<void> {
 
 for (const theme of THEMES) {
   test.describe(`visual integrity (${theme})`, () => {
+    for (const locale of LOCALES) {
+      for (const width of NARROW_WIDTHS) {
+        test(`wider fonts: onboarding names (${locale}, ${width}px)`, async ({ page }, testInfo) => {
+          test.skip(testInfo.project.name !== 'phone', 'the narrow-width regression runs in the phone project')
+          await page.setViewportSize({ width, height: 812 })
+          await start(page, theme, { ...firstRunDocument, settings: { ...firstRunDocument.settings, locale } }, locale)
+          await page.goto('./')
+          const onboarding = page.getByTestId('onboarding')
+          await expect(onboarding).toBeVisible()
+          await widenInputFonts(page)
+          await expect(onboarding.locator('input.name')).toHaveCount(7)
+          if (locale === 'es') await expect(onboarding.locator('input.name').last()).toHaveValue('Desplazamientos')
+          await auditSheet(page, `${theme}/${locale}/${width}/wider fonts/onboarding step 1`)
+
+          for (const checkbox of await onboarding.getByRole('checkbox').all()) await checkbox.check()
+          await expect(onboarding.locator('input.name:disabled, select.color:disabled')).toHaveCount(0)
+          await audit(page, `${theme}/${locale}/${width}/wider fonts/onboarding step 1 with picks`)
+          const targets = await onboarding.locator('input.name, select.color, .check').evaluateAll((elements) =>
+            elements.map((element) => ({ width: element.getBoundingClientRect().width, height: element.getBoundingClientRect().height })),
+          )
+          for (const target of targets) {
+            expect(target.width).toBeGreaterThanOrEqual(44)
+            expect(target.height).toBeGreaterThanOrEqual(44)
+          }
+        })
+
+        test(`wider fonts: new event attendees (${locale}, ${width}px)`, async ({ page }, testInfo) => {
+          test.skip(testInfo.project.name !== 'phone', 'the narrow-width regression runs in the phone project')
+          await page.setViewportSize({ width, height: 812 })
+          await start(page, theme, { ...plannedDocument, settings: { ...plannedDocument.settings, locale } }, locale)
+          await open(page, 'settings')
+          await page.getByRole('button', { name: EVENT_COPY[locale].button, exact: true }).click()
+          const attendees = page.getByRole('dialog').locator('input[inputmode="email"]')
+          await expect(attendees).toBeVisible()
+          await expect(attendees).toHaveValue('')
+          await widenInputFonts(page)
+          await attendees.scrollIntoViewIfNeeded()
+          await auditSheet(page, `${theme}/${locale}/${width}/wider fonts/new event`)
+          await expect(attendees).toHaveAccessibleDescription(EVENT_COPY[locale].hint)
+          await expect(page.getByText(EVENT_COPY[locale].hint, { exact: true })).toBeVisible()
+        })
+      }
+    }
+
     test('every tab', async ({ page }) => {
       await start(page, theme, plannedDocument)
       for (const view of ['today', 'week', 'tasks', 'insights', 'settings', 'assistant', 'checkin']) {
