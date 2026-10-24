@@ -2,7 +2,9 @@
 import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 import type { Category } from '@/core/model'
+import CategoryMark from '@/ui/CategoryMark.vue'
 import Icon from '@/ui/Icon.vue'
+import { categoryStroke } from '@/ui/categoryVisual'
 import { categoryColor } from './categoryColor'
 import { formatTime } from './localTime'
 import { HOUR_HEIGHT_PX, SLOT_MINUTES, STACK_EVENT_INSET_PERCENT, layoutDaySegments, type BlockSegment, type BusySegment, type DayPart, type LanePosition } from './weekLayout'
@@ -54,8 +56,19 @@ function segmentStyle(segment: BlockSegment & LanePosition) {
   return {
     ...itemStyle(segment),
     '--block-color': categoryColor(categoriesById.value.get(segment.occurrence.categoryId)),
+    '--block-stroke': categoryStroke(categoriesById.value.get(segment.occurrence.categoryId)),
     '--title-strip': `${STACK_EVENT_INSET_PERCENT}cqw`,
   }
+}
+
+function categoryName(segment: BlockSegment): string {
+  return categoriesById.value.get(segment.occurrence.categoryId)?.name ?? ''
+}
+
+// The accessible name follows the visible text (title, time, then the category when it differs from the title).
+function blockLabel(segment: BlockSegment): string {
+  const name = categoryName(segment)
+  return [segment.occurrence.title, timeRange(segment), name !== segment.occurrence.title ? name : ''].filter(Boolean).join(' ')
 }
 
 function timeRange(segment: BlockSegment): string {
@@ -110,12 +123,13 @@ function onColumnClick(event: MouseEvent): void {
       :data-block-id="segment.occurrence.blockId"
       :data-start-minute="segment.startMinute"
       :data-end-minute="segment.endMinute"
-      :aria-label="`${segment.occurrence.title} ${timeRange(segment)}`"
+      :aria-label="blockLabel(segment)"
       :disabled="!editable"
       @click="emit('select', segment.occurrence.blockId)"
     >
-      <span class="block-title">{{ segment.occurrence.title }}</span>{{ ' ' }}
-      <span class="block-time">{{ timeRange(segment) }}</span>
+      <span class="block-title"><CategoryMark class="block-mark" :category="categoriesById.get(segment.occurrence.categoryId)" />{{ ' ' }}{{ segment.occurrence.title }}</span>{{ ' ' }}
+      <span class="block-time">{{ timeRange(segment) }}</span>{{ ' ' }}
+      <span v-if="categoryName(segment) && categoryName(segment) !== segment.occurrence.title" class="block-category">{{ categoryName(segment) }}</span>
     </button>
     <div v-if="nowMinute !== null" class="now-line" :style="{ top: `${(nowMinute / 60) * HOUR_HEIGHT_PX}px` }" data-testid="now-line" aria-hidden="true" />
   </div>
@@ -154,7 +168,7 @@ function onColumnClick(event: MouseEvent): void {
   inset-block: 0;
   inset-inline-start: 0;
   width: 3px;
-  background: var(--block-color);
+  background: var(--block-stroke);
 }
 .block:active { transform: scale(0.97); }
 .block:disabled { cursor: default; }
@@ -162,9 +176,11 @@ function onColumnClick(event: MouseEvent): void {
 .continues-after { border-end-start-radius: 0; border-end-end-radius: 0; }
 .block-title { font-size: 0.8125rem; font-weight: 600; line-height: 1.25; }
 .block-time { font-size: 0.75rem; line-height: 1.25; font-variant-numeric: tabular-nums; }
-.block-title, .block-time { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.block-category { font-size: 0.75rem; line-height: 1.25; }
+.block-title, .block-time, .block-category { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.block-mark { margin-inline-end: 1px; }
 .is-short { flex-direction: row; gap: var(--space-1); align-items: center; }
-.is-short .block-time { display: none; }
+.is-short .block-time, .is-short .block-category { display: none; }
 
 .busy {
   position: absolute;
@@ -199,7 +215,7 @@ function onColumnClick(event: MouseEvent): void {
     inset-inline-start: calc(var(--stack-left) + 2px) !important;
     width: calc(var(--stack-width) - 4px) !important;
   }
-  .is-beside .block-time { display: none; }
+  .is-beside .block-time, .is-beside .block-category, .is-beside .block-mark { display: none; }
   .block.is-beside { padding-inline: 3px 0; }
   .is-beside .block-title {
     max-width: calc(var(--title-strip) - 4px);

@@ -212,3 +212,40 @@ test.describe('headings', () => {
     for (const gap of gaps) expect(gap).toBeGreaterThanOrEqual(24)
   })
 })
+
+test.describe('colour is never alone', () => {
+  const glyphOf = (element: Element) => getComputedStyle(element.querySelector('.category-glyph')!, '::before').content.replace(/^"|"$/g, '')
+
+  test('Today rows show the category glyph and, when it differs from the title, its name', async ({ page }) => {
+    await startWith(page)
+    await openView(page, 'today')
+    const rows = await page.getByTestId('timeline-item').evaluateAll((items, glyphSource) => {
+      const glyph = new Function('element', `return (${glyphSource})(element)`) as (element: Element) => string
+      return items.filter((item) => item.querySelector('[data-testid="category-mark"]')).map((item) => ({
+        title: item.querySelector('.row-title-text')?.textContent?.trim(),
+        glyph: glyph(item),
+        name: item.querySelector('[data-testid="timeline-category"]')?.textContent?.trim() ?? null,
+      }))
+    }, glyphOf.toString())
+    expect(rows).toEqual(expect.arrayContaining([
+      { title: 'Deep work', glyph: 'W', name: 'Work' },
+      { title: 'Gym', glyph: 'E', name: 'Exercise' },
+      { title: 'Sleep', glyph: '😴', name: null },
+    ]))
+  })
+
+  test('Week blocks show the glyph and say the category', async ({ page }) => {
+    await startWith(page)
+    await openView(page, 'week')
+    const gym = page.locator('[data-date="2026-10-21"] [data-block-id="b-gym"]').first()
+    await expect(gym).toBeVisible()
+    await expect(gym).toHaveAccessibleName(/^Gym .*Exercise$/)
+    expect(await gym.evaluate((element, glyphSource) => (new Function('element', `return (${glyphSource})(element)`) as (element: Element) => string)(element), glyphOf.toString())).toBe('E')
+    const ring = await gym.locator('.category-glyph').evaluate((element) => {
+      const style = getComputedStyle(element)
+      return { width: parseFloat(style.borderTopWidth), color: style.borderTopColor }
+    })
+    expect(ring.width).toBeGreaterThanOrEqual(1)
+    expect(ring.color).not.toBe('rgba(0, 0, 0, 0)')
+  })
+})

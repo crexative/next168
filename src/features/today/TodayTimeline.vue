@@ -4,8 +4,9 @@ import { useI18n } from 'vue-i18n'
 import type { BlockActual, Category } from '@/core/model'
 import { addLocalDays, localDateOf, zonedInstant, type DatedOccurrence } from '@/core/time'
 import Button from '@/ui/Button.vue'
+import CategoryMark from '@/ui/CategoryMark.vue'
+import { categoryStroke } from '@/ui/categoryVisual'
 import Icon from '@/ui/Icon.vue'
-import { categoryColor } from '@/features/week/categoryColor'
 import { formatMinute, formatTime } from '@/features/week/localTime'
 import { actualFor, type ActualStatus } from './actuals'
 import { continuationHints } from './continuationHints'
@@ -33,8 +34,12 @@ const categoriesById = computed(() => new Map(props.categories.map((category) =>
 const partialKey = ref<string | null>(null)
 const partialMinutes = ref(0)
 
+function categoryOf(item: TimelineItem): Category | undefined {
+  return item.kind === 'block' || item.kind === 'task' ? categoriesById.value.get(item.categoryId) : undefined
+}
+
 function color(item: TimelineItem): string {
-  return item.kind === 'block' || item.kind === 'task' ? categoryColor(categoriesById.value.get(item.categoryId)) : 'var(--label-2)'
+  return item.kind === 'block' || item.kind === 'task' ? categoryStroke(categoryOf(item)) : 'var(--label-2)'
 }
 
 const dayBounds = computed(() => {
@@ -118,12 +123,14 @@ function savePartial(item: TimelineItem & { kind: 'block' }): void {
         <span class="row-bar" aria-hidden="true" />
         <div class="row-content">
           <p class="row-title t-body">
+            <CategoryMark v-if="categoryOf(item)" :category="categoryOf(item)" />
             <span class="row-title-text">{{ item.title }}</span>
             <span v-if="item.conflict" class="badge is-conflict t-caption" data-testid="conflict-mark">
               <Icon name="triangle-alert" :size="14" />{{ t('today.timeline.conflict') }}
             </span>
             <span v-if="item.kind === 'task' && item.late" class="badge is-late t-caption">{{ t('today.timeline.late') }}</span>
           </p>
+          <p v-if="categoryOf(item) && categoryOf(item)!.name !== item.title" class="row-kind t-footnote t-secondary" data-testid="timeline-category">{{ categoryOf(item)!.name }}</p>
           <p
             v-for="hint in continuationHints(item, now, timeZone, locale)"
             :key="hint.key"
@@ -182,7 +189,7 @@ function savePartial(item: TimelineItem & { kind: 'block' }): void {
 .is-past .row-title-text { color: var(--label-2); }
 .row-content { display: flex; flex-direction: column; gap: var(--space-2); min-width: 0; }
 .row-title { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2); margin: 0; }
-.row-title-text { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.row-title-text { flex: 1 1 8rem; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
 .row-kind { margin: -0.25rem 0 0; }
 .badge { display: inline-flex; align-items: center; gap: 2px; padding: 1px var(--space-2); border-radius: 999px; }
 .badge.is-conflict { background: color-mix(in srgb, var(--danger) 14%, transparent); color: var(--danger-label); }
