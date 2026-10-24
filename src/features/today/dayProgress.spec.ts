@@ -44,4 +44,14 @@ describe('dayProgress', () => {
     const { items } = build(document, [{ taskId: 'a', chunks, overflowMinutes: 0, late: false }])
     expect(dayProgress(document, items, TODAY, EARLY)).toEqual({ done: 1, total: 3 })
   })
+
+  it('counts a task that is still placed once, as open, even if it carries a finish time', () => {
+    const document = plannerDocument({
+      blocks: [deepWork],
+      tasks: [{ id: 'a', title: 'A', categoryId: 'work', durationMin: 30, priority: 1, createdAt: '2026-10-20T00:00:00.000Z', doneAt: '2026-10-21T08:00:00.000Z' }],
+    })
+    const chunks = [{ start: '2026-10-21T09:00:00.000Z', end: '2026-10-21T09:30:00.000Z' }]
+    const { items } = build(document, [{ taskId: 'a', chunks, overflowMinutes: 0, late: false }])
+    expect(dayProgress(document, items, TODAY, EARLY)).toEqual({ done: 0, total: 2 })
+  })
 })

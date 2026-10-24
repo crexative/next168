@@ -48,4 +48,13 @@ describe('freeHoursAhead', () => {
     expect(freeHoursAhead(document, now, 'UTC')).toBe(0.5)
     expect(freeHoursAhead(document, now, 'Asia/Tokyo')).toBe(7 * 24 - 8.5)
   })
+
+  it('counts a block nested inside a longer one once, whatever order the plan lists them in', () => {
+    const outer = { ...deepWork, id: 'outer', start: 540, end: 1020 } // 09:00–17:00
+    const inner = { ...deepWork, id: 'inner', start: 600, end: 660 } // 10:00–11:00
+    const covered = (405 + 2 * 480) / 60 // today 10:15–17:00, then Thu and Fri 09:00–17:00
+    for (const blocks of [[outer, inner], [inner, outer]]) {
+      expect(freeHoursAhead(plannerDocument({ blocks }), NOW, 'UTC')).toBe(REMAINING_HOURS - covered)
+    }
+  })
 })

@@ -27,4 +27,25 @@ describe('suggestFromPlan', () => {
     expect(['Work', 'trabajo', ' Travail ', 'Trabalho', 'Arbeit'].every((name) => isWorkCategory({ name }))).toBe(true)
     expect(isWorkCategory({ name: 'Gym' })).toBe(false)
   })
+
+  it('prefers the longest sleep block over a nap, and the latest work end over an earlier one', () => {
+    const nap = { id: 'nap', categoryId: 'sleep', title: 'Nap', days: [0, 1, 2, 3, 4, 5, 6] as [0, 1, 2, 3, 4, 5, 6], start: 780, end: 840 }
+    const morning = { ...deepWork, id: 'morning', start: 540, end: 720 }
+    const afternoon = { ...deepWork, id: 'afternoon', start: 780, end: 1020 }
+    for (const blocks of [[nap, sleep, afternoon, morning], [morning, afternoon, sleep, nap]]) {
+      expect(suggestFromPlan(plannerDocument({ categories: [sleepCategory, workCategory], blocks }), '2026-10-21')).toEqual({ bedtime: 1320, wake: 360, workEnd: 1020, worksThatDay: true })
+    }
+  })
+
+  it('treats a sleep block that ends exactly at midnight as ending on the day it started', () => {
+    const untilMidnight = { ...sleep, days: [2] as [2], start: 1200, end: 0 } // Tuesday 20:00 → Wednesday 00:00
+    const document = plannerDocument({ categories: [sleepCategory, workCategory], blocks: [untilMidnight] })
+    expect(suggestFromPlan(document, '2026-10-20')).toEqual({ bedtime: 1200, wake: 0, worksThatDay: true })
+    expect(suggestFromPlan(document, '2026-10-21')).toEqual({ worksThatDay: true })
+  })
+
+  it('only counts work that starts on the asked date', () => {
+    const nightShift = { ...deepWork, id: 'night', days: [2] as [2], start: 1320, end: 360 } // Tue 22:00 → Wed 06:00
+    expect(suggestFromPlan(plannerDocument({ categories: [sleepCategory, workCategory], blocks: [nightShift] }), '2026-10-21')).toEqual({ worksThatDay: false })
+  })
 })

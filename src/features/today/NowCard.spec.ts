@@ -80,4 +80,32 @@ describe('NowCard', () => {
     host.querySelector<HTMLButtonElement>('.choice.is-done')!.click()
     expect(onRecord).toHaveBeenCalledWith(expect.objectContaining({ blockId: 'deep', title: 'Deep work' }), 'done', undefined)
   })
+
+  it('does not promise a free duration when the next block starts on another day', async () => {
+    const onlyWork = plannerDocument({ blocks: [deepWork] })
+    const now = new Date('2026-10-21T12:00:00Z')
+    const { current, next } = currentAndNext(onlyWork, now, 'UTC')
+    const mounted = await mountForTest(NowCard, { current, next, categories: onlyWork.categories, actuals: [], askable: true, writable: true, now, today: '2026-10-21', timeZone: 'UTC' })
+    unmount = mounted.unmount
+    expect(mounted.host.querySelector('[data-testid="now-title"]')?.textContent).toBe('Unplanned')
+    expect(mounted.host.querySelector('[data-testid="now-free-for"]')).toBeNull()
+  })
+
+  it('writes exactly one hour as hours and minutes', async () => {
+    const { text } = await render('2026-10-21T10:00:00Z')
+    expect(text('now-left')).toBe('1 h 0 min left')
+  })
+
+  it('keeps the progress bar between empty and full', async () => {
+    const now = new Date('2026-10-21T10:15:00Z')
+    const { current, next } = currentAndNext(document, now, 'UTC')
+    const fill = async (progress: number) => {
+      const mounted = await mountForTest(NowCard, { current: { ...current!, progress }, next, categories: document.categories, actuals: [], askable: true, writable: true, now, today: '2026-10-21', timeZone: 'UTC' })
+      unmount = mounted.unmount
+      const width = mounted.host.querySelector<HTMLElement>('.progress-fill')!.style.width
+      mounted.unmount()
+      return width
+    }
+    expect([await fill(1.7), await fill(-0.3)]).toEqual(['100%', '0%'])
+  })
 })

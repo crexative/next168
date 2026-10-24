@@ -249,10 +249,12 @@ test.describe('check-in answers can be withdrawn', () => {
 test.describe('nightly reminder', () => {
   // `armed` preloads the opt-in the way a returning user has it: permission already granted and the preference stored
   // before the app starts, so the ticker is running from the first frame and nothing depends on a tap.
-  async function stubNotifications(page: Page, permission: NotificationPermission | 'absent', armed = false): Promise<void> {
+  async function stubNotifications(page: Page, permission: NotificationPermission | 'absent', armed = false, answer: NotificationPermission = 'granted'): Promise<void> {
     if (armed) await page.addInitScript(() => window.localStorage.setItem('next168-checkin-reminder', '1'))
-    await page.addInitScript((initial) => {
+    await page.addInitScript(([initial, answered]) => {
       const log = { asked: 0, shown: [] as { title: string; body?: string }[] }
+      const instances: { onclick?: () => void }[] = []
+      ;(window as unknown as { __notificationInstances: typeof instances }).__notificationInstances = instances
       ;(window as unknown as { __notifications: typeof log }).__notifications = log
       if (initial === 'absent') {
         delete (window as unknown as { Notification?: unknown }).Notification
@@ -262,13 +264,14 @@ test.describe('nightly reminder', () => {
         static permission = initial as NotificationPermission
         static async requestPermission(): Promise<NotificationPermission> {
           log.asked += 1
-          FakeNotification.permission = 'granted'
-          return 'granted'
+          FakeNotification.permission = answered as NotificationPermission
+          return answered as NotificationPermission
         }
-        constructor(title: string, options?: NotificationOptions) { log.shown.push({ title, body: options?.body }) }
+        onclick?: () => void
+        constructor(title: string, options?: NotificationOptions) { log.shown.push({ title, body: options?.body }); instances.push(this) }
       }
       Object.defineProperty(window, 'Notification', { value: FakeNotification, configurable: true })
-    }, permission)
+    }, [permission, answer] as const)
   }
   const log = (page: Page) => page.evaluate(() => (window as unknown as { __notifications: { asked: number; shown: { title: string; body?: string }[] } }).__notifications)
 
@@ -292,6 +295,7 @@ test.describe('nightly reminder', () => {
     expect((await log(page)).shown).toHaveLength(1)
   })
 
+  const clickLastNotification = (page: Page) => page.evaluate(() => (window as unknown as { __notificationInstances: { onclick?: () => void }[] }).__notificationInstances.at(-1)?.onclick?.())
   const withCheckInToday = { ...plan, checkIns: [...plan.checkIns, { date: '2026-10-21', exercise: 'no' }] }
 
   test('reminds a returning user at 22:00 when the check-in is still open (control for the next test)', async ({ page }) => {
@@ -313,6 +317,48 @@ test.describe('nightly reminder', () => {
     await page.clock.runFor(2 * 60 * 60_000)
     expect((await log(page)).shown).toEqual([])
   })
+
+  test('tapping the notification opens the check-in', async ({ page }) => {
+    await stubNotifications(page, 'granted', true)
+    await start(page, SIZES[0], 'light', plan, '2026-10-21T20:30:00.000Z')
+    await open(page, 'today', 'Hoy')
+    await page.clock.runFor(2 * 60 * 60_000)
+    await expect.poll(async () => (await log(page)).shown).toHaveLength(1)
+    await clickLastNotification(page)
+    await expect(page).toHaveURL(/#\/checkin$/)
+  })
+
+  test('turning the reminder off stops it, and a refused permission says so', async ({ page }) => {
+    await stubNotifications(page, 'default')
+    await start(page, SIZES[0], 'light', plan, '2026-10-21T20:30:00.000Z')
+    await open(page, 'today', 'Hoy')
+    const remind = page.getByTestId('checkin-remind')
+    await remind.click()
+    await expect(remind).toHaveAttribute('aria-pressed', 'true')
+    await remind.click()
+    await expect(remind).toHaveAttribute('aria-pressed', 'false')
+    await page.clock.runFor(2 * 60 * 60_000)
+    expect((await log(page)).shown).toEqual([])
+  })
+
+  test('says so when the browser refuses the permission', async ({ page }) => {
+    await stubNotifications(page, 'default', false, 'denied')
+    await start(page, SIZES[0], 'light', plan, '2026-10-21T20:30:00.000Z')
+    await open(page, 'today', 'Hoy')
+    await page.getByTestId('checkin-remind').click()
+    await expect(page.getByText('Las notificaciones están bloqueadas en este navegador', { exact: false })).toBeVisible()
+    // Nothing is armed: the button is gone because the browser now says "denied".
+    await expect(page.getByTestId('checkin-remind')).toHaveCount(0)
+  })
+
+  test('a finished check-in that never had the reminder armed offers no reminder', async ({ page }) => {
+    await stubNotifications(page, 'default')
+    await start(page, SIZES[0], 'light', withCheckInToday, '2026-10-21T20:30:00.000Z')
+    await open(page, 'today', 'Hoy')
+    await expect(page.getByTestId('checkin-done')).toHaveText('Hecho ✓ · racha 2')
+    await expect(page.getByTestId('checkin-remind')).toHaveCount(0)
+  })
+
 
   for (const permission of ['denied', 'absent'] as const) {
     test(`offers no reminder where notifications are ${permission === 'denied' ? 'blocked' : 'not supported'}`, async ({ page }) => {

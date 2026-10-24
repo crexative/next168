@@ -3,6 +3,7 @@ import { createApp, h, nextTick, reactive } from 'vue'
 import { currentAndNext } from '@/core/now'
 import { i18n } from '@/i18n'
 import { deepWork, plannerDocument } from '@/features/week/testDocument'
+import ActualChoices from './ActualChoices.vue'
 import NowCard from './NowCard.vue'
 
 // Two adjacent blocks: Deep work 09:00–11:00 (120 min) and Review 11:00–11:30 (30 min).
@@ -48,5 +49,25 @@ describe('NowCard when the current block changes', () => {
     expect(host.querySelector('[data-testid="now-title"]')?.textContent).toBe('Review')
     expect(host.querySelector('.partial')).toBeNull()
     expect(onRecord).not.toHaveBeenCalled()
+  })
+
+  it('also drops the draft for the next day’s occurrence of the same block', async () => {
+    const state = reactive({ start: '2026-10-21T09:00:00.000Z', end: '2026-10-21T11:00:00.000Z', date: '2026-10-21' })
+    const host = window.document.createElement('div')
+    window.document.body.append(host)
+    i18n.global.locale.value = 'en'
+    const app = createApp({
+      render: () => h(ActualChoices, {
+        occurrence: { blockId: 'deep', categoryId: 'work', title: 'Deep work', plannedMinutes: 120, ...state }, writable: true,
+      }),
+    }).use(i18n)
+    app.mount(host)
+    unmount = () => { app.unmount(); host.remove() }
+    host.querySelector<HTMLButtonElement>('.choice.is-partial')!.click()
+    await nextTick()
+    expect(host.querySelector('.partial')).not.toBeNull()
+    Object.assign(state, { start: '2026-10-22T09:00:00.000Z', end: '2026-10-22T11:00:00.000Z', date: '2026-10-22' })
+    await nextTick()
+    expect(host.querySelector('.partial')).toBeNull()
   })
 })

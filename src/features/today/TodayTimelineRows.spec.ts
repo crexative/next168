@@ -64,4 +64,27 @@ describe('TodayTimeline rows', () => {
     check.click()
     expect(onCompleteTask).toHaveBeenCalledWith('t', 'Write report')
   })
+
+  it('shows midnight where a block runs past the end of the day, and where an item began before it', async () => {
+    const host = await render({ items: [...items, {
+      kind: 'event' as const, key: 'event:late', title: 'Night shift', start: '2026-10-20T22:00:00.000Z', end: '2026-10-21T01:00:00.000Z', conflict: false,
+    }] })
+    const rows = [...host.querySelectorAll('[data-testid="timeline-item"]')]
+    const labels = (title: string) => {
+      const row = rows.find((candidate) => candidate.textContent?.includes(title) && candidate.querySelector('[data-testid="timeline-start"]'))!
+      return [row.querySelector('[data-testid="timeline-start"]')!.textContent, row.querySelector('[data-testid="timeline-end"]')!.textContent]
+    }
+    // Tonight's Sleep ends tomorrow at 06:00 but today's part ends at midnight; the event began yesterday at 22:00.
+    expect(labels('Sleep')).toEqual(['10:00 PM', '12:00 AM'])
+    expect(labels('Night shift')).toEqual(['12:00 AM', '1:00 AM'])
+  })
+
+  it('dims what is over and locks the task check while the plan is read-only', async () => {
+    const task = { kind: 'task' as const, key: 'task:t@10', title: 'Write report', start: '2026-10-21T13:00:00.000Z', end: '2026-10-21T14:00:00.000Z', conflict: false, taskId: 't', categoryId: 'work', late: false }
+    const host = await render({ items: [...items, task], writable: false })
+    const past = [...host.querySelectorAll('[data-testid="timeline-item"].is-past')].map((row) => row.querySelector('.row-title-text')?.textContent ?? 'carry-over')
+    // Last night's Sleep and the finished Deep work are over; tonight's Sleep and the 13:00 task are not.
+    expect(past).toEqual(['carry-over', 'Deep work'])
+    expect(host.querySelector<HTMLButtonElement>('[data-testid="task-check"]')!.disabled).toBe(true)
+  })
 })
