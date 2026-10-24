@@ -14,6 +14,8 @@ export interface CategoryTemplate {
   colorKey: ColorKey
   goal: Category['goal']
   preset: BlockPreset
+  // Offered already ticked: nearly every week has them, and one tap less is the common path.
+  preselected?: boolean
 }
 
 const SLEEP_ICON = '😴'
@@ -22,8 +24,8 @@ const WEEKDAYS: DayIndex[] = [1, 2, 3, 4, 5]
 const at = (hours: number, minutes = 0) => hours * 60 + minutes
 
 export const CATEGORY_TEMPLATES: CategoryTemplate[] = [
-  { id: 'sleep', icon: SLEEP_ICON, colorKey: 'purple', goal: { type: 'min', hoursPerWeek: 49 }, preset: { start: at(23), end: at(7), days: EVERY_DAY } },
-  { id: 'work', icon: '💼', colorKey: 'blue', goal: { type: 'max', hoursPerWeek: 40 }, preset: { start: at(9), end: at(17), days: WEEKDAYS } },
+  { id: 'sleep', icon: SLEEP_ICON, colorKey: 'purple', goal: { type: 'min', hoursPerWeek: 49 }, preset: { start: at(23), end: at(7), days: EVERY_DAY }, preselected: true },
+  { id: 'work', icon: '💼', colorKey: 'blue', goal: { type: 'max', hoursPerWeek: 40 }, preset: { start: at(9), end: at(17), days: WEEKDAYS }, preselected: true },
   { id: 'exercise', icon: EXERCISE_ICON, colorKey: 'green', goal: { type: 'min', hoursPerWeek: 4 }, preset: { start: at(18), end: at(19), days: [1, 3, 5] } },
   { id: 'learning', icon: '📚', colorKey: 'orange', goal: { type: 'min', hoursPerWeek: 5 }, preset: { start: at(20), end: at(21), days: [2, 4] } },
   { id: 'family', icon: '👨‍👩‍👧', colorKey: 'pink', goal: { type: 'none', hoursPerWeek: 0 }, preset: { start: at(10), end: at(14), days: [6] } },
@@ -37,6 +39,31 @@ export interface TemplateChoice {
   name: string
   colorKey: ColorKey
   sketch: boolean
+  goal: Category['goal']
+}
+
+export const WEEK_MINUTES = 168 * 60
+
+// The weekly minutes a template's typical block covers (a block that crosses midnight counts its whole length).
+export function presetWeeklyMinutes(preset: BlockPreset): number {
+  const length = preset.end > preset.start ? preset.end - preset.start : 24 * 60 - preset.start + preset.end
+  return length * preset.days.length
+}
+
+export function templateOf(templateId: string): CategoryTemplate {
+  return CATEGORY_TEMPLATES.find((template) => template.id === templateId)!
+}
+
+// What the wizard's current picks add up to, so the week's 168 hours stay visible while choosing.
+export function plannedMinutes(choices: TemplateChoice[]): number {
+  return choices
+    .filter((choice) => choice.selected && choice.sketch)
+    .reduce((sum, choice) => sum + presetWeeklyMinutes(templateOf(choice.templateId).preset), 0)
+}
+
+// A goal is fine when it has no hours or hours the category editor would accept (0.5–168).
+export function goalHoursValid(goal: Category['goal']): boolean {
+  return goal.type === 'none' || (Number.isFinite(goal.hoursPerWeek) && goal.hoursPerWeek >= 0.5 && goal.hoursPerWeek <= 168)
 }
 
 export interface FirstTaskChoice {
@@ -77,16 +104,22 @@ export function defaultTaskCategoryId(categories: Category[], current: string): 
 export function buildOnboardingResult(
   choices: TemplateChoice[],
   firstTask: FirstTaskChoice,
-  environment: { newId: () => string; now: Date },
+  environment: { newId: () => string; now: Date; existing?: Category[] },
 ): OnboardingResult {
   const picked = choices.filter((choice) => choice.selected && choice.name.trim() !== '')
-  const categoryIds = new Map(picked.map((choice) => [choice.templateId, environment.newId()]))
+  // Reopening the wizard on a workspace that already has categories must not duplicate them: a pick with the
+  // name of an existing category is that category.
+  const existingByName = new Map((environment.existing ?? []).map((category) => [category.name.trim().toLowerCase(), category]))
+  const reused = (choice: TemplateChoice) => existingByName.get(choice.name.trim().toLowerCase())
+  const categoryIds = new Map(picked.map((choice) => [choice.templateId, reused(choice)?.id ?? environment.newId()]))
   const templates = new Map(CATEGORY_TEMPLATES.map((template) => [template.id, template]))
 
-  const colorKeys = distinctColorKeys(picked.map((choice) => choice.colorKey))
-  const categories = picked.map((choice, index): Category => {
+  // New categories get distinct colours, also from the categories a reopened wizard keeps.
+  const created = picked.filter((choice) => !reused(choice))
+  const colorKeys = distinctColorKeys(created.map((choice) => choice.colorKey), (environment.existing ?? []).map((category) => category.colorKey))
+  const categories = created.map((choice, index): Category => {
     const template = templates.get(choice.templateId)!
-    return { id: categoryIds.get(choice.templateId)!, name: choice.name.trim(), colorKey: colorKeys[index]!, icon: template.icon, goal: template.goal }
+    return { id: categoryIds.get(choice.templateId)!, name: choice.name.trim(), colorKey: colorKeys[index]!, icon: template.icon, goal: goalHoursValid(choice.goal) ? { ...choice.goal, hoursPerWeek: choice.goal.type === 'none' ? 0 : choice.goal.hoursPerWeek } : template.goal }
   })
   const blocks = picked.filter((choice) => choice.sketch).map((choice): TimeBlock => {
     const { preset } = templates.get(choice.templateId)!

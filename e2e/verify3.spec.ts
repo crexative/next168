@@ -1,5 +1,5 @@
 import { expect, test, type Locator, type Page } from '@playwright/test'
-import { V2_KEY, onlyProject, openTab, seedKey } from './fixtures'
+import { V2_KEY, onlyProject, openAdvanced, openTab, seedKey } from './fixtures'
 import { addFromMenu } from './support/week'
 
 // Third verification: tablet Week lanes, the New block default category and the update notice on a phone.
@@ -27,7 +27,7 @@ async function seed(page: Page, locale = 'en', at = NOW, checkIns: { date: strin
 }
 
 async function importEvents(page: Page, contents = ics): Promise<void> {
-  await openTab(page, 'settings')
+  await openAdvanced(page)
   await page.getByLabel('Import .ics file', { exact: true }).setInputFiles({ name: 'conflicts.ics', mimeType: 'text/calendar', buffer: Buffer.from(contents) })
   await expect(page.getByTestId('calendar-source')).toHaveCount(1)
 }

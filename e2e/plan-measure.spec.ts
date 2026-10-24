@@ -1,10 +1,12 @@
 import { readFileSync, writeFileSync } from 'node:fs'
 import AxeBuilder from '@axe-core/playwright'
 import { expect, test, type Page } from '@playwright/test'
-import { LEGACY_BLOCK_COUNT, legacyData, openTab, seedKey, V2_KEY } from './fixtures'
+import { LEGACY_BLOCK_COUNT, legacyData, openAdvanced, openTab, seedKey, V2_KEY } from './fixtures'
 import { storedPlanner, storedRecord } from './support/indexedDb'
 
 const LEGACY_KEYS = ['next168-data', 'next168-v2', 'next168-v2-backup', 'next168-v2-proposals', 'next168-tutorial-completed']
+// Device preferences kept beside the planner (export nudge, storage protection, last task category).
+const PREFERENCE_KEYS = ['next168-last-export', 'next168-first-seen', 'next168-export-snoozed', 'next168-persist-requested', 'next168-last-task-category']
 
 const MONDAY_MORNING = new Date('2026-10-26T08:00:00Z')
 
@@ -51,21 +53,25 @@ test.describe('plan and measure', () => {
   test('@smoke a fresh profile gets onboarding with templates and ends with a populated week', async ({ page }) => {
     await page.clock.setFixedTime(MONDAY_MORNING)
     await page.goto('./')
-    const dialog = page.getByRole('dialog', { name: 'Pick your categories' })
+    const dialog = page.getByRole('dialog', { name: 'Your week has 168 hours. Decide where they go.' })
     await expect(dialog).toBeVisible()
 
-    await dialog.getByRole('checkbox', { name: 'Use Sleep' }).check()
-    await dialog.getByRole('checkbox', { name: 'Use Work' }).check()
+    // Sleep and Work come ticked.
+    await expect(dialog.getByRole('checkbox', { name: 'Use Sleep' })).toBeChecked()
+    await expect(dialog.getByRole('checkbox', { name: 'Use Work' })).toBeChecked()
     await dialog.getByRole('checkbox', { name: 'Use Exercise' }).check()
-    await dialog.getByRole('textbox', { name: 'Category name' }).nth(1).fill('Day job')
+    await dialog.getByRole('button', { name: 'Edit Work' }).click()
+    await dialog.getByRole('textbox', { name: 'Category name' }).fill('Day job')
     await dialog.getByRole('button', { name: 'Next' }).click()
 
-    await expect(page.getByRole('dialog', { name: 'Sketch a typical week' })).toBeVisible()
+    await expect(page.getByRole('dialog', { name: 'Adjust your typical week' })).toBeVisible()
     await expect(page.getByText('23:00–07:00 · Every day')).toBeVisible()
     await page.getByRole('button', { name: 'Next' }).click()
 
     await page.getByLabel('Task', { exact: true }).fill('Book a health check')
     await page.getByRole('button', { name: 'Finish' }).click()
+    await expect(page.getByRole('dialog', { name: 'Your week is ready' })).toBeVisible()
+    await page.getByTestId('onboarding').getByRole('button', { name: 'Close' }).click()
     await expect(page.getByTestId('onboarding')).toBeHidden()
 
     const document = await storedDocument(page)
@@ -182,19 +188,21 @@ test.describe('plan and measure', () => {
       tasks: [{ id: 't-1', title: 'Write report', categoryId: 'c-study', durationMin: 60, priority: 2, createdAt: '2026-10-20T10:00:00.000Z' }],
       checkIns: [{ date: '2026-10-25', bedtime: 1380, wake: 420, stress: 2 }],
     }))
-    await openTab(page, 'settings')
+    await openAdvanced(page)
     await expect(page.getByTestId('data-mode')).toContainText('This browser')
     await expect(page.getByTestId('data-workspace')).toHaveText('ws-e2e')
+    await openTab(page, 'settings')
     const before = withoutBookkeeping(await storedDocument(page))
 
     const downloadPromise = page.waitForEvent('download')
-    await page.getByRole('button', { name: 'Export JSON' }).click()
+    await page.getByRole('button', { name: 'Export backup' }).click()
     const download = await downloadPromise
     expect(download.suggestedFilename()).toBe('next168-export-2026-10-26.json')
     const exportPath = testInfo.outputPath('export.json')
     await download.saveAs(exportPath)
     expect(JSON.parse(readFileSync(exportPath, 'utf8')).format).toBe('next168-export')
 
+    await page.evaluate((keys) => keys.forEach((key) => window.localStorage.setItem(key, 'x')), PREFERENCE_KEYS)
     await page.getByRole('button', { name: 'Delete all data…' }).click()
     const dialog = page.getByRole('dialog', { name: 'Delete everything?' })
     const confirm = dialog.getByRole('button', { name: 'Delete everything' })
@@ -208,13 +216,16 @@ test.describe('plan and measure', () => {
     expect(await storedRecord(page, 'backup')).toBeNull()
     expect(await storedRecord(page, 'proposals')).toBeNull()
     expect(await page.evaluate((keys) => keys.filter((key) => window.localStorage.getItem(key) !== null), LEGACY_KEYS)).toEqual([])
+    expect(await page.evaluate((keys) => keys.filter((key) => window.localStorage.getItem(key) !== null), PREFERENCE_KEYS)).toEqual([])
 
     // A reload re-runs the seeding script, which writes next168-v2 again, as a kill can resurrect a removed key:
     // the planner stays empty and the key is removed again.
     await page.reload()
+    await openAdvanced(page)
     await expect(page.getByTestId('data-workspace')).toHaveText(wiped.workspaceId)
     expect((await storedDocument(page)).categories).toEqual([])
     expect(await page.evaluate((keys) => keys.filter((key) => window.localStorage.getItem(key) !== null), LEGACY_KEYS)).toEqual([])
+    await openTab(page, 'settings')
 
     await page.getByLabel('Choose a Next168 export file').setInputFiles(exportPath)
     await expect(page.getByTestId('import-preview')).toContainText('File schema version 2')
@@ -273,7 +284,10 @@ test.describe('plan and measure', () => {
     expect(edited).toMatchObject({ name: 'Deep study', goal: { type: 'min', hoursPerWeek: 3 } })
 
     await page.getByRole('button', { name: 'Edit Deep study' }).click()
-    await expect(page.getByRole('dialog')).toContainText('1 time blocks and 0 tasks use this category')
+    await expect(page.getByRole('dialog')).toContainText('This category has 1 block. To delete it, move everything to another category.')
+    // No destination is chosen for the person: deleting waits for one.
+    await expect(page.getByLabel('Move them to')).toHaveValue('')
+    await expect(page.getByRole('button', { name: 'Move and delete' })).toBeDisabled()
     await page.getByLabel('Move them to').selectOption('c-work')
     await page.getByRole('button', { name: 'Move and delete' }).click()
     const categoryIds = async () => (await storedDocument(page)).categories.map((category: { id: string }) => category.id)

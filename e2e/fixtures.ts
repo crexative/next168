@@ -47,6 +47,16 @@ export async function openTab(page: Page, tab: TabName, base = './'): Promise<vo
   await page.waitForFunction(() => document.getAnimations().length === 0)
 }
 
+// Calendars, the AI assistant connection, the on-device model, storage protection and technical details
+// live one level below Settings.
+export async function openAdvanced(page: Page, base = './'): Promise<void> {
+  await page.goto(`${base}#/settings/advanced`)
+  await expect(page.getByRole('heading', { level: 1, name: TAB_TITLES.settings })).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'Integrations and advanced' })).toBeVisible()
+  await expect(page.locator('.view-enter-active, .view-leave-active')).toHaveCount(0)
+  await page.waitForFunction(() => document.getAnimations().length === 0)
+}
+
 export function onlyProject(name: string) {
   return ({ browserName }: { browserName: string }, testInfo: TestInfo): void => {
     test.skip(testInfo.project.name !== name, `runs only in the ${name} project, not ${browserName}`)

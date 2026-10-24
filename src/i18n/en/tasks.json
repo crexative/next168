@@ -27,12 +27,13 @@
   "add": {
     "title": "Add task",
     "titleLabel": "Task",
-    "titlePlaceholder": "What needs doing?",
+    "titlePlaceholder": "Add task…",
     "duration": "Duration",
     "category": "Category",
     "dueDate": "Due date (optional)",
     "priority": "Priority",
-    "submit": "Add task"
+    "submit": "Add task",
+    "details": "Details for this task"
   },
   "priority": {
     "1": "High",

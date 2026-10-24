@@ -3,8 +3,7 @@ import { computed, onMounted, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { usePlannerStore } from '@/stores/plannerStore'
 import Button from '@/ui/Button.vue'
-import ListGroup from '@/ui/ListGroup.vue'
-import ListRow from '@/ui/ListRow.vue'
+import BackButton from '@/features/settings/BackButton.vue'
 import ProposalCard from './ProposalCard.vue'
 import { WEBLLM_DOWNLOAD_BYTES } from './WebLlmProvider'
 import { useAssistant } from './useAssistant'
@@ -25,28 +24,60 @@ const canRetry = computed(() => (assistant.failure.value === 'network' || assist
 
 onMounted(() => { void assistant.refresh() })
 
-async function submit(): Promise<void> {
+const SUGGESTIONS = ['hours', 'next', 'overflow'] as const
+const suggestions = computed(() => SUGGESTIONS.map((key) => ({ key, text: t(`assistant.suggestions.${key}`) })))
+const modelDetail = computed(() => t(`assistant.status.webllmDetail.${modelState.value}`))
+
+// A count in the parameters picks the plural form of the answer ("1 task does not fit" / "2 tasks do not fit").
+function translate(key: string, params?: Record<string, unknown>): string {
+  const count = params?.count
+  return typeof count === 'number' ? t(key, params ?? {}, count) : t(key, params ?? {})
+}
+
+async function ask(text: string): Promise<void> {
   const document = planner.document
-  if (!document || !question.value.trim()) return
+  if (!document || !text.trim()) return
+  await assistant.ask(text, { document, now: new Date(), locale: locale.value, timeZone: document.settings.timeZone, translate })
+}
+
+async function submit(): Promise<void> {
   const text = question.value
+  if (!planner.document || !text.trim()) return
   question.value = ''
-  await assistant.ask(text, {
-    document, now: new Date(), locale: locale.value, timeZone: document.settings.timeZone,
-    translate: (key, params) => t(key, params ?? {}),
-  })
+  await ask(text)
 }
 </script>
 
 <template>
   <div class="assistant">
-    <ListGroup :header="t('assistant.status.header')">
-      <ListRow :title="t('assistant.providers.rules')" :subtitle="t('assistant.status.rulesDetail')">
-        <template #trailing><span data-testid="status-rules">{{ t('assistant.status.available') }}</span></template>
-      </ListRow>
-      <ListRow :title="t('assistant.providers.webllm')" :subtitle="t(`assistant.status.webllmDetail.${modelState}`)">
-        <template #trailing><span data-testid="status-webllm">{{ t(`assistant.status.${modelState}`) }}</span></template>
-      </ListRow>
-    </ListGroup>
+    <BackButton current="assistant" fallback="today" />
+
+    <form class="composer" data-testid="composer" @submit.prevent="submit">
+      <label class="sr-only" for="assistant-question">{{ t('assistant.chat.label') }}</label>
+      <input id="assistant-question" v-model="question" class="input t-body" type="text" autocomplete="off" enterkeyhint="send" :placeholder="t('assistant.chat.placeholder')" :disabled="!planner.document">
+      <Button v-if="assistant.busy.value === 'asking'" variant="tinted" @click="assistant.cancel()">{{ t('assistant.progress.cancel') }}</Button>
+      <Button v-else type="submit" :disabled="!question.trim() || !planner.document">{{ t('assistant.chat.send') }}</Button>
+    </form>
+
+    <ul v-if="assistant.messages.value.length === 0" class="suggestions" :aria-label="t('assistant.suggestions.label')" data-testid="suggestions">
+      <li v-for="suggestion in suggestions" :key="suggestion.key">
+        <button class="suggestion t-subhead" type="button" :disabled="!planner.document || assistant.busy.value === 'asking'" @click="ask(suggestion.text)">{{ suggestion.text }}</button>
+      </li>
+    </ul>
+
+    <section class="chat" data-testid="chat" :aria-label="t('assistant.chat.label')">
+      <div v-if="failureMessage" class="failure-row">
+        <p class="t-subhead failure" role="alert" data-testid="assistant-failure">{{ failureMessage }}</p>
+        <Button v-if="canRetry" variant="tinted" data-testid="assistant-retry" @click="assistant.prepareModel()">{{ t('assistant.retry') }}</Button>
+      </div>
+      <p v-if="assistant.busy.value === 'asking'" class="t-footnote t-secondary" role="status">{{ t('assistant.chat.thinking') }}</p>
+      <ol class="messages" aria-live="polite">
+        <li v-for="message in assistant.messages.value" :key="message.id" class="message" :class="`is-${message.role}`" :data-role="message.role">
+          <p class="t-body bubble">{{ message.text }}</p>
+          <ProposalCard v-if="message.proposal" :input="message.proposal" />
+        </li>
+      </ol>
+    </section>
 
     <section v-if="modelState === 'downloadable' && !assistant.busy.value" class="card" aria-labelledby="optin-title">
       <h2 id="optin-title" class="t-headline">{{ t('assistant.optIn.title') }}</h2>
@@ -62,33 +93,22 @@ async function submit(): Promise<void> {
       <Button variant="tinted" @click="assistant.cancel()">{{ t('assistant.progress.cancel') }}</Button>
     </section>
 
-    <section class="chat" :aria-label="t('assistant.chat.label')">
-      <ol class="messages" aria-live="polite">
-        <li v-for="message in assistant.messages.value" :key="message.id" class="message" :class="`is-${message.role}`" :data-role="message.role">
-          <p class="t-body bubble">{{ message.text }}</p>
-          <ProposalCard v-if="message.proposal" :input="message.proposal" />
-        </li>
-      </ol>
-      <div v-if="failureMessage" class="failure-row">
-        <p class="t-subhead failure" role="alert" data-testid="assistant-failure">{{ failureMessage }}</p>
-        <Button v-if="canRetry" variant="tinted" data-testid="assistant-retry" @click="assistant.prepareModel()">{{ t('assistant.retry') }}</Button>
-      </div>
-      <p v-if="assistant.busy.value === 'asking'" class="t-footnote t-secondary" role="status">{{ t('assistant.chat.thinking') }}</p>
-      <form class="composer" @submit.prevent="submit">
-        <label class="sr-only" for="assistant-question">{{ t('assistant.chat.label') }}</label>
-        <input id="assistant-question" v-model="question" class="field t-body" type="text" autocomplete="off" :placeholder="t('assistant.chat.placeholder')" :disabled="!planner.document">
-        <Button v-if="assistant.busy.value === 'asking'" variant="tinted" @click="assistant.cancel()">{{ t('assistant.progress.cancel') }}</Button>
-        <Button v-else type="submit" :disabled="!question.trim() || !planner.document">{{ t('assistant.chat.send') }}</Button>
-      </form>
+    <footer class="notes" data-testid="notes">
+      <p class="t-footnote t-secondary" data-testid="assistant-status">
+        <i18n-t keypath="assistant.status.line" scope="global" tag="span">
+          <template #rules><span data-testid="status-rules">{{ t('assistant.status.available') }}</span></template>
+          <template #model><span data-testid="status-webllm">{{ t(`assistant.status.${modelState}`) }}</span></template>
+        </i18n-t>
+      </p>
+      <p class="t-footnote t-secondary">{{ modelDetail }}</p>
       <p class="t-footnote t-secondary">{{ t('assistant.privacy') }}</p>
-    </section>
+    </footer>
   </div>
 </template>
 
 <style scoped>
-/* Same 16 px side gutter as the other screens; the group header and footer are already inset inside the group. */
+/* Same 16 px side gutter as the other screens. */
 .assistant { display: flex; flex-direction: column; gap: var(--space-4); max-width: 40rem; padding: 0 var(--space-4) var(--space-6); }
-.assistant :deep(.list-header), .assistant :deep(.list-footer) { padding-inline: 0; }
 .card { display: flex; flex-direction: column; gap: var(--space-3); padding: var(--space-4); background: var(--surface); border-radius: var(--radius-card); }
 progress { width: 100%; accent-color: var(--tint); }
 .chat { display: flex; flex-direction: column; gap: var(--space-3); }
@@ -99,7 +119,16 @@ progress { width: 100%; accent-color: var(--tint); }
 .is-user .bubble { background: var(--tint); color: var(--tint-text); }
 .failure-row { display: flex; flex-direction: column; align-items: flex-start; gap: var(--space-2); }
 .failure { margin: 0; color: var(--danger-label); }
-.composer { display: flex; gap: var(--space-2); }
-.field { flex: 1; min-width: 0; min-height: var(--tap-target); padding: 0 var(--space-3); border: 0; border-radius: var(--radius-control); background: var(--surface); color: var(--label); }
+.composer { display: flex; flex-wrap: wrap; gap: var(--space-2); }
+/* The hint stays whole: on a narrow screen the button drops to its own line instead of squeezing the field. */
+.composer .input { flex: 1 1 16rem; min-width: 0; }
+.composer > button { margin-inline-start: auto; }
+.suggestions { display: flex; flex-wrap: wrap; gap: var(--space-2); margin: 0; padding: 0; list-style: none; }
+.suggestion { min-height: var(--tap-target); padding: var(--space-2) var(--space-4); border: 0; border-radius: 999px; background: color-mix(in srgb, var(--tint) 12%, transparent); color: var(--tint-label); text-align: start; transition: transform 0.1s var(--ease-out), opacity 0.1s; touch-action: manipulation; }
+.suggestion:active:not(:disabled) { transform: scale(0.97); opacity: 0.85; }
+.suggestion:disabled { opacity: 0.4; }
+.notes { display: flex; flex-direction: column; gap: var(--space-1); margin-top: var(--space-2); }
+.notes p { margin: 0; }
+@media (prefers-reduced-motion: reduce) { .suggestion:active:not(:disabled) { transform: none; opacity: 0.7; } }
 .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
 </style>

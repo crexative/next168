@@ -17,7 +17,8 @@
       "downloadable": "Ejecuta un modelo de lenguaje pequeño en este dispositivo. Requiere una descarga única.",
       "unavailable": "Este dispositivo o navegador no puede ejecutar el modelo (necesita WebGPU). Las respuestas rápidas siguen funcionando.",
       "checking": "Comprobando este dispositivo…"
-    }
+    },
+    "line": "Respuestas rápidas: {rules} · Modelo en el dispositivo: {model}"
   },
   "optIn": {
     "title": "Activa el modelo en el dispositivo",
@@ -48,7 +49,7 @@
     "unknown": "Algo salió mal. Inténtalo de nuevo."
   },
   "settings": {
-    "header": "Asistente",
+    "header": "Asistente en el dispositivo",
     "provider": "Responder con",
     "needsDownload": "El modelo aún no está descargado.",
     "openAssistant": "Abrir el asistente",
@@ -92,12 +93,18 @@
     "nextBlock": "Siguiente: {title} el {date} a las {time}.",
     "noNextBlock": "No hay ningún bloque próximo en la semana.",
     "noOverflow": "Todas las tareas pendientes caben en tu tiempo libre.",
-    "overflow": "{count} tarea(s) no caben o van tarde: {titles}. Quedan {amount} sin programar.",
+    "overflow": "{count} tarea no cabe o va tarde: {titles}. Quedan {amount} sin programar. | {count} tareas no caben o van tarde: {titles}. Quedan {amount} sin programar.",
     "unassigned": "{amount} de la semana están sin asignar ({planned} planificadas de 168 h).",
     "totalPlanned": "{planned} planificadas esta semana de 168 h.",
     "rulesCannotChange": "Cambiar el plan requiere el modelo en el dispositivo. Actívalo en Ajustes, en Asistente.",
     "rulesCannotChangeHere": "Cambiar el plan requiere el modelo en el dispositivo, que este dispositivo o navegador no puede ejecutar. Las respuestas rápidas sobre tus horas siguen funcionando.",
     "rulesUnknown": "Puedo decirte las horas de una categoría esta semana, lo que falta para una meta, las horas sin asignar, tu próximo bloque y qué tareas no caben."
   },
-  "retry": "Reintentar"
+  "retry": "Reintentar",
+  "suggestions": {
+    "label": "Preguntas sugeridas",
+    "hours": "¿Cuántas horas libres tengo?",
+    "next": "¿Qué sigue ahora?",
+    "overflow": "¿Qué tareas no caben?"
+  }
 }

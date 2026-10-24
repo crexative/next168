@@ -36,12 +36,18 @@
     "hoursRange": "Verwenden Sie 0,5 bis 168 Stunden."
   },
   "deleteTitle": "Kategorie löschen",
-  "inUse": "{blocks} Blöcke und {tasks} Aufgaben verwenden diese Kategorie. Verschieben Sie sie in eine andere Kategorie, um sie zu löschen.",
+  "inUse": "Diese Kategorie enthält {items}. Verschiebe zum Löschen alles in eine andere Kategorie.",
   "reassignTo": "Verschieben nach",
   "noReassignTarget": "Legen Sie zuerst eine weitere Kategorie an.",
   "reassignAndDelete": "Verschieben und löschen",
   "delete": "Kategorie löschen",
   "deleted": "„{name}“ gelöscht",
   "changedElsewhere": "Das wurde anderswo geändert und deshalb neu geladen. Bitte prüfen und erneut versuchen.",
-  "colorInUse": "{name} nutzt diese Farbe bereits. Sie können sie trotzdem behalten."
+  "colorInUse": "{name} nutzt diese Farbe bereits. Sie können sie trotzdem behalten.",
+  "usage": {
+    "and": "{first} und {second}",
+    "blocks": "keine Blöcke | {count} Block | {count} Blöcke",
+    "tasks": "keine Aufgaben | {count} Aufgabe | {count} Aufgaben"
+  },
+  "chooseTarget": "Kategorie wählen"
 }

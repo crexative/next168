@@ -17,7 +17,8 @@
       "downloadable": "Exécute un petit modèle de langage sur cet appareil. Nécessite un téléchargement unique.",
       "unavailable": "Cet appareil ou ce navigateur ne peut pas exécuter le modèle (WebGPU requis). Les réponses rapides fonctionnent toujours.",
       "checking": "Vérification de cet appareil…"
-    }
+    },
+    "line": "Réponses rapides : {rules} · Modèle sur l'appareil : {model}"
   },
   "optIn": {
     "title": "Activer le modèle sur l'appareil",
@@ -48,7 +49,7 @@
     "unknown": "Une erreur s'est produite. Réessayez."
   },
   "settings": {
-    "header": "Assistant",
+    "header": "Assistant sur l'appareil",
     "provider": "Répondre avec",
     "needsDownload": "Le modèle n'est pas encore téléchargé.",
     "openAssistant": "Ouvrir l'assistant",
@@ -92,12 +93,18 @@
     "nextBlock": "Ensuite : {title} le {date} à {time}.",
     "noNextBlock": "Aucun bloc à venir dans la semaine.",
     "noOverflow": "Toutes les tâches en cours tiennent dans votre temps libre.",
-    "overflow": "{count} tâche(s) ne tiennent pas ou sont en retard : {titles}. {amount} non planifiées.",
+    "overflow": "{count} tâche ne tient pas ou est en retard : {titles}. {amount} non planifiées. | {count} tâches ne tiennent pas ou sont en retard : {titles}. {amount} non planifiées.",
     "unassigned": "{amount} de la semaine sont non assignées ({planned} planifiées sur 168 h).",
     "totalPlanned": "{planned} planifiées cette semaine sur 168 h.",
     "rulesCannotChange": "Modifier le plan nécessite le modèle sur l'appareil. Activez-le dans les réglages, sous Assistant.",
     "rulesCannotChangeHere": "Modifier le plan nécessite le modèle sur l'appareil, que cet appareil ou ce navigateur ne peut pas exécuter. Les réponses rapides sur tes heures fonctionnent toujours.",
     "rulesUnknown": "Je peux indiquer les heures d'une catégorie cette semaine, ce qui manque pour un objectif, les heures non assignées, votre prochain bloc et les tâches qui ne tiennent pas."
   },
-  "retry": "Réessayer"
+  "retry": "Réessayer",
+  "suggestions": {
+    "label": "Questions suggérées",
+    "hours": "Combien d'heures libres ai-je ?",
+    "next": "Quel est mon prochain bloc ?",
+    "overflow": "Quelles tâches ne tiennent pas ?"
+  }
 }

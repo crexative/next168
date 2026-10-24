@@ -27,12 +27,13 @@
   "add": {
     "title": "Ajouter une tâche",
     "titleLabel": "Tâche",
-    "titlePlaceholder": "Que faut-il faire ?",
+    "titlePlaceholder": "Ajouter une tâche…",
     "duration": "Durée",
     "category": "Catégorie",
     "dueDate": "Échéance (facultatif)",
     "priority": "Priorité",
-    "submit": "Ajouter la tâche"
+    "submit": "Ajouter la tâche",
+    "details": "Détails de cette tâche"
   },
   "priority": {
     "1": "Haute",

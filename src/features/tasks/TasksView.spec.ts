@@ -60,6 +60,11 @@ it('files a quickly added task under the first non-Sleep category', async () => 
   app.mount(host)
   cleanup = () => { app.unmount(); host.remove() }
   const categorySelect = () => Array.from(host.querySelectorAll('select')).find(select => select.querySelector('option[value="work"]'))
+  // The category appears once there is a title to file.
+  expect(categorySelect()).toBeUndefined()
+  const title = host.querySelector<HTMLInputElement>('input[type=text]')!
+  title.value = 'Call the bank'
+  title.dispatchEvent(new Event('input'))
   await vi.waitFor(() => expect(categorySelect()).toBeDefined())
   expect(categorySelect()!.value).toBe('work')
 })

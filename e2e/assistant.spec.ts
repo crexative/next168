@@ -1,6 +1,6 @@
 import AxeBuilder from '@axe-core/playwright'
 import { expect, test, type Page } from '@playwright/test'
-import { openTab, seedLegacy } from './fixtures'
+import { openAdvanced, openTab, seedLegacy } from './fixtures'
 
 // WebGPU is off for every test here: the planner and the always-on quick answers must keep working.
 test.use({ launchOptions: { args: ['--disable-features=WebGPU'] } })
@@ -59,10 +59,10 @@ test.describe('assistant without WebGPU', () => {
     await openTab(page, 'insights')
   })
 
-  test('Settings offers the assistant section with the privacy promise', async ({ page }) => {
+  test('Integrations and advanced offers the on-device assistant section with the privacy promise', async ({ page }) => {
     await seedLegacy(page)
-    await openTab(page, 'settings')
-    const section = page.getByRole('region', { name: 'Assistant' })
+    await openAdvanced(page)
+    const section = page.getByRole('region', { name: 'On-device assistant' })
     await expect(section.getByText('Runs on this device.')).toBeVisible()
     await expect(section.getByRole('radio', { name: 'Quick answers' })).toBeChecked()
     await expect(section.getByRole('button', { name: 'Delete the downloaded model' })).toHaveCount(0)

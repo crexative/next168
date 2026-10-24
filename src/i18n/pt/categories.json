@@ -36,12 +36,18 @@
     "hoursRange": "Use entre 0,5 e 168 horas."
   },
   "deleteTitle": "Excluir categoria",
-  "inUse": "{blocks} blocos e {tasks} tarefas usam esta categoria. Mova-os para outra categoria para excluí-la.",
+  "inUse": "Esta categoria tem {items}. Para excluí-la, mova tudo para outra categoria.",
   "reassignTo": "Mover para",
   "noReassignTarget": "Crie outra categoria primeiro.",
   "reassignAndDelete": "Mover e excluir",
   "delete": "Excluir categoria",
   "deleted": "“{name}” excluída",
   "changedElsewhere": "Isto mudou noutro lugar, por isso foi recarregado. Reveja e tente novamente.",
-  "colorInUse": "{name} já usa esta cor. Você pode mantê-la mesmo assim."
+  "colorInUse": "{name} já usa esta cor. Você pode mantê-la mesmo assim.",
+  "usage": {
+    "and": "{first} e {second}",
+    "blocks": "nenhum bloco | {count} bloco | {count} blocos",
+    "tasks": "nenhuma tarefa | {count} tarefa | {count} tarefas"
+  },
+  "chooseTarget": "Escolha uma categoria"
 }

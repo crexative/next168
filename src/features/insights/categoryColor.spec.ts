@@ -22,6 +22,10 @@ describe('distinctColorKeys', () => {
     expect(distinctColorKeys(['blue', 'green'])).toEqual(['blue', 'green'])
     expect(distinctColorKeys(['blue', 'blue', 'blue'])).toEqual(['blue', 'green', 'orange'])
   })
+
+  it('also avoids colours already taken elsewhere, returning only the wanted entries', () => {
+    expect(distinctColorKeys(['blue', 'purple'], ['blue', 'green'])).toEqual(['orange', 'purple'])
+  })
 })
 
 describe('categorySharingColor', () => {

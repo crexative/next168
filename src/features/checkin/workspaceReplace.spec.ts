@@ -289,9 +289,8 @@ describe('onboarding and undo actions stay bound to what they were prepared for'
 
   it('rejects old wizard picks after a different first-run workspace replaces it', async () => {
     const { store, click } = await atFinish(firstRun('ws-a'))
-    const sleep = document.body.querySelector<HTMLInputElement>('.onboarding input[aria-label="Use Sleep"]')!
-    sleep.click()
-    await nextTick()
+    // Sleep and Work come ticked, so the wizard has picks without a tap.
+    expect(document.body.querySelector<HTMLInputElement>('.onboarding input[aria-label="Use Sleep"]')!.checked).toBe(true)
     await click('Next')
     await click('Next')
     store.document = firstRun('ws-b')
@@ -306,8 +305,7 @@ describe('onboarding and undo actions stay bound to what they were prepared for'
 
   it('still completes after an unrelated commit in the same workspace', async () => {
     const { store, click } = await atFinish(firstRun('ws-a'))
-    document.body.querySelector<HTMLInputElement>('.onboarding input[aria-label="Use Sleep"]')!.click()
-    await nextTick()
+    expect(document.body.querySelector<HTMLInputElement>('.onboarding input[aria-label="Use Sleep"]')!.checked).toBe(true)
     await click('Next')
     await click('Next')
     await store.commit((draft) => { draft.checkIns.push({ date: TODAY, note: 'x' }) })
@@ -397,6 +395,13 @@ describe('onboarding and undo actions stay bound to what they were prepared for'
     const ctx = await setup(CategorySettings, first)
     host.querySelector<HTMLButtonElement>('[data-testid=category-c-1] .category-button')!.click()
     await nextTick()
+    // Moving things away is a decision: with blocks or tasks in use the destination is chosen first.
+    const target = document.body.querySelector<HTMLSelectElement>('form.editor .danger-zone select')
+    if (target) {
+      target.value = 'c-2'
+      target.dispatchEvent(new Event('change'))
+      await nextTick()
+    }
     const del = document.body.querySelector<HTMLButtonElement>('form.editor .danger-zone button')!
     del.click()
     await ctx.store.settled()

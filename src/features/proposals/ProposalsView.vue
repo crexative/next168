@@ -4,6 +4,7 @@ import { useI18n } from 'vue-i18n'
 import type { ChangeProposal } from '@/core/model'
 import { usePlannerStore } from '@/stores/plannerStore'
 import { companionWarnings } from '@/repositories/CompanionRepository'
+import BackButton from '@/features/settings/BackButton.vue'
 import ListGroup from '@/ui/ListGroup.vue'
 import ListRow from '@/ui/ListRow.vue'
 import { getProposalRepository } from './repository'
@@ -33,6 +34,7 @@ onBeforeUnmount(() => clearInterval(timer))
 
 <template>
   <div class="proposals-view">
+    <BackButton current="proposals" fallback="settings" />
     <p class="t-secondary">{{ t('proposals.description') }}</p>
     <p v-if="message" role="status">{{ message }}</p>
     <p v-if="companionWarnings.length" role="status">{{ t('proposals.durabilityWarning') }}</p>

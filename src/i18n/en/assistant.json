@@ -17,7 +17,8 @@
       "downloadable": "Runs a small language model on this device. Needs a one-time download.",
       "unavailable": "This device or browser cannot run the on-device model (it needs WebGPU). Quick answers still work.",
       "checking": "Checking this device…"
-    }
+    },
+    "line": "Quick answers: {rules} · On-device model: {model}"
   },
   "optIn": {
     "title": "Turn on the on-device model",
@@ -48,7 +49,7 @@
     "unknown": "Something went wrong. Please try again."
   },
   "settings": {
-    "header": "Assistant",
+    "header": "On-device assistant",
     "provider": "Answer with",
     "needsDownload": "The model is not downloaded yet.",
     "openAssistant": "Open the assistant",
@@ -92,12 +93,18 @@
     "nextBlock": "Next: {title} on {date} at {time}.",
     "noNextBlock": "No upcoming block in the next week.",
     "noOverflow": "All unfinished tasks fit in your free time.",
-    "overflow": "{count} task(s) do not fit or are late: {titles}. {amount} left unscheduled.",
+    "overflow": "{count} task does not fit or is late: {titles}. {amount} left unscheduled. | {count} tasks do not fit or are late: {titles}. {amount} left unscheduled.",
     "unassigned": "{amount} of the week are unassigned ({planned} planned of 168 h).",
     "totalPlanned": "{planned} planned this week out of 168 h.",
     "rulesCannotChange": "Changing the plan needs the on-device model. Turn it on in Settings, under Assistant.",
     "rulesCannotChangeHere": "Changing the plan needs the on-device model, which this device or browser cannot run. Quick answers about your hours still work.",
     "rulesUnknown": "I can tell you the hours of a category this week, what is left to reach a goal, unassigned hours, your next block and which tasks do not fit."
   },
-  "retry": "Try again"
+  "retry": "Try again",
+  "suggestions": {
+    "label": "Suggested questions",
+    "hours": "How many free hours do I have?",
+    "next": "What's next?",
+    "overflow": "Which tasks don't fit?"
+  }
 }

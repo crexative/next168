@@ -21,6 +21,19 @@ export function categoryUsage(document: PlannerDocument, categoryId: string): Ca
   }
 }
 
+// "2 blocks and 1 task": only the kinds that are present, each with its own plural form.
+export function usageSummary(
+  plural: (key: 'categories.usage.blocks' | 'categories.usage.tasks', count: number) => string,
+  join: (key: 'categories.usage.and', params: { first: string; second: string }) => string,
+  usage: CategoryUsage,
+): string {
+  const parts = [
+    usage.blocks > 0 ? plural('categories.usage.blocks', usage.blocks) : '',
+    usage.tasks > 0 ? plural('categories.usage.tasks', usage.tasks) : '',
+  ].filter(Boolean)
+  return parts.length === 2 ? join('categories.usage.and', { first: parts[0]!, second: parts[1]! }) : parts[0] ?? ''
+}
+
 export function validateCategoryForm(form: CategoryForm): CategoryFormError | null {
   if (form.name.trim() === '') return 'name-required'
   if (form.goalType !== 'none' && !(form.hours >= 0.5 && form.hours <= 168)) return 'hours-range'

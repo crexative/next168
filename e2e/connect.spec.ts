@@ -83,8 +83,9 @@ test('companion mode never opens the browser planner database (A11)', async ({ p
   const imported = { ...(await companion.workspace.document()), blocks: [{ id: 'b-imported', categoryId: 'focus', title: 'Imported block', days: [3], start: 600, end: 660 }] }
   const bundlePath = testInfo.outputPath('companion-import.json')
   await writeFile(bundlePath, JSON.stringify({ format: 'next168-export', bundleVersion: 1, exportedAt: '2026-10-24T12:00:00.000Z', document: imported, calendarSourceTexts: {} }))
-  await page.goto(`${companion.url}/#/settings`)
+  await page.goto(`${companion.url}/#/settings/advanced`)
   await expect(page.getByTestId('data-mode')).toContainText('companion', { ignoreCase: true })
+  await page.goto(`${companion.url}/#/settings`)
   await page.getByLabel('Choose a Next168 export file').setInputFiles(bundlePath)
   await page.getByRole('button', { name: 'Replace my data' }).click()
   await expect(page.getByTestId('data-notice')).toContainText('Imported and verified')

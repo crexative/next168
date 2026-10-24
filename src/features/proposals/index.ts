@@ -5,7 +5,6 @@ import { CompanionRepository, companionMode } from '@/repositories/CompanionRepo
 import { i18n } from '@/i18n'
 import ProposalsView from './ProposalsView.vue'
 import ConnectionPortal from './ConnectionPortal.vue'
-import registerConnect from '../settings/connect'
 
 export { openProposalReview } from './openProposalReview'
 
@@ -15,7 +14,6 @@ export default function registerProposals(registry: ShellRegistry): void {
     locale: () => i18n.global.locale.value, timeZone: () => Intl.DateTimeFormat().resolvedOptions().timeZone,
   })
   registry.registerView({ id: 'proposals', component: ProposalsView, titleKey: 'proposals.title' })
-  registerConnect(registry)
   const host = document.createElement('div')
   host.dataset.next168Connection = ''
   document.body.append(host)

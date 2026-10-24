@@ -30,7 +30,7 @@ async function openSleepDocument(page: Page, tab: 'today' | 'week', time: string
 test.describe('phone fixes', () => {
   for (const locale of LOCALES) {
     for (const width of PHONE_WIDTHS) {
-      test(`onboarding colour selects show their whole label (${locale}, ${width}px)`, async ({ page }) => {
+      test(`onboarding rows and their colour editor fit the phone (${locale}, ${width}px)`, async ({ page }) => {
         await page.setViewportSize({ width, height: 915 })
         await page.addInitScript(([key, value]) => window.localStorage.setItem(key!, value!), [LANGUAGE_KEY, locale])
         await page.goto('./')
@@ -38,22 +38,17 @@ test.describe('phone fixes', () => {
         await expect(onboarding).toBeVisible()
         await page.waitForFunction(() => document.getAnimations().length === 0)
 
-        const measures = await onboarding.locator('select.color').evaluateAll((selects) => selects.map((select) => {
-          const element = select as HTMLSelectElement
-          const { scrollWidth, clientWidth } = element
-          // The width the browser itself gives this select when it is sized to its longest option.
-          const { width, maxInlineSize, minWidth } = element.style
-          Object.assign(element.style, { width: 'auto', maxInlineSize: 'none', minWidth: '0' })
-          const natural = element.clientWidth
-          Object.assign(element.style, { width, maxInlineSize, minWidth })
-          return { scrollWidth, clientWidth, natural }
-        }))
+        // Every name is whole inside its chip, and the colour choices wrap instead of overflowing.
+        await onboarding.locator('[data-template=work] .edit-button').click()
+        const measures = await onboarding.locator('.chip-name, .swatches').evaluateAll((elements) => elements.map((element) => ({
+          scrollWidth: element.scrollWidth, clientWidth: element.clientWidth, right: element.getBoundingClientRect().right,
+        })))
         expect(measures.length).toBeGreaterThan(0)
+        const viewportWidth = page.viewportSize()!.width
         for (const measure of measures) {
           expect(measure.scrollWidth).toBeLessThanOrEqual(measure.clientWidth)
-          expect(measure.clientWidth).toBeGreaterThanOrEqual(measure.natural)
+          expect(measure.right).toBeLessThanOrEqual(viewportWidth)
         }
-        const viewportWidth = page.viewportSize()!.width
         expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(viewportWidth)
       })
     }
