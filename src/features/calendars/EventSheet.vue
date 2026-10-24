@@ -39,7 +39,7 @@ async function save(): Promise<void> {
 </script>
 <template>
   <Sheet :open="open" :title="t(event ? 'calendars.editEvent' : 'calendars.newEvent')" :dirty="dirty" @update:open="emit('update:open', $event)">
-    <form class="calendar-form" @submit.prevent="save">
+    <form class="calendar-form event-form" @submit.prevent="save">
       <label>{{ t('calendars.title') }}<input v-model="draft.title" required maxlength="120" autocomplete="off"></label>
       <label>{{ t('calendars.date') }}<input v-model="draft.date" type="date" required></label>
       <label class="checkbox"><input v-model="draft.allDay" type="checkbox" @change="draft.duration = draft.allDay ? 1 : 60">{{ t('calendars.allDay') }}</label>

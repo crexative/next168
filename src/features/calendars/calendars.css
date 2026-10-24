@@ -1,9 +1,14 @@
 .calendar-section, .calendar-form, .calendar-form label, .calendar-list, .calendar-list li, .calendar-source, .calendar-file { min-width: 0; grid-template-columns: minmax(0, 1fr); }
 .calendar-form { display: grid; gap: var(--space-3); }
-.calendar-form label { display: grid; gap: var(--space-1); font-weight: 500; }
-.calendar-form .checkbox { display: flex; align-items: center; min-height: 44px; }
-.calendar-form input:not([type=checkbox]), .calendar-form textarea, .calendar-form select, .calendar-source input, .calendar-source select { min-height: 44px; min-width: 0; width: 100%; padding: 10px 12px; border: 1px solid var(--separator); border-radius: var(--radius-control); background: var(--surface); color: var(--label); font: inherit; box-sizing: border-box; }
-.calendar-form input[type=checkbox] { width: 24px; height: 24px; margin-inline-end: 8px; accent-color: var(--tint); }
+.calendar-form label, label.calendar-form, .calendar-source label { display: grid; gap: var(--space-1); color: var(--label-2); font-size: 0.8125rem; line-height: 1.38; letter-spacing: 0.005em; }
+.calendar-form .checkbox { display: flex; align-items: center; gap: var(--space-3); min-height: var(--tap-target); color: var(--label); font-size: 1.0625rem; line-height: 1.35; letter-spacing: 0; }
+/* The same field shape as the other forms (see .input in base.css); labels read as footnotes above them. */
+.calendar-form input:not([type=checkbox]), .calendar-form textarea, .calendar-form select, .calendar-source input, .calendar-source select { min-height: var(--tap-target); min-width: 0; width: 100%; padding: 0 var(--space-3); border: 1px solid var(--separator); border-radius: var(--radius-control); background-color: var(--surface); color: var(--label); font: inherit; font-size: 1.0625rem; line-height: 1.35; letter-spacing: 0; }
+.calendar-form textarea { padding-block: var(--space-2); }
+.calendar-form select, .calendar-source select { padding-inline-end: calc(var(--space-2) + 1rem + var(--space-2)); }
+/* Inside a card or a sheet the fields sit on --surface, so they take the grouped fill like every other form. */
+.event-form input:not([type=checkbox]), .event-form textarea, .calendar-source input, .calendar-source select { background-color: var(--surface-2); }
+.calendar-form input[type=checkbox] { flex: none; width: 22px; height: 22px; margin: 0; accent-color: var(--tint); }
 .calendar-list { list-style: none; padding: 0; margin: 0; display: grid; gap: var(--space-2); }
 .calendar-list li { display: grid; gap: var(--space-1); padding: var(--space-3); border-radius: var(--radius-card); background: var(--surface); overflow-wrap: anywhere; }
 .calendar-note { color: var(--label-2); font-size: .9375rem; white-space: pre-line; }
