@@ -49,5 +49,6 @@
     "blocks": "keine Blöcke | {count} Block | {count} Blöcke",
     "tasks": "keine Aufgaben | {count} Aufgabe | {count} Aufgaben"
   },
-  "chooseTarget": "Kategorie wählen"
+  "chooseTarget": "Kategorie wählen",
+  "setupWeek": "Meine Woche einrichten"
 }

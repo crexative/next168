@@ -1,6 +1,5 @@
 import type { DayIndex } from '@/core/model'
 import { formatMinuteOfDay } from '@/ui/format'
-import type { BlockPreset } from './templates'
 
 const MINUTES_PER_DAY = 24 * 60
 
@@ -24,21 +23,20 @@ export function timeRangeText(start: number, end: number, locale: string): strin
   return `${noBreak(startText)}–${noBreak(formatMinuteOfDay(end, locale))}`
 }
 
-// "lun–vie", "lun, mié, vie", "sáb": runs of three or more consecutive days collapse, in the order the week is shown.
-export function daysText(days: readonly DayIndex[], locale: string, weekStartsOn: 0 | 1, everyDay: string): string {
-  if (new Set(days).size === 7) return everyDay
-  const name = new Intl.DateTimeFormat(locale, { weekday: 'short', timeZone: 'UTC' })
-  const label = (day: DayIndex) => name.format(Date.UTC(2024, 0, 7 + day))
-  const ordered = Array.from({ length: 7 }, (_, index) => ((index + weekStartsOn) % 7) as DayIndex).filter((day) => days.includes(day))
-  const runs: DayIndex[][] = []
-  for (const day of ordered) {
-    const last = runs[runs.length - 1]
-    if (last && (last[last.length - 1]! + 1) % 7 === day) last.push(day)
-    else runs.push([day])
-  }
-  return runs.map((run) => run.length >= 3 ? `${label(run[0]!)}–${label(run[run.length - 1]!)}` : run.map(label).join(', ')).join(', ')
-}
+export interface DayLabels { weekdays: string; everyDay: string; weekend: string; everyNight?: string }
 
-export function routineLineText(block: BlockPreset, locale: string, weekStartsOn: 0 | 1, everyDay: string): string {
-  return `${daysText(block.days, locale, weekStartsOn, everyDay)} · ${timeRangeText(block.start, block.end, locale)}`
+const lowerFirst = (text: string, locale: string) => (text ? text.charAt(0).toLocaleLowerCase(locale) + text.slice(1) : text)
+const sameSet = (a: readonly number[], b: readonly number[]) => a.length === b.length && [...a].sort().join() === [...b].sort().join()
+
+// "lunes a viernes", "todos los días", "lunes, miércoles y viernes": the sentence form of a set of days.
+export function daysPhrase(days: readonly DayIndex[], locale: string, weekStartsOn: 0 | 1, labels: DayLabels, nights = false): string {
+  const unique = [...new Set(days)]
+  if (unique.length === 7) return lowerFirst(nights && labels.everyNight ? labels.everyNight : labels.everyDay, locale)
+  if (sameSet(unique, [1, 2, 3, 4, 5])) return lowerFirst(labels.weekdays, locale)
+  if (sameSet(unique, [6, 0])) return lowerFirst(labels.weekend, locale)
+  const name = new Intl.DateTimeFormat(locale, { weekday: 'long', timeZone: 'UTC' })
+  const ordered = Array.from({ length: 7 }, (_, index) => ((index + weekStartsOn) % 7) as DayIndex).filter((day) => unique.includes(day))
+  // Intl.ListFormat is newer than the project's declared library.
+  const ListFormat = (Intl as unknown as { ListFormat: new (locale: string, options: { style: string; type: string }) => { format(items: string[]): string } }).ListFormat
+  return new ListFormat(locale, { style: 'long', type: 'conjunction' }).format(ordered.map((day) => name.format(Date.UTC(2024, 0, 7 + day))))
 }

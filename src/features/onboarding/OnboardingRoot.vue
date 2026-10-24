@@ -1,9 +1,9 @@
 <script setup lang="ts">
-import OnboardingHost from './OnboardingHost.vue'
 import PersistOnFirstCheckIn from './PersistOnFirstCheckIn.vue'
+import SetupHost from './setup/SetupHost.vue'
 </script>
 
 <template>
-  <OnboardingHost />
+  <SetupHost />
   <PersistOnFirstCheckIn />
 </template>

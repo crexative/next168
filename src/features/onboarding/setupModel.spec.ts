@@ -177,7 +177,7 @@ describe('what the week adds up to (A20)', () => {
 
   it('always adds up to 168 for any union size', () => {
     for (let hours = 0; hours <= 168; hours += 1) {
-      const [assigned, free] = parts(hours * 60 + (hours % 2) * 30)
+      const [assigned = 0, free = 0] = parts(hours * 60 + (hours % 2) * 30)
       expect(assigned + free).toBe(168)
     }
   })

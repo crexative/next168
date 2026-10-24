@@ -5,6 +5,7 @@ import { COLOR_KEYS, type Category, type ColorKey, type Goal, type PlannerDocume
 import { categoryColor, categorySharingColor, firstUnusedColorKey } from '@/features/insights/categoryColor'
 import { formatHours } from '@/ui/format'
 import { assertEntry, CHANGED_ELSEWHERE, snapshotOf } from '@/features/insights/entryGuard'
+import { openSetup } from '@/features/onboarding/reopen'
 import { usePlannerStore } from '@/stores/plannerStore'
 import Button from '@/ui/Button.vue'
 import Icon from '@/ui/Icon.vue'
@@ -155,6 +156,12 @@ async function remove(): Promise<void> {
 <template>
   <div v-if="planner.document" class="categories">
     <ListGroup :header="t('categories.title')" :footer="t('categories.footer')">
+      <li v-if="planner.writable" class="category-row" data-testid="setup-guided-row">
+        <button class="category-button" type="button" @click="openSetup()">
+          <span class="category-text"><span class="t-body">{{ t('categories.setupWeek') }}</span></span>
+          <Icon name="chevron-right" :size="18" class="chevron" />
+        </button>
+      </li>
       <li v-for="category in categories" :key="category.id" class="category-row" :data-testid="`category-${category.id}`">
         <button class="category-button" type="button" :aria-label="t('categories.edit', { name: category.name })" @click="openEditor(category)">
           <span class="swatch" :style="{ background: categoryColor(category) }" aria-hidden="true" />

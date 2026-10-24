@@ -5,39 +5,140 @@
     "exercise": "Exercise",
     "learning": "Learning",
     "family": "Family",
-    "free-time": "Free time",
-    "commute": "Commute"
+    "free-time": "Time for you",
+    "commute": "Commute",
+    "study": "Study",
+    "friends": "Friends"
   },
-  "steps": {
-    "0": {
-      "title": "Your typical week",
-      "description": "No account. Everything stays on this device."
+  "guided": {
+    "sheetTitle": "Set up your week",
+    "close": "Not now",
+    "back": "Back",
+    "next": "Next",
+    "skip": "Skip",
+    "noFixedTime": "No fixed time",
+    "progress": "Part {step} of {total}",
+    "intro": "Hi. A few short questions, and you can change everything at the end.",
+    "trust": "No account. Everything stays on this device.",
+    "sleep": {
+      "question": "When do you go to bed and get up?",
+      "bed": "Bedtime",
+      "wake": "Wake-up",
+      "weekendDifferent": "Weekends are different",
+      "weeknights": "Weeknights",
+      "weekend": "Weekend"
     },
-    "1": {
-      "title": "Your first task",
-      "description": "Write something you want to do this week. Next168 will find it a free slot."
-    }
+    "workStudy": {
+      "question": "Do you work or study?",
+      "work": "I work",
+      "study": "I study",
+      "both": "Both",
+      "neither": "Neither"
+    },
+    "work": {
+      "question": "When do you work?",
+      "hint": "Split shift or Saturdays? Add another time."
+    },
+    "study": {
+      "question": "When do you study?"
+    },
+    "commute": {
+      "question": "Does getting there and back take time?",
+      "hint": "For example, the bus to work."
+    },
+    "commuteRanges": {
+      "question": "When do you go and come back?",
+      "there": "Going",
+      "back": "Coming back"
+    },
+    "yes": "Yes",
+    "no": "No",
+    "current": "(current)",
+    "exercise": {
+      "question": "Do you exercise?"
+    },
+    "exerciseRanges": {
+      "question": "When do you exercise?"
+    },
+    "more": {
+      "question": "What else do you make time for each week?",
+      "hint": "Pick any you like.",
+      "family": "Family",
+      "friends": "Friends",
+      "me": "Time for you",
+      "learning": "Learning",
+      "other": "Something else",
+      "otherLabel": "What is it?",
+      "otherPlaceholder": "For example: English class",
+      "add": "Add",
+      "duplicate": "It's already on your list."
+    },
+    "extra": {
+      "family": "When do you spend time with family?",
+      "friends": "When do you see your friends?",
+      "me": "When do you have time for yourself?",
+      "learning": "When do you learn something new?",
+      "custom": "When is \"{name}\"?"
+    },
+    "range": {
+      "days": "Days",
+      "start": "Starts",
+      "end": "Ends",
+      "nextDay": "(next day)",
+      "otherTime": "Other time",
+      "add": "Add another time",
+      "remove": "Remove"
+    },
+    "time": {
+      "hour": "Hour",
+      "minutes": "Minutes",
+      "use": "Use {time}",
+      "hourDown": "Previous hour",
+      "hourUp": "Next hour",
+      "minutesDown": "Minus 5 minutes",
+      "minutesUp": "Plus 5 minutes"
+    },
+    "days": {
+      "weekdays": "Monday to Friday",
+      "everyDay": "Every day",
+      "weekend": "Weekends",
+      "pick": "Choose days",
+      "everyNight": "Every night"
+    },
+    "errors": {
+      "noDays": "Pick at least one day.",
+      "sameTime": "It starts and ends at the same time. Change one.",
+      "overlap": "Clashes with {name}: {when}.",
+      "nameRequired": "Type a name.",
+      "nameDuplicate": "That name is already on your list."
+    },
+    "resumed": "Picking up where you left off.",
+    "startOver": "Start over",
+    "draftUnavailable": "This browser can't keep a draft. Don't reload until you finish."
   },
-  "progress": "Step {step} of {total}",
-  "useCategory": "Use {name}",
-  "editRoutine": "Edit {name}: {when}",
-  "everyDay": "Every day",
-  "needRoutine": "Pick at least one routine to continue.",
-  "back": "Back",
-  "next": "Next",
-  "finish": "Finish",
-  "taskLabel": "Task",
-  "taskPlaceholder": "For example: call the bank",
-  "taskNeedsRoutine": "To add a task, also pick a routine other than Sleep.",
-  "changedElsewhere": "Your plan changed while setup was open. Nothing was saved. Review the latest values and try again.",
-  "assigned": "{hours} assigned",
-  "unassigned": "{hours} unassigned",
-  "counterOver": "You're {over} over the 168 h",
-  "done": {
-    "title": "All set",
-    "summary": "Your week is saved on this device only.",
-    "task": "“{title}” is in your tasks. Next168 will find it a free slot.",
-    "seeWeek": "See my week",
-    "start": "Get started"
+  "summary": {
+    "title": "Your typical week",
+    "bubble": "Here's your week. Tap anything to change it.",
+    "empty": "Nothing here yet. Add something or start like this.",
+    "assigned": "{hours} assigned",
+    "unassigned": "{hours} unassigned",
+    "overlapping": "Some times overlap. Overlapping hours count once.",
+    "name": "Name",
+    "done": "Done",
+    "remove": "Remove {name}",
+    "removed": "\"{name}\" removed.",
+    "undo": "Undo",
+    "hasTasks": "It has tasks. To remove it, go to {place}.",
+    "keptForTasks": "\"{name}\" keeps no times because it has tasks.",
+    "noTimes": "No times",
+    "add": "Add something else",
+    "start": "Get started",
+    "save": "Save changes",
+    "review": "Go through the questions",
+    "saved": "Done. Your week is saved.",
+    "changedElsewhere": "Your week changed in another window. Here is the current version.",
+    "understood": "Got it",
+    "saveFailed": "Couldn't save. Your answers are still here.",
+    "tooLarge": "Your week has too many times to save. Remove some."
   }
 }

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { daysText, routineLineText, timeRangeText } from './routineText'
+import { daysPhrase, timeRangeText } from './routineText'
 
 const at = (hours: number, minutes = 0) => hours * 60 + minutes
 
@@ -28,22 +28,20 @@ describe('timeRangeText wrapping', () => {
   })
 })
 
-describe('daysText', () => {
-  it('collapses three or more consecutive days and lists the rest', () => {
-    expect(daysText([1, 2, 3, 4, 5], 'es-CO', 1, 'Todos los días')).toBe('lun–vie')
-    expect(daysText([1, 3, 5], 'es-CO', 1, 'Todos los días')).toBe('lun, mié, vie')
-    expect(daysText([6], 'es-CO', 1, 'Todos los días')).toBe('sáb')
-    expect(daysText([0, 1, 2, 3, 4, 5, 6], 'es-CO', 1, 'Todos los días')).toBe('Todos los días')
+describe('daysPhrase', () => {
+  const labels = { weekdays: 'Lunes a viernes', everyDay: 'Todos los días', weekend: 'Fines de semana', everyNight: 'Todas las noches' }
+
+  it('says the presets in a sentence and lists other days with "y"', () => {
+    expect(daysPhrase([1, 2, 3, 4, 5], 'es-CO', 1, labels)).toBe('lunes a viernes')
+    expect(daysPhrase([0, 1, 2, 3, 4, 5, 6], 'es-CO', 1, labels)).toBe('todos los días')
+    expect(daysPhrase([0, 1, 2, 3, 4, 5, 6], 'es-CO', 1, labels, true)).toBe('todas las noches')
+    expect(daysPhrase([0, 6], 'es-CO', 1, labels)).toBe('fines de semana')
+    expect(daysPhrase([5, 1, 3], 'es-CO', 1, labels)).toBe('lunes, miércoles y viernes')
+    expect(daysPhrase([6], 'es-CO', 1, labels)).toBe('sábado')
   })
 
-  it('follows the week start, so a weekend is one run only when it is consecutive in that order', () => {
-    expect(daysText([5, 6, 0], 'en-US', 1, 'Every day')).toBe('Fri–Sun')
-    expect(daysText([5, 6, 0], 'en-US', 0, 'Every day')).toBe('Sun, Fri, Sat')
-  })
-})
-
-describe('routineLineText', () => {
-  it('reads like the report: days, then one clock range', () => {
-    expect(routineLineText({ start: at(9), end: at(17), days: [1, 2, 3, 4, 5] }, 'es-CO', 1, 'Todos los días').replace(/\s/g, ' ')).toBe('lun–vie · 9:00 a. m.–5:00 p. m.')
+  it('follows the week start for the order', () => {
+    expect(daysPhrase([0, 1], 'es-CO', 1, labels)).toBe('lunes y domingo')
+    expect(daysPhrase([0, 1], 'es-CO', 0, labels)).toBe('domingo y lunes')
   })
 })

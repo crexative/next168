@@ -5,39 +5,140 @@
     "exercise": "Ejercicio",
     "learning": "Aprendizaje",
     "family": "Familia",
-    "free-time": "Tiempo libre",
-    "commute": "Desplazamientos"
+    "free-time": "Tiempo para ti",
+    "commute": "Desplazamientos",
+    "study": "Estudio",
+    "friends": "Amigos"
   },
-  "steps": {
-    "0": {
-      "title": "Tu semana tipo",
-      "description": "Sin cuenta. Todo se queda en este dispositivo."
+  "guided": {
+    "sheetTitle": "Configura tu semana",
+    "close": "Ahora no",
+    "back": "Atrás",
+    "next": "Siguiente",
+    "skip": "Saltar",
+    "noFixedTime": "Sin horario fijo",
+    "progress": "Parte {step} de {total}",
+    "intro": "Hola. Son preguntas cortas y puedes cambiar todo al final.",
+    "trust": "Sin cuenta. Todo se queda en este dispositivo.",
+    "sleep": {
+      "question": "¿A qué hora te acuestas y te levantas?",
+      "bed": "Me acuesto",
+      "wake": "Me levanto",
+      "weekendDifferent": "Los fines de semana es distinto",
+      "weeknights": "Entre semana",
+      "weekend": "Fin de semana"
     },
-    "1": {
-      "title": "Tu primera tarea",
-      "description": "Escribe algo que quieras hacer esta semana. Next168 le buscará un hueco libre."
-    }
+    "workStudy": {
+      "question": "¿Trabajas o estudias?",
+      "work": "Trabajo",
+      "study": "Estudio",
+      "both": "Las dos cosas",
+      "neither": "Ninguna"
+    },
+    "work": {
+      "question": "¿Cuándo trabajas?",
+      "hint": "¿Turno partido o sábados? Añade otro horario."
+    },
+    "study": {
+      "question": "¿Cuándo estudias?"
+    },
+    "commute": {
+      "question": "¿Te toma tiempo ir y volver?",
+      "hint": "Por ejemplo, el bus al trabajo."
+    },
+    "commuteRanges": {
+      "question": "¿Cuándo vas y cuándo vuelves?",
+      "there": "Ida",
+      "back": "Vuelta"
+    },
+    "yes": "Sí",
+    "no": "No",
+    "current": "(actual)",
+    "exercise": {
+      "question": "¿Haces ejercicio?"
+    },
+    "exerciseRanges": {
+      "question": "¿Cuándo haces ejercicio?"
+    },
+    "more": {
+      "question": "¿A qué más le dedicas tiempo cada semana?",
+      "hint": "Elige las que quieras.",
+      "family": "Familia",
+      "friends": "Amigos",
+      "me": "Tiempo para ti",
+      "learning": "Aprender",
+      "other": "Otra cosa",
+      "otherLabel": "¿Qué es?",
+      "otherPlaceholder": "Por ejemplo: clases de inglés",
+      "add": "Añadir",
+      "duplicate": "Ya está en tu lista."
+    },
+    "extra": {
+      "family": "¿Cuándo pasas tiempo con tu familia?",
+      "friends": "¿Cuándo ves a tus amigos?",
+      "me": "¿Cuándo tienes tiempo para ti?",
+      "learning": "¿Cuándo aprendes algo nuevo?",
+      "custom": "¿Cuándo es «{name}»?"
+    },
+    "range": {
+      "days": "Días",
+      "start": "Empieza",
+      "end": "Termina",
+      "nextDay": "(al día siguiente)",
+      "otherTime": "Otra hora",
+      "add": "Añadir otro horario",
+      "remove": "Quitar"
+    },
+    "time": {
+      "hour": "Hora",
+      "minutes": "Minutos",
+      "use": "Usar {time}",
+      "hourDown": "Hora anterior",
+      "hourUp": "Hora siguiente",
+      "minutesDown": "Menos 5 minutos",
+      "minutesUp": "Más 5 minutos"
+    },
+    "days": {
+      "weekdays": "Lunes a viernes",
+      "everyDay": "Todos los días",
+      "weekend": "Fines de semana",
+      "pick": "Elegir días",
+      "everyNight": "Todas las noches"
+    },
+    "errors": {
+      "noDays": "Elige al menos un día.",
+      "sameTime": "Empieza y termina a la misma hora. Cambia una.",
+      "overlap": "Se cruza con {name}: {when}.",
+      "nameRequired": "Escribe un nombre.",
+      "nameDuplicate": "Ese nombre ya está en tu lista."
+    },
+    "resumed": "Seguimos donde lo dejaste.",
+    "startOver": "Empezar de nuevo",
+    "draftUnavailable": "Este navegador no guarda borradores. No recargues hasta terminar."
   },
-  "progress": "Paso {step} de {total}",
-  "useCategory": "Usar {name}",
-  "editRoutine": "Editar {name}: {when}",
-  "everyDay": "Todos los días",
-  "needRoutine": "Elige al menos una rutina para continuar.",
-  "back": "Atrás",
-  "next": "Siguiente",
-  "finish": "Terminar",
-  "taskLabel": "Tarea",
-  "taskPlaceholder": "Por ejemplo: llamar al banco",
-  "taskNeedsRoutine": "Para añadir una tarea, elige también una rutina que no sea Sueño.",
-  "changedElsewhere": "Tu plan cambió mientras la configuración estaba abierta. No se guardó nada. Revisa los valores actuales e inténtalo de nuevo.",
-  "assigned": "{hours} asignadas",
-  "unassigned": "{hours} sin asignar",
-  "counterOver": "Te pasas {over} de las 168 h",
-  "done": {
-    "title": "Listo",
-    "summary": "Tu semana está guardada solo en este dispositivo.",
-    "task": "«{title}» está en tus tareas. Next168 le buscará un hueco libre.",
-    "seeWeek": "Ver mi semana",
-    "start": "Empezar"
+  "summary": {
+    "title": "Tu semana tipo",
+    "bubble": "Así queda tu semana. Toca algo para cambiarlo.",
+    "empty": "Aún no hay nada. Puedes añadir algo o empezar así.",
+    "assigned": "{hours} asignadas",
+    "unassigned": "{hours} sin asignar",
+    "overlapping": "Algunos horarios se cruzan. Las horas cruzadas cuentan una vez.",
+    "name": "Nombre",
+    "done": "Listo",
+    "remove": "Quitar {name}",
+    "removed": "«{name}» quitado.",
+    "undo": "Deshacer",
+    "hasTasks": "Tiene tareas. Para quitarlo, ve a {place}.",
+    "keptForTasks": "«{name}» se queda sin horario porque tiene tareas.",
+    "noTimes": "Sin horario",
+    "add": "Añadir algo más",
+    "start": "Empezar",
+    "save": "Guardar cambios",
+    "review": "Repasar las preguntas",
+    "saved": "Listo. Tu semana está guardada.",
+    "changedElsewhere": "Tu semana cambió en otra ventana. Te mostramos la versión actual.",
+    "understood": "Entendido",
+    "saveFailed": "No se pudo guardar. Tus respuestas siguen aquí.",
+    "tooLarge": "Tu semana tiene demasiados horarios para guardarla. Quita algunos."
   }
 }

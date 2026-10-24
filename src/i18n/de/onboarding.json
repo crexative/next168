@@ -5,39 +5,140 @@
     "exercise": "Bewegung",
     "learning": "Lernen",
     "family": "Familie",
-    "free-time": "Freizeit",
-    "commute": "Pendeln"
+    "free-time": "Zeit für dich",
+    "commute": "Pendeln",
+    "study": "Studium",
+    "friends": "Freunde"
   },
-  "steps": {
-    "0": {
-      "title": "Deine Standardwoche",
-      "description": "Kein Konto. Alles bleibt auf diesem Gerät."
+  "guided": {
+    "sheetTitle": "Richte deine Woche ein",
+    "close": "Nicht jetzt",
+    "back": "Zurück",
+    "next": "Weiter",
+    "skip": "Überspringen",
+    "noFixedTime": "Keine feste Zeit",
+    "progress": "Teil {step} von {total}",
+    "intro": "Hallo. Nur kurze Fragen, und am Ende kannst du alles ändern.",
+    "trust": "Kein Konto. Alles bleibt auf diesem Gerät.",
+    "sleep": {
+      "question": "Wann gehst du schlafen und wann stehst du auf?",
+      "bed": "Ich gehe schlafen",
+      "wake": "Ich stehe auf",
+      "weekendDifferent": "Am Wochenende ist es anders",
+      "weeknights": "Unter der Woche",
+      "weekend": "Wochenende"
     },
-    "1": {
-      "title": "Deine erste Aufgabe",
-      "description": "Schreibe etwas, das du diese Woche tun willst. Next168 findet dafür einen freien Platz."
-    }
+    "workStudy": {
+      "question": "Arbeitest oder studierst du?",
+      "work": "Ich arbeite",
+      "study": "Ich studiere",
+      "both": "Beides",
+      "neither": "Keins davon"
+    },
+    "work": {
+      "question": "Wann arbeitest du?",
+      "hint": "Geteilte Schicht oder samstags? Füge eine Zeit hinzu."
+    },
+    "study": {
+      "question": "Wann studierst du?"
+    },
+    "commute": {
+      "question": "Brauchst du Zeit für Hin- und Rückweg?",
+      "hint": "Zum Beispiel der Bus zur Arbeit."
+    },
+    "commuteRanges": {
+      "question": "Wann fährst du hin und zurück?",
+      "there": "Hinweg",
+      "back": "Rückweg"
+    },
+    "yes": "Ja",
+    "no": "Nein",
+    "current": "(aktuell)",
+    "exercise": {
+      "question": "Machst du Sport?"
+    },
+    "exerciseRanges": {
+      "question": "Wann machst du Sport?"
+    },
+    "more": {
+      "question": "Wofür nimmst du dir sonst jede Woche Zeit?",
+      "hint": "Wähle, so viele du willst.",
+      "family": "Familie",
+      "friends": "Freunde",
+      "me": "Zeit für dich",
+      "learning": "Lernen",
+      "other": "Etwas anderes",
+      "otherLabel": "Was ist es?",
+      "otherPlaceholder": "Zum Beispiel: Englischkurs",
+      "add": "Hinzufügen",
+      "duplicate": "Das steht schon auf deiner Liste."
+    },
+    "extra": {
+      "family": "Wann verbringst du Zeit mit der Familie?",
+      "friends": "Wann triffst du deine Freunde?",
+      "me": "Wann hast du Zeit für dich?",
+      "learning": "Wann lernst du etwas Neues?",
+      "custom": "Wann ist „{name}“?"
+    },
+    "range": {
+      "days": "Tage",
+      "start": "Beginn",
+      "end": "Ende",
+      "nextDay": "(am nächsten Tag)",
+      "otherTime": "Andere Uhrzeit",
+      "add": "Weitere Zeit hinzufügen",
+      "remove": "Entfernen"
+    },
+    "time": {
+      "hour": "Stunde",
+      "minutes": "Minuten",
+      "use": "{time} nehmen",
+      "hourDown": "Stunde zurück",
+      "hourUp": "Stunde vor",
+      "minutesDown": "5 Minuten weniger",
+      "minutesUp": "5 Minuten mehr"
+    },
+    "days": {
+      "weekdays": "Montag bis Freitag",
+      "everyDay": "Jeden Tag",
+      "weekend": "Am Wochenende",
+      "pick": "Tage wählen",
+      "everyNight": "Jede Nacht"
+    },
+    "errors": {
+      "noDays": "Wähle mindestens einen Tag.",
+      "sameTime": "Beginn und Ende sind gleich. Ändere eins davon.",
+      "overlap": "Überschneidet sich mit {name}: {when}.",
+      "nameRequired": "Gib einen Namen ein.",
+      "nameDuplicate": "Diesen Namen gibt es schon."
+    },
+    "resumed": "Wir machen da weiter, wo du warst.",
+    "startOver": "Neu beginnen",
+    "draftUnavailable": "Dieser Browser speichert keinen Entwurf. Lade nicht neu, bis du fertig bist."
   },
-  "progress": "Schritt {step} von {total}",
-  "useCategory": "{name} verwenden",
-  "editRoutine": "{name} bearbeiten: {when}",
-  "everyDay": "Jeden Tag",
-  "needRoutine": "Wähle mindestens eine Routine, um fortzufahren.",
-  "back": "Zurück",
-  "next": "Weiter",
-  "finish": "Fertig",
-  "taskLabel": "Aufgabe",
-  "taskPlaceholder": "Zum Beispiel: Bank anrufen",
-  "taskNeedsRoutine": "Um eine Aufgabe hinzuzufügen, wähle auch eine Routine außer Schlaf.",
-  "changedElsewhere": "Dein Plan wurde während der Einrichtung geändert. Es wurde nichts gespeichert. Prüfe die aktuellen Werte und versuche es erneut.",
-  "assigned": "{hours} zugewiesen",
-  "unassigned": "{hours} nicht zugewiesen",
-  "counterOver": "Du liegst {over} über den 168 h",
-  "done": {
-    "title": "Fertig",
-    "summary": "Deine Woche ist nur auf diesem Gerät gespeichert.",
-    "task": "„{title}“ steht in deinen Aufgaben. Next168 findet dafür einen freien Platz.",
-    "seeWeek": "Meine Woche ansehen",
-    "start": "Los geht’s"
+  "summary": {
+    "title": "Deine typische Woche",
+    "bubble": "So sieht deine Woche aus. Tippe etwas an, um es zu ändern.",
+    "empty": "Noch nichts da. Füge etwas hinzu oder starte so.",
+    "assigned": "{hours} zugewiesen",
+    "unassigned": "{hours} nicht zugewiesen",
+    "overlapping": "Einige Zeiten überschneiden sich. Doppelte Stunden zählen einmal.",
+    "name": "Name",
+    "done": "Fertig",
+    "remove": "{name} entfernen",
+    "removed": "„{name}“ entfernt.",
+    "undo": "Rückgängig",
+    "hasTasks": "Es hat Aufgaben. Zum Entfernen gehe zu {place}.",
+    "keptForTasks": "„{name}“ bleibt ohne Zeiten, weil es Aufgaben hat.",
+    "noTimes": "Keine Zeiten",
+    "add": "Etwas hinzufügen",
+    "start": "Los geht's",
+    "save": "Änderungen sichern",
+    "review": "Fragen durchgehen",
+    "saved": "Fertig. Deine Woche ist gespeichert.",
+    "changedElsewhere": "Deine Woche wurde in einem anderen Fenster geändert. Hier ist die aktuelle Version.",
+    "understood": "Verstanden",
+    "saveFailed": "Speichern hat nicht geklappt. Deine Antworten sind noch da.",
+    "tooLarge": "Deine Woche hat zu viele Zeiten zum Speichern. Entferne einige."
   }
 }

@@ -49,5 +49,6 @@
     "blocks": "ningún bloque | {count} bloque | {count} bloques",
     "tasks": "ninguna tarea | {count} tarea | {count} tareas"
   },
-  "chooseTarget": "Elige una categoría"
+  "chooseTarget": "Elige una categoría",
+  "setupWeek": "Configurar mi semana"
 }

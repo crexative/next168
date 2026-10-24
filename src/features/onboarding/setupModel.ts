@@ -270,6 +270,17 @@ export function suggestCommute(state: SetupState, category: CategoryDraft): void
   for (const item of deriveCommute(commuteBase(state))) category.ranges.push(newRange(state, item, { label: item.label }))
 }
 
+// Called when a screen is about to be shown: its category exists and has offered its default ranges.
+export function prepareScreen(state: SetupState, screen: ScreenId, env: SetupEnv): void {
+  const topic = (['sleep', 'work', 'study', 'exercise'] as const).find((candidate) => candidate === screen || (candidate === 'exercise' && screen === 'exerciseRanges'))
+  if (topic) suggestRanges(state, ensureCategory(state, topic, topic, env.topicName(topic)))
+  if (screen === 'commuteRanges') suggestCommute(state, ensureCategory(state, 'commute', 'commute', env.topicName('commute')))
+  if (screen.startsWith('extra:')) {
+    const category = categoryOf(state, screen.slice('extra:'.length))
+    if (category) suggestRanges(state, category)
+  }
+}
+
 // ---------- Sleep split ----------
 
 const WEEKEND_NIGHTS: DayIndex[] = [5, 6]
@@ -304,10 +315,18 @@ export interface Issue {
   with?: { categoryKey: string; slot: Slot }
 }
 
+// What is wrong with one range, whether or not it blocks a save: shown live on the range itself.
+export function rangeProblem(state: SetupState, category: CategoryDraft, range: RangeDraft): Issue | undefined {
+  if (range.days.length === 0) return { code: 'noDays', categoryKey: category.key, rangeKey: range.key }
+  if (range.start === range.end) return { code: 'sameTime', categoryKey: category.key, rangeKey: range.key }
+  const slot = blockSlot(category, range)
+  const clash = activeRanges(state).find((other) => other.range.key !== range.key && slotsOverlap(slot, other.slot))
+  return clash ? { code: 'overlap', categoryKey: category.key, rangeKey: range.key, with: { categoryKey: clash.category.key, slot: clash.slot } } : undefined
+}
+
 // Blocking issues apply only to what this session adds or edits. Stored content that was never touched is left alone.
 export function validate(state: SetupState, storedNames: ReadonlyMap<string, string>): Issue[] {
   const issues: Issue[] = []
-  const active = activeRanges(state)
   const names = activeCategories(state).map((category) => ({ key: category.key, name: category.name.trim().toLowerCase() }))
   for (const category of activeCategories(state)) {
     const renamed = category.categoryId === undefined || category.name.trim() !== (storedNames.get(category.categoryId) ?? category.name.trim())
@@ -319,11 +338,8 @@ export function validate(state: SetupState, storedNames: ReadonlyMap<string, str
     }
     for (const range of category.ranges) {
       if (range.blockId !== undefined && !range.touched) continue
-      if (range.days.length === 0) { issues.push({ code: 'noDays', categoryKey: category.key, rangeKey: range.key }); continue }
-      if (range.start === range.end) { issues.push({ code: 'sameTime', categoryKey: category.key, rangeKey: range.key }); continue }
-      const slot = blockSlot(category, range)
-      const clash = active.find((other) => other.range.key !== range.key && slotsOverlap(slot, other.slot))
-      if (clash) issues.push({ code: 'overlap', categoryKey: category.key, rangeKey: range.key, with: { categoryKey: clash.category.key, slot: clash.slot } })
+      const problem = rangeProblem(state, category, range)
+      if (problem) issues.push(problem)
     }
   }
   return issues
@@ -393,7 +409,7 @@ export function acceptRanges(category: CategoryDraft): void {
 
 export function addOwnCategory(state: SetupState, name: string): { category: CategoryDraft; duplicate: boolean } {
   const trimmed = name.trim()
-  const same = state.categories.find((category) => category.name.trim().toLowerCase() === trimmed.toLowerCase() && statusOf(state, category) !== 'removed')
+  const same = trimmed === '' ? undefined : state.categories.find((category) => category.name.trim().toLowerCase() === trimmed.toLowerCase() && statusOf(state, category) !== 'removed')
   if (same) return { category: same, duplicate: true }
   const category = ensureCategory(state, nextKey(state, 'custom:'), undefined, trimmed)
   return { category, duplicate: false }
