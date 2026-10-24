@@ -21,6 +21,8 @@
     "title": "Cronología",
     "allDay": "Todo el día",
     "conflict": "Conflicto",
+    "sinceYesterday": "Desde ayer",
+    "untilTomorrow": "Hasta mañana",
     "late": "Tarde",
     "kinds": {
       "task": "Tarea",

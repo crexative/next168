@@ -21,6 +21,8 @@
     "title": "Linha do tempo",
     "allDay": "Dia inteiro",
     "conflict": "Conflito",
+    "sinceYesterday": "Desde ontem",
+    "untilTomorrow": "Até amanhã",
     "late": "Atrasada",
     "kinds": {
       "task": "Tarefa",

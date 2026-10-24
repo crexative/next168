@@ -187,7 +187,8 @@ const stepTitle = computed(() => t(`onboarding.steps.${step.value}.title`))
 .check-input:focus-visible + .check-box { outline: 2px solid var(--tint); outline-offset: 2px; }
 .input { min-height: var(--tap-target); padding: 0 var(--space-3); border: 1px solid var(--separator); border-radius: var(--radius-control); background: var(--surface-2); }
 .name { flex: 1; min-width: 0; }
-.color { flex: none; width: 6.5rem; border-width: 2px; }
+/* Sized to its longest option label (all locales); a fixed width truncated "Morado"/"Turquesa". */
+.color { flex: none; width: auto; max-inline-size: 50%; border-width: 2px; }
 .sketch { background: var(--surface-2); border-radius: var(--radius-control); }
 .sketch-label { position: relative; display: flex; align-items: center; gap: var(--space-3); width: 100%; min-height: var(--tap-target); padding: var(--space-2) var(--space-3); }
 .sketch-label > span { display: flex; flex-direction: column; }

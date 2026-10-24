@@ -2,11 +2,11 @@
 import { computed, ref, useId } from 'vue'
 import { useI18n } from 'vue-i18n'
 import type { BlockActual, Category } from '@/core/model'
-import type { DatedOccurrence } from '@/core/time'
+import { addLocalDays, localDateOf, zonedInstant, type DatedOccurrence } from '@/core/time'
 import Button from '@/ui/Button.vue'
 import Icon from '@/ui/Icon.vue'
 import { categoryColor } from '@/features/week/categoryColor'
-import { formatTime } from '@/features/week/localTime'
+import { formatMinute, formatTime } from '@/features/week/localTime'
 import { actualFor, type ActualStatus } from './actuals'
 import type { AllDayItem, TimelineItem } from './todayTimeline'
 
@@ -36,8 +36,26 @@ function color(item: TimelineItem): string {
   return item.kind === 'block' || item.kind === 'task' ? categoryColor(categoriesById.value.get(item.categoryId)) : 'var(--label-2)'
 }
 
-function time(instant: string): string {
-  return formatTime(instant, locale.value, props.timeZone)
+const dayBounds = computed(() => {
+  const today = localDateOf(props.now, props.timeZone)
+  return { start: zonedInstant(today, 0, props.timeZone).getTime(), end: zonedInstant(addLocalDays(today, 1), 0, props.timeZone).getTime() }
+})
+
+// Items crossing midnight show the part that falls on today, so the two halves of an overnight block differ.
+function startsBeforeToday(item: TimelineItem): boolean {
+  return Date.parse(item.start) < dayBounds.value.start
+}
+
+function endsAfterToday(item: TimelineItem): boolean {
+  return Date.parse(item.end) > dayBounds.value.end
+}
+
+function startLabel(item: TimelineItem): string {
+  return startsBeforeToday(item) ? formatMinute(0, locale.value) : formatTime(item.start, locale.value, props.timeZone)
+}
+
+function endLabel(item: TimelineItem): string {
+  return endsAfterToday(item) ? formatMinute(0, locale.value) : formatTime(item.end, locale.value, props.timeZone)
 }
 
 function hasStarted(item: TimelineItem): boolean {
@@ -93,8 +111,8 @@ function savePartial(item: TimelineItem & { kind: 'block' }): void {
         data-testid="timeline-item"
       >
         <span class="row-time t-footnote">
-          <span>{{ time(item.start) }}</span>
-          <span class="t-secondary">{{ time(item.end) }}</span>
+          <span data-testid="timeline-start">{{ startLabel(item) }}</span>
+          <span class="t-secondary" data-testid="timeline-end">{{ endLabel(item) }}</span>
         </span>
         <span class="row-bar" aria-hidden="true" />
         <div class="row-content">
@@ -105,6 +123,8 @@ function savePartial(item: TimelineItem & { kind: 'block' }): void {
             </span>
             <span v-if="item.kind === 'task' && item.late" class="badge is-late t-caption">{{ t('today.timeline.late') }}</span>
           </p>
+          <p v-if="startsBeforeToday(item)" class="row-kind t-footnote t-secondary" data-testid="timeline-span-hint">{{ t('today.timeline.sinceYesterday') }}</p>
+          <p v-else-if="endsAfterToday(item)" class="row-kind t-footnote t-secondary" data-testid="timeline-span-hint">{{ t('today.timeline.untilTomorrow') }}</p>
           <p v-if="item.kind !== 'block'" class="row-kind t-footnote t-secondary">{{ t(`today.timeline.kinds.${item.kind}`) }}</p>
           <template v-if="item.kind === 'block' && hasStarted(item)">
             <div class="actual" role="group" :aria-label="t('today.actual.question', { title: item.title })">

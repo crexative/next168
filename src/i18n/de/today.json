@@ -21,6 +21,8 @@
     "title": "Zeitverlauf",
     "allDay": "Ganztägig",
     "conflict": "Konflikt",
+    "sinceYesterday": "Seit gestern",
+    "untilTomorrow": "Bis morgen",
     "late": "Verspätet",
     "kinds": {
       "task": "Aufgabe",

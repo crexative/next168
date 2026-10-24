@@ -21,6 +21,8 @@
     "title": "Timeline",
     "allDay": "All day",
     "conflict": "Conflict",
+    "sinceYesterday": "Since yesterday",
+    "untilTomorrow": "Until tomorrow",
     "late": "Late",
     "kinds": {
       "task": "Task",
