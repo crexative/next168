@@ -6,10 +6,13 @@ import { localDateOf } from '@/core/time'
 import { usePlannerStore } from '@/stores/plannerStore'
 import Sheet from '@/ui/Sheet.vue'
 import Button from '@/ui/Button.vue'
+import { useCalendarStore, type CalendarIntent } from './calendarStore'
 import { buildEvent, draftFromEvent, type EventDraft } from './eventDraft'
 const props = defineProps<{ open: boolean; event?: PlannerEvent }>()
 const emit = defineEmits<{ 'update:open': [boolean] }>()
-const { t } = useI18n(), planner = usePlannerStore()
+const { t } = useI18n(), planner = usePlannerStore(), calendars = useCalendarStore()
+// Captured when the sheet opens: a save after the planner was reset or replaced writes nothing.
+let intent: CalendarIntent | undefined
 const attendeesHintId = useId()
 const draft = reactive<EventDraft>({ title: '', date: '', time: '09:00', allDay: false, duration: 60, location: '', notes: '', attendees: '' })
 const initial = ref(''), saving = ref(false), error = ref(''), attempted = ref(false)
@@ -18,6 +21,7 @@ const dirty = computed(() => JSON.stringify(draft) !== initial.value)
 const valid = computed(() => { try { buildEvent(draft, props.event?.id ?? 'preview', zone.value); return true } catch { return false } })
 watch(() => props.open, open => {
   if (!open) return
+  intent = calendars.captureIntent()
   Object.assign(draft, props.event ? draftFromEvent(props.event, zone.value) : { title: '', date: localDateOf(new Date(), zone.value), time: '09:00', allDay: false, duration: 60, location: '', notes: '', attendees: '' })
   initial.value = JSON.stringify(draft); error.value = ''; attempted.value = false
 }, { immediate: true })
@@ -25,16 +29,20 @@ async function save(): Promise<void> {
   attempted.value = true
   if (!valid.value || saving.value) return
   saving.value = true
+  let event: PlannerEvent
+  try { event = buildEvent(draft, props.event?.id ?? crypto.randomUUID(), zone.value) } catch {
+    error.value = 'calendars.formInvalid'
+    saving.value = false
+    return
+  }
   try {
-    const event = buildEvent(draft, props.event?.id ?? crypto.randomUUID(), zone.value)
-    const result = await planner.commit(doc => {
+    await calendars.commitWithIntent(doc => {
       const index = doc.events.findIndex(item => item.id === event.id)
       if (index < 0) doc.events.push(event)
       else doc.events[index] = event
-    })
-    if (result.ok) emit('update:open', false)
-    else error.value = 'calendars.save'
-  } catch { error.value = 'calendars.formInvalid' }
+    }, intent ?? calendars.captureIntent())
+    emit('update:open', false)
+  } catch { error.value = 'calendars.save' }
   finally { saving.value = false }
 }
 </script>

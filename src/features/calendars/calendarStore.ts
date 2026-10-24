@@ -118,9 +118,9 @@ export const useCalendarStore = defineStore('calendars', () => {
     }
     rawRevision.value++
   }
-  // Every public action captures its intent synchronously, before it joins the queue.
-  function importFile(name: string, text: string): Promise<void> {
-    const intent = captureIntent()
+  // Every public action captures its intent synchronously, before it joins the queue. Callers that await something
+  // first (a file read, an open sheet, an undo toast) capture it at the user's gesture and pass it in.
+  function importFile(name: string, text: string, intent: CalendarIntent = captureIntent()): Promise<void> {
     return serialized(async () => {
       const { now, newId } = calendarServices()
       await persist({ id: newId(), name, kind: 'file', colorKey: 'blue', lastSyncedAt: now().toISOString() }, text, intent)
@@ -185,5 +185,9 @@ export const useCalendarStore = defineStore('calendars', () => {
   function restoreSource(source: CalendarSource, text: string, intent: CalendarIntent = captureIntent()): Promise<void> {
     return serialized(() => persist(source, text, intent))
   }
-  return { rawRevision, pending, captureIntent, restoreSource, importFile, addUrl, refreshSource, refreshOnOpen, updateSource, removeSource }
+  // A planner write (for example an event) bound to the intent captured at the user's gesture.
+  function commitWithIntent(change: Parameters<typeof planner.commit>[0], intent: CalendarIntent): Promise<void> {
+    return commit(change, intent)
+  }
+  return { rawRevision, pending, captureIntent, commitWithIntent, restoreSource, importFile, addUrl, refreshSource, refreshOnOpen, updateSource, removeSource }
 })
