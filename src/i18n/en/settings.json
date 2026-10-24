@@ -1,7 +1,7 @@
 {
   "advanced": {
-    "title": "Integrations and advanced",
-    "subtitle": "Language and region, calendars, AI assistant, storage and technical details"
+    "title": "Advanced",
+    "subtitle": "On-device assistant, storage and technical details"
   },
   "exportNudge": {
     "never": "You haven't exported a backup yet.",
@@ -12,7 +12,14 @@
     "title": "Appearance",
     "auto": "Automatic",
     "light": "Light",
-    "dark": "Dark",
-    "footer": "Automatic follows your device's setting."
-  }
+    "dark": "Dark"
+  },
+  "calendars": {
+    "subtitle": "See your appointments next to your plan"
+  },
+  "data": {
+    "title": "Your data",
+    "subtitle": "Export, import or delete"
+  },
+  "categoriesTitle": "Categories and goals"
 }

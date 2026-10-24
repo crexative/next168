@@ -1,47 +1,44 @@
 <script setup lang="ts">
 import { useI18n } from 'vue-i18n'
-import Icon from '@/ui/Icon.vue'
+import PreferencesSettings from '@/app/settings/PreferencesSettings.vue'
 import ListGroup from '@/ui/ListGroup.vue'
 import AdvancedSettings from './AdvancedSettings.vue'
-import AppearanceSettings from './AppearanceSettings.vue'
+import CalendarsSection from './calendars/CalendarsSection.vue'
 import CategorySettings from './categories/CategorySettings.vue'
 import DataSettings from './data/DataSettings.vue'
 import ExportNudge from './data/ExportNudge.vue'
-import { ADVANCED_HASH, useSettingsPage } from './route'
+import SettingsLink from './SettingsLink.vue'
+import SettingsSubpage from './SettingsSubpage.vue'
+import { ADVANCED_HASH, CALENDARS_HASH, DATA_HASH, useSettingsPage } from './route'
 
+// What people set once, in this order: categories and goals, then General, then one row each for calendars,
+// their data and everything technical (Advanced). Destructive actions live one level down, under "Your data".
 const { t } = useI18n()
 const page = useSettingsPage()
 </script>
 
 <template>
   <AdvancedSettings v-if="page === 'advanced'" />
+  <SettingsSubpage v-else-if="page === 'calendars'" :title="t('calendars.heading')" test-id="settings-calendars">
+    <CalendarsSection />
+  </SettingsSubpage>
+  <SettingsSubpage v-else-if="page === 'data'" :title="t('settings.data.title')" test-id="settings-data">
+    <DataSettings />
+  </SettingsSubpage>
   <div v-else class="home">
     <div class="gutter"><ExportNudge /></div>
     <CategorySettings />
-    <AppearanceSettings />
-    <DataSettings />
-    <ListGroup class="more">
-      <li>
-        <a class="more-link" :href="ADVANCED_HASH" data-testid="advanced-link">
-          <span class="more-text">
-            <span class="t-body">{{ t('settings.advanced.title') }}</span>
-            <span class="t-footnote t-secondary">{{ t('settings.advanced.subtitle') }}</span>
-          </span>
-          <Icon name="chevron-right" :size="18" class="more-chevron" />
-        </a>
-      </li>
+    <PreferencesSettings />
+    <ListGroup class="more" data-testid="settings-more">
+      <SettingsLink :href="CALENDARS_HASH" :title="t('calendars.heading')" :subtitle="t('settings.calendars.subtitle')" data-testid="calendars-link" />
+      <!-- Mount point: "Usar con tu IA" (branch feature/#3-use-with-any-ai) is the one AI entry of Settings and
+           goes here as a row of this group, between Calendars and Your data. -->
+      <SettingsLink :href="DATA_HASH" :title="t('settings.data.title')" :subtitle="t('settings.data.subtitle')" data-testid="data-link" />
+      <SettingsLink :href="ADVANCED_HASH" :title="t('settings.advanced.title')" :subtitle="t('settings.advanced.subtitle')" data-testid="advanced-link" />
     </ListGroup>
   </div>
 </template>
 
 <style scoped>
 .gutter, .more { padding-inline: var(--space-4); }
-.more-link { display: flex; align-items: center; gap: var(--space-3); min-height: var(--tap-target); padding: var(--space-2) var(--space-4); color: var(--label); text-decoration: none; }
-.more-link:active { background: var(--surface-2); }
-/* The card clips its row, so the row draws its focus ring inside itself, rounded like the card. */
-.more-link:focus-visible { outline-offset: -2px; border-radius: var(--radius-card); }
-.more-text { display: flex; flex: 1; flex-direction: column; min-width: 0; }
-/* Long words ("Integraciones", "almacenamiento") break instead of spilling at large text sizes. */
-.more-text > span { overflow-wrap: anywhere; hyphens: auto; }
-.more-chevron { color: var(--label-3); }
 </style>

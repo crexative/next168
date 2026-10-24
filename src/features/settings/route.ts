@@ -1,14 +1,18 @@
 import { onBeforeUnmount, ref } from 'vue'
 
-export type SettingsPage = 'home' | 'advanced'
+// `#/settings` is the list; each sub-page sits one level below it. The shell only reads the first segment.
+export const SETTINGS_PAGES = ['calendars', 'data', 'advanced'] as const
+export type SettingsSubpage = (typeof SETTINGS_PAGES)[number]
+export type SettingsPage = 'home' | SettingsSubpage
 
-export const ADVANCED_HASH = '#/settings/advanced'
 export const SETTINGS_HASH = '#/settings'
+export const CALENDARS_HASH = '#/settings/calendars'
+export const DATA_HASH = '#/settings/data'
+export const ADVANCED_HASH = '#/settings/advanced'
 
-// `#/settings` is the list; `#/settings/advanced` is the one page below it. The shell only reads the first segment.
 export function settingsPageOf(hash: string): SettingsPage {
   const [view, page] = hash.replace(/^#\/?/, '').split(/[/?]/)
-  return view === 'settings' && page === 'advanced' ? 'advanced' : 'home'
+  return view === 'settings' && (SETTINGS_PAGES as readonly string[]).includes(page ?? '') ? page as SettingsSubpage : 'home'
 }
 
 export function useSettingsPage() {

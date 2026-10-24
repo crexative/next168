@@ -14,7 +14,7 @@
     "left": "Faltam {duration}"
   },
   "preferences": {
-    "title": "Idioma e região",
+    "title": "Geral",
     "language": "Idioma",
     "weekStart": "A semana começa na",
     "monday": "Segunda-feira",
@@ -23,6 +23,6 @@
     "clockAuto": "Automático",
     "clock12": "12 horas",
     "clock24": "24 horas",
-    "footer": "As horas aparecem assim: {example}. Automático segue a sua região."
+    "footer": "Automático segue a região e a aparência do seu dispositivo. As horas aparecem assim: {example}"
   }
 }

@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test'
-import { LEGACY_BLOCK_COUNT, LEGACY_KEY, V2_KEY, legacyData, onlyProject, openTab, seedKey, seedLegacy, storedValue } from './fixtures'
+import { LEGACY_BLOCK_COUNT, LEGACY_KEY, V2_KEY, legacyData, onlyProject, openSettingsPage, openTab, seedKey, seedLegacy, storedValue } from './fixtures'
 import { storedPlanner, storedRecord } from './support/indexedDb'
 
 test.beforeEach(onlyProject('desktop'))
@@ -62,7 +62,7 @@ test('delete-all in another tab does not raise the older-version banner (A10)', 
   await openTab(page, 'week')
   await expect(page.getByTestId('block-count')).toHaveAttribute('data-count', String(LEGACY_BLOCK_COUNT))
   const other = await context.newPage()
-  await openTab(other, 'settings')
+  await openSettingsPage(other, 'data')
   await other.getByRole('button', { name: 'Delete all data…' }).click()
   const dialog = other.getByRole('dialog', { name: 'Delete everything?' })
   await dialog.getByRole('textbox').fill('delete')

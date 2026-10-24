@@ -1,7 +1,7 @@
 {
   "advanced": {
-    "title": "Integrationen und Erweitertes",
-    "subtitle": "Sprache und Region, Kalender, KI-Assistent, Speicher und technische Details"
+    "title": "Erweitert",
+    "subtitle": "Assistent auf dem Gerät, Speicher und technische Details"
   },
   "exportNudge": {
     "never": "Du hast noch keine Kopie exportiert.",
@@ -12,7 +12,14 @@
     "title": "Erscheinungsbild",
     "auto": "Automatisch",
     "light": "Hell",
-    "dark": "Dunkel",
-    "footer": "Automatisch folgt der Einstellung Ihres Geräts."
-  }
+    "dark": "Dunkel"
+  },
+  "calendars": {
+    "subtitle": "Sieh deine Termine neben deinem Plan"
+  },
+  "data": {
+    "title": "Deine Daten",
+    "subtitle": "Exportieren, importieren oder löschen"
+  },
+  "categoriesTitle": "Kategorien und Ziele"
 }

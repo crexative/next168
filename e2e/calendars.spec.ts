@@ -3,7 +3,7 @@ import { createServer, type Server } from 'node:http'
 import { once } from 'node:events'
 import { readFile } from 'node:fs/promises'
 import ICAL from 'ical.js'
-import { seedKey, V2_KEY, openAdvanced, openTab } from './fixtures'
+import { seedKey, V2_KEY, openSettingsPage, openTab } from './fixtures'
 import { storedPlanner } from './support/indexedDb'
 
 const fixturePath = 'src/core/__fixtures__/ics/google.ics'
@@ -17,7 +17,7 @@ const document = {
 async function setup(page: Page) {
   await page.clock.install({ time: new Date('2026-10-19T12:00:00Z') })
   await seedKey(page, V2_KEY, JSON.stringify(document))
-  await openAdvanced(page)
+  await openSettingsPage(page, 'calendars')
 }
 const feed = (title: string) => `BEGIN:VCALENDAR\r\nVERSION:2.0\r\nBEGIN:VEVENT\r\nUID:local-server\r\nDTSTART:20261019T140000Z\r\nDTEND:20261019T150000Z\r\nSUMMARY:${title}\r\nEND:VEVENT\r\nEND:VCALENDAR\r\n`
 async function serve(body: () => string, cors: boolean): Promise<{ server: Server; url: string }> {
@@ -54,7 +54,7 @@ test('calendar settings fit from 320 to 1920 px with a long source name and URL'
     events: [{ id: 'long-event', title: eventTitle, start: '2026-10-20T14:30:00.000Z', end: '2026-10-20T15:30:00.000Z', allDay: false, attendees: [] }],
   }))
   await page.setViewportSize({ width: 320, height: 900 })
-  await openAdvanced(page)
+  await openSettingsPage(page, 'calendars')
   const source = page.getByTestId('calendar-source')
   await expect(source).toBeVisible()
   await expect(source.getByRole('textbox', { name: `Rename ${sourceName}`, exact: true })).toHaveValue(sourceName)
@@ -122,7 +122,7 @@ test('deleting a calendar source in another tab removes its events from the open
   const settings = await context.newPage()
   try {
     await settings.clock.install({ time: new Date('2026-10-19T12:00:00Z') })
-    await openAdvanced(settings)
+    await openSettingsPage(settings, 'calendars')
     await settings.getByTestId('calendar-source').getByRole('button', { name: 'Remove', exact: true }).click()
     await expect(settings.getByTestId('calendar-source')).toHaveCount(0)
 
@@ -147,18 +147,18 @@ test('delete all data leaves no calendar source, neither in the plan nor in the 
     }
   }))
   expect(await cachedKeys()).toHaveLength(1)
-  await openTab(page, 'settings')
+  await openSettingsPage(page, 'data')
   await page.getByRole('button', { name: 'Delete all data…' }).click()
   const dialog = page.getByRole('dialog', { name: 'Delete everything?' })
   await dialog.getByRole('textbox').fill('delete')
   await dialog.getByRole('button', { name: 'Delete everything' }).click()
   await expect(page.getByTestId('data-notice')).toContainText('All data was deleted')
-  await openAdvanced(page)
+  await openSettingsPage(page, 'calendars')
   await expect(page.getByTestId('calendar-source')).toHaveCount(0)
   expect(await cachedKeys()).toEqual([])
   expect((await storedPlanner<{ calendarSources: unknown[] }>(page)).calendarSources).toEqual([])
   await page.reload()
-  await expect(page.getByRole('heading', { name: 'Integrations and advanced' })).toBeVisible()
+  await expect(page.getByRole('heading', { level: 2, name: 'Calendars', exact: true })).toBeVisible()
   await expect(page.getByTestId('calendar-source')).toHaveCount(0)
   expect(await cachedKeys()).toEqual([])
 })
