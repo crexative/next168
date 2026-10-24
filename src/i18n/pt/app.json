@@ -1,0 +1,62 @@
+{
+  "name": "Next168",
+  "tabs": {
+    "today": "Hoje",
+    "week": "Semana",
+    "tasks": "Tarefas",
+    "insights": "Análises",
+    "settings": "Ajustes"
+  },
+  "navigation": {
+    "tabs": "Navegação principal",
+    "sidebar": "Barra lateral",
+    "toolbarActions": "Ações"
+  },
+  "placeholders": {
+    "today": {
+      "title": "Seu dia começa aqui",
+      "description": "O bloco atual e a linha do tempo de hoje aparecerão aqui."
+    },
+    "week": {
+      "title": "Sua semana começa aqui",
+      "description": "Suas 168 horas em uma grade de horários aparecerão aqui.",
+      "blocks": "Nenhum bloco salvo neste dispositivo | {count} bloco salvo neste dispositivo | {count} blocos salvos neste dispositivo"
+    },
+    "tasks": {
+      "title": "Nenhuma tarefa ainda",
+      "description": "As tarefas serão encaixadas no tempo livre da categoria."
+    },
+    "insights": {
+      "title": "Nenhuma análise ainda",
+      "description": "Veja como suas 168 horas são usadas quando planejar a semana."
+    },
+    "settings": {
+      "title": "Ajustes",
+      "description": "Categorias, idioma, dados e assistente aparecerão aqui."
+    }
+  },
+  "update": {
+    "available": "Atualização disponível — recarregue quando quiser",
+    "reload": "Recarregar",
+    "blocked": "Salve ou feche o formulário aberto antes de recarregar."
+  },
+  "storage": {
+    "readonlyNoLocks": "Este navegador não consegue coordenar várias abas com segurança, então o Next168 fica somente leitura aqui. Use uma versão atual do Chrome, Edge, Firefox ou Safari.",
+    "unsupported": "Estes dados foram salvos por uma versão mais nova do Next168 e ficam somente leitura até você atualizar.",
+    "legacyChanged": "Uma versão antiga do Next168 está aberta em outra aba. As alterações feitas lá não são aproveitadas.",
+    "conflict": "Outra aba alterou seus dados primeiro. A versão mais recente foi carregada — tente novamente.",
+    "saveFailed": "Não foi possível salvar ({reason}). Seus dados anteriores não foram alterados.",
+    "loadFailed": "Não foi possível ler seus dados ({reason})."
+  },
+  "recovery": {
+    "title": "Não foi possível ler seus dados salvos",
+    "description": "O Next168 parou para protegê-los e não alterou nada. Você pode baixar os dados brutos, restaurar o último backup ou começar com um planejador vazio.",
+    "reason": "Motivo: {reason}",
+    "export": "Baixar dados brutos",
+    "restoreBackup": "Restaurar o último backup",
+    "startFresh": "Começar com um planejador vazio",
+    "confirmTitle": "Substituir os dados ilegíveis?",
+    "confirmBody": "Baixe os dados brutos antes, caso precise deles. Uma cópia é guardada no espaço de backup se não houver backup válido.",
+    "confirmAction": "Sim, começar vazio"
+  }
+}
