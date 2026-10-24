@@ -3,7 +3,7 @@ import { mkdtemp, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join, resolve } from 'node:path'
 import { startCompanion } from '../companion/src/server'
-import { readFile } from 'node:fs/promises'
+import { readFile, writeFile } from 'node:fs/promises'
 import { Client, StreamableHTTPClientTransport } from '../companion/node_modules/@modelcontextprotocol/client/dist/index.mjs'
 
 const test = base.extend<{ companion: Awaited<ReturnType<typeof startCompanion>> }>({
@@ -55,4 +55,40 @@ test('a stale proposal cannot be approved', async ({ page, companion }) => {
   await expect(page.getByRole('alert')).toContainText('Ask for a fresh proposal')
   await expect(page.getByRole('button', { name: 'Approve', exact: true })).toBeDisabled()
   expect((await companion.workspace.document()).events).toHaveLength(0)
+})
+test('companion mode never opens the browser planner database (A11)', async ({ page, companion }, testInfo) => {
+  test.skip(testInfo.project.name !== 'desktop', 'one browser is enough to prove the storage boundary')
+  const document = await companion.workspace.document()
+  document.settings.onboardingDone = true
+  document.categories = [{ id: 'focus', name: 'Focus', colorKey: 'blue', goal: { type: 'none', hoursPerWeek: 0 } }]
+  document.revision++
+  await companion.workspace.save(document, 0)
+  await page.goto(`${companion.url}/#pair=${companion.pairingCode}`)
+  await expect(page.getByRole('heading', { name: 'Pair this browser' })).toBeHidden()
+
+  // An assistant proposal created through the card goes to the companion, and approving it changes the companion document.
+  await page.goto(`${companion.url}/#/assistant`)
+  await expect(page.getByRole('heading', { level: 1, name: 'Assistant' })).toBeVisible()
+  const op = { op: 'add_block', block: { categoryId: 'focus', title: 'Card block', days: [2], start: 600, end: 660 } }
+  await page.evaluate((change) => (window as unknown as { __next168Test: { answerWithProposal(summary: string, ops: unknown[]): void } }).__next168Test.answerWithProposal('Add a card block', [change]), op)
+  await page.getByRole('textbox', { name: 'Ask the assistant' }).fill('Add a card block')
+  await page.getByRole('button', { name: 'Ask', exact: true }).click()
+  await page.getByTestId('proposal-card').getByRole('button', { name: 'Review changes' }).click()
+  await page.getByRole('dialog').getByRole('button', { name: 'Approve', exact: true }).click()
+  await expect(page.getByTestId('proposal-card')).toContainText('The changes were applied.')
+  expect((await companion.workspace.document()).blocks.map((block) => block.title)).toEqual(['Card block'])
+
+  // Settings > Data import reads back through the companion, not the browser store.
+  const imported = { ...(await companion.workspace.document()), blocks: [{ id: 'b-imported', categoryId: 'focus', title: 'Imported block', days: [3], start: 600, end: 660 }] }
+  const bundlePath = testInfo.outputPath('companion-import.json')
+  await writeFile(bundlePath, JSON.stringify({ format: 'next168-export', bundleVersion: 1, exportedAt: '2026-10-24T12:00:00.000Z', document: imported, calendarSourceTexts: {} }))
+  await page.goto(`${companion.url}/#/settings`)
+  await expect(page.getByTestId('data-mode')).toContainText('companion', { ignoreCase: true })
+  await page.getByLabel('Choose a Next168 export file').setInputFiles(bundlePath)
+  await page.getByRole('button', { name: 'Replace my data' }).click()
+  await expect(page.getByTestId('data-notice')).toContainText('Imported and verified')
+  expect((await companion.workspace.document()).blocks.map((block) => block.title)).toEqual(['Imported block'])
+
+  const databases = await page.evaluate(async () => (await indexedDB.databases()).map((database) => database.name))
+  expect(databases).not.toContain('next168')
 })

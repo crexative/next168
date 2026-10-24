@@ -4,6 +4,7 @@ import { once } from 'node:events'
 import { readFile } from 'node:fs/promises'
 import ICAL from 'ical.js'
 import { seedKey, V2_KEY, openTab } from './fixtures'
+import { storedPlanner } from './support/indexedDb'
 
 const fixturePath = 'src/core/__fixtures__/ics/google.ics'
 const document = {
@@ -153,7 +154,10 @@ test('delete all data leaves no calendar source, neither in the plan nor in the 
   await expect(page.getByTestId('data-notice')).toContainText('All data was deleted')
   await expect(page.getByTestId('calendar-source')).toHaveCount(0)
   expect(await cachedKeys()).toEqual([])
-  expect(JSON.parse((await page.evaluate(key => window.localStorage.getItem(key), V2_KEY))!).calendarSources).toEqual([])
+  expect((await storedPlanner<{ calendarSources: unknown[] }>(page)).calendarSources).toEqual([])
+  await page.reload()
+  await expect(page.getByTestId('calendar-source')).toHaveCount(0)
+  expect(await cachedKeys()).toEqual([])
 })
 
 test('URL without CORS returns a friendly explanation and file-import suggestion', async ({ page }) => {

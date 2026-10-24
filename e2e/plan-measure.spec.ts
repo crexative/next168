@@ -2,8 +2,10 @@ import { readFileSync, writeFileSync } from 'node:fs'
 import AxeBuilder from '@axe-core/playwright'
 import { expect, test, type Page } from '@playwright/test'
 import { LEGACY_BLOCK_COUNT, legacyData, openTab, seedKey, V2_KEY } from './fixtures'
+import { storedPlanner, storedRecord } from './support/indexedDb'
 
-const BACKUP_KEY = 'next168-v2-backup'
+const LEGACY_KEYS = ['next168-data', 'next168-v2', 'next168-v2-backup', 'next168-v2-proposals', 'next168-tutorial-completed']
+
 const MONDAY_MORNING = new Date('2026-10-26T08:00:00Z')
 
 const sleep = { id: 'c-sleep', name: 'Sleep', colorKey: 'purple', icon: '😴', goal: { type: 'min', hoursPerWeek: 49 } }
@@ -35,7 +37,7 @@ async function startWith(page: Page, document: unknown): Promise<void> {
 }
 
 async function storedDocument(page: Page) {
-  return page.evaluate((key) => JSON.parse(window.localStorage.getItem(key)!), V2_KEY)
+  return storedPlanner(page)
 }
 
 function withoutBookkeeping(document: Record<string, unknown>) {
@@ -202,7 +204,16 @@ test.describe('plan and measure', () => {
     const wiped = await storedDocument(page)
     expect(wiped.categories).toEqual([])
     expect(wiped.workspaceId).not.toBe('ws-e2e')
-    expect(await page.evaluate((key) => window.localStorage.getItem(key), BACKUP_KEY)).toBeNull()
+    expect(await storedRecord(page, 'backup')).toBeNull()
+    expect(await storedRecord(page, 'proposals')).toBeNull()
+    expect(await page.evaluate((keys) => keys.filter((key) => window.localStorage.getItem(key) !== null), LEGACY_KEYS)).toEqual([])
+
+    // A reload re-runs the seeding script, which writes next168-v2 again, as a kill can resurrect a removed key:
+    // the planner stays empty and the key is removed again.
+    await page.reload()
+    await expect(page.getByTestId('data-workspace')).toHaveText(wiped.workspaceId)
+    expect((await storedDocument(page)).categories).toEqual([])
+    expect(await page.evaluate((keys) => keys.filter((key) => window.localStorage.getItem(key) !== null), LEGACY_KEYS)).toEqual([])
 
     await page.getByLabel('Choose a Next168 export file').setInputFiles(exportPath)
     await expect(page.getByTestId('import-preview')).toContainText('File schema version 2')
