@@ -43,6 +43,7 @@ test('MCP proposal appears, user approves, block is visible and revision increme
 })
 test('a stale proposal cannot be approved', async ({ page, companion }) => {
   const document = await companion.workspace.document()
+  document.settings.onboardingDone = true
   const proposal = await companion.workspace.create({ contractVersion: '1.0', workspaceId: document.workspaceId, baseRevision: 0, summary: 'A stale meeting', ops: [{ op: 'add_event', event: { title: 'Stale meeting', start: '2026-10-26T10:00:00Z', end: '2026-10-26T11:00:00Z', allDay: false, attendees: [] } }] }, 'mcp')
   document.revision++
   await companion.workspace.save(document, 0)

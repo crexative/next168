@@ -2,11 +2,16 @@ import { mkdirSync } from 'node:fs'
 import AxeBuilder from '@axe-core/playwright'
 import { expect, test } from '@playwright/test'
 import { TABS, TAB_TITLES, openTab } from './fixtures'
+import { seedOnboarded } from './support/seed'
 
 const ARTIFACT_DIR = 'e2e/artifacts/shell'
 const WIDTHS = [320, 375, 768, 1440, 1920]
 
 test.describe('app shell', () => {
+  test.beforeEach(async ({ page }) => {
+    await seedOnboarded(page)
+  })
+
   test('@smoke every tab renders a placeholder with its title', async ({ page }) => {
     await page.goto('./')
     await expect(page.getByRole('heading', { level: 1, name: 'Today' })).toBeVisible()
@@ -58,6 +63,7 @@ test.describe('app shell', () => {
       await openTab(page, tab)
       const small = await page.evaluate(() => Array.from(document.querySelectorAll<HTMLElement>('a[href], button, input, select, textarea, [role=button]'))
         .filter((element) => element.offsetParent !== null || getComputedStyle(element).position === 'fixed')
+        .filter((element) => !(element.tabIndex === -1 && element.classList.contains('visually-hidden')))
         .map((element) => ({ label: element.textContent?.trim() || element.getAttribute('aria-label') || element.tagName, ...element.getBoundingClientRect().toJSON() }))
         .filter((box) => box.width > 0 && (box.width < 44 || box.height < 44)))
       expect(small, `${tab}: ${JSON.stringify(small)}`).toEqual([])

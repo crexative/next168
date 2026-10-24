@@ -203,7 +203,7 @@ test.describe('plan and measure', () => {
     expect(wiped.workspaceId).not.toBe('ws-e2e')
     expect(await page.evaluate((key) => window.localStorage.getItem(key), BACKUP_KEY)).toBeNull()
 
-    await page.locator('input[type=file]').setInputFiles(exportPath)
+    await page.getByLabel('Choose a Next168 export file').setInputFiles(exportPath)
     await expect(page.getByTestId('import-preview')).toContainText('File schema version 2')
     await expect(page.getByTestId('count-tasks')).toHaveText('1 task')
     await page.getByRole('button', { name: 'Replace my data' }).click()
@@ -218,7 +218,7 @@ test.describe('plan and measure', () => {
     await openTab(page, 'settings')
     const v1Path = testInfo.outputPath('v1.json')
     writeFileSync(v1Path, JSON.stringify(legacyData))
-    await page.locator('input[type=file]').setInputFiles(v1Path)
+    await page.getByLabel('Choose a Next168 export file').setInputFiles(v1Path)
 
     const preview = page.getByTestId('import-preview')
     await expect(page.getByTestId('import-version')).toContainText('migrated from version 1')
@@ -239,7 +239,7 @@ test.describe('plan and measure', () => {
     await openTab(page, 'settings')
     const path = testInfo.outputPath('broken.json')
     writeFileSync(path, '{ not json')
-    await page.locator('input[type=file]').setInputFiles(path)
+    await page.getByLabel('Choose a Next168 export file').setInputFiles(path)
     await expect(page.getByTestId('data-notice')).toContainText('cannot be imported')
     await expect(page.getByTestId('import-preview')).toHaveCount(0)
     expect((await storedDocument(page)).workspaceId).toBe('ws-e2e')
