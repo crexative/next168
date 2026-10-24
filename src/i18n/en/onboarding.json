@@ -10,48 +10,34 @@
   },
   "steps": {
     "0": {
-      "title": "Your week has 168 hours. Decide where they go.",
+      "title": "Your typical week",
       "description": "No account. Everything stays on this device."
     },
     "1": {
-      "title": "Adjust your typical week",
-      "description": "Keep the typical blocks you want and adjust each category's goal. You can change it later."
-    },
-    "2": {
-      "title": "Add a first task",
-      "description": "Tasks are fitted into free time of their category."
+      "title": "Your first task",
+      "description": "Write something you want to do this week. Next168 will find it a free slot."
     }
   },
   "progress": "Step {step} of {total}",
   "useCategory": "Use {name}",
-  "categoryName": "Category name",
-  "categoryColor": "Category color",
+  "editRoutine": "Edit {name}: {when}",
   "everyDay": "Every day",
-  "needCategories": "Pick at least one category in step 1, or skip this step.",
+  "needRoutine": "Pick at least one routine to continue.",
   "back": "Back",
   "next": "Next",
   "finish": "Finish",
-  "noTaskCategory": "No category, skip the task",
-  "notNow": "Not now",
+  "taskLabel": "Task",
+  "taskPlaceholder": "For example: call the bank",
+  "taskNeedsRoutine": "To add a task, also pick a routine other than Sleep.",
   "changedElsewhere": "Your plan changed while setup was open. Nothing was saved. Review the latest values and try again.",
-  "counter": "{planned} of 168 h planned",
-  "counterFree": "{free} h free",
-  "counterOver": "You're {over} h over the 168",
-  "perWeek": "{hours} h per week",
-  "edit": "Edit {name}",
-  "editGoal": "Change the goal for {name}",
-  "goalLabel": "Goal for {name}",
-  "goal": {
-    "max": "Max {hours} h",
-    "min": "Min {hours} h",
-    "none": "No goal"
-  },
+  "assigned": "{hours} assigned",
+  "unassigned": "{hours} unassigned",
+  "counterOver": "You're {over} over the 168 h",
   "done": {
-    "title": "Your week is ready",
-    "categories": "{count} category | {count} categories",
-    "blocks": "{count} block | {count} blocks",
-    "summary": "Saved {categories} and {blocks} on this device.",
-    "task": "“{title}” is in your tasks and will fit into your week.",
-    "seeWeek": "See in Week"
+    "title": "All set",
+    "summary": "Your week is saved on this device only.",
+    "task": "“{title}” is in your tasks. Next168 will find it a free slot.",
+    "seeWeek": "See my week",
+    "start": "Get started"
   }
 }

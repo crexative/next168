@@ -81,9 +81,11 @@ it.each([
   persist.mockResolvedValue(granted)
   mounted = await mountWithPlanner(screen, { settings: { ...testDocument().settings, onboardingDone: false } })
   expect(persist).not.toHaveBeenCalled()
-  if (completion === 'skip') await clickWizard('Not now')
-  else {
-    await clickWizard('Next')
+  if (completion === 'skip') {
+    document.body.querySelector<HTMLButtonElement>('[role=dialog] button[aria-label=Close]')!.click()
+    await mounted.store.settled()
+    await nextTick()
+  } else {
     await clickWizard('Next')
     await clickWizard('Finish')
   }

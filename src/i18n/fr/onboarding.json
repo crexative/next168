@@ -10,48 +10,34 @@
   },
   "steps": {
     "0": {
-      "title": "Votre semaine compte 168 heures. Décidez à quoi elles servent.",
+      "title": "Votre semaine type",
       "description": "Sans compte. Tout reste sur cet appareil."
     },
     "1": {
-      "title": "Ajustez votre semaine type",
-      "description": "Gardez les blocs types voulus et ajustez l'objectif de chaque catégorie. Vous pourrez le modifier ensuite."
-    },
-    "2": {
-      "title": "Ajoutez une première tâche",
-      "description": "Les tâches sont placées dans le temps libre de leur catégorie."
+      "title": "Votre première tâche",
+      "description": "Écrivez quelque chose que vous voulez faire cette semaine. Next168 lui trouvera un créneau libre."
     }
   },
   "progress": "Étape {step} sur {total}",
   "useCategory": "Utiliser {name}",
-  "categoryName": "Nom de la catégorie",
-  "categoryColor": "Couleur de la catégorie",
+  "editRoutine": "Modifier {name} : {when}",
   "everyDay": "Tous les jours",
-  "needCategories": "Choisissez au moins une catégorie à l'étape 1, ou passez cette étape.",
+  "needRoutine": "Choisissez au moins une routine pour continuer.",
   "back": "Retour",
   "next": "Suivant",
   "finish": "Terminer",
-  "noTaskCategory": "Aucune catégorie, ignorer la tâche",
-  "notNow": "Pas maintenant",
+  "taskLabel": "Tâche",
+  "taskPlaceholder": "Par exemple : appeler la banque",
+  "taskNeedsRoutine": "Pour ajouter une tâche, choisissez aussi une routine autre que Sommeil.",
   "changedElsewhere": "Votre planning a changé pendant la configuration. Rien n’a été enregistré. Vérifiez les valeurs actuelles et réessayez.",
-  "counter": "{planned} h sur 168 planifiées",
-  "counterFree": "{free} h libres",
-  "counterOver": "Vous dépassez les 168 h de {over} h",
-  "perWeek": "{hours} h par semaine",
-  "edit": "Modifier {name}",
-  "editGoal": "Changer l'objectif de {name}",
-  "goalLabel": "Objectif de {name}",
-  "goal": {
-    "max": "Max {hours} h",
-    "min": "Min {hours} h",
-    "none": "Sans objectif"
-  },
+  "assigned": "{hours} attribuées",
+  "unassigned": "{hours} non attribuées",
+  "counterOver": "Vous dépassez les 168 h de {over}",
   "done": {
-    "title": "Votre semaine est prête",
-    "categories": "{count} catégorie | {count} catégories",
-    "blocks": "{count} bloc | {count} blocs",
-    "summary": "{categories} et {blocks} enregistrés sur cet appareil.",
-    "task": "« {title} » est dans vos tâches et trouvera sa place dans votre semaine.",
-    "seeWeek": "Voir dans Semaine"
+    "title": "C’est prêt",
+    "summary": "Votre semaine est enregistrée uniquement sur cet appareil.",
+    "task": "« {title} » est dans vos tâches. Next168 lui trouvera un créneau libre.",
+    "seeWeek": "Voir ma semaine",
+    "start": "Commencer"
   }
 }

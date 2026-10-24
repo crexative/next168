@@ -292,7 +292,6 @@ describe('onboarding and undo actions stay bound to what they were prepared for'
     // Sleep and Work come ticked, so the wizard has picks without a tap.
     expect(document.body.querySelector<HTMLInputElement>('.onboarding input[aria-label="Use Sleep"]')!.checked).toBe(true)
     await click('Next')
-    await click('Next')
     store.document = firstRun('ws-b')
     // The watcher has not flushed yet: Finish was prepared for ws-a.
     await click('Finish')
@@ -306,7 +305,6 @@ describe('onboarding and undo actions stay bound to what they were prepared for'
   it('refuses wizard completion after the opening revision changes in the same workspace', async () => {
     const { store, click } = await atFinish(firstRun('ws-a'))
     expect(document.body.querySelector<HTMLInputElement>('.onboarding input[aria-label="Use Sleep"]')!.checked).toBe(true)
-    await click('Next')
     await click('Next')
     await store.commit((draft) => { draft.checkIns.push({ date: TODAY, note: 'x' }) })
     await click('Finish')

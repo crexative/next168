@@ -10,48 +10,34 @@
   },
   "steps": {
     "0": {
-      "title": "Tu semana tiene 168 horas. Decide a qué van.",
+      "title": "Tu semana tipo",
       "description": "Sin cuenta. Todo se queda en este dispositivo."
     },
     "1": {
-      "title": "Ajusta tu semana tipo",
-      "description": "Deja los bloques típicos que quieras y ajusta la meta de cada categoría. Podrás cambiarlo después."
-    },
-    "2": {
-      "title": "Añade una primera tarea",
-      "description": "Las tareas se encajan en el tiempo libre de su categoría."
+      "title": "Tu primera tarea",
+      "description": "Escribe algo que quieras hacer esta semana. Next168 le buscará un hueco libre."
     }
   },
   "progress": "Paso {step} de {total}",
   "useCategory": "Usar {name}",
-  "categoryName": "Nombre de la categoría",
-  "categoryColor": "Color de la categoría",
+  "editRoutine": "Editar {name}: {when}",
   "everyDay": "Todos los días",
-  "needCategories": "Elige al menos una categoría en el paso 1 o salta este paso.",
+  "needRoutine": "Elige al menos una rutina para continuar.",
   "back": "Atrás",
   "next": "Siguiente",
   "finish": "Terminar",
-  "noTaskCategory": "Sin categoría, omitir la tarea",
-  "notNow": "Ahora no",
+  "taskLabel": "Tarea",
+  "taskPlaceholder": "Por ejemplo: llamar al banco",
+  "taskNeedsRoutine": "Para añadir una tarea, elige también una rutina que no sea Sueño.",
   "changedElsewhere": "Tu plan cambió mientras la configuración estaba abierta. No se guardó nada. Revisa los valores actuales e inténtalo de nuevo.",
-  "counter": "{planned} de 168 h planificadas",
-  "counterFree": "{free} h libres",
-  "counterOver": "Te pasas {over} h de las 168",
-  "perWeek": "{hours} h por semana",
-  "edit": "Editar {name}",
-  "editGoal": "Cambiar la meta de {name}",
-  "goalLabel": "Meta de {name}",
-  "goal": {
-    "max": "Máx. {hours} h",
-    "min": "Mín. {hours} h",
-    "none": "Sin meta"
-  },
+  "assigned": "{hours} asignadas",
+  "unassigned": "{hours} sin asignar",
+  "counterOver": "Te pasas {over} de las 168 h",
   "done": {
-    "title": "Tu semana está lista",
-    "categories": "{count} categoría | {count} categorías",
-    "blocks": "{count} bloque | {count} bloques",
-    "summary": "Guardamos {categories} y {blocks} en este dispositivo.",
-    "task": "«{title}» está en tus tareas y se encajará en tu semana.",
-    "seeWeek": "Ver en Semana"
+    "title": "Listo",
+    "summary": "Tu semana está guardada solo en este dispositivo.",
+    "task": "«{title}» está en tus tareas. Next168 le buscará un hueco libre.",
+    "seeWeek": "Ver mi semana",
+    "start": "Empezar"
   }
 }

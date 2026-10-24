@@ -10,48 +10,34 @@
   },
   "steps": {
     "0": {
-      "title": "Sua semana tem 168 horas. Decida para onde elas vão.",
+      "title": "Sua semana típica",
       "description": "Sem conta. Tudo fica neste dispositivo."
     },
     "1": {
-      "title": "Ajuste sua semana típica",
-      "description": "Mantenha os blocos típicos que quiser e ajuste a meta de cada categoria. Você poderá mudar depois."
-    },
-    "2": {
-      "title": "Adicione uma primeira tarefa",
-      "description": "As tarefas são encaixadas no tempo livre da sua categoria."
+      "title": "Sua primeira tarefa",
+      "description": "Escreva algo que você quer fazer esta semana. O Next168 vai encontrar um horário livre."
     }
   },
   "progress": "Passo {step} de {total}",
   "useCategory": "Usar {name}",
-  "categoryName": "Nome da categoria",
-  "categoryColor": "Cor da categoria",
+  "editRoutine": "Editar {name}: {when}",
   "everyDay": "Todos os dias",
-  "needCategories": "Escolha pelo menos uma categoria no passo 1 ou pule este passo.",
+  "needRoutine": "Escolha pelo menos uma rotina para continuar.",
   "back": "Voltar",
   "next": "Avançar",
   "finish": "Concluir",
-  "noTaskCategory": "Sem categoria, ignorar a tarefa",
-  "notNow": "Agora não",
+  "taskLabel": "Tarefa",
+  "taskPlaceholder": "Por exemplo: ligar para o banco",
+  "taskNeedsRoutine": "Para adicionar uma tarefa, escolha também uma rotina que não seja Sono.",
   "changedElsewhere": "Seu plano mudou enquanto a configuração estava aberta. Nada foi salvo. Confira os valores atuais e tente novamente.",
-  "counter": "{planned} h de 168 planejadas",
-  "counterFree": "{free} h livres",
-  "counterOver": "Você passa {over} h das 168",
-  "perWeek": "{hours} h por semana",
-  "edit": "Editar {name}",
-  "editGoal": "Mudar a meta de {name}",
-  "goalLabel": "Meta de {name}",
-  "goal": {
-    "max": "Máx. {hours} h",
-    "min": "Mín. {hours} h",
-    "none": "Sem meta"
-  },
+  "assigned": "{hours} atribuídas",
+  "unassigned": "{hours} sem atribuir",
+  "counterOver": "Você passa {over} das 168 h",
   "done": {
-    "title": "Sua semana está pronta",
-    "categories": "{count} categoria | {count} categorias",
-    "blocks": "{count} bloco | {count} blocos",
-    "summary": "Salvamos {categories} e {blocks} neste dispositivo.",
-    "task": "“{title}” está nas suas tarefas e vai caber na sua semana.",
-    "seeWeek": "Ver em Semana"
+    "title": "Tudo pronto",
+    "summary": "Sua semana está salva só neste dispositivo.",
+    "task": "“{title}” está nas suas tarefas. O Next168 vai encontrar um horário livre.",
+    "seeWeek": "Ver minha semana",
+    "start": "Começar"
   }
 }
