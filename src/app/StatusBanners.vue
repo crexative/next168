@@ -48,21 +48,21 @@ const reload = () => reloadWhenReady(() => planner.settled())
 </template>
 
 <style scoped>
-/* Overlay, not flow: a notice that arrives late (update, storage) must never push the page content down. */
+/* Bottom notice above the tab bar: fixed, so a late notice never pushes the page down, and clear of the large title and the Now card. */
 .banners {
   position: fixed;
-  inset: calc(var(--safe-top) + var(--toolbar-height)) calc(var(--safe-right) + var(--space-4)) auto calc(var(--safe-left) + var(--space-4));
-  z-index: 15;
+  inset: auto calc(var(--safe-right) + var(--space-4)) calc(var(--tabbar-height) + var(--safe-bottom) + var(--space-3)) calc(var(--safe-left) + var(--space-4));
+  z-index: 30;
   display: flex;
   flex-direction: column;
   gap: var(--space-2);
-  max-width: 1200px;
+  max-width: 40rem;
   margin-inline: auto;
   pointer-events: none;
 }
 .banners:empty { display: none; }
 @media (min-width: 1024px) {
-  .banners { inset-inline-start: calc(var(--sidebar-width) + var(--space-4)); }
+  .banners { inset-block-end: var(--space-6); inset-inline-start: calc(var(--sidebar-width) + var(--space-4)); }
 }
 .banner {
   display: flex;
