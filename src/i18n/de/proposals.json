@@ -81,5 +81,6 @@
   "cancel": "Abbrechen",
   "discardOnCancel": "Wenn du abbrichst, werden diese Änderungen verworfen und dein Plan bleibt, wie er ist.",
   "keepOnCancel": "Wenn du abbrichst, bleibt der Vorschlag unter Vorschläge offen.",
-  "duplicateCategory": "Du hast schon eine Kategorie namens „{name}“. Fordere einen Vorschlag an, der sie nutzt."
+  "duplicateCategory": "Du hast schon eine Kategorie namens „{name}“. Fordere einen Vorschlag an, der sie nutzt.",
+  "emptyCategory": "„{name}“ bleibt leer; Sie können sie in den Einstellungen löschen."
 }

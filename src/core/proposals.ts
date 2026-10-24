@@ -12,7 +12,9 @@ export type ProposalApplication =
   | { kind: 'rejected'; reason: string }
 export interface ProposalChange { op: ProposalOp['op']; before: unknown; after: unknown }
 // `categories` are the categories as they would be after approval, so new ones can be named in the review.
-export interface ProposalPreview { valid: boolean; changes: ProposalChange[]; warnings: string[]; categories: Category[]; reason?: string }
+// `emptyCategories`: categories the approved proposal would leave with no routine and no task (e.g. a default
+// "Work" after a whole week was imported), so the review can say they can be deleted.
+export interface ProposalPreview { valid: boolean; changes: ProposalChange[]; warnings: string[]; categories: Category[]; emptyCategories: Category[]; reason?: string }
 
 // Category names compare without case, accents' composition or extra spaces: "sueño " and "Sueño" are the same.
 export function categoryNameKey(name: string): string {
@@ -110,8 +112,10 @@ export async function previewProposal(document: PlannerDocument, proposal: Chang
     for (const category of computeStats(result.document).categories) {
       if (category.goal.kind === 'over') warnings.push(`goal.over:${category.categoryId}`)
     }
-    return { valid: true, changes: result.changes, warnings, categories: result.document.categories }
-  } catch (error) { return { valid: false, changes: [], warnings: [], categories: document.categories, reason: reason(error) } }
+    const used = new Set([...result.document.blocks, ...result.document.tasks].map((item) => item.categoryId))
+    const emptyCategories = result.document.categories.filter((category) => !used.has(category.id))
+    return { valid: true, changes: result.changes, warnings, categories: result.document.categories, emptyCategories }
+  } catch (error) { return { valid: false, changes: [], warnings: [], categories: document.categories, emptyCategories: [], reason: reason(error) } }
 }
 export async function applyProposal(document: PlannerDocument, proposal: ChangeProposal, idGen: IdGenerator, clock: Clock, hash: Hasher = sha256): Promise<ProposalApplication> {
   if (document.appliedProposalIds.includes(proposal.id)) return { kind: 'already-applied', document }

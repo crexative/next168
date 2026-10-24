@@ -81,5 +81,6 @@
   "cancel": "Cancel",
   "discardOnCancel": "If you cancel, these changes are discarded and your plan stays as it is.",
   "keepOnCancel": "If you cancel, the proposal stays pending in Proposals.",
-  "duplicateCategory": "You already have a category called “{name}”. Ask for a proposal that uses it."
+  "duplicateCategory": "You already have a category called “{name}”. Ask for a proposal that uses it.",
+  "emptyCategory": "“{name}” will be empty; you can delete it in Settings."
 }

@@ -81,5 +81,6 @@
   "cancel": "Annuler",
   "discardOnCancel": "Si tu annules, ces changements sont abandonnés et ton plan reste tel quel.",
   "keepOnCancel": "Si tu annules, la proposition reste en attente dans Propositions.",
-  "duplicateCategory": "Tu as déjà une catégorie appelée « {name} ». Demande une proposition qui l’utilise."
+  "duplicateCategory": "Tu as déjà une catégorie appelée « {name} ». Demande une proposition qui l’utilise.",
+  "emptyCategory": "« {name} » restera vide ; vous pouvez la supprimer dans Réglages."
 }

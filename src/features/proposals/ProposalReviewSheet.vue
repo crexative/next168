@@ -129,6 +129,10 @@ async function decide(approve: boolean) {
           <span>{{ t(warning.startsWith('goal.over:') ? 'proposals.overGoal' : 'proposals.overlap') }}</span>
         </li>
       </ul>
+      <!-- Information, not a warning: a category the change leaves unused, and where to remove it. -->
+      <p v-for="category in preview?.valid ? preview.emptyCategories ?? [] : []" :key="category.id" class="t-subhead t-secondary empty-category" data-testid="review-empty-category">
+        {{ t('proposals.emptyCategory', { name: category.name }) }}
+      </p>
       <section v-for="group in groups" :key="group.key" class="group" :data-testid="`review-group-${group.key}`">
         <button class="group-toggle" type="button" :aria-expanded="expanded.has(group.key)" :aria-controls="`${groupId}-${group.key}`" @click="toggleGroup(group.key)">
           <span class="t-headline group-name">{{ t(`proposals.groups.${group.key}`) }}</span>
@@ -183,6 +187,7 @@ dl.summary { display: grid; gap: 2px; margin: 0; }
 .summary dd { margin: 0 0 var(--space-1); overflow-wrap: anywhere; }
 .raw-toggle { display: inline-flex; align-items: center; min-height: var(--tap-target); padding: 0; border: 0; background: transparent; color: var(--tint-label); }
 pre { margin: 0; font-size: 0.8125rem; white-space: pre-wrap; overflow-wrap: anywhere; background: var(--surface); padding: var(--space-2); border-radius: var(--radius-control); }
+.empty-category { margin: 0; overflow-wrap: anywhere; }
 .warnings { display: flex; flex-direction: column; gap: var(--space-2); margin: 0; padding: 0; list-style: none; }
 .notice { display: flex; align-items: flex-start; gap: var(--space-2); margin: 0; padding: var(--space-3); border-radius: var(--radius-control); background: color-mix(in srgb, var(--warning) 18%, var(--surface)); }
 .notice.is-error { background: color-mix(in srgb, var(--danger) 14%, var(--surface)); }

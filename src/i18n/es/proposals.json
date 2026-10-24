@@ -81,5 +81,6 @@
   "cancel": "Cancelar",
   "discardOnCancel": "Si cancelas, estos cambios se descartan y tu plan queda como está.",
   "keepOnCancel": "Si cancelas, la propuesta sigue pendiente en Propuestas.",
-  "duplicateCategory": "Ya tienes una categoría llamada «{name}». Pide una propuesta que la use."
+  "duplicateCategory": "Ya tienes una categoría llamada «{name}». Pide una propuesta que la use.",
+  "emptyCategory": "«{name}» queda vacía; puedes eliminarla en Ajustes."
 }

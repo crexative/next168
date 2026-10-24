@@ -45,3 +45,31 @@ it('shows each change as a card with Before and After sections, and a warning wi
   expect(warning.textContent).toContain('overlap')
   expect(review()!.querySelector('[data-testid=review-loading]')).toBeNull()
 })
+
+it('says in one line when the change leaves a category empty, and where to delete it', async () => {
+  mounted = await mountWithPlanner(ProposalReviewSheet)
+  const before = previews
+  reviewing.value = proposal
+  await vi.waitFor(() => expect(previews).toBe(before + 1))
+  release({
+    valid: true, warnings: [], categories: [], changes: [{ op: 'add_block', before: undefined, after: { title: 'Dormir', categoryId: 'x', days: [1], start: 1350, end: 390 } }],
+    emptyCategories: [{ id: 'work', name: 'Trabajo', colorKey: 'blue', goal: { type: 'none', hoursPerWeek: 0 } }],
+  })
+  await vi.waitFor(() => expect(review()!.querySelector('[data-testid=review-empty-category]')).not.toBeNull())
+  const notes = review()!.querySelectorAll('[data-testid=review-empty-category]')
+  expect(notes).toHaveLength(1)
+  expect(notes[0]!.textContent!.trim()).toBe('“Trabajo” will be empty; you can delete it in Settings.')
+  // Information, not a warning: no alert role and no warning icon.
+  expect(notes[0]!.closest('[role=alert]')).toBeNull()
+  expect(notes[0]!.querySelector('svg')).toBeNull()
+})
+
+it('says nothing about empty categories for a proposal that cannot be applied', async () => {
+  mounted = await mountWithPlanner(ProposalReviewSheet)
+  const before = previews
+  reviewing.value = proposal
+  await vi.waitFor(() => expect(previews).toBe(before + 1))
+  release({ valid: false, warnings: [], categories: [], changes: [], emptyCategories: [{ id: 'work', name: 'Trabajo', colorKey: 'blue', goal: { type: 'none', hoursPerWeek: 0 } }], reason: 'proposal.staleRevision' })
+  await vi.waitFor(() => expect(review()!.querySelector('[data-testid=review-invalid]')).not.toBeNull())
+  expect(review()!.querySelector('[data-testid=review-empty-category]')).toBeNull()
+})

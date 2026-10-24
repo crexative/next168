@@ -109,3 +109,24 @@ describe('add_category', () => {
     expect(computeStats(result.document).categories.reduce((sum, row) => sum + row.plannedMinutes, 0)).toBe(168 * 60)
   })
 })
+
+describe('categories a proposal leaves empty', () => {
+  it('names a category with no routine and no task after the change, like a default one next to an imported week', async () => {
+    const doc = document()
+    const kept = doc.categories[0]!
+    const proposal = await buildProposal(input([sleep, overnight]), doc, 'import', clock, () => 'p-empty')
+    const preview = await previewProposal(doc, proposal)
+    expect(preview.valid).toBe(true)
+    expect(preview.emptyCategories.map((category) => category.name)).toEqual([kept.name])
+  })
+
+  it('does not name a category that keeps a task, and names one whose last routine the change removes', async () => {
+    const base = document()
+    const kept = base.categories[0]!
+    const doc: PlannerDocument = { ...base, blocks: [{ id: 'b-1', categoryId: kept.id, title: 'Focus', days: [1], start: 540, end: 600 }] }
+    const withTask = await buildProposal(input([{ op: 'add_task', task: { title: 'Plan', categoryId: kept.id, durationMin: 30, priority: 2 } }, { op: 'delete_block', id: 'b-1' }], doc), doc, 'import', clock, () => 'p-task')
+    expect((await previewProposal(doc, withTask)).emptyCategories).toEqual([])
+    const removing = await buildProposal(input([{ op: 'delete_block', id: 'b-1' }], doc), doc, 'import', clock, () => 'p-delete')
+    expect((await previewProposal(doc, removing)).emptyCategories.map((category) => category.id)).toEqual([kept.id])
+  })
+})
