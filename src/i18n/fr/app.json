@@ -1,0 +1,62 @@
+{
+  "name": "Next168",
+  "tabs": {
+    "today": "Aujourd’hui",
+    "week": "Semaine",
+    "tasks": "Tâches",
+    "insights": "Analyses",
+    "settings": "Réglages"
+  },
+  "navigation": {
+    "tabs": "Navigation principale",
+    "sidebar": "Barre latérale",
+    "toolbarActions": "Actions"
+  },
+  "placeholders": {
+    "today": {
+      "title": "Votre journée commence ici",
+      "description": "Le bloc en cours et la chronologie du jour apparaîtront ici."
+    },
+    "week": {
+      "title": "Votre semaine commence ici",
+      "description": "Vos 168 heures en grille horaire apparaîtront ici.",
+      "blocks": "Aucun bloc enregistré sur cet appareil | {count} bloc enregistré sur cet appareil | {count} blocs enregistrés sur cet appareil"
+    },
+    "tasks": {
+      "title": "Aucune tâche",
+      "description": "Les tâches seront placées dans le temps libre de leur catégorie."
+    },
+    "insights": {
+      "title": "Aucune analyse",
+      "description": "Voyez comment vos 168 heures sont utilisées dès que vous planifiez votre semaine."
+    },
+    "settings": {
+      "title": "Réglages",
+      "description": "Les catégories, la langue, les données et l’assistant apparaîtront ici."
+    }
+  },
+  "update": {
+    "available": "Mise à jour disponible — rechargez quand vous voulez",
+    "reload": "Recharger",
+    "blocked": "Enregistrez ou fermez le formulaire ouvert avant de recharger."
+  },
+  "storage": {
+    "readonlyNoLocks": "Ce navigateur ne peut pas coordonner plusieurs onglets en toute sécurité : Next168 est en lecture seule ici. Utilisez une version récente de Chrome, Edge, Firefox ou Safari.",
+    "unsupported": "Ces données ont été enregistrées par une version plus récente de Next168 et restent en lecture seule jusqu’à la mise à jour.",
+    "legacyChanged": "Une ancienne version de Next168 est ouverte dans un autre onglet. Les modifications faites là-bas ne sont pas reprises.",
+    "conflict": "Un autre onglet a modifié vos données en premier. La dernière version a été chargée — réessayez.",
+    "saveFailed": "Enregistrement impossible ({reason}). Vos données précédentes sont intactes.",
+    "loadFailed": "Impossible de lire vos données ({reason})."
+  },
+  "recovery": {
+    "title": "Vos données enregistrées sont illisibles",
+    "description": "Next168 s’est arrêté pour les protéger et n’a rien modifié. Vous pouvez télécharger les données brutes, restaurer la dernière sauvegarde ou repartir d’un planificateur vide.",
+    "reason": "Cause : {reason}",
+    "export": "Télécharger les données brutes",
+    "restoreBackup": "Restaurer la dernière sauvegarde",
+    "startFresh": "Repartir d’un planificateur vide",
+    "confirmTitle": "Remplacer les données illisibles ?",
+    "confirmBody": "Téléchargez d’abord les données brutes si vous pouvez en avoir besoin. Une copie est conservée dans l’emplacement de sauvegarde s’il n’y en a pas de valide.",
+    "confirmAction": "Oui, repartir de zéro"
+  }
+}

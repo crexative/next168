@@ -1,0 +1,62 @@
+{
+  "name": "Next168",
+  "tabs": {
+    "today": "Hoy",
+    "week": "Semana",
+    "tasks": "Tareas",
+    "insights": "Análisis",
+    "settings": "Ajustes"
+  },
+  "navigation": {
+    "tabs": "Navegación principal",
+    "sidebar": "Barra lateral",
+    "toolbarActions": "Acciones"
+  },
+  "placeholders": {
+    "today": {
+      "title": "Tu día empieza aquí",
+      "description": "Aquí verás el bloque actual y la cronología de hoy."
+    },
+    "week": {
+      "title": "Tu semana empieza aquí",
+      "description": "Aquí verás tus 168 horas en una cuadrícula horaria.",
+      "blocks": "Aún no hay bloques guardados en este dispositivo | {count} bloque guardado en este dispositivo | {count} bloques guardados en este dispositivo"
+    },
+    "tasks": {
+      "title": "Aún no hay tareas",
+      "description": "Las tareas se ajustarán al tiempo libre de su categoría."
+    },
+    "insights": {
+      "title": "Aún no hay análisis",
+      "description": "Descubre cómo usas tus 168 horas cuando planifiques tu semana."
+    },
+    "settings": {
+      "title": "Ajustes",
+      "description": "Aquí aparecerán las categorías, el idioma, los datos y el asistente."
+    }
+  },
+  "update": {
+    "available": "Actualización disponible — recarga cuando quieras",
+    "reload": "Recargar",
+    "blocked": "Guarda o cierra el formulario abierto antes de recargar."
+  },
+  "storage": {
+    "readonlyNoLocks": "Este navegador no puede coordinar varias pestañas de forma segura, así que Next168 es de solo lectura aquí. Usa una versión actual de Chrome, Edge, Firefox o Safari.",
+    "unsupported": "Estos datos los guardó una versión más reciente de Next168 y son de solo lectura hasta que actualices.",
+    "legacyChanged": "Hay una versión anterior de Next168 abierta en otra pestaña. Los cambios hechos allí no se trasladan.",
+    "conflict": "Otra pestaña cambió tus datos primero. Se cargó la última versión; inténtalo de nuevo.",
+    "saveFailed": "No se pudo guardar ({reason}). Tus datos anteriores no han cambiado.",
+    "loadFailed": "No se pudieron leer tus datos ({reason})."
+  },
+  "recovery": {
+    "title": "No se pueden leer tus datos guardados",
+    "description": "Next168 se detuvo para protegerlos y no cambió nada. Puedes descargar los datos sin procesar, restaurar la última copia o empezar con un planificador vacío.",
+    "reason": "Motivo: {reason}",
+    "export": "Descargar datos sin procesar",
+    "restoreBackup": "Restaurar la última copia",
+    "startFresh": "Empezar con un planificador vacío",
+    "confirmTitle": "¿Reemplazar los datos ilegibles?",
+    "confirmBody": "Descarga antes los datos sin procesar si los puedes necesitar. Si no hay una copia válida, se guarda una en la ranura de copia.",
+    "confirmAction": "Sí, empezar vacío"
+  }
+}

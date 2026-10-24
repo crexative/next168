@@ -1,0 +1,62 @@
+{
+  "name": "Next168",
+  "tabs": {
+    "today": "Heute",
+    "week": "Woche",
+    "tasks": "Aufgaben",
+    "insights": "Auswertung",
+    "settings": "Einstellungen"
+  },
+  "navigation": {
+    "tabs": "Hauptnavigation",
+    "sidebar": "Seitenleiste",
+    "toolbarActions": "Aktionen"
+  },
+  "placeholders": {
+    "today": {
+      "title": "Dein Tag beginnt hier",
+      "description": "Der aktuelle Block und der Zeitplan für heute erscheinen hier."
+    },
+    "week": {
+      "title": "Deine Woche beginnt hier",
+      "description": "Deine 168 Stunden als Zeitraster erscheinen hier.",
+      "blocks": "Noch keine Zeitblöcke auf diesem Gerät gespeichert | {count} Zeitblock auf diesem Gerät gespeichert | {count} Zeitblöcke auf diesem Gerät gespeichert"
+    },
+    "tasks": {
+      "title": "Noch keine Aufgaben",
+      "description": "Aufgaben werden in die freie Zeit ihrer Kategorie eingeplant."
+    },
+    "insights": {
+      "title": "Noch keine Auswertung",
+      "description": "Sieh, wie deine 168 Stunden verteilt sind, sobald du deine Woche planst."
+    },
+    "settings": {
+      "title": "Einstellungen",
+      "description": "Kategorien, Sprache, Daten und Assistent erscheinen hier."
+    }
+  },
+  "update": {
+    "available": "Update verfügbar — lade neu, wenn du bereit bist",
+    "reload": "Neu laden",
+    "blocked": "Sichere oder schließe das geöffnete Formular, bevor du neu lädst."
+  },
+  "storage": {
+    "readonlyNoLocks": "Dieser Browser kann mehrere Tabs nicht sicher koordinieren, daher ist Next168 hier schreibgeschützt. Nutze eine aktuelle Version von Chrome, Edge, Firefox oder Safari.",
+    "unsupported": "Diese Daten wurden von einer neueren Version von Next168 gespeichert und sind bis zum Update schreibgeschützt.",
+    "legacyChanged": "Eine ältere Version von Next168 ist in einem anderen Tab geöffnet. Änderungen dort werden nicht übernommen.",
+    "conflict": "Ein anderer Tab hat deine Daten zuerst geändert. Die neueste Version wurde geladen — bitte versuche es erneut.",
+    "saveFailed": "Speichern nicht möglich ({reason}). Deine bisherigen Daten sind unverändert.",
+    "loadFailed": "Deine Daten konnten nicht gelesen werden ({reason})."
+  },
+  "recovery": {
+    "title": "Deine gespeicherten Daten sind nicht lesbar",
+    "description": "Next168 hat angehalten, um sie zu schützen, und nichts verändert. Du kannst die Rohdaten herunterladen, das letzte Backup wiederherstellen oder mit einem leeren Planer beginnen.",
+    "reason": "Grund: {reason}",
+    "export": "Rohdaten herunterladen",
+    "restoreBackup": "Letztes Backup wiederherstellen",
+    "startFresh": "Mit leerem Planer beginnen",
+    "confirmTitle": "Unlesbare Daten ersetzen?",
+    "confirmBody": "Lade zuerst die Rohdaten herunter, falls du sie brauchst. Gibt es kein gültiges Backup, wird eine Kopie im Backup-Platz abgelegt.",
+    "confirmAction": "Ja, leer beginnen"
+  }
+}

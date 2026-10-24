@@ -1,0 +1,62 @@
+{
+  "name": "Next168",
+  "tabs": {
+    "today": "Today",
+    "week": "Week",
+    "tasks": "Tasks",
+    "insights": "Insights",
+    "settings": "Settings"
+  },
+  "navigation": {
+    "tabs": "Main navigation",
+    "sidebar": "Sidebar",
+    "toolbarActions": "Actions"
+  },
+  "placeholders": {
+    "today": {
+      "title": "Your day starts here",
+      "description": "The current block and today's timeline will appear here."
+    },
+    "week": {
+      "title": "Your week starts here",
+      "description": "Your 168 hours as a time grid will appear here.",
+      "blocks": "No time blocks saved on this device yet | {count} time block saved on this device | {count} time blocks saved on this device"
+    },
+    "tasks": {
+      "title": "No tasks yet",
+      "description": "Tasks will be fitted into free time of their category."
+    },
+    "insights": {
+      "title": "No insights yet",
+      "description": "See how your 168 hours are spent once you plan your week."
+    },
+    "settings": {
+      "title": "Settings",
+      "description": "Categories, language, data and assistant settings will appear here."
+    }
+  },
+  "update": {
+    "available": "Update available — reload when ready",
+    "reload": "Reload",
+    "blocked": "Save or close the open form before reloading."
+  },
+  "storage": {
+    "readonlyNoLocks": "This browser cannot coordinate several tabs safely, so Next168 is read-only here. Use a current version of Chrome, Edge, Firefox or Safari.",
+    "unsupported": "This data was saved by a newer version of Next168 and is read-only until you update.",
+    "legacyChanged": "An older version of Next168 is open in another tab. Changes made there are not carried over.",
+    "conflict": "Another tab changed your data first. The latest version was loaded — please try again.",
+    "saveFailed": "Could not save ({reason}). Your previous data is unchanged.",
+    "loadFailed": "Could not read your data ({reason})."
+  },
+  "recovery": {
+    "title": "Your saved data can't be read",
+    "description": "Next168 stopped to protect it and changed nothing. You can download the raw data, restore the last backup, or start with an empty planner.",
+    "reason": "Reason: {reason}",
+    "export": "Download raw data",
+    "restoreBackup": "Restore last backup",
+    "startFresh": "Start with an empty planner",
+    "confirmTitle": "Replace the unreadable data?",
+    "confirmBody": "Download the raw data first if you may need it. A copy is kept in the backup slot when no valid backup exists.",
+    "confirmAction": "Yes, start empty"
+  }
+}

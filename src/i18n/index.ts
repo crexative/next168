@@ -1,43 +1,60 @@
 import { createI18n } from 'vue-i18n'
-import en from './locales/en'
-import es from './locales/es'
-import fr from './locales/fr'
-import pt from './locales/pt'
-import de from './locales/de'
 
-// Get saved language from localStorage or use browser language
-const savedLanguage = localStorage.getItem('next168-language')
-const browserLanguage = navigator.language.split('-')[0] ?? 'en'
-const supportedLanguages = ['en', 'es', 'fr', 'pt', 'de'] as const
-const defaultLanguage: typeof supportedLanguages[number] = savedLanguage && supportedLanguages.includes(savedLanguage as any)
-  ? savedLanguage as typeof supportedLanguages[number]
-  : supportedLanguages.includes(browserLanguage as any)
-    ? browserLanguage as typeof supportedLanguages[number]
-    : 'en'
+export const SUPPORTED_LOCALES = ['en', 'es', 'fr', 'pt', 'de'] as const
+export type SupportedLocale = (typeof SUPPORTED_LOCALES)[number]
 
-export const i18n = createI18n({
-  legacy: false, // Use Composition API mode
-  locale: defaultLanguage,
-  fallbackLocale: 'en',
-  messages: {
-    en,
-    es,
-    fr,
-    pt,
-    de
+const LANGUAGE_KEY = 'next168-language'
+
+const namespaceFiles = import.meta.glob<{ default: Record<string, unknown> }>('./*/*.json', { eager: true })
+
+// Each file src/i18n/<locale>/<namespace>.json becomes messages[locale][namespace].
+export function collectMessages(files: Record<string, { default: Record<string, unknown> }>): Record<string, Record<string, unknown>> {
+  const messages: Record<string, Record<string, unknown>> = {}
+  for (const [path, module] of Object.entries(files)) {
+    const match = /\.\/([^/]+)\/([^/]+)\.json$/.exec(path)
+    if (!match) continue
+    const [, locale, namespace] = match
+    ;(messages[locale!] ??= {})[namespace!] = module.default
   }
+  return messages
+}
+
+export function isSupportedLocale(value: string | null | undefined): value is SupportedLocale {
+  return SUPPORTED_LOCALES.includes(value as SupportedLocale)
+}
+
+export function detectLocale(): SupportedLocale {
+  let saved: string | null = null
+  try {
+    saved = localStorage.getItem(LANGUAGE_KEY)
+  } catch {
+    saved = null
+  }
+  const browser = navigator.language.split('-')[0]
+  return isSupportedLocale(saved) ? saved : isSupportedLocale(browser) ? browser : 'en'
+}
+
+export const i18n = createI18n<false>({
+  legacy: false,
+  locale: detectLocale(),
+  fallbackLocale: 'en',
+  messages: collectMessages(namespaceFiles) as never,
 })
 
-export const availableLocales = [
-  { code: 'en', name: 'English', flag: '🇺🇸' },
-  { code: 'es', name: 'Español', flag: '🇪🇸' },
-  { code: 'fr', name: 'Français', flag: '🇫🇷' },
-  { code: 'pt', name: 'Português', flag: '🇧🇷' },
-  { code: 'de', name: 'Deutsch', flag: '🇩🇪' }
+export const availableLocales: { code: SupportedLocale; name: string }[] = [
+  { code: 'en', name: 'English' },
+  { code: 'es', name: 'Español' },
+  { code: 'fr', name: 'Français' },
+  { code: 'pt', name: 'Português' },
+  { code: 'de', name: 'Deutsch' },
 ]
 
-// Save language to localStorage when changed
-export function setLocale(locale: string) {
-  i18n.global.locale.value = locale as 'en' | 'es' | 'fr' | 'pt' | 'de'
-  localStorage.setItem('next168-language', locale)
+export function setLocale(locale: SupportedLocale): void {
+  i18n.global.locale.value = locale as typeof i18n.global.locale.value
+  document.documentElement.lang = locale
+  try {
+    localStorage.setItem(LANGUAGE_KEY, locale)
+  } catch {
+    // Preference is optional; the document setting is the source of truth.
+  }
 }
