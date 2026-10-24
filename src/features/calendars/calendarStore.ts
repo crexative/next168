@@ -9,6 +9,8 @@ import { createIcsFetcher, normalizeCalendarUrl, type IcsFetcher } from './icsFe
 
 export interface CalendarServices { texts: CalendarSourceStore; fetcher: IcsFetcher; now: () => Date; newId: () => string }
 let services: CalendarServices | undefined
+// Data transfers can write the shared source cache before a Pinia store is mounted.
+export const calendarTextRevision = ref(0)
 export function configureCalendarServices(overrides: Partial<CalendarServices>): void {
   services = { texts: new IndexedDbCalendarSourceStore(), fetcher: createIcsFetcher(), now: () => new Date(), newId: () => crypto.randomUUID(), ...overrides }
 }
@@ -23,7 +25,7 @@ export function calendarErrorCode(error: unknown): string {
 
 export const useCalendarStore = defineStore('calendars', () => {
   const planner = usePlannerStore()
-  const rawRevision = ref(0), pending = ref(0)
+  const rawRevision = calendarTextRevision, pending = ref(0)
   let queue: Promise<unknown> = Promise.resolve()
   let refreshedWorkspace: string | undefined
   function serialized<T>(operation: () => Promise<T>): Promise<T> {

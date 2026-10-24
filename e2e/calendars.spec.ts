@@ -82,6 +82,30 @@ test('import file → preview and Week show events with a conflict against the p
   await expect(page.getByText('Project review', { exact: true })).toBeVisible()
 })
 
+test('deleting a calendar source in another tab removes its events from the open Week without navigation', async ({ page, context }) => {
+  await setup(page)
+  await page.getByLabel('Import .ics file', { exact: true }).setInputFiles({ name: 'team.ics', mimeType: 'text/calendar', buffer: Buffer.from(feed('Removed team meeting')) })
+  await expect(page.getByTestId('calendar-source')).toHaveCount(1)
+  await openTab(page, 'week')
+  const overlay = page.getByText('Removed team meeting', { exact: true })
+  await expect(overlay).toBeVisible()
+  const weekUrl = page.url()
+  // Keep an element handle: re-navigation or replacing the Week root must not satisfy this case.
+  const weekRoot = await page.locator('.week-view').elementHandle()
+  const settings = await context.newPage()
+  try {
+    await settings.clock.install({ time: new Date('2026-10-19T12:00:00Z') })
+    await openTab(settings, 'settings')
+    await settings.getByTestId('calendar-source').getByRole('button', { name: 'Remove', exact: true }).click()
+    await expect(settings.getByTestId('calendar-source')).toHaveCount(0)
+
+    await expect(overlay).toHaveCount(0)
+    await expect(page.getByRole('heading', { level: 1, name: 'Week', exact: true })).toBeVisible()
+    expect(page.url()).toBe(weekUrl)
+    expect(await weekRoot!.evaluate(node => node.isConnected)).toBe(true)
+  } finally { await settings.close() }
+})
+
 test('delete all data leaves no calendar source, neither in the plan nor in the cached texts', async ({ page }) => {
   await setup(page)
   await page.getByLabel('Import .ics file', { exact: true }).setInputFiles(fixturePath)

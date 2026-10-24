@@ -3,7 +3,12 @@ import { icsImport } from '@/core/icsImport'
 import { addLocalDays } from '@/core/time'
 import type { OccurrenceRange } from '@/features/week/externalOccurrences'
 import { usePlannerStore } from '@/stores/plannerStore'
-import { calendarServices } from './calendarStore'
+import { calendarServices, useCalendarStore } from './calendarStore'
+
+export function calendarSourceRevision(): string {
+  const document = usePlannerStore().document
+  return JSON.stringify([document?.workspaceId, document?.calendarSources, useCalendarStore().rawRevision])
+}
 
 // Expands every stored calendar source over the range Week and Today ask for. A source whose
 // text is missing or unreadable is skipped; Settings is where its error is shown.

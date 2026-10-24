@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import { computed, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import type { ChangeProposal, ProposalInput } from '@/core/model'
 import { openProposalReview } from '@/features/proposals'
@@ -15,10 +15,15 @@ const proposals = createBrowserRepositories().proposals
 const stored = ref<ChangeProposal | null>(null)
 const failed = ref(false)
 
+watch(lastDecision, (decision) => {
+  if (stored.value && decision?.id === stored.value.id) stored.value.status = decision.kind
+}, { flush: 'sync' })
+
 // The review sheet belongs to the proposals slice; the card only stores the proposal and follows the outcome.
 const outcome = computed(() => {
   if (failed.value) return 'failed'
-  return stored.value && lastDecision.value?.id === stored.value.id ? lastDecision.value.kind : null
+  const status = stored.value?.status
+  return status === 'applied' || status === 'rejected' ? status : null
 })
 
 async function review(): Promise<void> {
