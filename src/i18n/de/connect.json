@@ -38,14 +38,19 @@
     "errors": {
       "empty": "Füge zuerst die Antwort deiner KI ein.",
       "tooLarge": "Dieser Text ist zu lang. Füge nur die letzte Antwort deiner KI ein.",
-      "none": "Ich habe keinen Vorschlag gefunden. Bitte deine KI: „Gib mir die Änderungen im next168-Block“.",
+      "none": "Deine KI hat ohne Änderungen für Next168 geantwortet: Vielleicht hat sie nur geplaudert oder braucht vorher etwas von dir. Lies ihre Nachricht. Um deinen Plan zu ändern, bitte sie: „Gib mir die Änderungen im next168-Block“.",
       "malformed": "Die Änderungen in dieser Antwort sind abgeschnitten oder beschädigt. Bitte deine KI, sie noch einmal in einem einzigen next168-Block zu schicken.",
       "invalid": "Ich habe diese Änderungen nicht verstanden. Kopiere erneut, damit deine KI das Format kennt, und bitte sie, es noch einmal zu versuchen.",
       "wrongWorkspace": "Diese Änderungen gehören zu einem anderen Plan. Kopiere erneut und starte einen neuen Chat mit deiner KI.",
       "stale": "Dein Plan hat sich geändert, nachdem du ihn für deine KI kopiert hast. Kopiere erneut und bitte sie, die Änderungen zu wiederholen.",
       "unusable": "Manche Änderungen passen nicht zu deinem aktuellen Plan, zum Beispiel ein Block, den es nicht mehr gibt. Kopiere erneut und bitte deine KI, es noch einmal zu versuchen.",
-      "saveFailed": "Die Änderungen konnten nicht gespeichert werden. Versuche es noch einmal."
-    }
+      "saveFailed": "Die Änderungen konnten nicht gespeichert werden. Versuche es noch einmal.",
+      "tooManyOps": "Deine KI hat {count} Änderungen geschickt, ein Vorschlag fasst höchstens {max}. Bitte sie, Tage mit derselben Routine in einer Änderung zusammenzufassen oder den Rest zu schicken, nachdem du diesen Teil freigegeben hast.",
+      "duplicateCategory": "Deine KI will die Kategorie „{name}“ anlegen, aber du hast sie schon. Bitte sie, die vorhandene zu nutzen und die Änderungen erneut zu schicken."
+    },
+    "emptyHint": "Du hast noch keine Kategorien: Deine KI kann sie in denselben Änderungen anlegen, die sie vorschlägt.",
+    "replyStart": "Ihre Antwort beginnt so:",
+    "loadingCalendars": "Deine Kalender werden geladen …"
   },
   "local": {
     "title": "Claude Desktop oder Claude Code (auf diesem Computer)",

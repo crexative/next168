@@ -2,6 +2,7 @@ import { expect, test, type Page, type TestInfo } from '@playwright/test'
 import { legacyData, seedKey, V2_KEY } from './fixtures'
 import { visualIntegrityViolations } from './support/visualIntegrity'
 import { addFromMenu } from './support/week'
+import { syntheticWeekReply } from '../src/features/assistant/anyAi/syntheticWeek'
 
 // Every tab and every sheet, at the three project widths (1440 / 768 / 375 px) and in both themes:
 // no control, focus ring or text is clipped, select chevrons sit inside their padding and controls in a
@@ -260,6 +261,37 @@ for (const theme of THEMES) {
       // Settings at 200 % text is audited with the rest of that page, not here.
       await anyAiStates(page, theme, 'de/320/200%', false)
     })
+
+    // The review of a whole week (#3): the summary line, closed groups, and Approve and Cancel in the footer, full 48 px
+    // targets on screen without scrolling, at 320 px and with text at 200 %; nothing wider than the screen.
+    for (const [locale, zoom] of [['es', '100%'], ['es', '200%'], ['de', '200%']] as const) {
+      test(`review of a whole week on a 320 px phone (${locale}, text ${zoom})`, async ({ page }, testInfo) => {
+        test.skip(testInfo.project.name !== 'phone', 'the narrow-width regression runs in the phone project')
+        await page.setViewportSize({ width: 320, height: 640 })
+        await start(page, theme, { ...plannedDocument, categories: [], blocks: [], tasks: [], events: [], settings: { ...plannedDocument.settings, locale } }, locale)
+        await withoutClipboard(page)
+        if (zoom === '200%') await page.addInitScript(() => { document.addEventListener('DOMContentLoaded', () => { document.documentElement.style.fontSize = '200%' }) })
+        await open(page, 'assistant')
+        await page.getByTestId('any-ai-toggle').click()
+        await page.getByTestId('any-ai-paste').fill(syntheticWeekReply('workspace-visual', 1))
+        await page.getByTestId('any-ai-review').click()
+        await expect(page.getByTestId('review-approve')).toBeEnabled()
+        const footerFits = async (state: string) => {
+          await settle(page)
+          for (const id of ['review-approve', 'review-cancel']) {
+            await expect.soft(page.getByTestId(id), `${state}: ${id} on screen`).toBeInViewport({ ratio: 1 })
+            expect.soft((await page.getByTestId(id).boundingBox())!.height, `${state}: ${id} height`).toBeGreaterThanOrEqual(48)
+          }
+          const overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth)
+          expect.soft(overflow, `${state}: horizontal scroll`).toBeLessThanOrEqual(0)
+          await audit(page, state)
+        }
+        await footerFits(`${theme}/${locale}/320/${zoom}/whole-week review`)
+        await page.getByTestId('review-group-routines').getByRole('button', { expanded: false }).click()
+        await expect(page.getByTestId('review-group-routines').locator('.change')).toHaveCount(32)
+        await footerFits(`${theme}/${locale}/320/${zoom}/whole-week review with the routines open`)
+      })
+    }
 
     test('use with your AI (Spanish): the row, the open panel, copy by hand, errors and Settings', async ({ page }) => {
       await start(page, theme, { ...plannedDocument, settings: { ...plannedDocument.settings, locale: 'es' } }, 'es')

@@ -26,7 +26,7 @@ it('says it is loading instead of flashing "cannot be applied" while the preview
   await vi.waitFor(() => expect(review()).not.toBeNull())
   expect(review()!.querySelector('[data-testid=review-loading]')!.textContent).toBe('Loading proposal…')
   expect(review()!.querySelector('[role=alert]')).toBeNull()
-  expect([...review()!.querySelectorAll('button')].find((button) => button.textContent === 'Approve')!.disabled).toBe(true)
+  expect(document.body.querySelector<HTMLButtonElement>('[data-testid=review-approve]')!.disabled).toBe(true)
 })
 
 it('shows each change as a card with Before and After sections, and a warning with an icon and text', async () => {

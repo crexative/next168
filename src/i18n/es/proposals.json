@@ -8,7 +8,7 @@
   "sources": {
     "mcp": "Asistente vía MCP",
     "assistant": "Asistente en el dispositivo",
-    "import": "Archivo importado"
+    "import": "Pegada desde tu IA"
   },
   "review": "Revisar propuesta",
   "revision": "Basada en la revisión {revision}",
@@ -28,6 +28,7 @@
   "durabilityWarning": "El cambio se confirmó, pero falta verificar la durabilidad del disco o el estado. Mantén el companion activo y recarga antes de reintentar.",
   "currentBlocks": "Tu rutina actual",
   "operations": {
+    "add_category": "Añadir categoría",
     "add_block": "Añadir rutina",
     "update_block": "Editar rutina",
     "delete_block": "Eliminar rutina",
@@ -62,5 +63,23 @@
     "none": "Sin meta"
   },
   "nothing": "Nada",
-  "loading": "Cargando propuesta…"
+  "loading": "Cargando propuesta…",
+  "groups": {
+    "categories": "Categorías nuevas",
+    "goals": "Metas",
+    "routines": "Rutinas",
+    "tasks": "Tareas",
+    "events": "Eventos"
+  },
+  "counts": {
+    "categories": "{count} categoría nueva | {count} categorías nuevas",
+    "goals": "{count} meta | {count} metas",
+    "routines": "{count} rutina | {count} rutinas",
+    "tasks": "{count} tarea | {count} tareas",
+    "events": "{count} evento | {count} eventos"
+  },
+  "cancel": "Cancelar",
+  "discardOnCancel": "Si cancelas, estos cambios se descartan y tu plan queda como está.",
+  "keepOnCancel": "Si cancelas, la propuesta sigue pendiente en Propuestas.",
+  "duplicateCategory": "Ya tienes una categoría llamada «{name}». Pide una propuesta que la use."
 }

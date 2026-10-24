@@ -13,8 +13,8 @@ import { EXERCISE_ICON } from './exercise'
 import MeasureTiles from './MeasureTiles.vue'
 import WeekBar from './WeekBar.vue'
 import { categoryColor } from './categoryColor'
-import { formatHours, formatTotal, formatWholeHours, formatWholeNumber } from '@/ui/format'
-import { goalHours, goalProgress } from './goalLine'
+import { formatHours, formatTotal, formatWholeHours, totalCount } from '@/ui/format'
+import { goalFigures, goalProgress } from './goalLine'
 
 const { t } = useI18n()
 const planner = usePlannerStore()
@@ -39,7 +39,7 @@ const rows = computed(() => {
     if (category.goal.type === 'none' && !actual) return []
     const planned = plannedMinutes.value[categoryId] ?? 0
     const progress = goalProgress(category.goal, planned)
-    return [{ category, progress, hours: goalHours(progress.line, planned), actual }]
+    return [{ category, progress, hours: goalFigures(progress.line, planned), actual }]
   })
 })
 
@@ -57,11 +57,12 @@ type Row = (typeof rows.value)[number]
 function lineText(row: Row): string {
   const { line } = row.progress
   if (line.kind === 'none') return ''
-  const { planned, goal, amount } = row.hours
-  const params = {
-    planned: formatWholeNumber(planned), goal: formatWholeHours(goal),
-    left: formatWholeHours(amount), over: formatWholeHours(amount), count: amount,
-  }
+  // One rule with the week's legend: every figure goes through formatTotal.
+  const { plannedMinutes, goalMinutes, amountMinutes } = row.hours
+  const amount = formatTotal(amountMinutes)
+  // Nothing planned yet reads "0 h", like the week's other totals, rather than "0 min".
+  const planned = plannedMinutes === 0 ? formatWholeHours(0) : formatTotal(plannedMinutes)
+  const params = { planned, goal: formatTotal(goalMinutes), left: amount, over: amount, count: totalCount(amountMinutes) }
   return t(`insights.goals.line.${line.kind}`, params)
 }
 

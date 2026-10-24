@@ -125,7 +125,14 @@ const blockFields = z.object({
   end: minuteSchema,
 })
 
+// A category the proposal creates. Its `ref` is a temporary id chosen by the assistant (for example "new-sleep"):
+// later ops in the SAME proposal use it wherever a category id goes (categoryId, update_category_goal.id), and the
+// app gives the category its real id and an unused palette colour when the person approves.
+export const newCategorySchema = z.object({ name: text(60), goal: goalSchema.optional() })
+const categoryRef = id.describe('Temporary id of the new category; later ops in this proposal use it as categoryId')
+
 export const proposalOpSchema = z.discriminatedUnion('op', [
+  z.object({ op: z.literal('add_category'), ref: categoryRef, category: newCategorySchema }),
   z.object({ op: z.literal('add_block'), block: blockFields }),
   z.object({ op: z.literal('update_block'), id, patch: blockFields.partial() }),
   z.object({ op: z.literal('delete_block'), id }),
@@ -139,7 +146,9 @@ export const proposalOpSchema = z.discriminatedUnion('op', [
   z.object({ op: z.literal('update_category_goal'), id, goal: goalSchema }),
 ])
 
-export const MAX_OPS_PER_PROPOSAL = 50
+// Room for a whole week moved in at once (categories, goals, one op per routine range and the tasks) even when an
+// assistant does not group days; the review sheet groups the changes, and staging stays linear in the op count.
+export const MAX_OPS_PER_PROPOSAL = 200
 
 // Stored outside the planner document so recording a proposal never changes the content revision.
 // ops/baseRevision/contentHash are immutable after creation; status moves pending -> applied|rejected|stale once.

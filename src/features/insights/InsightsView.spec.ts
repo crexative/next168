@@ -112,17 +112,42 @@ describe('Summary: your goals this week', () => {
     expect(text('actual-line', retained!)).toBe('Hecho: 1 h 30 min de 2 h')
   })
 
-  it('has one row per goal, with one line in whole hours and one mark', async () => {
+  it('has one row per goal, with one line and one mark', async () => {
     await mount()
-    expect(text('goal-line', row('exercise')!)).toBe('3 of at least 4 h · 1 h to go')
+    expect(text('goal-line', row('exercise')!)).toBe('3 h of at least 4 h · 1 h to go')
     expect(text('goal-state', row('exercise')!)).toBe('!')
-    expect(text('goal-line', row('reading')!)).toBe('4 of at most 5 h · 1 h left')
+    expect(text('goal-line', row('reading')!)).toBe('4 h 30 min of at most 5 h · 30 min left')
     expect(text('goal-state', row('reading')!)).toBe('✓')
-    expect(text('goal-line', row('study')!)).toBe('8 of at most 6 h · 2 h over')
+    expect(text('goal-line', row('study')!)).toBe('7 h 30 min of at most 6 h · 1 h 30 min over')
     expect(text('goal-state', row('study')!)).toBe('!')
     // A category without a goal has no row, and a row never states its status twice.
     expect(row('sleep')).toBeNull()
     expect(host.querySelector('[data-testid="goal-chip"]')).toBeNull()
+  })
+
+  it('writes each category with the same figure in the legend and in its goal line (one rounding rule)', async () => {
+    // 37 h 30 min of at most 40 h and 4 h 30 min of at least 4 h 30 min: the cases that read 38 / 37 and 4 h 30 min / 5 before.
+    const odd: PlannerDocument = {
+      ...base,
+      categories: [
+        { id: 'work', name: 'Work', colorKey: 'blue', goal: { type: 'max', hoursPerWeek: 40 } },
+        { id: 'exercise', name: 'Exercise', colorKey: 'green', goal: { type: 'min', hoursPerWeek: 4.5 } },
+      ],
+      blocks: [
+        { id: 'b-work', categoryId: 'work', title: 'Work', days: [1, 2, 3, 4, 5], start: 540, end: 990 },
+        { id: 'b-exercise', categoryId: 'exercise', title: 'Gym', days: [1, 3, 5], start: 1080, end: 1170 },
+      ],
+    }
+    await mount(odd, 'es')
+    expect(text('goal-line', row('work')!)).toBe('38 h de como máximo 40 h · quedan 2 h 30 min')
+    expect(text('goal-line', row('exercise')!)).toBe('4 h 30 min de al menos 4 h 30 min')
+    for (const id of ['work', 'exercise']) {
+      const legend = host.querySelector(`[data-testid="legend-${id}"] .t-secondary`)!.textContent!.trim()
+      expect(text('goal-line', row(id)!)!.startsWith(`${legend} `)).toBe(true)
+    }
+    app?.unmount(); host.remove()
+    await mount({ ...odd, blocks: [] }, 'es')
+    expect(text('goal-line', row('exercise')!)).toBe('0 h de al menos 4 h 30 min · faltan 4 h 30 min')
   })
 
   it('says "At the max" at the cap instead of "0 h left"', async () => {
@@ -132,14 +157,14 @@ describe('Summary: your goals this week', () => {
     expect(text('goal-state', row('work')!)).toBe('✓')
   })
 
-  it('agrees in number in Spanish: falta 1 h, faltan 14 h', async () => {
+  it('agrees in number in Spanish: falta 1 h, quedan 30 min, faltan 14 h', async () => {
     await mount(base, 'es')
-    expect(text('goal-line', row('exercise')!)).toBe('3 de al menos 4 h · falta 1 h')
-    expect(text('goal-line', row('reading')!)).toBe('4 de como máximo 5 h · queda 1 h')
+    expect(text('goal-line', row('exercise')!)).toBe('3 h de al menos 4 h · falta 1 h')
+    expect(text('goal-line', row('reading')!)).toBe('4 h 30 min de como máximo 5 h · quedan 30 min')
     const sleepy: PlannerDocument = { ...base, categories: base.categories.map((category) => (category.id === 'sleep' ? { ...category, goal: { type: 'min', hoursPerWeek: 70 } } : category)) }
     app?.unmount(); host.remove()
     await mount(sleepy, 'es')
-    expect(text('goal-line', row('sleep')!)).toBe('56 de al menos 70 h · faltan 14 h')
+    expect(text('goal-line', row('sleep')!)).toBe('56 h de al menos 70 h · faltan 14 h')
   })
 
   it('shows what was done next to the plan, on the row of its category', async () => {

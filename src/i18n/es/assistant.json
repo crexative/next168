@@ -131,8 +131,10 @@
       "answerIntro": "Dentro del bloque next168 pon un objeto JSON con esta forma (ops son los cambios):",
       "noteDays": "days: 0=domingo, 1=lunes … 6=sábado. Un bloque puede repetirse varios días.",
       "noteMinutes": "start y end son minutos después de medianoche (09:00 = 540, 18:30 = 1110); un end menor que start significa que el bloque cruza la medianoche.",
-      "noteIds": "id y categoryId deben ser ids de MI PLAN (id=…). Las tareas y eventos nuevos reciben su id cuando yo los apruebo.",
-      "exampleHeader": "Ejemplo de un bloque válido (cambia el contenido, conserva la forma):"
+      "noteIds": "id y categoryId deben ser ids de MI PLAN (id=…) o el ref de una categoría creada antes en la misma propuesta. Las tareas y eventos nuevos reciben su id cuando yo los apruebo.",
+      "exampleHeader": "Ejemplo de un bloque válido (cambia el contenido, conserva la forma):",
+      "noteCategories": "Si falta una categoría que necesito, créala con add_category y un ref corto (por ejemplo \"new-sleep\") y usa ese ref como categoryId en los cambios siguientes de la misma propuesta. Nunca crees una categoría que MI PLAN ya tiene: usa su id.",
+      "noteGroup": "Usa un solo add_block para todos los días con el mismo título y horario (\"days\":[1,2,3,4,5]). Como máximo {max} cambios por propuesta."
     }
   }
 }

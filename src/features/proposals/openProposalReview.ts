@@ -9,7 +9,7 @@ let mounted = false
 
 // Opens the review sheet for a stored proposal from any view. The sheet is mounted on first use,
 // when the Pinia instance already exists, and stays for the page's lifetime.
-export function openProposalReview(proposal: ChangeProposal): void {
+export function openProposalReview(proposal: ChangeProposal, options: { pastedReply?: boolean } = {}): void {
   if (!mounted) {
     mounted = true
     const host = document.createElement('div')
@@ -21,5 +21,5 @@ export function openProposalReview(proposal: ChangeProposal): void {
     app.mount(host)
   }
   // A copy, so opening the proposal that was just closed still counts as a change.
-  reviewing.value = { ...proposal }
+  reviewing.value = { ...proposal, pastedReply: options.pastedReply === true }
 }

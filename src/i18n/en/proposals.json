@@ -8,7 +8,7 @@
   "sources": {
     "mcp": "Assistant via MCP",
     "assistant": "On-device assistant",
-    "import": "Imported file"
+    "import": "Pasted from your AI"
   },
   "review": "Review proposal",
   "revision": "Based on revision {revision}",
@@ -28,6 +28,7 @@
   "durabilityWarning": "The change committed, but disk durability or proposal status needs a check. Keep the companion running and reload before retrying.",
   "currentBlocks": "Your current routine",
   "operations": {
+    "add_category": "Add category",
     "add_block": "Add routine",
     "update_block": "Edit routine",
     "delete_block": "Delete routine",
@@ -62,5 +63,23 @@
     "none": "No goal"
   },
   "nothing": "Nothing",
-  "loading": "Loading proposal…"
+  "loading": "Loading proposal…",
+  "groups": {
+    "categories": "New categories",
+    "goals": "Goals",
+    "routines": "Routines",
+    "tasks": "Tasks",
+    "events": "Events"
+  },
+  "counts": {
+    "categories": "{count} new category | {count} new categories",
+    "goals": "{count} goal | {count} goals",
+    "routines": "{count} routine | {count} routines",
+    "tasks": "{count} task | {count} tasks",
+    "events": "{count} event | {count} events"
+  },
+  "cancel": "Cancel",
+  "discardOnCancel": "If you cancel, these changes are discarded and your plan stays as it is.",
+  "keepOnCancel": "If you cancel, the proposal stays pending in Proposals.",
+  "duplicateCategory": "You already have a category called “{name}”. Ask for a proposal that uses it."
 }

@@ -81,15 +81,31 @@ describe('extractProposal', () => {
       expect(extractProposal(`Here: {"contractVersion":"1.0","ops":[{"op":"delete_block"`)).toEqual({ ok: false, reason: 'malformed' })
     })
 
-    it('schema violations are invalid: wrong version, unknown operation, no changes, out of range, too many', () => {
+    it('schema violations are invalid: wrong version, unknown operation, no changes, out of range', () => {
       for (const bad of [
         proposal('x', { contractVersion: '2.0' }),
         proposal('x', { ops: [{ op: 'format_disk' }] }),
         proposal('x', { ops: [] }),
         proposal('x', { ops: [{ op: 'add_block', block: { categoryId: 'c-work', title: 'T', days: [9], start: 0, end: 60 } }] }),
-        proposal('x', { ops: Array.from({ length: 51 }, () => ({ op: 'delete_block', id: 'b-gym' })) }),
+        proposal('x', { ops: [{ op: 'add_category', ref: 'new-x', category: { name: '   ' } }] }),
         [proposal()],
       ]) expect(extractProposal(`\`\`\`next168\n${JSON.stringify(bad)}\n\`\`\``)).toEqual({ ok: false, reason: 'invalid' })
+    })
+
+    it('reads up to 200 changes, and names how many a longer proposal had', () => {
+      const ops = (length: number) => Array.from({ length }, () => ({ op: 'delete_block', id: 'b-gym' }))
+      const fenced = (value: unknown) => `\`\`\`next168\n${JSON.stringify(value)}\n\`\`\``
+      expect(extractProposal(fenced(proposal('x', { ops: ops(200) })))).toMatchObject({ ok: true })
+      expect(extractProposal(fenced(proposal('x', { ops: ops(201) })))).toEqual({ ok: false, reason: 'tooManyOps', count: 201 })
+    })
+
+    it('reads a proposal that creates a category and uses its ref, and an old proposal without one', () => {
+      const created = proposal('x', { ops: [
+        { op: 'add_category', ref: 'new-sleep', category: { name: 'Sleep', goal: { type: 'min', hoursPerWeek: 56 } } },
+        { op: 'add_block', block: { categoryId: 'new-sleep', title: 'Sleep', days: [1], start: 1380, end: 420 } },
+      ] })
+      expect(extractProposal(`\`\`\`next168\n${JSON.stringify(created)}\n\`\`\``)).toMatchObject({ ok: true, input: { ops: [{ op: 'add_category', ref: 'new-sleep' }, { op: 'add_block' }] } })
+      expect(extractProposal(`\`\`\`next168\n${JSON.stringify(proposal('x'))}\n\`\`\``)).toMatchObject({ ok: true })
     })
 
     it('refuses a reply larger than the limit instead of scanning it', () => {

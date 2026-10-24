@@ -131,8 +131,10 @@
       "answerIntro": "Setze in den next168-Block ein JSON-Objekt in dieser Form (ops sind die Änderungen):",
       "noteDays": "days: 0=Sonntag, 1=Montag … 6=Samstag. Ein Block kann sich an mehreren Tagen wiederholen.",
       "noteMinutes": "start und end sind Minuten nach Mitternacht (09:00 = 540, 18:30 = 1110); ein end kleiner als start bedeutet, dass der Block über Mitternacht geht.",
-      "noteIds": "id und categoryId müssen ids aus MEIN PLAN sein (id=…). Neue Aufgaben und Termine bekommen ihre id, wenn ich sie freigebe.",
-      "exampleHeader": "Beispiel für einen gültigen Block (ändere den Inhalt, behalte die Form):"
+      "noteIds": "id und categoryId müssen ids aus MEIN PLAN sein (id=…) oder der ref einer Kategorie, die weiter vorne im selben Vorschlag angelegt wird. Neue Aufgaben und Termine bekommen ihre id, wenn ich sie freigebe.",
+      "exampleHeader": "Beispiel für einen gültigen Block (ändere den Inhalt, behalte die Form):",
+      "noteCategories": "Fehlt eine Kategorie, die ich brauche, lege sie mit add_category und einem kurzen ref an (zum Beispiel \"new-sleep\") und nutze diesen ref als categoryId in den folgenden Änderungen desselben Vorschlags. Lege nie eine Kategorie an, die MEIN PLAN schon hat: nutze ihre id.",
+      "noteGroup": "Nutze ein einziges add_block für alle Tage mit demselben Titel und derselben Zeit (\"days\":[1,2,3,4,5]). Höchstens {max} Änderungen pro Vorschlag."
     }
   }
 }

@@ -64,6 +64,31 @@ describe('companion HTTP and official MCP SDK client', () => {
     expect(await (await api(`/api/proposals/${proposal.id}/apply`, 'POST', binding)).json()).toMatchObject({ kind: 'applied', revision: 2 })
     expect((await payload(await api('/api/document'))).document.blocks).toHaveLength(1)
   })
+  it('propose_changes takes the same add_category op as the app: an empty plan gets its categories on approval only', async () => {
+    const sdk = await client()
+    const tool = (await sdk.listTools()).tools.find(item => item.name === 'propose_changes')!
+    expect(JSON.stringify(tool.inputSchema)).toContain('add_category')
+    expect(JSON.stringify(tool.inputSchema)).toContain('later ops in this proposal use it as categoryId')
+    const { document } = await payload(await api('/api/document'))
+    const ops = [
+      { op: 'add_category', ref: 'new-sleep', category: { name: 'Sleep', goal: { type: 'min', hoursPerWeek: 56 } } },
+      { op: 'add_block', block: { categoryId: 'new-sleep', title: 'Sleep', days: [0, 1, 2, 3, 4], start: 1350, end: 390 } },
+      { op: 'add_task', task: { title: 'Buy earplugs', categoryId: 'new-sleep', durationMin: 15, priority: 3 } },
+    ]
+    const proposed = await sdk.callTool({ name: 'propose_changes', arguments: { contractVersion: '1.0', workspaceId: document.workspaceId, baseRevision: document.revision, summary: 'Sleep', ops } })
+    expect(proposed.isError).not.toBe(true)
+    expect((await payload(await api('/api/document'))).document.categories).toEqual([])
+    const proposal = (proposed.structuredContent as Record<string, unknown>).proposal as { id: string; contentHash: string }
+    const applied = await api(`/api/proposals/${proposal.id}/apply`, 'POST', { contentHash: proposal.contentHash, baseRevision: document.revision })
+    expect(await applied.json()).toMatchObject({ kind: 'applied' })
+    const after = (await payload(await api('/api/document'))).document
+    expect(after.categories).toEqual([expect.objectContaining({ name: 'Sleep', goal: { type: 'min', hoursPerWeek: 56 } })])
+    expect(after.blocks[0]!.categoryId).toBe(after.categories[0]!.id)
+    expect(after.tasks[0]!.categoryId).toBe(after.categories[0]!.id)
+    const duplicate = await sdk.callTool({ name: 'propose_changes', arguments: { contractVersion: '1.0', workspaceId: document.workspaceId, baseRevision: after.revision, summary: 'Again', ops: [ops[0]] } })
+    expect(duplicate.isError).toBe(true)
+    expect(JSON.stringify(duplicate.content)).toContain('proposal.duplicateCategory:Sleep')
+  })
   it('does not give document, calendar or approval authority to MCP tokens or anonymous requests', async () => {
     for (const path of ['/api/document', '/api/proposals/any/apply', '/api/proposals/any/reject', '/api/calendars/any']) {
       for (const auth of ['', `Bearer ${token}`]) {

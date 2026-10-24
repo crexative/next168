@@ -28,6 +28,17 @@ The companion stores `planner.json`, `planner.json.bak`, `proposals.json`, `mcp-
 
 If the primary document is corrupt, Next168 blocks writes and offers a valid backup in the recovery screen. It never automatically restores or resets data. Restoration keeps both the backup and a separate copy of the corrupt bytes. A `durability-unknown` warning means rename committed but directory sync failed; the write is successful, and reloading reads the committed file. Preserve your backup before investigating disk errors.
 
+## Proposals that create categories
+
+A proposal holds up to 200 changes and may create the categories it needs, so an empty planner can receive a whole week in one proposal, from MCP (`propose_changes`) or from "Use with your AI":
+
+```json
+{"op":"add_category","ref":"new-sleep","category":{"name":"Sleep","goal":{"type":"min","hoursPerWeek":56}}}
+{"op":"add_block","block":{"categoryId":"new-sleep","title":"Sleep","days":[0,1,2,3,4],"start":1350,"end":390}}
+```
+
+`ref` is a temporary id chosen by the assistant. Later changes in the same proposal use it wherever a category id goes (`categoryId` of blocks and tasks, the `id` of `update_category_goal`). `goal` is optional ("no goal" when left out). On approval, Next168 gives each new category its real id and the first unused palette colour, and applies the whole proposal in one commit, or nothing. The proposal is refused, with a plain message, when a new name matches an existing or earlier new category (ignoring case and extra spaces), when a `ref` repeats or equals an existing id, or when a change uses a `ref` before its `add_category`. Older proposals without `add_category` stay valid.
+
 ## Move an existing workspace
 
 Export a Next168 backup from the old browser/origin. Open **Settings → Connect your LLM** in the paired companion page and import it into the empty workspace. The transfer includes raw calendar source texts; after import the client reads the saved document and source texts again and compares their content hash. The destination assigns its next revision, so verification compares against that normalized revision. Keep the original export if verification fails.

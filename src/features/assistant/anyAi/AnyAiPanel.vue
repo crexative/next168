@@ -6,8 +6,9 @@ import { expandCalendarSources } from '@/features/calendars/occurrenceSource'
 import { openProposalReview } from '@/features/proposals'
 import { getProposalRepository } from '@/features/proposals/repository'
 import { refreshPending } from '@/features/proposals/pending'
+import { lastDecision } from '@/features/proposals/reviewState'
 import { localDateOf } from '@/core/time'
-import type { ExternalOccurrence } from '@/core/model'
+import { MAX_OPS_PER_PROPOSAL, type ExternalOccurrence } from '@/core/model'
 import { weekDates } from '@/features/week/localTime'
 import Button from '@/ui/Button.vue'
 import Icon from '@/ui/Icon.vue'
@@ -29,29 +30,53 @@ const busy = ref(false)
 const copied = ref<'idle' | 'copied' | 'manual'>('idle')
 const manualText = ref('')
 const failure = ref<ReplyFailure | null>(null)
+const failureDetail = ref('')
+// The proposal made from the pasted reply. The reply stays in the box until that proposal is approved, so a person who
+// cancels the review can read it again or review it once more without going back to the chat.
+const reviewedId = ref<string | null>(null)
 const manual = ref<HTMLTextAreaElement | null>(null)
 const external = ref<ExternalOccurrence[]>([])
 
 // Imported calendars are read ahead of the click, so the prompt is built inside the gesture that copies it
-// (some browsers refuse to copy once an asynchronous read has happened in between).
+// (some browsers refuse to copy once an asynchronous read has happened in between). Copying waits until the read
+// for the plan as it is now has finished: a prompt must never go out without the meetings it should list.
+const planKey = (document: { workspaceId: string; revision: number } | null) => (document ? `${document.workspaceId}@${document.revision}` : null)
+const calendarsReadFor = ref<string | null>(null)
 let generation = 0
 watch(() => [planner.document?.workspaceId, planner.document?.revision, planner.document?.calendarSources] as const, async () => {
   const current = ++generation
   const document = planner.document
+  calendarsReadFor.value = null
   if (!document) { external.value = []; return }
+  const key = planKey(document)
+  if (document.calendarSources.length === 0) { external.value = []; calendarsReadFor.value = key; return }
   const timeZone = document.settings.timeZone
   const fromDate = weekDates(localDateOf(new Date(), timeZone), document.settings.weekStartsOn)[0]!
   const expanded = await expandCalendarSources({ fromDate, days: 7, timeZone }).catch(() => [])
-  if (current === generation) external.value = expanded
+  if (current !== generation) return
+  external.value = expanded
+  calendarsReadFor.value = key
 }, { immediate: true })
 
-const canCopy = computed(() => !!planner.document)
+const calendarsReady = computed(() => !!planner.document && calendarsReadFor.value === planKey(planner.document))
+const canCopy = computed(() => calendarsReady.value)
 const canReview = computed(() => !!planner.document && planner.writable && !!reply.value.trim() && !busy.value)
-const retryable = computed(() => failure.value === 'stale' || failure.value === 'wrongWorkspace' || failure.value === 'invalid' || failure.value === 'unusable')
+const retryable = computed(() => failure.value === 'stale' || failure.value === 'wrongWorkspace' || failure.value === 'invalid' || failure.value === 'unusable' || failure.value === 'duplicateCategory')
+const noCategories = computed(() => planner.document?.categories.length === 0)
+const failureText = computed(() => failure.value && t(`connect.anyAi.errors.${failure.value}`, { count: failureDetail.value, max: MAX_OPS_PER_PROPOSAL, name: failureDetail.value }))
+
+// The first lines of a reply that held no changes: often the AI asked a question or explained why it could not.
+const REPLY_START_LINES = 3
+const REPLY_START_CHARS = 240
+const replyStart = computed(() => {
+  if (failure.value !== 'none') return ''
+  const lines = reply.value.trim().split(/\n+/).map((line) => line.trim()).filter(Boolean).slice(0, REPLY_START_LINES).join('\n')
+  return [...lines].length > REPLY_START_CHARS ? `${[...lines].slice(0, REPLY_START_CHARS - 1).join('')}…` : lines
+})
 
 async function copy(): Promise<void> {
   const document = planner.document
-  if (!document) return
+  if (!document || !calendarsReady.value) return
   const text = buildAiPrompt({
     document, now: new Date(), locale: locale.value, external: external.value,
     translate: (key, params) => t(key, params ?? {}),
@@ -69,14 +94,17 @@ async function review(): Promise<void> {
   busy.value = true; failure.value = null
   try {
     const outcome = await reviewReply(reply.value, document, getProposalRepository())
-    if (!outcome.ok) { failure.value = outcome.reason; return }
-    reply.value = ''
+    if (!outcome.ok) { failure.value = outcome.reason; failureDetail.value = outcome.detail ?? ''; return }
+    reviewedId.value = outcome.proposal.id
     await refreshPending().catch(() => undefined)
-    openProposalReview(outcome.proposal)
+    openProposalReview(outcome.proposal, { pastedReply: true })
   } finally { busy.value = false }
 }
 
 watch(reply, () => { failure.value = null })
+watch(lastDecision, (decision) => {
+  if (decision?.kind === 'applied' && decision.id === reviewedId.value) { reply.value = ''; reviewedId.value = null }
+})
 </script>
 
 <template>
@@ -95,9 +123,11 @@ watch(reply, () => { failure.value = null })
         <li>{{ t('connect.anyAi.steps.chat') }}</li>
         <li>{{ t('connect.anyAi.steps.paste') }}</li>
       </ol>
+      <p v-if="noCategories" class="t-subhead empty-hint" data-testid="any-ai-empty-hint">{{ t('connect.anyAi.emptyHint') }}</p>
 
       <div class="group">
         <Button :disabled="!canCopy" data-testid="any-ai-copy" @click="copy">{{ t('connect.anyAi.copy') }}</Button>
+        <p v-if="planner.document && !calendarsReady" class="t-footnote t-secondary" role="status" data-testid="any-ai-calendars-loading">{{ t('connect.anyAi.loadingCalendars') }}</p>
         <p v-if="copied === 'copied'" class="t-footnote t-secondary" role="status" data-testid="any-ai-copied">{{ t('connect.anyAi.copied') }}</p>
         <template v-if="copied === 'manual'">
           <p class="t-footnote t-secondary" role="status">{{ t('connect.anyAi.manual') }}</p>
@@ -113,8 +143,12 @@ watch(reply, () => { failure.value = null })
         <div v-if="failure" :id="`${ids.hint}-error`" class="error" role="alert" data-testid="any-ai-error">
           <Icon name="triangle-alert" :size="20" class="error-icon" />
           <div class="error-text">
-            <p class="t-subhead">{{ t(`connect.anyAi.errors.${failure}`) }}</p>
-            <Button v-if="retryable" variant="tinted" data-testid="any-ai-copy-again" @click="copy">{{ t('connect.anyAi.copyAgain') }}</Button>
+            <p class="t-subhead">{{ failureText }}</p>
+            <template v-if="replyStart">
+              <p class="t-footnote t-secondary">{{ t('connect.anyAi.replyStart') }}</p>
+              <blockquote class="reply-start t-footnote" data-testid="any-ai-reply-start">{{ replyStart }}</blockquote>
+            </template>
+            <Button v-if="retryable" variant="tinted" :disabled="!canCopy" data-testid="any-ai-copy-again" @click="copy">{{ t('connect.anyAi.copyAgain') }}</Button>
           </div>
         </div>
         <Button :disabled="!canReview" data-testid="any-ai-review" @click="review">{{ t('connect.anyAi.review') }}</Button>
@@ -142,5 +176,8 @@ button.head:active { opacity: 0.6; }
 .error-icon { flex: none; margin-top: 1px; }
 .error-text { display: flex; flex-direction: column; align-items: flex-start; gap: var(--space-2); min-width: 0; }
 .error-text p { margin: 0; overflow-wrap: anywhere; }
+.empty-hint { margin: 0; overflow-wrap: anywhere; }
+/* The AI's own words, set apart from the app's message by an edge rather than by colour alone. */
+.reply-start { margin: 0; padding-inline-start: var(--space-3); border-inline-start: 3px solid var(--separator); white-space: pre-line; overflow-wrap: anywhere; }
 .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
 </style>
