@@ -32,6 +32,8 @@ describe('proposal repository', () => {
   it('rejects a proposal for another workspace before storing it', async () => {
     const { proposals, input, storage } = await setup()
     await expect(proposals.create({ ...input, workspaceId: 'other' }, 'mcp')).rejects.toMatchObject({ code: 'workspace-mismatch' })
+    await expect(proposals.create(input, 'mcp', 'x'.repeat(81))).rejects.toMatchObject({ code: 'proposal-invalid' })
+    expect(await proposals.list()).toHaveLength(0)
     expect(storage.data.has(KEYS.proposals)).toBe(false)
   })
 
