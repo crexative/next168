@@ -3,6 +3,7 @@ import { useI18n } from 'vue-i18n'
 import Icon from '@/ui/Icon.vue'
 import ListGroup from '@/ui/ListGroup.vue'
 import AdvancedSettings from './AdvancedSettings.vue'
+import AppearanceSettings from './AppearanceSettings.vue'
 import CategorySettings from './categories/CategorySettings.vue'
 import DataSettings from './data/DataSettings.vue'
 import ExportNudge from './data/ExportNudge.vue'
@@ -17,6 +18,7 @@ const page = useSettingsPage()
   <div v-else class="home">
     <div class="gutter"><ExportNudge /></div>
     <CategorySettings />
+    <AppearanceSettings />
     <DataSettings />
     <ListGroup class="more">
       <li>

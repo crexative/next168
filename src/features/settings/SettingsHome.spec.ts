@@ -14,9 +14,10 @@ const headings = () => [...mounted!.host.querySelectorAll('h2')].map((heading) =
 beforeEach(() => { localStorage.clear(); window.location.hash = '#/settings'; Object.defineProperty(navigator, 'storage', { value: { persisted: async () => false }, configurable: true }) })
 afterEach(() => { mounted?.unmount(); document.body.innerHTML = '' })
 
-it('lists only Categories and Data at the top level, with one row to Integrations and advanced', async () => {
+it('lists Categories, Appearance (the owner’s one exception) and Data at the top level, with one row to Integrations and advanced', async () => {
   mounted = await mountWithPlanner(SettingsHome, done)
-  expect(headings()).toEqual(['Categories', 'Data', 'Delete all data'])
+  expect(headings()).toEqual(['Categories', 'Appearance', 'Data', 'Delete all data'])
+  expect(mounted.host.querySelector('[role=radiogroup][aria-label=Appearance]')).not.toBeNull()
   expect(mounted.host.querySelector('.calendar-section, .connect-settings, .assistant-settings')).toBeNull()
   expect(mounted.host.textContent).not.toContain('Where your data lives')
   const link = mounted.host.querySelector<HTMLAnchorElement>('[data-testid=advanced-link]')!

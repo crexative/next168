@@ -6,7 +6,7 @@ import { storedPlanner, storedRecord } from './support/indexedDb'
 
 const LEGACY_KEYS = ['next168-data', 'next168-v2', 'next168-v2-backup', 'next168-v2-proposals', 'next168-tutorial-completed']
 // Device preferences kept beside the planner (export nudge, storage protection, last task category).
-const PREFERENCE_KEYS = ['next168-last-export', 'next168-first-seen', 'next168-export-snoozed', 'next168-persist-requested', 'next168-last-task-category']
+const PREFERENCE_KEYS = ['next168-last-export', 'next168-first-seen', 'next168-export-snoozed', 'next168-persist-requested', 'next168-last-task-category', 'next168-appearance']
 
 const MONDAY_MORNING = new Date('2026-10-26T08:00:00Z')
 
@@ -203,6 +203,8 @@ test.describe('plan and measure', () => {
     expect(JSON.parse(readFileSync(exportPath, 'utf8')).format).toBe('next168-export')
 
     await page.evaluate((keys) => keys.forEach((key) => window.localStorage.setItem(key, 'x')), PREFERENCE_KEYS)
+    await page.getByRole('radiogroup', { name: 'Appearance' }).getByRole('radio', { name: 'Dark' }).click()
+    await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark')
     await page.getByRole('button', { name: 'Delete all data…' }).click()
     const dialog = page.getByRole('dialog', { name: 'Delete everything?' })
     const confirm = dialog.getByRole('button', { name: 'Delete everything' })
@@ -217,6 +219,8 @@ test.describe('plan and measure', () => {
     expect(await storedRecord(page, 'proposals')).toBeNull()
     expect(await page.evaluate((keys) => keys.filter((key) => window.localStorage.getItem(key) !== null), LEGACY_KEYS)).toEqual([])
     expect(await page.evaluate((keys) => keys.filter((key) => window.localStorage.getItem(key) !== null), PREFERENCE_KEYS)).toEqual([])
+    // The open page goes back to the system's appearance at once.
+    await expect(page.locator('html')).not.toHaveAttribute('data-theme', /./)
 
     // A reload re-runs the seeding script, which writes next168-v2 again, as a kill can resurrect a removed key:
     // the planner stays empty and the key is removed again.

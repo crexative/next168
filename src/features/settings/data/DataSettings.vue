@@ -9,6 +9,7 @@ import Icon from '@/ui/Icon.vue'
 import ListGroup from '@/ui/ListGroup.vue'
 import Sheet from '@/ui/Sheet.vue'
 import { useUndoToast } from '@/ui/undoToast'
+import { APPEARANCE_KEY, setAppearance } from '@/ui/appearance'
 import { LAST_TASK_CATEGORY_KEY } from '@/features/tasks/lastCategory'
 import { calendarLifecycle, calendarSourceStore } from './calendarSourceHook'
 import { downloadBackup } from './exportBackup'
@@ -20,7 +21,7 @@ import {
 } from './dataTransfer'
 
 // Device preferences this app keeps beside the document; "delete all data" removes them in both modes.
-const PREFERENCE_KEYS = [LAST_EXPORT_KEY, FIRST_SEEN_KEY, SNOOZED_KEY, PERSIST_REQUESTED_KEY, LAST_TASK_CATEGORY_KEY]
+const PREFERENCE_KEYS = [LAST_EXPORT_KEY, FIRST_SEEN_KEY, SNOOZED_KEY, PERSIST_REQUESTED_KEY, LAST_TASK_CATEGORY_KEY, APPEARANCE_KEY]
 // Everything this app keeps outside the document, so "delete all data" leaves nothing of the person behind.
 const LEFTOVER_KEYS = [
   STORAGE_KEYS.backup, STORAGE_KEYS.legacyV1, STORAGE_KEYS.proposals, 'next168-tutorial-completed', ...PREFERENCE_KEYS,
@@ -131,6 +132,8 @@ function removePreferences(): void {
   for (const key of PREFERENCE_KEYS) {
     try { window.localStorage.removeItem(key) } catch { /* a preference that cannot be removed is harmless */ }
   }
+  // The open page follows at once, not only after a reload.
+  setAppearance('auto')
 }
 
 // Companion mode only: the browser repository clears the legacy keys in its own delete-all.
@@ -162,6 +165,7 @@ async function deleteEverything(): Promise<void> {
     if (result.ok) {
       await replaceSourceTexts(calendarSourceStore(), {})
       await removeLeftovers()
+      setAppearance('auto')
     }
   }
   if (result.ok) {

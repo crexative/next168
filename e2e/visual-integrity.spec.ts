@@ -184,6 +184,17 @@ for (const theme of THEMES) {
       })
     }
 
+    test('Settings with each appearance choice', async ({ page }) => {
+      await start(page, theme, plannedDocument)
+      await open(page, 'settings')
+      const group = page.getByRole('radiogroup', { name: 'Appearance' })
+      for (const name of ['Light', 'Dark', 'Automatic']) {
+        await group.getByRole('radio', { name, exact: true }).click()
+        await expect(group.getByRole('radio', { name, exact: true })).toHaveAttribute('aria-checked', 'true')
+        await audit(page, `${theme}/settings appearance ${name}`)
+      }
+    })
+
     test('onboarding steps 1–3 and the confirmation (owner\'s Spanish sheet)', async ({ page }) => {
       await start(page, theme, { ...firstRunDocument, settings: { ...firstRunDocument.settings, locale: 'es' } }, 'es')
       await page.goto('./')

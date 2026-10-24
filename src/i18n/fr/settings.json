@@ -7,5 +7,12 @@
     "never": "Vous n'avez pas encore exporté de copie.",
     "overdue": "Cela fait {days} jours que vous n'avez pas exporté de copie.",
     "action": "Exporter une copie"
+  },
+  "appearance": {
+    "title": "Apparence",
+    "auto": "Automatique",
+    "light": "Clair",
+    "dark": "Sombre",
+    "footer": "Automatique suit le réglage de votre appareil."
   }
 }

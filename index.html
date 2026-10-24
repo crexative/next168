@@ -9,6 +9,16 @@
     <meta name="description" content="Next168 - a local-first weekly planner for your 168 hours.">
     <meta name="theme-color" content="#F2F2F7" media="(prefers-color-scheme: light)">
     <meta name="theme-color" content="#000000" media="(prefers-color-scheme: dark)">
+    <script>
+      // The device's light/dark choice, before the first paint (src/ui/appearance.ts owns this key and these colours).
+      try {
+        var appearance = localStorage.getItem('next168-appearance')
+        if (appearance === 'light' || appearance === 'dark') {
+          document.documentElement.dataset.theme = appearance
+          document.querySelectorAll('meta[name="theme-color"]').forEach(function (meta) { meta.content = appearance === 'dark' ? '#000000' : '#F2F2F7' })
+        }
+      } catch (error) {}
+    </script>
     <title>Next168</title>
   </head>
   <body>

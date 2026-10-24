@@ -168,7 +168,7 @@ for (const size of SIZES) {
       await page.goto('./#/settings')
       await expect(page.getByRole('heading', { level: 1, name: 'Ajustes' })).toBeVisible()
       const headings = page.locator('main h2')
-      await expect(headings).toHaveText(['Categorías', 'Datos', 'Borrar todos los datos'])
+      await expect(headings).toHaveText(['Categorías', 'Apariencia', 'Datos', 'Borrar todos los datos'])
       await expect(page.getByText('Dónde viven tus datos')).toHaveCount(0)
       await expect(page.getByText('Calendarios', { exact: true })).toHaveCount(0)
       await calm(page)

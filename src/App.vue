@@ -4,6 +4,7 @@ import AppShell from '@/app/AppShell.vue'
 import { listenForUpdates } from '@/app/updates'
 import { isSupportedLocale, setLocale } from '@/i18n'
 import { usePlannerStore } from '@/stores/plannerStore'
+import { installAppearance } from '@/ui/appearance'
 
 const planner = usePlannerStore()
 let stopUpdates = () => undefined as void
@@ -14,10 +15,8 @@ onMounted(() => {
 })
 onBeforeUnmount(() => stopUpdates())
 
-watch(() => planner.document?.settings.theme, (theme = 'system') => {
-  if (theme === 'system') delete document.documentElement.dataset.theme
-  else document.documentElement.dataset.theme = theme
-}, { immediate: true })
+// Light or dark is chosen per device in Settings (index.html already applied it before the first paint).
+installAppearance()
 
 watch(() => planner.document?.settings.locale, (locale) => {
   if (isSupportedLocale(locale)) setLocale(locale)

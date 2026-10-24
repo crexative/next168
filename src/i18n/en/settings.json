@@ -7,5 +7,12 @@
     "never": "You haven't exported a backup yet.",
     "overdue": "It's been {days} days since your last backup.",
     "action": "Export backup"
+  },
+  "appearance": {
+    "title": "Appearance",
+    "auto": "Automatic",
+    "light": "Light",
+    "dark": "Dark",
+    "footer": "Automatic follows your device's setting."
   }
 }

@@ -7,5 +7,12 @@
     "never": "Du hast noch keine Kopie exportiert.",
     "overdue": "Seit {days} Tagen hast du keine Kopie exportiert.",
     "action": "Kopie exportieren"
+  },
+  "appearance": {
+    "title": "Erscheinungsbild",
+    "auto": "Automatisch",
+    "light": "Hell",
+    "dark": "Dunkel",
+    "footer": "Automatisch folgt der Einstellung Ihres Geräts."
   }
 }
