@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue'
+import { computed, nextTick, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import type { DayIndex, TimeBlock } from '@/core/model'
 import { localDateOf } from '@/core/time'
@@ -15,6 +15,7 @@ import WeekGrid from './WeekGrid.vue'
 import { removeBlock, restoreBlock, upsertBlock, type BlockDraft } from './blockEditing'
 import { useExternalOccurrences } from './externalOccurrences'
 import { dayIndexOf, localMinuteOf, weekDates } from './localTime'
+import { scrollToNow } from './scrollToNow'
 import { useNow } from './useNow'
 import { HOUR_HEIGHT_PX, blockSegmentsByDate, busySegmentsByDate } from './weekLayout'
 
@@ -41,6 +42,19 @@ const pagerIndex = ref(Math.max(0, dates.value.indexOf(today.value)))
 watch(dates, (next, previous) => {
   if (next[0] !== previous[0]) pagerIndex.value = Math.max(0, next.indexOf(today.value))
 })
+
+// Open on the current hour once the grid is first shown; later changes keep the reader's position.
+const root = ref<HTMLElement | null>(null)
+const hasGrid = computed(() => document.value !== null && hasCategories.value && blockCount.value > 0)
+let positioned = false
+watch(hasGrid, async (shown) => {
+  if (!shown || positioned) return
+  await nextTick()
+  const line = root.value?.querySelector('[data-testid="now-line"]')
+  if (!line) return
+  positioned = true
+  scrollToNow(line)
+}, { immediate: true, flush: 'post' })
 
 const editorOpen = ref(false)
 const saveError = ref<string | null>(null)
@@ -100,7 +114,7 @@ async function remove(blockId: string): Promise<void> {
 </script>
 
 <template>
-  <div v-if="document" class="week-view" :style="{ '--hour-height': `${HOUR_HEIGHT_PX}px` }">
+  <div v-if="document" ref="root" class="week-view" :style="{ '--hour-height': `${HOUR_HEIGHT_PX}px` }">
     <p class="visually-hidden" data-testid="block-count" :data-count="blockCount">{{ t('week.summary', { count: blockCount }, blockCount) }}</p>
     <Teleport v-if="hasCategories && planner.writable" to="#toolbar-actions" defer>
       <button type="button" class="add-button" :aria-label="t('week.add')" @click="openNewFromButton">

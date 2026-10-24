@@ -162,22 +162,33 @@ function savePartial(item: TimelineItem & { kind: 'block' }): void {
 .badge { display: inline-flex; align-items: center; gap: 2px; padding: 1px var(--space-2); border-radius: 999px; }
 .badge.is-conflict { background: color-mix(in srgb, var(--danger) 14%, transparent); color: var(--danger-label); }
 .badge.is-late { background: color-mix(in srgb, var(--warning) 18%, transparent); color: var(--label); }
-.actual { display: flex; gap: var(--space-1); padding: 2px; border-radius: var(--radius-control); background: var(--surface-2); }
+.actual { display: flex; flex-wrap: wrap; gap: var(--space-1); }
+/* The pill is drawn by ::before and is shorter than the button, which keeps the 44 px hit target. */
 .actual-choice {
-  flex: 1;
+  position: relative;
+  isolation: isolate;
+  min-width: var(--tap-target);
   min-height: var(--tap-target);
-  padding: 0 var(--space-2);
+  padding: 0 var(--space-4);
   border: 0;
-  border-radius: 8px;
   background: transparent;
   color: var(--label);
   font-weight: 500;
+}
+.actual-choice::before {
+  content: '';
+  position: absolute;
+  inset: 6px 0;
+  z-index: -1;
+  border-radius: 999px;
+  background: var(--surface-2);
   transition: background-color 0.1s, transform 0.1s var(--ease-out);
 }
-.actual-choice:active { transform: scale(0.97); }
-.actual-choice[aria-pressed='true'] { background: var(--surface); font-weight: 600; box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12); }
-.actual-choice.is-done[aria-pressed='true'] { color: var(--label); box-shadow: inset 0 -2px 0 var(--success), 0 1px 3px rgba(0, 0, 0, 0.12); }
-.actual-choice.is-skipped[aria-pressed='true'] { box-shadow: inset 0 -2px 0 var(--label-2), 0 1px 3px rgba(0, 0, 0, 0.12); }
+.actual-choice:active::before { transform: scale(0.97); }
+.actual-choice[aria-pressed='true'] { font-weight: 600; }
+.actual-choice[aria-pressed='true']::before { background: var(--surface); box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12); }
+.actual-choice.is-done[aria-pressed='true']::before { box-shadow: inset 0 -2px 0 var(--success), 0 1px 3px rgba(0, 0, 0, 0.12); }
+.actual-choice.is-skipped[aria-pressed='true']::before { box-shadow: inset 0 -2px 0 var(--label-2), 0 1px 3px rgba(0, 0, 0, 0.12); }
 .partial { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2); }
 .partial-label { flex-basis: 100%; color: var(--label-2); }
 .partial-input {
@@ -193,6 +204,6 @@ function savePartial(item: TimelineItem & { kind: 'block' }): void {
   font-variant-numeric: tabular-nums;
 }
 @media (prefers-reduced-motion: reduce) {
-  .actual-choice:active { transform: none; opacity: 0.7; }
+  .actual-choice:active::before { transform: none; opacity: 0.7; }
 }
 </style>

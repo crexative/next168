@@ -69,15 +69,13 @@ test('calendar settings fit from 320 to 1920 px with a long source name and URL'
   }
 })
 
-// Re-enabled by the S1/S3 integration step: the Week view (S1) renders the S3 overlay.
-test.fixme('import file → preview and Week show events with a conflict against the plan', async ({ page }) => {
+// Integration: the Week view (S1) renders the occurrence source S3 registers with the shell.
+test('import file → preview and Week show events with a conflict against the plan', async ({ page }) => {
   await setup(page)
   await page.getByLabel('Import .ics file', { exact: true }).setInputFiles(fixturePath)
   await expect(page.getByTestId('calendar-occurrence').filter({ hasText: 'Project review' })).toBeVisible()
   await expect(page.getByTestId('calendar-conflict')).toHaveCount(1)
   await openTab(page, 'week')
-  // S1 consumes the exported CalendarOverlay/useCalendarEvents API. This assertion deliberately
-  // requires the integrated Week outcome rather than treating a Settings preview as acceptance.
   await expect(page.getByText('Project review', { exact: true })).toBeVisible()
   await expect(page.getByTestId('calendar-conflict').first()).toBeVisible()
   await page.reload()

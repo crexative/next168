@@ -3,6 +3,7 @@
   "add": "Add block",
   "deleted": "Deleted “{title}”",
   "grid": {
+    "conflict": "Conflict",
     "crossesMidnight": "{range} (overnight)"
   },
   "pager": {

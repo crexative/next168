@@ -2,6 +2,7 @@
 import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 import type { Category } from '@/core/model'
+import Icon from '@/ui/Icon.vue'
 import { categoryColor } from './categoryColor'
 import { formatTime } from './localTime'
 import { HOUR_HEIGHT_PX, SLOT_MINUTES, type BlockSegment, type BusySegment } from './weekLayout'
@@ -20,6 +21,11 @@ const emit = defineEmits<{ select: [blockId: string]; create: [date: string, min
 
 const { t, locale } = useI18n()
 const categoriesById = computed(() => new Map(props.categories.map((category) => [category.id, category])))
+
+// A calendar event conflicts when it overlaps a planned block of the same day.
+const conflicting = computed(() => new Set(props.busy
+  .filter((item) => item.kind === 'external' && props.segments.some((segment) => segment.startMinute < item.endMinute && item.startMinute < segment.endMinute))
+  .map((item) => item.key)))
 
 function verticalStyle(startMinute: number, endMinute: number) {
   return { top: `${(startMinute / 60) * HOUR_HEIGHT_PX}px`, height: `${((endMinute - startMinute) / 60) * HOUR_HEIGHT_PX}px` }
@@ -53,12 +59,13 @@ function onColumnClick(event: MouseEvent): void {
       v-for="item in busy"
       :key="item.key"
       class="busy"
-      :class="`is-${item.kind}`"
+      :class="[`is-${item.kind}`, { 'is-conflict': conflicting.has(item.key) }]"
       :style="verticalStyle(item.startMinute, item.endMinute)"
       :title="item.title"
       data-testid="busy-overlay"
     >
       <span class="busy-title t-caption">{{ item.title }}</span>
+      <span v-if="conflicting.has(item.key)" class="conflict-mark t-caption" data-testid="calendar-conflict"><Icon name="triangle-alert" :size="12" />{{ t('week.grid.conflict') }}</span>
     </div>
     <button
       v-for="segment in segments"
@@ -135,6 +142,8 @@ function onColumnClick(event: MouseEvent): void {
   pointer-events: none;
 }
 .busy-title { color: var(--label); }
+.is-conflict { border-color: var(--danger); }
+.conflict-mark { display: flex; align-items: center; gap: 2px; color: var(--danger-label); }
 
 .now-line {
   position: absolute;

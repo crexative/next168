@@ -3,6 +3,7 @@
   "add": "Adicionar bloco",
   "deleted": "“{title}” excluído",
   "grid": {
+    "conflict": "Conflito",
     "crossesMidnight": "{range} (noturno)"
   },
   "pager": {
