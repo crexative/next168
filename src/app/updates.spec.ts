@@ -57,4 +57,32 @@ describe('update flow', () => {
     await pending
     expect(reload).toHaveBeenCalledOnce()
   })
+
+  it('reloads immediately when the worker activated before the update was requested', async () => {
+    const reload = vi.fn()
+    const skipWaiting = vi.fn(async () => undefined)
+    const applier = createUpdateApplier(skipWaiting, reload)
+    applier.onActivated()
+    await applier.apply()
+    expect(reload).toHaveBeenCalledOnce()
+  })
+
+  it('does not reload over input opened while activation is pending, and retries safely', async () => {
+    const reload = vi.fn()
+    const applier = createUpdateApplier(async () => undefined, reload)
+    announceUpdate(applier.apply)
+    const pending = reloadWhenReady(async () => undefined)
+    await Promise.resolve()
+    await Promise.resolve()
+    const release = registerUnsavedInput()
+    applier.onActivated()
+    await pending
+    expect(reload).not.toHaveBeenCalled()
+    expect(reloadBlocked.value).toBe(true)
+
+    release()
+    await reloadWhenReady(async () => undefined)
+    expect(reload).toHaveBeenCalledOnce()
+    expect(reloadBlocked.value).toBe(false)
+  })
 })

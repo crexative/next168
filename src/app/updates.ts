@@ -7,9 +7,11 @@ export const updateAvailable = ref(false)
 export const reloadBlocked = ref(false)
 
 let channel: BroadcastChannel | undefined
-let applyUpdate: (() => Promise<void>) | undefined
+type CanReload = () => Promise<boolean>
 
-export function announceUpdate(apply: () => Promise<void>): void {
+let applyUpdate: ((canReload: CanReload) => Promise<void>) | undefined
+
+export function announceUpdate(apply: (canReload: CanReload) => Promise<void>): void {
   applyUpdate = apply
   updateAvailable.value = true
   channel?.postMessage({ type: 'update-available' })
@@ -29,15 +31,22 @@ export function listenForUpdates(): () => void {
 // for it: they only show the notice and reload later through `reloadWhenReady`, under their own guard.
 export function createUpdateApplier(skipWaiting: () => Promise<void>, reload: () => void = () => window.location.reload()) {
   let activated: (() => void) | undefined
+  // Another tab may activate the worker before this one asks; remember it so apply() never waits for it.
+  let hasActivated = false
   return {
-    apply: async (): Promise<void> => {
-      const done = new Promise<void>((resolve) => { activated = resolve })
-      await skipWaiting()
-      await done
-      activated = undefined
+    apply: async (canReload: CanReload = async () => true): Promise<void> => {
+      if (!hasActivated) {
+        const done = new Promise<void>((resolve) => { activated = resolve })
+        await skipWaiting()
+        await done
+        activated = undefined
+      }
+      // Input may have been opened while activation was pending; stay activated so a retry can reload.
+      if (!(await canReload())) return
       reload()
     },
     onActivated: (): void => {
+      hasActivated = true
       updateAvailable.value = true
       activated?.()
     },
@@ -46,12 +55,16 @@ export function createUpdateApplier(skipWaiting: () => Promise<void>, reload: ()
 
 // Reloads only this tab, after its in-flight commit settled and no open sheet holds unsaved input.
 export async function reloadWhenReady(settleCommits: () => Promise<void>): Promise<void> {
-  await settleCommits()
-  if (hasUnsavedInput.value) {
-    reloadBlocked.value = true
-    return
+  const canReload: CanReload = async () => {
+    await settleCommits()
+    if (hasUnsavedInput.value) {
+      reloadBlocked.value = true
+      return false
+    }
+    reloadBlocked.value = false
+    return true
   }
-  reloadBlocked.value = false
-  if (applyUpdate) await applyUpdate()
+  if (!(await canReload())) return
+  if (applyUpdate) await applyUpdate(canReload)
   else window.location.reload()
 }
