@@ -8,6 +8,7 @@ import Icon from '@/ui/Icon.vue'
 import { categoryColor } from '@/features/week/categoryColor'
 import { formatMinute, formatTime } from '@/features/week/localTime'
 import { actualFor, type ActualStatus } from './actuals'
+import { continuationHints } from './continuationHints'
 import type { AllDayItem, TimelineItem } from './todayTimeline'
 
 const props = defineProps<{
@@ -123,8 +124,12 @@ function savePartial(item: TimelineItem & { kind: 'block' }): void {
             </span>
             <span v-if="item.kind === 'task' && item.late" class="badge is-late t-caption">{{ t('today.timeline.late') }}</span>
           </p>
-          <p v-if="startsBeforeToday(item)" class="row-kind t-footnote t-secondary" data-testid="timeline-span-hint">{{ t('today.timeline.sinceYesterday') }}</p>
-          <p v-else-if="endsAfterToday(item)" class="row-kind t-footnote t-secondary" data-testid="timeline-span-hint">{{ t('today.timeline.untilTomorrow') }}</p>
+          <p
+            v-for="hint in continuationHints(item, now, timeZone, locale)"
+            :key="hint.key"
+            class="row-kind t-footnote t-secondary"
+            data-testid="timeline-span-hint"
+          >{{ t(hint.key, hint.params) }}</p>
           <p v-if="item.kind !== 'block'" class="row-kind t-footnote t-secondary">{{ t(`today.timeline.kinds.${item.kind}`) }}</p>
           <template v-if="item.kind === 'block' && hasStarted(item)">
             <div class="actual" role="group" :aria-label="t('today.actual.question', { title: item.title })">

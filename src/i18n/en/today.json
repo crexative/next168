@@ -23,6 +23,8 @@
     "conflict": "Conflict",
     "sinceYesterday": "Since yesterday",
     "untilTomorrow": "Until tomorrow",
+    "sinceDate": "Since {date}",
+    "untilDate": "Until {date}",
     "late": "Late",
     "kinds": {
       "task": "Task",

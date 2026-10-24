@@ -23,6 +23,8 @@
     "conflict": "Konflikt",
     "sinceYesterday": "Seit gestern",
     "untilTomorrow": "Bis morgen",
+    "sinceDate": "Seit {date}",
+    "untilDate": "Bis {date}",
     "late": "Verspätet",
     "kinds": {
       "task": "Aufgabe",
