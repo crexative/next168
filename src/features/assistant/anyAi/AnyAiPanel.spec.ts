@@ -16,7 +16,7 @@ const create = vi.fn(async (input: ProposalInput, source: ChangeProposal['source
 })
 const expand = vi.fn(async (): Promise<ExternalOccurrence[]> => [])
 vi.mock('@/features/calendars/occurrenceSource', () => ({ expandCalendarSources: () => expand() }))
-vi.mock('@/features/proposals', () => ({ openProposalReview: (proposal: ChangeProposal) => opened(proposal) }))
+vi.mock('@/features/proposals', () => ({ openProposalReview: (...args: unknown[]) => opened(...args) }))
 vi.mock('@/features/proposals/repository', () => ({ getProposalRepository: () => ({ create: (...args: Parameters<typeof create>) => create(...args), list: async () => [] }) }))
 
 let mounted: Mounted | undefined
@@ -74,6 +74,7 @@ it('turns a pasted reply into a pending proposal and opens the review; it applie
   await vi.waitFor(() => expect(opened).toHaveBeenCalledTimes(1))
   expect(create).toHaveBeenCalledWith(expect.objectContaining({ summary: 'Move the gym to Thursday' }), 'import')
   expect(opened.mock.calls[0]![0]).toMatchObject({ status: 'pending' })
+  expect(opened.mock.calls[0]![1]).toEqual({ pastedReply: true })
   expect(mounted.store.document!.blocks[0]!.days).toEqual([2])
   expect(mounted.store.document!.revision).toBe(1)
   // The reply stays until its proposal is approved: a person who cancels the review can review it again.

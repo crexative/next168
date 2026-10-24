@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import { computed, ref, useId, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
-import type { ChangeProposal } from '@/core/model'
 import { previewProposal, type ProposalPreview } from '@/core/proposals'
 import { failureReason, isStorageFailure } from '@/repositories/storageCommit'
 import { usePlannerStore } from '@/stores/plannerStore'
@@ -12,7 +11,7 @@ import { refreshPending } from './pending'
 import { getProposalRepository } from './repository'
 import { summarizeEntity } from './changeSummary'
 import { EXPANDED_UP_TO, groupChanges, type ChangeGroupKey } from './changeGroups'
-import { lastDecision, reviewing } from './reviewState'
+import { lastDecision, reviewing, type ProposalReview } from './reviewState'
 
 const { t, locale } = useI18n()
 const planner = usePlannerStore()
@@ -41,7 +40,7 @@ function toggleGroup(key: ChangeGroupKey): void {
 const overview = computed(() => groups.value.map((group) => t(`proposals.counts.${group.key}`, { count: group.changes.length }, group.changes.length)).join(' · '))
 // A proposal made from a pasted reply exists only for this review: cancelling discards it, and the reply is still in
 // the paste box. Proposals from a connected assistant stay pending in Proposals until they are decided.
-const pasted = computed(() => reviewing.value?.source === 'import')
+const pasted = computed(() => reviewing.value?.pastedReply === true)
 const invalidText = computed(() => {
   const [code, ...detail] = (preview.value?.reason ?? '').split(':')
   if (code === 'proposal.staleRevision') return t('proposals.stale')
@@ -57,8 +56,8 @@ const summaryContext = computed(() => ({
 }))
 const summarize = (value: unknown) => summarizeEntity(value, summaryContext.value)
 
-async function discardIfPasted(proposal: ChangeProposal): Promise<void> {
-  if (proposal.source !== 'import') return
+async function discardIfPasted(proposal: ProposalReview): Promise<void> {
+  if (!proposal.pastedReply) return
   // If this fails the proposal stays pending and listed in Proposals, where it can still be decided.
   try { await repository.reject(proposal.id); await refreshPending() } catch { /* see above */ }
 }

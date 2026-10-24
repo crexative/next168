@@ -44,8 +44,8 @@ const focusHour = (workspaceId: string) => ({ contractVersion: '1.0' as const, w
   { op: 'add_block' as const, block: { categoryId: 'focus', title: 'Focused planning', days: [1], start: 540, end: 600 } },
 ] })
 
-async function open(proposal: ChangeProposal) {
-  reviewing.value = { ...proposal }
+async function open(proposal: ChangeProposal, pastedReply = false) {
+  reviewing.value = { ...proposal, pastedReply }
   await vi.waitFor(() => expect(byTestId<HTMLButtonElement>('review-approve')?.disabled).toBe(false))
   await nextTick()
 }
@@ -79,10 +79,19 @@ it('a short proposal is shown whole', async () => {
   expect(window.document.querySelectorAll('.change')).toHaveLength(1)
 })
 
+it('closing a saved import keeps it pending', async () => {
+  const { document } = await setup()
+  const proposal = await repository.create(focusHour(document.workspaceId), 'import')
+  await open(proposal)
+  byTestId<HTMLButtonElement>('review-cancel')!.click()
+  await vi.waitFor(() => expect($('[role="dialog"]')).toBeNull())
+  expect((await repository.list('pending')).map((item) => item.id)).toEqual([proposal.id])
+})
+
 it('cancelling a pasted proposal discards it: nothing is applied and nothing stays pending', async () => {
   const { document, planner } = await setup()
   const proposal = await repository.create(focusHour(document.workspaceId), 'import')
-  await open(proposal)
+  await open(proposal, true)
   expect(byTestId('review-cancel-note')!.textContent).toBe('If you cancel, these changes are discarded and your plan stays as it is.')
   expect(byTestId('proposal-review')!.textContent).not.toContain('Reject')
   byTestId<HTMLButtonElement>('review-cancel')!.click()
@@ -91,20 +100,21 @@ it('cancelling a pasted proposal discards it: nothing is applied and nothing sta
   expect(planner.document!.blocks).toEqual([])
 })
 
-it('closing it any other way (Escape, the close button) discards it as well', async () => {
+it.each(['close button', 'Escape', 'scrim'] as const)('closing a pasted proposal via %s discards it as well', async (method) => {
   const { document } = await setup()
-  await open(await repository.create(focusHour(document.workspaceId), 'import'))
-  $<HTMLButtonElement>('.sheet-close')!.click()
+  await open(await repository.create(focusHour(document.workspaceId), 'import'), true)
+  if (method === 'Escape') $('[role="dialog"]')!.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }))
+  else $(method === 'scrim' ? '.sheet-scrim' : '.sheet-close')!.click()
   await vi.waitFor(async () => expect(await repository.list('pending')).toEqual([]))
 })
 
-it('a proposal from a connected assistant stays pending in Proposals when cancelled, and can still be rejected', async () => {
+it.each(['mcp', 'assistant'] as const)('a proposal from %s stays pending in Proposals when cancelled, and can still be rejected', async (source) => {
   const { document } = await setup()
-  const proposal = await repository.create(focusHour(document.workspaceId), 'mcp')
+  const proposal = await repository.create(focusHour(document.workspaceId), source)
   await open(proposal)
   expect(byTestId('review-cancel-note')!.textContent).toBe('If you cancel, the proposal stays pending in Proposals.')
   byTestId<HTMLButtonElement>('review-cancel')!.click()
-  await new Promise((resolve) => setTimeout(resolve, 20))
+  await vi.waitFor(() => expect($('[role="dialog"]')).toBeNull())
   expect((await repository.list('pending')).map((item) => item.id)).toEqual([proposal.id])
   await open(proposal)
   ;[...window.document.querySelectorAll<HTMLButtonElement>('[data-testid="proposal-review"] button')].find((button) => button.textContent!.trim() === 'Reject')!.click()
@@ -114,7 +124,7 @@ it('a proposal from a connected assistant stays pending in Proposals when cancel
 it('an approved pasted proposal is applied once, and closing afterwards does not touch it', async () => {
   const { document, planner } = await setup()
   const proposal = await repository.create(focusHour(document.workspaceId), 'import')
-  await open(proposal)
+  await open(proposal, true)
   byTestId<HTMLButtonElement>('review-approve')!.click()
   byTestId<HTMLButtonElement>('review-approve')!.click()
   await vi.waitFor(() => expect(planner.document!.blocks).toHaveLength(1))

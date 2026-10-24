@@ -97,7 +97,7 @@ async function review(): Promise<void> {
     if (!outcome.ok) { failure.value = outcome.reason; failureDetail.value = outcome.detail ?? ''; return }
     reviewedId.value = outcome.proposal.id
     await refreshPending().catch(() => undefined)
-    openProposalReview(outcome.proposal)
+    openProposalReview(outcome.proposal, { pastedReply: true })
   } finally { busy.value = false }
 }
 
