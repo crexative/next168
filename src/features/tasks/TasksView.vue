@@ -7,6 +7,7 @@ import { localDateOf } from '@/core/time'
 import { formatDuration } from '@/features/insights/format'
 import { categoryColor } from '@/features/insights/categoryColor'
 import { defaultTaskCategoryId } from '@/features/onboarding/templates'
+import { readLastTaskCategory, rememberTaskCategory } from './lastCategory'
 import { assertEntry, CHANGED_ELSEWHERE, snapshotOf } from '@/features/insights/entryGuard'
 import { useExternalOccurrences } from '@/features/week/externalOccurrences'
 import { usePlannerStore } from '@/stores/plannerStore'
@@ -48,7 +49,11 @@ const plan = computed(() => {
 const done = computed(() => recentDone(document.value?.tasks ?? []))
 
 const form = reactive({ title: '', durationMin: 60, categoryId: '', dueDate: '', priority: '2' as '1' | '2' | '3' })
-const effectiveCategoryId = computed(() => defaultTaskCategoryId(categories.value, form.categoryId))
+// The category of the last task added is offered again; the first one that is not Sleep only when there is none.
+const lastCategoryId = ref(readLastTaskCategory())
+const effectiveCategoryId = computed(() => defaultTaskCategoryId(categories.value, form.categoryId || lastCategoryId.value))
+// One field to start; duration, category, date and priority appear once there is something to file.
+const detailsOpen = computed(() => form.title.trim().length > 0)
 const changedElsewhere = ref(false)
 // The quick-add form depends on one stored entry: the category it files the task under. Other commits (completing
 // a task, editing another category) never touch what is typed; the snapshot only follows what the form displays.
@@ -117,6 +122,8 @@ async function addTask(): Promise<void> {
   if (result.ok) {
     form.title = ''
     form.dueDate = ''
+    lastCategoryId.value = categoryId
+    rememberTaskCategory(categoryId)
   } else if (result.reason === CHANGED_ELSEWHERE) {
     planner.dismissError()
     form.categoryId = ''
@@ -205,32 +212,34 @@ function lateText(task: Task): string {
 
     <form v-else class="add" :aria-label="t('tasks.add.title')" @submit.prevent="addTask">
       <label class="field">
-        <span class="t-footnote t-secondary">{{ t('tasks.add.titleLabel') }}</span>
-        <input v-model="form.title" class="input" type="text" maxlength="120" autocomplete="off" :placeholder="t('tasks.add.titlePlaceholder')">
+        <span class="visually-hidden">{{ t('tasks.add.titleLabel') }}</span>
+        <input v-model="form.title" class="input" type="text" maxlength="120" autocomplete="off" enterkeyhint="done" :placeholder="t('tasks.add.titlePlaceholder')">
       </label>
-      <div class="field-row">
-        <label class="field">
-          <span class="t-footnote t-secondary">{{ t('tasks.add.duration') }}</span>
-          <select v-model.number="form.durationMin" class="input">
-            <option v-for="minutes in DURATIONS" :key="minutes" :value="minutes">{{ formatDuration(t, minutes) }}</option>
-          </select>
-        </label>
-        <label class="field">
-          <span class="t-footnote t-secondary">{{ t('tasks.add.category') }}</span>
-          <select :value="effectiveCategoryId" class="input" @change="form.categoryId = ($event.target as HTMLSelectElement).value">
-            <option v-for="category in categories" :key="category.id" :value="category.id">{{ category.name }}</option>
-          </select>
-        </label>
-        <label class="field">
-          <span class="t-footnote t-secondary">{{ t('tasks.add.dueDate') }}</span>
-          <input v-model="form.dueDate" class="input" type="date">
-        </label>
+      <div v-if="detailsOpen" class="details" role="group" :aria-label="t('tasks.add.details')" data-testid="task-details">
+        <div class="field-row">
+          <label class="field">
+            <span class="t-footnote t-secondary">{{ t('tasks.add.duration') }}</span>
+            <select v-model.number="form.durationMin" class="input">
+              <option v-for="minutes in DURATIONS" :key="minutes" :value="minutes">{{ formatDuration(t, minutes) }}</option>
+            </select>
+          </label>
+          <label class="field">
+            <span class="t-footnote t-secondary">{{ t('tasks.add.category') }}</span>
+            <select :value="effectiveCategoryId" class="input" @change="form.categoryId = ($event.target as HTMLSelectElement).value">
+              <option v-for="category in categories" :key="category.id" :value="category.id">{{ category.name }}</option>
+            </select>
+          </label>
+          <label class="field">
+            <span class="t-footnote t-secondary">{{ t('tasks.add.dueDate') }}</span>
+            <input v-model="form.dueDate" class="input" type="date">
+          </label>
+        </div>
+        <SegmentedControl v-model="form.priority" :options="priorityOptions" :label="t('tasks.add.priority')" />
+        <Button type="submit" block :disabled="!canAdd">
+          <Icon name="plus" :size="20" /> {{ t('tasks.add.submit') }}
+        </Button>
       </div>
-      <SegmentedControl v-model="form.priority" :options="priorityOptions" :label="t('tasks.add.priority')" />
       <p v-if="changedElsewhere" class="t-subhead" role="alert">{{ t('tasks.changedElsewhere') }}</p>
-      <Button type="submit" block :disabled="!canAdd">
-        <Icon name="plus" :size="20" /> {{ t('tasks.add.submit') }}
-      </Button>
     </form>
 
     <section v-if="plan.warnings.length" class="warnings" :aria-label="t('tasks.warnings')" data-testid="task-warnings">
@@ -300,6 +309,7 @@ function lateText(task: Task): string {
 <style scoped>
 .tasks { padding: 0 var(--space-4) var(--space-6); }
 .add { display: flex; flex-direction: column; gap: var(--space-3); padding: var(--space-4); background: var(--surface); border-radius: var(--radius-card); }
+.details { display: flex; flex-direction: column; gap: var(--space-3); }
 .field { display: flex; flex: 1; flex-direction: column; gap: var(--space-1); min-width: 8rem; }
 .field-row { display: flex; flex-wrap: wrap; gap: var(--space-3); }
 .warnings { margin-top: var(--space-4); }

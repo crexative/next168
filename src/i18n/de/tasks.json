@@ -27,12 +27,13 @@
   "add": {
     "title": "Aufgabe hinzufügen",
     "titleLabel": "Aufgabe",
-    "titlePlaceholder": "Was ist zu tun?",
+    "titlePlaceholder": "Aufgabe hinzufügen…",
     "duration": "Dauer",
     "category": "Kategorie",
     "dueDate": "Fällig am (optional)",
     "priority": "Priorität",
-    "submit": "Aufgabe hinzufügen"
+    "submit": "Aufgabe hinzufügen",
+    "details": "Details zu dieser Aufgabe"
   },
   "priority": {
     "1": "Hoch",

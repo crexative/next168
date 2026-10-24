@@ -27,12 +27,13 @@
   "add": {
     "title": "Añadir tarea",
     "titleLabel": "Tarea",
-    "titlePlaceholder": "¿Qué hay que hacer?",
+    "titlePlaceholder": "Añadir tarea…",
     "duration": "Duración",
     "category": "Categoría",
     "dueDate": "Fecha límite (opcional)",
     "priority": "Prioridad",
-    "submit": "Añadir tarea"
+    "submit": "Añadir tarea",
+    "details": "Detalles de esta tarea"
   },
   "priority": {
     "1": "Alta",
