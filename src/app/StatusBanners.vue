@@ -11,7 +11,8 @@ const planner = usePlannerStore()
 
 const errorMessage = computed(() => {
   const code = planner.error
-  if (!code || code === 'no-web-locks') return null
+  // A storage failure has its own blocking screen.
+  if (!code || code === 'no-web-locks' || planner.status === 'error') return null
   return code === 'conflict' ? t('app.storage.conflict') : t('app.storage.saveFailed', { reason: code })
 })
 

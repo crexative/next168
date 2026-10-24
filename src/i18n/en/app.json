@@ -46,7 +46,13 @@
     "legacyChanged": "An older version of Next168 is open in another tab. Changes made there are not carried over.",
     "conflict": "Another tab changed your data first. The latest version was loaded — please try again.",
     "saveFailed": "Could not save ({reason}). Your previous data is unchanged.",
-    "loadFailed": "Could not read your data ({reason})."
+    "loadFailed": "Could not read your data ({reason}).",
+    "unavailableTitle": "Next168 can't use this browser's storage",
+    "unavailableBody": "Next168 stopped so nothing gets lost. Your data on this device was not changed. Try again in a moment.",
+    "lastChangeNotSaved": "Your last change was not saved. Everything before it is safe.",
+    "retry": "Try again",
+    "exportCopy": "Export a copy",
+    "exportWithoutCalendars": "Some calendar texts could not be read, so they were exported empty."
   },
   "recovery": {
     "title": "Your saved data can't be read",

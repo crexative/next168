@@ -30,7 +30,7 @@ async function startFresh(): Promise<void> {
     <EmptyState icon="triangle-alert" :title="t('app.recovery.title')" :description="t('app.recovery.description')">
       <p class="t-footnote t-secondary">{{ t('app.recovery.reason', { reason: planner.corruptReason }) }}</p>
       <div class="actions">
-        <Button variant="filled" @click="downloadRaw">{{ t('app.recovery.export') }}</Button>
+        <Button v-if="planner.corruptRaw" variant="filled" @click="downloadRaw">{{ t('app.recovery.export') }}</Button>
         <Button v-if="planner.backupAvailable" variant="tinted" @click="planner.restoreBackup()">{{ t('app.recovery.restoreBackup') }}</Button>
         <Button variant="plain" destructive @click="confirming = true">{{ t('app.recovery.startFresh') }}</Button>
       </div>

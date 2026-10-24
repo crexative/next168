@@ -6,6 +6,7 @@ import LargeTitle from '@/ui/LargeTitle.vue'
 import UndoToast from '@/ui/UndoToast.vue'
 import { usePlannerStore } from '@/stores/plannerStore'
 import RecoveryScreen from './RecoveryScreen.vue'
+import StorageErrorScreen from './StorageErrorScreen.vue'
 import StatusBanners from './StatusBanners.vue'
 import { shell } from './registry'
 import { useHashRoute, viewHash } from './useHashRoute'
@@ -49,6 +50,7 @@ function scrollToTop(): void { window.scrollTo({ top: 0, behavior: 'instant' }) 
       <StatusBanners />
       <main id="main" class="main" tabindex="-1">
         <RecoveryScreen v-if="planner.status === 'corrupt'" />
+        <StorageErrorScreen v-else-if="planner.status === 'error'" />
         <Transition v-else name="view" mode="out-in" @after-leave="scrollToTop">
           <div v-if="currentView" :key="currentView.id" class="view">
             <LargeTitle :title="t(currentView.titleKey)">
