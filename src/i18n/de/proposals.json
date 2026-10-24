@@ -29,8 +29,8 @@
   "currentBlocks": "Ihre aktuelle Routine",
   "operations": {
     "add_category": "Kategorie hinzufügen",
-    "add_block": "Routine hinzufügen",
-    "update_block": "Routine bearbeiten",
+    "add_block": "Neue Routine",
+    "update_block": "Routine ändern",
     "delete_block": "Routine löschen",
     "add_task": "Aufgabe hinzufügen",
     "update_task": "Aufgabe bearbeiten",
