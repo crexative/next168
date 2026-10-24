@@ -11,5 +11,6 @@ export default defineConfig({
     environment: 'happy-dom',
     include: ['src/**/*.spec.ts', 'src/**/*.test.ts'],
     root: fileURLToPath(new URL('./', import.meta.url)),
+    setupFiles: ['./src/test/setup.ts'],
   },
 })

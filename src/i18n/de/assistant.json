@@ -1,0 +1,141 @@
+{
+  "title": "Assistent",
+  "privacy": "Läuft auf diesem Gerät. Deine Pläne verlassen es nie; der Assistent liest sie nur, um dir zu antworten.",
+  "providers": {
+    "rules": "Schnelle Antworten",
+    "webllm": "Modell auf dem Gerät"
+  },
+  "status": {
+    "header": "Status des Assistenten",
+    "rulesDetail": "Antwortet anhand deiner geplanten Stunden. Funktioniert überall, ohne Download.",
+    "available": "Bereit",
+    "downloadable": "Download nötig",
+    "unavailable": "Nicht verfügbar",
+    "checking": "Prüfe…",
+    "webllmDetail": {
+      "available": "Einsatzbereit, auch offline.",
+      "downloadable": "Führt ein kleines Sprachmodell auf diesem Gerät aus. Erfordert einen einmaligen Download.",
+      "unavailable": "Dieses Gerät oder dieser Browser kann das Modell nicht ausführen (WebGPU nötig). Schnelle Antworten funktionieren weiterhin.",
+      "checking": "Prüfe dieses Gerät…"
+    }
+  },
+  "optIn": {
+    "title": "Modell auf dem Gerät aktivieren",
+    "body": "Ein Sprachmodell läuft auf diesem Gerät, deine Pläne verlassen es also nie. Es braucht einen einmaligen Download von {size}. Du kannst es jederzeit in den Einstellungen löschen.",
+    "wifi": "Nutze nach Möglichkeit WLAN: Der Download ist groß.",
+    "cellular": "Du scheinst mobile Daten zu nutzen, und der Download ist groß. WLAN wird empfohlen.",
+    "download": "Modell herunterladen ({size})"
+  },
+  "progress": {
+    "title": "Modell wird heruntergeladen",
+    "detail": "{percent} % geschafft. Lass diesen Tab geöffnet.",
+    "cancel": "Abbrechen"
+  },
+  "chat": {
+    "label": "Den Assistenten fragen",
+    "placeholder": "Frag nach deiner Woche…",
+    "send": "Fragen",
+    "thinking": "Denke nach…"
+  },
+  "failures": {
+    "cancelled": "Abgebrochen.",
+    "offline": "Du bist offline und das Modell ist noch nicht heruntergeladen. Verbinde dich einmal, um es zu laden.",
+    "out-of-memory": "Diesem Gerät ging beim Laden des Modells der Speicher aus. Stattdessen werden schnelle Antworten genutzt.",
+    "device-lost": "Das Grafikgerät ging verloren. Stattdessen werden schnelle Antworten genutzt; lade neu, um das Modell erneut zu versuchen.",
+    "invalid-output": "Die Antwort des Modells war nicht nutzbar. Formuliere die Frage bitte anders.",
+    "unavailable": "Das Modell auf dem Gerät ist hier nicht verfügbar. Stattdessen werden schnelle Antworten genutzt.",
+    "unknown": "Etwas ist schiefgelaufen. Bitte versuche es erneut."
+  },
+  "settings": {
+    "header": "Assistent",
+    "provider": "Antworten mit",
+    "needsDownload": "Das Modell ist noch nicht heruntergeladen.",
+    "openAssistant": "Assistent öffnen",
+    "deleteModel": "Heruntergeladenes Modell löschen"
+  },
+  "proposal": {
+    "review": "Änderungen prüfen",
+    "apply": "Anwenden",
+    "discard": "Verwerfen",
+    "applied": "Die Änderungen wurden angewendet.",
+    "rejected": "Der Vorschlag wurde verworfen.",
+    "failed": "Der Vorschlag konnte nicht angewendet werden. Es wurde nichts geändert.",
+    "warnings": "{count} Hinweis(e) vor dem Anwenden prüfen."
+  },
+  "review": {
+    "add_block": "Block hinzufügen: {subject}",
+    "update_block": "Block ändern: {subject}",
+    "delete_block": "Block entfernen: {subject}",
+    "add_task": "Aufgabe hinzufügen: {subject}",
+    "update_task": "Aufgabe ändern: {subject}",
+    "complete_task": "Aufgabe abschließen: {subject}",
+    "add_event": "Termin hinzufügen: {subject}",
+    "update_category_goal": "Ziel ändern: {subject}",
+    "field": {
+      "title": "Titel",
+      "category": "Kategorie",
+      "days": "Tage",
+      "start": "Beginn",
+      "end": "Ende",
+      "notes": "Notizen",
+      "goal": "Wochenziel",
+      "durationMin": "Dauer (Min.)",
+      "dueDate": "Fällig am",
+      "priority": "Priorität",
+      "doneAt": "Erledigt",
+      "allDay": "Ganztägig",
+      "location": "Ort",
+      "attendees": "Teilnehmer"
+    },
+    "value": {
+      "yes": "ja",
+      "no": "nein",
+      "empty": "keine",
+      "goalMax": "höchstens {hours} h",
+      "goalMin": "mindestens {hours} h",
+      "goalNone": "kein Ziel"
+    },
+    "warning": {
+      "overlap": "Nach diesen Änderungen überschneiden sich zwei Blöcke.",
+      "goalOver": "{category} überschreitet sein Wochenlimit."
+    }
+  },
+  "intent": {
+    "summary": {
+      "add_block": "„{title}“ am {day} hinzufügen, {start}–{end}",
+      "move_block": "„{title}“ auf {day} verschieben, {start}–{end}",
+      "delete_block": "Den Block „{title}“ entfernen",
+      "delete_block_day": "„{title}“ am {day} entfernen",
+      "add_task": "Die Aufgabe „{title}“ hinzufügen ({minutes} Min.)"
+    },
+    "problem": {
+      "alreadyThere": "„{title}“ ist dort bereits zu dieser Zeit eingeplant. Sie müssen nichts ändern.",
+      "noChange": "Daraus konnte ich keine Änderung an Ihrem Plan machen. Versuchen Sie zum Beispiel: „Füge am Donnerstag um 18:00 einen einstündigen Arbeitsblock hinzu“.",
+      "needsDetails": "Für diese Änderung brauche ich mehr Angaben: was, welcher Tag und welche Uhrzeit. Bitte fragen Sie erneut mit diesen Angaben.",
+      "unknownCategory": "Die Kategorie „{category}“ habe ich nicht gefunden. Ihre Kategorien sind: {categories}.",
+      "unknownBlock": "Einen Block namens „{title}“ habe ich in Ihrem Plan nicht gefunden.",
+      "absentDay": "„{title}“ findet an diesen Tagen statt: {days}. Welchen Termin möchten Sie ändern?",
+      "ambiguousBlock": "Mehrere Blöcke passen zu „{title}“. Bitte nennen Sie den Tag.",
+      "notDelete": "Ich war nicht sicher, ob Sie einen Block entfernen wollten, daher wurde nichts geändert. Sagen Sie „lösche“ oder „entferne“ und den Namen des Blocks."
+    }
+  },
+  "answers": {
+    "categoryPlanned": "{category}: {planned} diese Woche geplant.",
+    "categoryOver": "{category}: {planned} diese Woche geplant, {amount} über dem Limit von {goal}.",
+    "categoryMissing": "{category}: {planned} diese Woche geplant, {amount} unter dem Ziel von {goal}.",
+    "categoryNoGoal": "{category} hat kein Wochenziel. {planned} diese Woche geplant.",
+    "maxRoomLeft": "{category}: {planned} vom Limit von {goal} geplant, {amount} übrig.",
+    "maxExceeded": "{category}: {planned} geplant, {amount} über dem Limit von {goal}.",
+    "minStillNeeded": "{category}: {planned} geplant, {amount} fehlen bis zum Ziel von {goal}.",
+    "minReached": "{category}: {planned} geplant, das Ziel von {goal} ist erreicht.",
+    "currentBlock": "Jetzt: {title}, noch {minutes} Min.",
+    "nextBlock": "Als Nächstes: {title} am {date} um {time}.",
+    "noNextBlock": "Kein anstehender Block in der kommenden Woche.",
+    "noOverflow": "Alle offenen Aufgaben passen in deine freie Zeit.",
+    "overflow": "{count} Aufgabe(n) passen nicht oder sind überfällig: {titles}. {amount} nicht eingeplant.",
+    "unassigned": "{amount} der Woche sind nicht zugewiesen ({planned} von 168 h geplant).",
+    "totalPlanned": "{planned} von 168 h diese Woche geplant.",
+    "rulesCannotChange": "Den Plan zu ändern erfordert das Modell auf dem Gerät. Aktiviere es in den Einstellungen unter Assistent.",
+    "rulesUnknown": "Ich kann dir die Stunden einer Kategorie diese Woche nennen, was bis zu einem Ziel fehlt, nicht zugewiesene Stunden, deinen nächsten Block und welche Aufgaben nicht passen."
+  }
+}

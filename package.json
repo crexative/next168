@@ -21,6 +21,7 @@
     "companion:start": "node companion/dist/cli.js serve"
   },
   "dependencies": {
+    "@mlc-ai/web-llm": "0.2.85",
     "ical.js": "2.2.1",
     "lucide-vue-next": "0.577.0",
     "motion": "14.1.0",
