@@ -6,6 +6,7 @@ import { addLocalDays, localDateOf, zonedInstant, type DatedOccurrence } from '@
 import Button from '@/ui/Button.vue'
 import CategoryMark from '@/ui/CategoryMark.vue'
 import { categoryStroke } from '@/ui/categoryVisual'
+import { displayLocale } from '@/ui/format'
 import Icon from '@/ui/Icon.vue'
 import { formatMinute, formatTime } from '@/features/week/localTime'
 import { actualFor, type ActualStatus } from './actuals'
@@ -57,11 +58,11 @@ function endsAfterToday(item: TimelineItem): boolean {
 }
 
 function startLabel(item: TimelineItem): string {
-  return startsBeforeToday(item) ? formatMinute(0, locale.value) : formatTime(item.start, locale.value, props.timeZone)
+  return startsBeforeToday(item) ? formatMinute(0, displayLocale.value) : formatTime(item.start, displayLocale.value, props.timeZone)
 }
 
 function endLabel(item: TimelineItem): string {
-  return endsAfterToday(item) ? formatMinute(0, locale.value) : formatTime(item.end, locale.value, props.timeZone)
+  return endsAfterToday(item) ? formatMinute(0, displayLocale.value) : formatTime(item.end, displayLocale.value, props.timeZone)
 }
 
 function hasStarted(item: TimelineItem): boolean {
@@ -182,7 +183,7 @@ function savePartial(item: TimelineItem & { kind: 'block' }): void {
 .timeline { margin: 0; padding: 0; list-style: none; border-radius: var(--radius-card); background: var(--surface); }
 .row { display: grid; grid-template-columns: 4.5rem 3px minmax(0, 1fr); gap: var(--space-3); padding: var(--space-3) var(--space-4); }
 .row + .row { border-top: 0.5px solid var(--separator); }
-.row-time { display: flex; flex-direction: column; font-variant-numeric: tabular-nums; }
+.row-time { display: flex; flex-direction: column; align-items: flex-end; text-align: end; font-variant-numeric: tabular-nums; }
 .row-bar { border-radius: 2px; background: var(--item-color); }
 .is-task .row-bar { background: repeating-linear-gradient(to bottom, var(--item-color) 0 4px, transparent 4px 7px); }
 .is-event .row-bar, .is-external .row-bar { background: transparent; border-inline-start: 2px dashed var(--item-color); }

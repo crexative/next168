@@ -4,7 +4,7 @@ import { useI18n } from 'vue-i18n'
 import type { Category, Task } from '@/core/model'
 import { scheduleTasks } from '@/core/scheduler'
 import { localDateOf } from '@/core/time'
-import { formatDuration } from '@/features/insights/format'
+import { displayLocale, formatDuration } from '@/ui/format'
 import { categoryColor } from '@/features/insights/categoryColor'
 import { defaultTaskCategoryId } from '@/features/onboarding/templates'
 import { assertEntry, CHANGED_ELSEWHERE, snapshotOf } from '@/features/insights/entryGuard'
@@ -68,7 +68,7 @@ function dayLabel(date: string): string {
 }
 
 function timeRange(start: string, end: string): string {
-  const format = new Intl.DateTimeFormat(locale.value, { hour: '2-digit', minute: '2-digit', timeZone: document.value!.settings.timeZone })
+  const format = new Intl.DateTimeFormat(displayLocale.value, { hour: 'numeric', minute: '2-digit', timeZone: document.value!.settings.timeZone })
   return `${format.format(new Date(start))}–${format.format(new Date(end))}`
 }
 
@@ -92,7 +92,7 @@ function categoryOf(task: Task): Category | undefined {
 }
 
 function describe(task: Task): string {
-  const parts = [categoryOf(task)?.name ?? '', formatDuration(t, task.durationMin)]
+  const parts = [categoryOf(task)?.name ?? '', formatDuration(task.durationMin)]
   if (task.dueDate) parts.push(t('tasks.due', { date: dueLabel(task.dueDate) }))
   return parts.filter(Boolean).join(' · ')
 }
@@ -180,11 +180,11 @@ async function remove(task: Task): Promise<void> {
 }
 
 function overflowText(task: Task, minutes: number): string {
-  return t('tasks.overflow', { duration: formatDuration(t, minutes), category: categoryOf(task)?.name ?? '' })
+  return t('tasks.overflow', { duration: formatDuration(minutes), category: categoryOf(task)?.name ?? '' })
 }
 
 function overflowHint(task: Task, minutes: number): string {
-  return t('tasks.overflowHint', { duration: formatDuration(t, minutes), category: categoryOf(task)?.name ?? '' })
+  return t('tasks.overflowHint', { duration: formatDuration(minutes), category: categoryOf(task)?.name ?? '' })
 }
 
 function lateText(task: Task): string {
@@ -212,7 +212,7 @@ function lateText(task: Task): string {
         <label class="field">
           <span class="t-footnote t-secondary">{{ t('tasks.add.duration') }}</span>
           <select v-model.number="form.durationMin" class="input">
-            <option v-for="minutes in DURATIONS" :key="minutes" :value="minutes">{{ formatDuration(t, minutes) }}</option>
+            <option v-for="minutes in DURATIONS" :key="minutes" :value="minutes">{{ formatDuration(minutes) }}</option>
           </select>
         </label>
         <label class="field">

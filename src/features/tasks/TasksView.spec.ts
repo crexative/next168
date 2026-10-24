@@ -36,11 +36,11 @@ it('places tasks around imported calendar events, not on top of them', async () 
   const app = createApp(TasksView).use(pinia).use(i18n)
   app.mount(host)
   cleanup = () => { app.unmount(); host.remove() }
-  await vi.waitFor(() => expect(host.textContent).toMatch(/01:00\s?PM–02:00\s?PM/))
+  await vi.waitFor(() => expect(host.textContent).toMatch(/(?<!\d)1:00\s?PM–2:00\s?PM/))
   expect(host.textContent).not.toMatch(/12:00\s?PM–/)
 
   await calendars.removeSource(planner.document!.calendarSources[0]!.id)
-  await vi.waitFor(() => expect(host.textContent).toMatch(/12:00\s?PM–01:00\s?PM/))
+  await vi.waitFor(() => expect(host.textContent).toMatch(/12:00\s?PM–1:00\s?PM/))
 })
 
 it('files a quickly added task under the first non-Sleep category', async () => {
@@ -84,10 +84,10 @@ it('shows a task split around a busy slot as one row with its total duration, it
   const app = createApp(TasksView).use(pinia).use(i18n)
   app.mount(host)
   cleanup = () => { app.unmount(); host.remove() }
-  await vi.waitFor(() => expect(host.textContent).toMatch(/02:46\s?PM/))
+  await vi.waitFor(() => expect(host.textContent).toMatch(/(?<!\d)2:46\s?PM/))
   const rows = host.querySelectorAll('[data-testid=placed-task]')
   expect(rows).toHaveLength(1)
   const text = rows[0]!.textContent!.replace(/\s+/g, ' ')
-  expect(text).toMatch(/01:00\s?PM–01:46\s?PM, 02:46\s?PM–03:00\s?PM · Work · 1 h/)
+  expect(text).toMatch(/(?<!\d)1:00\s?PM–1:46\s?PM, 2:46\s?PM–3:00\s?PM · Work · 1 h/)
   expect(rows[0]!.querySelectorAll('button[aria-label^="Remove"]')).toHaveLength(1)
 })

@@ -52,10 +52,5 @@ export class AssistantError extends Error {
   }
 }
 
-export function formatDuration(minutes: number): string {
-  const rounded = Math.round(minutes)
-  const hours = Math.floor(rounded / 60)
-  const rest = rounded % 60
-  if (rest === 0) return `${hours} h`
-  return hours === 0 ? `${rest} min` : `${hours} h ${rest} min`
-}
+// The app-wide duration format ("2 h 30 min").
+export { formatDuration } from '@/ui/format'

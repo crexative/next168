@@ -5,6 +5,7 @@ import type { Category } from '@/core/model'
 import CategoryMark from '@/ui/CategoryMark.vue'
 import Icon from '@/ui/Icon.vue'
 import { categoryStroke } from '@/ui/categoryVisual'
+import { displayLocale } from '@/ui/format'
 import { categoryColor } from './categoryColor'
 import { formatTime } from './localTime'
 import { HOUR_HEIGHT_PX, SLOT_MINUTES, STACK_EVENT_INSET_PERCENT, layoutDaySegments, type BlockSegment, type BusySegment, type DayPart, type LanePosition } from './weekLayout'
@@ -22,7 +23,7 @@ const props = defineProps<{
 }>()
 const emit = defineEmits<{ select: [blockId: string]; create: [date: string, minute: number]; inspect: [details: BusyDetails] }>()
 
-const { t, locale } = useI18n()
+const { t } = useI18n()
 const categoriesById = computed(() => new Map(props.categories.map((category) => [category.id, category])))
 const layout = computed(() => layoutDaySegments(props.segments, props.busy))
 
@@ -72,12 +73,12 @@ function blockLabel(segment: BlockSegment): string {
 }
 
 function timeRange(segment: BlockSegment): string {
-  const range = `${formatTime(segment.occurrence.start, locale.value, props.timeZone)} – ${formatTime(segment.occurrence.end, locale.value, props.timeZone)}`
+  const range = `${formatTime(segment.occurrence.start, displayLocale.value, props.timeZone)} – ${formatTime(segment.occurrence.end, displayLocale.value, props.timeZone)}`
   return segment.continuesAfter || segment.continuesBefore ? t('week.grid.crossesMidnight', { range }) : range
 }
 
 function inspect(item: BusySegment): void {
-  const range = `${formatTime(item.start, locale.value, props.timeZone)} – ${formatTime(item.end, locale.value, props.timeZone)}`
+  const range = `${formatTime(item.start, displayLocale.value, props.timeZone)} – ${formatTime(item.end, displayLocale.value, props.timeZone)}`
   emit('inspect', {
     title: item.title,
     date: item.date,

@@ -12,6 +12,7 @@ import EventSheet from '@/features/calendars/EventSheet.vue'
 import CalendarOverlay from '@/features/calendars/CalendarOverlay.vue'
 import { calendarErrorCode, calendarServices, useCalendarStore } from '@/features/calendars/calendarStore'
 import { downloadCalendar } from '@/features/calendars/downloadCalendar'
+import { displayLocale } from '@/ui/format'
 const { t } = useI18n(), planner = usePlannerStore(), calendars = useCalendarStore(), toast = useUndoToast()
 const name = ref(''), url = ref(''), error = ref(''), sheetOpen = ref(false), editingEvent = ref<PlannerEvent>()
 const rangeStart = ref('')
@@ -68,7 +69,7 @@ function downloadUpcoming(): void {
   const today = localDateOf(new Date(), zone.value)
   downloadCalendar(events.value.filter(event => event.allDay ? event.end.slice(0, 10) > today : Date.parse(event.end) > Date.now()))
 }
-function syncTime(iso: string): string { return new Intl.DateTimeFormat(planner.document?.settings.locale ?? 'en', { dateStyle: 'medium', timeStyle: 'short', timeZone: zone.value }).format(new Date(iso)) }
+function syncTime(iso: string): string { return new Intl.DateTimeFormat(displayLocale.value, { dateStyle: 'medium', timeStyle: 'short', timeZone: zone.value }).format(new Date(iso)) }
 </script>
 <template>
   <div class="calendar-section">

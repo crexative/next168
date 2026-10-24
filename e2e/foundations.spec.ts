@@ -272,3 +272,43 @@ test.describe('readable measure', () => {
     }
   })
 })
+
+test.describe('time format', () => {
+  test('Today\'s times sit in a right-aligned tabular column', async ({ page }) => {
+    await startWith(page)
+    await openView(page, 'today')
+    const cells = await page.getByTestId('timeline-start').evaluateAll((elements) => elements.map((element) => ({
+      // The text itself, not the cell box (which spans the column either way).
+      right: (() => { const range = document.createRange(); range.selectNodeContents(element); return range.getBoundingClientRect().right })(),
+      numeric: getComputedStyle(element).fontVariantNumeric,
+    })))
+    expect(cells.length).toBeGreaterThan(2)
+    for (const cell of cells) {
+      expect(Math.abs(cell.right - cells[0]!.right)).toBeLessThanOrEqual(0.5)
+      expect(cell.numeric).toContain('tabular-nums')
+    }
+  })
+
+  for (const [choice, expected] of [[null, /^9:00\sAM$/], ['h23', /^09:00$/], ['h12', /^9:00\sAM$/]] as const) {
+    test(`the 12/24 h choice (${choice ?? 'automatic'}) applies to Today and Week`, async ({ page }) => {
+      if (choice) await page.addInitScript((value) => window.localStorage.setItem('next168-hour-cycle', value), choice)
+      await startWith(page)
+      await openView(page, 'today')
+      const work = page.getByTestId('timeline-item').filter({ hasText: 'Deep work' })
+      await expect(work.getByTestId('timeline-start')).toHaveText(expected)
+      await openView(page, 'week')
+      const label = await page.locator('[data-date="2026-10-21"] [data-block-id="b-work"]').first().getAttribute('aria-label')
+      expect(label?.split(' ').slice(2).join(' ')).toMatch(new RegExp(expected.source.replace(/^\^|\$$/g, '')))
+    })
+  }
+
+  test('a Spanish week reads in 24 h with durations as "2 h 30 min"', async ({ page }) => {
+    await startWith(page, { ...richDocument, settings: { ...richDocument.settings, locale: 'es' } }, 'es')
+    await openView(page, 'today')
+    await expect(page.getByTestId('timeline-item').filter({ hasText: 'Deep work' }).getByTestId('timeline-start')).toHaveText('9:00')
+    await expect(page.getByTestId('now-left')).toHaveText('Quedan 4 h 15 min')
+    await openView(page, 'tasks')
+    await expect(page.locator('#main')).toContainText('2 h 30 min')
+    await expect(page.locator('#main')).not.toContainText(/\d{4}-\d{2}-\d{2}/)
+  })
+})
