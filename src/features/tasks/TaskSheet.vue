@@ -56,7 +56,7 @@ watch(() => props.open, (open) => {
 
 // The category the form files the task under is part of what it was loaded from: the snapshot follows the choice
 // shown, so picking another category is fine while a category replaced under the form is refused at save.
-watch(() => categorySnapshot(draft.value.categoryId), (snapshot) => { bound.category = snapshot })
+watch(() => draft.value.categoryId, (id) => { bound.category = categorySnapshot(id) }, { flush: 'sync' })
 
 // Another workspace under an open sheet: what it shows no longer exists, so it closes instead of writing there.
 watch(() => planner.document?.workspaceId, (id) => { if (props.open && id !== bound.workspaceId) emit('update:open', false) })

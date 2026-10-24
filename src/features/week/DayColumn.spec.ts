@@ -60,9 +60,10 @@ const column = (overrides: Record<string, unknown> = {}) => {
   }
   host = window.document.createElement('div')
   window.document.body.append(host)
-  const emitted = { select: [] as string[], taskSelect: [] as string[], create: [] as number[] }
+  const emitted = { select: [] as string[], taskSelect: [] as string[], create: [] as number[], inspect: [] as unknown[] }
   app = createApp(DayColumn, {
     ...props,
+    onInspect: (details: unknown) => emitted.inspect.push(details),
     onSelect: (id: string) => emitted.select.push(id),
     'onSelect-task': (id: string) => emitted.taskSelect.push(id),
     onCreate: (_date: string, minute: number) => emitted.create.push(minute),
@@ -130,4 +131,37 @@ it('opens a task from just outside it, ahead of the block it sits in', () => {
   // 13:00-13:15 is 12 px tall (y 624-636), in the open: a tap 15 px below it still means the task.
   click(root, 636 + 15)
   expect(emitted.taskSelect).toEqual(['t'])
+})
+
+
+it('resolves a pointer on routine content to its short task target, and elsewhere to the routine', () => {
+  const { root, emitted } = column({ tasks: [taskAt(600, 615)] })
+  const routine = root.querySelector<HTMLElement>('[data-block-id=deep] .block-title')!
+  // Task is drawn at y 480–492. Its expanded target ends at 508, over the routine button.
+  routine.dispatchEvent(new MouseEvent('click', { bubbles: true, detail: 1, clientX: 100, clientY: 507 }))
+  expect(emitted.taskSelect).toEqual(['t'])
+  expect(emitted.select).toEqual([])
+  routine.dispatchEvent(new MouseEvent('click', { bubbles: true, detail: 1, clientX: 100, clientY: 520 }))
+  expect(emitted.select).toEqual(['deep'])
+  expect(emitted.create).toEqual([])
+})
+
+it('keeps keyboard routine activation explicit even when its center holds a task', () => {
+  const { root, emitted } = column({ tasks: [taskAt(600, 615)] })
+  root.querySelector<HTMLButtonElement>('[data-block-id=deep]')!.click()
+  expect(emitted.select).toEqual(['deep'])
+  expect(emitted.taskSelect).toEqual([])
+})
+
+
+it('keeps an explicitly clicked calendar event selected over a task hit target', () => {
+  const busy = busySegmentsByDate([
+    { sourceId: 'calendar', uid: 'event', title: 'Call', start: `${DATE}T10:00:00Z`, end: `${DATE}T10:30:00Z`, allDay: false, busy: true },
+  ], [], [DATE], 'UTC')[DATE]!
+  const { root, emitted } = column({ tasks: [taskAt(600, 615)], busy })
+  root.querySelector<HTMLElement>('.busy-title')!.dispatchEvent(new MouseEvent('click', { bubbles: true, detail: 1, clientX: 100, clientY: 490 }))
+  expect(emitted.inspect).toHaveLength(1)
+  expect(emitted.select).toEqual([])
+  expect(emitted.taskSelect).toEqual([])
+  expect(emitted.create).toEqual([])
 })

@@ -2,6 +2,7 @@ import AxeBuilder from '@axe-core/playwright'
 import { expect, test, type Locator, type Page } from '@playwright/test'
 import { V2_KEY, onlyProject, seedKey } from './fixtures'
 import { storedPlanner } from './support/indexedDb'
+import { cssColorAlpha } from './support/cssColor'
 import { addFromMenu } from './support/week'
 
 // Week UX slice (#3): tasks drawn in Week, block outcomes, week navigation, "+" with Tarea / Evento / Rutina,
@@ -409,8 +410,7 @@ test.describe('tasks in Week', () => {
   test('the sticky day header is a thick material that hides what scrolls under it, and labels are drawn above the now-line', async ({ page }) => {
     await openWeek(page, 'light', 'desktop')
     const header = await page.locator('.grid-header').evaluate((element) => getComputedStyle(element).backgroundColor)
-    const alpha = /rgba\(.*,\s*([\d.]+)\)$/.exec(header)?.[1]
-    expect(alpha === undefined || Number(alpha) >= 0.95, header).toBe(true)
+    expect(cssColorAlpha(header), header).toBeGreaterThanOrEqual(0.95)
     const layers = await page.evaluate(() => ({
       line: getComputedStyle(document.querySelector('[data-testid="now-line"]')!).zIndex,
       title: getComputedStyle(document.querySelector('.block-title')!).zIndex,
