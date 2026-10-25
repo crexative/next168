@@ -8,7 +8,7 @@
   "late": "Cai depois do prazo ({date}).",
   "latePartial": "Só há espaço para {duration} antes do prazo ({date}).",
   "warnings": "Avisos de planejamento",
-  "moreWarnings": "E mais {count} não cabem nos próximos 7 dias.",
+  "moreWarnings": "E mais {count} não cabe nos próximos 7 dias. | E mais {count} não cabem nos próximos 7 dias.",
   "showAllWarnings": "Ver todas",
   "unplaced": "Não agendadas",
   "unplacedHint": "Não há horário livre nos próximos 7 dias.",

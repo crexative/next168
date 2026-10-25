@@ -24,7 +24,7 @@ export function scheduleTasks({ document, busy, now, timeZone, days = 7 }: Sched
       const chunkStart = Math.ceil(window.start / 60000) * 60000
       const available = Math.floor((window.end - chunkStart) / 60000)
       const minutes = Math.min(remaining, available)
-      if (minutes < 10) continue
+      if (minutes < Math.min(10, remaining)) continue
       const chunkEnd = chunkStart + minutes * 60000
       chunks.push({ start: new Date(chunkStart).toISOString(), end: new Date(chunkEnd).toISOString() })
       occupied.push({ start: chunkStart, end: chunkEnd })

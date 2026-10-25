@@ -23,6 +23,62 @@ const at = (time: string) => new Date(`2026-10-21T${time}:00Z`)
 const byId = (placements: TaskPlacement[]) => new Map(placements.map((placement) => [placement.taskId, placement]))
 const start = (placements: TaskPlacement[]) => placements[0]!.chunks[0]!.start.slice(11, 16)
 
+describe.each([
+  { name: 'scheduleTasks', schedule: scheduleTasks },
+  { name: 'scheduleStable', schedule: scheduleOnGrid },
+])('$name short final chunks', ({ schedule }) => {
+  const place = (document: PlannerDocument) => schedule({ document, busy: [], now: at('08:00'), timeZone: 'UTC', days: 1 })
+  const window = (id: string, start: number, minutes: number) => ({ ...morning[0]!, id, start, end: start + minutes })
+
+  it.each([5, 10, 20])('finishes a 30-minute task after a 25-minute chunk in a %i-minute window', (minutes) => {
+    const [placement] = place(planner([window('first', 540, 25), window('last', 600, minutes)], 30))
+    expect(placement).toEqual({
+      taskId: 'report', overflowMinutes: 0, late: false,
+      chunks: [
+        { start: '2026-10-21T09:00:00.000Z', end: '2026-10-21T09:25:00.000Z' },
+        { start: '2026-10-21T10:00:00.000Z', end: '2026-10-21T10:05:00.000Z' },
+      ],
+    })
+  })
+
+  it.each([5, 20])('places an entire five-minute task in a %i-minute window', (minutes) => {
+    const [placement] = place(planner([window('only', 540, minutes)], 5))
+    expect(placement).toEqual({
+      taskId: 'report', overflowMinutes: 0, late: false,
+      chunks: [{ start: '2026-10-21T09:00:00.000Z', end: '2026-10-21T09:05:00.000Z' }],
+    })
+  })
+
+  it('skips short windows unless they hold the whole remainder', () => {
+    const [placement] = place(planner([
+      window('too-early', 510, 5), window('first', 540, 25),
+      window('too-short', 600, 4), window('last', 660, 10),
+    ], 30))
+    expect(placement).toMatchObject({ overflowMinutes: 0, chunks: [
+      { start: '2026-10-21T09:00:00.000Z', end: '2026-10-21T09:25:00.000Z' },
+      { start: '2026-10-21T11:00:00.000Z', end: '2026-10-21T11:05:00.000Z' },
+    ] })
+  })
+
+  it.each([1, 2, 3, 4, 5, 6, 7, 8, 9])('keeps a %i-minute gap left by a prior task available', (minutes) => {
+    const document = planner([window('shared', 540, 20 + minutes)], 20)
+    document.tasks.push({ ...document.tasks[0]!, id: 'second', durationMin: minutes })
+    expect(place(document)[1]).toEqual({
+      taskId: 'second', overflowMinutes: 0, late: false,
+      chunks: [{ start: '2026-10-21T09:20:00.000Z', end: `2026-10-21T09:${20 + minutes}:00.000Z` }],
+    })
+  })
+
+  it('keeps a short window skipped by a longer task available to a later short task', () => {
+    const document = planner([window('short', 540, 5), window('long', 600, 30)], 30)
+    document.tasks.push({ ...document.tasks[0]!, id: 'second', durationMin: 5 })
+    expect(place(document)[1]).toEqual({
+      taskId: 'second', overflowMinutes: 0, late: false,
+      chunks: [{ start: '2026-10-21T09:00:00.000Z', end: '2026-10-21T09:05:00.000Z' }],
+    })
+  })
+})
+
 describe('scheduleStable', () => {
   it('snaps block starts without changing minute-exact scheduler callers', () => {
     const input = { document: planner([{ ...morning[0]!, start: 545 }]), busy: [], now: at('08:00'), timeZone: 'UTC' }

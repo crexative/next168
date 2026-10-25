@@ -1,6 +1,7 @@
 // @vitest-environment node
 import { createHash } from 'node:crypto'
 import { readFileSync, writeFileSync } from 'node:fs'
+import { setImmediate } from 'node:timers/promises'
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest'
 import type { BusyInterval, PlannerDocument, Task, TaskPlacement, TimeBlock } from '../model'
 import { fitTasks, type StableScheduleInput } from '../scheduling'
@@ -8,8 +9,9 @@ import { warningFixes } from '@/features/tasks/warningFixes'
 import { PERF_NOW, PERF_TIME_ZONE, perfBusy, perfCase, perfCases, perfPlanner, perfTasks, typicalBlocks, type PerfCase } from '../__fixtures__/schedulingPerf'
 import { referenceFitTasks } from './referenceScheduling'
 
-// P0 spec §4: placements stay identical (A1) while the zoned conversions (A2, A3), the growth per task (A4) and the
-// wall time (A5 with `npm run perf`, A6 here) stay within budget. Operation counts are the deterministic gate; wall
+// P0 spec §4: original placements remain recorded (A1); the explicit short-final-chunk correction is checked separately.
+// Zoned conversions (A2, A3), growth per task (A4), and wall time (A5 with `npm run perf`, A6 here) stay within budget.
+// Operation counts are the deterministic gate; wall
 // times are warm medians, so a loaded machine slows them without failing them by chance.
 
 const GOLDEN_URL = new URL('../__fixtures__/schedulingGolden.json', import.meta.url)
@@ -28,10 +30,11 @@ const inputOf = (item: PerfCase): StableScheduleInput => ({ document: item.docum
 const minutesLater = (at: Date, minutes: number) => new Date(at.getTime() + minutes * 60_000)
 
 // The three extra golden planners of A1, plus the two DST transitions of Europe/Berlin. Earlier placements come from
-// the frozen reference, so they never depend on the code under test.
+// the recorded goldens, so the new remainder rule cannot change the historical fixture inputs.
 function extraCases(): { name: string; input: StableScheduleInput }[] {
+  const golden = JSON.parse(readFileSync(GOLDEN_URL, 'utf8')) as Golden
   const base = perfCase('typical', 50)
-  const earlier = byTask(referenceFitTasks(inputOf(base)))
+  const earlier = byTask(golden.cases['typical-50']!.placements)
 
   // (i) Undo pins today's placements; by 10:47 the first ones have passed and are still kept until the day ends.
   const today = [...earlier.values()].filter((placement) => placement.chunks.length && placement.chunks[0]!.start < '2026-10-27T05:00:00.000Z')
@@ -48,7 +51,7 @@ function extraCases(): { name: string; input: StableScheduleInput }[] {
   const nightBlocks: TimeBlock[] = [...typicalBlocks.filter((block) => block.id !== 'sleep'), { id: 'night', categoryId: 'sleep', title: 'Night', days: [0, 1, 2, 3, 4, 5, 6], start: 90, end: 165 }]
   const berlin = (now: Date) => ({ document: perfPlanner(nightBlocks, perfTasks(60), 'Europe/Berlin'), busy: perfBusy(20, now), now, timeZone: 'Europe/Berlin' })
   const fold = berlin(new Date('2026-10-24T22:32:00Z'))
-  const foldLater = { ...fold, now: new Date('2026-10-25T01:20:00Z'), previous: byTask(referenceFitTasks(fold)) }
+  const foldLater = { ...fold, now: new Date('2026-10-25T01:20:00Z'), previous: byTask(golden.cases['berlin-fold']!.placements) }
   const gap = berlin(new Date('2026-03-28T23:41:00Z'))
 
   return [
@@ -66,23 +69,44 @@ const goldenCases = () => [...perfCases().map((item) => ({ name: item.name, inpu
 interface Golden { fixtureSha: string; cases: Record<string, { inputSha: string; placementsSha: string; placements: TaskPlacement[] }> }
 
 describe('A1 golden equivalence', () => {
-  it('fitTasks returns exactly the placements recorded from 239b9bc', () => {
+  it('preserves the 239b9bc goldens and isolates the short-final-chunk rule change', async () => {
     const cases = goldenCases()
     const fixtureSha = sha256(cases.map(({ name, input }) => [name, serializable(input)]))
     if (RECORD_GOLDEN) {
       const golden: Golden = { fixtureSha, cases: {} }
       for (const { name, input } of cases) {
-        const placements = referenceFitTasks(input)
+        const placements = referenceFitTasks(input, false)
         golden.cases[name] = { inputSha: sha256(serializable(input)), placementsSha: sha256(placements).slice(0, 16), placements }
       }
       writeFileSync(GOLDEN_URL, `${JSON.stringify(golden)}\n`)
     }
     const golden = JSON.parse(readFileSync(GOLDEN_URL, 'utf8')) as Golden
     expect(golden.fixtureSha, 'the fixtures changed after the golden placements were recorded').toBe(fixtureSha)
+    // Exact corrected outputs, audited in ../__fixtures__/schedulingShortFinalChunks.md; no goldens re-recorded.
+    const correctedHashes: Record<string, string> = {
+      'typical-50': '06f2c45859b3874a8530db2627d5a29100866aebff95b3ea6f85de623fec04f7',
+      'typical-200': 'ec434478c8fec8697f3e9a740dc159ce03fc8f3d0600e6d63e8cdec777470f00',
+      'typical-1000': '093dcb34b691d1bf0d706574464d42b83b04ea1f902ae6b6e1de0c76a37a7a7e',
+      'dense-50': '9b9a9affa212a76357ffc14fa5b6cf11860d922cbfec3d27259cb5e409f91239',
+      'dense-200': 'ecf362f1d321bd1e1bb641b372cd11862a37ce387f2a32e481a8a4355b041b22',
+      'dense-1000': '98f2983ee49e96e6459bb871ae1b6fa78028f20284e109cc477b6f232445a35a',
+      'extra-pinned-through-undo': '9687abf5ae659dc1851410da30e19fffb8464a65be7bc03408b5737ce62beb3d',
+      'extra-previous-under-way': '686975026290bb0780da69048589b2a0e96ad74a713ef43525dfe176543b0140',
+      'extra-deadline-fallback': '1b2d4764e10230aa92ceffb75e27c2bd47cfe4e651c7c075952888229ea0a896',
+      'berlin-fold': 'a3d0bc5c80c59fd34cae0a7030f152d68f4cf51c322b6c8a0aba4a590ca27f7b',
+      'berlin-fold-with-previous': '1ad15747417268e83ff421b160f3904b55ad320cdf27a2cd875b5e7744ee6fa1',
+      'berlin-gap': '61b2ae238baba0162ef12ad4e35068728f0d35c69a452ac289b625ae565bd13f',
+    }
     for (const { name, input } of cases) {
       const recorded = golden.cases[name]!
       expect(sha256(serializable(input)), name).toBe(recorded.inputSha)
-      expect(fitTasks(input), name).toEqual(recorded.placements)
+      expect(referenceFitTasks(input, false), `${name}: original rule`).toEqual(recorded.placements)
+      // The slow oracles must let Vitest's worker RPC progress between CPU-bound runs.
+      await setImmediate()
+      const corrected = referenceFitTasks(input)
+      expect(sha256(corrected), `${name}: only the final-chunk rule changed`).toBe(correctedHashes[name])
+      expect(fitTasks(input), name).toEqual(corrected)
+      await setImmediate()
     }
   }, SLOW)
 

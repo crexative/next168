@@ -43,6 +43,15 @@ const find = (selector: string) => mounted!.host.querySelector<HTMLElement>(sele
 const cards = () => [...mounted!.host.querySelectorAll<HTMLElement>('li.warning')]
 const text = (element: Element | null) => element?.textContent?.replace(/\s+/g, ' ').trim()
 
+it.each([
+  [1, 'Y 1 más no cabe en los próximos 7 días.'],
+  [2, 'Y 2 más no caben en los próximos 7 días.'],
+] as const)('renders the Spanish summary for %i hidden warnings', async (count, expected) => {
+  mounted = await mountWithPlanner(TasksView, planner(3 + count, 0), 'es')
+  expect(cards()).toHaveLength(3)
+  expect(text(find('[data-testid=warning-summary] p'))).toBe(expected)
+})
+
 it('A9: with 976 warnings, fixes are worked out for 3 cards per render and «Ver todas» adds 10 cards and 10 calls', async () => {
   mounted = await mountWithPlanner(TasksView, planner(976, 24), 'es')
   expect(warningFixes.mock.calls.length).toBeLessThanOrEqual(3)
