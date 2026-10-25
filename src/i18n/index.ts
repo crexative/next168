@@ -41,6 +41,9 @@ export const i18n = createI18n<false>({
   messages: collectMessages(namespaceFiles) as never,
 })
 
+// The page states the language it is written in (index.html already did before the first paint); setLocale keeps it.
+if (typeof document !== 'undefined') document.documentElement.lang = i18n.global.locale.value
+
 export const availableLocales: { code: SupportedLocale; name: string }[] = [
   { code: 'en', name: 'English' },
   { code: 'es', name: 'Español' },
