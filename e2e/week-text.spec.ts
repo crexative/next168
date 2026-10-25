@@ -1,6 +1,7 @@
 import { expect, test, type Page } from '@playwright/test'
 import { V2_KEY, seedKey } from './fixtures'
 import { visualIntegrityViolations } from './support/visualIntegrity'
+import { itemsMissingTitles, seededTitles, type SeededTitles } from './support/week'
 
 // Week text, property style (docs/design/visual-design.md › Week items): many seeded weeks of 5 to 15 minute routines,
 // back-to-back short tasks, events on a routine's title row, overnight items and 2 to 4 overlapping lanes, each audited
@@ -17,21 +18,21 @@ const WEEK = ['2026-10-19', '2026-10-20', '2026-10-21', '2026-10-22', '2026-10-2
 const WORDS = {
   es: {
     categories: ['Trabajo', 'Sueño', 'Ejercicio', 'Familia y amigos'],
-    routines: ['Reunión diaria', 'Trabajo profundo', 'Trayecto', 'Almuerzo', 'Revisión semanal del presupuesto', 'Meditar', 'Paseo con el perro', 'Dormir'],
-    events: ['Llamada con proveedor', 'Revisión de diseño de producto', 'Dentista', 'Cumpleaños de Ana', 'Entrevista', 'Sincronización del equipo'],
-    tasks: ['Revisar presupuesto trimestral', 'Responder correos', 'Llamar al banco', 'Leer un capítulo', 'Pagar la luz', 'Preparar la presentación para el cliente'],
+    routines: ['Reunión diaria', 'Trabajo profundo', 'Trayecto', 'Almuerzo', 'Revisión semanal del presupuesto', 'Pausa…', 'Paseo con el perro', 'Dormir'],
+    events: ['Llamada con proveedor', 'Revisión de diseño de producto', 'Dentista', 'Cumpleaños de Ana', 'Entrevista', 'Sincronización del equipo', 'Y después…'],
+    tasks: ['Revisar presupuesto trimestral', 'Responder correos', 'Llamar al banco', 'Leer un capítulo', 'Pagar la luz', 'Preparar la presentación para el cliente', 'Pendiente…'],
   },
   en: {
     categories: ['Work', 'Sleep', 'Exercise', 'Family and friends'],
-    routines: ['Stand-up', 'Deep work', 'Commute', 'Lunch', 'Weekly budget review', 'Meditate', 'Walk the dog', 'Sleep'],
-    events: ['Vendor call', 'Product design review', 'Dentist', "Ana's birthday", 'Interview', 'Team sync'],
-    tasks: ['Write the quarterly report', 'Answer emails', 'Call the bank', 'Read a chapter', 'Pay the power bill', 'Prepare the client presentation'],
+    routines: ['Stand-up', 'Deep work', 'Commute', 'Lunch', 'Weekly budget review', 'Wait...', 'Walk the dog', 'Sleep'],
+    events: ['Vendor call', 'Product design review', 'Dentist', "Ana's birthday", 'Interview', 'Team sync', 'To be continued...'],
+    tasks: ['Write the quarterly report', 'Answer emails', 'Call the bank', 'Read a chapter', 'Pay the power bill', 'Prepare the client presentation', 'Follow up...'],
   },
   de: {
     categories: ['Arbeit', 'Schlaf', 'Sport', 'Familie und Freunde'],
-    routines: ['Tagesabstimmung', 'Konzentriertes Arbeiten', 'Arbeitsweg', 'Mittagessen', 'Wöchentliche Budgetprüfung', 'Meditation', 'Gassi gehen', 'Schlafen'],
-    events: ['Abstimmung mit dem Lieferanten', 'Produktdesign-Review', 'Zahnarzt', 'Annas Geburtstag', 'Vorstellungsgespräch', 'Teamrunde'],
-    tasks: ['Quartalsbericht schreiben', 'E-Mails beantworten', 'Bank anrufen', 'Ein Kapitel lesen', 'Stromrechnung bezahlen', 'Kundenpräsentation vorbereiten'],
+    routines: ['Tagesabstimmung', 'Konzentriertes Arbeiten', 'Arbeitsweg', 'Mittagessen', 'Wöchentliche Budgetprüfung', 'Pause…', 'Gassi gehen', 'Schlafen'],
+    events: ['Abstimmung mit dem Lieferanten', 'Produktdesign-Review', 'Zahnarzt', 'Annas Geburtstag', 'Vorstellungsgespräch', 'Teamrunde', 'Und dann…'],
+    tasks: ['Quartalsbericht schreiben', 'E-Mails beantworten', 'Bank anrufen', 'Ein Kapitel lesen', 'Stromrechnung bezahlen', 'Kundenpräsentation vorbereiten', 'Nachfassen…'],
   },
 } as const
 
@@ -145,7 +146,7 @@ async function settled(page: Page): Promise<void> {
 }
 
 // The audit holds every day column to the whole-text rule, whatever the component marks.
-async function auditWeek(page: Page, state: string, columns: number): Promise<void> {
+async function auditWeek(page: Page, state: string, columns: number, titles?: SeededTitles): Promise<void> {
   await settled(page)
   const marked = await page.evaluate(() => {
     const found = Array.from(document.querySelectorAll<HTMLElement>('.day-column'))
@@ -156,6 +157,8 @@ async function auditWeek(page: Page, state: string, columns: number): Promise<vo
   const violations = await visualIntegrityViolations(page, { focusRings: false })
   if (violations.length) await page.screenshot({ path: test.info().outputPath(`${state.replace(/[^\w%-]+/g, '-')}.png`), fullPage: true })
   expect.soft(violations, state).toEqual([])
+  // Whatever is drawn, every routine, event and task keeps its full seeded title in its accessible name.
+  if (titles) expect.soft((await itemsMissingTitles(page, titles)).missing, `${state}: accessible names`).toEqual([])
 }
 
 async function setTextSize(page: Page, percent: number): Promise<void> {
@@ -163,7 +166,7 @@ async function setTextSize(page: Page, percent: number): Promise<void> {
 }
 
 // Every width at 100 % and 200 % text, alternating light and dark, then the seven-day overview on the phone.
-async function auditEverySize(page: Page, label: string, phone: number, seed: number): Promise<void> {
+async function auditEverySize(page: Page, label: string, phone: number, seed: number, titles?: SeededTitles): Promise<void> {
   let state = 0
   const theme = async () => {
     const scheme = (seed + state++) % 2 === 0 ? 'light' : 'dark'
@@ -173,10 +176,10 @@ async function auditEverySize(page: Page, label: string, phone: number, seed: nu
   for (const percent of [100, 200]) {
     await setTextSize(page, percent)
     await page.setViewportSize({ width: phone, height: 720 })
-    await auditWeek(page, `${label} ${await theme()} ${phone} px ${percent} % (day pages)`, 7)
+    await auditWeek(page, `${label} ${await theme()} ${phone} px ${percent} % (day pages)`, 7, titles)
     for (const width of WIDE) {
       await page.setViewportSize({ width, height: 900 })
-      await auditWeek(page, `${label} ${await theme()} ${width} px ${percent} %`, 7)
+      await auditWeek(page, `${label} ${await theme()} ${width} px ${percent} %`, 7, titles)
     }
   }
   await setTextSize(page, 100)
@@ -184,7 +187,7 @@ async function auditEverySize(page: Page, label: string, phone: number, seed: nu
   await settled(page)
   await page.getByTestId('week-view-toggle').click()
   await expect(page.getByTestId('week-overview')).toBeVisible()
-  await auditWeek(page, `${label} ${await theme()} ${phone} px overview`, 7)
+  await auditWeek(page, `${label} ${await theme()} ${phone} px overview`, 7, titles)
 }
 
 async function importCalendar(page: Page, text: string): Promise<void> {
@@ -192,6 +195,11 @@ async function importCalendar(page: Page, text: string): Promise<void> {
   const before = await page.getByTestId('calendar-source').count()
   await page.locator('input[type="file"]').first().setInputFiles({ name: 'week.ics', mimeType: 'text/calendar', buffer: Buffer.from(text) })
   await expect(page.getByTestId('calendar-source')).toHaveCount(before + 1)
+}
+
+// The titles of the week as it was seeded (read back from the seed, not from anything the page draws).
+async function seededWeek(page: Page): Promise<SeededTitles> {
+  return seededTitles(await page.evaluate((key) => JSON.parse(window.localStorage.getItem(key)!), V2_KEY))
 }
 
 async function openWeek(page: Page): Promise<void> {
@@ -247,7 +255,7 @@ test.describe('Week text is whole in the weeks verify4 and verify5 reported', ()
       calendarSources: [], appliedProposalIds: [],
     }))
     await openWeek(page)
-    await auditEverySize(page, 'verify5 es', 320, 0)
+    await auditEverySize(page, 'verify5 es', 320, 0, await seededWeek(page))
   })
 
   test('verify4/verify5 R1: "Vendor call" and "Team sync" beside "Deep work" (English)', async ({ page }) => {
@@ -277,7 +285,7 @@ test.describe('Week text is whole in the weeks verify4 and verify5 reported', ()
     await importCalendar(page, ['BEGIN:VCALENDAR', 'VERSION:2.0', 'BEGIN:VEVENT', 'UID:verify-team-sync@example.invalid', 'DTSTART:20261022T093000Z', 'DTEND:20261022T103000Z', 'SUMMARY:Team sync', 'END:VEVENT', 'END:VCALENDAR', ''].join('\r\n'))
     await importCalendar(page, ['BEGIN:VCALENDAR', 'VERSION:2.0', 'BEGIN:VEVENT', 'UID:feed-1@example.invalid', 'DTSTART:20261023T093000Z', 'DTEND:20261023T100000Z', 'SUMMARY:Vendor call', 'END:VEVENT', 'BEGIN:VEVENT', 'UID:feed-2@example.invalid', 'DTSTART:20261020T140000Z', 'DTEND:20261020T150000Z', 'SUMMARY:Dentist', 'END:VEVENT', 'END:VCALENDAR', ''].join('\r\n'))
     await openWeek(page)
-    await auditEverySize(page, 'verify4 R1 en', 375, 1)
+    await auditEverySize(page, 'verify4 R1 en', 375, 1, await seededWeek(page))
   })
 })
 
@@ -296,7 +304,7 @@ test.describe('Week text is whole in every seeded layout', () => {
       await seedKey(page, V2_KEY, JSON.stringify(document))
       if (calendar) await importCalendar(page, calendar)
       await openWeek(page)
-      await auditEverySize(page, `seed ${seed} ${locale}`, phone, seed)
+      await auditEverySize(page, `seed ${seed} ${locale}`, phone, seed, seededTitles(document))
     })
   }
 })

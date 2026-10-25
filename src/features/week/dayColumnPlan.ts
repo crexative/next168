@@ -39,10 +39,11 @@ export interface BlockWords { title: string; time: string; category?: string; st
 export interface BusyWords { title: string; conflict?: string }
 export interface TaskWords { title: string; late: boolean }
 
-// `text` is the title as drawn: whole, or its first whole words and "…". Undefined draws the whole title.
-export interface BlockShow { title: boolean; text?: string; hyphenate?: boolean; mark: boolean; time: boolean; category: boolean; status: boolean; statusIcon: boolean }
-export interface BusyShow { icon: boolean; word: boolean; title: boolean; text?: string; hyphenate?: boolean }
-export interface TaskShow { icon: boolean; title: boolean; text?: string; hyphenate?: boolean }
+// `text` is the title as drawn: whole, or (when `cut`) its first whole words and the generated "…". Undefined draws the
+// whole title. A title may itself contain "…" ("Pausa…"); only `cut` says the plan left words out.
+export interface BlockShow { title: boolean; text?: string; cut?: boolean; hyphenate?: boolean; mark: boolean; time: boolean; category: boolean; status: boolean; statusIcon: boolean }
+export interface BusyShow { icon: boolean; word: boolean; title: boolean; text?: string; cut?: boolean; hyphenate?: boolean }
+export interface TaskShow { icon: boolean; title: boolean; text?: string; cut?: boolean; hyphenate?: boolean }
 
 // `top` and `bottom` are the drawn box in px from the top of the column.
 export type PlannedBlock = BlockSegment & LanePosition & { top: number; bottom: number; show: BlockShow }
@@ -99,7 +100,7 @@ function blockShow(words: BlockWords, box: { width: number; height: number }, me
   const pieces = blockPieces(words, measure)
   const title = fitTitle(pieces[0]!, box, measure.metrics)
   if (!title) return NOTHING.block
-  const shown: BlockShow = { ...NOTHING.block, title: true, text: title.text, hyphenate: title.hyphenated, mark: title.lead }
+  const shown: BlockShow = { ...NOTHING.block, title: true, text: title.text, cut: title.truncated, hyphenate: title.hyphenated, mark: title.lead }
   if (title.truncated) return shown
   const rest = fitPieces(pieces.slice(1), { width: box.width, height: box.height - title.lines * measure.metrics.lineHeight('blockTitle') - PIECE_GAP_PX }, measure.metrics, PIECE_GAP_PX)
   const statusIndex = words.category ? 2 : 1
@@ -132,7 +133,7 @@ function busyShow(words: BusyWords, box: { width: number; height: number }, meas
   // fitTitle may fall back to no lead; keep only fits that drew the lead they were asked for.
   const honest = fits.filter(({ option, fit }) => fit && fit.lead === option.lead > 0)
   const chosen = honest.find(({ fit }) => !fit!.truncated) ?? honest.find(({ option }) => option.icon) ?? honest[0]
-  if (chosen) return { icon: chosen.option.icon, word: chosen.option.word, title: true, text: chosen.fit!.text, hyphenate: chosen.fit!.hyphenated }
+  if (chosen) return { icon: chosen.option.icon, word: chosen.option.word, title: true, text: chosen.fit!.text, cut: chosen.fit!.truncated, hyphenate: chosen.fit!.hyphenated }
   const iconFits = Boolean(words.conflict) && box.width >= ICON_PX && box.height >= ICON_PX
   return { icon: iconFits, word: false, title: false }
 }
@@ -152,7 +153,7 @@ function taskTextHeight(words: TaskWords, width: number, measure: ColumnMeasure,
 function taskShow(words: TaskWords, width: number, height: number, outline: boolean, measure: ColumnMeasure): TaskShow {
   if (outline) return NOTHING.task
   const fit = taskTitle(words, width, height, measure)
-  return { icon: Boolean(fit?.lead), title: Boolean(fit), text: fit?.text, hyphenate: fit?.hyphenated }
+  return { icon: Boolean(fit?.lead), title: Boolean(fit), text: fit?.text, cut: fit?.truncated, hyphenate: fit?.hyphenated }
 }
 
 export function planDayColumn(input: DayColumnInput): DayColumnPlan {
