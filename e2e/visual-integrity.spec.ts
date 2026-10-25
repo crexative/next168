@@ -310,6 +310,21 @@ for (const theme of THEMES) {
       })
     }
 
+    // The collapsed toolbar title beside the check-in's back link at 320 px: "Bilan du jour" ran 4 px into "Aujourd'hui"
+    // whenever the page had scrolled far enough to show it (the run-together rule caught it now and then).
+    for (const locale of LOCALES) {
+      test(`the check-in's collapsed toolbar title clear of its back link at 320 px (${locale})`, async ({ page }, testInfo) => {
+        test.skip(testInfo.project.name !== 'phone', 'the narrow-width regression runs in the phone project')
+        await page.setViewportSize({ width: 320, height: 640 })
+        await start(page, theme, { ...plannedDocument, settings: { ...plannedDocument.settings, locale } }, locale)
+        await open(page, 'checkin')
+        await expect(page.getByTestId('back-button')).toBeVisible()
+        await page.evaluate(() => window.scrollTo(0, document.scrollingElement!.scrollHeight))
+        await expect(page.locator('.toolbar[data-collapsed]')).toHaveCount(1)
+        await audit(page, `${theme}/${locale}/320/check-in with the collapsed toolbar title`)
+      })
+    }
+
     for (const locale of LOCALES) {
       test(`use with your AI at 320 px (${locale})`, async ({ page }, testInfo) => {
         test.skip(testInfo.project.name !== 'phone', 'the narrow-width regression runs in the phone project')
@@ -969,6 +984,21 @@ test.describe('visual integrity guard: whole text in Week', () => {
       <button class="item" aria-label="Pausa… larga 9:15 – 9:45" style="top: 40px; left: 0; width: 120px; height: 20px"><span>Pausa… larga</span></button>
     `))
     expect(await audit(page)).toEqual([])
+  })
+
+  // Codex delta review: the title's own "…" or "..." followed by the generated "…" is a title cut between words.
+  test('a title with its own "…" or "...", cut after whole words with the generated "…", is accepted', async ({ page }) => {
+    await page.setContent(column(`
+      <button class="item" title="Pausa… larga reunión" style="top: 0; left: 0; width: 120px; height: 20px"><span>Pausa…<span style="display: inline" data-cut aria-hidden="true">…</span></span></button>
+      <button class="item" aria-label="Wait... for the bus 9:00 – 9:15" style="top: 20px; left: 0; width: 120px; height: 20px"><span>Wait...<span style="display: inline" data-cut>…</span></span></button>
+      <button class="item" title="Pausa… larga reunión" style="top: 40px; left: 0; width: 120px; height: 20px"><span>Pausa… larga<span style="display: inline" data-cut>…</span></span></button>
+    `))
+    expect(await audit(page)).toEqual([])
+  })
+
+  test('a word cut after the title\'s own "…" is reported ("Pausa… lar…")', async ({ page }) => {
+    await page.setContent(column('<button class="item" title="Pausa… larga reunión" style="top: 0; left: 0; width: 120px; height: 20px"><span>Pausa… lar<span style="display: inline" data-cut>…</span></span></button>'))
+    expect((await audit(page)).some((violation) => violation.includes('ends "Pausa… lar…", which is not whole words of "Pausa… larga reunión"'))).toBe(true)
   })
 
   test('outside a whole-text container an ellipsis is still a deliberate truncation', async ({ page }) => {
