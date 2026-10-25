@@ -280,6 +280,21 @@ for (const theme of THEMES) {
       })
     }
 
+    // Summary › Day wrap-up at 320 px and 200 % text: the toolbar's back link ends before the ✦ and gear entries.
+    for (const locale of ['es', 'de', 'en'] as const) {
+      test(`the check-in's back link beside the toolbar entries at 320 px and 200 % text (${locale})`, async ({ page }, testInfo) => {
+        test.skip(testInfo.project.name !== 'phone', 'the narrow-width regression runs in the phone project')
+        await page.setViewportSize({ width: 320, height: 640 })
+        await start(page, theme, { ...plannedDocument, checkIns: [], settings: { ...plannedDocument.settings, locale } }, locale)
+        await page.addInitScript(() => { document.addEventListener('DOMContentLoaded', () => { document.documentElement.style.fontSize = '200%' }) })
+        await open(page, 'insights')
+        await page.getByTestId('measures-empty').getByRole('link').click()
+        await expect(page.getByTestId('back-button')).toBeVisible()
+        await expect(page.locator('.view-enter-active, .view-leave-active')).toHaveCount(0)
+        await audit(page, `${theme}/${locale}/320/200%/check-in from Summary`)
+      })
+    }
+
     for (const locale of LOCALES) {
       test(`use with your AI at 320 px (${locale})`, async ({ page }, testInfo) => {
         test.skip(testInfo.project.name !== 'phone', 'the narrow-width regression runs in the phone project')
@@ -943,6 +958,14 @@ test.describe('visual integrity guard: overlapping controls', () => {
     expect(await visualIntegrityViolations(page, { focusRings: false })).toEqual(['<button.host> "Deep work" overlaps <button.task> "Report"'])
   })
 
+  test('a back link that runs under a toolbar button is reported', async ({ page }, testInfo) => {
+    phoneOnly(testInfo)
+    await page.setContent(`
+      <style>body { margin: 0; font: 16px sans-serif; } .bar { position: relative; width: 320px; height: 44px; } a { position: absolute; top: 0; height: 44px; }</style>
+      <div class="bar"><a href="#back" style="left: 16px; width: 200px">Back to Summary</a><a href="#ai" aria-label="Assistant" style="left: 180px; width: 44px">*</a></div>`)
+    expect(await visualIntegrityViolations(page, { focusRings: false })).toEqual(['<a> "Back to Summary" overlaps <a> "Assistant"'])
+  })
+
   test('a control that is not marked as layered is reported even when it lies inside another', async ({ page }, testInfo) => {
     phoneOnly(testInfo)
     await page.setContent(`
@@ -999,6 +1022,16 @@ test.describe('visual integrity guard: spacing', () => {
         <button style="position: absolute; top: 0; width: 200px">Work</button>
         <button style="position: absolute; top: 48px; width: 200px">Meeting</button>
       </div>`))
+    expect(await audit(page)).toEqual([])
+  })
+
+  test('a control scrolled up to a bar outside its scroller is not spaced by layout', async ({ page }) => {
+    await page.setContent(spacingStage(`
+      <div style="display: flex; flex-direction: column; height: 300px">
+        <div style="flex: none; height: 46px"><button>Close</button></div>
+        <div class="scroller" style="flex: 1; overflow-y: auto"><div style="height: 52px"></div><button style="display: block">Card</button><div style="height: 400px"></div></div>
+      </div>`))
+    await page.locator('.scroller').evaluate((element) => { element.scrollTop = 48 })
     expect(await audit(page)).toEqual([])
   })
 

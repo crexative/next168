@@ -566,7 +566,8 @@ export function auditInPage(options: { focusRings: boolean }): string[] {
     return a.left >= b.left - TOLERANCE && a.right <= b.right + TOLERANCE && a.top >= b.top - TOLERANCE && a.bottom <= b.bottom + TOLERANCE
   }
 
-  const formControls = controls.filter((control) => control.matches(FORM_CONTROL) && Number(getComputedStyle(control).opacity) > 0)
+  // Links count too: a back link in a toolbar must not run under the toolbar's buttons.
+  const formControls = controls.filter((control) => control.matches(`${FORM_CONTROL}, a[href]`) && Number(getComputedStyle(control).opacity) > 0)
   formControls.forEach((first, index) => {
     for (const second of formControls.slice(index + 1)) {
       if (first.contains(second) || second.contains(first) || layerOf(first) !== layerOf(second)) continue
@@ -619,6 +620,8 @@ export function auditInPage(options: { focusRings: boolean }): string[] {
       for (const second of shownControls.slice(index + 1)) {
         if (first.contains(second) || second.contains(first) || layerOf(first) !== layerOf(second)) continue
         if (layeredInside(first, second) || layeredInside(second, first) || placedByData(first, second)) continue
+        // Content in a scroller and chrome outside it are as close as the scroll position puts them, not the layout.
+        if (scrollerOf(first) !== scrollerOf(second)) continue
         const a = shownRect(first)
         const b = shownRect(second)
         // A control a scroller has partly moved out of view is cut by the scroller's edge, not spaced by layout.
