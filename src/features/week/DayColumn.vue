@@ -171,11 +171,11 @@ function onColumnClick(event: MouseEvent, blockId?: string): void {
   <div ref="root" class="day-column" :class="{ 'is-compact': compact }" :data-date="date" :aria-label="label" role="group" data-whole-text @click="onColumnClick">
     <!-- Hidden copies of each text style: the page's own fonts, measured for the plan. -->
     <div v-if="!compact" ref="probes" class="text-probes" aria-hidden="true">
-      <span class="block-title" data-role="blockTitle" />
-      <span class="block-detail" data-role="blockDetail" />
+      <span data-role="blockTitle" />
+      <span data-role="blockDetail" />
       <span class="t-caption" data-role="caption" />
-      <span class="task-text" data-role="taskTitle" />
-      <span class="block-title" data-lead="mark"><CategoryMark class="block-mark" :category="undefined" />{{ ' ' }}</span>
+      <span data-role="taskTitle" />
+      <span data-role="blockTitle" data-lead="mark"><CategoryMark class="block-mark" :category="undefined" />{{ ' ' }}</span>
       <span class="t-caption" data-lead="icon"><Icon name="check" :size="12" />{{ ' ' }}</span>
       <span class="t-caption" data-sentinel>M</span>
     </div>
@@ -252,9 +252,9 @@ function onColumnClick(event: MouseEvent, blockId?: string): void {
 
 /* What each box shows is decided by dayColumnPlan.ts; the styles below only draw it. Every text style here is one of
    the probes above, so the plan measures exactly what is drawn: whole words, never an ellipsis or a clamp. */
-.block-title { font-size: 0.8125rem; font-weight: 600; line-height: 1.25; }
-.block-detail { font-size: 0.75rem; line-height: 1.25; font-variant-numeric: tabular-nums; }
-.task-text { font-size: 0.75rem; font-weight: 500; line-height: 1.1; letter-spacing: 0.01em; }
+.block-title, [data-role='blockTitle'] { font-size: 0.8125rem; font-weight: 600; line-height: 1.25; }
+.block-detail, [data-role='blockDetail'] { font-size: 0.75rem; line-height: 1.25; font-variant-numeric: tabular-nums; }
+.task-text, [data-role='taskTitle'] { font-size: 0.75rem; font-weight: 500; line-height: 1.1; letter-spacing: 0.01em; }
 .block-title, .block-detail, .block-status, .busy, .task-text { white-space: normal; overflow-wrap: normal; word-break: normal; hyphens: manual; }
 
 .block {

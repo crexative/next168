@@ -413,46 +413,41 @@ test.describe('tasks in Week', () => {
     expect(cssColorAlpha(header), header).toBeGreaterThanOrEqual(0.95)
     const layers = await page.evaluate(() => ({
       line: getComputedStyle(document.querySelector('[data-testid="now-line"]')!).zIndex,
-      title: getComputedStyle(document.querySelector('.block-title')!).zIndex,
+      title: getComputedStyle(document.querySelector('button .block-title')!).zIndex,
       task: getComputedStyle(document.querySelector('.task-title')!).zIndex,
     }))
     expect(Number(layers.title)).toBeGreaterThan(Number(layers.line))
     expect(Number(layers.task)).toBeGreaterThan(Number(layers.line))
   })
 
-  test('a block whose title row an event covers, in a narrow column, shows whole words on up to two lines', async ({ page }) => {
+  // docs/design/visual-design.md › Week items: an event on a routine's title row takes a lane beside it, and each shows
+  // its whole title or none, never "D…" or a word cut by the other.
+  test('an event on a routine\'s title row, in a narrow column, sits beside it and both titles are whole or not drawn', async ({ page }) => {
     const document = plannerDocument({
       events: [{ id: 'e-1', title: 'Reunión', start: '2026-10-21T09:00:00.000Z', end: '2026-10-21T10:00:00.000Z', allDay: false, attendees: [] }],
       actuals: [],
     })
     await openWeek(page, 'light', 'desktop', document)
-    // Seven columns of about 146 px: narrower than 9.5 rem, where the title strip beside an event applies.
     await page.setViewportSize({ width: 1100, height: 900 })
     const work = column(page, WEDNESDAY).locator('[data-block-id="b-work"]')
-    await expect(work).toHaveClass(/is-title-covered/)
-    const title = work.locator('.block-title')
-    await expect(title).toHaveCSS('word-break', 'normal')
-    await expect(title).toHaveCSS('overflow-wrap', 'normal')
-    const lines = await title.evaluate((element) => element.getBoundingClientRect().height / parseFloat(getComputedStyle(element).lineHeight))
-    expect(lines).toBeLessThan(2.5)
-    // The first word is whole on the first line: never a letter and an ellipsis.
-    const firstWord = await title.evaluate((element) => {
-      const node = Array.from(element.childNodes).find((child) => child.nodeType === Node.TEXT_NODE && (child.textContent ?? '').trim()) as Text
-      const text = node.textContent ?? ''
-      const start = text.search(/\S/)
+    const event = column(page, WEDNESDAY).getByTestId('busy-overlay')
+    await work.scrollIntoViewIfNeeded()
+    const [block, band] = [await box(work), await box(event)]
+    expect(band.x, 'the event starts where the routine ends').toBeGreaterThanOrEqual(block.x + block.width - 0.5)
+    const drawn = await page.locator(`.day-column[data-date="${WEDNESDAY}"]`).evaluate((day) => Array.from(day.querySelectorAll<HTMLElement>('button .block-title, button .busy-title:not(.visually-hidden)')).map((title) => {
+      const item = title.closest('button')!.getBoundingClientRect()
       const range = window.document.createRange()
-      range.setStart(node, start)
-      range.setEnd(node, start + text.slice(start).split(/\s/)[0]!.length)
-      return Array.from(range.getClientRects()).every((rect) => rect.right <= element.getBoundingClientRect().right + 0.5)
-    })
-    expect(firstWord).toBe(true)
+      range.selectNodeContents(title)
+      return Array.from(range.getClientRects()).every((line) => line.left >= item.left - 0.5 && line.right <= item.right + 0.5 && line.bottom <= item.bottom + 0.5)
+    }))
+    expect(drawn.every(Boolean)).toBe(true)
+    if (await work.locator('.block-title').count()) await expect(work.locator('.block-title')).toHaveCSS('overflow-wrap', 'normal')
   })
 
   test('a block whose first half hour holds a task shows only its title, not its time range', async ({ page }) => {
     // Now is 08:07, so the first task starts with the 09:00 block.
     await openWeek(page, 'light', 'desktop', plannerDocument({ actuals: [] }), new Date('2026-10-21T08:07:00.000Z'))
     const work = column(page, WEDNESDAY).locator('[data-block-id="b-work"]')
-    await expect(work).toHaveClass(/is-crowded/)
     await expect(work.locator('.block-time')).toBeHidden()
     await expect(work.locator('.block-title')).toBeVisible()
   })
@@ -464,7 +459,6 @@ test.describe('a block keeps its time when its first task starts later', () => {
   test('the first task starts 75 minutes into the block, so the time range stays', async ({ page }) => {
     await openWeek(page, 'light', 'desktop', plannerDocument({ actuals: [] }))
     const work = column(page, WEDNESDAY).locator('[data-block-id="b-work"]')
-    await expect(work).not.toHaveClass(/is-crowded/)
     await expect(work.locator('.block-time')).toBeVisible()
   })
 })

@@ -76,29 +76,32 @@ test.describe('Week at tablet widths', () => {
       await importEvents(page)
       await openTab(page, 'week')
 
-      for (const [date, title, minutes] of [['2026-10-22', 'Team sync', 60], ['2026-10-23', 'Vendor call', 30]] as const) {
+      for (const [date, title] of [['2026-10-22', 'Team sync'], ['2026-10-23', 'Vendor call']] as const) {
         const column = page.locator(`.day-column[data-date="${date}"]`)
         const event = column.locator('.busy')
         await event.scrollIntoViewIfNeeded()
         await expect(event).toHaveCount(1)
 
-        // The inset band leaves a leading block strip. The event title keeps at least six painted characters; the
-        // block title (its row is above the event) shows at least four letters and wraps only between words.
+        // The event takes a lane beside the routine (docs/design/visual-design.md › Week items): neither is drawn over the
+        // other, and each shows its whole title or none: every character it draws is painted inside its own box.
         const columnBox = (await column.boundingBox())!
         const eventBox = (await event.boundingBox())!
-        expect(eventBox.x).toBeGreaterThan(columnBox.x)
-        expect(eventBox.width, `${title} width`).toBeGreaterThan(columnBox.width / 2)
-        expect(await visibleCharacters(event.locator('.busy-title')), `${title} visible characters`).toBeGreaterThanOrEqual(6)
         const block = column.locator('.block')
-        expect(await visibleCharacters(block.locator('.block-title')), 'block title visible characters').toBeGreaterThanOrEqual(4)
-        await expect(block.locator('.block-title')).toHaveCSS('overflow-wrap', 'normal')
-        expect((await block.boundingBox())!.width).toBeGreaterThan(columnBox.width - 8)
-        await expect(event.getByTestId('calendar-conflict')).toBeVisible()
-
-        // Wider bands keep the word; narrow ones retain the icon and its accessible text.
-        if (minutes >= 45 && eventBox.width > 74) {
+        const blockBox = (await block.boundingBox())!
+        expect(eventBox.x, `${title} sits beside the routine`).toBeGreaterThanOrEqual(blockBox.x + blockBox.width - 0.5)
+        expect(eventBox.x + eventBox.width).toBeLessThanOrEqual(columnBox.x + columnBox.width + 0.5)
+        for (const [label, locator] of [[title, event.locator('.busy-title:not(.visually-hidden)')], ['routine', block.locator('.block-title')]] as const) {
+          if (await locator.count() === 0) continue
+          const whole = await locator.evaluate((node) => (node.textContent ?? '').replace(/\s/g, '').length)
+          expect(await visibleCharacters(locator), `${label} is whole`).toBe(whole)
+          await expect(locator).toHaveCSS('overflow-wrap', 'normal')
+        }
+        // The conflict keeps its icon, and its word in the accessible name.
+        await expect(event.getByTestId('calendar-conflict')).toContainText(/Conflict/)
+        expect(await event.getByTestId('calendar-conflict').locator('svg').count()).toBe(1)
+        // The word is drawn only where it fits whole beside the icon and the title.
+        if (await event.locator('.conflict-text:not(.visually-hidden)').count()) {
           const textBox = (await event.locator('.conflict-text').boundingBox())!
-          expect(textBox.width).toBeGreaterThan(20)
           expect(textBox.x + textBox.width).toBeLessThanOrEqual(eventBox.x + eventBox.width + 0.5)
         }
 
@@ -114,7 +117,7 @@ test.describe('Week at tablet widths', () => {
     })
 
     for (const kind of ['external', 'own'] as const) {
-      test(`a fully overlapped block opens from its strip and the ${kind} event conflict at ${width} px`, async ({ page }) => {
+      test(`a fully overlapped block opens from its own lane and the ${kind} event conflict at ${width} px`, async ({ page }) => {
         await page.setViewportSize({ width, height })
         await page.clock.install({ time: NOW })
         const event = { id: 'exact', title: 'Team sync', start: '2026-10-21T09:00:00Z', end: '2026-10-21T10:00:00Z', allDay: false, attendees: [] }
@@ -139,15 +142,16 @@ test.describe('Week at tablet widths', () => {
         const blockBox = (await block.boundingBox())!
         const bandBox = (await band.boundingBox())!
         expect((await column.boundingBox())!.width).toBeLessThan(9.5 * 16)
+        // Same hour, side by side: the routine keeps its own lane, the event never covers it.
         expect(bandBox.y).toBeCloseTo(blockBox.y, 0)
         expect(bandBox.height).toBeCloseTo(blockBox.height, 0)
-        const stripWidth = bandBox.x - blockBox.x
-        expect(stripWidth).toBeGreaterThan(0)
-        expect(bandBox.x + bandBox.width).toBeLessThanOrEqual(blockBox.x + blockBox.width + 0.5)
-        expect(await visibleCharacters(block.locator('.block-title'))).toBeGreaterThanOrEqual(2)
-        expect(await visibleCharacters(band.locator('.busy-title'))).toBeGreaterThanOrEqual(6)
+        expect(bandBox.x).toBeGreaterThanOrEqual(blockBox.x + blockBox.width - 0.5)
+        for (const locator of [block.locator('.block-title'), band.locator('.busy-title:not(.visually-hidden)')]) {
+          if (await locator.count() === 0) continue
+          expect(await visibleCharacters(locator)).toBe(await locator.evaluate((node) => (node.textContent ?? '').replace(/\s/g, '').length))
+        }
 
-        const point = { x: blockBox.x + stripWidth / 2, y: blockBox.y + blockBox.height / 2 }
+        const point = { x: blockBox.x + blockBox.width / 2, y: blockBox.y + blockBox.height / 2 }
         expect(await page.evaluate(({ x, y }) => document.elementFromPoint(x, y)?.closest('[data-block-id]')?.getAttribute('data-block-id'), point)).toBe('b-work')
         await page.touchscreen.tap(point.x, point.y)
         const editor = page.getByRole('dialog', { name: 'Edit routine', exact: true })

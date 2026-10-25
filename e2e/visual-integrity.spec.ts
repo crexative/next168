@@ -773,9 +773,9 @@ for (const theme of THEMES) {
   })
 }
 
-// Week at 768, 1024 and 1440 px with events beside routines and tasks inside them (#3, R1): every block and event
-// title shows at least its first four letters, task chunks of 16 px or more carry their title, the routine's own area
-// opens the routine, and the week's range, arrows and free hours are on screen on arrival.
+// Week at 768, 1024 and 1440 px with events beside routines and tasks inside them (#3, R1): every title drawn is whole
+// (docs/design/visual-design.md › Week items) and every item names its whole title, a task chunk with room for its title
+// shows it, the routine's own area opens the routine, and the week's range, arrows and free hours are on screen.
 test.describe('Week readability', () => {
   const crowded = {
     ...plannedDocument,
@@ -815,33 +815,44 @@ test.describe('Week readability', () => {
         await expect.soft(page.getByTestId(id), `${id} on arrival`).toBeInViewport({ ratio: 1 })
       }
       await expect(page.getByTestId('now-line')).toBeInViewport()
-      const stubs = await page.locator('.week-grid').evaluate((grid) => Array.from(grid.querySelectorAll<HTMLElement>('.block-title, .busy-title, .task-title')).flatMap((title) => {
-        if (title.getClientRects().length === 0) return []
-        const text = title.lastChild?.textContent?.trim() ?? ''
-        const node = Array.from(title.childNodes).find((child) => child.nodeType === Node.TEXT_NODE && (child.textContent ?? '').trim()) as Text | undefined
-        if (!node) return []
-        const offset = (node.textContent ?? '').search(/\S/)
-        const range = document.createRange()
-        range.setStart(node, offset)
-        range.setEnd(node, Math.min(offset + 4, (node.textContent ?? '').length))
-        const box = title.getBoundingClientRect()
-        // Glyph boxes may be taller than a tight line; a hidden line starts below the box, a cut word runs past its end.
-        const shown = Array.from(range.getClientRects()).every((rect) => rect.right <= box.right + 0.5 && rect.top < box.bottom - 1)
-        return shown ? [] : [`"${text}" shows fewer than four letters`]
+      // Every title drawn is whole (the whole-text rule of the guard), and a hidden one stays in the accessible name.
+      await audit(page, `light/${width}/week with events beside routines`)
+      const unnamed = await page.locator('.week-grid').evaluate((grid) => Array.from(grid.querySelectorAll<HTMLElement>('[data-testid="busy-overlay"], .block, [data-testid="week-task"]')).flatMap((item) => {
+        const name = item.getAttribute('aria-label') ?? item.textContent ?? ''
+        const title = item.getAttribute('title') ?? item.querySelector('.block-title')?.textContent?.trim() ?? item.getAttribute('aria-label')!
+        return name.includes(title) ? [] : [`${name} does not name "${title}"`]
       }))
-      expect.soft(stubs).toEqual([])
+      expect.soft(unnamed).toEqual([])
+      // A task chunk whose box holds its whole title on one caption line shows it (verify5 N2: no empty box that had room).
       const unlabeled = await page.getByTestId('week-task').evaluateAll((chunks) => chunks.flatMap((chunk) => {
-        const height = chunk.getBoundingClientRect().height
-        const title = chunk.querySelector('.task-title')
-        const outline = chunk.classList.contains('is-outline')
         if (!chunk.getAttribute('title')) return [`${chunk.getAttribute('aria-label')} has no tooltip`]
-        return height >= 16 && !outline && !title ? [`${chunk.getAttribute('aria-label')} (${height.toFixed(0)} px) has no visible title`] : []
+        const box = chunk.querySelector<HTMLElement>('.task-box')!
+        if (chunk.classList.contains('is-outline') || chunk.querySelector('.task-title')) return []
+        const style = getComputedStyle(box)
+        const probe = document.createElement('span')
+        probe.style.cssText = `position: absolute; visibility: hidden; white-space: pre; font: ${style.font}; letter-spacing: ${style.letterSpacing}`
+        probe.textContent = chunk.getAttribute('title')
+        document.body.append(probe)
+        const width = probe.getBoundingClientRect().width
+        probe.remove()
+        const room = box.clientWidth - Number.parseFloat(style.paddingLeft) - Number.parseFloat(style.paddingRight)
+        const height = box.clientHeight - Number.parseFloat(style.paddingTop) - Number.parseFloat(style.paddingBottom)
+        return width <= room - 2 && height >= Number.parseFloat(style.lineHeight) + 0.5 ? [`${chunk.getAttribute('aria-label')} has room for its title but shows none`] : []
       }))
       expect.soft(unlabeled).toEqual([])
-      // Thursday's routine holds a 20-minute task at its start: its title area opens the routine, not the task.
+      // Thursday's routine holds a 20-minute task at its start: the routine's own area (outside its task) opens it.
       const routine = page.locator('[data-date="2026-10-22"] [data-block-id="b-work"]').first()
       await routine.scrollIntoViewIfNeeded()
-      await routine.click({ position: { x: 12, y: 8 } })
+      const own = await routine.evaluate((element) => {
+        const rect = element.getBoundingClientRect()
+        for (let y = rect.top + 2; y < rect.bottom - 2; y += 2) {
+          const x = rect.left + rect.width / 2
+          if (document.elementFromPoint(x, y)?.closest('[data-block-id]') === element) return { x: x - rect.left, y: y - rect.top }
+        }
+        return null
+      })
+      expect(own, 'the routine has an area of its own').not.toBeNull()
+      await routine.click({ position: own! })
       await expect(page.getByRole('dialog').getByRole('heading', { name: 'Edit routine' })).toBeVisible()
     })
   }
