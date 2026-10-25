@@ -694,6 +694,25 @@ export function auditInPage(options: { focusRings: boolean }): string[] {
     }
   })
 
+  // A control that takes a tap must be what a tap at its centre reaches. Something of the same layer drawn over it (its own
+  // card, a sibling, text running out of a neighbour) is reported; content scrolled under a fixed or sticky bar is not
+  // (a different layer), nor a task drawn on its routine on purpose (`data-layered`, inside the control).
+  for (const control of formControls) {
+    if ((control as HTMLButtonElement).disabled) continue
+    const rect = control.getBoundingClientRect()
+    const shownArea = shownRect(control)
+    if (!shownArea) continue
+    const x = rect.left + rect.width / 2
+    const y = rect.top + rect.height / 2
+    if (x < shownArea.left || x > shownArea.right || y < shownArea.top || y > shownArea.bottom || x < 0 || y < 0 || x > viewportWidth || y > viewportHeight) continue
+    const hit = document.elementFromPoint(x, y)
+    if (!hit || control.contains(hit)) continue
+    if (!hit.contains(control) && layerOf(hit) !== layerOf(control)) continue
+    const layered = hit.closest('[data-layered]')
+    if (layered && !layered.contains(control) && layeredInside(layered, control)) continue
+    violations.push(`${describe(control)} is covered at its centre by ${describe(hit)}`)
+  }
+
   // Fields side by side in one row share their height and border, so their edges line up.
   const fields = controls.filter((control) => control.matches('input:not([type="checkbox"]):not([type="radio"]):not([type="file"]), select, textarea') && !isCovered(control))
   fields.forEach((first, index) => {

@@ -69,6 +69,9 @@ onBeforeUnmount(release)
   font-size: 1.0625rem;
   font-weight: 600;
   line-height: 1.3;
+  /* A word wider than the button ("Tagesabschluss" at 320 px and 200 % text) is hyphenated in the page's language
+     instead of running out of the button, where it covered its own link's centre. */
+  hyphens: auto;
   text-align: center;
   text-decoration: none;
   transition: transform 0.1s var(--ease-out), background-color 0.1s, opacity 0.1s;

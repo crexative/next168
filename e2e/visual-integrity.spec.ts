@@ -340,6 +340,9 @@ for (const theme of THEMES) {
         await start(page, theme, { ...plannedDocument, checkIns: [], settings: { ...plannedDocument.settings, locale } }, locale)
         await page.addInitScript(() => { document.addEventListener('DOMContentLoaded', () => { document.documentElement.style.fontSize = '200%' }) })
         await open(page, 'insights')
+        // The empty state's link must be what a tap reaches (on Linux its label ran out of it and the card took the tap).
+        await page.getByTestId('measures-empty').getByRole('link').scrollIntoViewIfNeeded()
+        await audit(page, `${theme}/${locale}/320/200%/Summary with no check-ins`)
         await page.getByTestId('measures-empty').getByRole('link').click()
         await expect(page.getByTestId('back-button')).toBeVisible()
         await expect(page.locator('.view-enter-active, .view-leave-active')).toHaveCount(0)
@@ -1254,7 +1257,9 @@ test.describe('visual integrity guard: overlapping controls', () => {
   test('a button over a field the container shows is reported', async ({ page }, testInfo) => {
     phoneOnly(testInfo)
     await page.setContent(stage(60, fiveFields))
-    expect(await visualIntegrityViolations(page, { focusRings: false })).toEqual([
+    // The field is drawn over the button's centre too, which the covered-control rule reports as well.
+    expect((await visualIntegrityViolations(page, { focusRings: false })).sort()).toEqual([
+      '<button.close> "Close" is covered at its centre by <input> "Name"',
       '<button.close> "Close" overlaps <input> "Name"',
     ])
   })
@@ -1306,6 +1311,19 @@ test.describe('visual integrity guard: overlapping controls', () => {
     expect(await visualIntegrityViolations(page, { focusRings: false })).toEqual(['<a> "Back to Summary" overlaps <a> "Assistant"'])
   })
 
+  test('a control covered at its centre by something of its own layer is reported, not one scrolled under a fixed bar', async ({ page }, testInfo) => {
+    phoneOnly(testInfo)
+    await page.setContent(`
+      <style>body { margin: 0; font: 16px sans-serif; } .card { position: relative; margin: 16px; padding: 16px; width: 240px; } .cover { position: absolute; inset: 0; } .bar { position: fixed; bottom: 0; left: 0; right: 0; height: 60px; background: #eee; }</style>
+      <div class="card"><a href="#go" style="display: inline-block; padding: 12px">Tagesabschluss machen</a><div class="cover"></div></div>
+      <div style="height: 2000px"></div><div class="bar"></div>`)
+    expect((await visualIntegrityViolations(page, { focusRings: false })).some((violation) => violation.startsWith('<a> "Tagesabschluss machen" is covered at its centre by <div.cover>'))).toBe(true)
+    await page.locator('.cover').evaluate((cover) => cover.remove())
+    await page.locator('.card').evaluate((card) => { card.style.marginTop = '600px' })
+    await page.evaluate(() => window.scrollTo(0, 60))
+    expect((await visualIntegrityViolations(page, { focusRings: false })).filter((violation) => violation.includes('covered at its centre'))).toEqual([])
+  })
+
   test('two layered controls on each other are reported even inside their host', async ({ page }, testInfo) => {
     phoneOnly(testInfo)
     await page.setContent(`
@@ -1313,7 +1331,10 @@ test.describe('visual integrity guard: overlapping controls', () => {
       <button class="host">Deep work</button><button class="task" data-layered>Report</button><button class="task" data-layered>Form</button>`)
     const violations = await visualIntegrityViolations(page, { focusRings: false })
     // Their words are drawn on each other too, which the run-together rule reports as well.
-    expect(violations.filter((violation) => !violation.startsWith('text "Report" and text "Form" run together'))).toEqual(['<button.task> "Report" overlaps <button.task> "Form"'])
+    expect(violations.filter((violation) => !violation.startsWith('text "Report" and text "Form" run together')).sort()).toEqual([
+      '<button.task> "Report" is covered at its centre by <button.task> "Form"',
+      '<button.task> "Report" overlaps <button.task> "Form"',
+    ])
   })
 
   test('a control that is not marked as layered is reported even when it lies inside another', async ({ page }, testInfo) => {
@@ -1321,7 +1342,10 @@ test.describe('visual integrity guard: overlapping controls', () => {
     await page.setContent(`
       <style>body { margin: 0; } .host { position: absolute; left: 10px; top: 10px; width: 200px; height: 100px; } .task { position: absolute; left: 20px; top: 30px; width: 100px; height: 44px; }</style>
       <button class="host">Deep work</button><button class="task">Report</button>`)
-    expect(await visualIntegrityViolations(page, { focusRings: false })).toEqual(['<button.host> "Deep work" overlaps <button.task> "Report"'])
+    expect((await visualIntegrityViolations(page, { focusRings: false })).sort()).toEqual([
+      '<button.host> "Deep work" is covered at its centre by <button.task> "Report"',
+      '<button.host> "Deep work" overlaps <button.task> "Report"',
+    ])
   })
 })
 
