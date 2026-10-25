@@ -70,13 +70,13 @@ defineExpose({ focus: () => link.value?.focus() })
 </template>
 
 <style scoped>
-.checkin-card { margin: var(--space-4) var(--space-4) 0; border-radius: var(--radius-card); background: var(--surface); }
+.checkin-card { margin: var(--section-gap) var(--space-4) 0; border-radius: var(--radius-card); background: var(--surface); }
 .checkin-row {
   display: flex;
   align-items: center;
   gap: var(--space-3);
   min-height: var(--tap-target);
-  padding: var(--space-3) var(--space-4);
+  padding: var(--row-padding-block) var(--card-padding);
   border-radius: var(--radius-card);
   color: var(--label);
   text-decoration: none;
@@ -93,7 +93,7 @@ defineExpose({ focus: () => link.value?.focus() })
   gap: var(--space-2);
   width: 100%;
   min-height: var(--tap-target);
-  padding: 0 var(--space-4);
+  padding: 0 var(--card-padding);
   border: 0;
   border-top: 0.5px solid var(--separator);
   border-radius: 0 0 var(--radius-card) var(--radius-card);
@@ -102,7 +102,7 @@ defineExpose({ focus: () => link.value?.focus() })
   text-align: start;
 }
 .remind[aria-pressed='true'] { font-weight: 600; }
-.remind-note { margin: 0; padding: 0 var(--space-4) var(--space-3); }
+.remind-note { margin: 0; padding: 0 var(--card-padding) var(--row-padding-block); }
 @media (prefers-reduced-motion: reduce) {
   .checkin-row:active { transform: none; opacity: 0.7; }
 }

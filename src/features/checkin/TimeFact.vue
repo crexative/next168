@@ -78,8 +78,8 @@ function onBlur(): void {
   align-items: center;
   gap: var(--space-3);
   width: 100%;
-  min-height: var(--tap-target);
-  padding: var(--space-2) var(--space-4);
+  min-height: var(--row-min-height);
+  padding: var(--row-padding-block) var(--card-padding);
   border: 0;
   background: transparent;
   color: var(--label);
@@ -91,5 +91,5 @@ function onBlur(): void {
 .fact-text { flex: 1; min-width: 0; overflow-wrap: anywhere; font-variant-numeric: tabular-nums; }
 .fact-text.is-unset { color: var(--label-2); }
 .fact-chevron { color: var(--label-3); }
-.fact-edit { display: flex; flex-direction: column; gap: var(--space-1); padding: var(--space-2) var(--space-4) var(--space-3); }
+.fact-edit { display: flex; flex-direction: column; gap: var(--space-1); padding: var(--space-2) var(--card-padding) var(--row-padding-block); }
 </style>

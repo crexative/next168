@@ -47,7 +47,7 @@ function onName(name: string): void {
 
 <style scoped>
 .card { list-style: none; border-radius: var(--radius-card); background: var(--surface-2); }
-.head { border-radius: inherit; display: flex; align-items: center; gap: var(--space-3); width: 100%; min-height: var(--tap-target); padding: var(--space-3) var(--space-4); border: 0; background: transparent; color: var(--label); text-align: start; touch-action: manipulation; }
+.head { border-radius: inherit; display: flex; align-items: center; gap: var(--space-3); width: 100%; min-height: var(--tap-target); padding: var(--row-padding-block) var(--card-padding); border: 0; background: transparent; color: var(--label); text-align: start; touch-action: manipulation; }
 .head:focus-visible { outline-offset: -2px; }
 .dot { flex: none; width: 14px; height: 14px; border-radius: 50%; }
 .text { display: flex; flex: 1; flex-direction: column; gap: var(--space-1); min-width: 0; }
@@ -55,7 +55,7 @@ function onName(name: string): void {
 .name { font-weight: 600; min-width: 0; overflow-wrap: anywhere; }
 .amount { flex: none; font-variant-numeric: tabular-nums; }
 .line { color: var(--label-2); overflow-wrap: anywhere; font-variant-numeric: tabular-nums; }
-.body { display: flex; flex-direction: column; gap: var(--space-3); align-items: stretch; padding: 0 var(--space-3) var(--space-3); }
+.body { display: flex; flex-direction: column; gap: var(--space-3); align-items: stretch; padding: 0 var(--card-padding) var(--card-padding); }
 /* Inside a card the ranges sit flat on the card's own surface: no second inset eating the width. */
 .body :deep(.range) { padding-inline: 0; }
 .body > :deep(.ui-button) { align-self: flex-start; }

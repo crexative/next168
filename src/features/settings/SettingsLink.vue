@@ -18,8 +18,8 @@ defineProps<{ href: string; title: string; subtitle: string }>()
 </template>
 
 <style scoped>
-.settings-link { position: relative; display: flex; align-items: center; gap: var(--space-3); min-height: var(--tap-target); padding: var(--space-2) var(--space-4); color: var(--label); text-decoration: none; }
-li + li .settings-link::before { content: ''; position: absolute; top: 0; right: 0; left: var(--space-4); border-top: 1px solid var(--separator); }
+.settings-link { position: relative; display: flex; align-items: center; gap: var(--space-3); min-height: var(--row-min-height); padding: var(--row-padding-block) var(--card-padding); color: var(--label); text-decoration: none; }
+li + li .settings-link::before { content: ''; position: absolute; top: 0; right: 0; left: var(--card-padding); border-top: 1px solid var(--separator); }
 .settings-link:active { background: var(--surface-2); }
 /* The card clips its row, so the row draws its focus ring inside itself, rounded like the card. */
 .settings-link:focus-visible { outline-offset: -2px; border-radius: var(--radius-card); }

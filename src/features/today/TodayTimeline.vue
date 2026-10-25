@@ -164,15 +164,15 @@ function overlapText(item: TimelineItem): string {
 </template>
 
 <style scoped>
-.timeline-section { margin: var(--space-6) var(--space-4) 0; }
-.section-title { margin: 0 0 var(--space-2); }
+.timeline-section { margin: var(--section-gap) var(--space-4) 0; }
+.section-title { margin: 0 0 var(--space-3); }
 .all-day { display: flex; flex-wrap: wrap; gap: var(--space-2); margin: 0 0 var(--space-2); padding: 0; list-style: none; }
 .all-day-item { padding: var(--space-1) var(--space-3); border-radius: var(--radius-control); background: var(--surface); }
 .timeline { margin: 0; padding: 0; list-style: none; border-radius: var(--radius-card); background: var(--surface); container: timeline / inline-size; }
-.row { display: grid; grid-template-columns: 4.5rem 3px minmax(0, 1fr); gap: var(--space-3); padding: var(--space-3) var(--space-4); }
+.row { display: grid; grid-template-columns: 4.5rem 3px minmax(0, 1fr); gap: var(--space-3); padding: var(--row-padding-block) var(--card-padding); }
 .row + .row { border-top: 0.5px solid var(--separator); }
 .row.has-control { grid-template-columns: 4.5rem 3px minmax(0, 1fr) auto; }
-.row.is-carry { grid-template-columns: 3px minmax(0, 1fr); align-items: center; padding-block: var(--space-2); }
+.row.is-carry { grid-template-columns: 3px minmax(0, 1fr); align-items: center; }
 .is-carry .row-bar { align-self: stretch; }
 .row-time { display: flex; flex-direction: column; align-items: flex-end; text-align: end; font-variant-numeric: tabular-nums; }
 .row-bar { border-radius: 2px; background: var(--item-color); }

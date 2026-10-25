@@ -152,7 +152,7 @@ function onFocusIn(event: FocusEvent): void {
 .resumed { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; column-gap: var(--space-3); text-align: center; }
 .resumed p { margin: 0; color: var(--label-2); }
 .dock { flex: none; border-top: 0.5px solid var(--separator); background: var(--surface); }
-.actions { display: flex; justify-content: center; padding-block: var(--space-3) calc(var(--space-3) + var(--safe-bottom)); }
+.actions { display: flex; justify-content: center; padding-block: var(--space-3) calc(var(--space-4) + var(--safe-bottom)); }
 .actions :deep(.ui-button) { width: 100%; min-height: 52px; border-radius: 26px; overflow-wrap: anywhere; hyphens: auto; }
 
 /* A new message arrives calmly from just below; without motion it only fades in. */

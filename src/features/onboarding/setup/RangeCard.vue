@@ -95,10 +95,10 @@ function onEscape(event: KeyboardEvent): void {
 </template>
 
 <style scoped>
-.range { display: flex; flex-direction: column; gap: var(--space-2); padding: var(--space-3); border-radius: var(--radius-card); background: var(--surface-2); }
+.range { display: flex; flex-direction: column; gap: var(--control-gap); padding: var(--card-padding); border-radius: var(--radius-card); background: var(--surface-2); }
 .title { margin: 0; font-weight: 600; }
 .row {
-  display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; column-gap: var(--space-3); width: 100%; min-height: var(--tap-target); padding: var(--space-1) var(--space-3);
+  display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; column-gap: var(--space-3); width: 100%; min-height: var(--tap-target); padding: var(--space-1) min(var(--space-3), 12px);
   border: 0; border-radius: var(--radius-control); background: var(--surface); color: var(--label); text-align: start; touch-action: manipulation;
 }
 /* A small leading icon says what the row holds: days or a time. */

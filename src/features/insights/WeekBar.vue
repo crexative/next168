@@ -66,7 +66,7 @@ const weekLabel = computed(() => formatTotal(WEEK_MINUTES))
 </template>
 
 <style scoped>
-.week-bar { display: flex; flex-direction: column; gap: var(--space-2); padding: var(--space-4); background: var(--surface); border-radius: var(--radius-card); }
+.week-bar { display: flex; flex-direction: column; gap: var(--space-2); padding: var(--card-padding); background: var(--surface); border-radius: var(--radius-card); }
 /* Words wrap between words and never inside one, so the figure stays readable at 200 % text. */
 .summary { margin: 0; min-width: 0; overflow-wrap: normal; text-wrap: balance; font-variant-numeric: tabular-nums; }
 .cells { display: flex; height: 28px; overflow: hidden; border-radius: 8px; }

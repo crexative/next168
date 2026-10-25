@@ -87,9 +87,9 @@ onBeforeUnmount(() => stopWatchingPress?.())
 .task-row::before { content: ''; position: absolute; inset: 0; background: color-mix(in srgb, var(--danger) 80%, #000); visibility: hidden; }
 .task-row.is-swiping::before { visibility: visible; }
 /* The separator belongs to the row's surface: on the green swipe track behind it, a translucent line turned green. */
-.task-row + .task-row .task-content::before { content: ''; position: absolute; top: 0; right: 0; left: calc(var(--space-4) + var(--tap-target) + var(--space-2)); border-top: 1px solid var(--separator); }
+.task-row + .task-row .task-content::before { content: ''; position: absolute; top: 0; right: 0; left: calc(var(--card-padding) + var(--tap-target) + var(--space-2)); border-top: 1px solid var(--separator); }
 .swipe-hint { position: absolute; inset-block: 0; inset-inline-end: var(--space-4); display: flex; align-items: center; gap: var(--space-1); color: #fff; }
-.task-content { position: relative; display: flex; align-items: center; gap: var(--space-2); min-height: var(--tap-target); padding: var(--space-1) var(--space-4); background: var(--surface); touch-action: pan-y; }
+.task-content { position: relative; display: flex; align-items: center; gap: var(--space-2); min-height: var(--row-min-height); padding: var(--space-1) var(--card-padding); background: var(--surface); touch-action: pan-y; }
 .check { display: inline-flex; align-items: center; justify-content: center; flex: none; width: var(--tap-target); height: var(--tap-target); border: 0; background: transparent; color: var(--label-2); }
 /* The row clips its content for the swipe, so these buttons draw their focus ring inside. */
 .check { border-radius: 50%; }
@@ -102,7 +102,8 @@ onBeforeUnmount(() => stopWatchingPress?.())
   gap: 2px;
   align-self: stretch;
   min-width: 0;
-  padding: var(--space-1) 0;
+  /* With the row's own padding this is the row padding token above and below the text; the button keeps the full height. */
+  padding: calc(var(--row-padding-block) - var(--space-1)) 0;
   border: 0;
   border-radius: var(--radius-control);
   background: transparent;

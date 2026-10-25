@@ -193,7 +193,7 @@ onMounted(() => {
 .facts :deep(.fact + .fact), .pending-row + .pending-row { border-top: 0.5px solid var(--separator); }
 .pending { display: flex; flex-direction: column; gap: var(--space-2); }
 .pending h2, .pending p { margin: 0; }
-.pending-row { display: flex; align-items: center; gap: var(--space-3); padding: var(--space-2) var(--space-4); }
+.pending-row { display: flex; align-items: center; gap: var(--space-3); padding: var(--space-2) var(--card-padding); }
 .pending-text { display: flex; flex: 1; flex-direction: column; min-width: 0; overflow-wrap: anywhere; }
 .tabular { font-variant-numeric: tabular-nums; }
 .field { display: flex; flex: 1; flex-direction: column; gap: var(--space-1); min-width: 8rem; }

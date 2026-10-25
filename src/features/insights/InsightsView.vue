@@ -113,11 +113,11 @@ function doneText(row: Row): string {
 </template>
 
 <style scoped>
-.insights { display: flex; flex-direction: column; gap: var(--space-6); padding: 0 var(--space-4) var(--space-6); }
+.insights { display: flex; flex-direction: column; gap: var(--section-gap); padding: 0 var(--space-4) var(--space-6); }
 .live-line { margin: var(--space-1) 0 0; }
 .goals { display: flex; flex-direction: column; gap: var(--space-3); }
 .rows { display: flex; flex-direction: column; gap: 1px; overflow: hidden; margin: 0; padding: 0; list-style: none; background: var(--separator); border-radius: var(--radius-card); }
-.row { display: flex; flex-direction: column; gap: var(--space-2); min-width: 0; padding: var(--space-3) var(--space-4); background: var(--surface); }
+.row { display: flex; flex-direction: column; gap: var(--space-2); min-width: 0; padding: var(--row-padding-block) var(--card-padding); background: var(--surface); }
 .row-head { display: flex; align-items: center; gap: var(--space-3); min-width: 0; }
 /* Words wrap between words; only a single word longer than the line is broken. */
 .name { flex: 1 1 auto; min-width: 0; overflow-wrap: break-word; }
@@ -130,5 +130,5 @@ function doneText(row: Row): string {
 .track { position: relative; height: 8px; border-radius: 4px; background: var(--surface-2); }
 .fill { position: absolute; inset: 0 auto 0 0; border-radius: 4px; }
 .marker { position: absolute; top: -3px; bottom: -3px; width: 2px; margin-left: -1px; border-radius: 1px; background: var(--label); }
-.empty-line { margin: 0; padding: var(--space-3) var(--space-4); background: var(--surface); border-radius: var(--radius-card); }
+.empty-line { margin: 0; padding: var(--row-padding-block) var(--card-padding); background: var(--surface); border-radius: var(--radius-card); }
 </style>

@@ -71,7 +71,7 @@ onBeforeUnmount(() => observer?.disconnect())
 .toolbar[data-collapsed] { box-shadow: 0 0.5px 0 var(--material-edge); }
 .large-title:focus { outline: none; }
 .large-title {
-  padding: calc(var(--toolbar-height) + var(--space-2)) var(--space-4) var(--space-2);
+  padding: calc(var(--toolbar-height) + var(--space-2)) var(--space-4) var(--header-gap);
   /* A long single word ("Tagesabschluss", "Asistente") at 200 % text is hyphenated where the browser can, and
      otherwise breaks, instead of widening the page. */
   overflow-wrap: anywhere;

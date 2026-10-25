@@ -89,12 +89,12 @@ const tiles = computed(() => {
 .range { margin: 0; }
 /* min() lets a tile shrink to the column: at 200 % text 14rem is wider than a phone screen. */
 .tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(14rem, 100%), 1fr)); gap: var(--space-3); }
-.tile { display: flex; min-width: 0; flex-direction: column; gap: var(--space-1); padding: var(--space-4); background: var(--surface); border-radius: var(--radius-card); }
+.tile { display: flex; min-width: 0; flex-direction: column; gap: var(--space-1); padding: var(--card-padding); background: var(--surface); border-radius: var(--radius-card); }
 .dots { display: flex; justify-content: space-between; margin-top: var(--space-2); }
 .dot-item { display: flex; flex-direction: column; align-items: center; gap: 2px; }
 .dot { width: 12px; height: 12px; border-radius: 50%; border: 2px solid var(--label-3); box-sizing: border-box; }
 .dot.is-good { background: var(--success); border-color: var(--success); }
 .dot.is-amber { background: var(--warning); border-color: var(--warning); border-radius: 3px; }
 .dot.is-bad { background: var(--danger); border-color: var(--danger); border-radius: 0; transform: rotate(45deg); }
-.empty { display: flex; flex-direction: column; align-items: flex-start; gap: var(--space-2); padding: var(--space-4); background: var(--surface); border-radius: var(--radius-card); }
+.empty { display: flex; flex-direction: column; align-items: flex-start; gap: var(--space-2); padding: var(--card-padding); background: var(--surface); border-radius: var(--radius-card); }
 </style>

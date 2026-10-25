@@ -57,6 +57,17 @@
   --space-5: 1.25rem;
   --space-6: 1.5rem;
   --space-8: 2rem;
+  --space-10: 2.5rem;
+  --space-12: 3rem;
+  /* Spacing roles (docs/design/visual-design.md › Spacing): use these, not raw scale steps, for the jobs they name.
+     Vertical rhythm is in rem and grows with text; horizontal insets are px and stay put, like system margins. */
+  --control-gap: var(--space-2);
+  --group-gap: var(--space-6);
+  --section-gap: var(--space-8);
+  --header-gap: var(--space-4);
+  --card-padding: 16px;
+  --row-padding-block: var(--space-3);
+  --row-min-height: 48px;
   --radius-control: 10px;
   --radius-card: 14px;
   --radius-sheet: 22px;
@@ -74,6 +85,11 @@
 
   --spring-duration: 0.35s;
   --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+/* Wide windows: cards breathe a little more, as macOS insets do. */
+@media (min-width: 1024px) {
+  :root { --card-padding: 20px; }
 }
 
 @media (prefers-color-scheme: dark) {

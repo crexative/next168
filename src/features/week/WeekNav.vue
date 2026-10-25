@@ -46,7 +46,7 @@ const range = computed(() => weekRangeLabel(props.dates, locale.value, props.tod
   display: flex;
   align-items: center;
   flex-wrap: wrap;
-  gap: var(--space-1);
+  gap: var(--control-gap);
   padding: 0 var(--space-4);
 }
 .nav-button {

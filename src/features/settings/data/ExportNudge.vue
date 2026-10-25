@@ -49,7 +49,7 @@ function later(): void {
 </template>
 
 <style scoped>
-.nudge { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: var(--space-2) var(--space-3); align-items: start; margin-block: var(--space-4); padding: var(--space-4); background: var(--surface); border-radius: var(--radius-card); }
+.nudge { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: var(--space-2) var(--space-3); align-items: start; margin-block: var(--space-4); padding: var(--card-padding); background: var(--surface); border-radius: var(--radius-card); }
 .nudge-icon { margin-top: 2px; color: var(--tint-label); }
 .nudge-text { margin: 0; }
 .nudge-actions { grid-column: 2; display: flex; flex-wrap: wrap; gap: var(--space-2); }

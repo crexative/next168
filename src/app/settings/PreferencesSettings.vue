@@ -80,17 +80,17 @@ async function chooseWeekStart(value: '0' | '1'): Promise<void> {
   align-items: center;
   justify-content: space-between;
   gap: var(--space-2) var(--space-3);
-  min-height: var(--tap-target);
-  padding: var(--space-2) var(--space-4);
+  min-height: var(--row-min-height);
+  padding: var(--row-padding-block) var(--card-padding);
 }
 .preference + .preference::before {
   content: '';
   position: absolute;
   top: 0;
   right: 0;
-  left: var(--space-4);
+  left: var(--card-padding);
   border-top: 1px solid var(--separator);
 }
-.is-stacked { flex-direction: column; align-items: stretch; padding-block: var(--space-3); }
+.is-stacked { flex-direction: column; align-items: stretch; }
 .language { max-width: 100%; }
 </style>

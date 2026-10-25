@@ -24,6 +24,8 @@ body {
 button, input, select, textarea { font: inherit; color: inherit; }
 button { cursor: pointer; -webkit-tap-highlight-color: transparent; }
 h1, h2, h3, p { margin: 0; }
+/* A legend's default 2 px inline padding pulled field labels out of line with every other label. */
+legend { padding: 0; }
 ul { margin: 0; padding: 0; list-style: none; }
 
 /* Bare links read as plain actions: tinted and semibold, never underlined. Styled links (rows, cards, tabs) set their own look. */
@@ -80,7 +82,7 @@ input[type='file']::file-selector-button {
 /* Settings-like pages: every group opens with this eyebrow, inset to the rows' text; explanatory copy is .t-subhead.t-secondary. */
 .section-header {
   margin: 0 0 var(--space-2);
-  padding-inline: var(--space-4);
+  padding-inline: var(--card-padding);
   color: var(--label-2);
   font-size: 0.8125rem;
   font-weight: 400;

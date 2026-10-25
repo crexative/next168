@@ -28,7 +28,7 @@ defineProps<{ title: string; subtitle?: string; interactive?: boolean }>()
   position: absolute;
   top: 0;
   right: 0;
-  left: var(--space-4);
+  left: var(--card-padding);
   border-top: 1px solid var(--separator);
 }
 .row-content {
@@ -37,8 +37,8 @@ defineProps<{ title: string; subtitle?: string; interactive?: boolean }>()
   align-items: center;
   gap: var(--space-3);
   width: 100%;
-  min-height: var(--tap-target);
-  padding: var(--space-2) var(--space-4);
+  min-height: var(--row-min-height);
+  padding: var(--row-padding-block) var(--card-padding);
   border: 0;
   background: transparent;
   text-align: start;

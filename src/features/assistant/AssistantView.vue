@@ -112,7 +112,7 @@ async function submit(): Promise<void> {
 <style scoped>
 /* Same 16 px side gutter as the other screens. */
 .assistant { display: flex; flex-direction: column; gap: var(--space-4); max-width: 40rem; padding: 0 var(--space-4) var(--space-6); }
-.card { display: flex; flex-direction: column; gap: var(--space-3); padding: var(--space-4); background: var(--surface); border-radius: var(--radius-card); }
+.card { display: flex; flex-direction: column; gap: var(--space-3); padding: var(--card-padding); background: var(--surface); border-radius: var(--radius-card); }
 progress { width: 100%; accent-color: var(--tint); }
 .chat { display: flex; flex-direction: column; gap: var(--space-3); }
 /* An empty conversation leaves the flow (no gap) but stays in the page, so its live region announces the first answer. */

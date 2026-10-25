@@ -334,7 +334,7 @@ onBeforeUnmount(() => {
 .sheet-body { flex: 1; overflow-y: auto; overscroll-behavior: contain; padding: var(--space-2) var(--space-4) var(--space-4); }
 /* Within the thumb's reach at the bottom of a phone sheet, always visible while the body scrolls. */
 .sheet-footer { flex: none; padding: var(--space-1) var(--space-4); border-top: 0.5px solid var(--separator); }
-.sheet-footer.is-actions { padding: var(--space-2) var(--space-4); }
+.sheet-footer.is-actions { padding: var(--space-3) var(--space-4) var(--space-4); }
 .is-centered .sheet-footer.is-actions { padding-bottom: var(--space-3); }
 .sheet-dismiss {
   display: flex;

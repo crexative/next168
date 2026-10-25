@@ -415,7 +415,11 @@ export function auditInPage(options: { focusRings: boolean }): string[] {
             visible = { ...visible, bottom: Math.min(visible.bottom, contentBox(clipper, style).bottom) }
           }
         }
-        if (visible.right > visible.left && visible.bottom > visible.top) checkEdgeInset(parent, visible, `text "${(node.textContent ?? '').trim().slice(0, 40)}" in ${describe(parent)}`, true)
+        if (visible.right > visible.left && visible.bottom > visible.top) {
+          const what = `text "${(node.textContent ?? '').trim().slice(0, 40)}" in ${describe(parent)}`
+          checkEdgeInset(parent, visible, what, true)
+          checkCardInset(parent, visible, what)
+        }
       }
       for (const { element: clipper, area, shownBelow } of clippingAncestors(parent)) {
         const visible = lines.filter((line) => intersects(line, area) && line.left >= shownBelow.left && line.right <= shownBelow.right && line.top >= shownBelow.top && line.bottom <= shownBelow.bottom)
@@ -440,11 +444,102 @@ export function auditInPage(options: { focusRings: boolean }): string[] {
     }
   }
 
+  // The spacing roles of tokens.css (docs/design/visual-design.md › Spacing), resolved to px at this width and text
+  // size. Plain pages without the tokens (the guard's self-tests) fall back to the documented values.
+  function spacingToken(name: string, fallback: number): number {
+    const probe = document.createElement('div')
+    probe.style.cssText = `position: absolute; visibility: hidden; width: 0; height: 0; padding-left: var(${name}, ${fallback}px)`
+    document.body.append(probe)
+    const value = px(getComputedStyle(probe).paddingLeft)
+    probe.remove()
+    return value
+  }
+  const SPACING = {
+    card: spacingToken('--card-padding', 16),
+    rowBlock: spacingToken('--row-padding-block', 12),
+    control: spacingToken('--control-gap', 8),
+    section: spacingToken('--section-gap', 32),
+  }
+  // Controls this close read as one compound control (segments of a track, rows split by a hairline).
+  const JOINED = 2
+
+  function transparent(color: string): boolean {
+    return color === 'transparent' || /^rgba\(.*,\s*0\)$/.test(color)
+  }
+
+  function backgroundBehind(element: Element): string {
+    for (let node = element.parentElement; node; node = node.parentElement) {
+      const color = getComputedStyle(node).backgroundColor
+      if (!transparent(color)) return color
+    }
+    return 'rgb(255, 255, 255)'
+  }
+
+  // A visible surface: a fill that differs from what is behind it, a border or a shadow.
+  function hasSurface(element: Element): boolean {
+    const style = getComputedStyle(element)
+    const filled = !transparent(style.backgroundColor) && style.backgroundColor !== backgroundBehind(element)
+    const bordered = px(style.borderTopWidth) > 0 && !transparent(style.borderTopColor)
+    return filled || bordered || style.backgroundImage !== 'none' || style.boxShadow !== 'none'
+  }
+
+  // A card: a rounded, visible surface that is not itself a control, a compound control or a sheet. Pills are excluded.
+  const COMPOUND = '[role="dialog"], [role="radiogroup"], [role="tablist"], [role="toolbar"], [role="menu"], [role="listbox"]'
+  function isCard(element: HTMLElement): boolean {
+    if (element.matches(CONTROL) || element.matches(COMPOUND) || !rendered(element) || isCovered(element)) return false
+    const rect = element.getBoundingClientRect()
+    if (rect.width < 120 || rect.height < 40) return false
+    const style = getComputedStyle(element)
+    const radius = Math.min(px(style.borderTopLeftRadius), px(style.borderBottomRightRadius))
+    if (radius < 12 || radius >= Math.min(rect.width, rect.height) / 2 - TOLERANCE) return false
+    const background = style.backgroundColor
+    return !transparent(background) && background !== backgroundBehind(element) || px(style.borderTopWidth) > 0 && !transparent(style.borderTopColor)
+  }
+  const cards = new Set(Array.from(scope.querySelectorAll<HTMLElement>('*')).filter(isCard))
+
+  function cardAround(element: Element): HTMLElement | null {
+    for (let node = element.parentElement; node && node !== scope.parentElement; node = node.parentElement) {
+      if (cards.has(node)) return node
+    }
+    return null
+  }
+
+  // Text, visible control surfaces and nested cards keep the card padding token from every edge of their card, also
+  // where the card itself is unpadded and a full-width row supplies the inset. Sides on which the card's own padding
+  // already reaches the token are left to the "touches the edge" rule.
+  function checkCardInset(subject: Element, box: Box, what: string): void {
+    const card = cardAround(subject)
+    if (!card || !intersects(box, scrolledInto(subject))) return
+    const rect = card.getBoundingClientRect()
+    const style = getComputedStyle(card)
+    const inner: Box = { left: rect.left + px(style.borderLeftWidth), right: rect.right - px(style.borderRightWidth), top: rect.top + px(style.borderTopWidth), bottom: rect.bottom - px(style.borderBottomWidth) }
+    const fullBleed = Math.abs(box.left - inner.left) <= 1 && Math.abs(inner.right - box.right) <= 1
+    if (fullBleed && !what.startsWith('text')) return
+    const scroller = scrollerOf(subject)
+    const scrollsInside = scroller !== null && card.contains(scroller)
+    const sides = [
+      ['left', box.left - inner.left, SPACING.card, px(style.paddingLeft)],
+      ['right', inner.right - box.right, SPACING.card, px(style.paddingRight)],
+      ['top', box.top - inner.top, SPACING.rowBlock, px(style.paddingTop)],
+      ['bottom', inner.bottom - box.bottom, SPACING.rowBlock, px(style.paddingBottom)],
+    ] as const
+    for (const [side, inset, minimum, padding] of sides) {
+      if (scrollsInside && (side === 'top' || side === 'bottom')) continue
+      if (padding >= minimum - TOLERANCE) continue
+      if (inset < minimum - TOLERANCE) {
+        violations.push(`${what} is ${inset.toFixed(1)}px from the ${side} edge of the card ${describe(card)} (card padding ${minimum.toFixed(1)}px)`)
+      }
+    }
+  }
+
   const controls = Array.from(scope.querySelectorAll<HTMLElement>(CONTROL)).filter((control) => rendered(control) && !isCovered(control))
+
+  for (const card of cards) checkCardInset(card, card.getBoundingClientRect(), `the card ${describe(card)}`)
 
   for (const control of controls) {
     const rect = control.getBoundingClientRect()
     checkEdgeInset(control, rect, describe(control))
+    if (hasSurface(control)) checkCardInset(control, rect, describe(control))
     checkContained(control, { left: rect.left, top: rect.top, right: rect.right, bottom: rect.bottom, radii: radiiOf(control, 0) }, 'the border box', false)
     if (control instanceof HTMLSelectElement) checkSelect(control)
     if (control instanceof HTMLInputElement || control instanceof HTMLTextAreaElement) checkInput(control)
@@ -495,7 +590,69 @@ export function auditInPage(options: { focusRings: boolean }): string[] {
     }
   })
 
+  // Neighbouring controls are either joined into one compound control or clearly apart; in between they read as
+  // cramped and invite mis-taps. Only what is on screen counts, and controls on different layers never neighbour.
+  // A transparent checkbox or radio is drawn by its label (a chip, a day toggle): the label is the control people see.
+  function visibleControl(control: HTMLElement): HTMLElement | null {
+    if (Number(getComputedStyle(control).opacity) > 0) return control
+    const label = control.matches('input[type="checkbox"], input[type="radio"]') ? control.closest('label') : null
+    return label && rendered(label) ? label : null
+  }
+
+  // Blocks on a time axis are placed by their times, not by layout: two absolutely positioned controls side by side
+  // show how close two events are, which no spacing token decides.
+  function placedByData(first: Element, second: Element): boolean {
+    return getComputedStyle(first).position === 'absolute' && getComputedStyle(second).position === 'absolute'
+  }
+
+  function wholeBox(shown: Box, control: Element): boolean {
+    const rect = control.getBoundingClientRect()
+    return Math.abs(shown.left - rect.left) <= TOLERANCE && Math.abs(shown.right - rect.right) <= TOLERANCE && Math.abs(shown.top - rect.top) <= TOLERANCE && Math.abs(shown.bottom - rect.bottom) <= TOLERANCE
+  }
+
+  function checkControlSpacing(): void {
+    const shownControls = Array.from(new Set(controls.map(visibleControl).filter((control): control is HTMLElement => control !== null)))
+    shownControls.forEach((first, index) => {
+      for (const second of shownControls.slice(index + 1)) {
+        if (first.contains(second) || second.contains(first) || layerOf(first) !== layerOf(second)) continue
+        if (layeredInside(first, second) || layeredInside(second, first) || placedByData(first, second)) continue
+        const a = shownRect(first)
+        const b = shownRect(second)
+        // A control a scroller has partly moved out of view is cut by the scroller's edge, not spaced by layout.
+        if (!a || !b || !wholeBox(a, first) || !wholeBox(b, second)) continue
+        let gap: number | null = null
+        if (a.top < b.bottom - TOLERANCE && b.top < a.bottom - TOLERANCE) gap = Math.max(b.left - a.right, a.left - b.right)
+        else if (a.left < b.right - TOLERANCE && b.left < a.right - TOLERANCE) gap = Math.max(b.top - a.bottom, a.top - b.bottom)
+        if (gap === null || gap <= JOINED + TOLERANCE || gap >= SPACING.control - TOLERANCE) continue
+        violations.push(`${describe(first)} and ${describe(second)} are ${gap.toFixed(1)}px apart (joined is at most ${JOINED}px, apart at least ${SPACING.control.toFixed(1)}px)`)
+      }
+    })
+  }
+
+  // Page sections (outside sheets) stacked in one column keep the section token between them: each section is measured
+  // to the nearest section below it that overlaps it horizontally, wherever the markup nests them.
+  function checkSectionSpacing(): void {
+    const sections = Array.from(scope.querySelectorAll<HTMLElement>('section, [role="region"]'))
+      .filter((section) => rendered(section) && !isCovered(section) && !section.closest('[role="dialog"]'))
+    for (const upper of sections) {
+      const a = upper.getBoundingClientRect()
+      let nearest: { section: HTMLElement; gap: number } | null = null
+      for (const lower of sections) {
+        if (lower === upper || lower.contains(upper) || upper.contains(lower) || layerOf(lower) !== layerOf(upper)) continue
+        const b = lower.getBoundingClientRect()
+        if (b.top < a.bottom - TOLERANCE || b.left >= a.right - TOLERANCE || a.left >= b.right - TOLERANCE) continue
+        const gap = b.top - a.bottom
+        if (!nearest || gap < nearest.gap) nearest = { section: lower, gap }
+      }
+      if (nearest && nearest.gap < SPACING.section - TOLERANCE) {
+        violations.push(`${describe(upper)} and the section below it ${describe(nearest.section)} are ${nearest.gap.toFixed(1)}px apart (sections at least ${SPACING.section.toFixed(1)}px)`)
+      }
+    }
+  }
+
   checkText()
+  checkControlSpacing()
+  checkSectionSpacing()
 
   if (options.focusRings) {
     const previous = document.activeElement as HTMLElement | null

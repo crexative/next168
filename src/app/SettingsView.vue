@@ -21,5 +21,5 @@ const { settingsSections } = shell
 
 <style scoped>
 /* Groups are separated by more space than rows inside a group, so each section reads as one unit. */
-.settings-section + .settings-section { margin-top: var(--space-6); }
+.settings-section + .settings-section { margin-top: var(--section-gap); }
 </style>

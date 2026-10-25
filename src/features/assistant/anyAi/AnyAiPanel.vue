@@ -158,7 +158,7 @@ watch(lastDecision, (decision) => {
 </template>
 
 <style scoped>
-.any-ai { display: flex; flex-direction: column; gap: var(--space-3); padding: var(--space-4); background: var(--surface); border-radius: var(--radius-card); }
+.any-ai { display: flex; flex-direction: column; gap: var(--space-3); padding: var(--card-padding); background: var(--surface); border-radius: var(--radius-card); }
 .head { display: flex; align-items: center; gap: var(--space-3); width: 100%; min-height: var(--tap-target); padding: 0; border: 0; background: transparent; color: var(--label); text-align: start; }
 button.head { touch-action: manipulation; }
 button.head:active { opacity: 0.6; }

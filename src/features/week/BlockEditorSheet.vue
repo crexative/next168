@@ -194,17 +194,27 @@ function submit(): void {
   color: var(--tint-label);
   font-weight: 600;
 }
-.day-toggles { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: var(--space-1); }
+/* The seven days are one compound control, joined on a track like the segmented control, so they keep their width on
+   a narrow phone instead of crowding as separate buttons. */
+.day-toggles {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 2px;
+  padding: 2px;
+  border-radius: var(--radius-control);
+  background: color-mix(in srgb, var(--label-2) 14%, transparent);
+}
 .day-toggle {
   min-height: var(--tap-target);
   padding: 0;
   border: 0;
-  border-radius: var(--radius-control);
-  background: var(--surface-2);
+  border-radius: 8px;
+  background: transparent;
   color: var(--label);
   font-weight: 500;
   transition: background-color 0.1s;
 }
+.day-toggle:focus-visible { outline-offset: 0; }
 .day-toggle[aria-pressed='true'] { background: var(--tint); color: var(--tint-text); font-weight: 600; }
 .messages { display: flex; flex-direction: column; gap: var(--space-1); min-height: 1.2rem; }
 .message { margin: 0; }

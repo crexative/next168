@@ -98,13 +98,13 @@ async function addMore(): Promise<void> {
 /* The week, as the last message: on a phone it uses the column's full width; with room to spare it sits in a card. */
 .week { display: flex; flex-direction: column; gap: var(--space-3); }
 @media (min-width: 40rem) {
-  .week { padding: var(--space-4); border: 0.5px solid var(--separator); border-radius: 20px; background: var(--surface); }
+  .week { padding: var(--card-padding); border: 0.5px solid var(--separator); border-radius: 20px; background: var(--surface); }
 }
 .week-title, .counter, .warn, .trust { margin: 0; }
 .warn { color: var(--danger-label); overflow-wrap: anywhere; }
 .trust { color: var(--label-2); }
 .cards { display: flex; flex-direction: column; gap: var(--space-2); margin: 0; padding: 0; }
-.removed { list-style: none; display: flex; align-items: center; justify-content: space-between; gap: var(--space-3); min-height: var(--tap-target); padding: var(--space-1) var(--space-4); border-radius: var(--radius-card); border: 1px dashed var(--separator); }
+.removed { list-style: none; display: flex; align-items: center; justify-content: space-between; gap: var(--space-3); min-height: var(--tap-target); padding: var(--space-1) var(--card-padding); border-radius: var(--radius-card); border: 1px dashed var(--separator); }
 .removed > span { min-width: 0; overflow-wrap: anywhere; }
 .week > :deep(.ui-button) { overflow-wrap: anywhere; hyphens: auto; }
 </style>

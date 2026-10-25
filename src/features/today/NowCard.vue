@@ -119,7 +119,7 @@ function time(instant: string): string {
   flex-direction: column;
   gap: var(--space-2);
   margin: 0 var(--space-4);
-  padding: var(--space-4);
+  padding: var(--card-padding);
   border-radius: var(--radius-card);
   background: var(--surface);
 }
