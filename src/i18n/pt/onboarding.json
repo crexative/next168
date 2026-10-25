@@ -15,7 +15,7 @@
     "close": "Agora não",
     "back": "Voltar",
     "next": "Seguinte",
-    "skip": "Pular",
+    "skip": "Depois",
     "noFixedTime": "Sem horário fixo",
     "progress": "Parte {step} de {total}",
     "intro": "Olá. São perguntas curtas e você pode mudar tudo no final.",
@@ -40,16 +40,35 @@
       "hint": "Turno dividido ou sábados? Adicione outro horário."
     },
     "study": {
-      "question": "Quando você estuda?"
+      "question": "Quando você estuda?",
+      "both": {
+        "question": "E quando você estuda?"
+      }
     },
     "commute": {
       "question": "Você leva tempo para ir e voltar?",
-      "hint": "Por exemplo, o ônibus para o trabalho."
+      "hint": "Por exemplo, o ônibus para o trabalho.",
+      "work": {
+        "question": "Você leva tempo para ir ao trabalho e voltar?"
+      },
+      "study": {
+        "question": "Você leva tempo para ir à aula e voltar?"
+      },
+      "both": {
+        "question": "Você leva tempo para ir ao trabalho ou à aula?"
+      }
     },
     "commuteRanges": {
       "question": "Quando você vai e quando volta?",
       "there": "Ida",
-      "back": "Volta"
+      "back": "Volta",
+      "work": {
+        "question": "Quando você vai ao trabalho e quando volta?"
+      },
+      "study": {
+        "question": "Quando você vai à aula e quando volta?"
+      },
+      "hint": "Usamos o seu horário. Mude se não for assim."
     },
     "yes": "Sim",
     "no": "Não",
@@ -114,7 +133,14 @@
     },
     "resumed": "Continuando de onde você parou.",
     "startOver": "Começar de novo",
-    "draftUnavailable": "Este navegador não guarda rascunho. Não recarregue até terminar."
+    "draftUnavailable": "Este navegador não guarda rascunho. Não recarregue até terminar.",
+    "nothingElse": "Nada mais",
+    "change": "Mudar: {question} {answer}",
+    "conversation": "Conversa",
+    "send": "Enviar resposta",
+    "needChoice": "Escolha pelo menos uma, ou «Depois».",
+    "needFix": "Primeiro corrija o horário marcado.",
+    "progressShort": "{step} de {total}"
   },
   "summary": {
     "title": "Sua semana típica",
@@ -132,7 +158,7 @@
     "keptForTasks": "\"{name}\" fica sem horário porque tem tarefas.",
     "noTimes": "Sem horário",
     "add": "Adicionar outra coisa",
-    "start": "Começar",
+    "start": "Criar minha semana",
     "save": "Salvar alterações",
     "review": "Rever as perguntas",
     "saved": "Pronto. Sua semana está salva.",

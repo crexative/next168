@@ -7,18 +7,17 @@ import { documentFingerprint } from '@/repositories/storageCommit'
 import { activePlannerRepository, usePlannerStore } from '@/stores/plannerStore'
 import { announce } from '@/ui/announcer'
 import Button from '@/ui/Button.vue'
-import Sheet from '@/ui/Sheet.vue'
 import { useUndoToast } from '@/ui/undoToast'
 import {
   bindingFor, clearDismissed, clearDraft, draftOf, idsMatchBaseline, isDismissed, loadDraft, markDismissed, sameBinding, saveDraft, type DraftBinding, type SetupDraft,
 } from '../draftStorage'
 import { setupOpen, setupRequest } from '../reopen'
 import { applySetupPlan, planSetupCommit } from '../setupCommit'
-import { nextScreen, previousScreen } from '../setupFlow'
+import { nextScreen, partOf, TOTAL_PARTS } from '../setupFlow'
 import { cloneState, createState, prepareScreen, type Issue, type ScreenId, type SetupEnv, type SetupState } from '../setupModel'
 import { TOPICS } from '../setupTopics'
-import SetupQuestion from './SetupQuestion.vue'
-import SetupSummary from './SetupSummary.vue'
+import SetupConversation from './SetupConversation.vue'
+import SetupFrame from './SetupFrame.vue'
 
 // The guided setup's lifecycle: when it opens, what it is bound to, the draft that survives a reload, the single guarded
 // commit at the end, and what happens when storage is no longer what the flow opened on. Closing never writes.
@@ -50,7 +49,6 @@ const issues = ref<Issue[]>([])
 const message = ref('')
 const draftUnavailable = ref(false)
 const expanded = ref<string | null>(null)
-const direction = ref<'forward' | 'back'>('forward')
 let pristine = ''
 
 const open = computed(() => phase.value !== 'closed')
@@ -58,7 +56,7 @@ watch(open, (value) => { setupOpen.value = value }, { immediate: true })
 const locked = computed(() => submitting.value || transitioning.value)
 const browserMode = computed(() => activePlannerRepository().saveGuarded !== undefined)
 const dirty = computed(() => flow.value !== null && JSON.stringify(flow.value) !== pristine)
-const sheetTitle = computed(() => (phase.value === 'conflict' || flow.value?.screen === 'summary' ? t('onboarding.summary.title') : t('onboarding.guided.sheetTitle')))
+const part = computed(() => (phase.value === 'conflict' || !flow.value ? TOTAL_PARTS : partOf(flow.value.screen)))
 
 // ---------- Baseline: what storage held when the flow opened ----------
 
@@ -168,20 +166,15 @@ function go(screen: ScreenId): void {
 
 function advance(): void {
   if (!flow.value) return
-  direction.value = 'forward'
   go(nextScreen(flow.value))
 }
 
-function back(): void {
-  if (!flow.value) return
-  const previous = previousScreen(flow.value)
-  if (previous === undefined) return
-  direction.value = 'back'
-  go(previous)
+// Tapping an earlier answer opens that question again; the answers after it stay (dormant when they no longer apply).
+function jump(screen: ScreenId): void {
+  if (!locked.value) go(screen)
 }
 
 function review(): void {
-  direction.value = 'back'
   go('sleep')
 }
 
@@ -196,10 +189,6 @@ function closeFlow(): void {
   }
   phase.value = 'closed'
   flow.value = null
-}
-
-function onToggle(next: boolean): void {
-  if (!next) closeFlow()
 }
 
 // ---------- Saving: one guarded commit on a frozen snapshot ----------
@@ -294,70 +283,39 @@ function scrollFocusedIntoView(): void {
 const viewport = typeof window === 'undefined' ? undefined : window.visualViewport
 viewport?.addEventListener('resize', scrollFocusedIntoView)
 onBeforeUnmount(() => viewport?.removeEventListener('resize', scrollFocusedIntoView))
-
-function onFocusIn(event: FocusEvent): void {
-  const target = event.target as HTMLElement
-  if (target.matches('input, textarea')) requestAnimationFrame(() => target.scrollIntoView({ block: 'center' }))
-}
-
-function hideLeaving(element: Element): void {
-  element.setAttribute('aria-hidden', 'true')
-  ;(element as HTMLElement).inert = true
-}
 </script>
 
 <template>
-  <Sheet
-    :open="open" :title="sheetTitle" full-height large-targets no-dismiss :close-label="t('onboarding.guided.close')" :locked="locked" :dirty="dirty"
-    @update:open="onToggle"
+  <SetupFrame
+    :open="open" :title="t('onboarding.guided.sheetTitle')" :close-label="t('onboarding.guided.close')"
+    :progress-label="t('onboarding.guided.progress', { step: part, total: TOTAL_PARTS })"
+    :count-label="t('onboarding.guided.progressShort', { step: part, total: TOTAL_PARTS })" :part="part" :total="TOTAL_PARTS" :locked="locked" :dirty="dirty"
+    @close="closeFlow"
   >
     <div class="setup-lock" :inert="locked || undefined">
       <div v-if="phase === 'conflict'" class="setup conflict" data-testid="setup" data-state="conflict">
-        <p class="t-title-2" role="alert" data-testid="changed-elsewhere">{{ t('onboarding.summary.changedElsewhere') }}</p>
-        <Button data-primary data-testid="understood" @click="understood">{{ t('onboarding.summary.understood') }}</Button>
+        <div class="conflict-column">
+          <p class="t-title-2" role="alert" data-testid="changed-elsewhere">{{ t('onboarding.summary.changedElsewhere') }}</p>
+          <Button data-primary data-testid="understood" @click="understood">{{ t('onboarding.summary.understood') }}</Button>
+        </div>
       </div>
-      <div v-else-if="flow" class="setup" data-testid="setup" :data-screen="flow.screen" :aria-busy="locked || undefined" @focusin="onFocusIn">
-        <p v-if="draftUnavailable" class="t-body note" role="status" data-testid="draft-unavailable">{{ t('onboarding.guided.draftUnavailable') }}</p>
-        <Transition :name="`slide-${direction}`" @before-leave="hideLeaving">
-          <SetupSummary
-            v-if="flow.screen === 'summary' && baseline"
-            :key="'summary'" v-model:expanded="expanded" :state="flow" :document="baseline.document" :first="!baseline.document.settings.onboardingDone"
-            :reviewable="reviewable" :issues="issues" :busy="locked" :message="message" :show-trust="browserMode"
-            @primary="submit" @review="review" @back="back" @edited="issues = []"
-          >
-            <template #banner>
-              <div v-if="resumed" class="resumed"><p class="t-body" role="status">{{ t('onboarding.guided.resumed') }}</p><Button variant="plain" data-testid="start-over" @click="startOver">{{ t('onboarding.guided.startOver') }}</Button></div>
-            </template>
-          </SetupSummary>
-          <SetupQuestion v-else :key="flow.screen" :state="flow" :show-trust="browserMode" :busy="locked" @advance="advance" @back="back">
-            <template #banner>
-              <div v-if="resumed" class="resumed"><p class="t-body" role="status">{{ t('onboarding.guided.resumed') }}</p><Button variant="plain" data-testid="start-over" @click="startOver">{{ t('onboarding.guided.startOver') }}</Button></div>
-            </template>
-          </SetupQuestion>
-        </Transition>
+      <div v-else-if="flow && baseline" class="setup" data-testid="setup" :data-screen="flow.screen" :aria-busy="locked || undefined">
+        <SetupConversation
+          v-model:expanded="expanded" :state="flow" :document="baseline.document" :first="!baseline.document.settings.onboardingDone" :reviewable="reviewable"
+          :issues="issues" :busy="locked" :message="message" :show-trust="browserMode" :resumed="resumed" :draft-unavailable="draftUnavailable"
+          @advance="advance" @jump="jump" @submit="submit" @review="review" @edited="issues = []" @start-over="startOver"
+        />
       </div>
     </div>
-  </Sheet>
+  </SetupFrame>
 </template>
 
 <style scoped>
-/* The footer sits at the bottom of the panel on every screen, so the main button never jumps between questions.
-   While a save is pending the whole flow is inert: nothing in it can be pressed, typed into or focused. */
-.setup-lock { display: flex; flex-direction: column; min-width: 0; min-height: 100%; }
-.setup { position: relative; display: flex; flex: 1; flex-direction: column; gap: var(--space-3); }
-.setup > :deep(.screen) { flex: 1; }
-.conflict { align-items: flex-start; }
-.note { margin: 0; color: var(--label-2); }
-.resumed { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2); }
-.resumed p { margin: 0; color: var(--label-2); }
-/* The next screen enters from the trailing side, Back from the leading side; the leaving one fades and never blocks input. */
-.slide-forward-enter-active, .slide-back-enter-active { transition: transform var(--spring-duration) var(--ease-out), opacity 0.2s; }
-.slide-forward-leave-active, .slide-back-leave-active { position: absolute; inset-inline: 0; top: 0; transition: opacity 0.12s; pointer-events: none; }
-.slide-forward-enter-from { transform: translateX(24px); opacity: 0; }
-.slide-back-enter-from { transform: translateX(-24px); opacity: 0; }
-.slide-forward-leave-to, .slide-back-leave-to { opacity: 0; }
-@media (prefers-reduced-motion: reduce) {
-  .slide-forward-enter-active, .slide-back-enter-active { transition: opacity 0.15s; }
-  .slide-forward-enter-from, .slide-back-enter-from { transform: none; }
+/* While a save is pending the whole flow is inert: nothing in it can be pressed, typed into or focused. */
+.setup-lock, .setup { display: flex; flex: 1; flex-direction: column; min-width: 0; min-height: 0; }
+.conflict-column {
+  box-sizing: border-box; display: flex; flex-direction: column; align-items: flex-start; gap: var(--space-4); width: 100%; max-width: var(--column);
+  margin-inline: auto; padding: var(--space-6) max(var(--space-4), var(--safe-right)) var(--space-6) max(var(--space-4), var(--safe-left));
 }
+.conflict-column p { margin: 0; }
 </style>

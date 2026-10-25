@@ -15,7 +15,7 @@
     "close": "Pas maintenant",
     "back": "Retour",
     "next": "Suivant",
-    "skip": "Passer",
+    "skip": "Plus tard",
     "noFixedTime": "Pas d'horaire fixe",
     "progress": "Partie {step} sur {total}",
     "intro": "Bonjour. Quelques questions courtes, et tu pourras tout changer à la fin.",
@@ -40,16 +40,35 @@
       "hint": "Horaires coupés ou samedis ? Ajoute un horaire."
     },
     "study": {
-      "question": "Quand étudies-tu ?"
+      "question": "Quand étudies-tu ?",
+      "both": {
+        "question": "Et quand étudies-tu ?"
+      }
     },
     "commute": {
       "question": "L'aller-retour te prend du temps ?",
-      "hint": "Par exemple, le bus pour le travail."
+      "hint": "Par exemple, le bus pour le travail.",
+      "work": {
+        "question": "L'aller-retour au travail te prend du temps ?"
+      },
+      "study": {
+        "question": "L'aller-retour en cours te prend du temps ?"
+      },
+      "both": {
+        "question": "Aller au travail ou en cours te prend du temps ?"
+      }
     },
     "commuteRanges": {
       "question": "Quand pars-tu et quand reviens-tu ?",
       "there": "Aller",
-      "back": "Retour"
+      "back": "Retour",
+      "work": {
+        "question": "Quand pars-tu au travail et quand reviens-tu ?"
+      },
+      "study": {
+        "question": "Quand pars-tu en cours et quand reviens-tu ?"
+      },
+      "hint": "On l'a calé sur ton horaire. Change-le si besoin."
     },
     "yes": "Oui",
     "no": "Non",
@@ -114,7 +133,14 @@
     },
     "resumed": "On reprend où tu t'étais arrêté.",
     "startOver": "Recommencer",
-    "draftUnavailable": "Ce navigateur ne garde pas de brouillon. Ne recharge pas avant la fin."
+    "draftUnavailable": "Ce navigateur ne garde pas de brouillon. Ne recharge pas avant la fin.",
+    "nothingElse": "Rien d'autre",
+    "change": "Modifier : {question} {answer}",
+    "conversation": "Conversation",
+    "send": "Envoyer la réponse",
+    "needChoice": "Choisis-en au moins une, ou « Plus tard ».",
+    "needFix": "Corrige d'abord l'horaire signalé.",
+    "progressShort": "{step} sur {total}"
   },
   "summary": {
     "title": "Ta semaine type",
@@ -132,7 +158,7 @@
     "keptForTasks": "« {name} » reste sans horaire, car il a des tâches.",
     "noTimes": "Sans horaire",
     "add": "Ajouter autre chose",
-    "start": "Commencer",
+    "start": "Créer ma semaine",
     "save": "Enregistrer",
     "review": "Revoir les questions",
     "saved": "C'est fait. Ta semaine est enregistrée.",

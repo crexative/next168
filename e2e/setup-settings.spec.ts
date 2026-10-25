@@ -227,7 +227,7 @@ test('onboarding does not ask the browser to protect storage; the first check-in
   }
   await expect(setup).toHaveAttribute('data-screen', 'summary')
   expect(await page.evaluate(() => (window as unknown as { __persistCalls: number[] }).__persistCalls.length)).toBe(0)
-  await setup.getByRole('button', { name: 'Empezar' }).click()
+  await setup.getByRole('button', { name: 'Crear mi semana' }).click()
   await expect(page.getByRole('dialog')).toHaveCount(0)
   expect(await page.evaluate(() => (window as unknown as { __persistCalls: number[] }).__persistCalls.length)).toBe(0)
 

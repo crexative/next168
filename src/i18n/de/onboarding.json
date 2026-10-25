@@ -15,7 +15,7 @@
     "close": "Nicht jetzt",
     "back": "Zurück",
     "next": "Weiter",
-    "skip": "Überspringen",
+    "skip": "Später",
     "noFixedTime": "Keine feste Zeit",
     "progress": "Teil {step} von {total}",
     "intro": "Hallo. Nur kurze Fragen, und am Ende kannst du alles ändern.",
@@ -40,16 +40,35 @@
       "hint": "Geteilte Schicht oder samstags? Füge eine Zeit hinzu."
     },
     "study": {
-      "question": "Wann studierst du?"
+      "question": "Wann studierst du?",
+      "both": {
+        "question": "Und wann studierst du?"
+      }
     },
     "commute": {
       "question": "Brauchst du Zeit für Hin- und Rückweg?",
-      "hint": "Zum Beispiel der Bus zur Arbeit."
+      "hint": "Zum Beispiel der Bus zur Arbeit.",
+      "work": {
+        "question": "Brauchst du Zeit für den Weg zur Arbeit?"
+      },
+      "study": {
+        "question": "Brauchst du Zeit für den Weg zum Unterricht?"
+      },
+      "both": {
+        "question": "Brauchst du Zeit für den Weg zur Arbeit oder zum Unterricht?"
+      }
     },
     "commuteRanges": {
       "question": "Wann fährst du hin und zurück?",
       "there": "Hinweg",
-      "back": "Rückweg"
+      "back": "Rückweg",
+      "work": {
+        "question": "Wann fährst du zur Arbeit und zurück?"
+      },
+      "study": {
+        "question": "Wann fährst du zum Unterricht und zurück?"
+      },
+      "hint": "Passend zu deinen Zeiten. Ändere es, wenn es nicht stimmt."
     },
     "yes": "Ja",
     "no": "Nein",
@@ -114,7 +133,14 @@
     },
     "resumed": "Wir machen da weiter, wo du warst.",
     "startOver": "Neu beginnen",
-    "draftUnavailable": "Dieser Browser speichert keinen Entwurf. Lade nicht neu, bis du fertig bist."
+    "draftUnavailable": "Dieser Browser speichert keinen Entwurf. Lade nicht neu, bis du fertig bist.",
+    "nothingElse": "Nichts weiter",
+    "change": "Ändern: {question} {answer}",
+    "conversation": "Unterhaltung",
+    "send": "Antwort senden",
+    "needChoice": "Wähle mindestens eins, oder „Später“.",
+    "needFix": "Korrigiere zuerst die markierte Zeit.",
+    "progressShort": "{step} von {total}"
   },
   "summary": {
     "title": "Deine typische Woche",
@@ -132,7 +158,7 @@
     "keptForTasks": "„{name}“ bleibt ohne Zeiten, weil es Aufgaben hat.",
     "noTimes": "Keine Zeiten",
     "add": "Etwas hinzufügen",
-    "start": "Los geht's",
+    "start": "Meine Woche erstellen",
     "save": "Änderungen sichern",
     "review": "Fragen durchgehen",
     "saved": "Fertig. Deine Woche ist gespeichert.",

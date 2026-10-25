@@ -1,0 +1,144 @@
+import { beforeAll, describe, expect, it } from 'vitest'
+import { i18n } from '@/i18n'
+import { emptyState, prepareScreen, setAnswer, toggleMore, addOwnToMore, type ScreenId, type SetupState, type Tri, type WorkStudy } from '../setupModel'
+import { env } from '../setupFixtures'
+import { answer, hint, question, summaryRows, transcript, weekIsEmpty, type Line, type Speaker } from './conversation'
+
+// The conversation's words: each follow-up phrased from what the person said before, the defaults it offers from
+// those answers, and the answer as the person would say it. Spanish, the owner's normative copy.
+const t = (key: string, params?: Record<string, unknown>) => i18n.global.t(key, params ?? {})
+const speaker: Speaker = { t, rangeLine: (_category, range) => `${range.days.join(',')} ${range.start}-${range.end}` }
+const say = (line: Line | undefined) => (line ? t(line.key, line.params ?? {}) : undefined)
+
+beforeAll(() => { i18n.global.locale.value = 'es' })
+
+function walked(workStudy: WorkStudy, commute: Tri = 'unanswered'): SetupState {
+  const state = emptyState()
+  setAnswer(state, 'sleep', 'yes')
+  setAnswer(state, 'workStudy', workStudy)
+  setAnswer(state, 'commute', commute)
+  for (const screen of ['sleep', 'work', 'study'] as ScreenId[]) prepareScreen(state, screen, env)
+  return state
+}
+
+describe('follow-ups phrased from the earlier answers', () => {
+  it.each([
+    ['work', '¿Te toma tiempo ir al trabajo y volver?', '¿Cuándo vas al trabajo y cuándo vuelves?'],
+    ['study', '¿Te toma tiempo ir a clase y volver?', '¿Cuándo vas a clase y cuándo vuelves?'],
+    ['both', '¿Te toma tiempo ir al trabajo o a clase?', '¿Cuándo vas y cuándo vuelves?'],
+  ] as const)('after "%s", the trip questions name where the person goes', (workStudy, commute, ranges) => {
+    const state = walked(workStudy, 'yes')
+    expect(say(question(state, 'commute'))).toBe(commute)
+    expect(say(question(state, 'commuteRanges'))).toBe(ranges)
+  })
+
+  it('asks "and when do you study?" only after "both"', () => {
+    expect(say(question(walked('both'), 'study'))).toBe('¿Y cuándo estudias?')
+    expect(say(question(walked('study'), 'study'))).toBe('¿Cuándo estudias?')
+  })
+
+  it('says the trip times come from the hours just given, and only when they do', () => {
+    const state = walked('work', 'yes')
+    expect(say(hint(state, 'commuteRanges'))).toBe('Lo pusimos según tu horario. Cámbialo si no es así.')
+    expect(hint(walked('neither', 'yes'), 'commuteRanges')).toBeUndefined()
+  })
+
+  it('names the person\'s own thing in its question', () => {
+    const state = emptyState()
+    const { category } = addOwnToMore(state, 'Clases de natación')
+    expect(say(question(state, `extra:${category.key}`))).toBe('¿Cuándo es «Clases de natación»?')
+  })
+
+  it('the summary says when the week is still empty', () => {
+    const state = emptyState()
+    expect(weekIsEmpty(state)).toBe(true)
+    expect(say(question(state, 'summary'))).toBe('Aún no hay nada. Puedes añadir algo o empezar así.')
+    const working = walked('work')
+    expect(summaryRows(working).map((row) => row.category.key)).toEqual(['sleep', 'work'])
+    expect(say(question(working, 'summary'))).toBe('Así queda tu semana. Toca algo para cambiarlo.')
+  })
+})
+
+describe('defaults offered from the earlier answers', () => {
+  it('Mon–Fri 9:00–5:00 at work: going 8:30–9:00 and coming back 5:00–5:30, already chosen', () => {
+    const state = walked('work', 'yes')
+    prepareScreen(state, 'commuteRanges', env)
+    const commute = state.categories.find((category) => category.key === 'commute')!
+    expect(commute.ranges.map(({ label, days, start, end }) => ({ label, days, start, end }))).toEqual([
+      { label: 'there', days: [1, 2, 3, 4, 5], start: 510, end: 540 },
+      { label: 'back', days: [1, 2, 3, 4, 5], start: 1020, end: 1050 },
+    ])
+  })
+
+  it('a later work start moves the suggested trip with it', () => {
+    const state = walked('work', 'yes')
+    state.categories.find((category) => category.key === 'work')!.ranges[0]!.start = 600
+    prepareScreen(state, 'commuteRanges', env)
+    expect(state.categories.find((category) => category.key === 'commute')!.ranges[0]).toMatchObject({ start: 570, end: 600 })
+  })
+
+  it('studying next to a job is suggested in the evening, clear of work', () => {
+    const state = walked('both')
+    expect(state.categories.find((category) => category.key === 'study')!.ranges[0]).toMatchObject({ days: [1, 2, 3, 4], start: 1140, end: 1260 })
+  })
+})
+
+describe('the answer, as the person would say it', () => {
+  it('skipping, yes and no, and the option chosen', () => {
+    const state = emptyState()
+    expect(answer(state, 'sleep', speaker)).toBe('Lo veo después')
+    expect(answer(state, 'workStudy', speaker)).toBe('Lo veo después')
+    setAnswer(state, 'workStudy', 'both')
+    setAnswer(state, 'commute', 'yes')
+    setAnswer(state, 'exercise', 'no')
+    expect(answer(state, 'workStudy', speaker)).toBe('Las dos cosas')
+    expect(answer(state, 'commute', speaker)).toBe('Sí')
+    expect(answer(state, 'exercise', speaker)).toBe('No')
+  })
+
+  it('the times kept, one line per range, with Ida and Vuelta named; none is "Sin horario fijo"', () => {
+    const state = walked('work', 'yes')
+    prepareScreen(state, 'commuteRanges', env)
+    expect(answer(state, 'commuteRanges', speaker)).toBe('Ida: 1,2,3,4,5 510-540\nVuelta: 1,2,3,4,5 1020-1050')
+    state.categories.find((category) => category.key === 'work')!.ranges = []
+    expect(answer(state, 'work', speaker)).toBe('Sin horario fijo')
+  })
+
+  it('starts a range line with a capital, as a reply on its own', () => {
+    const state = walked('work')
+    const lower: Speaker = { t, rangeLine: () => 'lunes a viernes · 9:00 a. m.–5:00 p. m.' }
+    expect(answer(state, 'work', lower)).toBe('Lunes a viernes · 9:00 a. m.–5:00 p. m.')
+  })
+
+  it('what else: the chips chosen by name, "Nada más" for none, skipped when not answered', () => {
+    const state = emptyState()
+    expect(answer(state, 'more', speaker)).toBe('Lo veo después')
+    toggleMore(state, 'family', env)
+    addOwnToMore(state, 'Ajedrez')
+    expect(answer(state, 'more', speaker)).toBe('Familia, Ajedrez')
+    setAnswer(state, 'more', [])
+    expect(answer(state, 'more', speaker)).toBe('Nada más')
+  })
+})
+
+describe('which exchanges stay on screen', () => {
+  it('every earlier screen of the current sequence, so a changed answer drops the questions that no longer apply', () => {
+    const state = walked('both', 'yes')
+    state.screen = 'exercise'
+    expect(transcript(state, false)).toEqual(['sleep', 'workStudy', 'work', 'study', 'commute', 'commuteRanges'])
+    setAnswer(state, 'workStudy', 'neither')
+    expect(transcript(state, false)).toEqual(['sleep', 'workStudy'])
+    // The dormant answers come back with the answer that asked for them.
+    setAnswer(state, 'workStudy', 'both')
+    expect(transcript(state, false)).toEqual(['sleep', 'workStudy', 'work', 'study', 'commute', 'commuteRanges'])
+  })
+
+  it('a setup opened at the summary of an existing week, with nothing answered, has no conversation behind it', () => {
+    const state = emptyState()
+    state.screen = 'summary'
+    expect(transcript(state, true)).toEqual([])
+    expect(transcript(state, false)).toEqual(['sleep', 'workStudy', 'exercise', 'more'])
+    setAnswer(state, 'exercise', 'no')
+    expect(transcript(state, true)).toEqual(['sleep', 'workStudy', 'exercise', 'more'])
+  })
+})

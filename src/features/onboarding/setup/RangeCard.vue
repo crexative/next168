@@ -72,19 +72,19 @@ function onEscape(event: KeyboardEvent): void {
     <h4 v-if="title" class="title t-body">{{ title }}</h4>
 
     <button v-if="!hideDays" :ref="(element) => { rows.days = element as HTMLElement }" class="row t-body" type="button" data-field="days" :aria-expanded="open === 'days'" @click="emit('toggle', open === 'days' ? null : 'days')">
-      <span class="label">{{ t('onboarding.guided.range.days') }}</span>
+      <span class="label"><Icon name="calendar-days" :size="18" />{{ t('onboarding.guided.range.days') }}</span>
       <span class="end"><span class="value">{{ rangeDays(category, range) }}</span><Icon name="chevron-right" :size="18" /></span>
     </button>
     <DayPicker v-if="open === 'days'" :days="range.days" @change="emit('change', { days: $event })" @done="close('days')" />
 
     <button :ref="(element) => { rows.start = element as HTMLElement }" class="row t-body" type="button" data-field="start" :aria-expanded="open === 'start'" @click="emit('toggle', open === 'start' ? null : 'start')">
-      <span class="label">{{ startLabel ?? t('onboarding.guided.range.start') }}</span>
+      <span class="label"><Icon name="clock" :size="18" />{{ startLabel ?? t('onboarding.guided.range.start') }}</span>
       <span class="end"><span class="value">{{ time(range.start) }}</span><Icon name="chevron-right" :size="18" /></span>
     </button>
     <TimeChips v-if="open === 'start'" field="start" :value="range.start" :start="range.start" :lengths="lengths" @pick="pick('start', $event)" />
 
     <button :ref="(element) => { rows.end = element as HTMLElement }" class="row t-body" type="button" data-field="end" :aria-expanded="open === 'end'" @click="emit('toggle', open === 'end' ? null : 'end')">
-      <span class="label">{{ endLabel ?? t('onboarding.guided.range.end') }}</span>
+      <span class="label"><Icon name="clock" :size="18" />{{ endLabel ?? t('onboarding.guided.range.end') }}</span>
       <span class="end"><span class="value">{{ nextDay ? `${time(range.end)} ${t('onboarding.guided.range.nextDay')}` : time(range.end) }}</span><Icon name="chevron-right" :size="18" /></span>
     </button>
     <TimeChips v-if="open === 'end'" field="end" :value="range.end" :start="range.start" :lengths="lengths" @pick="pick('end', $event)" />
@@ -101,7 +101,8 @@ function onEscape(event: KeyboardEvent): void {
   display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; column-gap: var(--space-3); width: 100%; min-height: var(--tap-target); padding: var(--space-1) var(--space-3);
   border: 0; border-radius: var(--radius-control); background: var(--surface); color: var(--label); text-align: start; touch-action: manipulation;
 }
-.label { color: var(--label-2); }
+/* A small leading icon says what the row holds: days or a time. */
+.label { display: inline-flex; align-items: center; gap: var(--space-2); min-width: 0; color: var(--label-2); }
 /* Label and value share a line while they fit; otherwise the value takes the next line, at the end. */
 .end { display: inline-flex; align-items: center; gap: var(--space-1); min-width: 0; max-width: 100%; margin-inline-start: auto; }
 .value { min-width: 0; text-align: end; font-weight: 600; font-variant-numeric: tabular-nums; overflow-wrap: break-word; }

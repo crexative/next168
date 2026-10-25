@@ -15,7 +15,7 @@
     "close": "Not now",
     "back": "Back",
     "next": "Next",
-    "skip": "Skip",
+    "skip": "Later",
     "noFixedTime": "No fixed time",
     "progress": "Part {step} of {total}",
     "intro": "Hi. A few short questions, and you can change everything at the end.",
@@ -40,16 +40,35 @@
       "hint": "Split shift or Saturdays? Add another time."
     },
     "study": {
-      "question": "When do you study?"
+      "question": "When do you study?",
+      "both": {
+        "question": "And when do you study?"
+      }
     },
     "commute": {
       "question": "Does getting there and back take time?",
-      "hint": "For example, the bus to work."
+      "hint": "For example, the bus to work.",
+      "work": {
+        "question": "Does getting to work and back take time?"
+      },
+      "study": {
+        "question": "Does getting to class and back take time?"
+      },
+      "both": {
+        "question": "Does getting to work or class take time?"
+      }
     },
     "commuteRanges": {
       "question": "When do you go and come back?",
       "there": "Going",
-      "back": "Coming back"
+      "back": "Coming back",
+      "work": {
+        "question": "When do you go to work and come back?"
+      },
+      "study": {
+        "question": "When do you go to class and come back?"
+      },
+      "hint": "We based it on your hours. Change it if it is not right."
     },
     "yes": "Yes",
     "no": "No",
@@ -114,7 +133,14 @@
     },
     "resumed": "Picking up where you left off.",
     "startOver": "Start over",
-    "draftUnavailable": "This browser can't keep a draft. Don't reload until you finish."
+    "draftUnavailable": "This browser can't keep a draft. Don't reload until you finish.",
+    "nothingElse": "Nothing else",
+    "change": "Change: {question} {answer}",
+    "conversation": "Conversation",
+    "send": "Send answer",
+    "needChoice": "Pick at least one, or \"Later\".",
+    "needFix": "First fix the time that is marked.",
+    "progressShort": "{step} of {total}"
   },
   "summary": {
     "title": "Your typical week",
@@ -132,7 +158,7 @@
     "keptForTasks": "\"{name}\" keeps no times because it has tasks.",
     "noTimes": "No times",
     "add": "Add something else",
-    "start": "Get started",
+    "start": "Create my week",
     "save": "Save changes",
     "review": "Go through the questions",
     "saved": "Done. Your week is saved.",

@@ -196,7 +196,7 @@ describe('while a save is pending (R3.2, A24)', () => {
     await settle()
     expect(setup()!.closest('.setup-lock')!.hasAttribute('inert')).toBe(true)
     expect(setup()!.getAttribute('aria-busy')).toBe('true')
-    const close = window.document.body.querySelector<HTMLButtonElement>('[role=dialog] .sheet-close')!
+    const close = window.document.body.querySelector<HTMLButtonElement>('[role=dialog] .setup-close')!
     expect(close.disabled).toBe(true)
     close.click()
     window.document.body.querySelector('[role=dialog]')!.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }))
@@ -245,7 +245,7 @@ describe('closing and finishing', () => {
     const { memory } = await mount(firstRun())
     await click('[data-testid=setup-primary]')
     const bytes = { document: memory.data.get('document'), backup: memory.data.get('backup') }
-    window.document.body.querySelector<HTMLButtonElement>('[role=dialog] .sheet-close')!.click()
+    window.document.body.querySelector<HTMLButtonElement>('[role=dialog] .setup-close')!.click()
     await settle()
     expect({ document: memory.data.get('document'), backup: memory.data.get('backup') }).toEqual(bytes)
     expect(JSON.parse(sessionStorage.getItem(DRAFT_KEY)!)).toMatchObject({ open: false, screen: 'workStudy' })
@@ -284,5 +284,126 @@ describe('the trust line (A34)', () => {
     await mount(firstRun(), { withoutGuard: true })
     expect(setup()).not.toBeNull()
     expect(setup()!.querySelector('[data-testid=setup-trust]')).toBeNull()
+  })
+})
+
+describe('the conversation', () => {
+  const turns = () => [...window.document.body.querySelectorAll<HTMLButtonElement>('[data-testid=setup] [data-answer]')]
+  const turn = (screen: string) => turns().find((element) => element.dataset.answer === screen)!
+  const quick = (value: string) => click(`[data-value=${value}]`)
+
+  it('keeps every answer above the question; changing an earlier one drops what no longer applies and brings it back with that answer', async () => {
+    await mount(firstRun())
+    await click('[data-testid=setup-primary]')
+    await quick('both')
+    expect(screen()).toBe('work')
+    // An edit on the work screen that must survive the detour.
+    const work = window.document.body.querySelector<HTMLButtonElement>('[data-testid=setup] [data-field=end]')!
+    work.click()
+    await settle()
+    window.document.body.querySelector<HTMLButtonElement>('[data-testid=setup] [data-minute="1080"]')!.click()
+    await settle()
+    await click('[data-testid=setup-primary]')
+    await click('[data-testid=setup-primary]')
+    await quick('yes')
+    expect(screen()).toBe('commuteRanges')
+    expect(turns().map((element) => element.dataset.answer)).toEqual(['sleep', 'workStudy', 'work', 'study', 'commute'])
+    expect(turn('workStudy').getAttribute('aria-label')).toBe('Change: Do you work or study? Both')
+
+    turn('workStudy').click()
+    await settle()
+    expect(screen()).toBe('workStudy')
+    expect(turns().map((element) => element.dataset.answer)).toEqual(['sleep'])
+    await quick('neither')
+    expect(screen()).toBe('exercise')
+    expect(turns().map((element) => element.dataset.answer)).toEqual(['sleep', 'workStudy'])
+    expect(turn('workStudy').textContent).toContain('Neither')
+
+    turn('workStudy').click()
+    await settle()
+    await quick('both')
+    expect(screen()).toBe('work')
+    // The dormant answers are back: the work end kept, the trip still "yes".
+    expect(window.document.body.querySelector('[data-testid=setup] [data-field=end] .value')!.textContent).toContain('6:00')
+    await click('[data-testid=setup-primary]')
+    await click('[data-testid=setup-primary]')
+    expect(screen()).toBe('commute')
+    expect(live('[data-value=yes]')!.getAttribute('aria-label')).toBe('Yes (current)')
+  })
+
+  it('a reload in the middle brings back the whole conversation, answers included', async () => {
+    await mount(firstRun())
+    await click('[data-testid=setup-primary]')
+    await quick('work')
+    await click('[data-testid=setup-primary]')
+    await quick('no')
+    expect(screen()).toBe('exercise')
+    const before = turns().map((element) => [element.dataset.answer, element.textContent])
+    app!.unmount()
+    window.document.body.innerHTML = ''
+    await mount(firstRun())
+    expect(screen()).toBe('exercise')
+    expect(turns().map((element) => [element.dataset.answer, element.textContent])).toEqual(before)
+    expect(before.map(([screen]) => screen)).toEqual(['sleep', 'workStudy', 'work', 'commute'])
+  })
+
+  it('Enter on the question sends the answer on show; on a quick-reply question it does nothing by itself', async () => {
+    await mount(firstRun())
+    const heading = live('h3')!
+    expect(window.document.activeElement).toBe(heading)
+    heading.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }))
+    await settle()
+    expect(screen()).toBe('workStudy')
+    live('h3')!.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }))
+    await settle()
+    expect(screen()).toBe('workStudy')
+  })
+
+  it('not answering is a reply too, and it lands in the conversation', async () => {
+    await mount(firstRun())
+    await click('[data-testid=setup-secondary]')
+    expect(screen()).toBe('workStudy')
+    expect(turn('sleep').textContent).toContain('Later')
+  })
+
+  it('opened at the summary of an existing week, it shows the week with no conversation behind it', async () => {
+    await mount(firstRun({ settings: { ...testDocument().settings, onboardingDone: true }, categories: [WORK], blocks: [WORK_BLOCK] }))
+    setupRequest.value += 1
+    await settle()
+    expect(screen()).toBe('summary')
+    expect(turns()).toEqual([])
+    expect(live('[data-testid=week-card]')).toBeDefined()
+  })
+
+  it('Send is the validation: grey with its reason while there is nothing to send, in colour once there is', async () => {
+    await mount(firstRun())
+    await click('[data-testid=setup-secondary]')
+    await click('[data-testid=setup-secondary]')
+    await click('[data-testid=setup-secondary]')
+    expect(screen()).toBe('more')
+    const send = () => live('[data-testid=setup-primary]')!
+    expect(send().disabled).toBe(true)
+    const reason = () => window.document.getElementById(send().getAttribute('aria-describedby')!.split(' ')[1]!)
+    expect(reason()!.textContent).toBe('Pick at least one, or "Later".')
+    await click('[data-chip=family]')
+    expect(send().disabled).toBe(false)
+    expect(send().getAttribute('aria-describedby')!.split(' ')).toHaveLength(1)
+    await click('[data-testid=setup-primary]')
+    expect(screen()).toBe('extra:family')
+    // A time with no days cannot be sent until it has one.
+    await click('[data-field=days]')
+    await click('[data-preset=pick]')
+    await click('[data-day="6"][aria-pressed=true]')
+    expect(send().disabled).toBe(true)
+    expect(reason()!.textContent).toBe('First fix the time that is marked.')
+  })
+
+  it('after an answer, the next answer is in reach: focus on the first reply, or on Send when the times are ready', async () => {
+    await mount(firstRun())
+    await click('[data-testid=setup-primary]')
+    expect(window.document.activeElement?.getAttribute('data-value')).toBe('work')
+    await quick('work')
+    expect(window.document.activeElement).toBe(live('[data-testid=setup-primary]'))
+    expect(window.document.activeElement!.getAttribute('aria-describedby')).toBe(live('h3')!.id)
   })
 })

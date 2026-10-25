@@ -44,7 +44,7 @@ test.describe('the draft and what it is bound to', () => {
     await start(page)
     await page.goto('./')
     await onScreen(page, 'sleep')
-    await tap(page, 'Siguiente')
+    await tap(page, 'Enviar respuesta')
     await onScreen(page, 'workStudy')
     await tap(page, 'Trabajo')
     await onScreen(page, 'work')
@@ -62,7 +62,7 @@ test.describe('the draft and what it is bound to', () => {
   test('A4: a draft from empty storage is not applied to an older build\'s data imported before the reload', async ({ page }) => {
     await start(page)
     await page.goto('./')
-    await tap(page, 'Siguiente')
+    await tap(page, 'Enviar respuesta')
     await tap(page, 'Trabajo')
     await onScreen(page, 'work')
     // An older build's data appears before the reload: the app imports it as a revision-0 document.
@@ -164,7 +164,7 @@ test.describe('one guarded commit', () => {
     await openFromSettings(page)
     await live(page).getByTestId('summary-review').click()
     await onScreen(page, 'sleep')
-    await tap(page, 'Saltar')
+    await tap(page, 'Lo veo después')
     await tap(page, 'Trabajo')
     await onScreen(page, 'work')
     await live(page).getByRole('button', { name: 'Sin horario fijo' }).click()
@@ -175,20 +175,13 @@ test.describe('one guarded commit', () => {
 })
 
 test.describe('closing never writes', () => {
-  const PATHS = ['✕', 'Escape', 'scrim', 'drag'] as const
+  // Full screen, there is no scrim to tap or sheet to drag: the leading ‹ ("Ahora no") and Escape are the ways out.
+  const PATHS = ['‹', 'Escape'] as const
 
   async function close(page: Page, path: (typeof PATHS)[number]): Promise<void> {
     await calm(page)
-    if (path === '✕') await page.getByRole('button', { name: 'Ahora no' }).click()
-    else if (path === 'Escape') await page.keyboard.press('Escape')
-    else if (path === 'scrim') await page.mouse.click(195, 8)
-    else {
-      const handle = (await page.locator('.sheet-handle').boundingBox())!
-      await page.mouse.move(handle.x + handle.width / 2, handle.y + 2)
-      await page.mouse.down()
-      for (let step = 1; step <= 10; step++) await page.mouse.move(handle.x + handle.width / 2, handle.y + 2 + step * 50)
-      await page.mouse.up()
-    }
+    if (path === '‹') await page.getByRole('button', { name: 'Ahora no' }).click()
+    else await page.keyboard.press('Escape')
     await expect(setup(page)).toHaveCount(0)
   }
 
@@ -198,7 +191,7 @@ test.describe('closing never writes', () => {
       await page.goto('./')
       await onScreen(page, 'sleep')
       const before = await bytes(page)
-      await tap(page, 'Siguiente')
+      await tap(page, 'Enviar respuesta')
       await tap(page, 'Las dos cosas')
       await onScreen(page, 'work')
       await close(page, path)
@@ -213,7 +206,7 @@ test.describe('closing never writes', () => {
       await expect(offer).toHaveText('Configurar mi semana · 1 min')
       await offer.click()
       await onScreen(page, 'work')
-      await live(page).getByTestId('setup-back').click()
+      await live(page).locator('[data-answer=workStudy]').click()
       await onScreen(page, 'workStudy')
       await expect(live(page).getByRole('button', { name: 'Las dos cosas (actual)' })).toBeVisible()
       expect(await bytes(page)).toEqual(before)
@@ -233,7 +226,7 @@ test.describe('closing never writes', () => {
     await onScreen(page, 'sleep')
     await skipToSummary(page)
     await expect(live(page).getByRole('heading', { level: 3 })).toHaveText('Aún no hay nada. Puedes añadir algo o empezar así.')
-    await expect(primary(page)).toHaveText('Empezar')
+    await expect(primary(page)).toHaveText('Crear mi semana')
     await primary(page).click()
     await expect(setup(page)).toHaveCount(0)
     const after = await stored(page)
@@ -266,7 +259,7 @@ test.describe('closing never writes', () => {
     await start(page, { document: firstRun() })
     await page.goto('./')
     await onScreen(page, 'sleep')
-    await tap(page, 'Siguiente')
+    await tap(page, 'Enviar respuesta')
     await skipToSummary(page)
     await page.evaluate(() => {
       const remove = Storage.prototype.removeItem
@@ -373,16 +366,16 @@ test.describe('answering', () => {
       if (next !== '') { await onScreen(page, next); await auditScreen(page, next) }
     }
     await auditScreen(page, 'sleep')
-    await step(() => tap(page, 'Siguiente'), 'workStudy')
+    await step(() => tap(page, 'Enviar respuesta'), 'workStudy')
     await step(() => tap(page, 'Trabajo'), 'work')
-    await step(() => tap(page, 'Siguiente'), 'commute')
+    await step(() => tap(page, 'Enviar respuesta'), 'commute')
     await step(() => tap(page, 'Sí'), 'commuteRanges')
-    await step(() => tap(page, 'Siguiente'), 'exercise')
+    await step(() => tap(page, 'Enviar respuesta'), 'exercise')
     await step(() => tap(page, 'Sí'), 'exerciseRanges')
-    await step(() => tap(page, 'Siguiente'), 'more')
+    await step(() => tap(page, 'Enviar respuesta'), 'more')
     await step(() => live(page).getByRole('button', { name: 'Familia' }).click(), 'more')
-    await step(() => tap(page, 'Siguiente'), 'extra:family')
-    await step(() => tap(page, 'Siguiente'), 'summary')
+    await step(() => tap(page, 'Enviar respuesta'), 'extra:family')
+    await step(() => tap(page, 'Enviar respuesta'), 'summary')
     // Pickers and the time editor never add a second filled button.
     await live(page).getByTestId('card-work').click()
     await live(page).locator('[data-category=work] [data-field=start]').first().click()
@@ -407,9 +400,9 @@ test.describe('answering', () => {
     page.on('request', (request) => requests.push(`${request.resourceType()} ${request.url()}`))
     await page.getByTestId('setup-week').click()
     await onScreen(page, 'sleep')
-    await tap(page, 'Siguiente')
+    await tap(page, 'Enviar respuesta')
     await tap(page, 'Trabajo')
-    await tap(page, 'Siguiente')
+    await tap(page, 'Enviar respuesta')
     await tap(page, 'Sí')
     await onScreen(page, 'commuteRanges')
     await skipToSummary(page)
@@ -449,8 +442,8 @@ test.describe('answering', () => {
     await start(page, { document: firstRun({ categories: [busy], blocks: [{ id: 'b-busy', categoryId: 'c-busy', title: 'Ocupado', days: [1, 3, 5], start: 360, end: 1320 }] }) })
     await page.goto('./')
     await onScreen(page, 'sleep')
-    await tap(page, 'Saltar')
-    await tap(page, 'Saltar')
+    await tap(page, 'Lo veo después')
+    await tap(page, 'Lo veo después')
     await onScreen(page, 'exercise')
     await tap(page, 'Sí')
     await onScreen(page, 'exerciseRanges')
@@ -471,7 +464,7 @@ test.describe('answering', () => {
   test('A18: "Otra hora" sets 7:35 a. m. with steppers and a deliberate confirm; Escape cancels', async ({ page }) => {
     await start(page)
     await page.goto('./')
-    await tap(page, 'Siguiente')
+    await tap(page, 'Enviar respuesta')
     await tap(page, 'Trabajo')
     await onScreen(page, 'work')
     await live(page).locator('[data-field=start]').click()
@@ -494,7 +487,7 @@ test.describe('answering', () => {
     await expect(live(page).getByTestId('time-value')).toHaveCount(0)
     await expect(setup(page)).toBeVisible()
     await expect(live(page).locator('[data-field=start] .value')).toHaveText('7:35 a. m.')
-    await tap(page, 'Siguiente')
+    await tap(page, 'Enviar respuesta')
     await skipToSummary(page)
     await primary(page).click()
     await expect(setup(page)).toHaveCount(0)
@@ -539,9 +532,9 @@ test.describe('answering', () => {
   test('A19: Tab explores the quick replies without answering, Enter answers, and the last range can be removed', async ({ page }) => {
     await start(page)
     await page.goto('./')
-    await tap(page, 'Siguiente')
+    await tap(page, 'Enviar respuesta')
     await tap(page, 'Trabajo')
-    await tap(page, 'Siguiente')
+    await tap(page, 'Enviar respuesta')
     await onScreen(page, 'commute')
     await live(page).getByRole('button', { name: 'Sí', exact: true }).focus()
     await page.keyboard.press('Tab')
@@ -550,15 +543,14 @@ test.describe('answering', () => {
     await expect(setup(page)).toHaveAttribute('data-screen', 'commute')
     await page.keyboard.press('Enter')
     await onScreen(page, 'exercise')
-    await live(page).getByTestId('setup-back').click()
+    await live(page).locator('[data-answer=commute]').click()
     await onScreen(page, 'commute')
     await expect(live(page).getByRole('button', { name: 'No (actual)' })).toBeVisible()
     await live(page).getByRole('button', { name: 'Sí', exact: true }).focus()
     await page.keyboard.press('Enter')
     await onScreen(page, 'commuteRanges')
 
-    await live(page).getByTestId('setup-back').click()
-    await live(page).getByTestId('setup-back').click()
+    await live(page).locator('[data-answer=work]').click()
     await onScreen(page, 'work')
     await expect(live(page).getByTestId('range-remove')).toHaveCount(1)
     await live(page).getByTestId('range-remove').click()
@@ -585,13 +577,13 @@ test.describe('answering', () => {
   test('A22: "Quitar" turns a card into a row that "Deshacer" restores; a category with tasks keeps its record', async ({ page }) => {
     await start(page)
     await page.goto('./')
-    await tap(page, 'Saltar')
-    await tap(page, 'Saltar')
-    await tap(page, 'Saltar')
+    await tap(page, 'Lo veo después')
+    await tap(page, 'Lo veo después')
+    await tap(page, 'Lo veo después')
     await onScreen(page, 'more')
     await live(page).getByRole('button', { name: 'Familia' }).click()
-    await tap(page, 'Siguiente')
-    await tap(page, 'Siguiente')
+    await tap(page, 'Enviar respuesta')
+    await tap(page, 'Enviar respuesta')
     await onScreen(page, 'summary')
     const card = live(page).getByTestId('card-family')
     const text = (await card.textContent())!
@@ -613,8 +605,8 @@ test.describe('answering', () => {
     await expect(live(page).getByTestId('card-remove')).toHaveCount(0)
     await live(page).getByTestId('summary-review').click()
     await onScreen(page, 'sleep')
-    await tap(page, 'Saltar')
-    await tap(page, 'Saltar')
+    await tap(page, 'Lo veo después')
+    await tap(page, 'Lo veo después')
     await onScreen(page, 'exercise')
     await tap(page, 'No')
     await skipToSummary(page)
@@ -665,10 +657,10 @@ test.describe('answering', () => {
     await start(page, { document: firstRun() })
     await page.goto('./')
     await onScreen(page, 'sleep')
-    await tap(page, 'Siguiente')
+    await tap(page, 'Enviar respuesta')
     await tap(page, 'Trabajo')
     await onScreen(page, 'work')
-    await tap(page, 'Siguiente')
+    await tap(page, 'Enviar respuesta')
     await skipToSummary(page)
     const before = (await stored(page)).revision
     const release = await holdCommitLock(page)
@@ -679,14 +671,14 @@ test.describe('answering', () => {
     await page.mouse.click(head.x + head.width / 2, head.y + head.height / 2)
     await expect(live(page).locator('[data-category=work] [data-field=end]')).toHaveCount(0)
     await page.keyboard.press('Escape')
-    const close = (await page.locator('.sheet-close').boundingBox())!
+    const close = (await page.locator('.setup-close').boundingBox())!
     await page.mouse.click(close.x + close.width / 2, close.y + close.height / 2)
-    await page.mouse.click(195, 8)
-    const handle = (await page.locator('.sheet-handle').boundingBox())!
-    await page.mouse.move(handle.x + 10, handle.y + 2)
-    await page.mouse.down()
-    for (let index = 1; index <= 8; index++) await page.mouse.move(handle.x + 10, handle.y + 2 + index * 60)
-    await page.mouse.up()
+    // An earlier answer cannot reopen its question while the save is pending either.
+    const earlier = live(page).locator('[data-answer=workStudy]')
+    await earlier.scrollIntoViewIfNeeded()
+    const turn = (await earlier.boundingBox())!
+    await page.mouse.click(turn.x + turn.width / 2, turn.y + turn.height / 2)
+    await expect(setup(page)).toHaveAttribute('data-screen', 'summary')
     await page.evaluate(() => { location.hash = '#/week' })
     await expect(setup(page)).toBeVisible()
     await release()
@@ -730,15 +722,17 @@ async function targetProblems(page: Page): Promise<TargetProblem[]> {
     })
     const name = (element: HTMLElement) => `${element.tagName.toLowerCase()} "${(element.getAttribute('aria-label') ?? element.textContent ?? '').trim().slice(0, 40)}"`
     const problems: { what: string; problem: string }[] = []
-    const layer = (element: HTMLElement) => (element.closest('footer') ? 'footer' : element.closest('.sheet-body') ? 'body' : 'header')
-    const scroller = panel.querySelector<HTMLElement>('.sheet-body')!
+    const layer = (element: HTMLElement) => (element.closest('.dock-answer') ? 'dock' : element.closest('footer') ? 'footer' : element.closest('.setup-scroller') ? 'body' : 'header')
+    // The conversation and the docked answers scroll on their own: positions are compared as if neither had scrolled.
+    const scrollers = Array.from(panel.querySelectorAll<HTMLElement>('.setup-scroller, .dock-answer'))
+    const scrolledBy = (element: HTMLElement) => scrollers.filter((scroller) => scroller.contains(element)).reduce((sum, scroller) => sum + scroller.scrollTop, 0)
     const boxes = controls.map((element) => {
       element.scrollIntoView({ block: 'center', inline: 'nearest' })
       const rect = element.getBoundingClientRect()
       const hit = document.elementFromPoint(rect.left + rect.width / 2, rect.top + rect.height / 2)
       if (rect.width < 47.5 || rect.height < 47.5) problems.push({ what: name(element), problem: `${Math.round(rect.width)}x${Math.round(rect.height)}` })
       if (!hit || !(element === hit || element.contains(hit))) problems.push({ what: name(element), problem: `a tap at its centre reaches ${hit ? (hit as HTMLElement).outerHTML.slice(0, 60) : 'nothing'}` })
-      const offset = layer(element) === 'body' ? scroller.scrollTop : 0
+      const offset = scrolledBy(element)
       return { element, layer: layer(element), left: rect.left, right: rect.right, top: rect.top + offset, bottom: rect.bottom + offset }
     })
     for (let a = 0; a < boxes.length; a++) {
@@ -750,7 +744,7 @@ async function targetProblems(page: Page): Promise<TargetProblem[]> {
         if (gap < 7.5) problems.push({ what: `${name(one.element)} and ${name(other.element)}`, problem: `${Math.round(gap)} px apart` })
       }
     }
-    scroller.scrollTop = 0
+    for (const scroller of scrollers) scroller.scrollTop = 0
     return problems
   })
 }
@@ -834,11 +828,11 @@ for (const theme of ['light', 'dark'] as const) {
     await walk(page, async (label) => {
       await calm(page)
       const layout = await page.evaluate(() => {
-        const body = document.querySelector<HTMLElement>('[role=dialog] .sheet-body')!
+        const sideways = Array.from(document.querySelectorAll<HTMLElement>('[role=dialog] .setup-scroller, [role=dialog] .dock-answer')).map((element) => element.scrollWidth - element.clientWidth)
         const primary = document.querySelector<HTMLElement>('[data-testid=setup] section.screen:not([aria-hidden=true]) [data-primary]')
         const rect = primary?.getBoundingClientRect()
         return {
-          sheet: body.scrollWidth - body.clientWidth,
+          sheet: Math.max(0, ...sideways),
           page: document.documentElement.scrollWidth - document.documentElement.clientWidth,
           primary: rect ? rect.top >= 0 && rect.bottom <= window.innerHeight + 0.5 && rect.left >= 0 && rect.right <= window.innerWidth + 0.5 : true,
         }
@@ -855,9 +849,9 @@ for (const theme of ['light', 'dark'] as const) {
 test('A29: with the on-screen keyboard up, the name field and the main button are both in view', async ({ page }) => {
   await start(page)
   await page.goto('./')
-  await tap(page, 'Saltar')
-  await tap(page, 'Saltar')
-  await tap(page, 'Saltar')
+  await tap(page, 'Lo veo después')
+  await tap(page, 'Lo veo después')
+  await tap(page, 'Lo veo después')
   await onScreen(page, 'more')
   await live(page).getByTestId('more-other').click()
   const field = live(page).getByTestId('more-other-name')
@@ -927,7 +921,7 @@ test.describe('reduced motion', () => {
     await live(page).getByTestId('range-add').click()
     await live(page).getByTestId('range-remove').last().click()
     await page.waitForTimeout(200)
-    await live(page).getByTestId('setup-back').click()
+    await live(page).locator('[data-answer=workStudy]').click()
     await onScreen(page, 'workStudy')
     await page.waitForTimeout(400)
   }
@@ -946,5 +940,83 @@ test.describe('reduced motion', () => {
     const motion = await collectMotion(page)
     expect(motion.transforms.length).toBeGreaterThan(0)
     expect(motion.animations.length).toBeGreaterThan(0)
+  })
+})
+
+// ---------- The conversation: earlier answers stay, can be changed, and survive a reload ----------
+
+test.describe('the conversation', () => {
+  const turns = (page: Page) => live(page).locator('[data-answer]')
+
+  test('changing an earlier answer while later ones exist drops what no longer applies, and the same answer brings it back', async ({ page }) => {
+    await start(page)
+    await page.goto('./')
+    await tap(page, 'Enviar respuesta')
+    await tap(page, 'Las dos cosas')
+    await onScreen(page, 'work')
+    await live(page).locator('[data-field=end]').click()
+    await live(page).locator('[data-minute="1080"]').click()
+    await tap(page, 'Enviar respuesta')
+    await tap(page, 'Enviar respuesta')
+    await onScreen(page, 'commute')
+    // The trip is phrased from the answers before it and starts from the work hours just given.
+    await expect(live(page).getByRole('heading', { level: 3 })).toHaveText('¿Te toma tiempo ir al trabajo o a clase?')
+    await tap(page, 'Sí')
+    await onScreen(page, 'commuteRanges')
+    await expect(live(page).locator('[data-field=start] .value').first()).toHaveText('8:30 a. m.')
+    await expect(turns(page)).toHaveCount(5)
+    await expect(live(page).locator('[data-answer=work] .turn-answer')).toHaveText('Lunes a viernes · 9:00 a. m.–6:00 p. m.')
+
+    await live(page).locator('[data-answer=workStudy]').click()
+    await onScreen(page, 'workStudy')
+    await expect(turns(page)).toHaveCount(1)
+    await tap(page, 'Ninguna')
+    await onScreen(page, 'exercise')
+    await expect(live(page).locator('[data-answer]')).toHaveText([/Todas las noches/, /Ninguna/])
+
+    await live(page).getByRole('button', { name: 'Cambiar: ¿Trabajas o estudias? Ninguna' }).click()
+    await tap(page, 'Las dos cosas')
+    await onScreen(page, 'work')
+    await expect(live(page).locator('[data-field=end] .value')).toHaveText('6:00 p. m.')
+    await tap(page, 'Enviar respuesta')
+    await tap(page, 'Enviar respuesta')
+    await onScreen(page, 'commute')
+    await expect(live(page).getByRole('button', { name: 'Sí (actual)' })).toBeVisible()
+  })
+
+  test('a reload in the middle brings back the whole conversation and the question on show', async ({ page }) => {
+    await start(page)
+    await page.goto('./')
+    await tap(page, 'Enviar respuesta')
+    await tap(page, 'Trabajo')
+    await tap(page, 'Enviar respuesta')
+    await tap(page, 'No')
+    await tap(page, 'Lo veo después')
+    await onScreen(page, 'more')
+    const before = await turns(page).allTextContents()
+    expect(before).toHaveLength(5)
+    await page.reload()
+    await onScreen(page, 'more')
+    await expect(turns(page)).toHaveText(before)
+    await expect(live(page).getByRole('heading', { level: 3 })).toHaveText('¿A qué más le dedicas tiempo cada semana?')
+  })
+
+  test('by keyboard alone: Enter sends, focus moves to the next answer, Tab reaches an earlier answer and Enter reopens it, Escape leaves without writing', async ({ page }) => {
+    await start(page, { document: firstRun() })
+    await page.goto('./')
+    await onScreen(page, 'sleep')
+    await expect(live(page).getByRole('heading', { level: 3 })).toBeFocused()
+    const before = await bytes(page)
+    await page.keyboard.press('Enter')
+    await onScreen(page, 'workStudy')
+    // The next answer is in reach: focus is on the first reply, which is described by its question.
+    await expect(live(page).getByRole('button', { name: 'Trabajo', exact: true })).toBeFocused()
+    await page.keyboard.press('Shift+Tab')
+    await expect(live(page).locator('[data-answer=sleep]')).toBeFocused()
+    await page.keyboard.press('Enter')
+    await onScreen(page, 'sleep')
+    await page.keyboard.press('Escape')
+    await expect(setup(page)).toHaveCount(0)
+    expect(await bytes(page)).toEqual(before)
   })
 })

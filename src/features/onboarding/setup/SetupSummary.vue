@@ -5,24 +5,22 @@ import { categoryColor } from '@/features/insights/categoryColor'
 import { formatWholeHours, wholeHourParts } from '@/ui/format'
 import Button from '@/ui/Button.vue'
 import Icon from '@/ui/Icon.vue'
-import { partOf, previousScreen } from '../setupFlow'
-import { addOwnToMore, clearRanges, setRemoved, statusOf, weekTotals, type Issue, type SetupState } from '../setupModel'
+import { addOwnToMore, clearRanges, setRemoved, weekTotals, type Issue, type SetupState } from '../setupModel'
 import { TOPICS } from '../setupTopics'
-import SetupScreen from './SetupScreen.vue'
+import { summaryRows } from './conversation'
 import SummaryCard from './SummaryCard.vue'
 import { useSetupFormat } from './useSetupFormat'
 
+// "Your typical week": the last message of the conversation, a card that lists everything and edits it in place.
 const props = defineProps<{
   state: SetupState
   document: PlannerDocument
-  first: boolean
   reviewable: boolean
   issues: Issue[]
-  busy: boolean
   message: string
   showTrust: boolean
 }>()
-const emit = defineEmits<{ primary: []; review: []; back: []; edited: [] }>()
+const emit = defineEmits<{ review: []; edited: [] }>()
 const expanded = defineModel<string | null>('expanded', { default: null })
 const { t } = useSetupFormat()
 
@@ -31,9 +29,7 @@ const totals = computed(() => {
   const [assigned, free] = wholeHourParts([week.covered, 10080 - week.covered])
   return { assigned: assigned!, free: free!, overlapping: week.overlapping }
 })
-const rows = computed(() => props.state.categories.map((category) => ({ category, status: statusOf(props.state, category) })).filter((row) => row.status !== 'inactive'))
-const visibleRows = computed(() => rows.value.filter((row) => row.status === 'active' || row.category.categoryId !== undefined || row.category.removed))
-const empty = computed(() => visibleRows.value.every((row) => row.status === 'removed'))
+const visibleRows = computed(() => summaryRows(props.state))
 const place = computed(() => `${t('app.tabs.settings')} › ${t('settings.categoriesTitle')}`)
 const hasTasks = (key: string) => {
   const id = props.state.categories.find((category) => category.key === key)?.categoryId
@@ -71,12 +67,8 @@ async function addMore(): Promise<void> {
 </script>
 
 <template>
-  <SetupScreen
-    :title="empty ? t('onboarding.summary.empty') : t('onboarding.summary.bubble')" :part="partOf('summary')" :total="5"
-    :can-back="previousScreen(state) !== undefined" :primary="first ? t('onboarding.summary.start') : t('onboarding.summary.save')" :busy="busy"
-    @back="emit('back')" @primary="emit('primary')"
-  >
-    <template #banner><slot name="banner" /></template>
+  <section class="week" data-testid="week-card" :aria-label="t('onboarding.summary.title')">
+    <h4 class="week-title t-headline">{{ t('onboarding.summary.title') }}</h4>
     <p class="counter t-body" role="status" data-testid="week-counter">
       <strong>{{ t('onboarding.summary.assigned', { hours: formatWholeHours(totals.assigned) }) }}</strong> · {{ t('onboarding.summary.unassigned', { hours: formatWholeHours(totals.free) }) }}
     </p>
@@ -99,14 +91,20 @@ async function addMore(): Promise<void> {
     <Button variant="plain" data-testid="summary-add" @click="addMore"><Icon name="plus" :size="20" /> {{ t('onboarding.summary.add') }}</Button>
     <Button v-if="reviewable" variant="plain" data-testid="summary-review" @click="emit('review')">{{ t('onboarding.summary.review') }}</Button>
     <p v-if="showTrust" class="trust t-body" data-testid="setup-trust">{{ t('onboarding.guided.trust') }}</p>
-  </SetupScreen>
+  </section>
 </template>
 
 <style scoped>
-.counter, .warn, .trust { margin: 0; }
+/* The week, as the last message: on a phone it uses the column's full width; with room to spare it sits in a card. */
+.week { display: flex; flex-direction: column; gap: var(--space-3); }
+@media (min-width: 40rem) {
+  .week { padding: var(--space-4); border: 0.5px solid var(--separator); border-radius: 20px; background: var(--surface); }
+}
+.week-title, .counter, .warn, .trust { margin: 0; }
 .warn { color: var(--danger-label); overflow-wrap: anywhere; }
 .trust { color: var(--label-2); }
 .cards { display: flex; flex-direction: column; gap: var(--space-2); margin: 0; padding: 0; }
 .removed { list-style: none; display: flex; align-items: center; justify-content: space-between; gap: var(--space-3); min-height: var(--tap-target); padding: var(--space-1) var(--space-4); border-radius: var(--radius-card); border: 1px dashed var(--separator); }
 .removed > span { min-width: 0; overflow-wrap: anywhere; }
+.week > :deep(.ui-button) { overflow-wrap: anywhere; hyphens: auto; }
 </style>
