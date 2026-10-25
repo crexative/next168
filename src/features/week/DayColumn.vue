@@ -124,7 +124,7 @@ const taskBoxes = computed(() => props.tasks.map((task) => {
   const titleStrip = host && isLaned(host) ? TITLE_STRIP_PX + TITLE_LINE_PX : TITLE_STRIP_PX
   const strip = host && !props.compact ? Math.max(0, titleStrip - (px(task.startMinute) - px(host.startMinute))) : 0
   let top = px(task.startMinute) + strip
-  let bottom = Math.max(px(task.endMinute), top + MIN_TASK_PX)
+  let bottom = props.compact ? px(task.endMinute) : Math.max(px(task.endMinute), top + MIN_TASK_PX)
   // A block too short for its title and a task below it is outlined whole instead: the dashed edge says it holds a task
   // and never crosses the title.
   const outline = Boolean(host && !props.compact && px(host.endMinute) - top < MIN_TASK_PX)
