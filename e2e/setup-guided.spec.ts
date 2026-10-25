@@ -362,12 +362,10 @@ async function auditScreen(page: Page, label: string): Promise<void> {
 }
 
 test.describe('answering', () => {
-  test('A30, A31, A34, A37: the typical week takes 11 taps, one primary per screen, no colour control and no network; Hoy then shows Trabajo', async ({ page }) => {
+  test('A30, A31, A37: the typical week takes 11 taps, one primary per screen and no colour control; Hoy then shows Trabajo', async ({ page }) => {
     await start(page)
     await page.goto('./')
     await onScreen(page, 'sleep')
-    const requests: string[] = []
-    page.on('request', (request) => requests.push(`${request.resourceType()} ${request.url()}`))
     let taps = 0
     const step = async (action: () => Promise<void>, next: string) => {
       await action()
@@ -394,11 +392,31 @@ test.describe('answering', () => {
     await step(() => primary(page).click(), '')
     await expect(setup(page)).toHaveCount(0)
     expect(taps).toBe(11)
-    expect(requests).toEqual([])
 
     await expect(page.getByTestId('now-title')).toHaveText('Trabajo')
     const saved = await stored(page)
     expect(saved.categories.map((category: { name: string }) => category.name)).toEqual(['Sueño', 'Trabajo', 'Desplazamientos', 'Ejercicio', 'Familia'])
+  })
+
+  test('A34: from opening the setup to saving it, the browser makes no request', async ({ page }) => {
+    await start(page, { document: storedDoc() })
+    await page.goto('./')
+    await expect(page.getByRole('heading', { level: 1, name: 'Hoy' })).toBeVisible()
+    await page.waitForLoadState('networkidle')
+    const requests: string[] = []
+    page.on('request', (request) => requests.push(`${request.resourceType()} ${request.url()}`))
+    await page.getByTestId('setup-week').click()
+    await onScreen(page, 'sleep')
+    await tap(page, 'Siguiente')
+    await tap(page, 'Trabajo')
+    await tap(page, 'Siguiente')
+    await tap(page, 'Sí')
+    await onScreen(page, 'commuteRanges')
+    await skipToSummary(page)
+    await primary(page).click()
+    await expect(setup(page)).toHaveCount(0)
+    expect((await stored(page)).blocks.length).toBe(2)
+    expect(requests).toEqual([])
   })
 
   test('A33: a full pass in German shows no English text from the English catalogue', async ({ page }) => {

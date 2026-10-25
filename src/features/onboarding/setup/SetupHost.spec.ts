@@ -9,6 +9,7 @@ import { documentFingerprint } from '@/repositories/storageCommit'
 import { createTestRepositories, fixedNow, MemoryStore, mutexRunner, newTestId, testDocument } from '@/repositories/testSupport'
 import type { RunExclusive } from '@/repositories/storageCommit'
 import { draftOf, saveDraft } from '../draftStorage'
+import { setupRequest } from '../reopen'
 import { createState } from '../setupModel'
 import { env } from '../setupFixtures'
 import SetupHost from './SetupHost.vue'
@@ -195,18 +196,38 @@ describe('while a save is pending (R3.2, A24)', () => {
   })
 
   it('has no timer that moves the flow: ten seconds on a question leave it there', async () => {
+    // Fake timers from the start, so any timer the flow sets is one this test controls.
+    vi.useFakeTimers({ shouldAdvanceTime: true })
     await mount(firstRun())
     await click('[data-testid=setup-primary]')
     expect(screen()).toBe('workStudy')
-    vi.useFakeTimers()
     await vi.advanceTimersByTimeAsync(10_000)
-    vi.useRealTimers()
     await settle()
     expect(screen()).toBe('workStudy')
   })
 })
 
 describe('closing and finishing', () => {
+  it('a first setup lands on Today; a later one stays where it was opened', async () => {
+    window.location.hash = '#/week'
+    await mount(firstRun())
+    await skipToSummary()
+    await click('[data-testid=setup-primary]')
+    expect(setup()).toBeNull()
+    expect(window.location.hash).toBe('#/today')
+    app!.unmount()
+    window.document.body.innerHTML = ''
+    window.location.hash = '#/week'
+    await mount(firstRun({ settings: { ...testDocument().settings, onboardingDone: true }, categories: [WORK], blocks: [WORK_BLOCK] }))
+    setupRequest.value += 1
+    await settle()
+    expect(screen()).toBe('summary')
+    await click('[data-testid=setup-primary]')
+    expect(setup()).toBeNull()
+    expect(window.location.hash).toBe('#/week')
+  })
+
+
   it('closing writes nothing, keeps the answers and does not open by itself again', async () => {
     const { memory } = await mount(firstRun())
     await click('[data-testid=setup-primary]')

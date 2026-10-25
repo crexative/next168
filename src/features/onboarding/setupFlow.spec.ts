@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { nextScreen, partOf, previousScreen, sequence } from './setupFlow'
-import { addOwnCategory, emptyState, ensureCategory, type ScreenId, type SetupState, type Tri, type WorkStudy } from './setupModel'
+import { addOwnCategory, emptyState, ensureCategory, setAnswer, type ScreenId, type SetupState, type Tri, type WorkStudy } from './setupModel'
 import { env } from './setupFixtures'
 
 const WORK_STUDY: WorkStudy[] = ['unanswered', 'work', 'study', 'both', 'neither']
@@ -66,15 +66,16 @@ describe('the screen sequence (A1)', () => {
     expect(previousScreen(state)).toBe('commute')
     expect(sequence(state)).toContain('study')
     // The person goes back and says "neither": work, study and the trip leave the sequence, their answers stay.
-    state.answers.workStudy = 'neither'
+    setAnswer(state, 'workStudy', 'neither')
     expect(sequence(state)).toEqual(['sleep', 'workStudy', 'exercise', 'exerciseRanges', 'more', 'extra:family', 'summary'])
     expect(state.answers.commute).toBe('yes')
     // From a screen that vanished, Atrás and Siguiente still land on the neighbours in the new sequence.
     expect(previousScreen(state, 'commuteRanges')).toBe('workStudy')
     expect(nextScreen(state, 'commuteRanges')).toBe('exercise')
     // And saying "both" again brings every dormant screen back with its answer.
-    state.answers.workStudy = 'both'
+    setAnswer(state, 'workStudy', 'both')
     expect(sequence(state)).toEqual(expected(state))
+    expect(state.answers).toMatchObject({ commute: 'yes', exercise: 'yes' })
     expect(sequence(state)).toContain('commuteRanges')
   })
 })

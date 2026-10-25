@@ -108,7 +108,7 @@ async function openFlow(kind: 'auto' | 'entry'): Promise<void> {
     if (draft && matches) {
       show(restore(draft), from)
       resumed.value = true
-    } else if (draft && draft.open) {
+    } else if (draft) {
       // The draft belongs to something storage no longer holds: say so once and show the week as it is now.
       clearDraft()
       show(freshState(from, 'summary'), from)
@@ -203,7 +203,7 @@ function onToggle(next: boolean): void {
 
 // ---------- Saving: one guarded commit on a frozen snapshot ----------
 
-function finishSaved(): void {
+function finishSaved(first: boolean): void {
   clearDraft()
   clearDismissed()
   undoToast.dismiss()
@@ -211,6 +211,8 @@ function finishSaved(): void {
   phase.value = 'closed'
   flow.value = null
   submitting.value = false
+  // A first setup lands on Today, where the week it just made begins.
+  if (first) window.location.hash = '#/today'
 }
 
 async function submit(): Promise<void> {
@@ -230,7 +232,7 @@ async function submit(): Promise<void> {
   }
   submitting.value = true
   if (planned.empty) {
-    finishSaved()
+    finishSaved(false)
     return
   }
   const result = await planner.commit((draft) => {
@@ -238,7 +240,7 @@ async function submit(): Promise<void> {
     applySetupPlan(draft, planned.plan)
   }, { expect: { storedFingerprint: from.fingerprint, purgeEpoch: from.purgeEpoch } })
   if (result.ok) {
-    finishSaved()
+    finishSaved(planned.plan.onboardingDone)
   } else if (result.reason === 'conflict' || result.reason === CHANGED_ELSEWHERE) {
     await showCurrentWeek()
   } else {
