@@ -127,8 +127,6 @@ function time(instant: string): string {
 .now-head { display: flex; align-items: center; justify-content: space-between; gap: var(--space-2); }
 /* The title wraps instead of being cut: "Tiempo libre hasta las 11:00 p. m." is longer than a phone line. */
 .now-title { min-width: 0; margin: 0; overflow-wrap: anywhere; }
-/* The 44 px circle borrows the card's padding so the title keeps its line height. */
-.now-status { margin: calc(var(--space-3) * -1) calc(var(--space-2) * -1); }
 .now-meta { display: flex; flex-wrap: wrap; justify-content: space-between; gap: var(--space-2); margin: 0; }
 .now-left { font-weight: 600; }
 .tabular { font-variant-numeric: tabular-nums; }

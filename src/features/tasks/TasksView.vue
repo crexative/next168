@@ -14,6 +14,7 @@ import Button from '@/ui/Button.vue'
 import EmptyState from '@/ui/EmptyState.vue'
 import Icon from '@/ui/Icon.vue'
 import ListGroup from '@/ui/ListGroup.vue'
+import ListRow from '@/ui/ListRow.vue'
 import { planTasks, recentDone, type PlacedEntry } from './grouping'
 import { useTaskActions } from './taskActions'
 import { newDraft, resolveWhen, taskFields, type TaskDraft } from './taskDraft'
@@ -220,10 +221,11 @@ function lateText(task: Task): string {
     />
 
     <ListGroup v-if="done.length" :header="t('tasks.recentDone')">
-      <li v-for="task in done" :key="task.id" class="done-row" data-testid="done-task">
-        <span class="t-body done-title">{{ task.title }}</span>
-        <Button variant="plain" @click="actions.reopen(task)">{{ t('tasks.reopen') }}</Button>
-      </li>
+      <ListRow v-for="task in done" :key="task.id" :title="task.title" class="done-row" data-testid="done-task">
+        <template #trailing>
+          <Button variant="plain" @click="actions.reopen(task)">{{ t('tasks.reopen') }}</Button>
+        </template>
+      </ListRow>
     </ListGroup>
 
     <TaskSheet v-model:open="sheetOpen" :task-id="editing" />
@@ -242,8 +244,5 @@ function lateText(task: Task): string {
 .warnings ul { display: flex; flex-direction: column; gap: var(--space-2); }
 .warning { display: flex; gap: var(--space-3); padding: var(--space-3) var(--space-4); border-radius: var(--radius-card); background: color-mix(in srgb, var(--warning) 18%, var(--surface)); }
 .warning-icon { flex: none; color: var(--label); margin-top: 2px; }
-.done-row { position: relative; display: flex; align-items: center; justify-content: space-between; gap: var(--space-2); padding: var(--space-1) var(--space-1) var(--space-1) var(--space-4); }
-/* Inset like every other grouped list separator. */
-.done-row + .done-row::before { content: ''; position: absolute; top: 0; right: 0; left: var(--space-4); border-top: 1px solid var(--separator); }
-.done-title { color: var(--label-2); text-decoration: line-through; overflow-wrap: anywhere; }
+.done-row :deep(.row-text) { color: var(--label-2); text-decoration: line-through; }
 </style>

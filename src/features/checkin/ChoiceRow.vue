@@ -82,7 +82,6 @@ function move(offset: number, event: KeyboardEvent): void {
 .clear {
   min-height: var(--tap-target);
   padding: 0 var(--space-2);
-  margin-inline-end: calc(var(--space-2) * -1);
   border: 0;
   background: transparent;
   color: var(--tint-label);

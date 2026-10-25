@@ -190,7 +190,7 @@ function overlapText(item: TimelineItem): string {
 .badge { display: inline-flex; align-items: center; gap: 2px; padding: 1px var(--space-2); border-radius: 999px; }
 .badge.is-late { background: color-mix(in srgb, var(--warning) 18%, transparent); color: var(--label); }
 /* The 44 px circle borrows the row's padding, so a row with a control is as tall as one without. */
-.row-control { align-self: center; margin: calc(var(--space-3) * -1) calc(var(--space-2) * -1) calc(var(--space-3) * -1) 0; }
+.row-control { align-self: center; }
 /* With large text the time column would leave the content a sliver: the times move above the title instead. */
 @container timeline (max-width: 18rem) {
   .row { grid-template-columns: 3px minmax(0, 1fr); row-gap: var(--space-1); }

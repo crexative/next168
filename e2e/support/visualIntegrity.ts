@@ -250,6 +250,44 @@ export function auditInPage(options: { focusRings: boolean }): string[] {
     }
   }
 
+  // Padding belongs to the container, including when an unpadded wrapper or a negative margin lies
+  // between it and its content. Measure control targets (not just their labels) and actual text lines.
+  function checkEdgeInset(subject: Element, box: Box, what: string, text = false): void {
+    if (Number(getComputedStyle(subject).opacity) === 0) return
+    if (!intersects(box, scrolledInto(subject))) return
+    for (let container = text ? subject as HTMLElement : subject.parentElement; container && container !== document.body; container = container.parentElement) {
+      const style = getComputedStyle(container)
+      if (style.display !== 'inline' && style.display !== 'contents') {
+        const rect = container.getBoundingClientRect()
+        const scrollsX = /auto|scroll/.test(style.overflowX)
+        const scrollsY = /auto|scroll/.test(style.overflowY)
+        const left = rect.left + px(style.borderLeftWidth) - (scrollsX ? container.scrollLeft : 0)
+        const top = rect.top + px(style.borderTopWidth) - (scrollsY ? container.scrollTop : 0)
+        const right = scrollsX ? left + container.scrollWidth : rect.right - px(style.borderRightWidth)
+        const bottom = scrollsY ? top + container.scrollHeight : rect.bottom - px(style.borderBottomWidth)
+        const sides = [
+          ['left', box.left - left, px(style.paddingLeft)],
+          ['right', right - box.right, px(style.paddingRight)],
+          ['top', box.top - top, px(style.paddingTop)],
+          ['bottom', bottom - box.bottom, px(style.paddingBottom)],
+        ] as const
+        // Full-area hit targets own the container surface; their visible labels still need its padding.
+        const fullAreaTarget = !text && sides.every(([, inset]) => Math.abs(inset) <= 1)
+        if (!fullAreaTarget) {
+          for (const [side, inset, padding] of sides) {
+            if (padding > TOLERANCE && inset < padding - TOLERANCE) {
+              violations.push(`${what} touches the edge of ${describe(container)} (${side}: ${inset.toFixed(1)}px inset, ${padding.toFixed(1)}px padding)`)
+            }
+          }
+        }
+      }
+      // A label's own control is checked above; its target is separately checked against outer padding.
+      if (text && container.matches(CONTROL)) break
+      // Popovers and sheets have their own layout surface, outside the trigger's content flow.
+      if (style.position === 'fixed' || style.position === 'absolute' && container.matches('[role="menu"], [role="listbox"], [role="dialog"], [role="group"]')) break
+    }
+  }
+
   // Resolves one background-position component (`12px`, `50%`, `calc(100% - 12px)`) inside `free` px.
   function position(value: string, free: number): number | undefined {
     const calc = /^calc\(\s*([\d.]+)%\s*([+-])\s*([\d.]+)px\s*\)$/.exec(value)
@@ -358,6 +396,27 @@ export function auditInPage(options: { focusRings: boolean }): string[] {
       blocks.add(blockOf(parent))
       range.selectNodeContents(node)
       const lines = Array.from(range.getClientRects()).filter((line) => line.width > 0 && line.height > 0)
+      for (const line of lines) {
+        // Ranges include invisible text in ellipses, wrapped flex columns and scrolled-away lines.
+        // Compare only the portion painted by every clipping ancestor.
+        let visible: Box = line
+        for (let clipper: HTMLElement | null = parent; clipper && clipper !== scope.parentElement; clipper = clipper.parentElement) {
+          const style = getComputedStyle(clipper)
+          if (style.overflowX !== 'visible' || style.overflowY !== 'visible') {
+            const clip = clipper.getBoundingClientRect()
+            if (style.overflowX !== 'visible') visible = { ...visible, left: Math.max(visible.left, clip.left + clipper.clientLeft), right: Math.min(visible.right, clip.left + clipper.clientLeft + clipper.clientWidth) }
+            if (style.overflowY !== 'visible') visible = { ...visible, top: Math.max(visible.top, clip.top + clipper.clientTop), bottom: Math.min(visible.bottom, clip.top + clipper.clientTop + clipper.clientHeight) }
+          }
+          if (style.textOverflow === 'ellipsis') {
+            const content = contentBox(clipper, style)
+            visible = style.direction === 'rtl' ? { ...visible, left: Math.max(visible.left, content.left) } : { ...visible, right: Math.min(visible.right, content.right) }
+          }
+          if (style.webkitLineClamp && style.webkitLineClamp !== 'none') {
+            visible = { ...visible, bottom: Math.min(visible.bottom, contentBox(clipper, style).bottom) }
+          }
+        }
+        if (visible.right > visible.left && visible.bottom > visible.top) checkEdgeInset(parent, visible, `text "${(node.textContent ?? '').trim().slice(0, 40)}" in ${describe(parent)}`, true)
+      }
       for (const { element: clipper, area, shownBelow } of clippingAncestors(parent)) {
         const visible = lines.filter((line) => intersects(line, area) && line.left >= shownBelow.left && line.right <= shownBelow.right && line.top >= shownBelow.top && line.bottom <= shownBelow.bottom)
         if (visible.length === 0) break
@@ -385,6 +444,7 @@ export function auditInPage(options: { focusRings: boolean }): string[] {
 
   for (const control of controls) {
     const rect = control.getBoundingClientRect()
+    checkEdgeInset(control, rect, describe(control))
     checkContained(control, { left: rect.left, top: rect.top, right: rect.right, bottom: rect.bottom, radii: radiiOf(control, 0) }, 'the border box', false)
     if (control instanceof HTMLSelectElement) checkSelect(control)
     if (control instanceof HTMLInputElement || control instanceof HTMLTextAreaElement) checkInput(control)

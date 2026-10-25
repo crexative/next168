@@ -195,7 +195,6 @@ onMounted(() => {
 .pending h2, .pending p { margin: 0; }
 .pending-row { display: flex; align-items: center; gap: var(--space-3); padding: var(--space-2) var(--space-4); }
 .pending-text { display: flex; flex: 1; flex-direction: column; min-width: 0; overflow-wrap: anywhere; }
-.pending-control { margin-inline-end: calc(var(--space-2) * -1); }
 .tabular { font-variant-numeric: tabular-nums; }
 .field { display: flex; flex: 1; flex-direction: column; gap: var(--space-1); min-width: 8rem; }
 /* The form sits on the page background, not in a card. */
