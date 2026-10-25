@@ -40,7 +40,7 @@ function snapshot(column: HTMLElement, probes: HTMLElement): ColumnMeasure | nul
     lineHeight: (role) => fonts.get(role)!.lineHeight,
     hyphenatedLines(text, role, width) {
       const font = fonts.get(role)!
-      const key = `${font.key}\u0001${width.toFixed(2)}\u0000${text}`
+      const key = `${font.key}\u0001${Math.round(width * 100)}\u0000${text}`
       let lines = hyphenCache.get(key)
       if (lines === undefined) {
         const probe = probes.querySelector<HTMLElement>(`[data-hyphen="${role}"]`)
