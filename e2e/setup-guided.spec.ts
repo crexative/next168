@@ -346,6 +346,12 @@ function englishOnly(locale: string): string[] {
   return catalogue(readCatalogue('en')).filter(([path, value]) => translated.get(path) !== value).map(([, value]) => value.replace(/\{\w+\}/g, '').trim()).filter((value) => value.length >= 4)
 }
 
+// Whole words or phrases only, Unicode-aware: German "Senden" must not count as the English "Send", while "Send" alone must.
+function appearsAsWords(text: string, phrase: string): boolean {
+  const escaped = phrase.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+  return new RegExp(`(?<![\\p{L}\\p{N}])${escaped}(?![\\p{L}\\p{N}])`, 'u').test(text)
+}
+
 async function auditScreen(page: Page, label: string): Promise<void> {
   await calm(page)
   expect.soft(await page.locator('[data-testid=setup] [data-primary]:visible').count(), `${label}: primary buttons`).toBeLessThanOrEqual(1)
@@ -422,7 +428,7 @@ test.describe('answering', () => {
     const check = async (label: string) => {
       await calm(page)
       const text = await setup(page).innerText()
-      expect.soft(english.filter((value) => text.includes(value)), label).toEqual([])
+      expect.soft(english.filter((value) => appearsAsWords(text, value)), label).toEqual([])
     }
     const steps: [string, string][] = [['[data-testid=setup-primary]', 'workStudy'], ['[data-value=work]', 'work'], ['[data-testid=setup-primary]', 'commute'], ['[data-value=yes]', 'commuteRanges'],
       ['[data-testid=setup-primary]', 'exercise'], ['[data-value=yes]', 'exerciseRanges'], ['[data-testid=setup-primary]', 'more'], ['[data-chip=family]', 'more'], ['[data-testid=setup-primary]', 'extra:family'], ['[data-testid=setup-primary]', 'summary']]
@@ -974,14 +980,18 @@ test.describe('the conversation', () => {
     await onScreen(page, 'exercise')
     await expect(live(page).locator('[data-answer]')).toHaveText([/Todas las noches/, /Ninguna/])
 
+    // Choosing "Las dos cosas" again restores the dormant work and commute answers. The person had not answered the trip's
+    // times yet, so that is the first unanswered question: nothing already answered is asked again.
     await live(page).getByRole('button', { name: 'Cambiar: ¿Trabajas o estudias? Ninguna' }).click()
     await tap(page, 'Las dos cosas')
-    await onScreen(page, 'work')
-    await expect(live(page).locator('[data-field=end] .value')).toHaveText('6:00 p. m.')
-    await tap(page, 'Enviar respuesta')
-    await tap(page, 'Enviar respuesta')
-    await onScreen(page, 'commute')
-    await expect(live(page).getByRole('button', { name: 'Sí (actual)' })).toBeVisible()
+    await onScreen(page, 'commuteRanges')
+    await expect(turns(page)).toHaveCount(5)
+    await expect(live(page).locator('[data-answer]')).toHaveText([/Todas las noches/, /Las dos cosas/, /Lunes a viernes/, /Lunes, martes, miércoles y jueves/, /Sí/])
+    await expect(live(page).locator('[data-answer=work] .turn-answer')).toHaveText('Lunes a viernes · 9:00 a. m.–6:00 p. m.')
+    await expect(live(page).locator('[data-answer=commute] .turn-answer')).toHaveText('Sí')
+    await expect(live(page).locator('[data-answer=workStudy] .turn-answer')).toHaveText('Las dos cosas')
+    await expect(live(page).locator('[data-field=start] .value').first()).toHaveText('8:30 a. m.')
+    await expect(live(page).getByRole('heading', { level: 3 })).toHaveText('¿Cuándo vas y cuándo vuelves?')
   })
 
   test('a reload in the middle brings back the whole conversation and the question on show', async ({ page }) => {
