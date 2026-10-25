@@ -82,6 +82,22 @@ describe('RulesProvider', () => {
     expect(answer).toContain('10:10')
   })
 
+  it('announces the next task after an overlapping busy external calendar occurrence', async () => {
+    setHourCycle('h23')
+    try {
+      const document = plannerWithBlocks()
+      document.blocks = [{ ...document.blocks[0]!, days: [3], start: 13 * 60, end: 14 * 60 }]
+      document.tasks.push({ id: 'budget', title: 'Review budget', durationMin: 15, priority: 1, createdAt: '2026-10-21T08:00:00Z' })
+      const context = contextFor(document, 'en', new Date('2026-10-21T10:07:00Z'))
+      expect((await rules.ask("What's next?", context, signal)).answer).toBe('Next up on Wednesday, October 21 at 10:10: Review budget.')
+
+      context.external = [{ sourceId: 'calendar', uid: 'meeting', title: 'Client call', start: '2026-10-21T10:05:00Z', end: '2026-10-21T11:00:00Z', busy: true, allDay: false }]
+      expect((await rules.ask("What's next?", context, signal)).answer).toBe('Next up on Wednesday, October 21 at 11:00: Review budget.')
+    } finally {
+      setHourCycle('auto')
+    }
+  })
+
   it.each([
     ['es', 'a la', 'a las'], ['pt', 'à', 'às'], ['en', 'at', 'at'], ['fr', 'à', 'à'], ['de', 'um', 'um'],
   ])('agrees hour one in %s and preserves the other hours', async (locale, one, other) => {
