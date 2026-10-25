@@ -1,5 +1,6 @@
 import { portableHash } from '@/core/exportBundle'
 import { preUpgradeBundle, type PreUpgradeCopy } from '@/repositories/storageVersion'
+import { formatWholeNumber } from '@/ui/format'
 import { MAX_IMPORT_BYTES } from './dataTransfer'
 
 export interface DownloadFile { fileName: string; json: string; bytes: number }
@@ -27,8 +28,9 @@ export async function preUpgradeFiles(copy: PreUpgradeCopy): Promise<PreUpgradeF
   return { capturedAt: copy.capturedAt, raw, bundle: { ...exported, tooLarge: exported.bytes > MAX_IMPORT_BYTES } }
 }
 
+// Whole megabytes, rounded up, so a file over the 25 MB import limit never reads as 25.
 export function megabytes(bytes: number): string {
-  return (bytes / (1024 * 1024)).toFixed(1)
+  return formatWholeNumber(Math.ceil(bytes / (1024 * 1024)))
 }
 
 export function saveFile({ fileName, json }: DownloadFile): void {
