@@ -25,6 +25,12 @@ function onFocusOut(event: FocusEvent): void {
   resume('focus')
 }
 
+// A toast replaced by a new one goes at once: the new toast and its Undo are there immediately (first in the tab order),
+// and two Undo buttons never share the cell. A toast that is simply dismissed fades out.
+function onLeave(element: Element): void {
+  if (toast.value) (element as HTMLElement).style.display = 'none'
+}
+
 // Time spent in another tab does not count: the person cannot act on the toast there.
 function onVisibilityChange(): void {
   if (document.visibilityState === 'hidden') pause('hidden')
@@ -44,8 +50,7 @@ onBeforeUnmount(() => {
 
 <template>
   <div class="toast-region" role="status" aria-live="polite">
-    <!-- A replaced toast finishes leaving before the next one enters, so two Undo buttons never share the cell. -->
-    <Transition name="toast" mode="out-in">
+    <Transition name="toast" @leave="onLeave">
       <div
         v-if="toast"
         :key="toast.id"
@@ -69,7 +74,7 @@ onBeforeUnmount(() => {
   inset-inline: 0;
   bottom: calc(var(--tabbar-height) + var(--safe-bottom) + var(--space-3));
   z-index: 40;
-  /* One cell: a toast replacing another takes its place once it has left, instead of sharing the row squeezed. */
+  /* One cell: a toast replacing another takes its place at once (the old one is hidden as it leaves). */
   display: grid;
   justify-items: center;
   padding: 0 var(--page-gutter);

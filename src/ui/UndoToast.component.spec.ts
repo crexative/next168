@@ -56,11 +56,12 @@ describe('UndoToast', () => {
     expect(useUndoToast().toast.value).toBeNull()
   })
 
-  // A replaced toast leaves before the next one enters: two toasts never share the cell, so two Undo buttons never
-  // overlap (the visual-integrity audit caught them during the cross-fade).
-  it('never draws a new toast over one that is still leaving', async () => {
+  // Two toasts never share the cell, so two Undo buttons never overlap (the visual-integrity audit caught them during
+  // the cross-fade), and the new Undo is reachable at once (out-in left it out of the DOM while the old one faded).
+  it('replaces a toast at once: the new one and its Undo are there immediately, the old one is no longer drawn', async () => {
     useUndoToast().show({ message: 'Moved', onUndo: vi.fn() })
     await nextTick()
-    expect(document.querySelectorAll('[data-testid="undo-toast"]')).toHaveLength(1)
+    const drawn = [...document.querySelectorAll<HTMLElement>('[data-testid="undo-toast"]')].filter((element) => element.style.display !== 'none')
+    expect(drawn.map((element) => element.textContent)).toEqual(['MovedUndo'])
   })
 })
