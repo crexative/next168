@@ -100,10 +100,14 @@ test('import file → preview and Week show events with a conflict against the p
   await expect(page.getByText('Project review', { exact: true })).toBeVisible()
   await expect(page.getByTestId('calendar-conflict').first()).toBeVisible()
   // toBeVisible ignores occlusion: the event title and the Conflict mark must be what is painted at their own center.
+  // In a lane too narrow for the whole title it is not drawn and stays in the event's accessible name (Week items rule).
+  await expect(page.locator('[data-testid=busy-overlay].is-conflict').first()).toContainText('Project review')
   for (const selector of ['[data-testid=busy-overlay].is-conflict .busy-title', '[data-testid=busy-overlay].is-conflict [data-testid=calendar-conflict]']) {
+    if (await page.locator(selector).first().evaluate((node) => Boolean(node.closest('.visually-hidden')))) continue
     const topmost = await page.locator(selector).first().evaluate((node) => {
       node.scrollIntoView({ block: 'center' })
-      const box = node.getBoundingClientRect()
+      const lines = node.getClientRects()
+      const box = lines[lines.length - 1] ?? node.getBoundingClientRect()
       const hit = window.document.elementFromPoint(box.left + box.width / 2, box.top + box.height / 2)
       return !!hit && (hit === node || node.contains(hit)) ? 'ok' : (hit?.outerHTML ?? 'null').slice(0, 200) + JSON.stringify(box)
     })

@@ -208,9 +208,9 @@ function onColumnClick(event: MouseEvent, blockId?: string): void {
       :tabindex="compact ? -1 : undefined"
       @click.stop="onColumnClick($event, segment.occurrence.blockId)"
     >
-      <span v-if="segment.show.title" class="block-title"><CategoryMark v-if="segment.show.mark" class="block-mark" :category="categoriesById.get(segment.occurrence.categoryId)" />{{ segment.show.mark ? ' ' : '' }}{{ segment.occurrence.title }}</span>
-      <span v-if="segment.show.time" class="block-detail block-time">{{ timeRange(segment) }}</span>
-      <span v-if="segment.show.category" class="block-detail block-category">{{ categoryLine(segment) }}</span>
+      <span v-if="segment.show.title" class="block-title"><CategoryMark v-if="segment.show.mark" class="block-mark" :category="categoriesById.get(segment.occurrence.categoryId)" />{{ segment.show.mark ? ' ' : '' }}{{ segment.occurrence.title }}</span>{{ ' ' }}
+      <span v-if="segment.show.time" class="block-detail block-time">{{ timeRange(segment) }}</span>{{ ' ' }}
+      <span v-if="segment.show.category" class="block-detail block-category">{{ categoryLine(segment) }}</span>{{ ' ' }}
       <span v-if="statuses.get(segment.key)" class="block-status t-caption" :class="{ 'visually-hidden': !segment.show.status }" data-testid="block-status"><template v-if="segment.show.statusIcon"><Icon :name="STATUS_ICON[statuses.get(segment.key)!]" :size="12" />{{ ' ' }}</template>{{ statusText(segment) }}</span>
     </button>
     <button
@@ -296,7 +296,7 @@ function onColumnClick(event: MouseEvent, blockId?: string): void {
   position: absolute;
   display: block;
   overflow: hidden;
-  padding: 1px 4px;
+  padding: 1px 2px;
   border: 1px dashed var(--label-2);
   border-radius: 6px;
   background: repeating-linear-gradient(135deg, color-mix(in srgb, var(--label-2) 10%, transparent) 0 4px, transparent 4px 8px);

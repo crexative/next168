@@ -8,7 +8,8 @@ import { layoutDaySegments, placeTasks, type BlockSegment, type BusySegment, typ
 // measured here is the text drawn there.
 export const LANE_GAP_PX = 2
 export const BLOCK_INSET = { top: 2, bottom: 2, start: 7, end: 4 }
-export const BUSY_INSET = { top: 2, bottom: 2, start: 5, end: 5 }
+// An event keeps 2 px beside its 1 px dashed border: its hatching already sets it apart.
+export const BUSY_INSET = { top: 2, bottom: 2, start: 3, end: 3 }
 // The task outline sits 8 px in from its routine's bar and 4 px from its end; 1.5 px border, 1 px / 4 px padding.
 export const TASK_BOX_INSET = { start: 8, end: 4 }
 export const TASK_INSET = { top: 2.5, bottom: 2.5, start: 13.5, end: 9.5 }

@@ -37,9 +37,10 @@ async function showDay(page: Page, weekday: string, date: string): Promise<Locat
   return target
 }
 
-// Columns under 9.5 rem stack events over blocks instead of sharing lanes (see verify3.spec.ts for that layout).
-async function isStacked(column: Locator): Promise<boolean> {
-  return column.evaluate((node) => node.getBoundingClientRect().width < 9.5 * 16)
+// What an item draws is whole or not drawn (docs/design/visual-design.md › Week items); a word that is not drawn stays
+// in the item's accessible name. Only drawn labels are checked for paint.
+async function drawn(label: Locator): Promise<boolean> {
+  return await label.count() > 0 && !(await label.first().evaluate((node) => Boolean(node.closest('.visually-hidden'))))
 }
 
 // Box of `inner` relative to `outer`, and whether `inner` is what is painted at its own center.
@@ -47,7 +48,10 @@ async function paint(inner: Locator, outer: Locator) {
   const outerBox = await outer.evaluate((node) => { node.scrollIntoView({ block: 'center' }); const b = node.getBoundingClientRect(); return { left: b.left, top: b.top, right: b.right, bottom: b.bottom } })
   return inner.evaluate((node, box) => {
     const b = node.getBoundingClientRect()
-    const hit = window.document.elementFromPoint(b.left + b.width / 2, b.top + b.height / 2)
+    // A label that wraps after an inline mark: its own last line is what it paints (the box's centre may be the mark's).
+    const lines = node.getClientRects()
+    const line = lines[lines.length - 1] ?? b
+    const hit = window.document.elementFromPoint(line.left + line.width / 2, line.top + line.height / 2)
     return {
       inside: b.left >= box.left - 0.5 && b.right <= box.right + 0.5 && b.top >= box.top - 0.5 && b.bottom <= box.bottom + 0.5,
       topmost: !!hit && (hit === node || node.contains(hit)),
@@ -64,23 +68,18 @@ for (const [weekday, date, minutes] of [['Friday', '2026-10-23', 30], ['Thursday
     const block = column.locator('.block')
     await expect(busy).toHaveCount(1)
 
-    const stacked = await isStacked(column)
-    const mark = await paint(busy.locator('[data-testid=calendar-conflict]'), busy)
-    expect(mark, 'Conflict mark').toMatchObject({ inside: true, topmost: true })
-    expect((await paint(busy.locator('.busy-title'), busy)), 'event title').toMatchObject({ inside: true, topmost: true })
-    expect((await paint(block.locator('.block-title'), block)), 'block title').toMatchObject({ inside: true, topmost: true })
-    if (!stacked) {
-      expect((await paint(block.locator('.block-time'), block)), 'block time').toMatchObject({ inside: true, topmost: true })
-      // The block time wraps instead of being cut off, and the block does not run over its own box.
-      const clipped = await block.evaluate((node) => node.scrollHeight > node.clientHeight + 1 || node.querySelector<HTMLElement>('.block-time')!.scrollWidth > node.querySelector<HTMLElement>('.block-time')!.clientWidth + 1)
-      expect(clipped, 'block content is cut off').toBe(false)
-      // Side by side: the event does not sit over the block.
-      const [blockBox, busyBox] = await Promise.all([block.boundingBox(), busy.boundingBox()])
-      expect(blockBox!.x + blockBox!.width, 'block ends before the event starts').toBeLessThanOrEqual(busyBox!.x + 0.5)
-    } else {
-      // Stacked: the block keeps the whole width and only its title (the time stays in its accessible name).
-      await expect(block.locator('.block-time')).toBeHidden()
+    for (const [name, label, item] of [['Conflict mark', busy.locator('[data-testid=calendar-conflict]'), busy], ['event title', busy.locator('.busy-title'), busy], ['block title', block.locator('.block-title'), block], ['block time', block.locator('.block-time'), block]] as const) {
+      if (await drawn(label)) expect(await paint(label, item), name).toMatchObject({ inside: true, topmost: true })
     }
+    // A title that is not drawn stays in the event's accessible name.
+    await expect(busy).toContainText(minutes === 30 ? 'Vendor call' : 'Team sync')
+    await expect(block).toHaveAttribute('aria-label', /^Deep work /)
+    // Nothing the block draws runs over its own box.
+    const clipped = await block.evaluate((node) => node.scrollHeight > node.clientHeight + 1)
+    expect(clipped, 'block content is cut off').toBe(false)
+    // Side by side at every width: the event does not sit over the block.
+    const [blockBox, busyBox] = await Promise.all([block.boundingBox(), busy.boundingBox()])
+    expect(blockBox!.x + blockBox!.width, 'block ends before the event starts').toBeLessThanOrEqual(busyBox!.x + 0.5)
     // The mark is never clipped by the overlay (it keeps a non-colour cue: icon, text kept as the accessible name).
     expect(await busy.locator('[data-testid=calendar-conflict] svg').count()).toBe(1)
     await expect(busy.locator('[data-testid=calendar-conflict]')).toContainText('Conflict')
@@ -105,8 +104,9 @@ test('staggered overlaps keep all item boxes disjoint and every label topmost', 
   const column = await showDay(page, 'Friday', '2026-10-23')
   const items = column.locator('.block, .busy')
   await expect(items).toHaveCount(3)
-  await expect(column.locator('.block-title')).toHaveText(['Block A', 'Block B'])
-  await expect(column.locator('.busy-title')).toHaveText('External event')
+  // Each title is drawn whole or kept in the accessible name only.
+  for (const name of ['Block A', 'Block B']) await expect(column.locator(`.block[aria-label^="${name} "]`)).toHaveCount(1)
+  await expect(column.locator('.busy')).toContainText('External event')
 
   const boxes = await Promise.all((await items.all()).map(async (item) => {
     const box = await item.boundingBox()
@@ -115,24 +115,22 @@ test('staggered overlaps keep all item boxes disjoint and every label topmost', 
     expect(box!.height).toBeGreaterThan(0)
     return box!
   }))
-  const stacked = await isStacked(column)
   for (const [index, box] of boxes.entries()) {
-    // Stacked columns put the event over a block on purpose; blocks still must not intersect each other.
     for (const other of boxes.slice(index + 1)) {
-      if (stacked && index === 0) continue // the event is the first item in the DOM
       const intersects = box.x < other.x + other.width && other.x < box.x + box.width && box.y < other.y + other.height && other.y < box.y + box.height
       expect(intersects, `items ${index} and ${boxes.indexOf(other)} intersect`).toBe(false)
     }
   }
   for (const block of await column.locator('.block').all()) {
     for (const label of ['.block-title', '.block-time']) {
-      if (!(await block.locator(label).isVisible())) continue
+      if (!(await drawn(block.locator(label)))) continue
       expect(await paint(block.locator(label), block), label).toMatchObject({ inside: true, topmost: true })
     }
   }
   const busy = column.locator('.busy')
-  expect(await paint(busy.locator('.busy-title'), busy), 'event title').toMatchObject({ inside: true, topmost: true })
-  expect(await paint(busy.getByTestId('calendar-conflict'), busy), 'conflict mark').toMatchObject({ inside: true, topmost: true })
+  for (const [name, label] of [['event title', busy.locator('.busy-title')], ['conflict mark', busy.getByTestId('calendar-conflict')]] as const) {
+    if (await drawn(label)) expect(await paint(label, busy), name).toMatchObject({ inside: true, topmost: true })
+  }
 })
 
 test('the Assistant screen keeps a 16 px side gutter', async ({ page }) => {
