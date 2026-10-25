@@ -87,7 +87,7 @@ const legend = computed(() => {
 .overview-head, .overview-body { display: grid; grid-template-columns: 2.5rem repeat(7, minmax(0, 1fr)); }
 .overview-head {
   position: sticky;
-  top: calc(var(--safe-top) + var(--toolbar-height));
+  top: calc(var(--safe-top) + var(--toolbar-height) + var(--week-head-height, 0px));
   z-index: 5;
   padding-block: var(--space-1);
 }

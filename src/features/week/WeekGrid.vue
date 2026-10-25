@@ -64,11 +64,11 @@ const { locale } = useI18n()
 .grid-header, .grid-body { display: grid; grid-template-columns: 3.25rem repeat(7, minmax(0, 1fr)); }
 .grid-header {
   position: sticky;
-  top: calc(var(--safe-top) + var(--toolbar-height));
+  top: calc(var(--safe-top) + var(--toolbar-height) + var(--week-head-height, 0px));
   z-index: 5;
   /* Full bleed: the strip spans the toolbar's width, the columns stay on the grid. */
-  margin-inline: calc(var(--space-2) * -1) calc(var(--space-4) * -1);
-  padding: var(--space-2) var(--space-4) var(--space-2) var(--space-2);
+  margin-inline: calc(var(--space-2) * -1) calc(var(--page-gutter) * -1);
+  padding: var(--space-2) var(--page-gutter) var(--space-2) var(--space-2);
 }
 .day-heading { display: flex; flex-direction: column; align-items: center; gap: 2px; }
 .weekday { color: var(--label-2); text-transform: uppercase; }

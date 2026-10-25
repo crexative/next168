@@ -130,10 +130,10 @@ describe('shared day lanes', () => {
   it('also lays blocks and events out stacked, for columns too narrow to share lanes', () => {
     const result = layout([block('a', 540, 660)], [event('2026-10-21T09:30:00Z', '2026-10-21T10:30:00Z')])
     expect(result.blocks[0]).toMatchObject({ lanes: 2, stackLeft: 0, stackWidth: 100 })
-    expect(result.busy[0]).toMatchObject({ lanes: 2, stackLeft: 28, stackWidth: 72 })
+    expect(result.busy[0]).toMatchObject({ lanes: 2, stackLeft: 50, stackWidth: 50 })
     const crowded = layout([block('a', 540, 660), block('b', 600, 720)], [event('2026-10-21T11:00:00Z', '2026-10-21T12:00:00Z')])
     expect(crowded.blocks.map((item) => [item.stackLeft, item.stackWidth])).toEqual([[0, 50], [50, 50]])
-    expect(crowded.busy.map((item) => [item.stackLeft, item.stackWidth])).toEqual([[28, 72]])
+    expect(crowded.busy.map((item) => [item.stackLeft, item.stackWidth])).toEqual([[50, 50]])
   })
 
   it('leaves a leading block strip when an external or own event covers exactly the same hour', () => {
@@ -143,7 +143,7 @@ describe('shared day lanes', () => {
       layout([block('A', 540, 600)], [], [{ id: 'own', ...external, attendees: [] }]),
     ]) {
       expect(result.blocks[0]).toMatchObject({ startMinute: 540, endMinute: 600, stackLeft: 0, stackWidth: 100 })
-      expect(result.busy[0]).toMatchObject({ startMinute: 540, endMinute: 600, stackLeft: 28, stackWidth: 72 })
+      expect(result.busy[0]).toMatchObject({ startMinute: 540, endMinute: 600, stackLeft: 50, stackWidth: 50 })
       expectDisjoint(result)
     }
   })
@@ -151,14 +151,14 @@ describe('shared day lanes', () => {
   it('preserves separate event lanes inside the inset band', () => {
     const first = event(`${date}T09:00:00Z`, `${date}T10:00:00Z`)
     const result = layout([block('A', 540, 600)], [first, { ...first, uid: 'second' }])
-    expect(result.busy.map(({ stackLeft, stackWidth }) => [stackLeft, stackWidth])).toEqual([[28, 36], [64, 36]])
+    expect(result.busy.map(({ stackLeft, stackWidth }) => [stackLeft, stackWidth])).toEqual([[50, 25], [75, 25]])
   })
 
   it('insets the entire event cluster when only its first event overlaps the block', () => {
     const first = event(`${date}T09:00:00Z`, `${date}T10:00:00Z`)
     const second = { ...event(`${date}T09:30:00Z`, `${date}T10:30:00Z`), uid: 'second' }
     const result = layout([block('A', 540, 570)], [first, second])
-    expect(result.busy.map(({ stackLeft, stackWidth }) => [stackLeft, stackWidth])).toEqual([[28, 36], [64, 36]])
+    expect(result.busy.map(({ stackLeft, stackWidth }) => [stackLeft, stackWidth])).toEqual([[50, 25], [75, 25]])
   })
 })
 

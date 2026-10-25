@@ -115,6 +115,19 @@ async function auditSheet(page: Page, state: string): Promise<void> {
   })
   expect.soft(focused.inside, `${state}: initial focus is inside the sheet`).toBe(true)
   expect.soft(focused.calm, `${state}: the sheet opened with a focus ring on ${focused.element}`).toBe(true)
+  // One rule for a sheet's primary action: its submit button spans the form, never hugs its label.
+  const hugging = await page.evaluate(() => {
+    const dialogs = document.querySelectorAll('[role="dialog"]')
+    const buttons = Array.from(dialogs[dialogs.length - 1]?.querySelectorAll<HTMLElement>('button[type="submit"]') ?? []).filter((button) => button.getClientRects().length > 0)
+    return buttons.flatMap((button) => {
+      const form = button.parentElement!
+      const style = getComputedStyle(form)
+      const room = form.clientWidth - Number.parseFloat(style.paddingLeft) - Number.parseFloat(style.paddingRight)
+      const width = button.getBoundingClientRect().width
+      return width < room - 1 ? [`"${(button.textContent ?? '').trim()}" is ${width.toFixed(1)}px of ${room.toFixed(1)}px`] : []
+    })
+  })
+  expect.soft(hugging, `${state}: the sheet's primary action is full width`).toEqual([])
   await audit(page, state)
 }
 
@@ -757,6 +770,59 @@ for (const theme of THEMES) {
     })
   })
 }
+
+// Week at 768, 1024 and 1440 px with events beside routines and tasks inside them (#3, R1): every block and event
+// title shows at least its first four letters, task chunks of 16 px or more carry their title, the routine's own area
+// opens the routine, and the week's range, arrows and free hours are on screen on arrival.
+test.describe('Week readability', () => {
+  const crowded = {
+    ...plannedDocument,
+    events: [
+      { id: 'e-vendor', title: 'Vendor call', start: '2026-10-22T10:00:00.000Z', end: '2026-10-22T10:30:00.000Z', allDay: false, attendees: [] },
+      { id: 'e-sync', title: 'Team sync', start: '2026-10-23T09:30:00.000Z', end: '2026-10-23T10:30:00.000Z', allDay: false, attendees: [] },
+    ],
+  }
+  for (const width of [768, 1024, 1440]) {
+    test(`titles, task labels, taps and the header at ${width} px`, async ({ page }, testInfo) => {
+      test.skip(testInfo.project.name !== 'desktop', 'explicit widths run once')
+      await page.setViewportSize({ width, height: 900 })
+      await start(page, 'light', crowded)
+      await open(page, 'week')
+      for (const id of ['week-range', 'week-previous', 'week-next', 'week-free-hours-slot']) {
+        await expect.soft(page.getByTestId(id), `${id} on arrival`).toBeInViewport({ ratio: 1 })
+      }
+      await expect(page.getByTestId('now-line')).toBeInViewport()
+      const stubs = await page.locator('.week-grid').evaluate((grid) => Array.from(grid.querySelectorAll<HTMLElement>('.block-title, .busy-title, .task-title')).flatMap((title) => {
+        if (title.getClientRects().length === 0) return []
+        const text = title.lastChild?.textContent?.trim() ?? ''
+        const node = Array.from(title.childNodes).find((child) => child.nodeType === Node.TEXT_NODE && (child.textContent ?? '').trim()) as Text | undefined
+        if (!node) return []
+        const offset = (node.textContent ?? '').search(/\S/)
+        const range = document.createRange()
+        range.setStart(node, offset)
+        range.setEnd(node, Math.min(offset + 4, (node.textContent ?? '').length))
+        const box = title.getBoundingClientRect()
+        // Glyph boxes may be taller than a tight line; a hidden line starts below the box, a cut word runs past its end.
+        const shown = Array.from(range.getClientRects()).every((rect) => rect.right <= box.right + 0.5 && rect.top < box.bottom - 1)
+        return shown ? [] : [`"${text}" shows fewer than four letters`]
+      }))
+      expect.soft(stubs).toEqual([])
+      const unlabeled = await page.getByTestId('week-task').evaluateAll((chunks) => chunks.flatMap((chunk) => {
+        const height = chunk.getBoundingClientRect().height
+        const title = chunk.querySelector('.task-title')
+        const outline = chunk.classList.contains('is-outline')
+        if (!chunk.getAttribute('title')) return [`${chunk.getAttribute('aria-label')} has no tooltip`]
+        return height >= 16 && !outline && !title ? [`${chunk.getAttribute('aria-label')} (${height.toFixed(0)} px) has no visible title`] : []
+      }))
+      expect.soft(unlabeled).toEqual([])
+      // Thursday's routine holds a 20-minute task at its start: its title area opens the routine, not the task.
+      const routine = page.locator('[data-date="2026-10-22"] [data-block-id="b-work"]').first()
+      await routine.scrollIntoViewIfNeeded()
+      await routine.click({ position: { x: 12, y: 8 } })
+      await expect(page.getByRole('dialog').getByRole('heading', { name: 'Edit routine' })).toBeVisible()
+    })
+  }
+})
 
 test.describe('visual integrity guard: padded container edges', () => {
   test.beforeEach(({}, testInfo) => {

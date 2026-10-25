@@ -92,7 +92,7 @@ async function save(): Promise<void> {
       </div>
       <p v-if="(dirty || attempted) && !valid" role="status" class="calendar-error">{{ t('calendars.formInvalid') }}</p>
       <p v-if="error" role="alert" class="calendar-error">{{ t(error) }}</p>
-      <Button type="submit" :disabled="!planner.writable || saving">{{ t('calendars.saveEvent') }}</Button>
+      <Button type="submit" block :disabled="!planner.writable || saving">{{ t('calendars.saveEvent') }}</Button>
     </form>
   </Sheet>
 </template>

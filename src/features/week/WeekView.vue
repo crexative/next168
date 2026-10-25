@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, nextTick, ref, watch } from 'vue'
+import { computed, nextTick, onBeforeUnmount, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import type { DayIndex, TimeBlock } from '@/core/model'
 import { addLocalDays, localDateOf } from '@/core/time'
@@ -129,6 +129,16 @@ watch(notice, (moved) => {
 
 // Open on the current hour once the grid is first shown; later changes keep the reader's position.
 const root = ref<HTMLElement | null>(null)
+// The sticky strips under the head sit below it: they read its height from --week-head-height.
+const head = ref<HTMLElement | null>(null)
+const headObserver = typeof ResizeObserver === 'undefined' ? null : new ResizeObserver(([entry]) => {
+  root.value?.style.setProperty('--week-head-height', `${entry!.borderBoxSize[0]?.blockSize ?? entry!.contentRect.height}px`)
+})
+watch(head, (element, previous) => {
+  if (previous) headObserver?.unobserve(previous)
+  if (element) headObserver?.observe(element)
+})
+onBeforeUnmount(() => headObserver?.disconnect())
 const hasGrid = computed(() => document.value !== null && hasCategories.value && hasContent.value)
 let positioned = false
 watch(hasGrid, async (shown) => {
@@ -247,19 +257,23 @@ async function remove(blockId: string): Promise<void> {
       </div>
     </EmptyState>
     <template v-else>
-      <WeekNav
-        :dates="dates"
-        :today="today"
-        :is-current="isCurrentWeek"
-        :view="isWide ? undefined : viewMode"
-        @previous="showWeek(-1)"
-        @next="showWeek(1)"
-        @today="showToday"
-        @toggle-view="toggleView"
-      >
-        <!-- Free hours count from now, so they belong to the current week only. -->
-        <template v-if="isCurrentWeek" #free-hours><FreeHoursBadge :document="document" :now="now" :framed="false" /></template>
-      </WeekNav>
+      <!-- The week's range, arrows and free hours stay under the toolbar, so they show on arrival even when the grid
+           opens on the current hour. -->
+      <div ref="head" class="week-head sticky-header" data-testid="week-head">
+        <WeekNav
+          :dates="dates"
+          :today="today"
+          :is-current="isCurrentWeek"
+          :view="isWide ? undefined : viewMode"
+          @previous="showWeek(-1)"
+          @next="showWeek(1)"
+          @today="showToday"
+          @toggle-view="toggleView"
+        >
+          <!-- Free hours count from now, so they belong to the current week only. -->
+          <template v-if="isCurrentWeek" #free-hours><FreeHoursBadge :document="document" :now="now" :framed="false" /></template>
+        </WeekNav>
+      </div>
       <WeekGrid
         v-if="isWide"
         :dates="dates"
@@ -330,6 +344,7 @@ async function remove(blockId: string): Promise<void> {
   </div>
 </template>
 
+<style scoped src="./stickyHeader.css"></style>
 <style scoped>
 /* The floating "+" sits above the tab bar and clear of the undo toast, which keeps the row just above the bar. */
 .fab-anchor {
@@ -339,5 +354,11 @@ async function remove(blockId: string): Promise<void> {
   bottom: calc(var(--tabbar-height) + var(--safe-bottom) + var(--banners-height, 0px) + 4.75rem);
 }
 .has-fab { padding-bottom: 4.5rem; }
+.week-head {
+  position: sticky;
+  top: calc(var(--safe-top) + var(--toolbar-height));
+  z-index: 6;
+  padding-block: var(--space-1);
+}
 .empty-choices { display: flex; flex-direction: column; align-items: center; gap: var(--space-2); }
 </style>

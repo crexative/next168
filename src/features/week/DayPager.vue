@@ -219,7 +219,7 @@ onBeforeUnmount(() => {
 <style scoped>
 .day-strip {
   position: sticky;
-  top: calc(var(--safe-top) + var(--toolbar-height));
+  top: calc(var(--safe-top) + var(--toolbar-height) + var(--week-head-height, 0px));
   z-index: 5;
   display: grid;
   grid-template-columns: repeat(7, minmax(0, 1fr));

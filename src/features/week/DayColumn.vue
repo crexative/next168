@@ -41,10 +41,14 @@ const conflicting = computed(() => new Set(props.busy
 
 const SHORT_EVENT_MINUTES = 45
 
-// A block's title row; a task that starts with its block begins below it so the title stays readable.
-const TITLE_STRIP_PX = 20
+// A block's title row; a task that starts with its block begins below it so the title stays readable. A block that
+// shares its width (lanes, or an event beside it) wraps its title onto two lines, so the strip holds both.
+const TITLE_LINE_PX = 16
+const TITLE_STRIP_PX = 4 + TITLE_LINE_PX
 const MIN_TASK_PX = 12
-const TASK_LABEL_MIN_PX = 24
+// From this height a task chunk shows its title on one caption line; below it the box keeps its title as a tooltip.
+const TASK_LABEL_MIN_PX = 16
+const TASK_ROOMY_PX = 24
 
 const STATUS_ICON = { done: 'check', skipped: 'x', partial: 'minus' } as const
 
@@ -54,6 +58,10 @@ function verticalStyle(startMinute: number, endMinute: number) {
 
 function isBesideEvent(segment: BlockSegment): boolean {
   return props.busy.some((item) => segment.startMinute < item.endMinute && item.startMinute < segment.endMinute)
+}
+
+function isLaned(segment: BlockSegment & LanePosition): boolean {
+  return segment.lanes > 1 || isBesideEvent(segment)
 }
 
 function itemStyle(item: DayPart & LanePosition) {
@@ -110,15 +118,24 @@ const crowdedBlocks = computed(() => new Set(props.tasks.flatMap((task) => {
 
 const taskBoxes = computed(() => props.tasks.map((task) => {
   const host = hostOf(task)
-  const strip = host && !props.compact && task.startMinute - host.startMinute < (TITLE_STRIP_PX / props.hourHeight) * 60
-    ? Math.min(TITLE_STRIP_PX - ((task.startMinute - host.startMinute) / 60) * props.hourHeight, ((task.endMinute - task.startMinute) / 60) * props.hourHeight - MIN_TASK_PX)
-    : 0
-  const top = (task.startMinute / 60) * props.hourHeight + Math.max(0, strip)
-  const height = ((task.endMinute - task.startMinute) / 60) * props.hourHeight - Math.max(0, strip)
+  // A task that starts under its block's title begins below the title lines, never over them; a short one keeps at least
+  // MIN_TASK_PX and stays inside its block (its exact time is in its accessible name and tooltip).
+  const px = (minute: number) => (minute / 60) * props.hourHeight
+  const titleStrip = host && isLaned(host) ? TITLE_STRIP_PX + TITLE_LINE_PX : TITLE_STRIP_PX
+  const strip = host && !props.compact ? Math.max(0, titleStrip - (px(task.startMinute) - px(host.startMinute))) : 0
+  let top = px(task.startMinute) + strip
+  let bottom = Math.max(px(task.endMinute), top + MIN_TASK_PX)
+  // A block too short for its title and a task below it is outlined whole instead: the dashed edge says it holds a task
+  // and never crosses the title.
+  const outline = Boolean(host && !props.compact && px(host.endMinute) - top < MIN_TASK_PX)
+  if (host && !props.compact) bottom = Math.min(bottom, px(host.endMinute))
+  if (outline) top = px(host!.startMinute)
+  const height = bottom - top
   const lanes = host ? itemStyle(host) : { insetInlineStart: '2px', width: 'calc(100% - 4px)', '--stack-left': '0%', '--stack-width': '100%' }
   return {
     task,
     height,
+    outline,
     range: `${formatMinute(task.startMinute, displayLocale.value)} – ${formatMinute(task.endMinute % 1440, displayLocale.value)}`,
     style: {
       ...lanes,
@@ -166,7 +183,9 @@ function onColumnClick(event: MouseEvent, blockId?: string): void {
   const bounds = column.getBoundingClientRect()
   const y = event.clientY - bounds.top
   const hit = props.compact ? undefined : nearestHitTarget(hitTargets.value, y, ((event.clientX - bounds.left) / bounds.width) * 100, props.hourHeight)
-  if (hit?.kind === 'task') emit('select-task', hit.id)
+  // A press on a routine's own area opens the routine; a task inside it opens only from the task's own box.
+  if (hit?.kind === 'task' && !blockId) emit('select-task', hit.id)
+  else if (hit?.kind === 'task') emit('select', blockId!)
   else if (hit) emit('select', hit.id)
   else if (blockId) emit('select', blockId)
   else {
@@ -197,7 +216,7 @@ function onColumnClick(event: MouseEvent, blockId?: string): void {
       :key="segment.key"
       type="button"
       class="block"
-      :class="{ 'is-short': segment.endMinute - segment.startMinute < 45, 'is-beside': isBesideEvent(segment), 'is-crowded': crowdedBlocks.has(segment.key), 'is-done': statuses.get(segment.key) === 'done', 'is-skipped': statuses.get(segment.key) === 'skipped', 'continues-before': segment.continuesBefore, 'continues-after': segment.continuesAfter }"
+      :class="{ 'is-short': segment.endMinute - segment.startMinute < 45, 'is-beside': isBesideEvent(segment), 'is-laned': isLaned(segment), 'is-crowded': crowdedBlocks.has(segment.key), 'is-done': statuses.get(segment.key) === 'done', 'is-skipped': statuses.get(segment.key) === 'skipped', 'continues-before': segment.continuesBefore, 'continues-after': segment.continuesAfter }"
       :style="segmentStyle(segment)"
       :data-block-id="segment.occurrence.blockId"
       :data-start-minute="segment.startMinute"
@@ -220,6 +239,7 @@ function onColumnClick(event: MouseEvent, blockId?: string): void {
       :key="box.task.key"
       type="button"
       class="task-chunk"
+      :class="{ 'is-outline': box.outline }"
       :style="box.style"
       data-layered
       data-testid="week-task"
@@ -228,13 +248,14 @@ function onColumnClick(event: MouseEvent, blockId?: string): void {
       :data-end-minute="box.task.endMinute"
       :data-late="box.task.late || undefined"
       :aria-label="t('week.task.label', { title: box.task.title, range: box.range }) + (box.task.late ? `, ${t('week.task.late')}` : '')"
+      :title="box.task.title"
       :disabled="!editable"
       :tabindex="compact ? -1 : undefined"
       @click.stop="emit('select-task', box.task.taskId)"
     >
-      <span class="task-box" :class="{ 'is-late': box.task.late }">
-        <Icon v-if="box.task.late && box.height >= TASK_LABEL_MIN_PX" name="triangle-alert" :size="12" />
-        <span v-if="box.height >= TASK_LABEL_MIN_PX" class="task-title t-caption">{{ box.task.title }}</span>
+      <span class="task-box" :class="{ 'is-late': box.task.late, 'is-tight': box.height < TASK_ROOMY_PX, 'is-outline': box.outline }">
+        <Icon v-if="box.task.late && box.height >= TASK_LABEL_MIN_PX && !box.outline" name="triangle-alert" :size="12" />
+        <span v-if="box.height >= TASK_LABEL_MIN_PX && !box.outline" class="task-title t-caption">{{ box.task.title }}</span>
       </span>
     </button>
     <div v-if="nowMinute !== null" class="now-line" :style="{ top: `${(nowMinute / 60) * hourHeight}px` }" data-testid="now-line" aria-hidden="true" />
@@ -292,6 +313,17 @@ function onColumnClick(event: MouseEvent, blockId?: string): void {
 /* Labels are drawn above the now-line (z-index 2): the line crosses the fill of a block, never its words. */
 .block-title, .block-time, .block-category, .block-status, .task-title { position: relative; z-index: 3; }
 .is-crowded .block-time, .is-crowded .block-category { display: none; }
+.is-laned .block-mark { display: none; }
+/* A block that shares its width wraps its title at word boundaries onto two lines ("Deep / work") instead of cutting it
+   to a letter; the task strip under it leaves room for both lines. */
+.is-laned:not(.is-short) .block-title {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  white-space: normal;
+  overflow-wrap: normal;
+  hyphens: auto;
+}
 .block-mark { margin-inline-end: 1px; }
 .is-short { flex-direction: row; gap: var(--space-1); align-items: center; }
 .is-short .block-time, .is-short .block-category { display: none; }
@@ -310,6 +342,8 @@ function onColumnClick(event: MouseEvent, blockId?: string): void {
   cursor: pointer;
 }
 .busy-title { display: block; overflow: hidden; color: var(--label); text-overflow: ellipsis; white-space: nowrap; }
+/* An event tall enough for more than one line wraps its title at word boundaries ("Vendor / call"). */
+.busy:not(.is-short) .busy-title { white-space: normal; overflow-wrap: normal; hyphens: auto; }
 .is-conflict {
   container-type: inline-size;
   border-color: var(--danger);
@@ -338,7 +372,6 @@ function onColumnClick(event: MouseEvent, blockId?: string): void {
     overflow-wrap: normal;
     word-break: normal;
   }
-  .busy:not(.is-short) .busy-title { white-space: normal; overflow-wrap: anywhere; }
   .busy.is-short { gap: 2px; padding-inline: 2px; }
   .busy.is-short .busy-title { text-overflow: clip; }
   /* A one-line band keeps the title; the word lives in the details and the accessible name. */
@@ -362,8 +395,15 @@ function onColumnClick(event: MouseEvent, blockId?: string): void {
   background: color-mix(in srgb, var(--surface) 55%, transparent);
   color: var(--label);
 }
+/* Around a block too short to hold it below its title: an outline only, the block's title shows through, and a press
+   there opens the routine (the task stays reachable by keyboard here and from Tasks). */
+.task-box.is-outline { inset: 1px; background: transparent; }
+.task-chunk.is-outline { pointer-events: none; }
+/* A chunk of 16 to 24 px: the caption line fills the box between its dashed edges. */
+.task-box.is-tight { align-items: center; padding-block: 0; }
 .task-box.is-late { border-color: var(--danger); color: var(--danger-label); }
-.task-title { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/* One tight caption line, so a 20-minute chunk (16 px) still carries its title. */
+.task-title { min-width: 0; overflow: hidden; line-height: 13px; text-overflow: ellipsis; white-space: nowrap; }
 
 .block-status { display: inline-flex; align-items: center; gap: 2px; color: var(--label-2); }
 /* One visual, one meaning: done is dimmed with its check mark; only "No" is struck through. */

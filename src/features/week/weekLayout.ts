@@ -37,7 +37,8 @@ export interface LanePosition {
   stackWidth: number
 }
 
-export const STACK_EVENT_INSET_PERCENT = 28
+// Half the column: the block keeps a strip wide enough for its title on two lines ("Deep / work"), never a letter.
+export const STACK_EVENT_INSET_PERCENT = 50
 
 // Splits an instant range at local midnights so overnight items render on every day they touch.
 export function splitByLocalDay(start: string, end: string, dates: string[], timeZone: string): DayPart[] {

@@ -45,8 +45,8 @@ it('opens the event details with the full title, range, calendar and the block i
   app.mount(host)
 
   const overlay = host.querySelector<HTMLButtonElement>('button.busy')!
-  expect(overlay.style.getPropertyValue('--stack-left')).toBe('28%')
-  expect(overlay.style.getPropertyValue('--stack-width')).toBe('72%')
+  expect(overlay.style.getPropertyValue('--stack-left')).toBe('50%')
+  expect(overlay.style.getPropertyValue('--stack-width')).toBe('50%')
   overlay.click()
   expect(inspected).toEqual([{ title: 'Team sync with the vendor', date, range: '9:30 AM – 10:30 AM', calendar: 'Work calendar', conflictsWith: [{ blockId: deepWork.id, title: deepWork.title }] }])
 })
@@ -134,13 +134,15 @@ it('opens a task from just outside it, ahead of the block it sits in', () => {
 })
 
 
-it('resolves a pointer on routine content to its short task target, and elsewhere to the routine', () => {
+it('opens the routine from its own area, even inside the expanded target of a short task it holds', () => {
   const { root, emitted } = column({ tasks: [taskAt(600, 615)] })
   const routine = root.querySelector<HTMLElement>('[data-block-id=deep] .block-title')!
-  // Task is drawn at y 480–492. Its expanded target ends at 508, over the routine button.
+  // Task is drawn at y 480–492. Its expanded target ends at 508, over the routine: the routine's area opens the routine;
+  // the task opens from its own box (its button handles that press itself).
   routine.dispatchEvent(new MouseEvent('click', { bubbles: true, detail: 1, clientX: 100, clientY: 507 }))
-  expect(emitted.taskSelect).toEqual(['t'])
-  expect(emitted.select).toEqual([])
+  expect(emitted.taskSelect).toEqual([])
+  expect(emitted.select).toEqual(['deep'])
+  emitted.select.length = 0
   routine.dispatchEvent(new MouseEvent('click', { bubbles: true, detail: 1, clientX: 100, clientY: 520 }))
   expect(emitted.select).toEqual(['deep'])
   expect(emitted.create).toEqual([])
