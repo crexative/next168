@@ -133,8 +133,16 @@ function titleWith(text: string, role: TextRole, lead: number, width: number, ma
   // The browser shapes "…" with the word before it ("Pagar…" is narrower than "Pagar" plus "…"), so the pair is measured.
   const endWithEllipsis = (item: { word: string; end: number }) => item.end - metrics.width(item.word, role) + metrics.width(item.word + ELLIPSIS, role)
   while (placed.length > 0 && endWithEllipsis(placed[placed.length - 1]!) > room) placed.pop()
-  // The first word fits a line but not with its "…": hyphenated, it may ("Prepa-" / "rar…").
-  if (placed.length === 0) return lead > 0 ? null : hyphenatedFirstWord(words, role, room, maxLines, metrics)
+  if (placed.length === 0) {
+    // The first word fits a line but not with its "…": whole words stacked read better than syllables, so the word keeps
+    // its line and "…" takes the next one when there is one ("Preparar" / "…"). Only a word that fits no line at all is
+    // hyphenated.
+    const first = metrics.width(words[0]!, role)
+    if (lead === 0 && first <= room && maxLines >= 2 && metrics.width(ELLIPSIS, role) <= room) {
+      return { text: `${words[0]} ${ELLIPSIS}`, lines: 2, lead: false, truncated: true }
+    }
+    return lead > 0 ? null : hyphenatedFirstWord(words, role, room, maxLines, metrics)
+  }
   return { text: placed.map((item) => item.word).join(' ') + ELLIPSIS, lines: placed[placed.length - 1]!.line + 1, lead: lead > 0, truncated: true }
 }
 

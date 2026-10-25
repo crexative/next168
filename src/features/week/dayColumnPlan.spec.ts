@@ -16,7 +16,7 @@ function measureAt(width: number, scale = 1): ColumnMeasure {
     width: (text, role) => [...text].length * BASE[role].char * scale,
     lineHeight: (role) => BASE[role].line * scale,
   }
-  return { width, metrics, markLead: 16 * scale, iconLead: 18 * scale }
+  return { width, metrics, markLead: 16 * scale, iconLead: 18 * scale, glyph: { width: 11.25 * scale, height: 11.25 * scale } }
 }
 
 const px = (minute: number) => (minute / 60) * HOUR_HEIGHT_PX
@@ -57,7 +57,7 @@ describe('what a routine shows, by the size of its box', () => {
   it.each([
     [300, 1, 10, 'mark'], [300, 1, 15, 'mark'], [300, 1, 20, 'small'], [300, 1, 25, 'small'], [300, 1, 30, 'title'], [300, 1, 45, 'title'], [300, 1, 50, 'title+time'], [300, 1, 90, 'title+time+category'],
     [300, 2, 30, 'mark'], [300, 2, 45, 'small'], [300, 2, 60, 'title'], [300, 2, 120, 'title+time'], [300, 2, 150, 'title+time+category'],
-    [145, 1, 60, 'title+time'], [95, 1, 60, 'title'], [95, 1, 90, 'title'], [130, 1, 90, 'title+time+category'], [60, 1, 120, 'title…'], [40, 1, 120, 'mark'],
+    [145, 1, 60, 'title+time'], [95, 1, 60, 'title'], [95, 1, 90, 'title'], [130, 1, 90, 'title+time+category'], [60, 1, 120, 'title…'], [40, 1, 120, 'small'], [30, 1, 120, 'mark'],
   ])('a %i px column at %ix text, %i minutes: %s', (width, scale, minutes, expected) => {
     expect(shown(plan({ blocks: [block('meeting', 540, 540 + minutes, 'Team meeting')], measure: measureAt(width, scale) }), 'meeting')).toBe(expected)
   })
@@ -123,7 +123,22 @@ describe('events and routines share the column', () => {
     expect(at(60, 20)).toEqual({ icon: true, word: false, title: false })
     // 12 px tall: too short for any text or the icon.
     expect(at(104, 15)).toEqual({ icon: false, word: false, title: false })
+    // Codex review of verify7: 14.4 px tall in a narrow lane, too short for the icon inside the caption insets but tall
+    // enough for a glyph. The conflict keeps its ⚠ (centred in the small insets), never the plain grey initial.
+    expect(at(60, 18)).toEqual({ icon: true, word: false, title: false })
     expect(at(30, 5)).toEqual({ icon: false, word: false, title: false })
+  })
+})
+
+describe('a box with no words', () => {
+  it('shows a plain event its initial where the glyph fits, but a conflict only its ⚠ or nothing', () => {
+    const lone = (minutes: number) => plan({ events: [event('Vendor call', 540, 540 + minutes)], measure: measureAt(26) }).busy[0]!.show
+    // 26 px column: 20 px of room inside the small insets; "Vendor…" does not fit in the small size.
+    expect(lone(18)).toMatchObject({ title: false, icon: false, glyph: true })
+    const conflicting = (width: number, minutes: number) => plan({ blocks: [block('b', 540, 600)], events: [event('Vendor call', 540, 540 + minutes)], measure: measureAt(width) }).busy[0]!.show
+    expect(conflicting(60, 18)).toEqual({ icon: true, word: false, title: false })
+    // 17 px of room: 13.6 px tall holds the 11.25 px glyph but not the 12 px ⚠; the red border marks the conflict.
+    expect(conflicting(60, 17)).toEqual({ icon: false, word: false, title: false })
   })
 })
 

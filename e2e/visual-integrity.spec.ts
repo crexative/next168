@@ -1084,10 +1084,68 @@ test.describe('visual integrity guard: whole text in Week', () => {
   test('a box with no words is accepted when even its first word does not fit, and outlines are left alone', async ({ page }) => {
     await page.setContent(column(`${smallest}
       <button class="item" title="Meditación" data-text-inset="0 4 0 7" style="top: 0; left: 0; width: 150px; height: 8px"></button>
-      <button class="item" title="Abstimmungsgespräch" data-text-inset="0 4 0 7" style="top: 20px; left: 0; width: 30px; height: 40px"></button>
+      <button class="item" title="Abstimmungsgespräch" data-text-inset="0 4 0 7" style="top: 20px; left: 0; width: 30px; height: 40px"><span data-glyph style="position: absolute; inset: 0 4px 0 7px"></span></button>
       <button class="item" title="Write the report" data-layered data-text-inset="1.5 5.5 1.5 7.5" style="top: 80px; left: 0; width: 150px; height: 96px; pointer-events: none; background: transparent"></button>
     `))
     expect(await audit(page)).toEqual([])
+  })
+
+  // verify7: a box too small for one whole word still says something: its category glyph, when the box holds it. The
+  // glyph here is 12 px square; at 50d5dbd "Correos y seguimiento" (44.9×112 px at 768) and "Almuerzo" (44.9×36 px)
+  // were drawn blank.
+  const glyphProbe = '<span data-glyph-probe style="position: absolute; visibility: hidden; display: block; width: 12px; height: 12px"></span>'
+  test('a box with no word but room for its glyph that shows nothing is reported', async ({ page }) => {
+    await page.setContent(column(`${smallest}${glyphProbe}
+      <button class="item" aria-label="Correos y seguimiento" data-text-inset="0 4 0 7" style="top: 0; left: 0; width: 30px; height: 112px"></button>
+      <button class="item" aria-label="Pausa activa" data-text-inset="1 3 1 3" style="top: 120px; left: 0; width: 150px; height: 12px"></button>
+    `))
+    const violations = await audit(page)
+    expect(violations.some((violation) => violation.includes('"Correos y seguimiento" draws neither a word nor its glyph though the 12.0×12.0 px glyph fits its 18.8×112.0 px room'))).toBe(true)
+    // 10 px of room is below the 11 px line and the 12 px glyph: a nameless strip there is allowed.
+    expect(violations.filter((violation) => violation.includes('Pausa activa'))).toEqual([])
+  })
+
+  test('a glyph counts only when it is drawn inside its box', async ({ page }) => {
+    await page.setContent(column(`${smallest}${glyphProbe}
+      <button class="item" aria-label="Almuerzo" data-text-inset="0 4 0 7" style="top: 0; left: 0; width: 30px; height: 36px"><span data-glyph style="position: absolute; inset: 0 4px 0 7px"></span></button>
+      <button class="item" aria-label="Correos y seguimiento" data-text-inset="0 4 0 7" style="top: 40px; left: 0; width: 30px; height: 36px"><span data-glyph style="position: absolute; top: 0; left: 40px; width: 12px; height: 12px"></span></button>
+      <button class="item" aria-label="Reunión de equipo" data-text-inset="0 4 0 7" style="top: 80px; left: 0; width: 30px; height: 36px"><span data-glyph style="position: absolute; inset: 0; display: none"></span></button>
+    `))
+    const violations = await audit(page)
+    expect(violations.filter((violation) => violation.includes('Almuerzo'))).toEqual([])
+    expect(violations.some((violation) => violation.includes('"Correos y seguimiento" draws neither a word nor its glyph'))).toBe(true)
+    expect(violations.some((violation) => violation.includes('"Reunión de equipo" draws neither a word nor its glyph'))).toBe(true)
+  })
+
+  test('a routine its tasks fill needs no glyph of its own; one they leave room in does', async ({ page }) => {
+    await page.setContent(column(`${smallest}${glyphProbe}
+      <button class="item" aria-label="Deep work" data-text-inset="0 4 0 7" style="top: 0; left: 0; width: 30px; height: 96px"></button>
+      <button class="item" aria-label="Task: Report" data-layered style="top: 0; left: 0; width: 30px; height: 90px"><span data-glyph style="position: absolute; inset: 2px 5px 2px 7px"></span></button>
+      <button class="item" aria-label="Correos y seguimiento" data-text-inset="0 4 0 7" style="top: 100px; left: 0; width: 30px; height: 96px"></button>
+      <button class="item" aria-label="Task: Write" data-layered style="top: 100px; left: 0; width: 30px; height: 40px"><span data-glyph style="position: absolute; inset: 2px 5px 2px 7px"></span></button>
+    `))
+    const violations = await audit(page)
+    expect(violations.filter((violation) => violation.includes('Deep work'))).toEqual([])
+    expect(violations.some((violation) => violation.includes('"Correos y seguimiento" draws neither a word nor its glyph though the 12.0×12.0 px glyph fits its 18.8×56.0 px room'))).toBe(true)
+  })
+
+  // Codex review of verify7: a short conflict in a narrow lane drew the plain grey initial, hiding the conflict. A box
+  // that needs the warning glyph (`data-glyph-kind="warning"`) is not satisfied by the category glyph.
+  test('a conflict without its ⚠ where the ⚠ fits is reported, even when it shows the category glyph', async ({ page }) => {
+    const warningProbe = '<span data-glyph-probe="warning" style="position: absolute; visibility: hidden; display: block; width: 12px; height: 12px"></span>'
+    await page.setContent(column(`${smallest}${glyphProbe}${warningProbe}
+      <button class="item" aria-label="Vendor call" data-glyph-kind="warning" data-text-inset="1 3 1 3" style="top: 0; left: 0; width: 26px; height: 15px"><span data-glyph style="position: absolute; inset: 1px 3px"></span></button>
+      <button class="item" aria-label="Dentist" data-glyph-kind="warning" data-text-inset="1 3 1 3" style="top: 40px; left: 0; width: 26px; height: 15px"><span data-glyph="warning" style="position: absolute; inset: 1px 3px"></span></button>
+      <button class="item" aria-label="Stand-up" data-glyph-kind="warning" data-text-inset="1 3 1 3" style="top: 80px; left: 0; width: 26px; height: 13px"></button>
+    `))
+    const violations = await audit(page)
+    expect(violations.some((violation) => violation.includes('"Vendor call" draws neither a word nor its warning glyph though the 12.0×12.0 px glyph fits its 19.8×13.0 px room'))).toBe(true)
+    expect(violations.filter((violation) => violation.includes('Dentist') || violation.includes('Stand-up'))).toEqual([])
+  })
+
+  test('a container without its own glyph is held to the documented glyph size', async ({ page }) => {
+    await page.setContent(column('<button class="item" title="Abstimmungsgespräch" data-text-inset="0 4 0 7" style="top: 0; left: 0; width: 30px; height: 40px"></button>'))
+    expect((await audit(page)).some((violation) => violation.includes('glyph fits its 18.8×40.0 px room'))).toBe(true)
   })
 
   test('outside a whole-text container an ellipsis is still a deliberate truncation', async ({ page }) => {
