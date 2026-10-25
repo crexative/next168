@@ -497,6 +497,13 @@ describe('the fence never fails open', () => {
     expect(await dumpDatabases(factory)).toBe(before)
   })
 
+  it('calendar texts alone (companion mode) never create the planner database', async () => {
+    const factory = new IDBFactory()
+    const texts = new IndexedDbCalendarSourceStore(factory, createStorageFence(factory, { lock: mutexRunner() }))
+    await texts.put('cal-a', ics('companion'))
+    expect((await factory.databases()).map((database) => database.name)).toEqual([CALENDAR_DATABASE])
+  })
+
   it('a fresh device gets both databases with no copy', async () => {
     const factory = new IDBFactory()
     const fresh = newBuild(factory, mutexRunner())

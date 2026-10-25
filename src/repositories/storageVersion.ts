@@ -183,13 +183,13 @@ async function capturePreUpgradeCopy(
 ): Promise<PreUpgradeCopy | undefined> {
   let document: unknown
   try {
-    const planner = versions.planner === 0 ? undefined : await readDatabase(factory, PLANNER_DATABASE, versions.planner, ['document', 'backup', 'proposals', 'meta'])
-    document = planner?.document?.get('current')
+    const planner = await readDatabase(factory, PLANNER_DATABASE, versions.planner, ['document', 'backup', 'proposals', 'meta'])
+    document = planner.document?.get('current')
     const calendars = versions.calendars === 0 ? undefined : await readDatabase(factory, CALENDAR_DATABASE, versions.calendars, [CALENDAR_STORE])
     const calendarSourceTexts: Record<string, string> = {}
     for (const [key, text] of calendars?.[CALENDAR_STORE] ?? []) calendarSourceTexts[String(key)] = text as string
-    const meta = Object.fromEntries([...(planner?.meta ?? new Map())].map(([key, value]) => [String(key), value]))
-    const raw = { document, backup: planner?.backup?.get('current'), proposals: planner?.proposals?.get('all'), meta }
+    const meta = Object.fromEntries([...(planner.meta ?? new Map())].map(([key, value]) => [String(key), value]))
+    const raw = { document, backup: planner.backup?.get('current'), proposals: planner.proposals?.get('all'), meta }
     const empty = raw.document === undefined && raw.backup === undefined && raw.proposals === undefined
       && Object.keys(meta).length === 0 && Object.keys(calendarSourceTexts).length === 0
     if (empty) return undefined
@@ -244,7 +244,9 @@ async function upgradeAll(factory: IDBFactory, version: number, now: () => Date,
   const calendars = await probeVersion(factory, CALENDAR_DATABASE)
   // Never downgrade: a newer build's data stays untouched, and this build reports a storage error.
   if (planner > version || calendars > version) throw failure('VersionError', 'storage was upgraded by a newer version')
-  if (planner < version) {
+  // A missing planner database is left missing (companion mode never creates it); its first fenced open creates it
+  // at `version`, empty, so there is nothing to copy.
+  if (planner > 0 && planner < version) {
     const copy = planner < FIRST_FENCED_VERSION ? await capturePreUpgradeCopy(factory, { planner, calendars }, now) : undefined
     let db: IDBDatabase
     try {
