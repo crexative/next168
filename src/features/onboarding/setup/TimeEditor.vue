@@ -1,13 +1,14 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
 import Button from '@/ui/Button.vue'
+import { formatDayPeriod } from '@/ui/format'
 import { useSetupFormat } from './useSetupFormat'
 
 // A time that is not among the chips: big steppers in 5-minute steps and a deliberate confirm. No wheel, no native
 // time input, so the 12 or 24 h clock of the person is the only one shown.
 const props = defineProps<{ modelValue: number }>()
 const emit = defineEmits<{ use: [minute: number]; cancel: [] }>()
-const { t, time, uses12h } = useSetupFormat()
+const { t, time, uses12h, locale } = useSetupFormat()
 
 const hour = ref(Math.floor(props.modelValue / 60))
 const minutes = ref(props.modelValue % 60)
@@ -48,7 +49,7 @@ onMounted(() => heading.value?.focus({ preventScroll: true }))
       <button class="step" type="button" data-step="minutes-down" :aria-label="t('onboarding.guided.time.minutesDown')" @click="stepMinutes(-1)">−</button>
       <button class="step" type="button" data-step="minutes-up" :aria-label="t('onboarding.guided.time.minutesUp')" @click="stepMinutes(1)">+</button>
     </div>
-    <button v-if="uses12h" class="period t-body" type="button" data-testid="time-period" @click="flipPeriod">{{ isPm ? 'p. m.' : 'a. m.' }}</button>
+    <button v-if="uses12h" class="period t-body" type="button" data-testid="time-period" @click="flipPeriod">{{ formatDayPeriod(value, locale) }}</button>
     <Button variant="tinted" data-testid="time-use" @click="emit('use', value)">{{ t('onboarding.guided.time.use', { time: time(value) }) }}</Button>
   </div>
 </template>

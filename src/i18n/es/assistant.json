@@ -91,7 +91,7 @@
     "minStillNeeded": "{category}: {planned} planificadas, faltan {amount} para llegar a la meta de {goal}.",
     "minReached": "{category}: {planned} planificadas, la meta de {goal} está cumplida.",
     "currentBlock": "Ahora: {title}, quedan {left}.",
-    "nextBlock": "Lo siguiente, el {date} a las {time}: {title}.",
+    "nextBlock": "Lo siguiente, el {date} a la {time}: {title}. | Lo siguiente, el {date} a las {time}: {title}.",
     "noNextBlock": "No hay nada más planificado esta semana.",
     "noOverflow": "Todas las tareas pendientes caben en tu tiempo libre.",
     "overflow": "{count} tarea no cabe o va tarde: {titles}. | {count} tareas no caben o van tarde: {titles}.",

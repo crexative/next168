@@ -3,11 +3,12 @@ import {
   STORAGE_KEYS, type CalendarSourceStore, type LoadResult, type PlannerDocument, type PlannerRepository, type SaveResult,
 } from '@/core/model'
 import { parseDocument, validateDocument } from './core'
+import { createEmptyDocument } from '@/core/documents'
 import type { ChangeChannel } from './changeChannel'
 import type { BrowserStore, Snapshot } from './indexedDbStore'
 import { LEGACY_KEYS, planLegacyImport } from './legacyImport'
 import {
-  NO_WEB_LOCKS, currentUnsavedBaseline, failureReason, isValidDocumentText, purgeEpochOf, storedDocument, storedFingerprintOf,
+  NO_WEB_LOCKS, currentUnsavedBaseline, failureReason, isValidDocumentText, purgeEpochOf, storedDocument, storedFingerprintOf, unsavedBaselineRecord,
   type RunExclusive, type StorageLike, type StoredDocument, type StoredFingerprint,
 } from './storageCommit'
 
@@ -81,7 +82,7 @@ export class BrowserPlannerRepository implements PlannerRepository {
     // An import already ran, so the planner was lost afterwards: recover, never resurrect the old localStorage bytes.
     if (snapshot.migration !== undefined) return { kind: 'corrupt', raw: '', reason: STORED_DOCUMENT_MISSING }
     const plan = planLegacyImport(this.deps.legacy, this.importEnvironment())
-    if (plan.kind === 'none') return this.emptyResult(snapshot)
+    if (plan.kind === 'none') return runExclusive ? runExclusive(() => this.importOnce()) : this.emptyResult(snapshot)
     if (!runExclusive) return plan.result
     return runExclusive(() => this.importOnce())
   }
@@ -253,7 +254,16 @@ export class BrowserPlannerRepository implements PlannerRepository {
     }
     if (snapshot.migration !== undefined) return { kind: 'corrupt', raw: '', reason: STORED_DOCUMENT_MISSING }
     const plan = planLegacyImport(this.deps.legacy, this.importEnvironment())
-    if (plan.kind === 'none') return this.emptyResult(snapshot)
+    if (plan.kind === 'none') {
+      // Persist only device state, under the same lock as the first write and delete-all. A prompt copied before
+      // leaving the PWA must still name this plan when the browser reloads on return from the AI app.
+      if (!currentUnsavedBaseline(snapshot)) {
+        const baseline = unsavedBaselineRecord(createEmptyDocument(this.importEnvironment()), purgeEpochOf(snapshot))
+        await store.write({ unsavedBaseline: baseline })
+        snapshot.unsavedBaseline = baseline
+      }
+      return this.emptyResult(snapshot)
+    }
     if (plan.records) {
       await store.write({ ...plan.records, migration: { source: plan.source, at: this.deps.now().toISOString() } })
       this.identity = identityOf(plan.records.document)

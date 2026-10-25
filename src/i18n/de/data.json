@@ -11,7 +11,7 @@
     }
   },
   "ios": {
-    "body": "Exportieren Sie vor „Zum Home-Bildschirm“: Die installierte App hat einen eigenen Speicher. Öffnen Sie danach die installierte App und importieren Sie die Datei dort."
+    "body": "Exportiere vor „Zum Home-Bildschirm“: Die installierte App hat einen eigenen Speicher. Öffne danach die installierte App und importiere die Datei dort."
   },
   "persistence": {
     "title": "Speicherschutz",
@@ -30,13 +30,13 @@
     "action": "Datei importieren…",
     "fileLabel": "Next168-Exportdatei auswählen",
     "tooLarge": "Die Datei ist zu groß für den Import.",
-    "unsupported": "Diese Datei stammt aus einer neueren Version (Schema {version}). Aktualisieren Sie zuerst Next168.",
+    "unsupported": "Diese Datei stammt aus einer neueren Version (Schema {version}). Aktualisiere zuerst Next168.",
     "invalid": "Diese Datei kann nicht importiert werden ({reason}). Es wurde nichts geändert.",
-    "failed": "Import fehlgeschlagen ({reason}). Ihre Daten sind unverändert.",
+    "failed": "Import fehlgeschlagen ({reason}). Deine Daten sind unverändert.",
     "verified": "Importiert und mit dem Gespeicherten abgeglichen (Fingerabdruck {hash}).",
     "verifyFailed": {
-      "unreadable": "Importiert, aber die gespeicherten Daten konnten nicht zurückgelesen werden. Exportieren Sie eine Kopie und laden Sie neu.",
-      "mismatch": "Importiert, aber die gespeicherten Daten weichen von der Datei ab. Exportieren Sie eine Kopie und prüfen Sie sie."
+      "unreadable": "Importiert, aber die gespeicherten Daten konnten nicht zurückgelesen werden. Exportiere eine Kopie und lade neu.",
+      "mismatch": "Importiert, aber die gespeicherten Daten weichen von der Datei ab. Exportiere eine Kopie und prüfe sie."
     },
     "previewTitle": "Importvorschau",
     "version": "Schemaversion der Datei {version} (aktuell {current})",
@@ -50,7 +50,7 @@
       "events": "keine Termine | {count} Termin | {count} Termine",
       "calendarSources": "keine Kalender | {count} Kalender | {count} Kalender"
     },
-    "replaceWarning": "Der Import ersetzt alles, was derzeit in diesem Browser liegt. Exportieren Sie vorher, falls Sie es brauchen könnten.",
+    "replaceWarning": "Der Import ersetzt alles, was derzeit in diesem Browser liegt. Exportiere vorher, falls du es brauchen könntest.",
     "replace": "Meine Daten ersetzen"
   },
   "deleteAll": {
@@ -59,8 +59,8 @@
     "action": "Alle Daten löschen…",
     "phrase": "LÖSCHEN",
     "confirmTitle": "Alles löschen?",
-    "confirmBody": "Dadurch werden alle Next168-Daten auf diesem Gerät endgültig gelöscht, auch Sicherungen. Exportieren Sie vorher eine Kopie, falls Sie sie brauchen könnten.",
-    "typeToConfirm": "Geben Sie {phrase} zur Bestätigung ein",
+    "confirmBody": "Dadurch werden alle Next168-Daten auf diesem Gerät endgültig gelöscht, auch Sicherungen. Exportiere vorher eine Kopie, falls du sie brauchen könntest.",
+    "typeToConfirm": "Gib {phrase} zur Bestätigung ein",
     "confirmAction": "Alles löschen",
     "done": "Alle Daten wurden gelöscht.",
     "failed": "Löschen nicht möglich ({reason}). Es wurde nichts geändert."

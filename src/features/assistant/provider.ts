@@ -1,4 +1,4 @@
-import type { PlannerDocument, ProposalInput } from '@/core/model'
+import type { ExternalOccurrence, PlannerDocument, ProposalInput } from '@/core/model'
 
 export type Availability = 'available' | 'downloadable' | 'unavailable'
 export type Translate = (key: string, params?: Record<string, unknown>) => string
@@ -9,6 +9,7 @@ export interface AskContext {
   locale: string
   timeZone: string
   translate: Translate
+  external?: ExternalOccurrence[]
   // How the on-device model stands on this device; lets the quick answers say whether turning it on is possible.
   modelAvailability?: Availability | 'checking'
 }

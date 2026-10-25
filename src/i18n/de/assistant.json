@@ -71,14 +71,14 @@
       "add_task": "Die Aufgabe „{title}“ hinzufügen ({minutes} Min.)"
     },
     "problem": {
-      "alreadyThere": "„{title}“ ist dort bereits zu dieser Zeit eingeplant. Sie müssen nichts ändern.",
-      "noChange": "Daraus konnte ich keine Änderung an Ihrem Plan machen. Versuchen Sie zum Beispiel: „Füge am Donnerstag um 18:00 einen einstündigen Arbeitsblock hinzu“.",
-      "needsDetails": "Für diese Änderung brauche ich mehr Angaben: was, welcher Tag und welche Uhrzeit. Bitte fragen Sie erneut mit diesen Angaben.",
-      "unknownCategory": "Die Kategorie „{category}“ habe ich nicht gefunden. Ihre Kategorien sind: {categories}.",
-      "unknownBlock": "Ich habe keine Routine namens „{title}“ in Ihrem Plan gefunden.",
-      "absentDay": "„{title}“ findet an diesen Tagen statt: {days}. Welchen Termin möchten Sie ändern?",
-      "ambiguousBlock": "Mehr als eine Routine passt zu „{title}“. Nennen Sie den Tag.",
-      "notDelete": "Ich war nicht sicher, ob Sie einen Block entfernen wollten, daher wurde nichts geändert. Sagen Sie „lösche“ oder „entferne“ und den Namen des Blocks."
+      "alreadyThere": "„{title}“ ist dort bereits zu dieser Zeit eingeplant. Du musst nichts ändern.",
+      "noChange": "Daraus konnte ich keine Änderung an deinem Plan machen. Versuche zum Beispiel: „Füge am Donnerstag um 18:00 einen einstündigen Arbeitsblock hinzu“.",
+      "needsDetails": "Für diese Änderung brauche ich mehr Angaben: was, welcher Tag und welche Uhrzeit. Bitte frage erneut mit diesen Angaben.",
+      "unknownCategory": "Die Kategorie „{category}“ habe ich nicht gefunden. Deine Kategorien sind: {categories}.",
+      "unknownBlock": "Ich habe keine Routine namens „{title}“ in deinem Plan gefunden.",
+      "absentDay": "„{title}“ findet an diesen Tagen statt: {days}. Welchen Termin möchtest du ändern?",
+      "ambiguousBlock": "Mehr als eine Routine passt zu „{title}“. Nenne den Tag.",
+      "notDelete": "Ich war nicht sicher, ob du einen Block entfernen wolltest, daher wurde nichts geändert. Sage „lösche“ oder „entferne“ und den Namen des Blocks."
     }
   },
   "answers": {

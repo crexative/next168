@@ -27,7 +27,7 @@ describe.each(storeCases)('guarded commit on $name', ({ create }) => {
 
   it('proven-empty storage that a migration filled with revision 0 refuses the save and keeps the migrated document', async () => {
     const { a, b, store, legacy } = tabs()
-    expect(await a.load()).toEqual({ kind: 'empty' })
+    expect(await a.load()).toMatchObject({ kind: 'empty', document: { revision: 0 } })
     // Tab B imports an older build's data after A's empty load: revision 0, with content.
     const migrated = testDocument({ categories: [{ id: 'c-old', name: 'Old', colorKey: 'blue', goal: { type: 'none', hoursPerWeek: 0 } }] })
     legacy.data.set(KEYS.document, JSON.stringify(migrated))

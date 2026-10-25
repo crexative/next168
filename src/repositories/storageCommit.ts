@@ -69,10 +69,9 @@ export function purgeEpochOf(snapshot: Snapshot): number {
   return typeof snapshot.purgeEpoch === 'number' ? snapshot.purgeEpoch : 0
 }
 
-// Until the first write, the planner a person sees lives only in memory. A proposal made against it (a pasted reply,
-// the on-device assistant, an imported proposal) stores that document beside the proposals, never as the planner:
-// approving creates the planner from exactly what the proposal was made for, and every tab and reload shows the same
-// unsaved planner meanwhile. It belongs to the purge epoch it was made in; a delete-all makes it void.
+// Before the first planner write, its baseline is device state: copying a prompt, reloading and pasting the reply
+// all refer to the same identity. Approving creates the planner from that baseline. It belongs to the purge epoch
+// it was made in; delete-all makes it void, and the first stored write removes it.
 export interface UnsavedBaseline {
   document: PlannerDocument
   purgeEpoch: number

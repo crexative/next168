@@ -22,7 +22,9 @@ export class Workspace implements ProposalRepository {
     await mkdir(this.home, { recursive: true, mode: 0o700 })
     await this.mutex.run(async () => {
       if (await readOptional(this.documentFile) === undefined) {
-        await this.write(this.documentFile, createEmptyDocument({ now: this.now(), locale: 'en', timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone }))
+        // The server has no browser language. "und" leaves language selection to the paired device until a person
+        // saves an explicit preference; proposal approval preserves that choice.
+        await this.write(this.documentFile, createEmptyDocument({ now: this.now(), locale: 'und', timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone }))
       }
     })
   }

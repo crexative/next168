@@ -4,9 +4,9 @@
   "completed": "„{title}“ erledigt",
   "removed": "„{title}“ entfernt",
   "overflow": "In {category} fehlen diese Woche {duration}.",
-  "overflowHint": "Fügen Sie etwa {duration} zu Ihren {category}-Routinen hinzu, verkürzen Sie die Aufgabe oder teilen Sie sie.",
-  "late": "Sie liegt nach dem Fälligkeitsdatum ({date}).",
-  "lateHint": "Verschieben Sie das Datum, erhöhen Sie die Priorität oder schaffen Sie früher Zeit.",
+  "overflowHint": "Füge etwa {duration} zu deinen {category}-Routinen hinzu, verkürze die Aufgabe oder teile sie.",
+  "late": "Die Aufgabe liegt nach dem Fälligkeitsdatum ({date}).",
+  "lateHint": "Verschiebe das Datum, erhöhe die Priorität oder schaffe früher Zeit.",
   "warnings": "Planungshinweise",
   "unplaced": "Nicht eingeplant",
   "unplacedHint": "In den nächsten 7 Tagen gibt es keinen freien Zeitraum.",
@@ -15,7 +15,7 @@
   "complete": "{title} erledigen",
   "empty": {
     "title": "Nichts zu tun",
-    "description": "Fügen Sie oben eine Aufgabe hinzu; sie findet von selbst einen freien Zeitraum."
+    "description": "Füge oben eine Aufgabe hinzu; sie findet von selbst einen freien Zeitraum."
   },
   "add": {
     "title": "Aufgabe hinzufügen",
@@ -40,7 +40,7 @@
   "changedElsewhere": "Das wurde anderswo geändert und deshalb neu geladen. Bitte prüfen und erneut versuchen.",
   "swipeRemove": "Entfernen",
   "overflowAny": "Diese Woche fehlen {duration} freie Zeit.",
-  "overflowAnyHint": "Schaffen Sie diese Woche Zeit, verkürzen Sie die Aufgabe oder teilen Sie sie.",
+  "overflowAnyHint": "Schaffe diese Woche Zeit, verkürze die Aufgabe oder teile sie.",
   "sheet": {
     "new": "Neue Aufgabe",
     "edit": "Aufgabe bearbeiten",

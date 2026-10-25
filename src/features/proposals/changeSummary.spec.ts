@@ -29,9 +29,9 @@ describe('proposal date summaries', () => {
   })
 
   it.each([
-    ['UTC', 'Oct 23, 2026, 10:00 AM – Oct 23, 2026, 11:00 AM'],
-    ['America/Los_Angeles', 'Oct 23, 2026, 3:00 AM – Oct 23, 2026, 4:00 AM'],
-    ['Pacific/Kiritimati', 'Oct 24, 2026, 12:00 AM – Oct 24, 2026, 1:00 AM'],
+    ['UTC', 'Oct 23, 2026, 10:00\u00a0AM – Oct 23, 2026, 11:00\u00a0AM'],
+    ['America/Los_Angeles', 'Oct 23, 2026, 3:00\u00a0AM – Oct 23, 2026, 4:00\u00a0AM'],
+    ['Pacific/Kiritimati', 'Oct 24, 2026, 12:00\u00a0AM – Oct 24, 2026, 1:00\u00a0AM'],
   ])('converts timed event instants to the workspace time zone: %s', (timeZone, expected) => {
     expect(summarizeEntity({ allDay: false, start: '2026-10-24T00:00:00+14:00', end: '2026-10-24T01:00:00+14:00' }, { ...context, timeZone }))
       .toEqual([{ label: 'proposals.fields.when', value: expected }])
@@ -41,8 +41,8 @@ describe('proposal date summaries', () => {
 describe('routine times', () => {
   const t = (key: string, params?: Record<string, unknown>) => (key === 'week.grid.crossesMidnight' ? `${String(params?.range)} (overnight)` : key)
   it('names a routine that runs past midnight as overnight, and a daytime one plainly', () => {
-    expect(summarizeEntity({ start: 1350, end: 390 }, { ...context, t })).toContainEqual({ label: 'proposals.fields.time', value: '10:30 PM – 6:30 AM (overnight)' })
-    expect(summarizeEntity({ start: 540, end: 600 }, { ...context, t })).toContainEqual({ label: 'proposals.fields.time', value: '9:00 AM – 10:00 AM' })
+    expect(summarizeEntity({ start: 1350, end: 390 }, { ...context, t })).toContainEqual({ label: 'proposals.fields.time', value: '10:30\u00a0PM – 6:30\u00a0AM (overnight)' })
+    expect(summarizeEntity({ start: 540, end: 600 }, { ...context, t })).toContainEqual({ label: 'proposals.fields.time', value: '9:00\u00a0AM – 10:00\u00a0AM' })
   })
 })
 

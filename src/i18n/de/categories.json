@@ -31,18 +31,18 @@
   },
   "hours": "Stunden pro Woche",
   "errors": {
-    "nameRequired": "Geben Sie der Kategorie einen Namen.",
-    "hoursRange": "Verwenden Sie 0,5 bis 168 Stunden."
+    "nameRequired": "Gib der Kategorie einen Namen.",
+    "hoursRange": "Verwende 0,5 bis 168 Stunden."
   },
   "deleteTitle": "Kategorie löschen",
   "inUse": "Diese Kategorie enthält {items}. Verschiebe zum Löschen alles in eine andere Kategorie.",
   "reassignTo": "Verschieben nach",
-  "noReassignTarget": "Legen Sie zuerst eine weitere Kategorie an.",
+  "noReassignTarget": "Lege zuerst eine weitere Kategorie an.",
   "reassignAndDelete": "Verschieben und löschen",
   "delete": "Kategorie löschen",
   "deleted": "„{name}“ gelöscht",
   "changedElsewhere": "Das wurde anderswo geändert und deshalb neu geladen. Bitte prüfen und erneut versuchen.",
-  "colorInUse": "{name} nutzt diese Farbe bereits. Sie können sie trotzdem behalten.",
+  "colorInUse": "{name} nutzt diese Farbe bereits. Du kannst sie trotzdem behalten.",
   "usage": {
     "and": "{first} und {second}",
     "blocks": "keine Routinen | {count} Routine | {count} Routinen",

@@ -31,23 +31,23 @@
   },
   "hours": "Heures par semaine",
   "errors": {
-    "nameRequired": "Donnez un nom à la catégorie.",
-    "hoursRange": "Indiquez entre 0,5 et 168 heures."
+    "nameRequired": "Donne un nom à la catégorie.",
+    "hoursRange": "Indique entre 0,5 et 168 heures."
   },
   "deleteTitle": "Supprimer la catégorie",
-  "inUse": "Cette catégorie contient {items}. Pour la supprimer, déplacez tout vers une autre catégorie.",
+  "inUse": "Cette catégorie contient {items}. Pour la supprimer, déplace tout vers une autre catégorie.",
   "reassignTo": "Les déplacer vers",
-  "noReassignTarget": "Créez d'abord une autre catégorie.",
+  "noReassignTarget": "Crée d'abord une autre catégorie.",
   "reassignAndDelete": "Déplacer et supprimer",
   "delete": "Supprimer la catégorie",
   "deleted": "« {name} » supprimée",
-  "changedElsewhere": "Ceci a changé ailleurs et a donc été rechargé. Vérifiez-le puis réessayez.",
-  "colorInUse": "{name} utilise déjà cette couleur. Vous pouvez la garder.",
+  "changedElsewhere": "Ceci a changé ailleurs et a donc été rechargé. Vérifie-le puis réessaie.",
+  "colorInUse": "{name} utilise déjà cette couleur. Tu peux la garder.",
   "usage": {
     "and": "{first} et {second}",
     "blocks": "aucune routine | {count} routine | {count} routines",
     "tasks": "aucune tâche | {count} tâche | {count} tâches"
   },
-  "chooseTarget": "Choisissez une catégorie",
+  "chooseTarget": "Choisis une catégorie",
   "setupWeek": "Préparer ma semaine"
 }

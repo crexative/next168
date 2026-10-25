@@ -55,7 +55,7 @@ describe.each(storeCases)('$name', ({ create, failWritesOf }) => {
 
   describe('load and the one-time import (A5)', () => {
     it('reports empty storage', async () => {
-      expect(await repos().planner.load()).toEqual({ kind: 'empty' })
+      expect(await repos().planner.load()).toMatchObject({ kind: 'empty', document: { revision: 0 } })
     })
 
     it('(a) copies v2, its backup and proposals byte for byte with the migration record in one transaction', async () => {

@@ -4,8 +4,8 @@
     "subtitle": "Assistant sur l’appareil, stockage et détails techniques"
   },
   "exportNudge": {
-    "never": "Vous n'avez pas encore exporté de copie.",
-    "overdue": "Cela fait {days} jours que vous n'avez pas exporté de copie.",
+    "never": "Tu n'as pas encore exporté de copie.",
+    "overdue": "Cela fait {days} jours que tu n'as pas exporté de copie.",
     "action": "Exporter une copie"
   },
   "appearance": {
@@ -15,10 +15,10 @@
     "dark": "Sombre"
   },
   "calendars": {
-    "subtitle": "Voyez vos rendez-vous à côté de votre plan"
+    "subtitle": "Vois tes rendez-vous à côté de ton plan"
   },
   "data": {
-    "title": "Vos données",
+    "title": "Tes données",
     "subtitle": "Exporter, importer ou effacer"
   },
   "categoriesTitle": "Catégories et objectifs"

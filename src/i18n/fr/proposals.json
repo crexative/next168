@@ -1,8 +1,8 @@
 {
   "title": "Propositions",
   "pending": "{count} proposition en attente | {count} propositions en attente",
-  "description": "Les assistants suggèrent des changements. Vous décidez de votre semaine.",
-  "loadError": "Chargement impossible. Vérifiez la connexion au companion.",
+  "description": "Les assistants suggèrent des changements. Tu décides de ta semaine.",
+  "loadError": "Chargement impossible. Vérifie la connexion au companion.",
   "untitled": "Changements suggérés",
   "from": "De {source}",
   "sources": {
@@ -11,9 +11,8 @@
     "import": "Collée depuis ton IA"
   },
   "review": "Examiner la proposition",
-  "revision": "Basée sur la révision {revision}",
-  "stale": "Votre planning a changé. Demandez une proposition basée sur la révision actuelle.",
-  "invalid": "Cette proposition ne peut pas être appliquée. Demandez-en une autre.",
+  "stale": "Ton planning a changé. Demande une proposition basée sur la révision actuelle.",
+  "invalid": "Cette proposition ne peut pas être appliquée. Demande-en une autre.",
   "overGoal": "Ce changement dépasse l’objectif d’une catégorie.",
   "overlap": "Certaines routines se chevauchent.",
   "before": "Avant",
@@ -24,9 +23,9 @@
   "applied": "Approuvée et enregistrée.",
   "rejected": "Proposition rejetée.",
   "notFound": "Cette proposition n’existe plus.",
-  "decisionError": "Enregistrement impossible. Rechargez avant de réessayer.",
-  "durabilityWarning": "Le changement est validé, mais la durabilité ou l’état doit être vérifié. Gardez le companion actif et rechargez avant de réessayer.",
-  "currentBlocks": "Votre routine actuelle",
+  "decisionError": "Enregistrement impossible. Recharge avant de réessayer.",
+  "durabilityWarning": "Le changement est validé, mais la durabilité ou l’état doit être vérifié. Garde le companion actif et recharge avant de réessayer.",
+  "currentBlocks": "Ta routine actuelle",
   "operations": {
     "add_category": "Ajouter une catégorie",
     "add_block": "Ajouter une routine",
@@ -82,5 +81,5 @@
   "discardOnCancel": "Si tu annules, ces changements sont abandonnés et ton plan reste tel quel.",
   "keepOnCancel": "Si tu annules, la proposition reste en attente dans Propositions.",
   "duplicateCategory": "Tu as déjà une catégorie appelée « {name} ». Demande une proposition qui l’utilise.",
-  "emptyCategory": "« {name} » restera vide ; vous pouvez la supprimer dans Réglages."
+  "emptyCategory": "« {name} » restera vide ; tu peux la supprimer dans Réglages."
 }

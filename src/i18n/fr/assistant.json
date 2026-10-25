@@ -1,13 +1,13 @@
 {
   "title": "Assistant",
-  "privacy": "Fonctionne sur cet appareil. Vos plans ne le quittent jamais ; l'assistant les lit seulement pour vous répondre.",
+  "privacy": "Fonctionne sur cet appareil. Tes plans ne le quittent jamais ; l'assistant les lit seulement pour te répondre.",
   "providers": {
     "rules": "Réponses rapides",
     "webllm": "Modèle sur l'appareil"
   },
   "status": {
     "header": "État de l'assistant",
-    "rulesDetail": "Répond à partir de vos heures planifiées. Fonctionne partout, sans téléchargement.",
+    "rulesDetail": "Répond à partir de tes heures planifiées. Fonctionne partout, sans téléchargement.",
     "available": "Prêt",
     "downloadable": "Téléchargement requis",
     "unavailable": "Indisponible",
@@ -22,32 +22,32 @@
   },
   "optIn": {
     "title": "Activer le modèle sur l'appareil",
-    "body": "Un modèle de langage s'exécute sur cet appareil : vos plans ne le quittent jamais. Il nécessite un téléchargement unique de {size}. Vous pouvez le supprimer à tout moment dans les réglages.",
-    "wifi": "Utilisez le Wi-Fi si possible : le téléchargement est volumineux.",
-    "cellular": "Vous semblez utiliser une connexion mobile et le téléchargement est volumineux. Le Wi-Fi est recommandé.",
+    "body": "Un modèle de langage s'exécute sur cet appareil : tes plans ne le quittent jamais. Il nécessite un téléchargement unique de {size}. Tu peux le supprimer à tout moment dans les réglages.",
+    "wifi": "Utilise le Wi-Fi si possible : le téléchargement est volumineux.",
+    "cellular": "Tu sembles utiliser une connexion mobile et le téléchargement est volumineux. Le Wi-Fi est recommandé.",
     "download": "Télécharger le modèle ({size})"
   },
   "progress": {
     "title": "Téléchargement du modèle",
-    "detail": "{percent} % terminé. Gardez cet onglet ouvert.",
+    "detail": "{percent} % terminé. Garde cet onglet ouvert.",
     "cancel": "Annuler"
   },
   "chat": {
     "label": "Interroger l'assistant",
-    "placeholder": "Posez une question…",
+    "placeholder": "Pose une question…",
     "send": "Demander",
     "thinking": "Réflexion…"
   },
   "failures": {
     "cancelled": "Annulé.",
-    "offline": "Vous êtes hors ligne et le modèle n'est pas encore téléchargé. Connectez-vous une fois pour le télécharger.",
+    "offline": "Tu es hors ligne et le modèle n'est pas encore téléchargé. Connecte-toi une fois pour le télécharger.",
     "network": "Le modèle n'a pas pu être téléchargé. Vérifie ta connexion et réessaie.",
     "storage-full": "Cet appareil n'a pas assez d'espace libre pour garder le modèle (environ 705 Mo). Libère de l'espace, puis réessaie.",
     "out-of-memory": "Cet appareil a manqué de mémoire en chargeant le modèle. Les réponses rapides sont utilisées.",
-    "device-lost": "Le périphérique graphique a été perdu. Les réponses rapides sont utilisées ; rechargez pour réessayer le modèle.",
-    "invalid-output": "La réponse du modèle n'a pas pu être utilisée. Essayez de reformuler.",
+    "device-lost": "Le périphérique graphique a été perdu. Les réponses rapides sont utilisées ; recharge pour réessayer le modèle.",
+    "invalid-output": "La réponse du modèle n'a pas pu être utilisée. Essaie de reformuler.",
     "unavailable": "Le modèle sur l'appareil n'est pas disponible ici. Les réponses rapides sont utilisées.",
-    "unknown": "Une erreur s'est produite. Réessayez."
+    "unknown": "Une erreur s'est produite. Réessaie."
   },
   "settings": {
     "header": "Assistant sur l'appareil",
@@ -71,14 +71,14 @@
       "add_task": "Ajouter la tâche « {title} » ({minutes} min)"
     },
     "problem": {
-      "alreadyThere": "« {title} » est déjà prévu ce jour-là à cette heure. Vous n’avez rien à modifier.",
-      "noChange": "Je n'ai pas pu en faire une modification de votre plan. Essayez par exemple : « Ajoute un bloc Travail d'une heure jeudi à 18:00 ».",
-      "needsDetails": "Il me faut plus de détails pour faire ce changement : quoi, quel jour et à quelle heure. Reformulez avec ces informations.",
-      "unknownCategory": "Je n'ai pas trouvé la catégorie « {category} ». Vos catégories sont : {categories}.",
-      "unknownBlock": "Je n'ai trouvé aucune routine nommée « {title} » dans votre plan.",
-      "absentDay": "« {title} » a lieu les jours suivants : {days}. Quelle occurrence souhaitez-vous modifier ?",
-      "ambiguousBlock": "Plusieurs routines correspondent à « {title} ». Précisez le jour.",
-      "notDelete": "Je n'étais pas sûr que vous vouliez supprimer un bloc, donc rien n'a été modifié. Dites « supprime » ou « retire » et le nom du bloc."
+      "alreadyThere": "« {title} » est déjà prévu ce jour-là à cette heure. Tu n’as rien à modifier.",
+      "noChange": "Je n'ai pas pu en faire une modification de ton plan. Essaie par exemple : « Ajoute un bloc Travail d'une heure jeudi à 18:00 ».",
+      "needsDetails": "Il me faut plus de détails pour faire ce changement : quoi, quel jour et à quelle heure. Reformule avec ces informations.",
+      "unknownCategory": "Je n'ai pas trouvé la catégorie « {category} ». Tes catégories sont : {categories}.",
+      "unknownBlock": "Je n'ai trouvé aucune routine nommée « {title} » dans ton plan.",
+      "absentDay": "« {title} » a lieu les jours suivants : {days}. Quelle occurrence souhaites-tu modifier ?",
+      "ambiguousBlock": "Plusieurs routines correspondent à « {title} ». Précise le jour.",
+      "notDelete": "Je n'étais pas sûr que tu voulais supprimer un bloc, donc rien n'a été modifié. Dis « supprime » ou « retire » et le nom du bloc."
     }
   },
   "answers": {
@@ -93,14 +93,14 @@
     "currentBlock": "Maintenant : {title}, encore {left}.",
     "nextBlock": "Ensuite, le {date} à {time} : {title}.",
     "noNextBlock": "Rien d'autre n'est prévu cette semaine.",
-    "noOverflow": "Toutes les tâches en cours tiennent dans votre temps libre.",
+    "noOverflow": "Toutes les tâches en cours tiennent dans ton temps libre.",
     "overflow": "{count} tâche ne tient pas ou est en retard : {titles}. | {count} tâches ne tiennent pas ou sont en retard : {titles}.",
     "overflowAmount": "{amount} non planifiées.",
     "freeHours": "Cette semaine, il te reste {free} libre. | Cette semaine, il te reste {free} libres.",
     "totalPlanned": "{planned} planifiées cette semaine sur 168 h.",
-    "rulesCannotChange": "Modifier le plan nécessite le modèle sur l'appareil. Activez-le dans les réglages, sous Assistant.",
+    "rulesCannotChange": "Modifier le plan nécessite le modèle sur l'appareil. Active-le dans les réglages, sous Assistant.",
     "rulesCannotChangeHere": "Modifier le plan nécessite le modèle sur l'appareil, que cet appareil ou ce navigateur ne peut pas exécuter. Les réponses rapides sur tes heures fonctionnent toujours.",
-    "rulesUnknown": "Je peux indiquer les heures d'une catégorie cette semaine, ce qui manque pour un objectif, les heures non assignées, votre prochain bloc et les tâches qui ne tiennent pas."
+    "rulesUnknown": "Je peux indiquer les heures d'une catégorie cette semaine, ce qui manque pour un objectif, les heures non assignées, ton prochain bloc et les tâches qui ne tiennent pas."
   },
   "retry": "Réessayer",
   "suggestions": {

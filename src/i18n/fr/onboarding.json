@@ -140,7 +140,8 @@
     "send": "Envoyer la réponse",
     "needChoice": "Choisis-en au moins une, ou « Plus tard ».",
     "needFix": "Corrige d'abord l'horaire signalé.",
-    "progressShort": "{step} sur {total}"
+    "progressShort": "{step} sur {total}",
+    "sendShort": "Envoyer"
   },
   "summary": {
     "title": "Ta semaine type",

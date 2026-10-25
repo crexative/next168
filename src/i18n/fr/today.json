@@ -11,8 +11,8 @@
     "dayAt": "{day}, {time}"
   },
   "timeline": {
-    "label": "Votre journée",
-    "title": "Votre journée",
+    "label": "Ta journée",
+    "title": "Ta journée",
     "allDay": "Toute la journée",
     "overlaps": "Chevauche {titles}",
     "sinceYesterday": "Depuis hier",
@@ -30,9 +30,9 @@
   },
   "status": {
     "markDone": "Marquer {title} comme fait",
-    "stateDone": "{title} : fait. Touchez pour retirer la réponse",
-    "statePartial": "{title} : à moitié. Touchez pour le marquer comme fait",
-    "stateSkipped": "{title} : non. Touchez pour le marquer comme fait",
+    "stateDone": "{title} : fait. Touche pour retirer la réponse",
+    "statePartial": "{title} : à moitié. Touche pour le marquer comme fait",
+    "stateSkipped": "{title} : non. Touche pour le marquer comme fait",
     "hint": "Appui long pour choisir À moitié ou Non",
     "menuLabel": "Comment s'est passé {title} ?",
     "done": "Fait",
@@ -46,7 +46,7 @@
   },
   "empty": {
     "title": "Rien de prévu pour l'instant",
-    "description": "Ajoutez des routines à votre semaine et Aujourd'hui affichera ce qui se passe maintenant et ensuite.",
+    "description": "Ajoute des routines à ta semaine et Aujourd'hui affichera ce qui se passe maintenant et ensuite.",
     "action": "Planifier la semaine"
   },
   "emptyDay": {

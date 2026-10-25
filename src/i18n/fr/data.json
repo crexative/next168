@@ -1,7 +1,7 @@
 {
   "where": {
     "title": "Détails techniques",
-    "footer": "Les données restent dans ce profil et cette origine du navigateur. Pour les déplacer, exportez ici puis importez là-bas.",
+    "footer": "Les données restent dans ce profil et cette origine du navigateur. Pour les déplacer, exporte ici puis importe là-bas.",
     "mode": "Stockage",
     "origin": "Adresse",
     "workspace": "Espace de travail",
@@ -11,7 +11,7 @@
     }
   },
   "ios": {
-    "body": "Exportez avant d'utiliser Sur l'écran d'accueil : l'app installée a son propre stockage. Ouvrez ensuite l'app installée et importez-y le fichier."
+    "body": "Exporte avant d'utiliser Sur l'écran d'accueil : l'app installée a son propre stockage. Ouvre ensuite l'app installée et importe-y le fichier."
   },
   "persistence": {
     "title": "Protection du stockage",
@@ -19,7 +19,7 @@
     "unknown": "Inconnu",
     "granted": "Oui",
     "notGranted": "Pas encore",
-    "footer": "Demande au navigateur de ne pas effacer vos données quand l'appareil manque de place."
+    "footer": "Demande au navigateur de ne pas effacer tes données quand l'appareil manque de place."
   },
   "export": {
     "action": "Exporter une copie",
@@ -30,13 +30,13 @@
     "action": "Importer un fichier…",
     "fileLabel": "Choisir un fichier d'export Next168",
     "tooLarge": "Ce fichier est trop volumineux pour être importé.",
-    "unsupported": "Ce fichier vient d'une version plus récente (schéma {version}). Mettez d'abord Next168 à jour.",
+    "unsupported": "Ce fichier vient d'une version plus récente (schéma {version}). Mets d'abord Next168 à jour.",
     "invalid": "Ce fichier ne peut pas être importé ({reason}). Rien n'a été modifié.",
-    "failed": "Échec de l'import ({reason}). Vos données sont inchangées.",
+    "failed": "Échec de l'import ({reason}). Tes données sont inchangées.",
     "verified": "Importé et vérifié par rapport à ce qui est stocké (empreinte {hash}).",
     "verifyFailed": {
-      "unreadable": "Importé, mais les données stockées n'ont pas pu être relues. Exportez une copie et rechargez.",
-      "mismatch": "Importé, mais les données stockées diffèrent du fichier. Exportez une copie et vérifiez-la."
+      "unreadable": "Importé, mais les données stockées n'ont pas pu être relues. Exporte une copie et recharge.",
+      "mismatch": "Importé, mais les données stockées diffèrent du fichier. Exporte une copie et vérifie-la."
     },
     "previewTitle": "Aperçu de l'import",
     "version": "Version de schéma du fichier {version} (actuelle {current})",
@@ -50,20 +50,20 @@
       "events": "aucun événement | {count} événement | {count} événements",
       "calendarSources": "aucun calendrier | {count} calendrier | {count} calendriers"
     },
-    "replaceWarning": "L'import remplace tout ce qui se trouve actuellement dans ce navigateur. Exportez d'abord si vous pouvez en avoir besoin.",
+    "replaceWarning": "L'import remplace tout ce qui se trouve actuellement dans ce navigateur. Exporte d'abord si tu peux en avoir besoin.",
     "replace": "Remplacer mes données"
   },
   "deleteAll": {
     "title": "Supprimer toutes les données",
-    "footer": "Supprime votre plan, vos tâches, bilans du jour et sauvegardes de cet appareil. Action irréversible.",
+    "footer": "Supprime ton plan, tes tâches, bilans du jour et sauvegardes de cet appareil. Action irréversible.",
     "action": "Supprimer toutes les données…",
     "phrase": "SUPPRIMER",
     "confirmTitle": "Tout supprimer ?",
-    "confirmBody": "Cela efface définitivement toutes les données Next168 de cet appareil, sauvegardes comprises. Exportez d'abord une copie si vous pouvez en avoir besoin.",
-    "typeToConfirm": "Saisissez {phrase} pour confirmer",
+    "confirmBody": "Cela efface définitivement toutes les données Next168 de cet appareil, sauvegardes comprises. Exporte d'abord une copie si tu peux en avoir besoin.",
+    "typeToConfirm": "Saisis {phrase} pour confirmer",
     "confirmAction": "Tout supprimer",
     "done": "Toutes les données ont été supprimées.",
     "failed": "Suppression impossible ({reason}). Rien n'a été modifié."
   },
-  "changedElsewhere": "Vos données ont changé entre-temps, rien n’a donc été remplacé. Réessayez."
+  "changedElsewhere": "Tes données ont changé entre-temps, rien n’a donc été remplacé. Réessaie."
 }
