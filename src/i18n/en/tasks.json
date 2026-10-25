@@ -6,7 +6,7 @@
   "overflow": "{duration} missing in {category} this week.",
   "overflowHint": "Add about {duration} to your {category} routines, shorten the task, or split it.",
   "late": "This lands after its due date ({date}).",
-  "lateHint": "Move the due date, raise its priority, or free up earlier time.",
+  "latePartial": "Only {duration} fits before its due date ({date}).",
   "warnings": "Scheduling warnings",
   "unplaced": "Not scheduled",
   "unplacedHint": "No free slot in the next 7 days.",
@@ -30,7 +30,8 @@
     "more": "More options",
     "when": "When?",
     "anyFreeTime": "Any free slot",
-    "during": "During {category}"
+    "during": "During {category}",
+    "today": "Today"
   },
   "priority": {
     "1": "High",
@@ -45,5 +46,18 @@
     "new": "New task",
     "edit": "Edit task",
     "delete": "Delete task"
+  },
+  "outside": {
+    "noBlockToday": "You have no {category} block today, so it went in your free time.",
+    "notEnough": "Your {category} time runs out before its due date, so it went in your free time."
+  },
+  "fix": {
+    "label": "Fixes for {title}",
+    "doToday": "Do it today",
+    "moveDue": "Move to {date}",
+    "changeCategory": "Change category",
+    "edit": "Edit task",
+    "doneToday": "“{title}” is now for today",
+    "dueMoved": "“{title}” is now due {date}"
   }
 }

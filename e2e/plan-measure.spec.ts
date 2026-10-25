@@ -135,13 +135,14 @@ test.describe('plan and measure', () => {
     expect((await storedDocument(page)).tasks[0].doneAt).toBeUndefined()
   })
 
-  test('a task due before its slot is flagged late with a suggestion', async ({ page }) => {
+  test('a task past its due date is flagged late with one-tap fixes', async ({ page }) => {
+    // Due yesterday: no slot can be before it. (Due today, it would go in today's free time and not be late at all.)
     await startWith(page, plannerDocument({
-      tasks: [{ id: 't-late', title: 'Hand in form', categoryId: 'c-study', durationMin: 60, dueDate: '2026-10-26', priority: 1, createdAt: '2026-10-20T10:00:00.000Z' }],
+      tasks: [{ id: 't-late', title: 'Hand in form', categoryId: 'c-study', durationMin: 60, dueDate: '2026-10-25', priority: 1, createdAt: '2026-10-20T10:00:00.000Z' }],
     }))
     await openTab(page, 'tasks')
     await expect(page.getByTestId('late-text')).toContainText('after its due date')
-    await expect(page.getByTestId('task-warnings')).toContainText('Move the due date')
+    await expect(page.getByTestId('task-warnings').getByRole('button', { name: 'Do it today' })).toBeVisible()
   })
 
   test('Summary shows the 168 hour bar, one line and mark per goal and an empty measures state that leads to the check-in', async ({ page }) => {

@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
-import type { Category, Task } from '@/core/model'
-import { fitTasks } from '@/core/scheduling'
+import type { Category, Task, TaskPlacement } from '@/core/model'
+import { dueEndOf, fitTasks, minutesBeforeDue } from '@/core/scheduling'
 import { localDateOf } from '@/core/time'
 import { displayLocale, formatClock, formatDate, formatDuration } from '@/ui/format'
 import { joinInline, unbreakable } from '@/ui/inlineText'
@@ -18,7 +18,8 @@ import ListGroup from '@/ui/ListGroup.vue'
 import ListRow from '@/ui/ListRow.vue'
 import { planTasks, recentDone, type PlacedEntry } from './grouping'
 import { useTaskActions } from './taskActions'
-import { newDraft, resolveWhen, taskFields, type TaskDraft } from './taskDraft'
+import { ANY_FREE_TIME, newDraft, resolveWhen, taskFields, type TaskDraft } from './taskDraft'
+import { outsideCategoryReason, warningFixes, type FitContext } from './warningFixes'
 import TaskOptions from './TaskOptions.vue'
 import TaskRow from './TaskRow.vue'
 import TaskSheet from './TaskSheet.vue'
@@ -41,19 +42,28 @@ const external = useExternalOccurrences(() => document.value
   ? { fromDate: localDateOf(now.value, document.value.settings.timeZone), days: 7, timeZone: document.value.settings.timeZone }
   : null)
 
+const fitContext = computed<FitContext | null>(() => document.value
+  ? { document: document.value, busy: external.value.filter((item) => item.busy && !item.allDay).map((item) => ({ start: item.start, end: item.end })), now: now.value }
+  : null)
 const plan = computed(() => {
-  const doc = document.value
-  if (!doc) return null
-  const busy = external.value.filter((item) => item.busy && !item.allDay).map((item) => ({ start: item.start, end: item.end }))
-  return planTasks(doc, fitTasks({ document: doc, busy, now: now.value, timeZone: doc.settings.timeZone }))
+  const context = fitContext.value
+  if (!context) return null
+  return planTasks(context.document, fitTasks({ ...context, timeZone: context.document.settings.timeZone }))
 })
+// Every warning comes with the fixes that really put its task on time, tried on a copy of the planner.
+const warnings = computed(() => {
+  const context = fitContext.value
+  return context && plan.value ? plan.value.warnings.map((warning) => ({ ...warning, fixes: warningFixes(context, warning.task, warning.placement) })) : []
+})
+const today = computed(() => document.value ? localDateOf(now.value, document.value.settings.timeZone) : '')
 const done = computed(() => recentDone(document.value?.tasks ?? []))
 
-// The title is typed first; the length and, one level deeper, when the task may go, its due date and its priority.
-// The choice of the last task added is offered again (a category that is gone, or Sleep, is never remembered).
-// The planner may still be loading when this view starts, so the remembered choice is only checked against the
-// categories once they are there (effectiveCategoryId) and never decided up front.
-const form = ref<TaskDraft>({ ...newDraft(), categoryId: readLastTaskCategory() })
+// The title is typed first; the length, "Today" and, one level deeper, when the task may go, its due date and its
+// priority. A new task fits any free slot unless the person picks a category: the category of the last task added is
+// only offered as a one-tap suggestion ("Jog" is not "Work" because the previous task was). The planner may still be
+// loading when this view starts, so the suggestion is only checked against the categories once they are there.
+const form = ref<TaskDraft>(newDraft())
+const suggestedCategoryId = ref(readLastTaskCategory())
 const effectiveCategoryId = computed(() => resolveWhen(categories.value, form.value.categoryId))
 const shownDraft = computed<TaskDraft>(() => ({ ...form.value, categoryId: effectiveCategoryId.value }))
 // One field to start; the details appear once there is something to file.
@@ -125,8 +135,12 @@ async function addTask(): Promise<void> {
     draft.tasks.push(task)
   })
   if (result.ok) {
-    form.value = { ...form.value, title: '', dueDate: '' }
-    rememberTaskCategory(categoryId)
+    form.value = { ...form.value, title: '', dueDate: '', categoryId: ANY_FREE_TIME }
+    // Only a category the person picked is worth suggesting again; a task for any free slot leaves it as it was.
+    if (categoryId) {
+      rememberTaskCategory(categoryId)
+      suggestedCategoryId.value = categoryId
+    }
   } else if (result.reason === CHANGED_ELSEWHERE) {
     planner.dismissError()
     form.value = { ...form.value, categoryId: '' }
@@ -145,8 +159,25 @@ function overflowHint(task: Task, minutes: number): string {
   return category ? t('tasks.overflowHint', { duration: formatDuration(minutes), category }) : t('tasks.overflowAnyHint', { duration: formatDuration(minutes) })
 }
 
-function lateText(task: Task): string {
-  return t('tasks.late', { date: task.dueDate ? dueLabel(task.dueDate) : '' })
+// Late with part of it before the deadline says how much fits; otherwise it lands wholly after its due date.
+function lateText(task: Task, placement: TaskPlacement): string {
+  const date = task.dueDate ? dueLabel(task.dueDate) : ''
+  const before = Math.floor(minutesBeforeDue(placement, dueEndOf(task, document.value!.settings.timeZone)))
+  return before > 0 && before < task.durationMin ? t('tasks.latePartial', { duration: formatDuration(before), date }) : t('tasks.late', { date })
+}
+
+function outsideNote(entry: PlacedEntry): string {
+  const placement = plan.value!.placements.get(entry.task.id)
+  const reason = placement && outsideCategoryReason(document.value!, entry.task, placement, now.value)
+  return reason ? t(`tasks.outside.${reason}`, { category: categoryOf(entry.task)?.name ?? '' }) : ''
+}
+
+async function doToday(task: Task, date: string): Promise<void> {
+  await actions.setDueDate(task, date, t('tasks.fix.doneToday', { title: task.title }))
+}
+
+async function moveDue(task: Task, date: string): Promise<void> {
+  await actions.setDueDate(task, date, t('tasks.fix.dueMoved', { title: task.title, date: dueLabel(date) }))
 }
 </script>
 
@@ -158,7 +189,7 @@ function lateText(task: Task): string {
         <input v-model="form.title" class="input" type="text" maxlength="120" autocomplete="off" enterkeyhint="done" :placeholder="t('tasks.add.titlePlaceholder')">
       </label>
       <div v-if="detailsOpen" class="details" role="group" :aria-label="t('tasks.add.details')" data-testid="task-details">
-        <TaskOptions :draft="shownDraft" :categories="categories" @patch="form = { ...form, ...$event }" />
+        <TaskOptions :draft="shownDraft" :categories="categories" :today="today" :suggested-category-id="suggestedCategoryId" @patch="form = { ...form, ...$event }" />
         <Button type="submit" block :disabled="!canAdd">
           <Icon name="plus" :size="20" /> {{ t('tasks.add.submit') }}
         </Button>
@@ -166,11 +197,11 @@ function lateText(task: Task): string {
       <p v-if="changedElsewhere" class="t-subhead" role="alert">{{ t('tasks.changedElsewhere') }}</p>
     </form>
 
-    <section v-if="plan.warnings.length" class="warnings" :aria-label="t('tasks.warnings')" data-testid="task-warnings">
+    <section v-if="warnings.length" class="warnings" :aria-label="t('tasks.warnings')" data-testid="task-warnings">
       <ul>
-        <li v-for="warning in plan.warnings" :key="warning.task.id" class="warning" :data-testid="`warning-${warning.task.id}`">
+        <li v-for="warning in warnings" :key="warning.task.id" class="warning" :data-testid="`warning-${warning.task.id}`">
           <Icon name="triangle-alert" :size="20" class="warning-icon" />
-          <div>
+          <div class="warning-body">
             <p class="t-headline">{{ warning.task.title }}</p>
             <p v-if="warning.placement.overflowMinutes > 0" class="t-subhead" data-testid="overflow-text">
               {{ overflowText(warning.task, warning.placement.overflowMinutes) }}
@@ -178,8 +209,18 @@ function lateText(task: Task): string {
             <p v-if="warning.placement.overflowMinutes > 0" class="t-footnote t-secondary">
               {{ overflowHint(warning.task, warning.placement.overflowMinutes) }}
             </p>
-            <p v-if="warning.placement.late" class="t-subhead" data-testid="late-text">{{ lateText(warning.task) }}</p>
-            <p v-if="warning.placement.late" class="t-footnote t-secondary">{{ t('tasks.lateHint') }}</p>
+            <p v-if="warning.placement.late" class="t-subhead" data-testid="late-text">{{ lateText(warning.task, warning.placement) }}</p>
+            <div class="warning-actions" role="group" :aria-label="t('tasks.fix.label', { title: warning.task.title })">
+              <Button v-if="warning.fixes.today" variant="tinted" data-testid="fix-today" @click="doToday(warning.task, warning.fixes.today)">
+                {{ t('tasks.fix.doToday') }}
+              </Button>
+              <Button v-if="warning.fixes.moveDueTo" variant="tinted" data-testid="fix-move-due" @click="moveDue(warning.task, warning.fixes.moveDueTo)">
+                {{ t('tasks.fix.moveDue', { date: unbreakable(dueLabel(warning.fixes.moveDueTo)) }) }}
+              </Button>
+              <Button variant="tinted" data-testid="fix-edit" @click="openTask(warning.task)">
+                {{ t(warning.task.categoryId === undefined ? 'tasks.fix.edit' : 'tasks.fix.changeCategory') }}
+              </Button>
+            </div>
           </div>
         </li>
       </ul>
@@ -197,7 +238,9 @@ function lateText(task: Task): string {
         @complete="actions.complete(entry.task)"
         @open="openTask(entry.task)"
         @remove="actions.remove(entry.task)"
-      />
+      >
+        <span v-if="outsideNote(entry)" class="t-footnote outside-note" data-testid="outside-note">{{ outsideNote(entry) }}</span>
+      </TaskRow>
     </ListGroup>
 
     <ListGroup v-if="plan.unplaced.length" :header="t('tasks.unplaced')" :footer="t('tasks.unplacedHint')">
@@ -243,5 +286,8 @@ function lateText(task: Task): string {
 .warnings ul { display: flex; flex-direction: column; gap: var(--space-3); }
 .warning { display: flex; gap: var(--space-3); padding: var(--card-padding-block) var(--card-padding); border-radius: var(--radius-card); background: color-mix(in srgb, var(--warning) 18%, var(--surface)); }
 .warning-icon { flex: none; color: var(--label); margin-top: 2px; }
+.warning-body { display: flex; flex: 1; flex-direction: column; min-width: 0; }
+.warning-actions { display: flex; flex-wrap: wrap; gap: var(--space-2); margin-top: var(--space-2); }
+.outside-note { color: var(--label); }
 .done-row :deep(.row-text) { color: var(--label-2); text-decoration: line-through; }
 </style>

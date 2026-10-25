@@ -74,21 +74,49 @@ it('files the task under the category chosen with "During …" and takes the len
   expect(mounted.store.document!.tasks).toMatchObject([{ title: 'Read a chapter', categoryId: 'c-study', durationMin: 30 }])
 })
 
-it('remembers the last choice for the next task, and across visits', async () => {
+const suggestion = () => mounted!.host.querySelector<HTMLButtonElement>('[data-testid=task-suggested-category]')
+const todayChip = () => mounted!.host.querySelector<HTMLButtonElement>('[data-testid=task-today]')!
+
+it('offers the last choice for the next task only as a suggestion, never as its default, and across visits', async () => {
   mounted = await mountWithPlanner(TasksView, { ...done, categories: [WORK, STUDY] })
   await type('Read a chapter')
+  expect(suggestion()).toBeNull()
   when().value = 'c-study'
   when().dispatchEvent(new Event('change'))
   await nextTick()
   await submit()
   expect(localStorage.getItem(LAST_TASK_CATEGORY_KEY)).toBe('c-study')
-  await type('Another one')
-  expect(when().value).toBe('c-study')
+  // An unrelated title does not silently inherit Study: Enter files it under any free slot.
+  await type('Jog')
+  expect(when().value).toBe('')
+  expect(suggestion()!.textContent?.trim()).toBe('During Study')
+  expect(suggestion()!.getAttribute('aria-pressed')).toBe('false')
+  await submit()
+  expect(mounted.store.document!.tasks.find((task) => task.title === 'Jog')).not.toHaveProperty('categoryId')
 
   mounted.unmount()
   mounted = await mountWithPlanner(TasksView, { ...done, categories: [WORK, STUDY] })
   await type('Fresh visit')
+  expect(when().value).toBe('')
+  expect(suggestion()!.textContent?.trim()).toBe('During Study')
+  suggestion()!.click()
+  await nextTick()
   expect(when().value).toBe('c-study')
+  expect(suggestion()!.getAttribute('aria-pressed')).toBe('true')
+  await submit()
+  expect(mounted.store.document!.tasks.find((task) => task.title === 'Fresh visit')).toMatchObject({ categoryId: 'c-study' })
+})
+
+it('"Today" in one tap makes the task due today; Enter still adds with no other tap', async () => {
+  mounted = await mountWithPlanner(TasksView, { ...done, categories: [WORK] })
+  await type('Jog')
+  expect(todayChip().getAttribute('aria-pressed')).toBe('false')
+  todayChip().click()
+  await nextTick()
+  expect(todayChip().getAttribute('aria-pressed')).toBe('true')
+  await submit()
+  expect(mounted.store.document!.tasks).toMatchObject([{ title: 'Jog', dueDate: fixedNow().toISOString().slice(0, 10) }])
+  expect(mounted.store.document!.tasks[0]).not.toHaveProperty('categoryId')
 })
 
 it.each([
@@ -110,7 +138,7 @@ it('adds a task when there are no categories at all', async () => {
   expect(mounted.store.document!.tasks).toMatchObject([{ title: 'Call the bank' }])
 })
 
-it('still offers the remembered choice when the planner finishes loading after the view started', async () => {
+it('still suggests the remembered choice when the planner finishes loading after the view started', async () => {
   localStorage.setItem(LAST_TASK_CATEGORY_KEY, 'c-study')
   const pinia = createPinia()
   setActivePinia(pinia)
@@ -132,9 +160,9 @@ it('still offers the remembered choice when the planner finishes loading after t
   input.value = 'x'
   input.dispatchEvent(new Event('input'))
   await nextTick()
-  expect(host.querySelector<HTMLSelectElement>('[data-testid=task-when]')!.value).toBe('c-study')
-  // Because it differs from the defaults, "More options" is already open: the choice is never hidden.
-  expect(host.querySelector<HTMLElement>('[data-testid=task-more-options]')!.style.display).not.toBe('none')
+  // The remembered choice is a suggestion: offered once the categories are there, never applied by itself.
+  expect(host.querySelector<HTMLSelectElement>('[data-testid=task-when]')!.value).toBe('')
+  expect(host.querySelector('[data-testid=task-suggested-category]')!.textContent?.trim()).toBe('During Study')
   app.unmount()
   host.remove()
 })

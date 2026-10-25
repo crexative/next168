@@ -246,7 +246,9 @@ export interface Clock { now(): Date }
 
 // Scheduler contract (core/scheduler.ts), consumed by Today (S1) and Tasks (S2).
 export interface PlacementChunk { start: string; end: string } // ISO instants, half-open; derive local display values
-export interface TaskPlacement { taskId: string; chunks: PlacementChunk[]; overflowMinutes: number; late: boolean }
+// outsideCategory: the task's category blocks could not hold it before its due date, so it went to free time instead
+// (a category is a preference, not a wall, when the deadline is at stake).
+export interface TaskPlacement { taskId: string; chunks: PlacementChunk[]; overflowMinutes: number; late: boolean; outsideCategory?: true }
 export interface BusyInterval { start: string; end: string } // ISO instants, half-open
 
 export interface ScheduleInput {

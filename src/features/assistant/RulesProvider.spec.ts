@@ -131,7 +131,8 @@ describe('RulesProvider', () => {
   it('answers which tasks overflow', async () => {
     const document = plannerWithBlocks()
     expect((await ask('Which tasks do not fit?', 'en', document)).answer).toBe('All unfinished tasks fit in your free time.')
-    document.tasks.push({ id: 't1', title: 'Write report', categoryId: 'work', durationMin: 180, priority: 1, createdAt: '2026-10-24T08:00:00Z', dueDate: '2026-10-24' })
+    // Due yesterday: no slot can be before it. (Due today, it would go in today's free time and fit.)
+    document.tasks.push({ id: 't1', title: 'Write report', categoryId: 'work', durationMin: 180, priority: 1, createdAt: '2026-10-24T08:00:00Z', dueDate: '2026-10-23' })
     const { answer } = await ask('Which tasks do not fit?', 'en', document)
     expect(answer).toContain('Write report')
   })

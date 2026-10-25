@@ -1,4 +1,4 @@
-import type { PlannerDocument, ScheduleInput, TaskPlacement } from './model'
+import type { PlannerDocument, ScheduleInput, Task, TaskPlacement } from './model'
 import { scheduleTasks } from './scheduler'
 import { taskWindows } from './schedulingWindows'
 import { addLocalDays, datedOccurrences, localDateOf, zonedInstant } from './time'
@@ -6,6 +6,8 @@ import { addLocalDays, datedOccurrences, localDateOf, zonedInstant } from './tim
 // Stable task placement on top of scheduleTasks:
 // - chunks start on a five-minute grid at block boundaries, after "now", and after busy intervals or tasks;
 // - a placement that was shown before is kept while it is still valid, so a task does not slide along with the clock.
+// - a task's category is a preference, not a wall, when its deadline is at stake: when the category's blocks cannot
+//   hold it before its due date, it goes to free time (no routine block) if that does more of it before the deadline.
 // fitTasks is the one way Today, Week, Tasks and the assistant fit tasks into free time, so a task shows the same
 // start everywhere ("12:35", never the minute the plan happened to be recalculated).
 
@@ -64,6 +66,24 @@ function mergedWindows(document: PlannerDocument, categoryId: string | undefined
 
 const compare = (a: string, b: string) => a < b ? -1 : a > b ? 1 : 0
 
+// The end of a task's due date in the planner's zone (exclusive); no due date never ends.
+export function dueEndOf(task: Pick<Task, 'dueDate'>, timeZone: string): number {
+  return task.dueDate ? zonedInstant(addLocalDays(task.dueDate, 1), 0, timeZone).getTime() : Infinity
+}
+
+// Minutes of a placement that are done before its task's deadline.
+export function minutesBeforeDue(placement: TaskPlacement, dueEnd: number): number {
+  return placement.chunks.reduce((sum, chunk) => sum + Math.max(0, Math.min(Date.parse(chunk.end), dueEnd) - Date.parse(chunk.start)) / MINUTE_MS, 0)
+}
+
+const missesDeadline = (placement: TaskPlacement) => placement.late || placement.overflowMinutes > 0
+
+function withoutCategory(task: Task): Task {
+  const free = { ...task }
+  delete free.categoryId
+  return free
+}
+
 export function scheduleStable(input: StableScheduleInput): TaskPlacement[] {
   const { document, busy, now, timeZone, days = 7, previous, pinned } = input
   const snapMs = (input.snapMinutes ?? PLACEMENT_SNAP_MINUTES) * MINUTE_MS
@@ -83,35 +103,48 @@ export function scheduleStable(input: StableScheduleInput): TaskPlacement[] {
     if (!candidate || candidate.overflowMinutes !== 0 || !candidate.chunks.length) continue
     const chunks = candidate.chunks.map((chunk) => ({ start: Date.parse(chunk.start), end: Date.parse(chunk.end) }))
     const minutes = chunks.reduce((sum, chunk) => sum + (chunk.end - chunk.start) / MINUTE_MS, 0)
-    const windows = mergedWindows(document, task.categoryId, fromDate, days, timeZone)
+    // A placement made in free time for a deadline stays valid in free time while the task keeps both.
+    const outside = candidate.outsideCategory === true && task.categoryId !== undefined && task.dueDate !== undefined
+    const windows = mergedWindows(document, outside ? undefined : task.categoryId, fromDate, days, timeZone)
     const stillAhead = pin
       ? chunks.every((chunk) => localDateOf(new Date(chunk.start), timeZone) === fromDate)
       : chunks.every((chunk) => chunk.end > now.getTime())
     const fits = chunks.every((chunk) => chunk.start === ceilTo(chunk.start, snapMs) && chunk.end > chunk.start && inside(chunk, windows)
       && !occupied.some((other) => chunk.start < other.end && other.start < chunk.end))
     if (!stillAhead || !fits || minutes !== task.durationMin) continue
-    const dueEnd = task.dueDate ? zonedInstant(addLocalDays(task.dueDate, 1), 0, timeZone).getTime() : Infinity
+    const dueEnd = dueEndOf(task, timeZone)
     const late = dueEnd <= now.getTime() || chunks.some((chunk) => chunk.end > dueEnd)
-    kept.set(task.id, { ...candidate, late })
+    // A placement that misses a deadline still ahead is fitted again: the deadline may have just moved.
+    if (late && dueEnd > now.getTime()) continue
+    const shown: TaskPlacement = { taskId: candidate.taskId, chunks: candidate.chunks, overflowMinutes: candidate.overflowMinutes, late }
+    kept.set(task.id, outside ? { ...shown, outsideCategory: true } : shown)
     occupied.push(...chunks)
   }
 
   const rest: TaskPlacement[] = []
   const schedulingBusy = [...snappedBusy, ...[...kept.values()].flatMap((placement) =>
     placement.chunks.map((chunk) => ({ ...chunk, end: snapEnd(chunk.end, snapMs) })))]
-  for (const task of open) {
-    if (kept.has(task.id)) continue
+  const place = (task: Task): TaskPlacement | undefined => {
     // Exclude the lead-in to the next grid point without moving block ends or changing the local-day horizon.
     const leadIns = mergedWindows(document, task.categoryId, fromDate, days, timeZone).flatMap((window) => {
       const start = Math.max(window.start, now.getTime())
       const end = Math.min(window.end, ceilTo(start, snapMs))
       return end > start ? [{ start: new Date(start).toISOString(), end: new Date(end).toISOString() }] : []
     })
-    const [placement] = scheduleTasks({
+    return scheduleTasks({
       document: { ...snappedDocument, tasks: [task] },
       busy: [...schedulingBusy, ...leadIns], now, timeZone, days,
-    })
+    })[0]
+  }
+  for (const task of open) {
+    if (kept.has(task.id)) continue
+    let placement = place(task)
     if (!placement) continue
+    if (task.categoryId !== undefined && task.dueDate !== undefined && missesDeadline(placement)) {
+      const dueEnd = dueEndOf(task, timeZone)
+      const free = place(withoutCategory(task))
+      if (free && minutesBeforeDue(free, dueEnd) > minutesBeforeDue(placement, dueEnd)) placement = { ...free, taskId: task.id, outsideCategory: true }
+    }
     rest.push(placement)
     // Reserve through the next grid point before placing another task; durations themselves stay exact.
     schedulingBusy.push(...placement.chunks.map((chunk) => ({ ...chunk, end: snapEnd(chunk.end, snapMs) })))

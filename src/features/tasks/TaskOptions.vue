@@ -6,11 +6,13 @@ import Icon from '@/ui/Icon.vue'
 import './registerIcons'
 import SegmentedControl from '@/ui/SegmentedControl.vue'
 import { formatDuration } from '@/ui/format'
-import { durationChoices, hasExtraOptions, whenCategories, type TaskDraft, type TaskPriority } from './taskDraft'
+import { ANY_FREE_TIME, durationChoices, hasExtraOptions, resolveWhen, whenCategories, type TaskDraft, type TaskPriority } from './taskDraft'
 
-// What a task asks beyond its title: a length in one tap, and - one level deeper, under "More options" - when it may
-// go, a due date and a priority. A task with none of those set is filed under "any free time" and is still complete.
-const props = defineProps<{ draft: TaskDraft; categories: Category[] }>()
+// What a task asks beyond its title: a length in one tap, "Today" in one tap, the last category chosen as a one-tap
+// suggestion (never applied by itself), and - one level deeper, under "More options" - when it may go, a due date and
+// a priority. A task with none of those set is filed under "any free time" and is still complete.
+// `today` is the planner's local date; `suggestedCategoryId` is the category the previous task was filed under.
+const props = defineProps<{ draft: TaskDraft; categories: Category[]; today: string; suggestedCategoryId?: string }>()
 // Changes travel as patches the owner merges into its current draft, so two edits in the same tick never undo each other.
 const emit = defineEmits<{ patch: [change: Partial<TaskDraft>] }>()
 
@@ -21,9 +23,26 @@ const moreOpen = ref(hasExtraOptions(props.draft))
 
 const durationOptions = computed(() => durationChoices(props.draft.durationMin).map((minutes) => ({ value: String(minutes), label: formatDuration(minutes) })))
 const whenOptions = computed(() => whenCategories(props.categories, props.draft.categoryId))
+const suggestion = computed(() => {
+  const id = resolveWhen(props.categories, props.suggestedCategoryId ?? ANY_FREE_TIME)
+  const category = props.categories.find((candidate) => candidate.id === id)
+  return category && (props.draft.categoryId === ANY_FREE_TIME || props.draft.categoryId === id) ? category : undefined
+})
 const priorityOptions = computed(() => (['1', '2', '3'] as const).map((value) => ({ value, label: t(`tasks.priority.${value}`) })))
 
 const update = (change: Partial<TaskDraft>): void => emit('patch', change)
+
+// "Today" makes the task due today; a second tap gives back the due date it had before.
+let dueBeforeToday = ''
+function toggleToday(): void {
+  if (props.draft.dueDate === props.today) return update({ dueDate: dueBeforeToday })
+  dueBeforeToday = props.draft.dueDate
+  update({ dueDate: props.today })
+}
+
+function toggleSuggestion(id: string): void {
+  update({ categoryId: props.draft.categoryId === id ? ANY_FREE_TIME : id })
+}
 </script>
 
 <template>
@@ -34,6 +53,21 @@ const update = (change: Partial<TaskDraft>): void => emit('patch', change)
       :label="t('tasks.add.duration')"
       @update:model-value="update({ durationMin: Number($event) })"
     />
+    <div class="choices">
+      <button type="button" class="choice t-subhead" :aria-pressed="draft.dueDate === today" data-testid="task-today" @click="toggleToday">
+        <Icon name="sun" :size="16" />{{ t('tasks.add.today') }}
+      </button>
+      <button
+        v-if="suggestion"
+        type="button"
+        class="choice t-subhead"
+        :aria-pressed="draft.categoryId === suggestion.id"
+        data-testid="task-suggested-category"
+        @click="toggleSuggestion(suggestion.id)"
+      >
+        {{ t('tasks.add.during', { category: suggestion.name }) }}
+      </button>
+    </div>
     <button type="button" class="more t-subhead" :aria-expanded="moreOpen" :aria-controls="moreId" data-testid="task-more" @click="moreOpen = !moreOpen">
       {{ t('tasks.add.more') }}
       <Icon :name="moreOpen ? 'chevron-up' : 'chevron-down'" :size="16" />
@@ -72,6 +106,22 @@ const update = (change: Partial<TaskDraft>): void => emit('patch', change)
   color: var(--tint-label);
   font-weight: 600;
 }
+.choices { display: flex; flex-wrap: wrap; gap: var(--space-2); }
+.choice {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  min-height: var(--tap-target);
+  max-width: 100%;
+  padding: 0 var(--space-3);
+  border: 1px solid var(--separator);
+  border-radius: var(--radius-control);
+  background: transparent;
+  color: var(--label);
+  font-weight: 600;
+  text-align: start;
+}
+.choice[aria-pressed='true'] { border-color: transparent; background: var(--tint); color: var(--tint-text); }
 .more-options { display: flex; flex-direction: column; gap: var(--space-3); }
 .field { display: flex; flex-direction: column; gap: var(--space-1); min-width: 0; }
 </style>

@@ -1,4 +1,5 @@
-// The "when" the last task was filed under (a category id, or '' for any free slot), so adding the next one is typing and Enter.
+// The category the person last picked for a task. It is only offered as a one-tap suggestion for the next task, never
+// applied by itself: a new task fits any free slot unless the person picks a category.
 export const LAST_TASK_CATEGORY_KEY = 'next168-last-task-category'
 
 export function readLastTaskCategory(storage: Pick<Storage, 'getItem'> = window.localStorage): string {
@@ -13,6 +14,6 @@ export function rememberTaskCategory(categoryId: string, storage: Pick<Storage, 
   try {
     storage.setItem(LAST_TASK_CATEGORY_KEY, categoryId)
   } catch {
-    // Not remembering is harmless: the form falls back to any free slot.
+    // Not remembering is harmless: there is simply no suggestion.
   }
 }
