@@ -2,7 +2,7 @@ import type { PlacementChunk, ScheduleInput, Task, TaskPlacement } from './model
 import { subtract, taskWindows } from './schedulingWindows'
 import { addLocalDays, datedOccurrences, localDateOf, zonedInstant, type DatedOccurrence } from './time'
 
-// Stable task placement, with the same rules as scheduleTasks (the frozen contract in scheduler.ts) for each task:
+// Stable task placement, with the same rules as scheduleTasks for each task:
 // - chunks start on a five-minute grid at block boundaries, after "now", and after busy intervals or tasks;
 // - a placement that was shown before is kept while it is still valid, so a task does not slide along with the clock.
 // - a task's category is a preference, not a wall, when its deadline is at stake: when the category's blocks cannot
@@ -14,7 +14,7 @@ export const PLACEMENT_STEP_MINUTES = 5
 export const PLACEMENT_SNAP_MINUTES = PLACEMENT_STEP_MINUTES
 
 const MINUTE_MS = 60_000
-// scheduleTasks never places a chunk shorter than this.
+// Shorter chunks are allowed only when they finish the task.
 const MIN_CHUNK_MINUTES = 10
 
 export interface StableScheduleInput extends ScheduleInput {
@@ -30,7 +30,7 @@ export interface MovedTask { taskId: string; from: string; to: string }
 interface Interval { start: number; end: number }
 
 const ceilTo = (value: number, step: number) => Math.ceil(value / step) * step
-const holdsAChunk = (window: Interval) => Math.floor((window.end - ceilTo(window.start, MINUTE_MS)) / MINUTE_MS) >= MIN_CHUNK_MINUTES
+const hasWholeMinute = (window: Interval) => Math.floor((window.end - ceilTo(window.start, MINUTE_MS)) / MINUTE_MS) >= 1
 
 // Tasks are fitted from this instant on: now, rounded up to the next five minutes (exactly on a step stays put).
 export function placementClock(now: Date): Date {
@@ -150,12 +150,12 @@ export function scheduleStable(input: StableScheduleInput): TaskPlacement[] {
       return end > start ? [{ start, end }] : []
     })
     const busyTime = [...reserved, ...leadIns]
-    const free = taskWindows(dated, categoryId, { start: rangeStart, end: rangeEnd }).flatMap((window) => subtract(window, busyTime)).filter(holdsAChunk)
+    const free = taskWindows(dated, categoryId, { start: rangeStart, end: rangeEnd }).flatMap((window) => subtract(window, busyTime)).filter(hasWholeMinute)
     freeByKey.set(categoryId, free)
     return free
   }
-  // scheduleTasks' rule for one task, read-only: chunks start on the minute, none under 10 minutes, late past the due date.
-  // A window too short for a chunk is dropped from the lists: windows only shrink, so it would be skipped for good.
+  // Keep even short windows: they can hold a whole remaining task, including its last piece.
+  // Chunks start on the minute, take at least min(10, remaining) minutes, and are late past the due date.
   const place = (task: Task): TaskPlacement => {
     const dueEnd = dueEndOf(task, timeZone)
     let remaining = task.durationMin
@@ -164,7 +164,7 @@ export function scheduleStable(input: StableScheduleInput): TaskPlacement[] {
     for (const window of freeTimeOf(task.categoryId)) {
       const chunkStart = ceilTo(window.start, MINUTE_MS)
       const minutes = Math.min(remaining, Math.floor((window.end - chunkStart) / MINUTE_MS))
-      if (minutes < MIN_CHUNK_MINUTES) continue
+      if (minutes < Math.min(MIN_CHUNK_MINUTES, remaining)) continue
       const chunkEnd = chunkStart + minutes * MINUTE_MS
       chunks.push({ start: new Date(chunkStart).toISOString(), end: new Date(chunkEnd).toISOString() })
       remaining -= minutes
@@ -177,7 +177,7 @@ export function scheduleStable(input: StableScheduleInput): TaskPlacement[] {
   const commit = (placement: TaskPlacement) => {
     for (const interval of reserve(placement)) {
       reserved.push(interval)
-      for (const [key, free] of freeByKey) freeByKey.set(key, free.flatMap((window) => subtract(window, [interval])).filter(holdsAChunk))
+      for (const [key, free] of freeByKey) freeByKey.set(key, free.flatMap((window) => subtract(window, [interval])).filter(hasWholeMinute))
     }
   }
 

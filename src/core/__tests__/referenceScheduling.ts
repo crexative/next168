@@ -1,12 +1,12 @@
-import type { PlannerDocument, Task, TaskPlacement } from '../model'
-import { scheduleTasks } from '../scheduler'
+import type { PlannerDocument, ScheduleInput, Task, TaskPlacement } from '../model'
 import type { StableScheduleInput } from '../scheduling'
-import { taskWindows } from '../schedulingWindows'
+import { subtract, taskWindows } from '../schedulingWindows'
 import { addLocalDays, datedOccurrences, localDateOf, zonedInstant } from '../time'
 
-// The stable placement as it was at 239b9bc, before the incremental free-time rewrite (P0 spec §3.3): every task is
-// placed by the unchanged contract `scheduleTasks`, with every earlier placement passed as busy time. Kept verbatim as
-// the oracle for the equivalence tests; it is deliberately slow and never used by the app.
+// The per-task algorithm from 239b9bc, before incremental free time (P0 spec §3.3). The minute scheduler is frozen
+// here too, so production changes cannot silently change the oracle. The sole rule change is at the chunk
+// check: a whole remainder may be shorter than ten minutes. Passing false reproduces the original goldens.
+// Deliberately slow and never used by the app.
 
 const MINUTE_MS = 60_000
 const DEFAULT_SNAP_MINUTES = 5
@@ -15,6 +15,38 @@ interface Interval { start: number; end: number }
 
 const ceilTo = (value: number, step: number) => Math.ceil(value / step) * step
 const compare = (a: string, b: string) => a < b ? -1 : a > b ? 1 : 0
+
+function referenceScheduleTasks({ document, busy, now, timeZone, days = 7 }: ScheduleInput, allowShortFinalChunk: boolean): TaskPlacement[] {
+  const fromDate = localDateOf(now, timeZone)
+  const rangeEnd = zonedInstant(addLocalDays(fromDate, days), 0, timeZone).getTime()
+  const start = Math.ceil(now.getTime() / MINUTE_MS) * MINUTE_MS
+  const dated = datedOccurrences(document, fromDate, days, timeZone)
+  const occupied = [...busy, ...document.events].map((item) => ({ start: Date.parse(item.start), end: Date.parse(item.end) }))
+  if (occupied.some((item) => !Number.isFinite(item.start) || !Number.isFinite(item.end) || item.end <= item.start)) throw new Error('scheduler.invalidBusy')
+  const tasks = document.tasks.filter((task) => !task.doneAt).sort((a, b) =>
+    compare(a.dueDate ?? '9999-12-31', b.dueDate ?? '9999-12-31') || a.priority - b.priority || (Date.parse(a.createdAt) - Date.parse(b.createdAt)) || compare(a.id, b.id))
+  return tasks.map((task) => {
+    const windows = taskWindows(dated, task.categoryId, { start, end: rangeEnd })
+    const free = windows.flatMap((window) => subtract(window, occupied))
+    let remaining = task.durationMin
+    const chunks: TaskPlacement['chunks'] = []
+    const dueEnd = task.dueDate ? zonedInstant(addLocalDays(task.dueDate, 1), 0, timeZone).getTime() : Infinity
+    let late = dueEnd <= now.getTime()
+    for (const window of free) {
+      const chunkStart = Math.ceil(window.start / MINUTE_MS) * MINUTE_MS
+      const available = Math.floor((window.end - chunkStart) / MINUTE_MS)
+      const minutes = Math.min(remaining, available)
+      if (minutes < (allowShortFinalChunk ? Math.min(10, remaining) : 10)) continue
+      const chunkEnd = chunkStart + minutes * MINUTE_MS
+      chunks.push({ start: new Date(chunkStart).toISOString(), end: new Date(chunkEnd).toISOString() })
+      occupied.push({ start: chunkStart, end: chunkEnd })
+      remaining -= minutes
+      if (chunkEnd > dueEnd) late = true
+      if (!remaining) break
+    }
+    return { taskId: task.id, chunks, overflowMinutes: remaining, late }
+  })
+}
 
 function snapEnd(iso: string, snapMs: number): string {
   const at = Date.parse(iso)
@@ -60,7 +92,7 @@ function withoutCategory(task: Task): Task {
   return free
 }
 
-export function referenceFitTasks(input: StableScheduleInput): TaskPlacement[] {
+export function referenceFitTasks(input: StableScheduleInput, allowShortFinalChunk = true): TaskPlacement[] {
   const { document, busy, now, timeZone, days = 7, previous, pinned } = input
   const snapMs = (input.snapMinutes ?? DEFAULT_SNAP_MINUTES) * MINUTE_MS
   const snappedDocument: PlannerDocument = { ...document, events: document.events.map((event) => ({ ...event, end: snapEnd(event.end, snapMs) })) }
@@ -104,10 +136,10 @@ export function referenceFitTasks(input: StableScheduleInput): TaskPlacement[] {
       const end = Math.min(window.end, ceilTo(start, snapMs))
       return end > start ? [{ start: new Date(start).toISOString(), end: new Date(end).toISOString() }] : []
     })
-    return scheduleTasks({
+    return referenceScheduleTasks({
       document: { ...snappedDocument, tasks: [task] },
       busy: [...schedulingBusy, ...leadIns], now, timeZone, days,
-    })[0]
+    }, allowShortFinalChunk)[0]
   }
   for (const task of open) {
     if (kept.has(task.id)) continue
