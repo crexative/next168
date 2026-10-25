@@ -33,7 +33,7 @@ export interface BlockWords { title: string; time: string; category?: string; st
 export interface BusyWords { title: string; conflict?: string }
 export interface TaskWords { title: string; late: boolean }
 
-export interface BlockShow { title: boolean; mark: boolean; time: boolean; category: boolean; status: boolean }
+export interface BlockShow { title: boolean; mark: boolean; time: boolean; category: boolean; status: boolean; statusIcon: boolean }
 export interface BusyShow { icon: boolean; word: boolean; title: boolean }
 export interface TaskShow { icon: boolean; title: boolean }
 
@@ -70,8 +70,8 @@ export interface DayColumnInput {
   }
 }
 
-const NOTHING = { block: { title: false, mark: false, time: false, category: false, status: false }, busy: { icon: false, word: false, title: false }, task: { icon: false, title: false } }
-const EVERYTHING = { block: { title: true, mark: true, time: true, category: true, status: true }, busy: { icon: true, word: true, title: true }, task: { icon: true, title: true } }
+const NOTHING = { block: { title: false, mark: false, time: false, category: false, status: false, statusIcon: false }, busy: { icon: false, word: false, title: false }, task: { icon: false, title: false } }
+const EVERYTHING = { block: { title: true, mark: true, time: true, category: true, status: true, statusIcon: true }, busy: { icon: true, word: true, title: true }, task: { icon: true, title: true } }
 
 // A task fits the routine of its category whose occurrence holds it.
 export function hostOf<B extends BlockSegment>(task: TaskSegment, blocks: readonly B[]): B | undefined {
@@ -87,13 +87,15 @@ function blockPieces(words: BlockWords, measure: ColumnMeasure): TextPiece[] {
 }
 
 function blockShow(words: BlockWords, fits: readonly PieceFit[]): BlockShow {
-  const category = Boolean(words.category) && fits.length > 2
+  const statusIndex = words.category ? 3 : 2
   return {
     title: fits.length > 0,
     mark: fits[0]?.lead ?? false,
     time: fits.length > 1,
-    category,
-    status: Boolean(words.status) && fits.length > (words.category ? 3 : 2),
+    category: Boolean(words.category) && fits.length > 2,
+    status: Boolean(words.status) && fits.length > statusIndex,
+    // The status icon is drawn only where it was measured; the word alone may fit where icon and word do not.
+    statusIcon: Boolean(words.status) && (fits[statusIndex]?.lead ?? false),
   }
 }
 
@@ -154,7 +156,7 @@ export function planDayColumn(input: DayColumnInput): DayColumnPlan {
   // Tasks of one host are placed together: each first gets the height its title needs, then at least MIN_TASK_PX,
   // else they become one outline around the host.
   const tasks: PlannedTask[] = []
-  const groups = new Map<string, { bounds: { top: number; bottom: number; strip: number }; lane: LanePosition; hostKey?: string; members: TaskSegment[] }>()
+  const groups = new Map<string, { bounds: { top: number; bottom: number; strip: number }; lane: LanePosition; hostKey: string; members: TaskSegment[] }>()
   for (const task of input.tasks) {
     const host = hosts.get(task)
     if (host) {
@@ -164,15 +166,17 @@ export function planDayColumn(input: DayColumnInput): DayColumnPlan {
       groups.set(host.key, group)
       continue
     }
-    // A task in free time grows only within the free stretch around it, never into the item before or after.
+    // A task in free time grows only downwards, up to the next item (or task) below it, so it never covers another.
     const lane = lanes.loose.find((item) => item.task === task)!
-    const others = [...input.blocks, ...input.busy]
-    const top = Math.max(0, ...others.filter((item) => item.endMinute <= task.startMinute).map((item) => item.endMinute))
-    const bottom = Math.min(1440, ...others.filter((item) => item.startMinute >= task.endMinute).map((item) => item.startMinute))
-    const key = `free@${top}-${bottom}@${lane.left}`
-    const group = groups.get(key) ?? { bounds: { top: px(top), bottom: px(bottom), strip: 0 }, lane, members: [] }
-    group.members.push(task)
-    groups.set(key, group)
+    const below = [...input.blocks, ...input.busy, ...input.tasks.filter((other) => other !== task && !hosts.get(other))].filter((item) => item.startMinute >= task.endMinute)
+    const top = px(task.startMinute)
+    const limit = px(Math.min(1440, ...below.map((item) => item.startMinute)))
+    const width = boxWidth(lane)
+    const textHeight = measure ? taskTextHeight(words.task(task), width, measure) : undefined
+    const wanted = top + Math.max(MIN_TASK_PX, textHeight ?? MIN_TASK_PX) > limit ? top + MIN_TASK_PX : top + Math.max(MIN_TASK_PX, textHeight ?? MIN_TASK_PX)
+    const bottom = Math.max(px(task.endMinute), Math.min(wanted, limit))
+    const show = measure ? taskShow(words.task(task), width, bottom - top, false, measure) : EVERYTHING.task
+    tasks.push({ task, hostKey: undefined, left: lane.left, width: lane.width, top, bottom, outline: false, show })
   }
   for (const { bounds, lane, hostKey, members } of groups.values()) {
     const natural = members.map((task) => ({ top: px(task.startMinute), bottom: px(task.endMinute) }))

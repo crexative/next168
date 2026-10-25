@@ -74,6 +74,17 @@ describe('what a routine shows, by the size of its box', () => {
     expect(plan({ blocks: [block('w', 540, 600, 'Work')], measure: measureAt(46) }).blocks[0]!.show).toMatchObject({ title: true, mark: false })
   })
 
+  it('draws the status icon only where it was measured: the word alone may fit where icon and word do not', () => {
+    const at = (width: number) => planDayColumn({
+      blocks: blockSegmentsByDate(plannerDocument({ blocks: [block('lunch', 780, 855, 'Lunch')] }), [DATE], 'UTC')[DATE]!,
+      busy: [], tasks: [], hourHeight: HOUR_HEIGHT_PX, compact: false, measure: measureAt(width),
+      words: { block: () => ({ title: 'Lunch', time: '1:00 – 3:00', status: 'Partly done' }), busy: () => ({ title: '' }), task: () => ({ title: '', late: false }) },
+    }).blocks[0]!.show
+    expect(at(300)).toMatchObject({ status: true, statusIcon: true })
+    // 90 px column, 75 px for text: "Partly done" (66 px) fits one line, with the 18 px icon (84 px) it needs two, which a 75-minute routine cannot hold.
+    expect(at(90)).toMatchObject({ status: true, statusIcon: false })
+  })
+
   it('draws every word before the column is measured, and none in the overview', () => {
     expect(plan({ blocks: [block('m', 540, 555)], measure: null }).blocks[0]!.show).toMatchObject({ title: true, time: true })
     expect(plan({ blocks: [block('m', 540, 660)], measure: measureAt(300), compact: true }).blocks[0]!.show).toMatchObject({ title: false, time: false })

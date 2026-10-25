@@ -100,14 +100,15 @@ function segmentStyle(segment: PlannedBlock) {
   return {
     ...verticalStyle(segment),
     ...laneStyle(segment),
-    padding: props.compact ? undefined : `${BLOCK_INSET.top}px ${BLOCK_INSET.end}px ${BLOCK_INSET.bottom}px ${BLOCK_INSET.start}px`,
+    // A box that draws no words needs no inset; without it a lane narrower than the inset stays inside its lane.
+    padding: props.compact || !segment.show.title ? '0' : `${BLOCK_INSET.top}px ${BLOCK_INSET.end}px ${BLOCK_INSET.bottom}px ${BLOCK_INSET.start}px`,
     '--block-color': categoryColor(categoriesById.value.get(segment.occurrence.categoryId)),
     '--block-stroke': categoryStroke(categoriesById.value.get(segment.occurrence.categoryId)),
   }
 }
 
 function busyStyle(item: PlannedBusy) {
-  return { ...verticalStyle(item), ...laneStyle(item) }
+  return { ...verticalStyle(item), ...laneStyle(item), padding: item.show.title || item.show.icon ? undefined : '0' }
 }
 
 function taskStyle(planned: PlannedTask) {
@@ -174,7 +175,8 @@ function onColumnClick(event: MouseEvent, blockId?: string): void {
       <span class="block-detail" data-role="blockDetail" />
       <span class="t-caption" data-role="caption" />
       <span class="task-text" data-role="taskTitle" />
-      <span class="block-title"><CategoryMark class="block-mark" :category="undefined" data-lead="mark" /></span>
+      <span class="block-title" data-lead="mark"><CategoryMark class="block-mark" :category="undefined" />{{ ' ' }}</span>
+      <span class="t-caption" data-lead="icon"><Icon name="check" :size="12" />{{ ' ' }}</span>
       <span class="t-caption" data-sentinel>M</span>
     </div>
     <button
@@ -209,7 +211,7 @@ function onColumnClick(event: MouseEvent, blockId?: string): void {
       <span v-if="segment.show.title" class="block-title"><CategoryMark v-if="segment.show.mark" class="block-mark" :category="categoriesById.get(segment.occurrence.categoryId)" />{{ segment.show.mark ? ' ' : '' }}{{ segment.occurrence.title }}</span>
       <span v-if="segment.show.time" class="block-detail block-time">{{ timeRange(segment) }}</span>
       <span v-if="segment.show.category" class="block-detail block-category">{{ categoryLine(segment) }}</span>
-      <span v-if="statuses.get(segment.key)" class="block-status t-caption" :class="{ 'visually-hidden': !segment.show.status }" data-testid="block-status"><Icon :name="STATUS_ICON[statuses.get(segment.key)!]" :size="12" /> {{ statusText(segment) }}</span>
+      <span v-if="statuses.get(segment.key)" class="block-status t-caption" :class="{ 'visually-hidden': !segment.show.status }" data-testid="block-status"><template v-if="segment.show.statusIcon"><Icon :name="STATUS_ICON[statuses.get(segment.key)!]" :size="12" />{{ ' ' }}</template>{{ statusText(segment) }}</span>
     </button>
     <button
       v-for="planned in plan.tasks"

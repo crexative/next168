@@ -1,5 +1,5 @@
 import { expect, test, type Page } from '@playwright/test'
-import { V2_KEY, openSettingsPage, seedKey } from './fixtures'
+import { V2_KEY, seedKey } from './fixtures'
 import { visualIntegrityViolations } from './support/visualIntegrity'
 
 // Week text, property style (docs/design/visual-design.md › Week items): many seeded weeks of 5 to 15 minute routines,
@@ -153,7 +153,9 @@ async function auditWeek(page: Page, state: string, columns: number): Promise<vo
     return found.length
   })
   expect(marked, `${state}: day columns on the page`).toBeGreaterThanOrEqual(columns)
-  expect.soft(await visualIntegrityViolations(page, { focusRings: false }), state).toEqual([])
+  const violations = await visualIntegrityViolations(page, { focusRings: false })
+  if (violations.length) await page.screenshot({ path: test.info().outputPath(`${state.replace(/[^\w%-]+/g, '-')}.png`), fullPage: true })
+  expect.soft(violations, state).toEqual([])
 }
 
 async function setTextSize(page: Page, percent: number): Promise<void> {
@@ -174,8 +176,8 @@ test.describe('Week text is whole in every seeded layout', () => {
       await page.clock.install({ time: NOW })
       await seedKey(page, V2_KEY, JSON.stringify(document))
       if (calendar) {
-        await openSettingsPage(page, 'calendars')
-        await page.locator('input[type="file"]').first().setInputFiles({ name: 'week.ics', mimeType: 'text/calendar', buffer: Buffer.from(calendar) })
+        await page.goto('./#/settings/calendars')
+        await page.locator('input[type="file"][accept*="ics"], input[type="file"]').first().setInputFiles({ name: 'week.ics', mimeType: 'text/calendar', buffer: Buffer.from(calendar) })
         await expect(page.getByTestId('calendar-source')).toHaveCount(1)
       }
       await page.goto('./#/week')

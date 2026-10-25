@@ -38,13 +38,13 @@ function snapshot(column: HTMLElement, probes: HTMLElement): ColumnMeasure | nul
     },
     lineHeight: (role) => fonts.get(role)!.lineHeight,
   }
-  const mark = probes.querySelector<HTMLElement>('[data-lead="mark"]')
-  const markWidth = mark ? mark.getBoundingClientRect().width + Number.parseFloat(getComputedStyle(mark).marginInlineEnd || '0') : 0
+  // A lead is measured as drawn: the mark or icon with the space after it.
+  const lead = (name: string, fallback: number) => probes.querySelector<HTMLElement>(`[data-lead="${name}"]`)?.getBoundingClientRect().width || fallback
   return {
     width,
     metrics,
-    markLead: markWidth + metrics.width(' ', 'blockTitle'),
-    iconLead: ICON_PX + metrics.width(' ', 'caption'),
+    markLead: lead('mark', 0),
+    iconLead: lead('icon', ICON_PX + metrics.width(' ', 'caption')),
   }
 }
 
