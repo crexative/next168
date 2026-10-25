@@ -68,7 +68,7 @@ it('a whole week reads as a one-line summary first, with every group closed and 
   // A routine in a new category is shown with that category's name, and an overnight one with its real times.
   const sleep = [...byTestId('review-group-routines')!.querySelectorAll('[data-testid="change-after"]')].find((item) => item.textContent!.includes('Dormir'))!
   expect(sleep.textContent).toContain('Sueño')
-  expect(sleep.textContent).toContain('10:30 PM – 6:30 AM (overnight)')
+  expect(sleep.textContent).toContain('10:30\u00a0PM – 6:30\u00a0AM (overnight)')
   expect(window.document.body.textContent).not.toContain('Unknown category')
 })
 

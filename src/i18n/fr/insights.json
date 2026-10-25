@@ -1,22 +1,22 @@
 {
   "empty": {
     "title": "Pas encore de données",
-    "description": "Ajoutez des catégories et des routines pour voir comment se répartissent vos 168 heures."
+    "description": "Ajoute des catégories et des routines pour voir comment se répartissent tes 168 heures."
   },
   "bar": {
-    "title": "Votre semaine type",
+    "title": "Ta semaine type",
     "summary": "{assigned} assignées · {unassigned} non assignées",
     "segment": "{name} : {duration}",
     "unassignedName": "Non assigné",
     "unassignedSegment": "Non assigné : {duration}",
     "overlap": "Certaines routines se chevauchent : la barre est limitée à 168 h.",
     "legend": "Heures assignées par catégorie",
-    "live": "Cette semaine, il vous reste {hours} h libre. | Cette semaine, il vous reste {hours} h libres."
+    "live": "Cette semaine, il te reste {hours} h libre. | Cette semaine, il te reste {hours} h libres."
   },
   "goals": {
     "deletedCategory": "Catégorie supprimée",
-    "title": "Vos objectifs de la semaine",
-    "empty": "Pas encore d’objectif. Fixez-en un sur une catégorie, dans Réglages.",
+    "title": "Tes objectifs de la semaine",
+    "empty": "Pas encore d’objectif. Fixe-en un sur une catégorie, dans Réglages.",
     "line": {
       "minMissing": "{planned} sur {goal} minimum · il manque {left}",
       "minMet": "{planned} sur {goal} minimum",
@@ -34,7 +34,7 @@
     "stress": "Stress moyen (1–5)",
     "none": "—",
     "exerciseOfTarget": "{count} séances sur {target}",
-    "emptyBody": "Ces mesures viennent de votre Bilan du jour : heure du coucher, du réveil, fin du travail, exercice et stress. Cela prend moins d'une minute.",
+    "emptyBody": "Ces mesures viennent de ton Bilan du jour : heure du coucher, du réveil, fin du travail, exercice et stress. Cela prend moins d'une minute.",
     "emptyAction": "Faire le Bilan du jour",
     "state": {
       "good": "bien",

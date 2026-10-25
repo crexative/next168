@@ -22,6 +22,6 @@
     "clockAuto": "Automatique",
     "clock12": "12 heures",
     "clock24": "24 heures",
-    "footer": "Automatique suit la région et l’apparence de votre appareil. Les heures s’affichent ainsi : {example}"
+    "footer": "Automatique suit la région et l’apparence de ton appareil. Les heures s’affichent ainsi : {example}"
   }
 }

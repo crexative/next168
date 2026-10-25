@@ -25,6 +25,17 @@ async function setup() {
   return { home, workspace, document, input }
 }
 describe('serialized workspace commits', () => {
+  it.each(['pairing', 'proposal'])('leaves browser language selection open after %s', async (path) => {
+    const home = await mkdtemp(join(tmpdir(), 'next168-locale-')); homes.push(home)
+    const workspace = new Workspace(home)
+    await workspace.initialize()
+    const document = await workspace.document()
+    if (path === 'proposal') {
+      const proposal = await workspace.create({ contractVersion: '1.0', workspaceId: document.workspaceId, baseRevision: 0, summary: 'Read', ops: [{ op: 'add_task', task: { title: 'Read', durationMin: 15, priority: 1 } }] }, 'mcp')
+      await workspace.approve(proposal.id, proposal.contentHash, 0)
+    }
+    expect((await workspace.document()).settings.locale).toBe('und')
+  })
   it('commits concurrent approvals once and replays the recorded revision', async () => {
     const { workspace, input } = await setup()
     const proposal = await workspace.create(input, 'mcp')

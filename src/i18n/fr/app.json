@@ -15,12 +15,12 @@
   },
   "placeholders": {
     "today": {
-      "title": "Votre journée commence ici",
+      "title": "Ta journée commence ici",
       "description": "Le bloc en cours et la chronologie du jour apparaîtront ici."
     },
     "week": {
-      "title": "Votre semaine commence ici",
-      "description": "Vos 168 heures en grille horaire apparaîtront ici.",
+      "title": "Ta semaine commence ici",
+      "description": "Tes 168 heures en grille horaire apparaîtront ici.",
       "blocks": "Aucun bloc enregistré sur cet appareil | {count} bloc enregistré sur cet appareil | {count} blocs enregistrés sur cet appareil"
     },
     "tasks": {
@@ -29,7 +29,7 @@
     },
     "insights": {
       "title": "Pas encore de résumé",
-      "description": "Voyez comment vos 168 heures sont utilisées dès que vous planifiez votre semaine."
+      "description": "Vois comment tes 168 heures sont utilisées dès que tu planifies ta semaine."
     },
     "settings": {
       "title": "Réglages",
@@ -37,32 +37,32 @@
     }
   },
   "update": {
-    "available": "Mise à jour disponible — rechargez quand vous voulez",
+    "available": "Mise à jour disponible — recharge quand tu veux",
     "reload": "Recharger",
-    "blocked": "Enregistrez ou fermez le formulaire ouvert avant de recharger."
+    "blocked": "Enregistre ou ferme le formulaire ouvert avant de recharger."
   },
   "storage": {
-    "readonlyNoLocks": "Ce navigateur ne peut pas coordonner plusieurs onglets en toute sécurité : Next168 est en lecture seule ici. Utilisez une version récente de Chrome, Edge, Firefox ou Safari.",
+    "readonlyNoLocks": "Ce navigateur ne peut pas coordonner plusieurs onglets en toute sécurité : Next168 est en lecture seule ici. Utilise une version récente de Chrome, Edge, Firefox ou Safari.",
     "unsupported": "Ces données ont été enregistrées par une version plus récente de Next168 et restent en lecture seule jusqu’à la mise à jour.",
     "legacyChanged": "Une ancienne version de Next168 est ouverte dans un autre onglet. Les modifications faites là-bas ne sont pas reprises.",
-    "conflict": "Un autre onglet a modifié vos données en premier. La dernière version a été chargée — réessayez.",
-    "saveFailed": "Enregistrement impossible ({reason}). Vos données précédentes sont intactes.",
+    "conflict": "Un autre onglet a modifié tes données en premier. La dernière version a été chargée — réessaie.",
+    "saveFailed": "Enregistrement impossible ({reason}). Tes données précédentes sont intactes.",
     "unavailableTitle": "Next168 ne peut pas utiliser le stockage de ce navigateur",
-    "unavailableBody": "Next168 s’est arrêté pour que rien ne soit perdu. Vos données sur cet appareil n’ont pas été modifiées. Réessayez dans un instant.",
-    "lastChangeNotSaved": "Votre dernière modification n’a pas été enregistrée. Tout ce qui précède est en sécurité.",
+    "unavailableBody": "Next168 s’est arrêté pour que rien ne soit perdu. Tes données sur cet appareil n’ont pas été modifiées. Réessaie dans un instant.",
+    "lastChangeNotSaved": "Ta dernière modification n’a pas été enregistrée. Tout ce qui précède est en sécurité.",
     "retry": "Réessayer",
     "exportCopy": "Exporter une copie",
     "exportWithoutCalendars": "Certains textes de calendrier n’ont pas pu être lus et ont été exportés vides."
   },
   "recovery": {
-    "title": "Vos données enregistrées sont illisibles",
-    "description": "Next168 s’est arrêté pour les protéger et n’a rien modifié. Vous pouvez télécharger les données brutes, restaurer la dernière sauvegarde ou repartir d’un planificateur vide.",
+    "title": "Tes données enregistrées sont illisibles",
+    "description": "Next168 s’est arrêté pour les protéger et n’a rien modifié. Tu peux télécharger les données brutes, restaurer la dernière sauvegarde ou repartir d’un planificateur vide.",
     "reason": "Cause : {reason}",
     "export": "Télécharger les données brutes",
     "restoreBackup": "Restaurer la dernière sauvegarde",
     "startFresh": "Repartir d’un planificateur vide",
     "confirmTitle": "Remplacer les données illisibles ?",
-    "confirmBody": "Téléchargez d’abord les données brutes si vous pouvez en avoir besoin. Une copie est conservée dans l’emplacement de sauvegarde s’il n’y en a pas de valide.",
+    "confirmBody": "Télécharge d’abord les données brutes si tu peux en avoir besoin. Une copie est conservée dans l’emplacement de sauvegarde s’il n’y en a pas de valide.",
     "confirmAction": "Oui, repartir de zéro"
   }
 }

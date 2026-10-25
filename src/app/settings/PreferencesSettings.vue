@@ -10,11 +10,11 @@ import { displayLocale, formatClock, hourCycle, setHourCycle, type HourCycle } f
 
 // General: language, first day of the week, 12/24 h clock and appearance, set once on the Settings list.
 // Language and week start belong to the planner document; the clock and appearance are preferences of this device.
-const { t } = useI18n()
+const { t, locale } = useI18n()
 const planner = usePlannerStore()
 const languageId = useId()
 
-const language = computed(() => planner.document?.settings.locale ?? 'en')
+const language = computed(() => isSupportedLocale(planner.document?.settings.locale) ? planner.document!.settings.locale : locale.value)
 const weekStart = computed(() => String(planner.document?.settings.weekStartsOn ?? 1) as '0' | '1')
 
 const weekOptions = computed(() => [

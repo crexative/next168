@@ -16,6 +16,8 @@ import { setupRequest } from '../reopen'
 import { createState } from '../setupModel'
 import { env } from '../setupFixtures'
 import SetupHost from './SetupHost.vue'
+import { registerIcons } from '@/ui/icons'
+import { ArrowUp } from 'lucide-vue-next'
 
 // The guided setup's lifecycle on a real store and repository: what a draft is applied to, the single guarded commit,
 // what a refused commit shows, and what nothing may do while a save is pending.
@@ -77,6 +79,7 @@ async function skipToSummary(): Promise<void> {
 }
 
 beforeEach(() => {
+  registerIcons({ 'arrow-up': ArrowUp })
   sessionStorage.clear()
   localStorage.clear()
 })
@@ -413,6 +416,69 @@ describe('the conversation', () => {
   const turn = (screen: string) => turns().find((element) => element.dataset.answer === screen)!
   const quick = (value: string) => click(`[data-value=${value}]`)
 
+  it('returns from an earlier answer to the current question without reconfirming later answers', async () => {
+    await mount(firstRun())
+    await click('[data-testid=setup-primary]')
+    await quick('work')
+    await click('[data-testid=setup-primary]')
+    await quick('no')
+    expect(screen()).toBe('exercise')
+    turn('sleep').click()
+    await settle()
+    await click('[data-testid=setup-primary]')
+    expect(screen()).toBe('exercise')
+    expect(turn('commute').textContent).toContain('No')
+  })
+
+  it('asks only the newly needed study time after changing work to both', async () => {
+    await mount(firstRun())
+    await click('[data-testid=setup-primary]')
+    await quick('work')
+    await click('[data-testid=setup-primary]')
+    await quick('no')
+    turn('workStudy').click()
+    await settle()
+    await quick('both')
+    expect(screen()).toBe('study')
+    await click('[data-testid=setup-primary]')
+    expect(screen()).toBe('exercise')
+    expect(turn('commute').textContent).toContain('No')
+  })
+
+  it('from the summary asks only the later range made invalid by an earlier edit, then returns to the summary', async () => {
+    await mount(firstRun())
+    await click('[data-testid=setup-primary]')
+    await quick('work')
+    await click('[data-testid=setup-primary]')
+    await quick('no')
+    await quick('no')
+    await click('[data-testid=setup-secondary]')
+    expect(screen()).toBe('summary')
+    turn('sleep').click()
+    await settle()
+    await click('[data-field=end]')
+    await click('[data-testid=other-time]')
+    for (let hour = 0; hour < 3; hour++) await click('[data-step=hour-up]')
+    await click('[data-testid=time-use]')
+    await click('[data-testid=setup-primary]')
+    expect(screen()).toBe('work')
+    await click('[data-field=start]')
+    await click('[data-minute="600"]')
+    await click('[data-testid=setup-primary]')
+    expect(screen()).toBe('summary')
+    expect(JSON.parse(sessionStorage.getItem(DRAFT_KEY)!).answers).toMatchObject({ commute: 'no', exercise: 'no' })
+  })
+
+  it.each(['en', 'es', 'fr', 'pt', 'de'] as const)('shows a visible send label and arrow in %s', async (locale) => {
+    await mount(firstRun())
+    i18n.global.locale.value = locale
+    await settle()
+    const send = live('[data-testid=setup-primary]')!
+    expect(send.textContent?.trim()).toBe(i18n.global.t('onboarding.guided.sendShort'))
+    expect(send.textContent?.trim()).not.toBe('onboarding.guided.sendShort')
+    expect(send.querySelector('svg')).not.toBeNull()
+  })
+
   it('keeps every answer above the question; changing an earlier one drops what no longer applies and brings it back with that answer', async () => {
     await mount(firstRun())
     await click('[data-testid=setup-primary]')
@@ -443,13 +509,13 @@ describe('the conversation', () => {
     turn('workStudy').click()
     await settle()
     await quick('both')
-    expect(screen()).toBe('work')
-    // The dormant answers are back: the work end kept, the trip still "yes".
-    expect(window.document.body.querySelector('[data-testid=setup] [data-field=end] .value')!.textContent).toContain('6:00')
+    // Only the trip ranges were still unanswered: work and study do not need reconfirmation.
+    expect(screen()).toBe('commuteRanges')
+    const draft = JSON.parse(sessionStorage.getItem(DRAFT_KEY)!)
+    expect(draft.categories.find((category: { key: string }) => category.key === 'work').ranges[0].end).toBe(1080)
+    expect(draft.answers.commute).toBe('yes')
     await click('[data-testid=setup-primary]')
-    await click('[data-testid=setup-primary]')
-    expect(screen()).toBe('commute')
-    expect(live('[data-value=yes]')!.getAttribute('aria-label')).toBe('Yes (current)')
+    expect(screen()).toBe('exercise')
   })
 
   it('a reload in the middle brings back the whole conversation, answers included', async () => {

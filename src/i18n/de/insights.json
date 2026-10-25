@@ -1,10 +1,10 @@
 {
   "empty": {
     "title": "Noch keine Daten",
-    "description": "Fügen Sie Kategorien und Routinen hinzu, um zu sehen, wie sich Ihre 168 Stunden verteilen."
+    "description": "Füge Kategorien und Routinen hinzu, um zu sehen, wie sich deine 168 Stunden verteilen."
   },
   "bar": {
-    "title": "Ihre Standardwoche",
+    "title": "Deine Standardwoche",
     "summary": "{assigned} zugewiesen · {unassigned} nicht zugewiesen",
     "segment": "{name}: {duration}",
     "unassignedName": "Nicht zugewiesen",
@@ -15,8 +15,8 @@
   },
   "goals": {
     "deletedCategory": "Gelöschte Kategorie",
-    "title": "Ihre Ziele diese Woche",
-    "empty": "Noch keine Ziele. Legen Sie eines je Kategorie unter Einstellungen fest.",
+    "title": "Deine Ziele diese Woche",
+    "empty": "Noch keine Ziele. Lege eines je Kategorie unter Einstellungen fest.",
     "line": {
       "minMissing": "{planned} von mindestens {goal} · es fehlen {left}",
       "minMet": "{planned} von mindestens {goal}",
@@ -34,7 +34,7 @@
     "stress": "Durchschnittlicher Stress (1–5)",
     "none": "—",
     "exerciseOfTarget": "{count} von {target} Einheiten",
-    "emptyBody": "Diese Werte stammen aus Ihrem Tagesabschluss: Schlafenszeit, Aufstehen, Arbeitsende, Bewegung und Stress. Das dauert weniger als eine Minute.",
+    "emptyBody": "Diese Werte stammen aus deinem Tagesabschluss: Schlafenszeit, Aufstehen, Arbeitsende, Bewegung und Stress. Das dauert weniger als eine Minute.",
     "emptyAction": "Tagesabschluss machen",
     "state": {
       "good": "gut",

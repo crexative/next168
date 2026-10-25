@@ -18,7 +18,7 @@ afterEach(() => { app?.unmount(); host?.remove(); vi.restoreAllMocks() })
 it('renders translated Settings and creates a meeting through the actual sheet form', async () => {
   const pinia = createPinia()
   setActivePinia(pinia)
-  const repositories = createTestRepositories()
+  const repositories = createTestRepositories({ timeZone: () => 'America/Bogota' })
   configurePlannerStore({ repository: repositories.planner, now: fixedNow, newId: newTestId, locale: () => 'en', timeZone: () => 'America/Bogota' })
   configureCalendarServices({ texts: new IndexedDbCalendarSourceStore(new IDBFactory()) })
   const planner = usePlannerStore()

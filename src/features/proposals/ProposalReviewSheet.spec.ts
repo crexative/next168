@@ -20,6 +20,13 @@ afterEach(() => { mounted?.unmount(); reviewing.value = null; document.body.inne
 const proposal = { id: 'p1', summary: 'Add a focus hour', baseRevision: 1, contentHash: 'h', source: 'import', status: 'pending' } as unknown as ChangeProposal
 const review = () => document.body.querySelector<HTMLElement>('[data-testid=proposal-review]')
 
+it('keeps internal revision numbers out of the proposal heading', async () => {
+  mounted = await mountWithPlanner(ProposalReviewSheet)
+  reviewing.value = { ...proposal, baseRevision: 0 }
+  await vi.waitFor(() => expect(review()).not.toBeNull())
+  expect(review()!.querySelector('.review-head')!.textContent).not.toMatch(/revision|revisión|révision|revisão|Revision|\b0\b/)
+})
+
 it('says it is loading instead of flashing "cannot be applied" while the preview is computed', async () => {
   mounted = await mountWithPlanner(ProposalReviewSheet)
   reviewing.value = proposal

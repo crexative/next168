@@ -19,7 +19,7 @@ afterEach(() => { app?.unmount(); host?.remove(); document.body.innerHTML = ''; 
 async function open(event?: PlannerEvent, timeZone = 'UTC') {
   const pinia = createPinia()
   setActivePinia(pinia)
-  configurePlannerStore({ repository: createTestRepositories().planner, now: fixedNow, newId: newTestId, locale: () => 'en', timeZone: () => timeZone })
+  configurePlannerStore({ repository: createTestRepositories({ timeZone: () => timeZone }).planner, now: fixedNow, newId: newTestId, locale: () => 'en', timeZone: () => timeZone })
   configureCalendarServices({ texts: new IndexedDbCalendarSourceStore(new IDBFactory()), now: fixedNow })
   const planner = usePlannerStore()
   await planner.load()

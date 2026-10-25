@@ -13,12 +13,14 @@ function setup(storage = new MemoryStore(), withLocks = true) {
 beforeEach(() => setActivePinia(createPinia()))
 
 describe('loading', () => {
-  it('starts with an empty in-memory document and does not write until the first commit', async () => {
+  it('starts with a persisted device baseline and no stored planner until the first commit', async () => {
     const { store, storage } = setup()
     await store.load()
     expect(store.status).toBe('ready')
     expect(store.document?.revision).toBe(0)
-    expect(storage.writeTransactions).toBe(0)
+    expect(storage.writeTransactions).toBe(1)
+    expect(storage.data.has('document')).toBe(false)
+    expect(storage.data.has('unsavedBaseline')).toBe(true)
   })
 
   it('exposes corrupt data with its raw text and never changes storage', async () => {
@@ -67,7 +69,6 @@ describe('a planner that was never stored', () => {
   it('shows the unsaved planner a proposal was made against, in any tab', async () => {
     const storage = new MemoryStore()
     const { store, proposals } = setup(storage)
-    await store.load()
     const basis = testDocument({ workspaceId: 'from-other-tab' })
     await proposals.create({ contractVersion: '1.0', workspaceId: 'from-other-tab', baseRevision: 0, summary: 'S', ops: [{ op: 'add_category', ref: 'new-a', category: { name: 'A' } }] }, 'import', { basis })
     await store.load()
@@ -125,7 +126,7 @@ describe('commit', () => {
     await store.load()
     const result = await store.commit((draft) => { draft.settings.locale = '' })
     expect(result).toEqual({ ok: false, reason: 'invalid-document' })
-    expect(storage.writeTransactions).toBe(0)
+    expect(storage.writeTransactions).toBe(1)
   })
 
   it('rejects semantic violations without publishing or persisting the draft', async () => {
@@ -135,7 +136,7 @@ describe('commit', () => {
     expect(await store.commit((draft) => { draft.appliedProposalIds = ['duplicate', 'duplicate'] }))
       .toEqual({ ok: false, reason: 'invalid-document' })
     expect(store.document).toBe(before)
-    expect(storage.writeTransactions).toBe(0)
+    expect(storage.writeTransactions).toBe(1)
   })
 
   it('reports a conflict and reloads the winner after a stale commit', async () => {

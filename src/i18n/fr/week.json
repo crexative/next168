@@ -30,24 +30,24 @@
     "delete": "Supprimer la routine",
     "hours": "{hours} h",
     "errors": {
-      "titleRequired": "Donnez un nom à la routine.",
-      "categoryRequired": "Choisissez une catégorie.",
-      "timeRequired": "Indiquez une heure de début et de fin.",
+      "titleRequired": "Donne un nom à la routine.",
+      "categoryRequired": "Choisis une catégorie.",
+      "timeRequired": "Indique une heure de début et de fin.",
       "zeroLength": "Le début et la fin ne peuvent pas être à la même heure.",
-      "daysRequired": "Choisissez au moins un jour.",
-      "overlap": "Chevauche « {title} ». Changez l'heure ou les jours.",
+      "daysRequired": "Choisis au moins un jour.",
+      "overlap": "Chevauche « {title} ». Change l'heure ou les jours.",
       "saveFailed": "Enregistrement impossible ({reason})."
     },
     "warnings": {
-      "goalOver": "{category} dépasserait son objectif hebdomadaire de {hours}. Vous pouvez quand même enregistrer."
+      "goalOver": "{category} dépasserait son objectif hebdomadaire de {hours}. Tu peux quand même enregistrer."
     }
   },
   "empty": {
-    "noCategoriesTitle": "Commencez par vos catégories",
-    "noCategoriesDescription": "Chaque routine appartient à une catégorie comme Sommeil, Travail ou Sport. Ajoutez-en une dans Réglages.",
+    "noCategoriesTitle": "Commence par tes catégories",
+    "noCategoriesDescription": "Chaque routine appartient à une catégorie comme Sommeil, Travail ou Sport. Ajoute-en une dans Réglages.",
     "openSettings": "Ouvrir Réglages",
-    "noBlocksTitle": "Planifiez vos 168 heures",
-    "noBlocksDescription": "Ajoutez une routine pour une activité hebdomadaire, comme dormir ou travailler.",
+    "noBlocksTitle": "Planifie tes 168 heures",
+    "noBlocksDescription": "Ajoute une routine pour une activité hebdomadaire, comme dormir ou travailler.",
     "addBlock": "Ajouter une routine"
   },
   "addMenu": {

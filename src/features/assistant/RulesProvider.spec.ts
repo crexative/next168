@@ -68,8 +68,33 @@ describe('RulesProvider', () => {
   it('answers the next block', async () => {
     const { answer } = await ask("What's my next block?")
     // A readable date, never an ISO one, and the time in the shared clock format.
-    expect(answer).toMatch(/^Next up on Monday, October 26 at \d{1,2}:\d{2}( [AP]M)?: Deep work\.$/)
+    expect(answer).toMatch(/^Next up on Monday, October 26 at \d{1,2}:\d{2}(\s[AP]M)?: Deep work\.$/)
     expect(answer).not.toMatch(/\d{4}-\d{2}-\d{2}/)
+  })
+
+  it('names the same upcoming task as Today before a later routine', async () => {
+    const document = plannerWithBlocks()
+    document.blocks = [{ ...document.blocks[0]!, days: [3], start: 13 * 60, end: 14 * 60 }]
+    document.tasks.push({ id: 'budget', title: 'Review budget', durationMin: 15, priority: 1, createdAt: '2026-10-21T08:00:00Z' })
+    const context = contextFor(document, 'es', new Date('2026-10-21T10:07:00Z'))
+    const { answer } = await rules.ask('¿Qué sigue ahora?', context, signal)
+    expect(answer).toContain('Review budget')
+    expect(answer).toContain('10:10')
+  })
+
+  it.each([
+    ['es', 'a la', 'a las'], ['pt', 'à', 'às'], ['en', 'at', 'at'], ['fr', 'à', 'à'], ['de', 'um', 'um'],
+  ])('agrees hour one in %s and preserves the other hours', async (locale, one, other) => {
+    setHourCycle('h12')
+    try {
+      const document = plannerWithBlocks()
+      document.blocks = [{ ...document.blocks[0]!, days: [3], start: 13 * 60, end: 14 * 60 }]
+      const now = new Date('2026-10-21T10:00:00Z')
+      expect((await rules.ask('What is next?', contextFor(document, locale, now), signal)).answer).toContain(`${one} 1:00`)
+      document.blocks[0]!.start = 14 * 60
+      document.blocks[0]!.end = 15 * 60
+      expect((await rules.ask('What is next?', contextFor(document, locale, now), signal)).answer).toContain(`${other} 2:00`)
+    } finally { setHourCycle('auto') }
   })
 
   it('never ends a sentence on a 12-hour clock that already ends in a period ("p. m..")', async () => {

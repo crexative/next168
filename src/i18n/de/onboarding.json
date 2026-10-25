@@ -140,7 +140,8 @@
     "send": "Antwort senden",
     "needChoice": "Wähle mindestens eins, oder „Später“.",
     "needFix": "Korrigiere zuerst die markierte Zeit.",
-    "progressShort": "{step} von {total}"
+    "progressShort": "{step} von {total}",
+    "sendShort": "Senden"
   },
   "summary": {
     "title": "Deine typische Woche",

@@ -39,11 +39,11 @@ describe('TodayView', () => {
     cleanup = () => { app.unmount(); host.remove() }
     const taskStart = () => host.querySelector('[data-kind="task"] .row-time span')?.textContent
     await vi.waitFor(() => expect(host.textContent).toContain('Team meeting'))
-    expect(taskStart()).toBe('1:00 PM')
+    expect(taskStart()).toBe('1:00\u00a0PM')
 
     await calendars.removeSource(planner.document!.calendarSources[0]!.id)
     await vi.waitFor(() => expect(host.textContent).not.toContain('Team meeting'))
-    expect(taskStart()).toBe('12:00 PM')
+    expect(taskStart()).toBe('12:00\u00a0PM')
   })
 
   it('shows a saved event for today even when there are no recurring blocks', async () => {

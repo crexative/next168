@@ -1,5 +1,9 @@
 import { currentAndNext } from '@/core/now'
-import { fitTasks } from '@/core/scheduling'
+import { fitTasks, placementClock } from '@/core/scheduling'
+import { localDateOf } from '@/core/time'
+import { buildTimeline } from '@/features/today/todayTimeline'
+import { nextUp } from '@/features/today/nextUp'
+import { readsAsOne } from '@/features/today/clockPhrase'
 import { computeStats } from '@/core/stats'
 import type { Category, PlannerDocument } from '@/core/model'
 import { freeHoursWhole } from '@/features/capacity/freeHours'
@@ -51,19 +55,25 @@ export function isChangeRequest(question: string): boolean {
 
 // Deterministic facts for a question, or undefined when no intent applies. Shared with the model
 // provider so that its answers can be checked against the same numbers.
-export function answerFromStats(question: string, { document, now, timeZone, locale, translate: t }: AskContext): string | undefined {
+export function answerFromStats(question: string, { document, now, timeZone, locale, translate: t, external = [] }: AskContext): string | undefined {
   const category = mentionedCategory(question, document.categories)
   const stats = computeStats(document)
 
   if (matchesIntent('nextBlock', question)) {
-    const { current, next } = currentAndNext(document, now, timeZone)
+    const { current, next: nextBlock } = currentAndNext(document, now, timeZone)
+    const today = localDateOf(now, timeZone)
+    const busy = external.filter((item) => item.busy && !item.allDay).map(({ start, end }) => ({ start, end }))
+    const placements = fitTasks({ document, busy, now: placementClock(now), timeZone })
+    const timeline = buildTimeline({ document, today, timeZone, external, placements })
+    const next = nextUp(nextBlock, timeline.items, now)
+    const time = next ? formatClock(next.start, displayLocaleFor(locale), timeZone) : ''
     const parts: string[] = []
     if (current) parts.push(t('assistant.answers.currentBlock', { title: current.title, left: formatDuration(current.minutesLeft) }))
     parts.push(next
       ? t('assistant.answers.nextBlock', {
         title: next.title,
-        date: formatDate(next.date, displayLocaleFor(locale), { weekday: 'long', day: 'numeric', month: 'long' }),
-        time: formatClock(next.start, displayLocaleFor(locale), timeZone),
+        date: formatDate(localDateOf(new Date(next.start), timeZone), displayLocaleFor(locale), { weekday: 'long', day: 'numeric', month: 'long' }),
+        time, count: readsAsOne(time) ? 1 : 2,
       })
       : t('assistant.answers.noNextBlock'))
     return parts.join(' ')

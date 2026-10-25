@@ -11,7 +11,7 @@ export function translatorFor(locale: string) {
     messages[/i18n\/([^/]+)\//.exec(path)![1]!] = { assistant: module.default }
   }
   const i18n = createI18n<false>({ legacy: false, locale, fallbackLocale: 'en', messages: messages as never })
-  return (key: string, params?: Record<string, unknown>) => i18n.global.t(key, params ?? {})
+  return (key: string, params?: Record<string, unknown>) => typeof params?.count === 'number' ? i18n.global.t(key, params, params.count) : i18n.global.t(key, params ?? {})
 }
 
 // Work: Mon-Wed 09:00-13:00 (12 h) + Fri 15:00-16:00 (1 h) = 13 h planned of a 40 h max.

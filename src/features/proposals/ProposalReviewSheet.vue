@@ -115,7 +115,6 @@ async function decide(approve: boolean) {
       <header class="review-head">
         <p class="t-headline">{{ reviewing.summary }}</p>
         <p v-if="overview" class="t-subhead overview" data-testid="review-overview">{{ overview }}</p>
-        <p class="t-footnote t-secondary">{{ t('proposals.revision', { revision: reviewing.baseRevision }) }}</p>
         <p class="t-footnote t-secondary" data-testid="review-cancel-note">{{ t(pasted ? 'proposals.discardOnCancel' : 'proposals.keepOnCancel') }}</p>
       </header>
       <p v-if="!preview" class="t-subhead t-secondary" role="status" data-testid="review-loading">{{ t('proposals.loading') }}</p>

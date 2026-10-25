@@ -11,7 +11,6 @@
     "import": "Colada da sua IA"
   },
   "review": "Revisar proposta",
-  "revision": "Baseada na revisão {revision}",
   "stale": "Seu plano mudou. Peça uma nova proposta com a revisão atual.",
   "invalid": "Esta proposta não pode ser aplicada. Solicite outra.",
   "overGoal": "Esta mudança ultrapassa a meta de uma categoria.",

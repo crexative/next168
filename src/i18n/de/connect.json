@@ -49,7 +49,7 @@
       "duplicateCategory": "Deine KI will die Kategorie „{name}“ anlegen, aber du hast sie schon. Bitte sie, die vorhandene zu nutzen und die Änderungen erneut zu schicken."
     },
     "emptyHint": "Du hast noch keine Kategorien: Deine KI kann sie in denselben Änderungen anlegen, die sie vorschlägt.",
-    "replyStart": "Ihre Antwort beginnt so:",
+    "replyStart": "Deine Antwort beginnt so:",
     "loadingCalendars": "Deine Kalender werden geladen …"
   },
   "local": {

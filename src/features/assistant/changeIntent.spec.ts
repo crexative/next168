@@ -24,7 +24,7 @@ function message(raw: Record<string, unknown>, request = ''): string {
 
 describe('parseClock', () => {
   it.each([
-    ['18:00', 1080], ['9:05', 545], ['00:00', 0], ['23:59', 1439], ['24:00', 0], ['7pm', 1140], ['7:30 AM', 450],
+    ['18:00', 1080], ['9:05', 545], ['00:00', 0], ['23:59', 1439], ['24:00', 0], ['7pm', 1140], ['7:30\u00a0AM', 450],
     ['12am', 0], ['12pm', 720], ['18.30', 1110], ['06h15', 375],
   ])('reads %s as minute %s', (text, minute) => {
     expect(parseClock(text)).toBe(minute)
@@ -186,8 +186,8 @@ describe('move_block and delete_block', () => {
   })
 
   it.each([
-    ['de', '„Deep work“ findet an diesen Tagen statt: Montag, Dienstag, Mittwoch. Welchen Termin möchten Sie ändern?'],
-    ['fr', '« Deep work » a lieu les jours suivants : lundi, mardi, mercredi. Quelle occurrence souhaitez-vous modifier ?'],
+    ['de', '„Deep work“ findet an diesen Tagen statt: Montag, Dienstag, Mittwoch. Welchen Termin möchtest du ändern?'],
+    ['fr', '« Deep work » a lieu les jours suivants : lundi, mardi, mercredi. Quelle occurrence souhaites-tu modifier ?'],
   ])('uses the existing address and quotation style for clarification in %s', (locale, expected) => {
     expect(proposalFromIntent(parseIntent({ intent: 'move_block', title: 'Deep work', day: 'thursday' }), {
       ...environment, locale, translate: translatorFor(locale),
@@ -202,8 +202,8 @@ describe('move_block and delete_block', () => {
     it.each([
       ['en', '"{title}" is already scheduled there at that time. Nothing needs changing.'],
       ['es', '"{title}" ya está programado ahí a esa hora. No hace falta cambiar nada.'],
-      ['de', '„{title}“ ist dort bereits zu dieser Zeit eingeplant. Sie müssen nichts ändern.'],
-      ['fr', '« {title} » est déjà prévu ce jour-là à cette heure. Vous n’avez rien à modifier.'],
+      ['de', '„{title}“ ist dort bereits zu dieser Zeit eingeplant. Du musst nichts ändern.'],
+      ['fr', '« {title} » est déjà prévu ce jour-là à cette heure. Tu n’as rien à modifier.'],
       ['pt', '"{title}" já está agendado nesse dia e horário. Não é preciso mudar nada.'],
     ])('returns only the localized already-there message in %s', (locale, expected) => {
       expect(proposalFromIntent(parseIntent({ intent: 'move_block', ...fields }), {

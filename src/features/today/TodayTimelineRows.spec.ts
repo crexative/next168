@@ -119,9 +119,9 @@ describe('TodayTimeline rows', () => {
       const row = rowOf(host, title)
       return [row.querySelector('[data-testid="timeline-start"]')?.textContent, row.querySelector('[data-testid="timeline-end"]')?.textContent ?? null]
     }
-    expect(times('Night shift')).toEqual(['12:00 AM', '1:00 AM'])
+    expect(times('Night shift')).toEqual(['12:00\u00a0AM', '1:00\u00a0AM'])
     // Tonight's Sleep: "10:00 PM", then its own line "Until 6:00 AM" — never "12:00 AM" as an end.
-    expect(times('Sleep')).toEqual(['10:00 PM', null])
+    expect(times('Sleep')).toEqual(['10:00\u00a0PM', null])
     expect(rowOf(host, 'Sleep').querySelector('[data-testid="timeline-span-hint"]')?.textContent?.replace(/\s/g, ' ')).toBe('Until 6:00 AM')
   })
 

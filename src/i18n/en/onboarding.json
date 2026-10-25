@@ -140,7 +140,8 @@
     "send": "Send answer",
     "needChoice": "Pick at least one, or \"Later\".",
     "needFix": "First fix the time that is marked.",
-    "progressShort": "{step} of {total}"
+    "progressShort": "{step} of {total}",
+    "sendShort": "Send"
   },
   "summary": {
     "title": "Your typical week",

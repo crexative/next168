@@ -11,7 +11,6 @@
     "import": "Pegada desde tu IA"
   },
   "review": "Revisar propuesta",
-  "revision": "Basada en la revisión {revision}",
   "stale": "Tu plan cambió. Solicita una propuesta nueva con la revisión actual.",
   "invalid": "Esta propuesta no se puede aplicar. Solicita otra.",
   "overGoal": "Este cambio supera la meta de una categoría.",

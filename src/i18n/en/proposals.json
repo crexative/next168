@@ -11,7 +11,6 @@
     "import": "Pasted from your AI"
   },
   "review": "Review proposal",
-  "revision": "Based on revision {revision}",
   "stale": "Your planner changed. Ask for a fresh proposal using the current revision.",
   "invalid": "This proposal cannot be applied. Request a new proposal.",
   "overGoal": "This change goes over a category goal.",

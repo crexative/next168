@@ -160,6 +160,7 @@ const labels = computed(() => ({
           v-if="!quick" class="send" type="button" data-primary data-testid="setup-primary" :aria-label="t('onboarding.guided.send')"
           :aria-describedby="blocked ? `${questionId} ${reasonId}` : questionId" :disabled="busy || !canContinue" @click="onPrimary"
         >
+          <span>{{ t('onboarding.guided.sendShort') }}</span>
           <Icon name="arrow-up" :size="26" />
         </button>
         <span v-if="blocked" :id="reasonId" class="visually-hidden" data-testid="send-reason">{{ t(`onboarding.guided.${blocked}`) }}</span>
@@ -189,10 +190,10 @@ const labels = computed(() => ({
   transition: transform 0.1s var(--ease-out), opacity 0.1s;
 }
 .decline:active:not(:disabled) { transform: scale(0.97); }
-/* The round "Continue": the conversation's send button. */
+/* A visible word and arrow share a target at least 44 px tall. */
 .send {
-  display: inline-flex; flex: none; align-items: center; justify-content: center; width: 56px; height: 56px; margin-inline-start: auto;
-  border: 0; border-radius: 50%; background: var(--tint); color: var(--tint-text); touch-action: manipulation;
+  display: inline-flex; flex: none; align-items: center; justify-content: center; gap: var(--space-1); min-height: 56px; padding: 0 var(--space-3); margin-inline-start: auto;
+  border: 0; border-radius: 999px; background: var(--tint); color: var(--tint-text); touch-action: manipulation;
   transition: transform 0.1s var(--ease-out), background-color 0.15s, opacity 0.15s;
 }
 .send:active:not(:disabled) { transform: scale(0.94); }

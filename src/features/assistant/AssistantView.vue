@@ -2,6 +2,8 @@
 import { computed, onMounted, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { usePlannerStore } from '@/stores/plannerStore'
+import { localDateOf } from '@/core/time'
+import { useExternalOccurrences } from '@/features/week/externalOccurrences'
 import Button from '@/ui/Button.vue'
 import BackButton from '@/features/settings/BackButton.vue'
 import AnyAiPanel from './anyAi/AnyAiPanel.vue'
@@ -13,6 +15,7 @@ const { t, locale } = useI18n()
 const planner = usePlannerStore()
 const assistant = useAssistant()
 const question = ref('')
+const external = useExternalOccurrences(() => planner.document ? { fromDate: localDateOf(new Date(), planner.document.settings.timeZone), days: 7, timeZone: planner.document.settings.timeZone } : null)
 
 const sizeLabel = `${Math.round(WEBLLM_DOWNLOAD_BYTES / 1_000_000)} MB`
 const onCellular = computed(() => (navigator as Navigator & { connection?: { type?: string; saveData?: boolean } }).connection?.type === 'cellular')
@@ -45,7 +48,7 @@ function translate(key: string, params?: Record<string, unknown>): string {
 async function ask(text: string): Promise<void> {
   const document = planner.document
   if (!document || !text.trim()) return
-  await assistant.ask(text, { document, now: new Date(), locale: locale.value, timeZone: document.settings.timeZone, translate })
+  await assistant.ask(text, { document, now: new Date(), locale: locale.value, timeZone: document.settings.timeZone, translate, external: external.value })
 }
 
 async function submit(): Promise<void> {

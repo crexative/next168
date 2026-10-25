@@ -13,8 +13,9 @@ import {
 } from '../draftStorage'
 import { setupOpen, setupRequest } from '../reopen'
 import { applySetupPlan, planSetupCommit } from '../setupCommit'
-import { nextScreen, partOf, TOTAL_PARTS } from '../setupFlow'
-import { cloneState, createState, prepareScreen, type Issue, type ScreenId, type SetupEnv, type SetupState } from '../setupModel'
+import { nextScreen, partOf, sequence, TOTAL_PARTS } from '../setupFlow'
+import { cloneState, createState, prepareScreen, rangeProblem, type Issue, type ScreenId, type SetupEnv, type SetupState } from '../setupModel'
+import { categoryFor } from './conversation'
 import { TOPICS } from '../setupTopics'
 import SetupConversation from './SetupConversation.vue'
 import SetupFrame from './SetupFrame.vue'
@@ -50,6 +51,17 @@ const message = ref('')
 const draftUnavailable = ref(false)
 const expanded = ref<string | null>(null)
 let pristine = ''
+let editing: { returnTo: ScreenId; seen: Set<ScreenId>; handled: Set<ScreenId>; problems: Set<string> } | null = null
+
+const problemKey = (issue: Issue) => `${issue.categoryKey}:${issue.rangeKey}:${issue.code}:${issue.with?.categoryKey ?? ''}`
+
+function problemsOn(state: SetupState, screen: ScreenId): Issue[] {
+  const category = categoryFor(state, screen)
+  return category?.ranges.flatMap((range) => {
+    const issue = rangeProblem(state, category, range)
+    return issue ? [issue] : []
+  }) ?? []
+}
 
 const open = computed(() => phase.value !== 'closed')
 watch(open, (value) => { setupOpen.value = value }, { immediate: true })
@@ -79,6 +91,7 @@ function freshState(from: Baseline, at: 'sleep' | 'summary'): SetupState {
 }
 
 function show(state: SetupState, from: Baseline): void {
+  editing = null
   baseline.value = from
   flow.value = state
   pristine = JSON.stringify(freshState(from, 'sleep'))
@@ -166,15 +179,44 @@ function go(screen: ScreenId): void {
 
 function advance(): void {
   if (!flow.value) return
+  if (editing) {
+    const state = flow.value
+    editing.handled.add(state.screen)
+    const screens = sequence(state)
+    const target = screens.includes(editing.returnTo) ? editing.returnTo : nextScreen(state, editing.returnTo)
+    const pending = screens.slice(0, screens.indexOf(target)).find((screen) => {
+      if (editing!.handled.has(screen)) return false
+      if (problemsOn(state, screen).some((issue) => !editing!.problems.has(problemKey(issue)))) return true
+      if (editing!.seen.has(screen)) return false
+      const category = categoryFor(state, screen)
+      if (category) return !category.suggested || category.ranges.some((range) => !range.accepted)
+      if (['sleep', 'work', 'study', 'commuteRanges', 'exerciseRanges'].includes(screen) || screen.startsWith('extra:')) return true
+      return screen === 'commute' ? state.answers.commute === 'unanswered' : screen === 'exercise' && state.answers.exercise === 'unanswered'
+    })
+    if (pending) { go(pending); return }
+    editing = null
+    go(target)
+    return
+  }
   go(nextScreen(flow.value))
 }
 
 // Tapping an earlier answer opens that question again; the answers after it stay (dormant when they no longer apply).
 function jump(screen: ScreenId): void {
-  if (!locked.value) go(screen)
+  if (locked.value || !flow.value) return
+  const state = flow.value
+  const screens = sequence(state)
+  editing ??= {
+    returnTo: state.screen,
+    seen: new Set(screens.slice(0, screens.indexOf(state.screen))),
+    handled: new Set(),
+    problems: new Set(screens.flatMap((screen) => problemsOn(state, screen).map(problemKey))),
+  }
+  go(screen)
 }
 
 function review(): void {
+  editing = null
   go('sleep')
 }
 

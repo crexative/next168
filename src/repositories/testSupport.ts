@@ -109,6 +109,8 @@ export interface TestRepositoryOptions {
   runExclusive?: RunExclusive
   bus?: MemoryChannelBus
   calendarTexts?: CalendarSourceStore
+  locale?: () => string
+  timeZone?: () => string
 }
 
 export function createTestRepositories(options: TestRepositoryOptions = {}) {
@@ -133,7 +135,7 @@ export function createTestRepositories(options: TestRepositoryOptions = {}) {
     runExclusive,
     planner: new BrowserPlannerRepository({
       store, legacy, runExclusive, channel, events, visibility, calendarTexts,
-      now: fixedNow, newId: newTestId, locale: () => 'en', timeZone: () => 'UTC',
+      now: fixedNow, newId: newTestId, locale: options.locale ?? (() => 'en'), timeZone: options.timeZone ?? (() => 'UTC'),
     }),
     proposals: new BrowserProposalRepository({ store, runExclusive, channel, now: fixedNow, newId: newTestId }),
   }

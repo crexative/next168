@@ -94,7 +94,7 @@ describe('check-in form', () => {
     expect(text('fact-bedtime')).toBe('You went to bed at 10:00 PM last night')
     expect(text('fact-wake')).toBe('You woke up at 6:00 AM today')
     expect(host.querySelector('[data-testid="plan-hint"]')?.textContent).toContain('Times come from your plan')
-    expect(host.querySelector('[data-testid="fact-bedtime"] button')?.getAttribute('aria-label')).toBe('You went to bed at 10:00 PM last night. Change')
+    expect(host.querySelector('[data-testid="fact-bedtime"] button')?.getAttribute('aria-label')).toBe('You went to bed at 10:00\u00a0PM last night. Change')
   })
 
   // verify4 defect 14: "…a las 10:00 p. m.. Cambiar" and "¿A qué hora…?. Cambiar" in the accessible names.
