@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { inlineSeparators } from '@/ui/inlineText'
 import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { localDateOf } from '@/core/time'
@@ -63,7 +64,7 @@ function lineText(row: Row): string {
   // Nothing planned yet reads "0 h", like the week's other totals, rather than "0 min".
   const planned = plannedMinutes === 0 ? formatWholeHours(0) : formatTotal(plannedMinutes)
   const params = { planned, goal: formatTotal(goalMinutes), left: amount, over: amount, count: totalCount(amountMinutes) }
-  return t(`insights.goals.line.${line.kind}`, params)
+  return inlineSeparators(t(`insights.goals.line.${line.kind}`, params))
 }
 
 function doneText(row: Row): string {

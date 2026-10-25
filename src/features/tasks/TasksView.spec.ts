@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, expect, it, vi } from 'vitest'
 import { createPinia, setActivePinia } from 'pinia'
-import { createApp } from 'vue'
+import { createApp, nextTick } from 'vue'
 import { IDBFactory } from 'fake-indexeddb'
 import { i18n } from '@/i18n'
 import { configurePlannerStore, usePlannerStore } from '@/stores/plannerStore'
@@ -147,4 +147,27 @@ it('starts a task at the next five-minute boundary after now, keeping its exact 
   const text = host.querySelector('[data-testid=placed-task]')!.textContent!.replace(/\s+/g, ' ')
   expect(text).toMatch(/(?<!\d)1:05\s?PM–2:05\s?PM · Work · 1 h/)
   expect(host.querySelector('[data-testid=task-warnings]')).toBeNull()
+})
+
+it.each(['en', 'es', 'fr', 'pt', 'de'])('keeps the entire due phrase and its date together (%s)', async (locale) => {
+  const pinia = createPinia()
+  setActivePinia(pinia)
+  configurePlannerStore({ repository: createTestRepositories().planner, now: fixedNow, newId: newTestId, locale: () => locale, timeZone: () => 'UTC' })
+  const planner = usePlannerStore()
+  await planner.load()
+  await planner.commit(draft => {
+    draft.tasks.push({ id: 'due', title: 'Revisar presupuestos', durationMin: 60, priority: 1, createdAt: fixedNow().toISOString(), dueDate: '2026-10-26' })
+  })
+  i18n.global.locale.value = locale
+  const host = document.createElement('div')
+  document.body.append(host)
+  const app = createApp(TasksView).use(pinia).use(i18n)
+  app.mount(host)
+  cleanup = () => { app.unmount(); host.remove(); i18n.global.locale.value = 'en' }
+  await nextTick()
+  const subtitle = host.querySelector('.task-text .t-footnote')!.textContent!
+  const due = subtitle.split('·').at(-1)!.trim()
+  expect(due).not.toContain(' ')
+  expect(due).toContain('\u00a0')
+  expect(subtitle).toContain('\u00a0·\u00a0')
 })

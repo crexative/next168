@@ -10,7 +10,7 @@ registerIcons({ 'chevron-left': ChevronLeft })
 
 // `current` is the screen this control sits on; `fallback` is where it leads when nothing else is known.
 // `href` and `place` pin the destination (a sub-page returning to its parent) instead of following the trail.
-const props = defineProps<{ current: TrailView; fallback: TrailView; href?: string; place?: string }>()
+const props = defineProps<{ current: TrailView; fallback: TrailView; href?: string; place?: string; iconOnly?: boolean }>()
 const { t } = useI18n()
 
 const PLACE_TITLES: Record<TrailView, string> = {
@@ -30,7 +30,7 @@ const place = computed(() => props.place ?? t(PLACE_TITLES[target.value]))
 </script>
 
 <template>
-  <a class="back-button t-body" :href="destination" :aria-label="t('setup.backTo', { place })" data-testid="back-button">
+  <a class="back-button t-body" :class="{ 'is-icon-only': iconOnly }" :href="destination" :aria-label="t('setup.backTo', { place })" data-testid="back-button">
     <Icon name="chevron-left" :size="22" />
     <span>{{ place }}</span>
   </a>
@@ -48,5 +48,7 @@ const place = computed(() => props.place ?? t(PLACE_TITLES[target.value]))
   transition: opacity 0.1s;
   touch-action: manipulation;
 }
+.back-button.is-icon-only { min-width: var(--tap-target); padding-inline-end: 0; }
+.back-button.is-icon-only span { position: absolute; visibility: hidden; width: max-content; }
 .back-button:active { opacity: 0.6; }
 </style>

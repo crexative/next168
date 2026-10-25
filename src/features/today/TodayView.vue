@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { inlineSeparators } from '@/ui/inlineText'
 import { computed, nextTick, onMounted, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { currentAndNext } from '@/core/now'
@@ -16,7 +17,7 @@ import { consumeSavedFlag } from '@/features/checkin/checkinFlash'
 import SetupWeekPrompt from '@/features/onboarding/SetupWeekPrompt.vue'
 import { setupOpen, setupWeekOffered } from '@/features/onboarding/reopen'
 import { useExternalOccurrences } from '@/features/week/externalOccurrences'
-import { formatDate } from '@/features/week/localTime'
+import { formatDate } from '@/ui/format'
 import { useNow } from '@/features/week/useNow'
 import NowCard from './NowCard.vue'
 import TodayTimeline from './TodayTimeline.vue'
@@ -44,7 +45,7 @@ const freeHours = computed(() => document.value ? weekSplitHours(weekSplit(docum
 // A setup closed without finishing leaves Hoy as usual.
 const subtitle = computed(() => document.value?.settings.onboardingDone === false && setupOpen.value
   ? dateLabel.value
-  : t('today.header.subtitle', { date: dateLabel.value, hours: formatWholeHours(freeHours.value) }))
+  : inlineSeparators(t('today.header.subtitle', { date: dateLabel.value, hours: formatWholeHours(freeHours.value) })))
 
 // Tasks are re-fitted on five-minute steps, so the plan does not shift every minute and starts on tidy times.
 const fitFrom = computed(() => placementClock(now.value).getTime())

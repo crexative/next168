@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { inlineSeparators } from '@/ui/inlineText'
 import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 import type { BlockActual, Category } from '@/core/model'
@@ -115,7 +116,7 @@ function overlapText(item: TimelineItem): string {
           <span class="row-bar" aria-hidden="true" />
           <p class="carry t-subhead" data-testid="timeline-carry">
             <span class="carry-title">{{ item.title }}</span>
-            <span class="carry-note t-secondary">{{ t('today.timeline.carryOver', { time: endLabel(item) }) }}</span>
+            <span class="carry-note t-secondary">{{ inlineSeparators(t('today.timeline.carryOver', { time: endLabel(item) })) }}</span>
           </p>
         </template>
         <template v-else>
@@ -183,9 +184,9 @@ function overlapText(item: TimelineItem): string {
 .row-title { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2); margin: 0; }
 .row-title-text { min-width: 0; overflow-wrap: anywhere; }
 .row-note { margin: 0; }
-/* One line: the title gives way (with an ellipsis), the note never wraps. */
-.carry { display: flex; align-items: baseline; gap: var(--space-2); min-width: 0; margin: 0; white-space: nowrap; }
-.carry-title { min-width: 0; overflow: hidden; text-overflow: ellipsis; color: var(--label-2); }
+/* The title wraps at word boundaries; the clock note stays together. */
+.carry { display: flex; align-items: baseline; gap: var(--space-2); min-width: 0; margin: 0; flex-wrap: wrap; }
+.carry-title { min-width: 0; overflow-wrap: normal; color: var(--label-2); }
 .carry-note { flex: none; font-variant-numeric: tabular-nums; }
 .badge { display: inline-flex; align-items: center; gap: 2px; padding: 1px var(--space-2); border-radius: 999px; }
 .badge.is-late { background: color-mix(in srgb, var(--warning) 18%, transparent); color: var(--label); }

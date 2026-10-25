@@ -129,3 +129,13 @@ describe('wholeHourParts', () => {
     expect(halves.every((part) => part >= 0)).toBe(true)
   })
 })
+
+describe('unbreakable date and time units', () => {
+  it.each(['en', 'es', 'fr', 'pt', 'de'])('keeps the date and clock intact with a break between them (%s)', (locale) => {
+    const value = formatDateTime('2026-10-22T18:00:00Z', locale, 'UTC')
+    const parts = value.split(' ')
+    expect(parts).toHaveLength(2)
+    expect(parts[0]).not.toMatch(/(?<!\u00a0)·/)
+    if (locale !== 'de') expect(parts[0]).toContain('\u00a0')
+  })
+})

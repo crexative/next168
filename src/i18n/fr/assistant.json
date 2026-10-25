@@ -18,7 +18,7 @@
       "unavailable": "Cet appareil ou ce navigateur ne peut pas exécuter le modèle (WebGPU requis). Les réponses rapides fonctionnent toujours.",
       "checking": "Vérification de cet appareil…"
     },
-    "line": "Réponses rapides : {rules} · Modèle sur l'appareil : {model}"
+    "line": "Réponses rapides : {rules}\u00a0·\u00a0Modèle sur l'appareil : {model}"
   },
   "optIn": {
     "title": "Activer le modèle sur l'appareil",

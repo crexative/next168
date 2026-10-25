@@ -1,6 +1,7 @@
 import type { Category } from '@/core/model'
 import { addLocalDays } from '@/core/time'
-import { formatDate, formatMinute } from '@/features/week/localTime'
+import { formatMinute } from '@/features/week/localTime'
+import { formatDate } from '@/ui/format'
 import { formatDateTime } from '@/ui/format'
 
 export interface SummaryRow { label: string; value: string }

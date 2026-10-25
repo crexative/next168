@@ -4,7 +4,8 @@ import { useI18n } from 'vue-i18n'
 import type { Category, Task } from '@/core/model'
 import { fitTasks } from '@/core/scheduling'
 import { localDateOf } from '@/core/time'
-import { displayLocale, formatClock, formatDuration } from '@/ui/format'
+import { displayLocale, formatClock, formatDate, formatDuration } from '@/ui/format'
+import { joinInline, unbreakable } from '@/ui/inlineText'
 import { categoryColor } from '@/features/insights/categoryColor'
 import { readLastTaskCategory, rememberTaskCategory } from './lastCategory'
 import { assertEntry, CHANGED_ELSEWHERE, snapshotOf } from '@/features/insights/entryGuard'
@@ -79,8 +80,8 @@ function openTask(task: Task): void {
 
 function dayLabel(date: string): string {
   const today = localDateOf(now.value, document.value!.settings.timeZone)
-  const label = new Intl.DateTimeFormat(locale.value, { weekday: 'long', day: 'numeric', month: 'short', timeZone: 'UTC' }).format(new Date(`${date}T12:00:00Z`))
-  return date === today ? `${t('tasks.today')} · ${label}` : label
+  const label = formatDate(date, locale.value, { weekday: 'long', day: 'numeric', month: 'short' })
+  return date === today ? joinInline([t('tasks.today'), label]) : label
 }
 
 function timeRange(start: string, end: string): string {
@@ -100,7 +101,7 @@ function fragments(entry: PlacedEntry, groupDate: string): string {
 }
 
 function dueLabel(date: string): string {
-  return new Intl.DateTimeFormat(locale.value, { day: 'numeric', month: 'short', timeZone: 'UTC' }).format(new Date(`${date}T12:00:00Z`))
+  return formatDate(date, locale.value, { day: 'numeric', month: 'short' })
 }
 
 function categoryOf(task: Task): Category | undefined {
@@ -109,8 +110,8 @@ function categoryOf(task: Task): Category | undefined {
 
 function describe(task: Task): string {
   const parts = [categoryOf(task)?.name ?? '', formatDuration(task.durationMin)]
-  if (task.dueDate) parts.push(t('tasks.due', { date: dueLabel(task.dueDate) }))
-  return parts.filter(Boolean).join(' · ')
+  if (task.dueDate) parts.push(unbreakable(t('tasks.due', { date: dueLabel(task.dueDate) })))
+  return joinInline(parts)
 }
 
 async function addTask(): Promise<void> {
@@ -189,7 +190,7 @@ function lateText(task: Task): string {
         v-for="entry in day.entries"
         :key="entry.task.id"
         :title="entry.task.title"
-        :subtitle="`${fragments(entry, day.date)} · ${describe(entry.task)}`"
+        :subtitle="joinInline([fragments(entry, day.date), describe(entry.task)])"
         :color="categoryOf(entry.task) ? categoryColor(categoryOf(entry.task)!) : 'var(--cat-gray)'"
         :complete-label="t('tasks.complete', { title: entry.task.title })"
         data-testid="placed-task"

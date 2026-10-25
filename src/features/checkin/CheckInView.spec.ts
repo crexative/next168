@@ -493,3 +493,38 @@ describe('check-in blocks to mark', () => {
     expect(store.document?.checkIns.at(-1)).toMatchObject({ exercise: 'yes' })
   })
 })
+
+it.each(['fr', 'de', 'es'])('shows the full back label until it reaches a visible toolbar title (%s)', async (language) => {
+  const toolbar = document.createElement('header')
+  toolbar.className = 'toolbar'
+  toolbar.innerHTML = '<div class="toolbar-inner"><span class="toolbar-title">Title</span><div class="toolbar-actions"></div></div>'
+  document.body.appendChild(toolbar)
+  let available = 280
+  const geometry = vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockImplementation(function (this: HTMLElement) {
+    const left = this.classList.contains('toolbar-title') ? available : this.classList.contains('toolbar-actions') ? 300 : 0
+    const width = this.matches('.back-button span') ? 110 : this.matches('.back-button svg') ? 22 : 320
+    return { left, right: left + width, width, height: 44, top: 0, bottom: 44, x: left, y: 0, toJSON() {} }
+  })
+  try {
+    await mount(planned)
+    i18n.global.locale.value = language
+    await nextTick()
+    const back = toolbar.querySelector<HTMLAnchorElement>('.back-button')!
+    expect(back.classList.contains('is-icon-only')).toBe(false)
+    toolbar.setAttribute('data-collapsed', 'true')
+    available = 70
+    window.dispatchEvent(new Event('resize'))
+    await nextTick()
+    expect(back.classList.contains('is-icon-only')).toBe(true)
+    expect(back.getAttribute('aria-label')).toContain(i18n.global.t('app.tabs.today'))
+    available = 240
+    window.dispatchEvent(new Event('resize'))
+    await nextTick()
+    expect(back.classList.contains('is-icon-only')).toBe(false)
+    toolbar.removeAttribute('data-collapsed')
+    available = 70
+    window.dispatchEvent(new Event('resize'))
+    await nextTick()
+    expect(back.classList.contains('is-icon-only')).toBe(false)
+  } finally { geometry.mockRestore(); toolbar.remove() }
+})

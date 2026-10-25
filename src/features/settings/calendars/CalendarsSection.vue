@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { joinInline } from '@/ui/inlineText'
 import { computed, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { COLOR_KEYS, type CalendarSource, type ColorKey, type PlannerEvent } from '@/core/model'
@@ -111,7 +112,7 @@ function syncTime(iso: string): string { return formatDateTime(iso, displayLocal
     <p v-if="events.length === 0" class="calendar-note">{{ t('calendars.noEvents') }}</p>
     <ul class="calendar-list">
       <li v-for="event in events" :key="event.id" data-testid="planner-event">
-        <strong>{{ event.title }}</strong><span class="calendar-note">{{ event.allDay ? `${event.start.slice(0, 10)} · ${t('calendars.allDay')}` : syncTime(event.start) }}</span>
+        <strong>{{ event.title }}</strong><span class="calendar-note">{{ event.allDay ? joinInline([event.start.slice(0, 10), t('calendars.allDay')]) : syncTime(event.start) }}</span>
         <div class="calendar-actions">
           <Button variant="plain" :disabled="!planner.writable" @click="edit(event)">{{ t('calendars.edit') }}</Button>
           <a :href="googleCalendarUrl(event)" target="_blank" rel="noopener noreferrer">{{ t('calendars.google') }}</a>

@@ -126,6 +126,8 @@ describe('Today header and cards', () => {
     await store.commit((draft) => { draft.checkIns.push({ date: '2026-10-23' }, { date: '2026-10-24' }) })
     await nextTick()
     expect(text('checkin-done')).toBe('Done ✓ · streak 3')
+    // The separator keeps both neighbours on its line: no-break spaces on both sides, not ordinary ones.
+    expect(host.querySelector('[data-testid="checkin-done"]')!.textContent).toContain('\u00a0·\u00a0streak')
   })
 })
 
@@ -350,4 +352,9 @@ describe('Today wiring', () => {
       toolbar.remove()
     }
   })
+})
+
+it('keeps the header separator attached on both sides at a wrap boundary', async () => {
+  await mount('2026-10-24T12:00:00Z')
+  expect(host.querySelector('[data-testid="today-subtitle"]')?.textContent).toContain('\u00a0·\u00a0')
 })

@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { inlineSeparators } from '@/ui/inlineText'
 import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 import type { Category } from '@/core/model'
@@ -20,7 +21,7 @@ const roundedHours = computed(() => wholeHourParts([capacity.value.plannedMinute
 const unassignedDuration = computed(() => formatWholeHours(roundedHours.value[1]))
 const headline = computed(() => {
   const [assigned] = roundedHours.value
-  return t('insights.bar.summary', { assigned: formatWholeHours(assigned), unassigned: unassignedDuration.value })
+  return inlineSeparators(t('insights.bar.summary', { assigned: formatWholeHours(assigned), unassigned: unassignedDuration.value }))
 })
 const weekLabel = computed(() => formatTotal(WEEK_MINUTES))
 </script>

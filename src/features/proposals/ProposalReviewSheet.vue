@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { joinInline } from '@/ui/inlineText'
 import { computed, ref, useId, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { previewProposal, type ProposalPreview } from '@/core/proposals'
@@ -37,7 +38,7 @@ function toggleGroup(key: ChangeGroupKey): void {
   if (!next.delete(key)) next.add(key)
   expanded.value = next
 }
-const overview = computed(() => groups.value.map((group) => t(`proposals.counts.${group.key}`, { count: group.changes.length }, group.changes.length)).join(' · '))
+const overview = computed(() => joinInline(groups.value.map((group) => t(`proposals.counts.${group.key}`, { count: group.changes.length }, group.changes.length))))
 // A proposal made from a pasted reply exists only for this review: cancelling discards it, and the reply is still in
 // the paste box. Proposals from a connected assistant stay pending in Proposals until they are decided.
 const pasted = computed(() => reviewing.value?.pastedReply === true)
