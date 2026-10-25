@@ -114,6 +114,19 @@ describe('which draft is applied (A5)', () => {
     expect(stored()).toEqual(document)
   })
 
+  it('says so too when a closed draft no longer matches and the person opens the setup again', async () => {
+    const document = firstRun({ settings: { ...testDocument().settings, onboardingDone: true }, categories: [WORK], blocks: [WORK_BLOCK] })
+    const state = createState(document, env)
+    state.screen = 'workStudy'
+    saveDraft(draftOf(state, { kind: 'stored', workspaceId: document.workspaceId, fingerprint: 'another-fingerprint' }, false))
+    await mount(document)
+    expect(setup()).toBeNull()
+    setupRequest.value += 1
+    await settle()
+    expect(setup()!.querySelector('[data-testid=changed-elsewhere]')).not.toBeNull()
+    expect(sessionStorage.getItem(DRAFT_KEY)).toBeNull()
+  })
+
   it('never applies a draft that holds a block id the stored document does not have', async () => {
     const document = firstRun({ categories: [WORK], blocks: [WORK_BLOCK] })
     await storedDraft(document, await documentFingerprint(document), (state) => { state.screen = 'workStudy'; state.categories[0]!.ranges[0]!.blockId = 'b-gone' })
