@@ -1129,6 +1129,20 @@ test.describe('visual integrity guard: whole text in Week', () => {
     expect(violations.some((violation) => violation.includes('"Correos y seguimiento" draws neither a word nor its glyph though the 12.0×12.0 px glyph fits its 18.8×56.0 px room'))).toBe(true)
   })
 
+  // Codex review of verify7: a short conflict in a narrow lane drew the plain grey initial, hiding the conflict. A box
+  // that needs the warning glyph (`data-glyph-kind="warning"`) is not satisfied by the category glyph.
+  test('a conflict without its ⚠ where the ⚠ fits is reported, even when it shows the category glyph', async ({ page }) => {
+    const warningProbe = '<span data-glyph-probe="warning" style="position: absolute; visibility: hidden; display: block; width: 12px; height: 12px"></span>'
+    await page.setContent(column(`${smallest}${glyphProbe}${warningProbe}
+      <button class="item" aria-label="Vendor call" data-glyph-kind="warning" data-text-inset="1 3 1 3" style="top: 0; left: 0; width: 26px; height: 15px"><span data-glyph style="position: absolute; inset: 1px 3px"></span></button>
+      <button class="item" aria-label="Dentist" data-glyph-kind="warning" data-text-inset="1 3 1 3" style="top: 40px; left: 0; width: 26px; height: 15px"><span data-glyph="warning" style="position: absolute; inset: 1px 3px"></span></button>
+      <button class="item" aria-label="Stand-up" data-glyph-kind="warning" data-text-inset="1 3 1 3" style="top: 80px; left: 0; width: 26px; height: 13px"></button>
+    `))
+    const violations = await audit(page)
+    expect(violations.some((violation) => violation.includes('"Vendor call" draws neither a word nor its warning glyph though the 12.0×12.0 px glyph fits its 19.8×13.0 px room'))).toBe(true)
+    expect(violations.filter((violation) => violation.includes('Dentist') || violation.includes('Stand-up'))).toEqual([])
+  })
+
   test('a container without its own glyph is held to the documented glyph size', async ({ page }) => {
     await page.setContent(column('<button class="item" title="Abstimmungsgespräch" data-text-inset="0 4 0 7" style="top: 0; left: 0; width: 30px; height: 40px"></button>'))
     expect((await audit(page)).some((violation) => violation.includes('glyph fits its 18.8×40.0 px room'))).toBe(true)

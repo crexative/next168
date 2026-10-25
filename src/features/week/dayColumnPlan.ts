@@ -171,7 +171,9 @@ function busyShow(words: BusyWords, box: { width: number; height: number }, smal
   if (chosen) return { icon: chosen.option.icon, word: chosen.option.word, title: true, text: chosen.fit!.text, cut: chosen.fit!.truncated, hyphenate: chosen.fit!.hyphenated }
   const small = fitTitle({ text: words.title, role: 'compact' }, smallBox, metrics)
   if (small) return { icon: false, word: false, title: true, text: small.text, cut: small.truncated, hyphenate: small.hyphenated, small: true }
-  const iconFits = Boolean(words.conflict) && box.width >= ICON_PX && box.height >= ICON_PX
+  // With no word, a conflict keeps its ⚠ wherever the icon fits, centred in the room inside the small insets; it never
+  // takes the plain glyph, which would hide the conflict. Smaller still, the red border and hatching mark it.
+  const iconFits = Boolean(words.conflict) && smallBox.width >= ICON_PX - 0.01 && smallBox.height >= ICON_PX - 0.01
   return { icon: iconFits, word: false, title: false }
 }
 
@@ -308,7 +310,8 @@ export function planDayColumn(input: DayColumnInput): DayColumnPlan {
       height: px(item.endMinute) - px(item.startMinute) - SMALL_INSET.busy.top - SMALL_INSET.busy.bottom,
     }
     const show = { ...busyShow(words.busy(item), box, smallBox, measure) }
-    if (!show.title && !show.icon && glyphFits(boxWidth(item), drawn.bottom - drawn.top, SMALL_INSET.busy, measure)) show.glyph = true
+    const conflict = Boolean(words.busy(item).conflict)
+    if (!show.title && !show.icon && !conflict && glyphFits(boxWidth(item), drawn.bottom - drawn.top, SMALL_INSET.busy, measure)) show.glyph = true
     return { ...item, ...drawn, show }
   })
 

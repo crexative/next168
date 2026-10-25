@@ -87,7 +87,7 @@ function snapshot(column: HTMLElement, probes: HTMLElement): ColumnMeasure | nul
     metrics,
     markLead: lead('mark', 0),
     glyph: (() => {
-      const glyph = probes.querySelector<HTMLElement>('[data-glyph-probe]')?.getBoundingClientRect()
+      const glyph = probes.querySelector<HTMLElement>('[data-glyph-probe="category"]')?.getBoundingClientRect()
       return glyph ? { width: glyph.width, height: glyph.height } : { width: Infinity, height: Infinity }
     })(),
     iconLead: lead('icon', ICON_PX + metrics.width(' ', 'caption')),

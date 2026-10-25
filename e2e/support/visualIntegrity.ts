@@ -887,9 +887,10 @@ export function auditInPage(options: { focusRings: boolean }): string[] {
   // one line in the smallest size the container allows (the element marked `data-min-text`, never hyphenated), does not
   // fit the room inside the item's `data-text-inset` (top right bottom left, in px). An item that takes no pointer
   // input (a task outline) and a container with no such size (the seven-day overview) are left alone.
-  // A box with no word that is still big enough for its category glyph shows it (an element marked `data-glyph`, drawn
-  // inside the box): a blank box never appears where the glyph would fit. The glyph's size is the container's element
-  // marked `data-glyph-probe`.
+  // A box with no word that is still big enough for its glyph shows it (an element marked `data-glyph`, drawn inside the
+  // box): a blank box never appears where the glyph would fit. A box names the glyph it needs in `data-glyph-kind` (a
+  // conflict needs its "warning", never the plain category glyph); the glyph's size is the container's element marked
+  // `data-glyph-probe` with that kind.
   // A container marked `data-whole-text="shapes"` (the seven-day overview) draws no words by design. One without its
   // own smallest size or glyph is held to the documented ones (docs/design/visual-design.md › Week items: 11 px at
   // 100 % text on a 1.2 line; a glyph 1.125 times that size, square).
@@ -897,10 +898,20 @@ export function auditInPage(options: { focusRings: boolean }): string[] {
     if (container.getAttribute('data-whole-text') === 'shapes') return
     const fallbacks: HTMLElement[] = []
     const reference = container.querySelector<HTMLElement>('[data-min-text]') ?? fallbackProbe(container, fallbacks, 'font-size: 0.6875rem; font-weight: 500; line-height: 1.2; letter-spacing: 0.01em')
-    const glyph = container.querySelector<HTMLElement>('[data-glyph-probe]') ?? fallbackProbe(container, fallbacks, 'display: block; width: calc(0.6875rem * 1.125); height: calc(0.6875rem * 1.125)')
+    const glyphs = new Map<string, { width: number; height: number }>()
+    const glyphOf = (kind: string) => {
+      let size = glyphs.get(kind)
+      if (!size) {
+        const probe = Array.from(container.querySelectorAll<HTMLElement>('[data-glyph-probe]')).find((candidate) => glyphKind(candidate.getAttribute('data-glyph-probe')) === kind)
+          ?? fallbackProbe(container, fallbacks, 'display: block; width: calc(0.6875rem * 1.125); height: calc(0.6875rem * 1.125)')
+        const { width, height } = probe.getBoundingClientRect()
+        size = { width, height }
+        glyphs.set(kind, size)
+      }
+      return size
+    }
     try {
-      const { width, height } = glyph.getBoundingClientRect()
-      checkBlankItemsWith(reference, { width, height }, items)
+      checkBlankItemsWith(reference, glyphOf, items)
     } finally {
       for (const fallback of fallbacks) fallback.remove()
     }
@@ -931,15 +942,20 @@ export function auditInPage(options: { focusRings: boolean }): string[] {
     return best
   }
 
-  function showsGlyph(item: Element): boolean {
+  // A glyph's kind: `data-glyph`, `data-glyph-probe` and `data-glyph-kind` name it; empty means the category glyph.
+  function glyphKind(value: string | null): string {
+    return value || 'category'
+  }
+
+  function showsGlyph(item: Element, kind: string): boolean {
     const box = item.getBoundingClientRect()
-    return Array.from(item.querySelectorAll('[data-glyph]')).some((glyph) => {
+    return Array.from(item.querySelectorAll('[data-glyph]')).filter((glyph) => glyphKind(glyph.getAttribute('data-glyph')) === kind).some((glyph) => {
       const rect = glyph.getBoundingClientRect()
       return rendered(glyph) && rect.width > 0 && rect.height > 0 && rect.left >= box.left - 0.5 && rect.right <= box.right + 0.5 && rect.top >= box.top - 0.5 && rect.bottom <= box.bottom + 0.5
     })
   }
 
-  function checkBlankItemsWith(reference: HTMLElement, glyph: { width: number; height: number }, items: Element[]): void {
+  function checkBlankItemsWith(reference: HTMLElement, glyphOf: (kind: string) => { width: number; height: number }, items: Element[]): void {
     // Measured with a copy of the reference itself, so the word has exactly its styles and context.
     const measure = (build: (probe: HTMLElement) => void) => {
       const probe = reference.cloneNode(false) as HTMLElement
@@ -978,8 +994,10 @@ export function auditInPage(options: { focusRings: boolean }): string[] {
         }
       }
       const free = freeHeight(item, rect, items) - top - bottom
-      if (width + 0.25 >= glyph.width - 0.01 && free >= glyph.height - 0.01 && !showsGlyph(item)) {
-        violations.push(`${describe(item)} draws neither a word nor its glyph though the ${glyph.width.toFixed(1)}×${glyph.height.toFixed(1)} px glyph fits its ${width.toFixed(1)}×${free.toFixed(1)} px room`)
+      const kind = glyphKind(item.getAttribute('data-glyph-kind'))
+      const glyph = glyphOf(kind)
+      if (width + 0.25 >= glyph.width - 0.01 && free >= glyph.height - 0.01 && !showsGlyph(item, kind)) {
+        violations.push(`${describe(item)} draws neither a word nor its ${kind === 'category' ? 'glyph' : `${kind} glyph`} though the ${glyph.width.toFixed(1)}×${glyph.height.toFixed(1)} px glyph fits its ${width.toFixed(1)}×${free.toFixed(1)} px room`)
       }
     }
   }

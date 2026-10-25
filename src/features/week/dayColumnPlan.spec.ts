@@ -123,7 +123,22 @@ describe('events and routines share the column', () => {
     expect(at(60, 20)).toEqual({ icon: true, word: false, title: false })
     // 12 px tall: too short for any text or the icon.
     expect(at(104, 15)).toEqual({ icon: false, word: false, title: false })
+    // Codex review of verify7: 14.4 px tall in a narrow lane, too short for the icon inside the caption insets but tall
+    // enough for a glyph. The conflict keeps its ⚠ (centred in the small insets), never the plain grey initial.
+    expect(at(60, 18)).toEqual({ icon: true, word: false, title: false })
     expect(at(30, 5)).toEqual({ icon: false, word: false, title: false })
+  })
+})
+
+describe('a box with no words', () => {
+  it('shows a plain event its initial where the glyph fits, but a conflict only its ⚠ or nothing', () => {
+    const lone = (minutes: number) => plan({ events: [event('Vendor call', 540, 540 + minutes)], measure: measureAt(26) }).busy[0]!.show
+    // 26 px column: 20 px of room inside the small insets; "Vendor…" does not fit in the small size.
+    expect(lone(18)).toMatchObject({ title: false, icon: false, glyph: true })
+    const conflicting = (width: number, minutes: number) => plan({ blocks: [block('b', 540, 600)], events: [event('Vendor call', 540, 540 + minutes)], measure: measureAt(width) }).busy[0]!.show
+    expect(conflicting(60, 18)).toEqual({ icon: true, word: false, title: false })
+    // 17 px of room: 13.6 px tall holds the 11.25 px glyph but not the 12 px ⚠; the red border marks the conflict.
+    expect(conflicting(60, 17)).toEqual({ icon: false, word: false, title: false })
   })
 })
 
