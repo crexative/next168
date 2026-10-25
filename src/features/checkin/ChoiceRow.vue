@@ -75,7 +75,7 @@ function move(offset: number, event: KeyboardEvent): void {
 </template>
 
 <style scoped>
-.choice-row { display: flex; flex-direction: column; gap: var(--space-1); }
+.choice-row { display: flex; flex-direction: column; gap: var(--control-gap); }
 .question { display: flex; align-items: center; justify-content: space-between; column-gap: var(--space-3); }
 .question-label { flex: 1; min-width: 0; }
 /* The row always keeps the height of the 44 px Clear target, so answering never moves the choices below it. */

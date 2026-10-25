@@ -251,7 +251,7 @@ async function remove(): Promise<void> {
 .error { color: var(--danger-label); }
 .colors { margin: 0; padding: 0; border: 0; }
 .color-hint { margin: var(--space-1) 0 0; }
-.swatches { display: flex; flex-wrap: wrap; gap: var(--space-1); }
+.swatches { display: flex; flex-wrap: wrap; gap: var(--control-gap); }
 .swatch-choice { position: relative; display: inline-flex; align-items: center; justify-content: center; width: var(--tap-target); height: var(--tap-target); }
 /* The radio covers the whole 44 px swatch: a tap anywhere on it chooses the colour, and pointer tools hit the real control. */
 .swatch-input { position: absolute; inset: 0; z-index: 1; width: 100%; height: 100%; margin: 0; opacity: 0; cursor: pointer; }

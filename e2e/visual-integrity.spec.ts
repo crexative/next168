@@ -1031,6 +1031,14 @@ test.describe('visual integrity guard: spacing', () => {
     expect(await audit(page)).toContain('text "Now" in <p> "Now" is 16.0px from the left edge of the card <section.card> "Now" (card padding 20.0px)')
   })
 
+  test('a popover that opens above its row belongs to no card', async ({ page }) => {
+    await page.setContent(spacingStage(`
+      <ul class="card" style="margin-top: 120px; padding: 0 16px; list-style: none"><li style="position: relative; padding: 12px 0">Deep work
+        <div role="group" aria-label="Minutes" style="position: absolute; bottom: 100%; right: 0; padding: 12px; border-radius: 14px; background: #fff; box-shadow: 0 4px 16px rgba(0, 0, 0, .2)"><button>Save</button></div>
+      </li></ul>`))
+    expect(await audit(page)).toEqual([])
+  })
+
   test('pills and plain wrappers are not cards', async ({ page }) => {
     await page.setContent(spacingStage('<div style="padding: 0"><p style="display: inline-block; padding: 4px 8px; border-radius: 999px; background: #fff">Badge</p></div>'))
     expect(await audit(page)).toEqual([])

@@ -500,6 +500,9 @@ export function auditInPage(options: { focusRings: boolean }): string[] {
   function cardAround(element: Element): HTMLElement | null {
     for (let node = element.parentElement; node && node !== scope.parentElement; node = node.parentElement) {
       if (cards.has(node)) return node
+      // A popover is its own floating surface, outside the card its trigger sits in.
+      const style = getComputedStyle(node)
+      if (style.position === 'fixed' || style.position === 'absolute' && node.matches('[role="menu"], [role="listbox"], [role="dialog"], [role="group"]')) return null
     }
     return null
   }
