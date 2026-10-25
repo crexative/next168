@@ -7,7 +7,7 @@ import { plannerDocument } from './testDocument'
 
 const DATE = '2026-10-21'
 const BASE: Record<TextRole, { char: number; line: number }> = {
-  blockTitle: { char: 7, line: 16.25 }, blockDetail: { char: 6, line: 15 }, caption: { char: 6, line: 16 }, taskTitle: { char: 6, line: 13.2 },
+  blockTitle: { char: 7, line: 16.25 }, blockDetail: { char: 6, line: 15 }, caption: { char: 6, line: 16 }, taskTitle: { char: 6, line: 13.2 }, compact: { char: 5.5, line: 12.9 },
 }
 
 // Fake fonts: every character of a role has one width; `scale` 2 is text at 200 %.
@@ -19,6 +19,7 @@ function measureAt(width: number, scale = 1): ColumnMeasure {
   return { width, metrics, markLead: 16 * scale, iconLead: 18 * scale }
 }
 
+const px = (minute: number) => (minute / 60) * HOUR_HEIGHT_PX
 const block = (id: string, start: number, end: number, title = id): TimeBlock => ({ id, categoryId: 'work', title, days: [3], start, end })
 const event = (title: string, start: number, end: number) => ({
   sourceId: 's', uid: title, title, allDay: false, busy: true,
@@ -47,16 +48,16 @@ function plan(options: { blocks?: TimeBlock[]; events?: ReturnType<typeof event>
 
 const shown = (result: DayColumnPlan, id: string) => {
   const found = result.blocks.find((segment) => segment.occurrence.blockId === id)!.show
-  const title = found.title && (found.cut ? 'title…' : 'title')
+  const title = found.title && (found.small ? 'small' : found.cut ? 'title…' : 'title')
   return [title, found.time && 'time', found.category && 'category'].filter(Boolean).join('+') || 'mark'
 }
 
 describe('what a routine shows, by the size of its box', () => {
   // A 300 px phone column, a 145 px desktop column, a 95 px tablet column.
   it.each([
-    [300, 1, 15, 'mark'], [300, 1, 25, 'mark'], [300, 1, 30, 'title'], [300, 1, 45, 'title'], [300, 1, 50, 'title+time'], [300, 1, 90, 'title+time+category'],
-    [300, 2, 30, 'mark'], [300, 2, 60, 'title'], [300, 2, 120, 'title+time'], [300, 2, 150, 'title+time+category'],
-    [145, 1, 60, 'title+time'], [95, 1, 60, 'title'], [95, 1, 90, 'title+time'], [60, 1, 120, 'title…'], [40, 1, 120, 'mark'],
+    [300, 1, 10, 'mark'], [300, 1, 15, 'mark'], [300, 1, 20, 'small'], [300, 1, 25, 'small'], [300, 1, 30, 'title'], [300, 1, 45, 'title'], [300, 1, 50, 'title+time'], [300, 1, 90, 'title+time+category'],
+    [300, 2, 30, 'mark'], [300, 2, 45, 'small'], [300, 2, 60, 'title'], [300, 2, 120, 'title+time'], [300, 2, 150, 'title+time+category'],
+    [145, 1, 60, 'title+time'], [95, 1, 60, 'title'], [95, 1, 90, 'title'], [130, 1, 90, 'title+time+category'], [60, 1, 120, 'title…'], [40, 1, 120, 'mark'],
   ])('a %i px column at %ix text, %i minutes: %s', (width, scale, minutes, expected) => {
     expect(shown(plan({ blocks: [block('meeting', 540, 540 + minutes, 'Team meeting')], measure: measureAt(width, scale) }), 'meeting')).toBe(expected)
   })
@@ -108,7 +109,7 @@ describe('events and routines share the column', () => {
     expect(result.busy[0]).toMatchObject({ left: 50, width: 50 })
   })
 
-  it('shows a conflict as icon and word, then icon, then the title alone, then the icon alone', () => {
+  it('shows a conflict as icon and word, then icon, then the title alone, then the title in the small caption size, then the icon alone', () => {
     const at = (width: number, minutes: number) => plan({ blocks: [block('b', 540, 600)], events: [event('Vendor call', 540, 540 + minutes)], measure: measureAt(width) }).busy[0]!.show
     expect(at(400, 60)).toEqual({ icon: true, word: true, title: true, text: 'Vendor call', cut: false })
     expect(at(200, 30)).toEqual({ icon: true, word: false, title: true, text: 'Vendor call', cut: false })
@@ -116,12 +117,38 @@ describe('events and routines share the column', () => {
     expect(at(104, 60)).toEqual({ icon: false, word: false, title: true, text: 'Vendor call', cut: false })
     // One line of 50 px: the first whole word and "…".
     expect(at(120, 30)).toEqual({ icon: false, word: false, title: true, text: 'Vendor…', cut: true })
-    expect(at(104, 20)).toEqual({ icon: true, word: false, title: false })
+    // 16 px tall: no caption line, but one line of the small caption size: "Vendor…", centred, no icon.
+    expect(at(104, 20)).toMatchObject({ icon: false, word: false, title: true, text: 'Vendor…', cut: true, small: true })
+    // 16 px tall but 20 px wide: not even "Vendor…" in the small size; the icon alone.
+    expect(at(60, 20)).toEqual({ icon: true, word: false, title: false })
+    // 12 px tall: too short for any text or the icon.
+    expect(at(104, 15)).toEqual({ icon: false, word: false, title: false })
     expect(at(30, 5)).toEqual({ icon: false, word: false, title: false })
   })
 })
 
 describe('tasks inside a routine', () => {
+  // verify6 D1: "Trabajo de la mañana" beside a short event at 768 px needed three hyphenated lines ("Tra-" / "ba-" /
+  // "jo…") but the strip above its tasks allowed two, so the routine was blank.
+  it('hyphenates a routine\'s small title but never a task\'s', () => {
+    const measure = measureAt(52)
+    // The browser can break "Trabajo…" only in the small size.
+    const hyphenating = { ...measure, metrics: { ...measure.metrics, hyphenatedLines: (text: string, role: string) => role === 'compact' && text.startsWith('Trabajo') ? 2 : null } }
+    // A 30 px wide text area: "Trabajo…" does not fit whole at either size; hyphenated in the small size it does.
+    const routine = plan({ blocks: [block('am', 510, 750, 'Trabajo de la mañana')], measure: hyphenating }).blocks[0]!.show
+    expect(routine).toMatchObject({ title: true, small: true, hyphenate: true, text: 'Trabajo…' })
+    const chunk = plan({ blocks: [block('am', 510, 750, 'Am')], tasks: [task('t', 600, 660, 'Trabajo de la mañana')], measure: hyphenating }).tasks[0]!.show
+    expect(chunk.hyphenate).toBeFalsy()
+  })
+
+  it('gives a routine above its tasks the lines its hyphenated first word needs', () => {
+    const measure = measureAt(60)
+    const hyphenating = { ...measure, metrics: { ...measure.metrics, hyphenatedLines: (text: string) => text.startsWith('Trabajo') ? 3 : null } }
+    const result = plan({ blocks: [block('am', 510, 750, 'Trabajo de la mañana')], tasks: [task('t', 540, 560, 'Pay')], measure: hyphenating })
+    expect(result.blocks[0]!.show).toMatchObject({ title: true, text: 'Trabajo…', hyphenate: true })
+    expect(result.tasks[0]!.top).toBeGreaterThanOrEqual(px(510) + BLOCK_INSET.top + 3 * 16.25 - 0.01)
+  })
+
   it('starts tasks under the routine\'s title and draws the time only above the first task', () => {
     const result = plan({ blocks: [block('deep', 540, 780, 'Deep work')], tasks: [task('report', 540, 600, 'Write report')], measure: measureAt(300) })
     const [chunk] = result.tasks
@@ -138,9 +165,12 @@ describe('tasks inside a routine', () => {
     expect(result.tasks.every((chunk) => chunk.show.title && chunk.bottom - chunk.top >= 13.2 + TASK_INSET.top + TASK_INSET.bottom - 0.01)).toBe(true)
   })
 
-  it('falls back to 12 px marks, then to one outline, as the routine gets shorter', () => {
+  it('falls back to one line in the small caption size, then 12 px marks, then one outline, as the routine gets shorter', () => {
     const tasks = [task('a', 540, 545, 'Call bank'), task('b', 545, 550, 'Email Ana'), task('c', 550, 555, 'Pay rent')]
-    const marks = plan({ blocks: [block('deep', 540, 630)], tasks, measure: measureAt(300) })
+    // 72 px: three caption lines (18.2 px each) do not fit under the title, three small ones (15.9 px) do.
+    const small = plan({ blocks: [block('deep', 540, 630)], tasks, measure: measureAt(300) })
+    expect(small.tasks.every((chunk) => !chunk.outline && chunk.show.small && chunk.show.title)).toBe(true)
+    const marks = plan({ blocks: [block('deep', 540, 615)], tasks, measure: measureAt(300) })
     expect(marks.tasks.every((chunk) => !chunk.outline && !chunk.show.title && chunk.bottom - chunk.top >= MIN_TASK_PX)).toBe(true)
     const outline = plan({ blocks: [block('deep', 540, 570)], tasks, measure: measureAt(300) })
     expect(outline.tasks.every((chunk) => chunk.outline && !chunk.show.title)).toBe(true)
@@ -201,16 +231,21 @@ describe('the plan never draws a cut or covered word', () => {
         if (count === 0) continue
         expect(wholeWords(segment.show, segment.occurrence.title), `${segment.show.text} of ${segment.occurrence.title}`).toBe(true)
         if (segment.show.cut) expect(count, 'nothing follows a cut title').toBe(1)
+        // A title in the small caption size has no padding above or below; the others keep the routine's insets.
+        const small = Boolean(segment.show.small)
+        if (small) expect(count, 'nothing follows a title in the small caption size').toBe(1)
         const pieces: TextPiece[] = [
-          { text: segment.show.text ?? segment.occurrence.title, role: 'blockTitle', lead: segment.show.mark ? measure.markLead : 0 },
-          { text: '9:00\u00a0AM – 10:00\u00a0AM', role: 'blockDetail' }, { text: 'Work time', role: 'blockDetail' },
+          { text: segment.show.text ?? segment.occurrence.title, role: small ? 'compact' : 'blockTitle', lead: segment.show.mark ? measure.markLead : 0 },
+          { text: '9:00\u00a0AM – 10:00\u00a0AM', role: 'blockDetail', maxLines: 1 }, { text: 'Work time', role: 'blockDetail' },
         ]
         const textWidth = width(segment) - BLOCK_INSET.start - BLOCK_INSET.end
         const fits = pieces.slice(0, count).map((piece) => ({ lines: lineCount(piece, textWidth, measure.metrics), lead: false }))
         expect(fits.every((fit) => fit.lines !== null), 'every drawn piece fits its width').toBe(true)
-        const textBottom = px(segment.startMinute) + BLOCK_INSET.top + fittedHeight(pieces, fits.map((fit) => ({ ...fit, lines: fit.lines! })), measure.metrics, PIECE_GAP_PX)
+        expect(fits[1] === undefined || fits[1].lines === 1, 'a time range is on one line').toBe(true)
+        const top = px(segment.startMinute) + (small && segment.show.center ? 0 : BLOCK_INSET.top)
+        const textBottom = top + fittedHeight(pieces, fits.map((fit) => ({ ...fit, lines: fit.lines! })), measure.metrics, PIECE_GAP_PX)
         expect(textBottom).toBeLessThanOrEqual(px(segment.endMinute) + 0.01)
-        for (const chunk of result.tasks.filter((item) => item.hostKey === segment.key && !item.outline)) expect(chunk.top).toBeGreaterThanOrEqual(px(segment.startMinute) + BLOCK_INSET.top + measure.metrics.lineHeight('blockTitle') - 0.01)
+        for (const chunk of result.tasks.filter((item) => item.hostKey === segment.key && !item.outline)) expect(chunk.top).toBeGreaterThanOrEqual(textBottom - 0.01)
       }
       for (const chunk of result.tasks) expect(wholeWords(chunk.show, chunk.task.title)).toBe(true)
       for (const item of result.busy) expect(wholeWords(item.show, item.title)).toBe(true)

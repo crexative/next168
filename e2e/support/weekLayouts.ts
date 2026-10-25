@@ -128,3 +128,61 @@ export function weekFor(seed: number) {
   }
   return { locale, document, calendar }
 }
+
+// The realistic week verify6 used (its fixture f3): a family and work routine with 10 to 20 minute routines (breakfast,
+// a pause, meditation, school pickup), a 30-minute webinar beside "Correos y seguimiento", a 10-minute stand-up beside
+// "Trabajo de la mañana", and an hour-long task among 15-minute ones.
+export const VERIFY6_NOW = new Date('2026-10-21T10:07:00.000Z')
+const task = (id: string, title: string, durationMin: number, extra: Record<string, unknown> = {}) => ({ id, title, durationMin, priority: 2, createdAt: '2026-10-20T08:00:00.000Z', ...extra })
+const event = (id: string, title: string, start: string, end: string) => ({ id, title, start, end, allDay: false, attendees: [] as string[] })
+const weekdays = [1, 2, 3, 4, 5]
+export const VERIFY6_WEEK = {
+  schemaVersion: 2, workspaceId: 'workspace-v6', revision: 1, updatedAt: '2026-10-20T08:00:00.000Z',
+  settings: { locale: 'es', weekStartsOn: 1, timeZone: 'UTC', onboardingDone: true, theme: 'system' },
+  categories: [
+    { id: 'c-work', name: 'Trabajo', colorKey: 'blue', goal: { type: 'max', hoursPerWeek: 45 } },
+    { id: 'c-sleep', name: 'Sueño', colorKey: 'purple', goal: { type: 'min', hoursPerWeek: 49 } },
+    { id: 'c-family', name: 'Familia', colorKey: 'orange', goal: { type: 'min', hoursPerWeek: 10 } },
+    { id: 'c-health', name: 'Salud', colorKey: 'green', goal: { type: 'min', hoursPerWeek: 2 } },
+    { id: 'c-home', name: 'Hogar', colorKey: 'teal', goal: { type: 'none', hoursPerWeek: 0 } },
+  ],
+  blocks: [
+    { id: 'b-sleep', categoryId: 'c-sleep', title: 'Dormir', days: [0, 1, 2, 3, 4, 5, 6], start: 1380, end: 390 },
+    { id: 'b-breakfast', categoryId: 'c-family', title: 'Desayuno con los niños', days: weekdays, start: 405, end: 425 },
+    { id: 'b-commute', categoryId: 'c-work', title: 'Traslado a la oficina', days: weekdays, start: 450, end: 490 },
+    { id: 'b-standup', categoryId: 'c-work', title: 'Reunión de equipo', days: weekdays, start: 495, end: 510 },
+    { id: 'b-am', categoryId: 'c-work', title: 'Trabajo de la mañana', days: weekdays, start: 510, end: 750 },
+    { id: 'b-lunch', categoryId: 'c-family', title: 'Almuerzo', days: weekdays, start: 750, end: 795 },
+    { id: 'b-pm1', categoryId: 'c-work', title: 'Trabajo', days: weekdays, start: 795, end: 900 },
+    { id: 'b-break', categoryId: 'c-health', title: 'Pausa activa', days: weekdays, start: 900, end: 910 },
+    { id: 'b-pm2', categoryId: 'c-work', title: 'Correos y seguimiento', days: weekdays, start: 910, end: 1050 },
+    { id: 'b-pickup', categoryId: 'c-family', title: 'Recoger a los niños', days: weekdays, start: 1065, end: 1085 },
+    { id: 'b-dinner', categoryId: 'c-family', title: 'Cena familiar', days: [0, 1, 2, 3, 4, 5, 6], start: 1140, end: 1185 },
+    { id: 'b-med', categoryId: 'c-health', title: 'Meditación', days: [0, 1, 2, 3, 4, 5, 6], start: 1290, end: 1300 },
+    { id: 'b-market', categoryId: 'c-home', title: 'Mercado de la semana', days: [6], start: 540, end: 630 },
+    { id: 'b-mass', categoryId: 'c-family', title: 'Visita a los abuelos', days: [0], start: 600, end: 780 },
+  ],
+  tasks: [
+    task('t-1', 'Pagar la factura de la luz', 15, { categoryId: 'c-home', dueDate: '2026-10-22' }),
+    task('t-2', 'Enviar fotos a la abuela', 15, { categoryId: 'c-family' }),
+    task('t-3', 'Llamar al pediatra', 15, { categoryId: 'c-health', priority: 1 }),
+    task('t-4', 'Revisar extracto bancario', 20),
+    task('t-5', 'Comprar regalo de cumpleaños', 20, { dueDate: '2026-10-24' }),
+    task('t-6', 'Responder a Carolina', 15, { categoryId: 'c-work' }),
+    task('t-7', 'Actualizar hoja de gastos del equipo', 15, { categoryId: 'c-work' }),
+    task('t-8', 'Preparar presentación para el cliente', 60, { categoryId: 'c-work', priority: 1, dueDate: '2026-10-23' }),
+    task('t-9', 'Firmar permiso escolar', 15, { categoryId: 'c-family', dueDate: '2026-10-21' }),
+    task('t-10', 'Agendar revisión del carro', 15, { categoryId: 'c-home' }),
+  ],
+  checkIns: [], actuals: [],
+  events: [
+    event('e-1', 'Llamada con el contador', '2026-10-20T08:20:00.000Z', '2026-10-20T08:50:00.000Z'),
+    event('e-2', 'Cita odontológica', '2026-10-21T12:45:00.000Z', '2026-10-21T13:30:00.000Z'),
+    event('e-3', 'Webinar de ventas internacionales', '2026-10-22T15:00:00.000Z', '2026-10-22T15:30:00.000Z'),
+    event('e-4', 'Reunión escolar de padres', '2026-10-23T17:40:00.000Z', '2026-10-23T18:20:00.000Z'),
+    event('e-5', 'Stand-up con el cliente', '2026-10-19T09:00:00.000Z', '2026-10-19T09:10:00.000Z'),
+    event('e-6', 'Cumpleaños de Sofía', '2026-10-24T16:00:00.000Z', '2026-10-24T19:00:00.000Z'),
+    event('e-7', 'Café con Andrés', '2026-10-21T10:00:00.000Z', '2026-10-21T10:20:00.000Z'),
+  ],
+  calendarSources: [], appliedProposalIds: [],
+}

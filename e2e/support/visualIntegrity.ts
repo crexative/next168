@@ -860,6 +860,65 @@ export function auditInPage(options: { focusRings: boolean }): string[] {
     }
   }
 
+  // A box with no words must be one too small for any: the first word of its title (with "…" when more follows), on
+  // one line in the smallest size the container allows (the element marked `data-min-text`, never hyphenated), does not
+  // fit the room inside the item's `data-text-inset` (top right bottom left, in px). An item that takes no pointer
+  // input (a task outline) and a container with no such size (the seven-day overview) are left alone.
+  // A container marked `data-whole-text="shapes"` (the seven-day overview) draws no words by design. One without its
+  // own smallest size is held to the documented one (docs/design/visual-design.md › Week items: 11 px at 100 % text on
+  // a 1.2 line).
+  function checkBlankItems(container: HTMLElement, items: Element[]): void {
+    if (container.getAttribute('data-whole-text') === 'shapes') return
+    let reference = container.querySelector<HTMLElement>('[data-min-text]')
+    let fallback: HTMLElement | null = null
+    if (!reference) {
+      fallback = document.createElement('span')
+      fallback.style.cssText = 'position: absolute; visibility: hidden; font-size: 0.6875rem; font-weight: 500; line-height: 1.2; letter-spacing: 0.01em'
+      container.append(fallback)
+      reference = fallback
+    }
+    try {
+      checkBlankItemsWith(reference, items)
+    } finally {
+      fallback?.remove()
+    }
+  }
+
+  function checkBlankItemsWith(reference: HTMLElement, items: Element[]): void {
+    // Measured with a copy of the reference itself, so the word has exactly its styles and context.
+    const measure = (build: (probe: HTMLElement) => void) => {
+      const probe = reference.cloneNode(false) as HTMLElement
+      probe.style.cssText += '; position: absolute; visibility: hidden; white-space: pre; width: auto; max-width: none'
+      build(probe)
+      reference.after(probe)
+      const range = document.createRange()
+      range.selectNodeContents(probe)
+      const box = { width: probe.getBoundingClientRect().width, glyphs: range.getBoundingClientRect().height }
+      probe.remove()
+      return box
+    }
+    const font = getComputedStyle(reference)
+    const line = Math.max(px(font.lineHeight) || px(font.fontSize) * 1.2, measure((probe) => { probe.textContent = 'Hg' }).glyphs)
+    for (const item of items) {
+      if (getComputedStyle(item).pointerEvents === 'none' || drawnText(item) !== '') continue
+      const title = (item.getAttribute('title') || item.getAttribute('aria-label') || '').replace(/\s+/g, ' ').trim()
+      const words = title.split(' ').filter(Boolean)
+      if (words.length === 0) continue
+      const text = words.length > 1 ? `${words[0]}\u2026` : words[0]!
+      const [top = 0, right = 0, bottom = 0, left = 0] = (item.getAttribute('data-text-inset') ?? '').split(/\s+/).map(Number)
+      const rect = item.getBoundingClientRect()
+      const width = rect.width - left - right - 0.25
+      const height = rect.height - top - bottom
+      if (width <= 0 || height < line - 0.01) continue
+      // Measured as a cut title is drawn: the word, then "…" in an element of its own.
+      const { width: needed } = measure((probe) => {
+        probe.textContent = words[0]!
+        if (words.length > 1) probe.append(Object.assign(document.createElement('span'), { textContent: '\u2026' }))
+      })
+      if (needed <= width) violations.push(`${describe(item)} draws no text though "${text}" fits its ${width.toFixed(1)}×${height.toFixed(1)} px room`)
+    }
+  }
+
   // Inside a `[data-whole-text]` container (a Week day column) text is whole words or not drawn (docs/design/visual-design.md ›
   // Week items). Each direct child is an item. A CSS ellipsis or line clamp is not allowed there (only the generated "…"
   // after whole words, or a "…" of the title itself, both checked by checkTitleWords), a line cut by any box or
@@ -926,6 +985,7 @@ export function auditInPage(options: { focusRings: boolean }): string[] {
           if (first.item !== second.item && intersects(first.box, second.box)) violations.push(`text "${first.text}" and text "${second.text}" overlap in ${describe(container)}`)
         }
       })
+      checkBlankItems(container, items)
     }
   }
 

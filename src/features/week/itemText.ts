@@ -2,7 +2,9 @@
 // whole words, wrapped between words, followed by "…" when later words did not fit; other text is whole or not drawn.
 // Never a cut word ("Reunió…") and never a line cut by its box.
 
-export type TextRole = 'blockTitle' | 'blockDetail' | 'caption' | 'taskTitle'
+// `compact` is the small caption size (11 px at 100 % text, scaling with it) a title falls back to before its box
+// becomes a mark: a 20-minute routine still reads "Desayuno…".
+export type TextRole = 'blockTitle' | 'blockDetail' | 'caption' | 'taskTitle' | 'compact'
 
 // Widths and line heights of the page's own fonts, at the current text size and language.
 export interface TextMetrics {
@@ -18,6 +20,8 @@ export interface TextPiece {
   role: TextRole
   // Room taken before the first word on the first line (a category mark or an icon with its space), in px.
   lead?: number
+  // At most this many lines: a time range is drawn on one line or not at all.
+  maxLines?: number
 }
 
 export interface PieceFit {
@@ -26,8 +30,9 @@ export interface PieceFit {
   lead: boolean
 }
 
-// Rendered line widths carry sub-pixel rounding; a line is only said to fit with this much to spare.
-const SPARE_PX = 1
+// Text and boxes are both laid out in 1/64 px units and measured on the page, so a line fits with a quarter pixel to
+// spare (a whole pixel left "Correos…", 62.2 px, out of a 62.5 px box).
+const SPARE_PX = 0.25
 
 // Lines `text` needs at `width` px when it breaks only at ordinary spaces (no-break spaces keep a time together),
 // or null when a word, or the lead and the first word, cannot fit on one line.
@@ -64,7 +69,7 @@ export function fitPieces(pieces: readonly TextPiece[], box: { width: number; he
     let fit: PieceFit | undefined
     for (const option of options) {
       const lines = box.width > 0 ? lineCount(option, box.width, metrics) : null
-      if (lines === null) continue
+      if (lines === null || lines > (piece.maxLines ?? Infinity)) continue
       const height = lines * metrics.lineHeight(piece.role) + (fits.length > 0 ? gap : 0)
       if (used + height <= box.height + 0.01) {
         fit = { lines, lead: Boolean(option.lead) }
@@ -103,7 +108,6 @@ function titleWith(text: string, role: TextRole, lead: number, width: number, ma
   if (words.length === 0 || maxLines < 1) return null
   const room = width - SPARE_PX
   const space = metrics.width(' ', role)
-  const ellipsis = metrics.width(ELLIPSIS, role)
   // Each placed word with the width its line has used once it is placed.
   const placed: { word: string; line: number; end: number }[] = []
   let line = 0
@@ -126,8 +130,11 @@ function titleWith(text: string, role: TextRole, lead: number, width: number, ma
   if (placed.length === 0) return lead > 0 ? null : hyphenatedFirstWord(words, role, room, maxLines, metrics)
   if (placed.length === words.length) return { text, lines: line + 1, lead: lead > 0, truncated: false }
   // Words were left out: the last line ends with "…", dropping words until it fits.
-  while (placed.length > 0 && placed[placed.length - 1]!.end + ellipsis > room) placed.pop()
-  if (placed.length === 0) return null
+  // The browser shapes "…" with the word before it ("Pagar…" is narrower than "Pagar" plus "…"), so the pair is measured.
+  const endWithEllipsis = (item: { word: string; end: number }) => item.end - metrics.width(item.word, role) + metrics.width(item.word + ELLIPSIS, role)
+  while (placed.length > 0 && endWithEllipsis(placed[placed.length - 1]!) > room) placed.pop()
+  // The first word fits a line but not with its "…": hyphenated, it may ("Prepa-" / "rar…").
+  if (placed.length === 0) return lead > 0 ? null : hyphenatedFirstWord(words, role, room, maxLines, metrics)
   return { text: placed.map((item) => item.word).join(' ') + ELLIPSIS, lines: placed[placed.length - 1]!.line + 1, lead: lead > 0, truncated: true }
 }
 

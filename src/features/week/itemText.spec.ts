@@ -106,3 +106,23 @@ describe('a first word longer than a line', () => {
     expect(fit?.hyphenated).toBeFalsy()
   })
 })
+
+// verify6 D1/D2: boxes with room for a word were left blank.
+describe('a word that fits is drawn', () => {
+  it('fits a word and "…" with a quarter pixel to spare, not a whole pixel ("Correos…" 62.2 px in 62.5 px)', () => {
+    // "Correos" 42 px + "…" 6 px = 48 px.
+    expect(fitTitle({ text: 'Correos y seguimiento', role: 'caption' }, { width: 48.3, height: 16 }, metrics)).toMatchObject({ text: `Correos${ELLIPSIS}`, truncated: true })
+  })
+
+  it('measures the last word together with its "…", as the browser shapes them ("Pagar…" is narrower than the sum)', () => {
+    const shaped: TextMetrics = { ...metrics, width: (text, role) => text === `Pagar${ELLIPSIS}` ? 33 : metrics.width(text, role) }
+    // "Pagar" (30 px) plus "…" (6 px) is 36 px; the pair is drawn in 33 px and fits 34 px.
+    expect(fitTitle({ text: 'Pagar la luz', role: 'caption' }, { width: 34, height: 16 }, shaped)).toMatchObject({ text: `Pagar${ELLIPSIS}` })
+  })
+
+  it('hyphenates a first word that fits a line but not with its "…" ("Prepa-" / "rar…")', () => {
+    const hyphenating: TextMetrics = { ...metrics, hyphenatedLines: (text) => text.startsWith('Preparar') ? 2 : null }
+    // "Preparar" is 48 px and fits 50 px; "Preparar…" (54 px) does not.
+    expect(fitTitle({ text: 'Preparar presentación', role: 'caption' }, { width: 50, height: 32 }, hyphenating)).toEqual({ text: `Preparar${ELLIPSIS}`, lines: 2, lead: false, truncated: true, hyphenated: true })
+  })
+})

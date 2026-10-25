@@ -172,3 +172,13 @@ it('keeps an explicitly clicked calendar event selected over a task hit target',
   expect(emitted.taskSelect).toEqual([])
   expect(emitted.create).toEqual([])
 })
+
+// verify6 D7: an own event's place and notes reach its details sheet.
+it('passes an event\'s location and notes to its details', () => {
+  const busy = busySegmentsByDate([], [
+    { id: 'e-3', title: 'Cita médica', start: `${DATE}T18:00:00Z`, end: `${DATE}T19:00:00Z`, allDay: false, location: 'Consultorio 3', notes: 'En ayunas', attendees: [] },
+  ], [DATE], 'UTC')[DATE]!
+  const { root, emitted } = column({ busy })
+  root.querySelector<HTMLElement>('.busy')!.click()
+  expect(emitted.inspect).toMatchObject([{ title: 'Cita médica', location: 'Consultorio 3', notes: 'En ayunas' }])
+})
