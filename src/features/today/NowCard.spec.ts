@@ -8,7 +8,7 @@ import NowCard from './NowCard.vue'
 
 const document = plannerDocument({ blocks: [deepWork, sleep] })
 let unmount = () => undefined as void
-afterEach(() => { unmount(); i18n.global.locale.value = 'en' })
+afterEach(() => { vi.restoreAllMocks(); unmount(); i18n.global.locale.value = 'en' })
 
 async function render(now: string, extra: Record<string, unknown> = {}) {
   const { current, next } = currentAndNext(document, new Date(now), 'UTC')
@@ -135,4 +135,23 @@ describe('NowCard', () => {
     }
     expect([await fill(1.7), await fill(-0.3)]).toEqual(['100%', '0%'])
   })
+})
+
+// Widths model the browser's font measurements; happy-dom does not lay out text.
+it('fits the next title as whole words in two lines and restores it when room returns', async () => {
+  let width = 157
+  vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockImplementation(function (this: HTMLElement) {
+    const measured = this.classList.contains('word-probe') ? (this.dataset.word?.length ?? 0) * 8 : width
+    return { width: measured, height: 20, left: 0, right: measured, top: 0, bottom: 20, x: 0, y: 0, toJSON() {} }
+  })
+  const title = 'Revisar presupuestos para el siguiente trimestre'
+  const { host } = await render('2026-10-21T10:15:00Z', { next: { title, start: '2026-10-21T12:00:00Z' } })
+  await nextTick()
+  const label = () => host.querySelector('.now-next-title')!
+  expect(label().childNodes[0]?.textContent?.trim()).toBe('Revisar presupuestos para…')
+  expect(label().getAttribute('aria-label')).toBe(title)
+  width = 600
+  window.dispatchEvent(new Event('resize'))
+  await nextTick()
+  expect(label().childNodes[0]?.textContent?.trim()).toBe(title)
 })

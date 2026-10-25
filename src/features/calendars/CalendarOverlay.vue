@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { joinInline } from '@/ui/inlineText'
 import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 import type { CalendarRange } from '@/core/icsImport'
@@ -12,7 +13,7 @@ const { events, conflicts, errors, loading } = useCalendarEvents(() => props.ran
 const conflictKeys = computed(() => new Set(conflicts.value.map(occurrenceKey)))
 function sourceColor(id: string): string { return `var(--cat-${planner.document?.calendarSources.find(source => source.id === id)?.colorKey ?? 'blue'})` }
 function displayTime(start: string, end: string, allDay: boolean): string {
-  if (allDay) return `${start} · ${t('calendars.allDay')}`
+  if (allDay) return joinInline([start, t('calendars.allDay')])
   const timeZone = planner.document?.settings.timeZone ?? 'UTC'
   return `${formatDateTime(start, displayLocale.value, timeZone)} – ${formatDateTime(end, displayLocale.value, timeZone)}`
 }

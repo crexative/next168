@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, reactive, ref, watch } from 'vue'
+import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { checkInDateFor } from './evening'
 import { assertEntry, CHANGED_ELSEWHERE, snapshotOf } from '@/features/insights/entryGuard'
@@ -8,7 +8,8 @@ import { actualFor } from '@/features/today/actuals'
 import ItemStatusControl from '@/features/today/ItemStatusControl.vue'
 import { planSince, readPlanSince } from '@/features/today/planSince'
 import { useBlockStatus } from '@/features/today/useBlockStatus'
-import { formatDate, formatTime } from '@/features/week/localTime'
+import { formatTime } from '@/features/week/localTime'
+import { formatDate } from '@/ui/format'
 import { useNow } from '@/features/week/useNow'
 import { usePlannerStore } from '@/stores/plannerStore'
 import Button from '@/ui/Button.vue'
@@ -123,17 +124,70 @@ async function save(): Promise<void> {
 // (a bare view) it stays in the page.
 const toolbar = ref<HTMLElement | null>(null)
 const ready = ref(false)
+const backElement = ref<HTMLElement | null>(null)
+const iconOnly = ref(false)
+let resizeObserver: ResizeObserver | undefined
+let titleObserver: MutationObserver | undefined
+
+function fitBackLabel(): void {
+  const container = toolbar.value
+  const back = backElement.value
+  const label = back?.querySelector<HTMLElement>('.back-button span')
+  if (!container || !back || !label) return
+  const left = back.getBoundingClientRect().left
+  let right = container.getBoundingClientRect().right
+  const actions = container.querySelector<HTMLElement>('.toolbar-actions')
+  if (actions) right = Math.min(right, actions.getBoundingClientRect().left)
+  const title = container.querySelector<HTMLElement>('.toolbar-title')
+  if (title && container.closest('.toolbar')?.hasAttribute('data-collapsed')) {
+    const box = title.getBoundingClientRect()
+    const range = document.createRange()
+    range.selectNodeContents(title)
+    // The title's box reserves space on both sides. Its actual letters may be much farther from the back link.
+    const textLeft = typeof range.getBoundingClientRect === 'function' ? range.getBoundingClientRect().left : box.left
+    right = Math.min(right, Math.max(box.left, textLeft))
+  }
+  const style = getComputedStyle(back.querySelector('.back-button')!)
+  const gap = Number.parseFloat(style.columnGap) || 4
+  const padding = Number.parseFloat(style.paddingInlineEnd) || 12
+  const iconWidth = back.querySelector('svg')?.getBoundingClientRect().width || 22
+  const room = Math.max(0, right - left - gap)
+  iconOnly.value = label.getBoundingClientRect().width + iconWidth + gap + padding > room
+  back.style.maxWidth = `${room}px`
+}
+watch(locale, () => { void nextTick(fitBackLabel) })
 onMounted(() => {
   toolbar.value = document.querySelector<HTMLElement>('.toolbar-inner')
   ready.value = true
+  void nextTick(() => {
+    fitBackLabel()
+    if (toolbar.value && typeof ResizeObserver !== 'undefined') {
+      resizeObserver = new ResizeObserver(fitBackLabel)
+      resizeObserver.observe(toolbar.value)
+      for (const child of toolbar.value.querySelectorAll('.toolbar-title, .toolbar-actions, .back-button span')) resizeObserver.observe(child)
+    }
+    const header = toolbar.value?.closest('.toolbar')
+    if (header) {
+      titleObserver = new MutationObserver(fitBackLabel)
+      titleObserver.observe(header, { attributes: true, attributeFilter: ['data-collapsed'] })
+    }
+  })
+  window.addEventListener('resize', fitBackLabel)
+  document.fonts?.addEventListener?.('loadingdone', fitBackLabel)
+})
+onBeforeUnmount(() => {
+  resizeObserver?.disconnect()
+  titleObserver?.disconnect()
+  window.removeEventListener('resize', fitBackLabel)
+  document.fonts?.removeEventListener?.('loadingdone', fitBackLabel)
 })
 </script>
 
 <template>
   <div v-if="planner.document" class="checkin">
     <Teleport v-if="ready" :to="toolbar ?? 'body'" :disabled="!toolbar">
-      <span class="toolbar-back" :class="{ 'is-in-toolbar': toolbar }">
-        <BackButton current="checkin" fallback="today" />
+      <span ref="backElement" class="toolbar-back" :class="{ 'is-in-toolbar': toolbar }">
+        <BackButton current="checkin" fallback="today" :icon-only="iconOnly" />
       </span>
     </Teleport>
     <form class="checkin-form" :aria-label="t('checkin.title')" @submit.prevent="save">
@@ -203,14 +257,10 @@ onMounted(() => {
 .plan-hint { margin: calc(var(--space-2) - var(--group-gap)) 0 0; }
 .note { padding: var(--space-2) var(--space-3); resize: vertical; }
 /* Top-leading in the toolbar row, level with the settings gear on the other side. */
-/* The back link takes the leading side up to the toolbar's two 44 px entries (and the gap before them), never under them,
-   and ends a space-1 before the collapsed toolbar title's area (LargeTitle.vue › .toolbar-title), so the two never run
-   together ("Bilan du jour" over "Aujourd'hui" at 320 px); a long label ends in an ellipsis instead. */
+/* Fit against the visible title and actions, recalculating on collapse, resize and text-size changes. */
 .toolbar-back.is-in-toolbar {
   position: absolute; inset-block: 0; inset-inline-start: var(--page-gutter); display: flex; align-items: center;
-  max-width: min(7rem, calc(100% - var(--page-gutter) * 2 - var(--tap-target) * 2 - var(--space-2) - var(--control-gap)), calc(var(--tap-target) * 2 + var(--space-2) - var(--space-1)));
 }
-.toolbar-back.is-in-toolbar :deep(.back-button) { max-width: 100%; }
-.toolbar-back.is-in-toolbar :deep(.back-button span) { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.toolbar-back.is-in-toolbar :deep(.back-button span) { white-space: nowrap; }
 .toolbar-back:not(.is-in-toolbar) { display: block; }
 </style>

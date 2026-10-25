@@ -351,3 +351,8 @@ describe('Today wiring', () => {
     }
   })
 })
+
+it('keeps the header separator attached on both sides at a wrap boundary', async () => {
+  await mount('2026-10-24T12:00:00Z')
+  expect(host.querySelector('[data-testid="today-subtitle"]')?.textContent).toContain('\u00a0·\u00a0')
+})

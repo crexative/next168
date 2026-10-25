@@ -1,5 +1,6 @@
 import { computed, ref } from 'vue'
 import { MINUTES_PER_DAY } from '@/core/model'
+import { unbreakable } from './inlineText'
 import { i18n } from '@/i18n'
 
 // One way to write times and durations everywhere in the UI: Intl with the full BCP-47 locale (the app's
@@ -72,15 +73,23 @@ export function clockFormat(locale: string, options: Intl.DateTimeFormatOptions)
   return new Intl.DateTimeFormat(clockLocale(locale), options)
 }
 
-// Preserve breakable date separators while keeping the clock and its day period together, including "p. m.".
+// Dates and clocks are separate unbreakable units; only their joining literal may wrap.
 function clockText(format: Intl.DateTimeFormat, instant: number | Date): string {
   const parts = format.formatToParts(instant)
   const clockTypes = new Set(['hour', 'minute', 'second', 'fractionalSecond', 'dayPeriod'])
   return parts.map((part, index) => {
-    const insideClock = clockTypes.has(part.type) || (part.type === 'literal'
-      && clockTypes.has(parts[index - 1]?.type ?? '') && clockTypes.has(parts[index + 1]?.type ?? ''))
-    return insideClock ? part.value.replace(/\s/g, '\u00a0') : part.value
+    const beforeClock = clockTypes.has(parts[index - 1]?.type ?? '')
+    const afterClock = clockTypes.has(parts[index + 1]?.type ?? '')
+    const betweenDateAndClock = part.type === 'literal' && beforeClock !== afterClock
+      && index > 0 && index < parts.length - 1
+    return betweenDateAndClock ? part.value : unbreakable(part.value)
   }).join('')
+}
+
+export function formatDate(date: string, locale: string, options: Intl.DateTimeFormatOptions): string {
+  const parts = new Intl.DateTimeFormat(locale, { ...options, timeZone: 'UTC' }).formatToParts(new Date(`${date}T12:00:00Z`))
+  return parts.map((part, index) => part.type === 'literal' && parts[index - 1]?.type === 'weekday' && options.weekday === 'long'
+    ? part.value : unbreakable(part.value)).join('')
 }
 
 export function formatClock(instant: number | string | Date, locale: string, timeZone: string): string {

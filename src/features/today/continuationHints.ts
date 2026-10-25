@@ -1,5 +1,6 @@
 import { addLocalDays, localDateOf } from '@/core/time'
-import { formatDate, formatTime } from '@/features/week/localTime'
+import { formatTime } from '@/features/week/localTime'
+import { formatDate } from '@/ui/format'
 import { readsAsOne } from './clockPhrase'
 
 interface ContinuationHint {

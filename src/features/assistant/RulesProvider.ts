@@ -12,7 +12,7 @@ import {
   type AskContext, type AssistantAnswer, type AssistantProvider, type Availability, type Translate,
 } from './provider'
 import { matchesIntent, mentionsHours, normalize } from './rulesLexicon'
-import { formatDate } from '@/features/week/localTime'
+import { formatDate } from '@/ui/format'
 import { displayLocaleFor, formatClock, formatWholeHours } from '@/ui/format'
 
 function mentionedCategory(question: string, categories: Category[]): Category | undefined {

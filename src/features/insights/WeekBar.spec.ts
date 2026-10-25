@@ -30,7 +30,7 @@ describe('WeekBar unassigned hours', () => {
 
     const headline = host.querySelector('[data-testid="capacity-available"]')!.textContent
     const legendDuration = host.querySelector('[data-testid="legend-available"] .t-secondary')!.textContent
-    expect(headline).toBe(`${assigned} h assigned · ${unassigned} h unassigned`)
+    expect(headline).toBe(`${assigned} h assigned\u00a0·\u00a0${unassigned} h unassigned`)
     expect(legendDuration).toBe(`${unassigned} h`)
     expect(headline).toContain(`${legendDuration} unassigned`)
     expect(host.querySelector('[data-segment="available"]')!.getAttribute('aria-label')).toBe(`Unassigned: ${unassigned} h`)

@@ -192,7 +192,7 @@ async function deleteEverything(): Promise<void> {
       <h2 class="t-headline">{{ t('data.import.previewTitle') }}</h2>
       <p class="t-subhead" data-testid="import-version">
         {{ t('data.import.version', { version: preview.sourceVersion, current: preview.document.schemaVersion }) }}
-        <template v-if="preview.migratedFrom"> · {{ t('data.import.migrated', { from: preview.migratedFrom }) }}</template>
+        <template v-if="preview.migratedFrom">&#160;·&#160;{{ t('data.import.migrated', { from: preview.migratedFrom }) }}</template>
       </p>
       <ul class="counts">
         <li v-for="[key, count] in countRows" :key="key" class="t-subhead" :data-testid="`count-${key}`">{{ t(`data.import.counts.${key}`, { count }, count) }}</li>

@@ -46,7 +46,7 @@ it('shows the exact proposal without applying it, then commits only on the expli
   expect(after.textContent).toContain('9:00\u00a0AM – 10:00\u00a0AM')
   expect(after.textContent).not.toMatch(/categoryId|preview-1|"start"/)
   const eventSummary = window.document.querySelectorAll('[data-testid="change-after"]')[1]!
-  expect(eventSummary.textContent).toContain('Oct 24, 2026 – Oct 24, 2026')
+  expect(eventSummary.textContent).toContain('Oct\u00a024,\u00a02026 – Oct\u00a024,\u00a02026')
   expect(eventSummary.textContent).not.toContain('Oct 23')
   const raw = window.document.querySelector<HTMLElement>('[role="dialog"] .raw')!
   const toggle = raw.querySelector<HTMLButtonElement>('.raw-toggle')!

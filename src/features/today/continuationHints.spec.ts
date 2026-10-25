@@ -28,8 +28,8 @@ describe('timeline continuation hints', () => {
 
   it('shows both real dates for the five-day timed event', () => {
     expect(continuationHints(multiDay, now, 'UTC', 'es')).toEqual([
-      { key: 'today.timeline.sinceDate', params: { date: 'jue 22' } },
-      { key: 'today.timeline.untilDate', params: { date: 'mar 27' } },
+      { key: 'today.timeline.sinceDate', params: { date: 'jue\u00a022' } },
+      { key: 'today.timeline.untilDate', params: { date: 'mar\u00a027' } },
     ])
   })
 
@@ -56,8 +56,8 @@ describe('timeline continuation hints', () => {
 
   it('formats the endpoint dates in the planner zone', () => {
     expect(continuationHints({ start: '2026-10-23T02:00:00Z', end: '2026-10-27T02:00:00Z' }, now, 'America/Bogota', 'es')).toEqual([
-      { key: 'today.timeline.sinceDate', params: { date: 'jue 22' } },
-      { key: 'today.timeline.untilDate', params: { date: 'lun 26' } },
+      { key: 'today.timeline.sinceDate', params: { date: 'jue\u00a022' } },
+      { key: 'today.timeline.untilDate', params: { date: 'lun\u00a026' } },
     ])
   })
 
@@ -120,7 +120,7 @@ describe('timeline continuation hints', () => {
     ['America/Bogota', '2026-10-26T05:00:00Z'],
   ])('shows the last covered date for an end at midnight two days later in %s', (timeZone, end) => {
     expect(continuationHints({ start: '2026-10-24T09:00:00Z', end }, now, timeZone, 'en')).toEqual([
-      { key: 'today.timeline.untilDate', params: { date: '25 Sun' } },
+      { key: 'today.timeline.untilDate', params: { date: '25\u00a0Sun' } },
     ])
   })
 
@@ -129,11 +129,11 @@ describe('timeline continuation hints', () => {
   })
 
   it.each([
-    ['en', 'Since 22 Thu', 'Until 27 Tue'],
-    ['es', 'Desde el jue 22', 'Hasta el mar 27'],
-    ['fr', 'Depuis le jeu. 22', 'Jusqu’au mar. 27'],
-    ['pt', 'Desde qui., 22', 'Até ter., 27'],
-    ['de', 'Seit Do., 22.', 'Bis Di., 27.'],
+    ['en', 'Since 22\u00a0Thu', 'Until 27\u00a0Tue'],
+    ['es', 'Desde el jue\u00a022', 'Hasta el mar\u00a027'],
+    ['fr', 'Depuis le jeu.\u00a022', 'Jusqu’au mar.\u00a027'],
+    ['pt', 'Desde qui.,\u00a022', 'Até ter.,\u00a027'],
+    ['de', 'Seit Do.,\u00a022.', 'Bis Di.,\u00a027.'],
   ])('interpolates both date hints in %s without a fallback', (locale, since, until) => {
     const translator = createI18n({
       legacy: false, locale, fallbackLocale: false,

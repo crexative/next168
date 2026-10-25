@@ -8,10 +8,10 @@ const context: SummaryContext = { categories: [], locale: 'en-US', timeZone: 'UT
 
 describe('proposal date summaries', () => {
   it.each([
-    ['2026-10-24T00:00:00+14:00', '2026-10-25T00:00:00+14:00', 'Oct 24, 2026 – Oct 24, 2026', '20261024', '20261025'],
-    ['2026-10-31T00:00:00+14:00', '2026-11-03T00:00:00+14:00', 'Oct 31, 2026 – Nov 2, 2026', '20261031', '20261103'],
-    ['2026-12-31T23:00:00-12:00', '2027-01-02T23:00:00-12:00', 'Dec 31, 2026 – Jan 1, 2027', '20261231', '20270102'],
-    ['2028-02-29T00:00:00Z', '2028-03-01T00:00:00Z', 'Feb 29, 2028 – Feb 29, 2028', '20280229', '20280301'],
+    ['2026-10-24T00:00:00+14:00', '2026-10-25T00:00:00+14:00', 'Oct\u00a024,\u00a02026 – Oct\u00a024,\u00a02026', '20261024', '20261025'],
+    ['2026-10-31T00:00:00+14:00', '2026-11-03T00:00:00+14:00', 'Oct\u00a031,\u00a02026 – Nov\u00a02,\u00a02026', '20261031', '20261103'],
+    ['2026-12-31T23:00:00-12:00', '2027-01-02T23:00:00-12:00', 'Dec\u00a031,\u00a02026 – Jan\u00a01,\u00a02027', '20261231', '20270102'],
+    ['2028-02-29T00:00:00Z', '2028-03-01T00:00:00Z', 'Feb\u00a029,\u00a02028 – Feb\u00a029,\u00a02028', '20280229', '20280301'],
   ])('shows stored all-day dates with an exclusive end: %s to %s', (start, end, expected, exportStart, exportEnd) => {
     const event: PlannerEvent = { id: 'all-day', title: 'Holiday', allDay: true, start, end, attendees: [] }
     for (const timeZone of ['UTC', 'Pacific/Honolulu', 'Pacific/Kiritimati']) {
@@ -24,14 +24,14 @@ describe('proposal date summaries', () => {
   it('keeps task due dates independent of the workspace time zone', () => {
     for (const timeZone of ['UTC', 'Pacific/Honolulu', 'Pacific/Kiritimati']) {
       expect(summarizeEntity({ dueDate: '2026-10-24' }, { ...context, timeZone }))
-        .toEqual([{ label: 'proposals.fields.due', value: 'Oct 24, 2026' }])
+        .toEqual([{ label: 'proposals.fields.due', value: 'Oct\u00a024,\u00a02026' }])
     }
   })
 
   it.each([
-    ['UTC', 'Oct 23, 2026, 10:00\u00a0AM – Oct 23, 2026, 11:00\u00a0AM'],
-    ['America/Los_Angeles', 'Oct 23, 2026, 3:00\u00a0AM – Oct 23, 2026, 4:00\u00a0AM'],
-    ['Pacific/Kiritimati', 'Oct 24, 2026, 12:00\u00a0AM – Oct 24, 2026, 1:00\u00a0AM'],
+    ['UTC', 'Oct\u00a023,\u00a02026, 10:00\u00a0AM – Oct\u00a023,\u00a02026, 11:00\u00a0AM'],
+    ['America/Los_Angeles', 'Oct\u00a023,\u00a02026, 3:00\u00a0AM – Oct\u00a023,\u00a02026, 4:00\u00a0AM'],
+    ['Pacific/Kiritimati', 'Oct\u00a024,\u00a02026, 12:00\u00a0AM – Oct\u00a024,\u00a02026, 1:00\u00a0AM'],
   ])('converts timed event instants to the workspace time zone: %s', (timeZone, expected) => {
     expect(summarizeEntity({ allDay: false, start: '2026-10-24T00:00:00+14:00', end: '2026-10-24T01:00:00+14:00' }, { ...context, timeZone }))
       .toEqual([{ label: 'proposals.fields.when', value: expected }])

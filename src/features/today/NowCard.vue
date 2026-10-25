@@ -4,7 +4,9 @@ import { useI18n } from 'vue-i18n'
 import type { BlockActual, Category } from '@/core/model'
 import { addLocalDays, localDateOf, type DatedOccurrence } from '@/core/time'
 import { categoryColor } from '@/features/week/categoryColor'
-import { formatDate, formatTime } from '@/features/week/localTime'
+import { formatTime } from '@/features/week/localTime'
+import { formatDate } from '@/ui/format'
+import WholeWordText from '@/ui/WholeWordText.vue'
 import ItemStatusControl from './ItemStatusControl.vue'
 import { actualFor, type ActualStatus } from './actuals'
 import { untilClock } from './clockPhrase'
@@ -105,7 +107,7 @@ function time(instant: string): string {
     <p class="now-next t-subhead" data-testid="now-next">
       <template v-if="next">
         <span class="now-next-label">{{ t('today.now.next') }}</span>
-        <span class="now-next-title">{{ next.title }}</span>
+        <WholeWordText class="now-next-title" :text="next.title" />
         <span class="tabular t-secondary">{{ nextWhen }}</span>
       </template>
       <span v-else class="t-secondary">{{ t('today.now.nothingNext') }}</span>
@@ -134,6 +136,7 @@ function time(instant: string): string {
 .progress-fill { display: block; height: 100%; border-radius: 3px; background: var(--block-color); }
 .now-next {
   display: flex;
+  flex-wrap: wrap;
   align-items: baseline;
   gap: var(--space-2);
   margin: var(--space-1) 0 0;
@@ -142,5 +145,5 @@ function time(instant: string): string {
   min-height: 1.5rem;
 }
 .now-next-label { color: var(--label-2); }
-.now-next-title { flex: 1; min-width: 0; overflow: hidden; font-weight: 600; text-overflow: ellipsis; white-space: nowrap; }
+.now-next-title { flex: 1 1 8rem; font-weight: 600; }
 </style>

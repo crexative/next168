@@ -18,7 +18,7 @@
       "unavailable": "Este dispositivo o navegador no puede ejecutar el modelo (necesita WebGPU). Las respuestas rápidas siguen funcionando.",
       "checking": "Comprobando este dispositivo…"
     },
-    "line": "Respuestas rápidas: {rules} · Modelo en el dispositivo: {model}"
+    "line": "Respuestas rápidas: {rules}\u00a0·\u00a0Modelo en el dispositivo: {model}"
   },
   "optIn": {
     "title": "Activa el modelo en el dispositivo",

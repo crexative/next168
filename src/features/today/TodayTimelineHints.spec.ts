@@ -31,7 +31,7 @@ describe('TodayTimeline continuation hints', () => {
     i18n.global.locale.value = 'es'
     await nextTick()
     expect([...mounted.host.querySelectorAll('[data-testid="timeline-span-hint"]')].map(node => node.textContent)).toEqual([
-      'Desde el jue 22', 'Hasta el mar 27',
+      'Desde el jue\u00a022', 'Hasta el mar\u00a027',
     ])
   })
 })

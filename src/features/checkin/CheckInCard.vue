@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { inlineSeparators } from '@/ui/inlineText'
 import { computed, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import type { PlannerDocument } from '@/core/model'
@@ -49,7 +50,7 @@ defineExpose({ focus: () => link.value?.focus() })
         <span class="t-body">{{ t('checkin.title') }}</span>
         <span v-if="!done" class="t-footnote t-secondary">{{ t('checkin.card.description') }}</span>
         <span v-else class="t-footnote t-secondary tabular" role="status" data-testid="checkin-done">
-          {{ t(justSaved ? 'checkin.card.savedStreak' : 'checkin.card.doneStreak', { count: streak }) }}
+          {{ inlineSeparators(t(justSaved ? 'checkin.card.savedStreak' : 'checkin.card.doneStreak', { count: streak })) }}
         </span>
       </span>
       <Icon name="chevron-right" :size="20" class="checkin-chevron" />
