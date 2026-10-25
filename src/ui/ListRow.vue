@@ -50,13 +50,15 @@ button.row-content:active { background: var(--surface-2); }
   display: flex;
   flex: 1;
   flex-wrap: wrap;
-  align-items: baseline;
+  align-items: center;
   gap: var(--space-1) var(--space-3);
   min-width: 0;
 }
 /* The label keeps its natural width (never squeezed to nothing); only a label wider than the row wraps. */
-.row-text { display: flex; flex: 1 0 auto; flex-direction: column; max-width: 100%; }
+.row-text { display: flex; flex: 1 0 auto; flex-direction: column; max-width: 100%; overflow-wrap: anywhere; }
 .row-trailing {
+  display: flex;
+  align-items: center;
   flex: 0 1 auto;
   min-width: 0;
   max-width: 100%;

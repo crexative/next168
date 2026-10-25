@@ -413,6 +413,37 @@ for (const theme of THEMES) {
       await audit(page, `${theme}/assistant with suggestions`)
     })
 
+    for (const width of [390, 1440]) {
+      test(`recently done tasks keep both row insets at ${width}px`, async ({ page }, testInfo) => {
+        test.skip(testInfo.project.name !== 'phone', 'explicit widths run once per theme')
+        await page.setViewportSize({ width, height: 900 })
+        const title = 'Ir por el kit de Edwin'
+        const doneDocument = {
+          ...plannedDocument,
+          settings: { ...plannedDocument.settings, locale: 'es' },
+          tasks: [{ id: 't-done', title, durationMin: 30, priority: 2, createdAt: '2026-10-20T08:00:00.000Z', doneAt: NOW.toISOString() }],
+        }
+        await start(page, theme, doneDocument, 'es')
+        await open(page, 'tasks')
+        const row = page.getByTestId('done-task')
+        const reopen = row.getByRole('button', { name: 'Reabrir', exact: true })
+        await expect(reopen).toBeVisible()
+        await audit(page, `${theme}/${width}/tasks recently done`)
+        const insets = await row.evaluate((element) => {
+          const card = element.closest('.list-card')!.getBoundingClientRect()
+          const button = element.querySelector('button')!.getBoundingClientRect()
+          const range = document.createRange()
+          range.selectNodeContents(element.querySelector('.t-body')!)
+          return { leading: range.getBoundingClientRect().left - card.left, trailing: card.right - button.right }
+        })
+        expect(insets.leading).toBeCloseTo(16, 0)
+        expect(insets.trailing).toBeCloseTo(16, 0)
+        await reopen.click()
+        await expect(page.getByTestId('done-task')).toHaveCount(0)
+        await expect(page.getByTestId('placed-task')).toContainText(title)
+      })
+    }
+
     test('week routine editor and the day sheets', async ({ page }) => {
       await start(page, theme, plannedDocument)
       await open(page, 'week')
@@ -639,6 +670,138 @@ for (const theme of THEMES) {
     })
   })
 }
+
+test.describe('visual integrity guard: padded container edges', () => {
+  test.beforeEach(({}, testInfo) => {
+    test.skip(testInfo.project.name !== 'phone', 'the guard self-tests run once')
+  })
+
+  const stage = (content: string, extraStyle = '') => `
+    <style>
+      body { margin: 0; font: 16px/24px sans-serif; }
+      .card { box-sizing: border-box; position: relative; margin: 24px; width: 280px; height: 160px; padding: 16px; border-radius: 16px; }
+      button { box-sizing: border-box; width: 80px; height: 44px; border: 0; padding: 0; font: inherit; }
+      ${extraStyle}
+    </style>
+    <section class="card">${content}</section>`
+
+  for (const side of ['left', 'right', 'top', 'bottom'] as const) {
+    test(`a flush button at the ${side} edge is reported through an unpadded wrapper`, async ({ page }) => {
+      await page.setContent(stage('<div><button>Reopen</button></div>', `button { position: absolute; ${side}: 0; ${side === 'left' || side === 'right' ? 'top: 40px' : 'left: 80px'}; }`))
+      expect(await visualIntegrityViolations(page, { focusRings: false })).toContain(
+        `<button> "Reopen" touches the edge of <section.card> "Reopen" (${side}: 0.0px inset, 16.0px padding)`,
+      )
+    })
+  }
+
+  test('a stretched transparent checkbox is a chip hit target, not visible edge content', async ({ page }) => {
+    await page.setContent(stage('<label class="chip"><input class="check-input" type="checkbox" aria-label="Use Work"><span>Work</span></label>', `
+      .chip { position: relative; display: block; padding: 16px; }
+      .check-input { position: absolute; inset: 0; width: 100%; height: 100%; margin: 0; opacity: 0; }
+    `))
+    expect(await visualIntegrityViolations(page, { focusRings: false })).toEqual([])
+  })
+
+  for (const inset of [0, 1]) {
+    test(`a control covering all four container edges within ${inset} px is a full-area hit target`, async ({ page }) => {
+      await page.setContent(stage('<label class="chip"><input type="checkbox" aria-label="Use Work"><span>Work</span></label>', `
+        .chip { position: relative; display: block; padding: 16px; }
+        input { position: absolute; inset: ${inset}px; width: calc(100% - ${inset * 2}px); height: calc(100% - ${inset * 2}px); margin: 0; }
+      `))
+      expect(await visualIntegrityViolations(page, { focusRings: false })).toEqual([])
+    })
+  }
+
+  for (const hiddenStyle of ['opacity: 0', 'visibility: hidden', 'clip: rect(0, 0, 0, 0)', 'width: 1px; height: 1px; overflow: hidden']) {
+    test(`an invisible edge control is accepted (${hiddenStyle})`, async ({ page }) => {
+      await page.setContent(stage('<input type="checkbox" aria-label="Use Work">', `
+        input { position: absolute; left: 0; top: 40px; width: 24px; height: 24px; margin: 0; ${hiddenStyle}; }
+      `))
+      expect(await visualIntegrityViolations(page, { focusRings: false })).toEqual([])
+    })
+  }
+
+  test('a visible checkbox flush to the left edge is reported', async ({ page }) => {
+    await page.setContent(stage('<input type="checkbox" aria-label="Use Work">', `
+      input { position: absolute; left: 0; top: 40px; width: 24px; height: 24px; margin: 0; }
+    `))
+    expect(await visualIntegrityViolations(page, { focusRings: false })).toEqual([
+      '<input> "Use Work" touches the edge of <section.card> "" (left: 0.0px inset, 16.0px padding)',
+    ])
+  })
+
+  test('a properly inset trailing button is accepted, including borders and unequal padding', async ({ page }) => {
+    await page.setContent(stage('<span>Title</span><button>Reopen</button>', `
+      .card { display: flex; align-items: center; justify-content: space-between; border: 3px solid; padding: 12px 20px 18px 16px; }
+    `))
+    expect(await visualIntegrityViolations(page, { focusRings: false })).toEqual([])
+  })
+
+  test('a negative margin that borrows the card padding is reported even if the label stays inset', async ({ page }) => {
+    await page.setContent(stage('<button>Reopen</button>', 'button { float: right; margin-right: -8px; padding-inline: 8px; }'))
+    expect(await visualIntegrityViolations(page, { focusRings: false })).toContain(
+      '<button> "Reopen" touches the edge of <section.card> "Reopen" (right: 8.0px inset, 16.0px padding)',
+    )
+  })
+
+  test('subpixel rounding within the tolerance is accepted', async ({ page }) => {
+    await page.setContent(stage('<button>Reopen</button>', 'button { float: right; margin-right: -0.5px; }'))
+    expect(await visualIntegrityViolations(page, { focusRings: false })).toEqual([])
+  })
+
+  test('text moved into the padding is reported using its visible line box', async ({ page }) => {
+    await page.setContent(stage('<p>Title</p>', 'p { margin: 0 0 0 -16px; }'))
+    expect(await visualIntegrityViolations(page, { focusRings: false })).toContain(
+      'text "Title" in <p> "Title" touches the edge of <section.card> "Title" (left: 0.0px inset, 16.0px padding)',
+    )
+  })
+
+  test('a padded row inside an unpadded rounded group protects its trailing controls', async ({ page }) => {
+    await page.setContent(stage('<div class="row"><span>Title</span><button>Reopen</button></div>', `
+      .card { padding: 0; }
+      .row { display: flex; align-items: center; justify-content: space-between; padding: 8px 16px; }
+      button { margin-right: -16px; }
+    `))
+    expect(await visualIntegrityViolations(page, { focusRings: false })).toContain(
+      '<button> "Reopen" touches the edge of <div.row> "TitleReopen" (right: 0.0px inset, 16.0px padding)',
+    )
+  })
+
+  test('unpadded rounded containers allow full-width interactive rows', async ({ page }) => {
+    await page.setContent(stage('<button>Reopen</button>', '.card { padding: 0; } button { width: 100%; }'))
+    expect(await visualIntegrityViolations(page, { focusRings: false })).toEqual([])
+  })
+
+  test('scrolling a padded section does not turn scrolled-away content into an edge violation', async ({ page }) => {
+    await page.setContent(stage('<button>First</button><div class="space"></div><button>Last</button>', `
+      .card { overflow-y: auto; }
+      .space { height: 200px; }
+    `))
+    await page.locator('.card').evaluate((element) => { element.scrollTop = element.scrollHeight })
+    expect(await visualIntegrityViolations(page, { focusRings: false })).toEqual([])
+  })
+
+  test('a floating menu owns its padding independently of its trigger card', async ({ page }) => {
+    await page.setContent(stage('<div role="menu"><button>Reopen</button></div>', `
+      [role=menu] { position: absolute; top: 160px; right: 0; padding: 8px; border-radius: 12px; }
+    `))
+    expect(await visualIntegrityViolations(page, { focusRings: false })).toEqual([])
+    await page.locator('button').evaluate((element) => { element.style.marginRight = '-8px' })
+    expect((await visualIntegrityViolations(page, { focusRings: false })).some((violation) => violation.includes('touches the edge of <div>'))).toBe(true)
+  })
+
+  test('ellipsis and hidden flex columns do not report invisible text as touching the edge', async ({ page }) => {
+    await page.setContent(stage(`
+      <p class="ellipsis">A very long label that deliberately extends beyond its single visible line</p>
+      <div class="columns"><span>First</span><span>Second</span><span>Third</span></div>
+    `, `
+      .ellipsis { margin: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+      .columns { display: flex; flex-flow: column wrap; align-content: flex-start; gap: 0 16px; box-sizing: border-box; width: 100px; height: 44px; padding: 8px; overflow: hidden; }
+      .columns span { flex: none; width: 100%; }
+    `))
+    expect(await visualIntegrityViolations(page, { focusRings: false })).toEqual([])
+  })
+})
 
 // The overlap rule judges what a user can see: a field a scroll container has scrolled out of sight is not
 // under the button that occupies its page coordinates, but a visible collision still is an overlap.
