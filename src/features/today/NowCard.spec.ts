@@ -137,21 +137,71 @@ describe('NowCard', () => {
   })
 })
 
-// Widths model the browser's font measurements; happy-dom does not lay out text.
+// Widths model the browser's font measurements; happy-dom does not lay out text. A hyphen probe is as tall as the
+// lines its text needs at its width (8 px a letter, 20 px a line).
+function modelLayout(boxWidth: () => number): void {
+  vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockImplementation(function (this: HTMLElement) {
+    const lineBox = (letters: number, width: number) => Math.max(1, Math.ceil((letters * 8) / width)) * 20
+    let measured = boxWidth()
+    let height = 20
+    if (this.classList.contains('word-probe')) measured = (this.dataset.word?.length ?? 0) * 8
+    if (this.classList.contains('hyphen-probe')) { measured = Number.parseFloat(this.style.width); height = lineBox((this.textContent ?? '').length, measured) }
+    return { width: measured, height, left: 0, right: measured, top: 0, bottom: height, x: 0, y: 0, toJSON() {} }
+  })
+}
+
+const visible = (label: Element) => label.querySelector('.whole-word-shown')!.textContent!.trim()
+// What a screen reader reads: the text that is not hidden from it.
+const accessibleText = (label: Element) => [...label.children].filter((child) => child.getAttribute('aria-hidden') !== 'true' && !child.classList.contains('word-probe') && !child.classList.contains('hyphen-probe')).map((child) => child.textContent).join('').trim()
+
 it('fits the next title as whole words in two lines and restores it when room returns', async () => {
   let width = 157
-  vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockImplementation(function (this: HTMLElement) {
-    const measured = this.classList.contains('word-probe') ? (this.dataset.word?.length ?? 0) * 8 : width
-    return { width: measured, height: 20, left: 0, right: measured, top: 0, bottom: 20, x: 0, y: 0, toJSON() {} }
-  })
+  modelLayout(() => width)
   const title = 'Revisar presupuestos para el siguiente trimestre'
   const { host } = await render('2026-10-21T10:15:00Z', { next: { title, start: '2026-10-21T12:00:00Z' } })
   await nextTick()
   const label = () => host.querySelector('.now-next-title')!
-  expect(label().childNodes[0]?.textContent?.trim()).toBe('Revisar presupuestos para…')
-  expect(label().getAttribute('aria-label')).toBe(title)
+  expect(visible(label())).toBe('Revisar presupuestos para…')
+  expect(label().querySelector('.whole-word-shown')!.getAttribute('aria-hidden')).toBe('true')
+  expect(accessibleText(label())).toBe(title)
   width = 600
   window.dispatchEvent(new Event('resize'))
   await nextTick()
-  expect(label().childNodes[0]?.textContent?.trim()).toBe(title)
+  expect(visible(label())).toBe(title)
+  expect(label().querySelector('.whole-word-shown')!.getAttribute('aria-hidden')).toBeNull()
+  expect(accessibleText(label())).toBe(title)
+})
+
+it('hyphenates one over-wide word in the page language instead of drawing a bare ellipsis', async () => {
+  modelLayout(() => 157)
+  const word = 'Donaudampfschifffahrtsgesellschaft'
+  const { host } = await render('2026-10-21T10:15:00Z', { next: { title: word, start: '2026-10-21T12:00:00Z' } })
+  i18n.global.locale.value = 'de'
+  await nextTick()
+  const label = host.querySelector('.now-next-title')!
+  expect(visible(label)).not.toBe('…')
+  expect(visible(label).startsWith('Donaudampf')).toBe(true)
+  expect(label.classList.contains('whole-word-hyphenated')).toBe(true)
+  expect(label.getAttribute('lang')).toBe('de')
+  expect(accessibleText(label)).toBe(word)
+})
+
+it('keeps the first over-wide word when more words follow, with the ellipsis after the whole word', async () => {
+  modelLayout(() => 157)
+  const { host } = await render('2026-10-21T10:15:00Z', { next: { title: 'Donaudampfschifffahrtsgesellschaft Jahresbericht', start: '2026-10-21T12:00:00Z' } })
+  await nextTick()
+  const label = host.querySelector('.now-next-title')!
+  expect(visible(label)).toBe('Donaudampfschifffahrtsgesellschaft…')
+  expect(accessibleText(label)).toBe('Donaudampfschifffahrtsgesellschaft Jahresbericht')
+})
+
+it('draws the whole title, broken anywhere and cut by its lines, when no hyphenation fits', async () => {
+  modelLayout(() => 157)
+  const word = 'Donaudampfschifffahrtsgesellschaftskapitaensmuetzenhersteller'
+  const { host } = await render('2026-10-21T10:15:00Z', { next: { title: word, start: '2026-10-21T12:00:00Z' } })
+  await nextTick()
+  const label = host.querySelector('.now-next-title') as HTMLElement
+  expect(visible(label)).toBe(word)
+  expect(label.classList.contains('whole-word-anywhere')).toBe(true)
+  expect(label.style.maxHeight).toBe('2lh')
 })

@@ -190,11 +190,14 @@ describe('Summary: last 7 days', () => {
   it('names the window by its dates, not by weekdays that roll', async () => {
     await mount()
     expect(text('measures-range')).toBe('Oct 15 – 21')
+    // Each date is unbreakable (month and day stay together); only the dash may break the line.
+    expect(host.querySelector('[data-testid="measures-range"]')!.textContent).toContain('Oct\u00a015')
   })
 
   it('names a window that crosses a month by both dates, in the reader\'s language', async () => {
     await mount(base, 'es', '2026-11-03T10:00:00.000Z')
     expect(text('measures-range')).toBe('28 oct – 3 nov')
+    expect(host.querySelector('[data-testid="measures-range"]')!.textContent).toContain('28\u00a0oct')
   })
 
   it('shows the average stress as a whole number', async () => {
