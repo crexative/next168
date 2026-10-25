@@ -161,7 +161,7 @@ const labels = computed(() => ({
           :aria-describedby="blocked ? `${questionId} ${reasonId}` : questionId" :disabled="busy || !canContinue" @click="onPrimary"
         >
           <span>{{ t('onboarding.guided.sendShort') }}</span>
-          <Icon name="arrow-up" :size="26" />
+          <Icon name="send" :size="26" class="send-icon" />
         </button>
         <span v-if="blocked" :id="reasonId" class="visually-hidden" data-testid="send-reason">{{ t(`onboarding.guided.${blocked}`) }}</span>
       </div>
@@ -199,6 +199,7 @@ const labels = computed(() => ({
 .send:active:not(:disabled) { transform: scale(0.94); }
 .send:disabled { background: var(--label-3); color: var(--surface); }
 .send:focus-visible { outline-offset: 3px; }
+.send-icon:dir(rtl) { transform: scaleX(-1); }
 .other, .add {
   align-self: flex-start; min-height: var(--tap-target); padding: var(--space-2) var(--space-4); border: 2px dashed var(--field-border);
   border-radius: 999px; background: transparent; color: var(--label); font-weight: 600; touch-action: manipulation;

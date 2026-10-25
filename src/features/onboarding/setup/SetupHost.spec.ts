@@ -17,7 +17,7 @@ import { createState } from '../setupModel'
 import { env } from '../setupFixtures'
 import SetupHost from './SetupHost.vue'
 import { registerIcons } from '@/ui/icons'
-import { ArrowUp } from 'lucide-vue-next'
+import { ArrowRight } from 'lucide-vue-next'
 import { setHourCycle } from '@/ui/format'
 
 // The guided setup's lifecycle on a real store and repository: what a draft is applied to, the single guarded commit,
@@ -80,7 +80,7 @@ async function skipToSummary(): Promise<void> {
 }
 
 beforeEach(() => {
-  registerIcons({ 'arrow-up': ArrowUp })
+  registerIcons({ send: ArrowRight })
   sessionStorage.clear()
   localStorage.clear()
 })
@@ -496,6 +496,18 @@ describe('the conversation', () => {
     expect(send.textContent?.trim()).toBe(i18n.global.t('onboarding.guided.sendShort'))
     expect(send.textContent?.trim()).not.toBe('onboarding.guided.sendShort')
     expect(send.querySelector('svg')).not.toBeNull()
+  })
+
+  it('renders the right-pointing send icon instead of arrow-up', async () => {
+    await mount(firstRun())
+    const send = live('[data-testid=setup-primary]')!
+    const icon = send.querySelector('svg.lucide-arrow-right')
+    expect(icon).not.toBeNull()
+    expect(send.querySelector('svg.lucide-arrow-up')).toBeNull()
+    expect(icon?.getAttribute('width')).toBe('26')
+    expect(icon?.getAttribute('height')).toBe('26')
+    expect(icon?.getAttribute('aria-hidden')).toBe('true')
+    expect(send.getAttribute('aria-label')).toBe(i18n.global.t('onboarding.guided.send'))
   })
 
   it('keeps every answer above the question; changing an earlier one drops what no longer applies and brings it back with that answer', async () => {
