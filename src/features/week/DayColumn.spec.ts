@@ -134,6 +134,13 @@ it('opens a task from just outside it, ahead of the block it sits in', () => {
 })
 
 
+it('draws back-to-back tasks under the routine title in disjoint boxes (#3 review)', () => {
+  const { root } = column({ tasks: [taskAt(540, 560), { ...taskAt(560, 580), taskId: 't2' }] })
+  const boxes = Array.from(root.querySelectorAll<HTMLElement>('.task-chunk')).map((chunk) => ({ top: Number.parseFloat(chunk.style.top), height: Number.parseFloat(chunk.style.height) }))
+  expect(boxes).toHaveLength(2)
+  expect(boxes[1]!.top).toBeGreaterThanOrEqual(boxes[0]!.top + boxes[0]!.height)
+})
+
 it('opens the routine from its own area, even inside the expanded target of a short task it holds', () => {
   const { root, emitted } = column({ tasks: [taskAt(600, 615)] })
   const routine = root.querySelector<HTMLElement>('[data-block-id=deep] .block-title')!

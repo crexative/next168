@@ -197,9 +197,10 @@ pre { margin: 0; font-size: 0.8125rem; white-space: pre-wrap; overflow-wrap: any
 .actions > * { flex: 1 1 8rem; min-height: 48px; }
 .review-head .overview { font-weight: 600; }
 .group { display: flex; flex-direction: column; gap: var(--space-2); }
-.group-toggle { display: flex; align-items: center; gap: var(--space-2); width: 100%; min-height: 48px; padding: 0 var(--space-3); border: 0; border-radius: var(--radius-control); background: var(--surface-2); color: var(--label); text-align: start; touch-action: manipulation; }
+.group-toggle { display: flex; align-items: center; gap: var(--space-2); width: 100%; min-height: 48px; padding: 0 min(var(--space-3), 12px); border: 0; border-radius: var(--radius-control); background: var(--surface-2); color: var(--label); text-align: start; touch-action: manipulation; }
 .group-toggle:active { opacity: 0.6; }
-.group-name { flex: 1 1 auto; min-width: 0; overflow-wrap: anywhere; }
+/* Beside the count and the chevron a long group name at 200 % hyphenates in the page's language, never cut arbitrarily. */
+.group-name { flex: 1 1 auto; min-width: 0; overflow-wrap: anywhere; hyphens: auto; }
 .group-count { flex: none; }
 .chevron { flex: none; color: var(--label-3); }
 .chevron.is-open { transform: rotate(90deg); }

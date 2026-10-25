@@ -10,7 +10,7 @@ import './registerIcons'
 import { statusOf } from './blockStatus'
 import { categoryColor } from './categoryColor'
 import { formatMinute, formatTime } from './localTime'
-import { HOUR_HEIGHT_PX, SLOT_MINUTES, STACK_TITLE_INSET_PERCENT, coversTitle, layoutDaySegments, nearestHitTarget, type BlockSegment, type HitTarget, type BusySegment, type DayPart, type LanePosition, type TaskSegment } from './weekLayout'
+import { HOUR_HEIGHT_PX, SLOT_MINUTES, STACK_TITLE_INSET_PERCENT, coversTitle, layoutDaySegments, nearestHitTarget, type BlockSegment, type HitTarget, type BusySegment, type DayPart, type LanePosition, type TaskBox, type TaskSegment, placeTasks } from './weekLayout'
 import type { BusyDetails } from './busyDetails'
 
 const props = withDefaults(defineProps<{
@@ -121,20 +121,36 @@ const crowdedBlocks = computed(() => new Set(props.tasks.flatMap((task) => {
   return host && task.startMinute - host.startMinute < EARLY_TASK_MINUTES ? [host.key] : []
 })))
 
+// The tasks of each host (a block, or the column's free time) are placed together: below the block's title lines, each at
+// least MIN_TASK_PX, none over another, all inside the block (exact times are in the accessible names and tooltips). The
+// overview draws them at their exact times.
+const taskPlacement = computed(() => {
+  const px = (minute: number) => (minute / 60) * props.hourHeight
+  const placed = new Map<TaskSegment, TaskBox>()
+  if (props.compact) {
+    for (const task of props.tasks) placed.set(task, { top: px(task.startMinute), bottom: px(task.endMinute), outline: false })
+    return placed
+  }
+  const groups = new Map<string, { host: ReturnType<typeof hostOf>; tasks: TaskSegment[] }>()
+  for (const task of props.tasks) {
+    const host = hostOf(task)
+    const key = host?.key ?? ''
+    if (!groups.has(key)) groups.set(key, { host, tasks: [] })
+    groups.get(key)!.tasks.push(task)
+  }
+  for (const { host, tasks } of groups.values()) {
+    const bounds = host
+      ? { top: px(host.startMinute), bottom: px(host.endMinute), strip: isLaned(host) ? TITLE_STRIP_PX + TITLE_LINE_PX : TITLE_STRIP_PX }
+      : { top: 0, bottom: px(1440), strip: 0 }
+    const boxes = placeTasks(tasks.map((task) => ({ top: px(task.startMinute), bottom: px(task.endMinute) })), bounds, MIN_TASK_PX)
+    tasks.forEach((task, index) => placed.set(task, boxes[index]!))
+  }
+  return placed
+})
+
 const taskBoxes = computed(() => props.tasks.map((task) => {
   const host = hostOf(task)
-  // A task that starts under its block's title begins below the title lines, never over them; a short one keeps at least
-  // MIN_TASK_PX and stays inside its block (its exact time is in its accessible name and tooltip).
-  const px = (minute: number) => (minute / 60) * props.hourHeight
-  const titleStrip = host && isLaned(host) ? TITLE_STRIP_PX + TITLE_LINE_PX : TITLE_STRIP_PX
-  const strip = host && !props.compact ? Math.max(0, titleStrip - (px(task.startMinute) - px(host.startMinute))) : 0
-  let top = px(task.startMinute) + strip
-  let bottom = props.compact ? px(task.endMinute) : Math.max(px(task.endMinute), top + MIN_TASK_PX)
-  // A block too short for its title and a task below it is outlined whole instead: the dashed edge says it holds a task
-  // and never crosses the title.
-  const outline = Boolean(host && !props.compact && px(host.endMinute) - top < MIN_TASK_PX)
-  if (host && !props.compact) bottom = Math.min(bottom, px(host.endMinute))
-  if (outline) top = px(host!.startMinute)
+  const { top, bottom, outline } = taskPlacement.value.get(task)!
   const height = bottom - top
   const lanes = host ? itemStyle(host) : { insetInlineStart: '2px', width: 'calc(100% - 4px)', '--stack-left': '0%', '--stack-width': '100%' }
   return {

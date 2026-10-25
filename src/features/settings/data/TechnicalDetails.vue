@@ -28,7 +28,7 @@ const mode = (window as { __NEXT168__?: { mode?: string } }).__NEXT168__?.mode =
 <style scoped>
 /* An address or a workspace id is one long token: it first moves under its label, and breaks only if it is wider than
    the whole row (break-word keeps it whole while it fits, where anywhere let the label squeeze it into pieces). */
-.wrap { overflow-wrap: break-word; text-align: end; }
+.wrap { min-width: 0; overflow-wrap: break-word; text-align: end; }
 /* So does a one-word label ("Almacenamiento") at 200 % text on a phone. */
 :deep(.row-text > .t-body) { overflow-wrap: anywhere; hyphens: auto; }
 </style>

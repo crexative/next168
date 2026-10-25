@@ -784,6 +784,27 @@ test.describe('Week readability', () => {
       { id: 'e-sync', title: 'Team sync', start: '2026-10-23T09:30:00.000Z', end: '2026-10-23T10:30:00.000Z', allDay: false, attendees: [] },
     ],
   }
+  // Three 20-minute tasks back to back at the top of Monday's routine (#3 review): each below the title lines, none on
+  // another, at the phone, tablet and desktop layouts.
+  for (const width of [375, 768, 1440]) {
+    test(`back-to-back short tasks at the top of a routine never cover each other at ${width} px`, async ({ page }, testInfo) => {
+      test.skip(testInfo.project.name !== 'desktop', 'explicit widths run once')
+      await page.setViewportSize({ width, height: 900 })
+      const tasks = ['First call', 'Second call', 'Third call'].map((title, index) => ({ id: `t-${index}`, title, categoryId: 'c-work', durationMin: 20, priority: index + 1, createdAt: '2026-10-18T08:00:00.000Z' }))
+      await start(page, 'light', { ...plannedDocument, tasks }, 'en', new Date('2026-10-19T07:00:00.000Z'))
+      await open(page, 'week')
+      const chunks = page.locator('[data-date="2026-10-19"] [data-testid="week-task"]')
+      await expect(chunks).toHaveCount(3)
+      await expect.poll(() => chunks.evaluateAll((elements) => elements.map((element) => element.getAttribute('data-start-minute')))).toEqual(['540', '560', '580'])
+      const boxes = await chunks.evaluateAll((elements) => elements.map((element) => {
+        const rect = element.getBoundingClientRect()
+        return { top: rect.top, bottom: rect.bottom }
+      }).sort((a, b) => a.top - b.top))
+      for (let index = 1; index < boxes.length; index++) expect(boxes[index]!.top, `task ${index} starts below task ${index - 1}`).toBeGreaterThanOrEqual(boxes[index - 1]!.bottom - 0.5)
+      await audit(page, `light/${width}/back-to-back tasks at the top of a routine`)
+    })
+  }
+
   for (const width of [768, 1024, 1440]) {
     test(`titles, task labels, taps and the header at ${width} px`, async ({ page }, testInfo) => {
       test.skip(testInfo.project.name !== 'desktop', 'explicit widths run once')
@@ -1041,6 +1062,14 @@ test.describe('visual integrity guard: overlapping controls', () => {
       <style>body { margin: 0; font: 16px sans-serif; } .bar { position: relative; width: 320px; height: 44px; } a { position: absolute; top: 0; height: 44px; }</style>
       <div class="bar"><a href="#back" style="left: 16px; width: 200px">Back to Summary</a><a href="#ai" aria-label="Assistant" style="left: 180px; width: 44px">*</a></div>`)
     expect(await visualIntegrityViolations(page, { focusRings: false })).toEqual(['<a> "Back to Summary" overlaps <a> "Assistant"'])
+  })
+
+  test('two layered controls on each other are reported even inside their host', async ({ page }, testInfo) => {
+    phoneOnly(testInfo)
+    await page.setContent(`
+      <style>body { margin: 0; } .host { position: absolute; left: 10px; top: 10px; width: 200px; height: 100px; } .task { position: absolute; left: 20px; top: 30px; width: 100px; height: 30px; padding: 0; }</style>
+      <button class="host">Deep work</button><button class="task" data-layered>Report</button><button class="task" data-layered>Form</button>`)
+    expect(await visualIntegrityViolations(page, { focusRings: false })).toEqual(['<button.task> "Report" overlaps <button.task> "Form"'])
   })
 
   test('a control that is not marked as layered is reported even when it lies inside another', async ({ page }, testInfo) => {

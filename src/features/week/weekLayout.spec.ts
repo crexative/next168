@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { blockSegmentsByDate, busySegmentsByDate, layoutDaySegments, nearestHitTarget, splitByLocalDay } from './weekLayout'
+import { blockSegmentsByDate, busySegmentsByDate, layoutDaySegments, nearestHitTarget, placeTasks, splitByLocalDay } from './weekLayout'
 import type { ExternalOccurrence, PlannerEvent, TimeBlock } from '@/core/model'
 import { weekDates } from './localTime'
 import { deepWork, plannerDocument, sleep } from './testDocument'
@@ -166,6 +166,33 @@ describe('shared day lanes', () => {
     const second = { ...event(`${date}T09:30:00Z`, `${date}T10:30:00Z`), uid: 'second' }
     const result = layout([block('A', 540, 570)], [first, second])
     expect(result.busy.map(({ stackLeft, stackWidth }) => [stackLeft, stackWidth])).toEqual([[44, 28], [72, 28]])
+  })
+})
+
+describe('placing the tasks of one host', () => {
+  const host = { top: 0, bottom: 96, strip: 20 }
+
+  it('stacks back-to-back tasks under the title strip without covering each other', () => {
+    expect(placeTasks([{ top: 0, bottom: 16 }, { top: 16, bottom: 32 }, { top: 32, bottom: 48 }], host, 12)).toEqual([
+      { top: 20, bottom: 32, outline: false }, { top: 32, bottom: 44, outline: false }, { top: 44, bottom: 56, outline: false },
+    ])
+  })
+
+  it('keeps tasks inside their host, pulling the last ones up when the end is crowded', () => {
+    const boxes = placeTasks([{ top: 60, bottom: 76 }, { top: 76, bottom: 92 }, { top: 92, bottom: 96 }], host, 12)
+    expect(boxes.at(-1)!.bottom).toBe(96)
+    for (let index = 1; index < boxes.length; index++) expect(boxes[index]!.top).toBeGreaterThanOrEqual(boxes[index - 1]!.bottom)
+    expect(boxes.every((box) => box.top >= 20 && box.bottom - box.top >= 12)).toBe(true)
+  })
+
+  it('outlines every task over the whole host when they cannot all fit below its title', () => {
+    expect(placeTasks([{ top: 0, bottom: 8 }, { top: 8, bottom: 16 }], { top: 0, bottom: 24, strip: 20 }, 12)).toEqual([
+      { top: 0, bottom: 24, outline: true }, { top: 0, bottom: 24, outline: true },
+    ])
+  })
+
+  it('places in time order whatever the input order', () => {
+    expect(placeTasks([{ top: 16, bottom: 32 }, { top: 0, bottom: 16 }], host, 12)).toEqual([{ top: 32, bottom: 44, outline: false }, { top: 20, bottom: 32, outline: false }])
   })
 })
 

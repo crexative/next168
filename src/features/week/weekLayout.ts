@@ -170,6 +170,35 @@ export function taskSegmentsByDate(placements: readonly TaskPlacement[], tasks: 
   return byDate
 }
 
+export type TaskBox = { top: number; bottom: number; outline: boolean }
+
+// Places, in pixels, the tasks drawn in one host (a block, or the free time of a column) together, so none covers
+// another: each starts at its own time or below the host's title strip and the task before it, keeps at least `min`,
+// and stays inside the host. When the host cannot hold every task at `min` below its title, each is drawn as an
+// outline over the whole host instead (the outline takes no pointer input, so the routine stays the target).
+export function placeTasks(tasks: readonly { top: number; bottom: number }[], host: { top: number; bottom: number; strip: number }, min: number): TaskBox[] {
+  const order = tasks.map((task, index) => ({ index, top: task.top, bottom: task.bottom })).sort((a, b) => a.top - b.top || a.bottom - b.bottom)
+  const boxes: TaskBox[] = new Array(tasks.length)
+  if (order.length * min > host.bottom - host.top - host.strip) {
+    for (const task of order) boxes[task.index] = { top: host.top, bottom: host.bottom, outline: true }
+    return boxes
+  }
+  let floor = host.top + host.strip
+  for (const task of order) {
+    task.top = Math.max(task.top, floor)
+    task.bottom = Math.max(task.bottom, task.top + min)
+    floor = task.bottom
+  }
+  let ceiling = host.bottom
+  for (const task of [...order].reverse()) {
+    task.bottom = Math.min(task.bottom, ceiling)
+    task.top = Math.min(task.top, task.bottom - min)
+    ceiling = task.top
+  }
+  for (const task of order) boxes[task.index] = { top: task.top, bottom: task.bottom, outline: false }
+  return boxes
+}
+
 export const HOUR_HEIGHT_PX = 48
 export const COMPACT_HOUR_HEIGHT_PX = 16
 export const SLOT_MINUTES = 30

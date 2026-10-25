@@ -88,7 +88,7 @@ function onBlur(): void {
   touch-action: manipulation;
 }
 .fact-row:active { opacity: 0.6; }
-.fact-text { flex: 1; min-width: 0; overflow-wrap: anywhere; font-variant-numeric: tabular-nums; }
+.fact-text { flex: 1; min-width: 0; overflow-wrap: anywhere; hyphens: auto; font-variant-numeric: tabular-nums; }
 .fact-text.is-unset { color: var(--label-2); }
 .fact-chevron { color: var(--label-3); }
 .fact-edit { display: flex; flex-direction: column; gap: var(--space-1); padding: var(--space-2) var(--card-padding) var(--row-padding-block); }

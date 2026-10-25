@@ -405,6 +405,18 @@ export function auditInPage(options: { focusRings: boolean }): string[] {
     return box.right - box.left - insets
   }
 
+  // The rendered width of `text` in `style`, measured on the page (a canvas does not resolve system-ui the same way).
+  function renderedWidth(text: string, style: CSSStyleDeclaration): number {
+    const probe = document.createElement('span')
+    probe.textContent = text
+    probe.style.cssText = 'position: absolute; visibility: hidden; white-space: pre; left: 0; top: 0'
+    for (const property of ['fontFamily', 'fontSize', 'fontWeight', 'fontStyle', 'fontStretch', 'letterSpacing', 'wordSpacing', 'fontVariantNumeric', 'fontFeatureSettings', 'textTransform'] as const) probe.style[property] = style[property]
+    document.body.append(probe)
+    const width = probe.getBoundingClientRect().width
+    probe.remove()
+    return width
+  }
+
   // A word breaks across lines only when no line could hold it, or by hyphenation in the page's language; any other split
   // (overflow-wrap: anywhere in a squeezed flex item) reads as an arbitrary cut ("Exerc ise").
   function checkWordBreaks(node: Text, parent: HTMLElement): void {
@@ -423,8 +435,8 @@ export function auditInPage(options: { focusRings: boolean }): string[] {
       // A word inside a longer unbroken run (a URL, an address) breaks because the run cannot fit a line.
       const runStart = text.slice(0, match.index).search(/\S*$/)
       const runEnd = match.index + match[0].length + (text.slice(match.index + match[0].length).search(/\s|$/))
-      if (textWidth(text.slice(runStart, runEnd), style) > room - TOLERANCE) continue
-      const width = textWidth(match[0], style)
+      if (renderedWidth(text.slice(runStart, runEnd), style) > room - TOLERANCE) continue
+      const width = renderedWidth(match[0], style)
       if (width <= room - TOLERANCE) violations.push(`the word "${match[0]}" in ${describe(parent)} breaks mid-word though a line has room for it (${width.toFixed(1)}px of ${room.toFixed(1)}px)`)
     }
   }
@@ -606,14 +618,16 @@ export function auditInPage(options: { focusRings: boolean }): string[] {
   // A control marked `data-layered` is drawn on top of another one on purpose (a task inside the routine block it was
   // fitted into). That is layering only while it lies wholly inside the other; sticking out of it is a collision.
   function layeredInside(inner: Element, outer: Element): boolean {
-    if (!inner.hasAttribute('data-layered')) return false
+    // Layering is a task over its routine; two layered controls (two tasks) on each other are a collision.
+    if (!inner.hasAttribute('data-layered') || outer.hasAttribute('data-layered')) return false
     const a = inner.getBoundingClientRect()
     const b = outer.getBoundingClientRect()
     return a.left >= b.left - TOLERANCE && a.right <= b.right + TOLERANCE && a.top >= b.top - TOLERANCE && a.bottom <= b.bottom + TOLERANCE
   }
 
   // Links count too: a back link in a toolbar must not run under the toolbar's buttons.
-  const formControls = controls.filter((control) => control.matches(`${FORM_CONTROL}, a[href]`) && Number(getComputedStyle(control).opacity) > 0)
+  // A control that takes no pointer input (a task outline drawn over its routine) cannot take another's tap.
+  const formControls = controls.filter((control) => control.matches(`${FORM_CONTROL}, a[href]`) && Number(getComputedStyle(control).opacity) > 0 && getComputedStyle(control).pointerEvents !== 'none')
   formControls.forEach((first, index) => {
     for (const second of formControls.slice(index + 1)) {
       if (first.contains(second) || second.contains(first) || layerOf(first) !== layerOf(second)) continue
