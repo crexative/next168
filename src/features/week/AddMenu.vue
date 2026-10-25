@@ -68,6 +68,7 @@ onBeforeUnmount(() => document.removeEventListener('pointerdown', onDocumentPoin
       :aria-expanded="open"
       :aria-controls="open ? menuId : undefined"
       data-testid="week-add"
+      :data-fab="variant === 'fab' || undefined"
       @click="open ? close() : show()"
       @keydown.down.prevent="show"
     >
@@ -110,8 +111,8 @@ onBeforeUnmount(() => document.removeEventListener('pointerdown', onDocumentPoin
 }
 .add-trigger:active { transform: scale(0.97); }
 .is-fab .add-trigger {
-  width: 3.5rem;
-  height: 3.5rem;
+  width: var(--fab-size);
+  height: var(--fab-size);
   background: var(--tint);
   color: var(--tint-text);
   box-shadow: var(--shadow-floating);
@@ -120,9 +121,11 @@ onBeforeUnmount(() => document.removeEventListener('pointerdown', onDocumentPoin
 .menu {
   position: absolute;
   z-index: 30;
+  --menu-max-width: min(18rem, calc(100vw - 2 * var(--space-4)));
   width: max-content;
-  min-width: 11rem;
-  max-width: min(18rem, calc(100vw - 2 * var(--space-4)));
+  /* At 200 % text 11rem is wider than a 320 px screen: the screen wins. */
+  min-width: min(11rem, var(--menu-max-width));
+  max-width: var(--menu-max-width);
   padding: var(--space-1);
   border-radius: var(--radius-card);
   background: var(--surface);
@@ -130,7 +133,7 @@ onBeforeUnmount(() => document.removeEventListener('pointerdown', onDocumentPoin
   transform-origin: top right;
 }
 .is-below .menu { top: 100%; inset-inline-end: 0; margin-top: var(--space-1); }
-.is-above .menu { bottom: 100%; inset-inline-end: 0; margin-bottom: var(--space-2); transform-origin: bottom right; }
+.is-above .menu { bottom: 100%; inset-inline-end: 0; max-height: var(--add-menu-max-height, none); margin-bottom: var(--space-2); overflow-y: auto; overscroll-behavior: contain; transform-origin: bottom right; }
 .menu-item {
   display: flex;
   flex-direction: column;
