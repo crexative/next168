@@ -9,7 +9,7 @@ import { announce } from '@/ui/announcer'
 import Button from '@/ui/Button.vue'
 import { useUndoToast } from '@/ui/undoToast'
 import {
-  bindingFor, clearDismissed, clearDraft, draftOf, idsMatchBaseline, isDismissed, loadDraft, markDismissed, sameBinding, saveDraft, type DraftBinding, type SetupDraft,
+  bindingFor, clearDismissed, clearDraft, draftOf, idsMatchBaseline, isDismissed, loadDraft, markDismissed, sameBinding, saveDraft, UNSAVED_WORKSPACE_KEY, type DraftBinding, type SetupDraft,
 } from '../draftStorage'
 import { setupOpen, setupRequest } from '../reopen'
 import { applySetupPlan, planSetupCommit } from '../setupCommit'
@@ -68,7 +68,7 @@ function captureSync(): { document: PlannerDocument; stored: boolean; purgeEpoch
 
 async function finishBaseline(raw: NonNullable<ReturnType<typeof captureSync>>): Promise<Baseline> {
   const fingerprint = raw.stored ? await documentFingerprint(raw.document) : 'absent'
-  return { ...raw, hash: documentHash(raw.document)!, fingerprint, binding: bindingFor(raw.stored, raw.document, fingerprint), workspaceKey: raw.stored ? raw.document.workspaceId : 'unsaved' }
+  return { ...raw, hash: documentHash(raw.document)!, fingerprint, binding: bindingFor(raw.stored, raw.document, fingerprint), workspaceKey: raw.stored ? raw.document.workspaceId : UNSAVED_WORKSPACE_KEY }
 }
 
 function freshState(from: Baseline, at: 'sleep' | 'summary'): SetupState {
@@ -92,7 +92,7 @@ function show(state: SetupState, from: Baseline): void {
 // ---------- Opening ----------
 
 function workspaceKeyNow(): string {
-  return planner.stored && planner.document ? planner.document.workspaceId : 'unsaved'
+  return planner.stored && planner.document ? planner.document.workspaceId : UNSAVED_WORKSPACE_KEY
 }
 
 async function openFlow(kind: 'auto' | 'entry'): Promise<void> {

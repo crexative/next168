@@ -342,6 +342,37 @@ describe('closing and finishing', () => {
     expect(localStorage.getItem('next168-setup-dismissed')).toBe('ws-1')
   })
 
+  // verify4 defect 6: closed on a planner that was not stored yet, it opened by itself again after the first write.
+  it('closed before anything is stored, it stays closed after the first write and a reload', async () => {
+    const { store, memory } = await mount(null)
+    expect(setup()).not.toBeNull()
+    window.document.body.querySelector<HTMLButtonElement>('[role=dialog] .setup-close')!.click()
+    await settle()
+    expect(setup()).toBeNull()
+    expect(await store.commit((draft) => { draft.settings.weekStartsOn = 0 })).toEqual({ ok: true })
+    await settle()
+    expect(setup()).toBeNull()
+
+    app?.unmount()
+    host?.remove()
+    const pinia = createPinia()
+    setActivePinia(pinia)
+    const repos = createTestRepositories({ store: memory })
+    configurePlannerStore({ repository: repos.planner, now: fixedNow, newId: newTestId, locale: () => 'en', timeZone: () => 'UTC' })
+    await usePlannerStore().load()
+    expect(usePlannerStore().stored).toBe(true)
+    host = window.document.createElement('div')
+    window.document.body.append(host)
+    app = createApp(SetupHost).use(pinia).use(i18n)
+    app.mount(host)
+    await settle()
+    expect(setup()).toBeNull()
+    // Opening it on purpose still works.
+    setupRequest.value += 1
+    await settle()
+    expect(setup()).not.toBeNull()
+  })
+
   it('after a save whose draft removal throws, the draft is already invalid: no message and no flow on the next load (A26)', async () => {
     const { store, stored } = await mount(firstRun())
     await skipToSummary()
