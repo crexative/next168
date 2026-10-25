@@ -64,6 +64,8 @@ defineExpose({ commit })
 .guest-chip { display: inline-flex; align-items: center; min-height: var(--tap-target); max-width: 100%; padding-inline-start: var(--space-3); border-radius: 999px; background: var(--surface-2); color: var(--label); font-size: .9375rem; }
 .guest-email { min-width: 0; overflow-wrap: anywhere; }
 .guest-remove { display: inline-grid; place-items: center; flex: none; width: var(--tap-target); height: var(--tap-target); padding: 0; border: 0; border-radius: 999px; background: transparent; color: var(--label-2); }
-.guest-add { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: var(--space-2); align-items: center; }
+/* The field keeps room for its placeholder: on a narrow screen with large text, Add moves under it. */
+.guest-add { display: flex; flex-wrap: wrap; gap: var(--space-2); align-items: center; }
+.guest-add input { flex: 1 1 13em; }
 .guest-add-button { min-height: var(--tap-target); min-width: var(--tap-target); padding: 0 var(--space-2); border: 0; background: transparent; color: var(--tint-label); font-weight: 600; }
 </style>
