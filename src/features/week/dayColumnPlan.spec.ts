@@ -130,6 +130,17 @@ describe('events and routines share the column', () => {
 describe('tasks inside a routine', () => {
   // verify6 D1: "Trabajo de la mañana" beside a short event at 768 px needed three hyphenated lines ("Tra-" / "ba-" /
   // "jo…") but the strip above its tasks allowed two, so the routine was blank.
+  it('hyphenates a routine\'s small title but never a task\'s', () => {
+    const measure = measureAt(52)
+    // The browser can break "Trabajo…" only in the small size.
+    const hyphenating = { ...measure, metrics: { ...measure.metrics, hyphenatedLines: (text: string, role: string) => role === 'compact' && text.startsWith('Trabajo') ? 2 : null } }
+    // A 30 px wide text area: "Trabajo…" does not fit whole at either size; hyphenated in the small size it does.
+    const routine = plan({ blocks: [block('am', 510, 750, 'Trabajo de la mañana')], measure: hyphenating }).blocks[0]!.show
+    expect(routine).toMatchObject({ title: true, small: true, hyphenate: true, text: 'Trabajo…' })
+    const chunk = plan({ blocks: [block('am', 510, 750, 'Am')], tasks: [task('t', 600, 660, 'Trabajo de la mañana')], measure: hyphenating }).tasks[0]!.show
+    expect(chunk.hyphenate).toBeFalsy()
+  })
+
   it('gives a routine above its tasks the lines its hyphenated first word needs', () => {
     const measure = measureAt(60)
     const hyphenating = { ...measure, metrics: { ...measure.metrics, hyphenatedLines: (text: string) => text.startsWith('Trabajo') ? 3 : null } }

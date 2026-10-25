@@ -159,8 +159,10 @@ function busyShow(words: BusyWords, box: { width: number; height: number }, smal
 function taskTitle(words: TaskWords, width: number, height: number, measure: ColumnMeasure, small = false): TitleFit | null {
   const inset = small ? SMALL_INSET.task : TASK_INSET
   const box = { width: width - inset.start - inset.end, height: height - inset.top - inset.bottom }
+  // A task's title in the small size is never hyphenated: in a task's outline the browser drew it unbroken where a
+  // probe of the same text broke it ("Pau-" / "se……"), so it could not be measured reliably.
   return small
-    ? fitTitle({ text: words.title, role: 'compact' }, box, measure.metrics)
+    ? fitTitle({ text: words.title, role: 'compact' }, box, { ...measure.metrics, hyphenatedLines: undefined })
     : fitTitle({ text: words.title, role: 'taskTitle', lead: words.late ? measure.iconLead : 0 }, box, measure.metrics)
 }
 

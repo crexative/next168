@@ -140,10 +140,8 @@ function titleWith(text: string, role: TextRole, lead: number, width: number, ma
 
 // A first word wider than a line: the browser may hyphenate it in the page's language ("Revi-" / "sión…"). It is drawn
 // alone (with "…" when more words follow) if its hyphenated lines fit.
-// The small caption size is never hyphenated: in a task's outline the browser drew it unbroken where a probe of the
-// same text broke it ("Pau-" / "se……"), so a hyphenated small title could not be measured reliably.
 function hyphenatedFirstWord(words: readonly string[], role: TextRole, room: number, maxLines: number, metrics: TextMetrics): TitleFit | null {
-  if (!metrics.hyphenatedLines || role === 'compact') return null
+  if (!metrics.hyphenatedLines) return null
   const text = words.length > 1 ? words[0]! + ELLIPSIS : words[0]!
   const lines = metrics.hyphenatedLines(text, role, room)
   if (lines === null || lines > maxLines) return null
