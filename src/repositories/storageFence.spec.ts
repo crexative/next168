@@ -336,6 +336,28 @@ describe('F-06: a calendar read failure during capture aborts the upgrade', () =
   })
 })
 
+describe('F-06: a failing copy write aborts the upgrade (quota)', () => {
+  it('rolls the versionchange transaction back, keeps both databases at version 1 and opens read-only', async () => {
+    const { factory, lock, document } = await seeded()
+    const before = await dumpDatabases(factory)
+    const add = IDBObjectStore.prototype.add
+    vi.spyOn(IDBObjectStore.prototype, 'add').mockImplementation(function (this: IDBObjectStore, value: unknown, key?: IDBValidKey) {
+      if (this.name === 'snapshots') throw new DOMException('injected quota', 'QuotaExceededError')
+      return add.call(this, value, key)
+    })
+    const { planner } = configurePlanner(newBuild(factory, lock), () => ics('unused'))
+    await planner.load()
+    expect(planner.status).toBe('readonly')
+    expect(planner.error).toBe(UPGRADE_COPY_FAILED)
+    expect(planner.document?.workspaceId).toBe(document.workspaceId)
+    expect(await dumpDatabases(factory)).toBe(before)
+    vi.restoreAllMocks()
+    await planner.load()
+    expect(planner.status).toBe('ready')
+    expect((await readCopy(factory))!.calendarSourceTexts).toEqual(SEED_TEXTS)
+  })
+})
+
 describe('F-07: an upgrade interrupted between the two databases', () => {
   it('finishes the calendar upgrade before any repository call, keeps the copy, and an old tab can only delete a text the copy holds', async () => {
     const { factory, lock, old } = await seeded()

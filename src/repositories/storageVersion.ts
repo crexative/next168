@@ -246,11 +246,19 @@ async function upgradeAll(factory: IDBFactory, version: number, now: () => Date,
   if (planner > version || calendars > version) throw failure('VersionError', 'storage was upgraded by a newer version')
   if (planner < version) {
     const copy = planner < FIRST_FENCED_VERSION ? await capturePreUpgradeCopy(factory, { planner, calendars }, now) : undefined
-    const db = await openAt(factory, PLANNER_DATABASE, version, (upgrading, transaction, oldVersion) => {
-      createMissingStores(upgrading, PLANNER_STORES)
-      // `add` fails on an existing key, which aborts the whole upgrade: the copy is written once and never replaced.
-      if (copy && oldVersion < FIRST_FENCED_VERSION) transaction.objectStore(SNAPSHOTS_STORE).add(copy, PRE_UPGRADE_COPY_KEY)
-    }, setWaiting)
+    let db: IDBDatabase
+    try {
+      db = await openAt(factory, PLANNER_DATABASE, version, (upgrading, transaction, oldVersion) => {
+        createMissingStores(upgrading, PLANNER_STORES)
+        // `add` fails on an existing key, which aborts the whole upgrade: the copy is written once and never replaced.
+        if (copy && oldVersion < FIRST_FENCED_VERSION) transaction.objectStore(SNAPSHOTS_STORE).add(copy, PRE_UPGRADE_COPY_KEY)
+      }, setWaiting)
+    } catch (error) {
+      // The versionchange transaction aborted (quota, for example): nothing changed, so the planner opens read-only
+      // from version 1 exactly as after a failed read.
+      if (planner < FIRST_FENCED_VERSION) throw new UpgradeCopyFailedError(error, copy?.raw.document)
+      throw error
+    }
     db.close()
   }
   // Also finishes an upgrade interrupted after the planner database, before any repository can write.
