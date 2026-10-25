@@ -8,11 +8,11 @@ export const CARD_FONT = "system-ui, -apple-system, 'SF Pro Text', 'Segoe UI', R
 
 // The card's colours: the same values as src/assets/tokens.css (palette.spec parses tokens.css and compares), because
 // a canvas cannot read custom properties. The card is a Summary card: --surface behind, --surface-2 for free hours,
-// category strokes (3:1 on every surface) for planned hours.
+// category strokes (3:1 on every surface) for planned hours; hollow
+// grey outlines for "N others", so free, planned and others never look alike.
 export interface SharePalette {
   background: string
   free: string
-  freeEdge: string
   label: string
   label2: string
   tintLabel: string
@@ -22,7 +22,6 @@ export interface SharePalette {
 const LIGHT: SharePalette = {
   background: '#ffffff',
   free: '#f2f2f7',
-  freeEdge: 'rgba(60, 60, 67, 0.29)',
   label: '#000000',
   label2: 'rgba(60, 60, 67, 0.75)',
   tintLabel: 'hsl(240.9375 60.952381% 57%)',
@@ -35,7 +34,6 @@ const LIGHT: SharePalette = {
 const DARK: SharePalette = {
   background: '#1c1c1e',
   free: '#2c2c2e',
-  freeEdge: 'rgba(84, 84, 88, 0.65)',
   label: '#ffffff',
   label2: 'rgba(235, 235, 245, 0.6)',
   tintLabel: 'hsl(241.353383 100% 79%)',
@@ -49,7 +47,6 @@ const DARK: SharePalette = {
 export const PALETTE_TOKENS: Record<Exclude<keyof SharePalette, 'category'>, string> = {
   background: '--surface',
   free: '--surface-2',
-  freeEdge: '--separator',
   label: '--label',
   label2: '--label-2',
   tintLabel: '--tint-label',

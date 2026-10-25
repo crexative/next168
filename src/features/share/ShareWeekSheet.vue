@@ -186,12 +186,14 @@ const formatOptions = computed(() => [
     </div>
 
     <template #footer>
-      <Button v-if="canShareFiles" :disabled="!actionable" data-testid="share-primary" @click="onShare">
-        <Icon name="share" :size="20" />{{ t('share.action.share') }}
-      </Button>
-      <Button :variant="canShareFiles ? 'tinted' : 'filled'" :disabled="!actionable" :data-testid="canShareFiles ? 'share-download' : 'share-primary'" @click="onDownload">
-        <Icon name="download" :size="20" />{{ t('share.action.download') }}
-      </Button>
+      <div class="actions">
+        <Button v-if="canShareFiles" :disabled="!actionable" data-testid="share-primary" @click="onShare">
+          <Icon name="share" :size="20" />{{ t('share.action.share') }}
+        </Button>
+        <Button :variant="canShareFiles ? 'tinted' : 'filled'" :disabled="!actionable" :data-testid="canShareFiles ? 'share-download' : 'share-primary'" @click="onDownload">
+          <Icon name="download" :size="20" />{{ t('share.action.download') }}
+        </Button>
+      </div>
     </template>
   </Sheet>
 </template>
@@ -221,9 +223,17 @@ const formatOptions = computed(() => [
 .names { display: flex; flex-direction: column; gap: var(--space-2); }
 .names .note { padding: 0 var(--card-padding); }
 .list-card { margin: 0; padding: 0; list-style: none; background: var(--surface-2); border-radius: var(--radius-card); overflow: hidden; }
+.actions { display: flex; flex-wrap: wrap; gap: var(--space-2); }
+.actions > * { flex: 1 1 10rem; min-height: 48px; }
 .notice { margin: 0; padding: var(--space-3) var(--card-padding); border-radius: var(--radius-card); overflow-wrap: break-word; }
 .notice.is-ok { background: color-mix(in srgb, var(--success) 14%, transparent); }
 .notice.is-error { background: color-mix(in srgb, var(--danger) 12%, transparent); color: var(--danger-label); }
+/* A centred sheet on a wide screen: the image on the left, its text and options beside it, all in view at once. */
+@media (min-width: 768px) {
+  .share { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); align-items: start; gap: var(--group-gap) var(--space-6); }
+  .preview { grid-column: 1; grid-row: 1 / span 5; align-self: start; }
+  .share > :not(.preview) { grid-column: 2; }
+}
 @media (prefers-reduced-motion: reduce) {
   .preview { transition: none; }
 }

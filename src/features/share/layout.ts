@@ -17,7 +17,6 @@ const MARGIN = 24
 const CELL_GAP = 2.5
 const CELL_RADIUS = 0.22
 const OUTLINE_WIDTH = 1
-const FREE_EDGE_WIDTH = 0.5
 // Below this contrast against the card a fill gets a --label-2 outline (WCAG 1.4.11, non-text contrast).
 const MIN_FILL_CONTRAST = 3
 // Text boxes: ascent and descent as a share of the font size, and the line pitch of wrapped text.
@@ -144,7 +143,7 @@ export function layoutCard(summary: ShareSummary, options: { format: ShareFormat
     const top = y + Math.floor(index / columns) * (cell + CELL_GAP)
     const base = { kind: 'rect' as const, role: 'cell' as const, group: owner, x, y: top, width: cell, height: cell, radius: cell * CELL_RADIUS }
     if (owner === FREE_CELL) {
-      content.push({ ...base, fill: palette.free, outline: { color: palette.freeEdge, width: FREE_EDGE_WIDTH } })
+      content.push({ ...base, fill: palette.free })
       return
     }
     const look = groupLook(groups[owner]!)
@@ -169,21 +168,24 @@ export function layoutCard(summary: ShareSummary, options: { format: ShareFormat
   const columnWidth = (width - columnGap) / 2
   const rowHeight = names ? 40 : 26
   const swatch = 14
-  groups.forEach((group, index) => {
+  const hoursRoom = columnWidth / 2
+  const legend = groups.map((group) => {
+    const fullHours = copy.hours(group.plannedMinutes)
+    const hours = fitLine(fullHours, { weight: 400, size: 15, min: 11, maxWidth: hoursRoom }, measure)
+    const nameRoom = columnWidth - swatch - 8 - measure(hours.text, { weight: 400, size: hours.size }) - 6
+    return { group, hours, name: isOthers(group) ? copy.others(group.count) : group.name, nameRoom }
+  })
+  // One name size for the whole legend (the largest every name fits at, down to 12 pt); a name still too long is cut.
+  const nameSize = Math.min(15, ...legend.map(({ name, nameRoom }) => fitLine(name, { weight: 600, size: 15, min: 12, maxWidth: nameRoom }, measure).size))
+  legend.forEach(({ group, hours, name, nameRoom }, index) => {
     const x = MARGIN + (index % 2) * (columnWidth + columnGap)
     const top = y + Math.floor(index / 2) * rowHeight
     const look = groupLook(group)
     content.push({ kind: 'rect', role: 'swatch', group: index, x, y: top + 3, width: swatch, height: swatch, radius: 3.5, fill: look.fill, outline: look.outline })
     content.push(text('glyph', look.glyph, x + swatch / 2, top + 3 + swatch / 2 + (ASCENT - DESCENT) * 9 / 2, { weight: 600, size: 9 }, look.glyphColor, swatch, 'center'))
-    const hours = text('legend-hours', copy.hours(group.plannedMinutes), x + columnWidth, top + 15, { weight: 400, size: 15 }, palette.label2, columnWidth / 2, 'right')
-    if (hours.box.width > columnWidth / 2) {
-      const fitted = fitLine(hours.text, { weight: 400, size: 15, min: 11, maxWidth: columnWidth / 2 }, measure)
-      content.push(text('legend-hours', fitted.text, x + columnWidth, top + 15, { weight: 400, size: fitted.size }, palette.label2, columnWidth / 2, 'right'))
-    } else content.push(hours)
-    const hoursWidth = Math.min(hours.box.width, columnWidth / 2)
-    const nameRoom = columnWidth - swatch - 8 - hoursWidth - 6
-    const name = fitLine(isOthers(group) ? copy.others(group.count) : group.name, { weight: 600, size: 15, min: 12, maxWidth: nameRoom }, measure)
-    content.push(text('legend-name', name.text, x + swatch + 8, top + 15, { weight: 600, size: name.size }, palette.label, nameRoom))
+    content.push(text('legend-hours', hours.text, x + columnWidth, top + 15, { weight: 400, size: hours.size }, palette.label2, hoursRoom, 'right'))
+    const fitted = fitLine(name, { weight: 600, size: nameSize, min: nameSize, maxWidth: nameRoom }, measure)
+    content.push(text('legend-name', fitted.text, x + swatch + 8, top + 15, { weight: 600, size: fitted.size }, palette.label, nameRoom))
     if (!isOthers(group) && group.routines?.length) {
       const routineRoom = columnWidth - swatch - 8
       const routines = fitLine(group.routines.join(' · '), { weight: 400, size: 12, min: 11, maxWidth: routineRoom }, measure)
