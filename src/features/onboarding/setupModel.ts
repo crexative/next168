@@ -396,9 +396,12 @@ export function createState(document: PlannerDocument | null, env: SetupEnv): Se
 export function touch(range: RangeDraft, change: Partial<Pick<RangeDraft, 'days' | 'start' | 'end'>>, mayCrossMidnight = false): void {
   const next: Partial<RangeDraft> = { ...change, accepted: true, touched: true }
   if (change.end !== undefined) next.endSet = true
-  else if (change.start !== undefined) next.end = endAfterMovingStart(range, change.start, mayCrossMidnight || range.end < range.start)
+  else if (change.start !== undefined) next.end = endAfterMovingStart(range, change.start, mayCrossMidnight || crossesMidnight(range))
   Object.assign(range, next)
 }
+
+// An end exactly at midnight closes the day; only an end after it, earlier than the start, goes on into the next one.
+const crossesMidnight = (range: RangeDraft) => range.end !== 0 && range.end < range.start
 
 function endAfterMovingStart(range: RangeDraft, start: number, crosses: boolean): number {
   if (range.endSet && (crosses || start < range.end)) return range.end

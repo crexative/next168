@@ -279,6 +279,19 @@ describe('moving a start time', () => {
     expect([evening.start, evening.end]).toEqual([at(23), 0])
   })
 
+  it('a range stopped at midnight stays a daytime range on the next start edits', () => {
+    const evening = range(at(22), at(23, 30))
+    touch(evening, { start: at(23) })
+    touch(evening, { start: at(23, 30) })
+    expect([evening.start, evening.end]).toEqual([at(23, 30), 0])
+    touch(evening, { start: at(21) })
+    expect([evening.start, evening.end]).toEqual([at(21), at(21, 30)])
+    const picked = range(at(20), at(21))
+    touch(picked, { end: 0 })
+    touch(picked, { start: at(23, 30) })
+    expect([picked.start, picked.end]).toEqual([at(23, 30), 0])
+  })
+
   it('lets sleep, and a range that already crossed midnight, go on into the next day', () => {
     const sleep = range(at(23), at(7))
     touch(sleep, { start: at(23, 30) }, true)
