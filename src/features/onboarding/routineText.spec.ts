@@ -41,11 +41,11 @@ describe('daysPhrase', () => {
   })
 
   it('beside a label, lists days by their short names and three or more in a row as a span', () => {
-    expect(daysPhrase([5, 1, 3], 'es-CO', 1, labels, false, 'short')).toBe('lun, mié y vie')
+    expect(daysPhrase([5, 1, 3], 'es-CO', 1, labels, false, 'short')).toBe('lun, mié, vie')
     expect(daysPhrase([1, 2, 3, 4], 'en-US', 1, labels, false, 'short')).toBe('Mon–Thu')
-    expect(daysPhrase([1, 2, 3, 5], 'en-US', 1, labels, false, 'short')).toBe('Mon–Wed and Fri')
-    expect(daysPhrase([6, 0, 1], 'en-US', 1, labels, false, 'short')).toBe('Mon, Sat, and Sun')
-    expect(daysPhrase([6, 0, 1], 'en-US', 0, labels, false, 'short')).toBe('Sun, Mon, and Sat')
+    expect(daysPhrase([1, 2, 3, 5], 'en-US', 1, labels, false, 'short')).toBe('Mon–Wed, Fri')
+    expect(daysPhrase([6, 0, 1], 'en-US', 1, labels, false, 'short')).toBe('Mon, Sat, Sun')
+    expect(daysPhrase([6, 0, 1], 'en-US', 0, labels, false, 'short')).toBe('Sun, Mon, Sat')
     expect(daysPhrase([6], 'es-CO', 1, labels, false, 'short')).toBe('sábado')
     expect(daysPhrase([1, 2, 3, 4, 5], 'es-CO', 1, labels, false, 'short')).toBe('lun–vie')
     expect(daysPhrase([1, 2, 3, 4, 5], 'en-US', 1, labels, false, 'short')).toBe('Mon–Fri')
