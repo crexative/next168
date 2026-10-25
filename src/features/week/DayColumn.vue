@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import type { BlockActual, Category } from '@/core/model'
 import CategoryMark from '@/ui/CategoryMark.vue'
@@ -10,7 +10,9 @@ import './registerIcons'
 import { statusOf } from './blockStatus'
 import { categoryColor } from './categoryColor'
 import { formatMinute, formatTime } from './localTime'
-import { HOUR_HEIGHT_PX, SLOT_MINUTES, STACK_TITLE_INSET_PERCENT, coversTitle, layoutDaySegments, nearestHitTarget, type BlockSegment, type HitTarget, type BusySegment, type DayPart, type LanePosition, type TaskBox, type TaskSegment, placeTasks } from './weekLayout'
+import { useColumnMeasure } from './columnMeasure'
+import { BLOCK_INSET, LANE_GAP_PX, planDayColumn, type PlannedBlock, type PlannedBusy, type PlannedTask } from './dayColumnPlan'
+import { HOUR_HEIGHT_PX, SLOT_MINUTES, nearestHitTarget, type BlockSegment, type BusySegment, type HitTarget, type TaskSegment } from './weekLayout'
 import type { BusyDetails } from './busyDetails'
 
 const props = withDefaults(defineProps<{
@@ -32,62 +34,17 @@ const emit = defineEmits<{ select: [blockId: string]; 'select-task': [taskId: st
 
 const { t } = useI18n()
 const categoriesById = computed(() => new Map(props.categories.map((category) => [category.id, category])))
-const layout = computed(() => layoutDaySegments(props.segments, props.busy))
+
+const root = ref<HTMLElement | null>(null)
+const probes = ref<HTMLElement | null>(null)
+const measure = useColumnMeasure(root, probes, () => !props.compact)
 
 // A calendar event conflicts when it overlaps a planned block of the same day.
 const conflicting = computed(() => new Set(props.busy
   .filter((item) => item.kind === 'external' && props.segments.some((segment) => segment.startMinute < item.endMinute && item.startMinute < segment.endMinute))
   .map((item) => item.key)))
 
-const SHORT_EVENT_MINUTES = 45
-
-// A block's title row; a task that starts with its block begins below it so the title stays readable. A block that
-// shares its width (lanes, or an event beside it) wraps its title onto two lines, so the strip holds both.
-const TITLE_LINE_PX = 16
-const TITLE_STRIP_PX = 4 + TITLE_LINE_PX
-const MIN_TASK_PX = 12
-// From this height a task chunk shows its title on one caption line; below it the box keeps its title as a tooltip.
-const TASK_LABEL_MIN_PX = 16
-const TASK_ROOMY_PX = 24
-
 const STATUS_ICON = { done: 'check', skipped: 'x', partial: 'minus' } as const
-
-function verticalStyle(startMinute: number, endMinute: number) {
-  return { top: `${(startMinute / 60) * props.hourHeight}px`, height: `${((endMinute - startMinute) / 60) * props.hourHeight}px` }
-}
-
-function isBesideEvent(segment: BlockSegment): boolean {
-  return props.busy.some((item) => segment.startMinute < item.endMinute && item.startMinute < segment.endMinute)
-}
-
-// An event on the block's title row: in a narrow column the title keeps only the strip the event band leaves.
-function isTitleCovered(segment: BlockSegment): boolean {
-  return props.busy.some((item) => coversTitle(item, segment))
-}
-
-function isLaned(segment: BlockSegment & LanePosition): boolean {
-  return segment.lanes > 1 || isBesideEvent(segment)
-}
-
-function itemStyle(item: DayPart & LanePosition) {
-  return {
-    ...verticalStyle(item.startMinute, item.endMinute),
-    insetInlineStart: `calc(${item.left}% + 2px)`,
-    width: `calc(${item.width}% - 4px)`,
-    // Used instead of the shared lanes when the column is too narrow for readable lanes (see the container query below).
-    '--stack-left': `${item.stackLeft}%`,
-    '--stack-width': `${item.stackWidth}%`,
-  }
-}
-
-function segmentStyle(segment: BlockSegment & LanePosition) {
-  return {
-    ...itemStyle(segment),
-    '--block-color': categoryColor(categoriesById.value.get(segment.occurrence.categoryId)),
-    '--block-stroke': categoryStroke(categoriesById.value.get(segment.occurrence.categoryId)),
-    '--title-strip': `${STACK_TITLE_INSET_PERCENT}cqw`,
-  }
-}
 
 const statuses = computed(() => new Map(props.segments.map((segment) => [segment.key, statusOf(props.actuals, segment.occurrence)])))
 
@@ -100,72 +57,68 @@ function categoryName(segment: BlockSegment): string {
   return categoriesById.value.get(segment.occurrence.categoryId)?.name ?? ''
 }
 
+// The category is shown when it says more than the title.
+function categoryLine(segment: BlockSegment): string | undefined {
+  const name = categoryName(segment)
+  return name && name !== segment.occurrence.title ? name : undefined
+}
+
 // The accessible name follows the visible text: title, time, the category when it differs from the title, then the status.
 function blockLabel(segment: BlockSegment): string {
-  const name = categoryName(segment)
   const status = statusText(segment)
-  return [segment.occurrence.title, timeRange(segment), name !== segment.occurrence.title ? name : ''].filter(Boolean).join(' ') + (status ? `, ${status}` : '')
+  return [segment.occurrence.title, timeRange(segment), categoryLine(segment) ?? ''].filter(Boolean).join(' ') + (status ? `, ${status}` : '')
 }
 
-// A task sits in the lane of the planned block it was fitted into; one that fits any free time has no block around it.
-function hostOf(task: TaskSegment) {
-  if (task.categoryId === undefined) return undefined
-  return layout.value.blocks.find((block) => block.occurrence.categoryId === task.categoryId && block.startMinute <= task.startMinute && task.endMinute <= block.endMinute)
+function taskRange(task: TaskSegment): string {
+  return `${formatMinute(task.startMinute, displayLocale.value)} – ${formatMinute(task.endMinute % 1440, displayLocale.value)}`
 }
 
-// A block whose first half hour already holds a task keeps only its title: the task is drawn under the title row
-// and a second line (its time range) would print under the task's own title.
-const EARLY_TASK_MINUTES = 30
-const crowdedBlocks = computed(() => new Set(props.tasks.flatMap((task) => {
-  const host = hostOf(task)
-  return host && task.startMinute - host.startMinute < EARLY_TASK_MINUTES ? [host.key] : []
-})))
-
-// The tasks of each host (a block, or the column's free time) are placed together: below the block's title lines, each at
-// least MIN_TASK_PX, none over another, all inside the block (exact times are in the accessible names and tooltips). The
-// overview draws them at their exact times.
-const taskPlacement = computed(() => {
-  const px = (minute: number) => (minute / 60) * props.hourHeight
-  const placed = new Map<TaskSegment, TaskBox>()
-  if (props.compact) {
-    for (const task of props.tasks) placed.set(task, { top: px(task.startMinute), bottom: px(task.endMinute), outline: false })
-    return placed
-  }
-  const groups = new Map<string, { host: ReturnType<typeof hostOf>; tasks: TaskSegment[] }>()
-  for (const task of props.tasks) {
-    const host = hostOf(task)
-    const key = host?.key ?? ''
-    if (!groups.has(key)) groups.set(key, { host, tasks: [] })
-    groups.get(key)!.tasks.push(task)
-  }
-  for (const { host, tasks } of groups.values()) {
-    const bounds = host
-      ? { top: px(host.startMinute), bottom: px(host.endMinute), strip: isLaned(host) ? TITLE_STRIP_PX + TITLE_LINE_PX : TITLE_STRIP_PX }
-      : { top: 0, bottom: px(1440), strip: 0 }
-    const boxes = placeTasks(tasks.map((task) => ({ top: px(task.startMinute), bottom: px(task.endMinute) })), bounds, MIN_TASK_PX)
-    tasks.forEach((task, index) => placed.set(task, boxes[index]!))
-  }
-  return placed
-})
-
-const taskBoxes = computed(() => props.tasks.map((task) => {
-  const host = hostOf(task)
-  const { top, bottom, outline } = taskPlacement.value.get(task)!
-  const height = bottom - top
-  const lanes = host ? itemStyle(host) : { insetInlineStart: '2px', width: 'calc(100% - 4px)', '--stack-left': '0%', '--stack-width': '100%' }
-  return {
-    task,
-    height,
-    outline,
-    range: `${formatMinute(task.startMinute, displayLocale.value)} – ${formatMinute(task.endMinute % 1440, displayLocale.value)}`,
-    style: {
-      ...lanes,
-      top: `${top}px`,
-      height: `${height}px`,
-      '--block-color': categoryColor(task.categoryId === undefined ? undefined : categoriesById.value.get(task.categoryId)),
-    },
-  }
+// Where every item goes and which of its words it draws: one decision for the whole column (dayColumnPlan.ts).
+const plan = computed(() => planDayColumn({
+  blocks: props.segments,
+  busy: props.busy,
+  tasks: props.tasks,
+  hourHeight: props.hourHeight,
+  compact: props.compact,
+  measure: measure.value,
+  words: {
+    block: (segment) => ({ title: segment.occurrence.title, time: timeRange(segment), category: categoryLine(segment), status: statusText(segment) }),
+    busy: (item) => ({ title: item.title, conflict: conflicting.value.has(item.key) ? t('week.grid.conflict') : undefined }),
+    task: (task) => ({ title: task.title, late: task.late }),
+  },
 }))
+
+function verticalStyle(startMinute: number, endMinute: number) {
+  return { top: `${(startMinute / 60) * props.hourHeight}px`, height: `${((endMinute - startMinute) / 60) * props.hourHeight}px` }
+}
+
+function laneStyle(lane: { left: number; width: number }) {
+  return { insetInlineStart: `calc(${lane.left}% + ${LANE_GAP_PX}px)`, width: `calc(${lane.width}% - ${2 * LANE_GAP_PX}px)` }
+}
+
+function segmentStyle(segment: PlannedBlock) {
+  return {
+    ...verticalStyle(segment.startMinute, segment.endMinute),
+    ...laneStyle(segment),
+    padding: props.compact ? undefined : `${BLOCK_INSET.top}px ${BLOCK_INSET.end}px ${BLOCK_INSET.bottom}px ${BLOCK_INSET.start}px`,
+    '--block-color': categoryColor(categoriesById.value.get(segment.occurrence.categoryId)),
+    '--block-stroke': categoryStroke(categoriesById.value.get(segment.occurrence.categoryId)),
+  }
+}
+
+function busyStyle(item: PlannedBusy) {
+  return { ...verticalStyle(item.startMinute, item.endMinute), ...laneStyle(item) }
+}
+
+function taskStyle(planned: PlannedTask) {
+  const task = planned.task
+  return {
+    ...laneStyle(planned),
+    top: `${planned.top}px`,
+    height: `${planned.bottom - planned.top}px`,
+    '--block-color': categoryColor(task.categoryId === undefined ? undefined : categoriesById.value.get(task.categoryId)),
+  }
+}
 
 function timeRange(segment: BlockSegment): string {
   const range = `${formatTime(segment.occurrence.start, displayLocale.value, props.timeZone)} – ${formatTime(segment.occurrence.end, displayLocale.value, props.timeZone)}`
@@ -187,11 +140,8 @@ function inspect(item: BusySegment): void {
 
 // The pressable things of this column with the lane each one occupies, for the 44 px hit rule below.
 const hitTargets = computed<HitTarget[]>(() => [
-  ...props.tasks.map((task) => {
-    const host = hostOf(task)
-    return { kind: 'task' as const, id: task.taskId, startMinute: task.startMinute, endMinute: task.endMinute, left: host?.left ?? 0, width: host?.width ?? 100 }
-  }),
-  ...layout.value.blocks.map((block) => ({ kind: 'block' as const, id: block.occurrence.blockId, startMinute: block.startMinute, endMinute: block.endMinute, left: block.left, width: block.width })),
+  ...plan.value.tasks.map(({ task, left, width }) => ({ kind: 'task' as const, id: task.taskId, startMinute: task.startMinute, endMinute: task.endMinute, left, width })),
+  ...plan.value.blocks.map((block) => ({ kind: 'block' as const, id: block.occurrence.blockId, startMinute: block.startMinute, endMinute: block.endMinute, left: block.left, width: block.width })),
 ])
 
 // A press on empty time in the column: close to a short block or task (inside its 44 px target) it opens that one,
@@ -217,27 +167,35 @@ function onColumnClick(event: MouseEvent, blockId?: string): void {
 </script>
 
 <template>
-  <div class="day-column" :class="{ 'is-compact': compact }" :data-date="date" :aria-label="label" role="group" @click="onColumnClick">
+  <div ref="root" class="day-column" :class="{ 'is-compact': compact }" :data-date="date" :aria-label="label" role="group" data-whole-text @click="onColumnClick">
+    <!-- Hidden copies of each text style: the page's own fonts, measured for the plan. -->
+    <div v-if="!compact" ref="probes" class="text-probes" aria-hidden="true">
+      <span class="block-title" data-role="blockTitle" />
+      <span class="block-detail" data-role="blockDetail" />
+      <span class="t-caption" data-role="caption" />
+      <span class="task-text" data-role="taskTitle" />
+      <span class="block-title"><CategoryMark class="block-mark" :category="undefined" data-lead="mark" /></span>
+      <span class="t-caption" data-sentinel>M</span>
+    </div>
     <button
-      v-for="item in layout.busy"
+      v-for="item in plan.busy"
       :key="item.key"
       type="button"
-      class="busy"
-      :class="[`is-${item.kind}`, { 'is-conflict': conflicting.has(item.key), 'is-short': item.endMinute - item.startMinute < SHORT_EVENT_MINUTES }]"
-      :style="itemStyle(item)"
+      class="busy t-caption"
+      :class="[`is-${item.kind}`, { 'is-conflict': conflicting.has(item.key) }]"
+      :style="busyStyle(item)"
       :title="item.title"
       data-testid="busy-overlay"
       @click.stop="inspect(item)"
     >
-      <span v-if="conflicting.has(item.key)" class="conflict-mark t-caption" data-testid="calendar-conflict"><Icon name="triangle-alert" :size="12" /><span class="conflict-text">{{ t('week.grid.conflict') }}</span></span>
-      <span class="busy-title t-caption">{{ item.title }}</span>
+      <span v-if="conflicting.has(item.key)" class="conflict-mark" :class="{ 'visually-hidden': !item.show.icon }" data-testid="calendar-conflict"><Icon name="triangle-alert" :size="12" /><span class="conflict-text" :class="{ 'visually-hidden': !item.show.word }">{{ t('week.grid.conflict') }}</span></span>{{ item.show.icon ? ' ' : '' }}<span class="busy-title" :class="{ 'visually-hidden': !item.show.title }">{{ item.title }}</span>
     </button>
     <button
-      v-for="segment in layout.blocks"
+      v-for="segment in plan.blocks"
       :key="segment.key"
       type="button"
       class="block"
-      :class="{ 'is-short': segment.endMinute - segment.startMinute < 45, 'is-beside': isBesideEvent(segment), 'is-title-covered': isTitleCovered(segment), 'is-laned': isLaned(segment), 'is-crowded': crowdedBlocks.has(segment.key), 'is-done': statuses.get(segment.key) === 'done', 'is-skipped': statuses.get(segment.key) === 'skipped', 'continues-before': segment.continuesBefore, 'continues-after': segment.continuesAfter }"
+      :class="{ 'is-done': statuses.get(segment.key) === 'done', 'is-skipped': statuses.get(segment.key) === 'skipped', 'continues-before': segment.continuesBefore, 'continues-after': segment.continuesAfter }"
       :style="segmentStyle(segment)"
       :data-block-id="segment.occurrence.blockId"
       :data-start-minute="segment.startMinute"
@@ -248,36 +206,31 @@ function onColumnClick(event: MouseEvent, blockId?: string): void {
       :tabindex="compact ? -1 : undefined"
       @click.stop="onColumnClick($event, segment.occurrence.blockId)"
     >
-      <span class="block-title"><CategoryMark class="block-mark" :category="categoriesById.get(segment.occurrence.categoryId)" />{{ ' ' }}{{ segment.occurrence.title }}</span>{{ ' ' }}
-      <span class="block-time">{{ timeRange(segment) }}</span>{{ ' ' }}
-      <span v-if="categoryName(segment) && categoryName(segment) !== segment.occurrence.title" class="block-category">{{ categoryName(segment) }}</span>
-      <span v-if="statuses.get(segment.key)" class="block-status t-caption" data-testid="block-status">
-        <Icon :name="STATUS_ICON[statuses.get(segment.key)!]" :size="12" /><span class="status-text">{{ statusText(segment) }}</span>
-      </span>
+      <span v-if="segment.show.title" class="block-title"><CategoryMark v-if="segment.show.mark" class="block-mark" :category="categoriesById.get(segment.occurrence.categoryId)" />{{ segment.show.mark ? ' ' : '' }}{{ segment.occurrence.title }}</span>
+      <span v-if="segment.show.time" class="block-detail block-time">{{ timeRange(segment) }}</span>
+      <span v-if="segment.show.category" class="block-detail block-category">{{ categoryLine(segment) }}</span>
+      <span v-if="statuses.get(segment.key)" class="block-status t-caption" :class="{ 'visually-hidden': !segment.show.status }" data-testid="block-status"><Icon :name="STATUS_ICON[statuses.get(segment.key)!]" :size="12" /> {{ statusText(segment) }}</span>
     </button>
     <button
-      v-for="box in taskBoxes"
-      :key="box.task.key"
+      v-for="planned in plan.tasks"
+      :key="planned.task.key"
       type="button"
       class="task-chunk"
-      :class="{ 'is-outline': box.outline }"
-      :style="box.style"
+      :class="{ 'is-outline': planned.outline }"
+      :style="taskStyle(planned)"
       data-layered
       data-testid="week-task"
-      :data-task-id="box.task.taskId"
-      :data-start-minute="box.task.startMinute"
-      :data-end-minute="box.task.endMinute"
-      :data-late="box.task.late || undefined"
-      :aria-label="t('week.task.label', { title: box.task.title, range: box.range }) + (box.task.late ? `, ${t('week.task.late')}` : '')"
-      :title="box.task.title"
+      :data-task-id="planned.task.taskId"
+      :data-start-minute="planned.task.startMinute"
+      :data-end-minute="planned.task.endMinute"
+      :data-late="planned.task.late || undefined"
+      :aria-label="t('week.task.label', { title: planned.task.title, range: taskRange(planned.task) }) + (planned.task.late ? `, ${t('week.task.late')}` : '')"
+      :title="planned.task.title"
       :disabled="!editable"
       :tabindex="compact ? -1 : undefined"
-      @click.stop="emit('select-task', box.task.taskId)"
+      @click.stop="emit('select-task', planned.task.taskId)"
     >
-      <span class="task-box" :class="{ 'is-late': box.task.late, 'is-tight': box.height < TASK_ROOMY_PX, 'is-outline': box.outline }">
-        <Icon v-if="box.task.late && box.height >= TASK_LABEL_MIN_PX && !box.outline" name="triangle-alert" :size="12" />
-        <span v-if="box.height >= TASK_LABEL_MIN_PX && !box.outline" class="task-title t-caption">{{ box.task.title }}</span>
-      </span>
+      <span class="task-box task-text" :class="{ 'is-late': planned.task.late, 'is-outline': planned.outline }"><Icon v-if="planned.show.icon" class="task-icon" name="triangle-alert" :size="12" />{{ planned.show.icon ? ' ' : '' }}<span v-if="planned.show.title" class="task-title">{{ planned.task.title }}</span></span>
     </button>
     <div v-if="nowMinute !== null" class="now-line" :style="{ top: `${(nowMinute / 60) * hourHeight}px` }" data-testid="now-line" aria-hidden="true" />
   </div>
@@ -285,28 +238,30 @@ function onColumnClick(event: MouseEvent, blockId?: string): void {
 
 <style scoped>
 .day-column {
-  
   position: relative;
   height: calc(var(--hour-height) * 24);
   background-image: linear-gradient(to bottom, var(--separator) 0.5px, transparent 0.5px);
   background-size: 100% var(--hour-height);
   border-inline-start: 0.5px solid var(--separator);
   cursor: cell;
-  container: day-column / inline-size;
 }
+.text-probes { position: absolute; inset: 0 auto auto 0; width: 0; height: 0; overflow: hidden; visibility: hidden; pointer-events: none; }
+.text-probes > span { position: absolute; top: 0; left: 0; width: auto; max-width: none; white-space: pre; }
+
+/* What each box shows is decided by dayColumnPlan.ts; the styles below only draw it. Every text style here is one of
+   the probes above, so the plan measures exactly what is drawn: whole words, never an ellipsis or a clamp. */
+.block-title { font-size: 0.8125rem; font-weight: 600; line-height: 1.25; }
+.block-detail { font-size: 0.75rem; line-height: 1.25; font-variant-numeric: tabular-nums; }
+.task-text { font-size: 0.75rem; font-weight: 500; line-height: 1.1; letter-spacing: 0.01em; }
+.block-title, .block-detail, .block-status, .busy, .task-text { white-space: normal; overflow-wrap: normal; word-break: normal; hyphens: manual; }
+
 .block {
   position: absolute;
   display: flex;
   flex-direction: column;
-  /* Lines that do not fit the block's height (large text, short blocks) wrap into a second column outside the
-     block and are hidden whole, instead of being cut in half. */
-  flex-wrap: wrap;
-  align-content: flex-start;
-  align-items: flex-start;
-  /* The column gap exceeds the inline padding, so a wrapped column never peeks in. */
-  gap: 1px var(--space-2);
+  align-items: stretch;
+  gap: 1px;
   overflow: hidden;
-  padding: 2px var(--space-1) 2px calc(3px + var(--space-1));
   border: 0;
   border-radius: 6px;
   background: color-mix(in srgb, var(--block-color) var(--cat-fill-strength), var(--surface));
@@ -327,32 +282,19 @@ function onColumnClick(event: MouseEvent, blockId?: string): void {
 .block:disabled { cursor: default; }
 .continues-before { border-start-start-radius: 0; border-start-end-radius: 0; }
 .continues-after { border-end-start-radius: 0; border-end-end-radius: 0; }
-.block-title { font-size: 0.8125rem; font-weight: 600; line-height: 1.25; }
-.block-time { font-size: 0.75rem; line-height: 1.25; font-variant-numeric: tabular-nums; }
-.block-category { font-size: 0.75rem; line-height: 1.25; }
-.block-title, .block-time, .block-category { flex-shrink: 0; width: 100%; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.block-title, .block-detail, .block-status { flex: none; display: block; min-width: 0; }
 /* Labels are drawn above the now-line (z-index 2): the line crosses the fill of a block, never its words. */
-.block-title, .block-time, .block-category, .block-status, .task-title { position: relative; z-index: 3; }
-.is-crowded .block-time, .is-crowded .block-category { display: none; }
-.is-laned .block-mark { display: none; }
-/* A block that shares its width wraps its title at word boundaries onto two lines ("Deep / work") instead of cutting it
-   to a letter; the task strip under it leaves room for both lines. */
-.is-laned:not(.is-short) .block-title {
-  display: -webkit-box;
-  -webkit-box-orient: vertical;
-  -webkit-line-clamp: 2;
-  white-space: normal;
-  overflow-wrap: normal;
-  hyphens: auto;
-}
-.block-mark { margin-inline-end: 1px; }
-.is-short { flex-direction: row; gap: var(--space-1); align-items: center; }
-.is-short .block-time, .is-short .block-category { display: none; }
+.block-title, .block-detail, .block-status, .task-title, .task-icon { position: relative; z-index: 3; }
+/* Inline marks sit at the top of their line and are no taller than it, so they never make a line taller than measured. */
+.block-mark { margin-inline-end: 1px; vertical-align: top; }
+.block-status { color: var(--label-2); }
+.block-status :deep(svg), .task-icon { vertical-align: top; }
 
 .busy {
   position: absolute;
+  display: block;
   overflow: hidden;
-  padding: 1px var(--space-1);
+  padding: 1px 4px;
   border: 1px dashed var(--label-2);
   border-radius: 6px;
   background: repeating-linear-gradient(135deg, color-mix(in srgb, var(--label-2) 10%, transparent) 0 4px, transparent 4px 8px);
@@ -362,43 +304,12 @@ function onColumnClick(event: MouseEvent, blockId?: string): void {
   text-align: start;
   cursor: pointer;
 }
-.busy-title { display: block; overflow: hidden; color: var(--label); text-overflow: ellipsis; white-space: nowrap; }
-/* An event tall enough for more than one line wraps its title at word boundaries ("Vendor / call"). */
-.busy:not(.is-short) .busy-title { white-space: normal; overflow-wrap: normal; hyphens: auto; }
 .is-conflict {
-  container-type: inline-size;
   border-color: var(--danger);
   background: repeating-linear-gradient(135deg, color-mix(in srgb, var(--label-2) 10%, var(--surface)) 0 4px, var(--surface) 4px 8px);
 }
-.conflict-mark { display: flex; flex: none; align-items: center; gap: 2px; color: var(--danger-label); }
-/* Short events fit the mark and the title on one line at the minimum height. */
-.busy.is-short { display: flex; align-items: center; gap: var(--space-1); padding-block: 0; }
-.busy.is-short .busy-title { flex: 1; min-width: 0; }
-/* In a lane too narrow for the word, the icon alone stays; its text remains as the accessible name. */
-@container (max-width: 4.5rem) {
-  .conflict-text { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
-}
-/* In narrow columns the event band leaves the block's leading title strip available for pointer input. */
-@container day-column (max-width: 9.5rem) {
-  .block, .busy, .task-chunk {
-    inset-inline-start: calc(var(--stack-left) + 2px) !important;
-    width: calc(var(--stack-width) - 4px) !important;
-  }
-  .is-beside .block-time, .is-beside .block-category, .is-beside .block-mark { display: none; }
-  .block.is-beside { padding-inline: 3px 0; }
-  /* An event on the title row leaves the title its strip: whole words on up to two lines, hyphenated if one is too long. */
-  .is-title-covered .block-title {
-    max-width: calc(var(--title-strip) - 4px);
-    min-width: 0;
-    overflow-wrap: normal;
-    word-break: normal;
-  }
-  .busy.is-short { gap: 2px; padding-inline: 2px; }
-  .busy.is-short .busy-title { text-overflow: clip; }
-  /* A one-line band keeps the title; the word lives in the details and the accessible name. */
-  .busy.is-short .conflict-text { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
-  .busy.is-conflict:not(.is-short) { display: flex; flex-direction: column; justify-content: center; }
-}
+.conflict-mark { display: inline-flex; align-items: center; gap: 2px; vertical-align: top; color: var(--danger-label); }
+
 /* A placed task: a dashed outline inside the lane of its block; tapping it opens the task. It has no z-index, so its
    words can be drawn above the now-line while the box stays under it. */
 .task-chunk { position: absolute; padding: 0; border: 0; background: transparent; color: inherit; text-align: start; cursor: pointer; }
@@ -406,11 +317,9 @@ function onColumnClick(event: MouseEvent, blockId?: string): void {
 .task-box {
   position: absolute;
   inset: 0 4px 0 8px;
-  display: flex;
-  align-items: flex-start;
-  gap: 2px;
+  display: block;
   overflow: hidden;
-  padding: 1px var(--space-1);
+  padding: 1px 4px;
   border: 1.5px dashed var(--block-color);
   border-radius: 4px;
   background: color-mix(in srgb, var(--surface) 55%, transparent);
@@ -420,32 +329,20 @@ function onColumnClick(event: MouseEvent, blockId?: string): void {
    there opens the routine (the task stays reachable by keyboard here and from Tasks). */
 .task-box.is-outline { inset: 1px; background: transparent; }
 .task-chunk.is-outline { pointer-events: none; }
-/* A chunk of 16 to 24 px: the caption line fills the box between its dashed edges. */
-.task-box.is-tight { align-items: center; padding-block: 0; }
 .task-box.is-late { border-color: var(--danger); color: var(--danger-label); }
-/* One tight caption line, so a 20-minute chunk (16 px) still carries its title. */
-.task-title { min-width: 0; overflow: hidden; line-height: 1.1; text-overflow: ellipsis; white-space: nowrap; }
 
-.block-status { display: inline-flex; align-items: center; gap: 2px; color: var(--label-2); }
 /* One visual, one meaning: done is dimmed with its check mark; only "No" is struck through. */
 .block.is-done { opacity: 0.6; }
 .is-skipped .block-title { text-decoration: line-through; }
-.is-short .status-text, .is-beside .status-text { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
-.is-short .block-status { flex: none; }
 
 .is-compact .block { padding: 0; border-radius: 3px; }
 /* A short block or commute stays visible instead of shrinking to a sliver. */
 .is-compact .block, .is-compact .busy, .is-compact .task-chunk { min-height: 8px; }
 .is-compact .block::before { width: 2px; }
-.is-compact .block-title, .is-compact .block-time, .is-compact .block-status, .is-compact .conflict-text, .is-compact .busy-title { display: none; }
 .is-compact .busy { padding: 0; }
 .is-compact .task-box { inset: 0 2px 0 4px; padding: 0; border-width: 1px; }
-.is-compact .task-title { display: none; }
+.is-compact .busy > *, .is-compact .block > * { display: none; }
 .is-compact .now-line::before { display: none; }
-
-.is-beside { padding-block: 1px; gap: 0; }
-.is-beside .block-title, .is-beside .block-time { line-height: 1.2; }
-.is-beside .block-time { white-space: normal; overflow-wrap: anywhere; }
 
 .now-line {
   position: absolute;

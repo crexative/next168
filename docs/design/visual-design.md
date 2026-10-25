@@ -72,7 +72,32 @@ On wide windows nothing else grows: the readable column stays 720 px, sections s
 
 Guarded in `e2e/support/visualIntegrity.ts` (self-tests in `e2e/visual-integrity.spec.ts`), on every audited screen: controls closer than `--control-gap` and not joined; text or a visible control closer to a card edge than `--card-padding` (inline) or `--row-padding-block` (block); page sections closer than `--section-gap`. The guard reads the tokens from the page, so it follows the width and the text size. Fix what it reports; do not loosen it.
 
-Related rules guarded on the same screens: controls never overlap (links included, so a toolbar's back link ends before its entries); a word breaks across lines only when no line could hold it, or by hyphenation in the page's language (`hyphens: auto`; `overflow-wrap: anywhere` in a squeezed flex item cuts words like "Exerc ise" and is not used for text that can wrap first); below 480 px a sheet's primary action spans the sheet, from 480 px every button hugs its label. In Week, a block that shares its width shows whole words on up to two lines (an event on its title row leaves it 44 % of a narrow column), tasks start below the title lines, chunks of 16 px or more carry their title, and the week's range, arrows and free hours stay under the toolbar.
+Related rules guarded on the same screens: controls never overlap (links included, so a toolbar's back link ends before its entries); a word breaks across lines only when no line could hold it, or by hyphenation in the page's language (`hyphens: auto`; `overflow-wrap: anywhere` in a squeezed flex item cuts words like "Exerc ise" and is not used for text that can wrap first); below 480 px a sheet's primary action spans the sheet, from 480 px every button hugs its label. In Week, every routine, event and task shows whole text or none (see Week items below), and the week's range, arrows and free hours stay under the toolbar.
+
+## Week items: what each box shows
+
+The owner's complaint (verify3 to verify5): titles in Week were cut to "Vendo…", "Reunió…" or "D…", or drawn under a neighbour. Each round fixed the reported case and broke the next one, because every case was its own CSS exception. The rule below replaces those exceptions. It follows Apple Calendar: the size of an item's box decides what the item shows, and text is never cut.
+
+**Text is complete or not drawn.** A title wraps only between words, on as many lines as its box holds. A time such as "11:00 p. m." is one unit: the formatter joins it with no-break spaces, so a range breaks only around its dash ("9:15 a. m. –" / "1:00 p. m."). No ellipsis, no line clamp, no word cut in half, no hyphenation inside a word, no line cut by its box, and no text under another item. If the title does not fit whole, the item draws no text.
+
+**Lanes.** Items that overlap in time share the column side by side at every width: routines, calendar events and tasks in free time. Nothing is drawn over a routine, so a routine's title row is never covered. A task sits inside its routine, under the routine's text.
+
+**What a box shows.** One layout function (`src/features/week/dayColumnPlan.ts`) measures the box and the text in the page's font, language and text size, and picks the first option that fits. The components only draw what it picked.
+
+| The box holds | It shows |
+|---|---|
+| Title lines + time + category (+ done/skipped) | All of it, each part on its own whole lines, in that order. Parts that do not fit are dropped from the end. |
+| Title lines + time | Title and time range |
+| Title lines only | Title only (for a routine, with its category mark when the first line still has room) |
+| Less than the title | A mark: the box's colour and leading bar, the dashed outline of a task, the hatching and red border of a conflict, plus the ⚠ icon when it fits. The accessible name and a tap still give the full title, time and status. |
+
+Approximate heights at 100 % text (a 48 px hour): a routine needs 21 px (26 min) for a one-line title and 37 px (46 min) for title and time; an event needs 20 px (25 min) for one caption line; a task needs 19 px (24 min). At 200 % text these double, so most short items become marks. Width decides how many lines a title needs; a word wider than the box makes the item a mark.
+
+**Tasks.** A routine keeps room for its title lines first. Its tasks are placed under that strip, in time order, none over another. Each task first gets the height its own title needs. If they cannot all have it, each gets at least 12 px. If even that does not fit, the tasks are drawn as one outline around the routine, with no text. A routine draws its time and category only in the part above its first task.
+
+**Week overview.** The seven-day overview draws shapes only. Text lives in the accessible names and the legend.
+
+**Guarded** by `e2e/support/visualIntegrity.ts`. Inside a `[data-whole-text]` container (every day column), the guard reports text that is cut by its box, truncated by an ellipsis or a line clamp, outside its item, or crossing another item or its text. `e2e/week-text.spec.ts` builds many seeded weeks (5 to 15 minute routines, back-to-back tasks, events on a routine's title row, overnight items, 2 to 4 lanes) and audits each one at 320, 375, 768, 1024, 1440 and 1920 px, in light and dark, at 100 % and 200 % text, in Spanish, English and German.
 
 ## Typography
 

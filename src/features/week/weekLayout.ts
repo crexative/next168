@@ -31,21 +31,6 @@ export interface LanePosition {
   // Percentages of the day column, shared by every item in an overlap cluster.
   left: number
   width: number
-  // The same item when planned blocks and calendar events are stacked instead of sharing lanes (narrow columns):
-  // blocks still share lanes with each other, and so do events, but the two groups overlap.
-  stackLeft: number
-  stackWidth: number
-}
-
-export const STACK_EVENT_INSET_PERCENT = 28
-// An event that starts on a block's title row leaves a wider strip, so the title shows whole words on up to two lines
-// ("Deep / work"), never a letter and an ellipsis.
-export const STACK_TITLE_INSET_PERCENT = 44
-// The block's title row: 20 px of a 48 px hour.
-export const TITLE_ROW_MINUTES = 25
-
-export function coversTitle(event: { startMinute: number; endMinute: number }, block: { startMinute: number; endMinute: number }): boolean {
-  return event.startMinute < block.startMinute + TITLE_ROW_MINUTES && event.endMinute > block.startMinute && event.startMinute < block.endMinute
 }
 
 // Splits an instant range at local midnights so overnight items render on every day they touch.
@@ -67,18 +52,17 @@ export function splitByLocalDay(start: string, end: string, dates: string[], tim
   })
 }
 
-// Side-by-side lanes for items that overlap within one day (overlapping blocks can come from migrated data).
-type Lanes = Omit<LanePosition, 'stackLeft' | 'stackWidth'>
-function assignLanes<T extends { startMinute: number; endMinute: number }>(items: T[], leadingInset: (cluster: readonly T[]) => number = () => 0): (T & Lanes)[] {
+// Side-by-side lanes for items that overlap within one day (Apple Calendar): routines, calendar events and tasks in
+// free time share the column's width, so nothing is ever drawn over a routine's title or another item's text.
+function assignLanes<T extends { startMinute: number; endMinute: number }>(items: T[]): (T & LanePosition)[] {
   const sorted = [...items].sort((a, b) => a.startMinute - b.startMinute || b.endMinute - a.endMinute)
-  const result: (T & Lanes)[] = []
-  let cluster: (T & Lanes)[] = []
+  const result: (T & LanePosition)[] = []
+  let cluster: (T & LanePosition)[] = []
   let clusterEnd = -1
   const closeCluster = () => {
     const lanes = Math.max(1, ...cluster.map((item) => item.lane + 1))
-    const inset = leadingInset(cluster)
-    const width = (100 - inset) / lanes
-    cluster.forEach((item) => { item.lanes = lanes; item.left = inset + item.lane * width; item.width = width })
+    const width = 100 / lanes
+    cluster.forEach((item) => { item.lanes = lanes; item.left = item.lane * width; item.width = width })
     result.push(...cluster)
     cluster = []
   }
@@ -94,28 +78,22 @@ function assignLanes<T extends { startMinute: number; endMinute: number }>(items
   return result
 }
 
-export function layoutDaySegments(blocks: BlockSegment[], busy: BusySegment[]): {
+export function layoutDaySegments<L extends { key: string; startMinute: number; endMinute: number } = never>(blocks: BlockSegment[], busy: BusySegment[], loose: L[] = []): {
   blocks: (BlockSegment & LanePosition)[]
   busy: (BusySegment & LanePosition)[]
+  loose: (L & LanePosition)[]
 } {
   const items = assignLanes([
     ...blocks.map((segment) => ({ startMinute: segment.startMinute, endMinute: segment.endMinute, type: 'block' as const, segment })),
     ...busy.map((segment) => ({ startMinute: segment.startMinute, endMinute: segment.endMinute, type: 'busy' as const, segment })),
+    ...loose.map((segment) => ({ startMinute: segment.startMinute, endMinute: segment.endMinute, type: 'loose' as const, segment })),
   ])
-  const stacked = new Map<string, Lanes>()
-  // Every event in a connected cluster shares the inset so its event lanes stay disjoint.
-  const stackedBusy = assignLanes(busy, (cluster) => {
-    if (cluster.some((event) => blocks.some((block) => coversTitle(event, block)))) return STACK_TITLE_INSET_PERCENT
-    return cluster.some((event) => blocks.some((block) => block.startMinute < event.endMinute && event.startMinute < block.endMinute)) ? STACK_EVENT_INSET_PERCENT : 0
-  })
-  for (const item of [...assignLanes(blocks), ...stackedBusy]) stacked.set(item.key, item)
-  const result: ReturnType<typeof layoutDaySegments> = { blocks: [], busy: [] }
+  const result: ReturnType<typeof layoutDaySegments<L>> = { blocks: [], busy: [], loose: [] }
   for (const item of items) {
-    const { lane, lanes, left, width } = item
-    const alone = stacked.get(item.segment.key)!
-    const position = { lane, lanes, left, width, stackLeft: alone.left, stackWidth: alone.width }
+    const position = { lane: item.lane, lanes: item.lanes, left: item.left, width: item.width }
     if (item.type === 'block') result.blocks.push({ ...item.segment, ...position })
-    else result.busy.push({ ...item.segment, ...position })
+    else if (item.type === 'busy') result.busy.push({ ...item.segment, ...position })
+    else result.loose.push({ ...item.segment, ...position })
   }
   return result
 }
@@ -131,6 +109,8 @@ export function blockSegmentsByDate(document: PlannerDocument, dates: string[], 
   return byDate
 }
 
+export const INSTANT_EVENT_MINUTES = 15
+
 export function busySegmentsByDate(external: ExternalOccurrence[], events: PlannerEvent[], dates: string[], timeZone: string, calendarNames: ReadonlyMap<string, string> = new Map()): Record<string, BusySegment[]> {
   const byDate: Record<string, BusySegment[]> = Object.fromEntries(dates.map((date) => [date, []]))
   const timed = [
@@ -138,7 +118,10 @@ export function busySegmentsByDate(external: ExternalOccurrence[], events: Plann
     ...events.filter((event) => !event.allDay).map((event) => ({ key: event.id, title: event.title, start: event.start, end: event.end, kind: 'event' as const, calendar: undefined })),
   ]
   for (const item of timed) {
-    for (const part of splitByLocalDay(item.start, item.end, dates, timeZone)) {
+    // An event with no duration (a reminder in an imported calendar) still takes a short visible span, as in Apple
+    // Calendar; its details keep the real times.
+    const shownEnd = Date.parse(item.end) > Date.parse(item.start) ? item.end : new Date(Date.parse(item.start) + INSTANT_EVENT_MINUTES * 60_000).toISOString()
+    for (const part of splitByLocalDay(item.start, shownEnd, dates, timeZone)) {
       byDate[part.date]?.push({ ...part, key: `${item.key}@${part.date}`, title: item.title, kind: item.kind, start: item.start, end: item.end, calendar: item.calendar })
     }
   }
@@ -172,27 +155,29 @@ export function taskSegmentsByDate(placements: readonly TaskPlacement[], tasks: 
 
 export type TaskBox = { top: number; bottom: number; outline: boolean }
 
-// Places, in pixels, the tasks drawn in one host (a block, or the free time of a column) together, so none covers
-// another: each starts at its own time or below the host's title strip and the task before it, keeps at least `min`,
-// and stays inside the host. When the host cannot hold every task at `min` below its title, each is drawn as an
-// outline over the whole host instead (the outline takes no pointer input, so the routine stays the target).
-export function placeTasks(tasks: readonly { top: number; bottom: number }[], host: { top: number; bottom: number; strip: number }, min: number): TaskBox[] {
-  const order = tasks.map((task, index) => ({ index, top: task.top, bottom: task.bottom })).sort((a, b) => a.top - b.top || a.bottom - b.bottom)
+// Places, in pixels, the tasks drawn in one host (a routine, or a stretch of free time) together, so none covers another:
+// each starts at its own time or below the host's title strip and the task before it, keeps at least its minimum height
+// (`min`, one value for all or one per task), and stays inside the host. When the host cannot hold every task at its
+// minimum below the strip, each is drawn as an outline over the whole host instead (the outline takes no pointer input,
+// so the routine stays the target).
+export function placeTasks(tasks: readonly { top: number; bottom: number }[], host: { top: number; bottom: number; strip: number }, min: number | readonly number[]): TaskBox[] {
+  const minOf = (index: number) => typeof min === 'number' ? min : min[index]!
+  const order = tasks.map((task, index) => ({ index, top: task.top, bottom: task.bottom, min: minOf(index) })).sort((a, b) => a.top - b.top || a.bottom - b.bottom)
   const boxes: TaskBox[] = new Array(tasks.length)
-  if (order.length * min > host.bottom - host.top - host.strip) {
+  if (order.reduce((sum, task) => sum + task.min, 0) > host.bottom - host.top - host.strip + 0.01) {
     for (const task of order) boxes[task.index] = { top: host.top, bottom: host.bottom, outline: true }
     return boxes
   }
   let floor = host.top + host.strip
   for (const task of order) {
     task.top = Math.max(task.top, floor)
-    task.bottom = Math.max(task.bottom, task.top + min)
+    task.bottom = Math.max(task.bottom, task.top + task.min)
     floor = task.bottom
   }
   let ceiling = host.bottom
   for (const task of [...order].reverse()) {
     task.bottom = Math.min(task.bottom, ceiling)
-    task.top = Math.min(task.top, task.bottom - min)
+    task.top = Math.min(task.top, task.bottom - task.min)
     ceiling = task.top
   }
   for (const task of order) boxes[task.index] = { top: task.top, bottom: task.bottom, outline: false }
