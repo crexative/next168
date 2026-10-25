@@ -40,20 +40,25 @@ describe('the length chips', () => {
 
 describe('turning a draft into a task and back', () => {
   it('a new draft is an hour, any free time, medium priority', () => {
-    expect(newDraft()).toEqual({ title: '', durationMin: 60, categoryId: '', dueDate: '', priority: '2' })
+    expect(newDraft()).toEqual({ title: '', durationMin: 60, categoryId: '', dueDate: '', dueToday: false, priority: '2' })
   })
 
   it('leaves out the category and the due date when none was chosen, so the stored task has neither key', () => {
-    const fields = taskFields({ ...newDraft(), title: '  Comprar un regalo  ' })
+    const fields = taskFields({ ...newDraft(), title: '  Comprar un regalo  ' }, '2026-10-25')
     expect(fields).toEqual({ title: 'Comprar un regalo', durationMin: 60, priority: 2 })
     expect(fields).not.toHaveProperty('categoryId')
     expect(fields).not.toHaveProperty('dueDate')
-    expect(taskFields({ ...newDraft('work'), title: 'x', dueDate: '2026-10-30', priority: '1' })).toEqual({ title: 'x', durationMin: 60, priority: 1, categoryId: 'work', dueDate: '2026-10-30' })
+    expect(taskFields({ ...newDraft('work'), title: 'x', dueDate: '2026-10-30', priority: '1' }, '2026-10-25')).toEqual({ title: 'x', durationMin: 60, priority: 1, categoryId: 'work', dueDate: '2026-10-30' })
+  })
+
+  it('a draft set to "Today" is due on the date it is saved, not the date the form showed', () => {
+    expect(taskFields({ ...newDraft(), title: 'x', dueDate: '2026-10-25', dueToday: true }, '2026-10-26')).toMatchObject({ dueDate: '2026-10-26' })
+    expect(taskFields({ ...newDraft(), title: 'x', dueDate: '2026-10-25' }, '2026-10-26')).toMatchObject({ dueDate: '2026-10-25' })
   })
 
   it('reads a stored task, with no category as "any free time"', () => {
-    expect(draftFromTask(task())).toEqual({ title: 'Leer', durationMin: 30, categoryId: '', dueDate: '', priority: '2' })
-    expect(draftFromTask(task({ categoryId: 'work', dueDate: '2026-10-30', priority: 3 }))).toEqual({ title: 'Leer', durationMin: 30, categoryId: 'work', dueDate: '2026-10-30', priority: '3' })
+    expect(draftFromTask(task())).toEqual({ title: 'Leer', durationMin: 30, categoryId: '', dueDate: '', dueToday: false, priority: '2' })
+    expect(draftFromTask(task({ categoryId: 'work', dueDate: '2026-10-30', priority: 3 }))).toEqual({ title: 'Leer', durationMin: 30, categoryId: 'work', dueDate: '2026-10-30', dueToday: false, priority: '3' })
   })
 
   it('opens "More options" only when something beyond the defaults is already set', () => {

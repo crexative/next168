@@ -13,7 +13,7 @@ import { formatDate } from '@/ui/format'
 import { useNow } from '@/features/week/useNow'
 import { usePlannerStore } from '@/stores/plannerStore'
 import Button from '@/ui/Button.vue'
-import { displayLocale } from '@/ui/format'
+import { displayLocale, rangeText } from '@/ui/format'
 import { blocksToMark } from './blocksToMark'
 import {
   checkInFromForm, formFromCheckIn, isEmptyCheckIn, upsertCheckIn, withPlanTimes,
@@ -89,7 +89,7 @@ const pending = computed(() => candidates.value.filter((occurrence) => {
 }))
 
 function range(occurrence: { start: string; end: string }): string {
-  return `${formatTime(occurrence.start, displayLocale.value, timeZone.value)} – ${formatTime(occurrence.end, displayLocale.value, timeZone.value)}`
+  return rangeText(formatTime(occurrence.start, displayLocale.value, timeZone.value), formatTime(occurrence.end, displayLocale.value, timeZone.value))
 }
 
 const stressOptions = computed(() => (['1', '2', '3', '4', '5'] as const).map((value) => ({ value, label: value })))

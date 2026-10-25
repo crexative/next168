@@ -1,5 +1,5 @@
 import type { DayIndex } from '@/core/model'
-import { clockFormat, formatMinuteOfDay, minuteOfDayInstant } from '@/ui/format'
+import { clockFormat, formatMinuteOfDay, minuteOfDayInstant, rangeText } from '@/ui/format'
 
 function clockParts(minute: number, locale: string): Intl.DateTimeFormatPart[] {
   return clockFormat(locale, { timeZone: 'UTC', hour: 'numeric', minute: '2-digit' }).formatToParts(minuteOfDayInstant(minute))
@@ -17,7 +17,7 @@ export function timeRangeText(start: number, end: number, locale: string): strin
   const startText = period !== undefined && period === endPeriod
     ? startParts.filter((part) => part.type !== 'dayPeriod').map((part) => part.value).join('').trim()
     : formatMinuteOfDay(start, locale)
-  return `${noBreak(startText)}–${noBreak(formatMinuteOfDay(end, locale))}`
+  return rangeText(noBreak(startText), noBreak(formatMinuteOfDay(end, locale)), false)
 }
 
 export interface DayLabels { weekdays: string; everyDay: string; weekend: string; everyNight?: string }

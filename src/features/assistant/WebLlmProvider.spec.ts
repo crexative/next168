@@ -234,7 +234,7 @@ describe('WebLlmProvider prepare and ask', () => {
       workspaceId: document.workspaceId, baseRevision: document.revision,
       ops: [{ op: 'add_block', block: { categoryId: 'work', title: 'Gym', days: [4], start: 1080, end: 1140 } }],
     })
-    expect(reply.answer).toBe('Add "Gym" on Thursday, 18:00–19:00')
+    expect(reply.answer).toBe('Add "Gym" on Thursday, 18:00\u2060–\u206019:00')
   })
 
   it.each([
@@ -259,7 +259,7 @@ describe('WebLlmProvider prepare and ask', () => {
     const { provider } = setup({ engine: fakeEngine(() => JSON.stringify({ intent: 'move_block', title: 'Review', day: 'thursday', start: '10:00' })) })
     await provider.prepare(vi.fn(), signal())
     const reply = await provider.ask('Move Review to Thursday at 10:00', contextFor(document), signal())
-    expect(reply.answer).toBe('Move "Review" to Thursday, 10:00–11:00')
+    expect(reply.answer).toBe('Move "Review" to Thursday, 10:00\u2060–\u206011:00')
     expect(reply.proposal).toMatchObject({
       workspaceId: document.workspaceId, baseRevision: document.revision,
       ops: [{ op: 'update_block', id: 'work-fri', patch: { days: [4], start: 600, end: 660 } }],

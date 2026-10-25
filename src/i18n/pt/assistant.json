@@ -64,8 +64,8 @@
   },
   "intent": {
     "summary": {
-      "add_block": "Adicionar \"{title}\" em {day}, {start}–{end}",
-      "move_block": "Mover \"{title}\" para {day}, {start}–{end}",
+      "add_block": "Adicionar \"{title}\" em {day}, {range}",
+      "move_block": "Mover \"{title}\" para {day}, {range}",
       "delete_block": "Remover a rotina \"{title}\"",
       "delete_block_day": "Remover \"{title}\" em {day}",
       "add_task": "Adicionar a tarefa \"{title}\" ({minutes} min)"

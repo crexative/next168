@@ -37,7 +37,7 @@ describe('model output validation', () => {
 
   it('turns an intent reply into a bound proposal, or into a message when the request is incomplete', async () => {
     const proposal = await answerFromChangeReply('{"intent":"add_block","title":"Gym","categoryName":"Work","day":"thursday","start":"18:00","durationHours":1}', 'Add a gym block', contextFor(document))
-    expect(proposal.answer).toBe('Add "Gym" on Thursday, 18:00–19:00')
+    expect(proposal.answer).toBe('Add "Gym" on Thursday, 18:00\u2060–\u206019:00')
     expect(proposal.proposal?.ops).toEqual([addBlock])
     const unclear = await answerFromChangeReply('{"intent":"add_block","title":"Gym"}', 'Add a gym block', contextFor(document))
     expect(unclear.proposal).toBeUndefined()

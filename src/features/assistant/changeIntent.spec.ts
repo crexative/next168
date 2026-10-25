@@ -46,7 +46,7 @@ describe('add_block', () => {
     const outcome = map({ intent: 'add_block', title: 'Work', day: 'thursday', start: '18:00', durationMinutes: 60 })
     if (outcome.kind !== 'proposal') throw new Error('expected a proposal')
     expect(outcome.proposal).toMatchObject({ contractVersion: '1.0', workspaceId: document.workspaceId, baseRevision: document.revision })
-    expect(outcome.summary).toBe('Add "Work" on Thursday, 18:00–19:00')
+    expect(outcome.summary).toBe('Add "Work" on Thursday, 18:00\u2060–\u206019:00')
   })
 
   // verify4 defect 9: the summary a person approves wrote 18:00–19:00 on a 12-hour clock.
@@ -54,7 +54,7 @@ describe('add_block', () => {
     setHourCycle('h12')
     const outcome = map({ intent: 'add_block', title: 'Work', day: 'thursday', start: '18:00', durationMinutes: 60 })
     if (outcome.kind !== 'proposal') throw new Error('expected a proposal')
-    expect(outcome.summary).toMatch(/^Add "Work" on Thursday, 6:00\sPM–7:00\sPM$/u)
+    expect(outcome.summary).toMatch(/^Add "Work" on Thursday, 6:00\sPM\u2060–\u20607:00\sPM$/u)
     const spanish = proposalFromIntent(parseIntent({ intent: 'add_block', title: 'Work', day: 'thursday', start: '18:00', durationMinutes: 60 }), { ...environment, locale: 'es' })
     if (spanish.kind !== 'proposal') throw new Error('expected a proposal')
     expect(spanish.summary).not.toContain('18:00')
@@ -271,7 +271,7 @@ describe('none and invalid replies', () => {
 
   it('answers in the interface language', () => {
     const spanish = proposalFromIntent(parseIntent({ intent: 'add_block', title: 'Study', day: 'thursday', start: '18:00' }), { ...environment, locale: 'es', translate: translatorFor('es') })
-    expect(spanish).toMatchObject({ kind: 'proposal', summary: 'Añadir "Study" el jueves, 18:00–19:00' })
+    expect(spanish).toMatchObject({ kind: 'proposal', summary: 'Añadir "Study" el jueves, 18:00\u2060–\u206019:00' })
   })
 
   it.each([

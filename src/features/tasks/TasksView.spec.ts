@@ -36,11 +36,11 @@ it('places tasks around imported calendar events, not on top of them', async () 
   const app = createApp(TasksView).use(pinia).use(i18n)
   app.mount(host)
   cleanup = () => { app.unmount(); host.remove() }
-  await vi.waitFor(() => expect(host.textContent).toMatch(/(?<!\d)1:00\s?PM–2:00\s?PM/))
-  expect(host.textContent).not.toMatch(/12:00\s?PM–/)
+  await vi.waitFor(() => expect(host.textContent).toMatch(/(?<!\d)1:00\s?PM\u2060–\u20602:00\s?PM/))
+  expect(host.textContent).not.toMatch(/12:00\s?PM\u2060–/)
 
   await calendars.removeSource(planner.document!.calendarSources[0]!.id)
-  await vi.waitFor(() => expect(host.textContent).toMatch(/12:00\s?PM–1:00\s?PM/))
+  await vi.waitFor(() => expect(host.textContent).toMatch(/12:00\s?PM\u2060–\u20601:00\s?PM/))
 })
 
 it('offers a quickly added task "any free slot" by default, with Work but not Sleep as a choice', async () => {
@@ -90,7 +90,7 @@ it('places a task with no category in time no routine covers, and keeps it out o
   cleanup = () => { app.unmount(); host.remove() }
   await vi.waitFor(() => expect(host.querySelectorAll('[data-testid=placed-task]')).toHaveLength(1))
   const text = host.querySelector('[data-testid=placed-task]')!.textContent!.replace(/\s+/g, ' ')
-  expect(text).toMatch(/(?<!\d)2:00\s?PM–3:00\s?PM/)
+  expect(text).toMatch(/(?<!\d)2:00\s?PM\u2060–\u20603:00\s?PM/)
   expect(text).not.toMatch(/Work/)
 })
 
@@ -114,12 +114,12 @@ it('shows a task split around an off-grid busy slot as one row with five-minute 
   const app = createApp(TasksView).use(pinia).use(i18n)
   app.mount(host)
   cleanup = () => { app.unmount(); host.remove() }
-  await vi.waitFor(() => expect(host.textContent).toMatch(/(?<!\d)1:00\s?PM–1:46\s?PM/))
+  await vi.waitFor(() => expect(host.textContent).toMatch(/(?<!\d)1:00\s?PM\u2060–\u20601:46\s?PM/))
   const rows = host.querySelectorAll('[data-testid=placed-task]')
   expect(rows).toHaveLength(1)
   const text = rows[0]!.textContent!.replace(/\s+/g, ' ')
   // Only starts snap: the first fragment keeps the busy boundary, and the final 14 minutes stay exact.
-  expect(text).toMatch(/(?<!\d)1:00\s?PM–1:46\s?PM, 2:50\s?PM–3:04\s?PM · Work · 1 h/)
+  expect(text).toMatch(/(?<!\d)1:00\s?PM\u2060–\u20601:46\s?PM, 2:50\s?PM\u2060–\u20603:04\s?PM · Work · 1 h/)
   // The row has one circle to complete it and the text that opens it; removing is a swipe or the task sheet.
   expect(rows[0]!.querySelectorAll('button')).toHaveLength(2)
 })
@@ -145,7 +145,7 @@ it('starts a task at the next five-minute boundary after now, keeping its exact 
 
   await vi.waitFor(() => expect(host.querySelectorAll('[data-testid=placed-task]')).toHaveLength(1))
   const text = host.querySelector('[data-testid=placed-task]')!.textContent!.replace(/\s+/g, ' ')
-  expect(text).toMatch(/(?<!\d)1:05\s?PM–2:05\s?PM · Work · 1 h/)
+  expect(text).toMatch(/(?<!\d)1:05\s?PM\u2060–\u20602:05\s?PM · Work · 1 h/)
   expect(host.querySelector('[data-testid=task-warnings]')).toBeNull()
 })
 

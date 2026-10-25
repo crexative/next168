@@ -86,6 +86,13 @@ function clockText(format: Intl.DateTimeFormat, instant: number | Date): string 
   }).join('')
 }
 
+// A range of times or dates is one unit on screen: a line never breaks at its dash ("11:30 a. m.–" / "11:40 a. m.").
+// Its two ends already keep their own words together; a spaced range joins with no-break spaces, an unspaced one with
+// word joiners around the en dash.
+export function rangeText(start: string, end: string, spaced = true): string {
+  return spaced ? `${start}\u00a0–\u00a0${end}` : `${start}\u2060–\u2060${end}`
+}
+
 export function formatDate(date: string, locale: string, options: Intl.DateTimeFormatOptions): string {
   const parts = new Intl.DateTimeFormat(locale, { ...options, timeZone: 'UTC' }).formatToParts(new Date(`${date}T12:00:00Z`))
   return parts.map((part, index) => part.type === 'literal' && parts[index - 1]?.type === 'weekday' && options.weekday === 'long'

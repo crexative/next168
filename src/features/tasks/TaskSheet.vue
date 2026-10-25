@@ -8,7 +8,7 @@ import Button from '@/ui/Button.vue'
 import Sheet from '@/ui/Sheet.vue'
 import { readLastTaskCategory, rememberTaskCategory } from './lastCategory'
 import { useTaskActions } from './taskActions'
-import { draftFromTask, newDraft, taskFields, type TaskDraft } from './taskDraft'
+import { draftFromTask, newDraft, plannerToday, taskFields, type TaskDraft } from './taskDraft'
 import TaskOptions from './TaskOptions.vue'
 
 // One sheet to add a task ("+" in Week) and to edit one (a tap on its row or on the grid). Delete is a plain text
@@ -71,7 +71,7 @@ async function save(): Promise<void> {
   saving.value = true
   changedElsewhere.value = false
   const { workspaceId, task: taskSnapshot, category: categoryBound } = bound
-  const fields = taskFields(draft.value)
+  const fields = taskFields(draft.value, plannerToday(timeZone.value))
   const created: Task = { ...fields, id: crypto.randomUUID(), createdAt: new Date().toISOString() }
   try {
     const result = await planner.commit((next) => {

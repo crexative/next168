@@ -1,5 +1,7 @@
 <script setup lang="ts">
-import { computed, ref, useId } from 'vue'
+import { computed, ref, useId, watch } from 'vue'
+import { localDateOf } from '@/core/time'
+import { useNow } from '@/features/week/useNow'
 import { useI18n } from 'vue-i18n'
 import type { Category } from '@/core/model'
 import Icon from '@/ui/Icon.vue'
@@ -33,13 +35,18 @@ const priorityOptions = computed(() => (['1', '2', '3'] as const).map((value) =>
 
 const update = (change: Partial<TaskDraft>): void => emit('patch', change)
 
-// "Today" makes the task due today; a second tap gives back the due date it had before.
+// "Today" makes the task due today; a second tap gives back the due date it had before. Both the chip and the date
+// follow the clock: a form left open across midnight shows, and saves, the new day (taskFields).
+const now = useNow()
+const today = computed(() => localDateOf(now.value, props.timeZone))
+const todayPressed = computed(() => props.draft.dueToday || props.draft.dueDate === today.value)
+watch(today, (date) => { if (props.draft.dueToday && props.draft.dueDate !== date) update({ dueDate: date }) })
 let dueBeforeToday = ''
 function toggleToday(): void {
-  const today = plannerToday(props.timeZone)
-  if (props.draft.dueDate === today) return update({ dueDate: dueBeforeToday })
+  const date = plannerToday(props.timeZone)
+  if (props.draft.dueToday || props.draft.dueDate === date) return update({ dueDate: dueBeforeToday, dueToday: false })
   dueBeforeToday = props.draft.dueDate
-  update({ dueDate: today })
+  update({ dueDate: date, dueToday: true })
 }
 
 function toggleSuggestion(id: string): void {
@@ -56,7 +63,7 @@ function toggleSuggestion(id: string): void {
       @update:model-value="update({ durationMin: Number($event) })"
     />
     <div class="choices">
-      <button type="button" class="choice t-subhead" :aria-pressed="draft.dueDate === plannerToday(timeZone)" data-testid="task-today" @click="toggleToday">
+      <button type="button" class="choice t-subhead" :aria-pressed="todayPressed" data-testid="task-today" @click="toggleToday">
         <Icon name="sun" :size="16" />{{ t('tasks.add.today') }}
       </button>
       <button
@@ -84,7 +91,7 @@ function toggleSuggestion(id: string): void {
       </label>
       <label class="field">
         <span class="t-footnote t-secondary">{{ t('tasks.add.dueDate') }}</span>
-        <input :value="draft.dueDate" class="input" type="date" data-testid="task-due" @input="update({ dueDate: ($event.target as HTMLInputElement).value })">
+        <input :value="draft.dueDate" class="input" type="date" data-testid="task-due" @input="update({ dueDate: ($event.target as HTMLInputElement).value, dueToday: false })">
       </label>
       <div class="field">
         <span class="t-footnote t-secondary">{{ t('tasks.add.priority') }}</span>

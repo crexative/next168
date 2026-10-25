@@ -1,5 +1,6 @@
 import type { ExternalOccurrence, PlannerDocument, TaskPlacement } from '@/core/model'
 import { addLocalDays, datedOccurrences, zonedInstant, type DatedOccurrence } from '@/core/time'
+import { chunkIsLate } from '@/core/scheduling'
 
 // `overlapsWith` names what an item shares time with; it is information about the day, not an alarm.
 interface TimelineBase { key: string; title: string; start: string; end: string; overlapsWith: string[] }
@@ -55,7 +56,7 @@ export function buildTimeline({ document, today, timeZone, external, placements 
       if (!task) return []
       return placement.chunks.filter((chunk) => intersects(chunk.start, chunk.end, from, to)).map((chunk): TimelineItem => ({
         kind: 'task', key: `task:${task.id}@${chunk.start}`, title: task.title, start: chunk.start, end: chunk.end,
-        overlapsWith: [], taskId: task.id, categoryId: task.categoryId ?? '', late: placement.late,
+        overlapsWith: [], taskId: task.id, categoryId: task.categoryId ?? '', late: chunkIsLate(task, chunk, timeZone),
       }))
     }),
     ...document.events.filter((event) => !event.allDay && intersects(event.start, event.end, from, to)).map((event): TimelineItem => ({

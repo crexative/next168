@@ -3,7 +3,7 @@ import type { Category, DayIndex, PlannerDocument, ProposalInput, ProposalOp, Ti
 import { MINUTES_PER_DAY } from '@/core/model'
 import { AssistantError, type Translate } from './provider'
 import { matchesIntent, normalize } from './rulesLexicon'
-import { formatMinuteOfDay } from '@/ui/format'
+import { formatMinuteOfDay, rangeText } from '@/ui/format'
 
 // A 1B model cannot fill the full proposal schema (ids, minutes, nested ops). It fills this small intent
 // instead; the code resolves names to ids, "HH:MM" to minutes and weekdays to day indexes, so the model
@@ -177,8 +177,8 @@ function blockMinutes({ durationHours, durationMinutes }: ChangeIntent): number 
 }
 
 // The person's own clock (12 or 24 h), as everywhere in the app; the 24-hour `clock` is for the model only.
-function describeTimes(start: number, end: number, locale: string): { start: string; end: string } {
-  return { start: formatMinuteOfDay(start, locale), end: formatMinuteOfDay(end % MINUTES_PER_DAY, locale) }
+function describeTimes(start: number, end: number, locale: string): { range: string } {
+  return { range: rangeText(formatMinuteOfDay(start, locale), formatMinuteOfDay(end % MINUTES_PER_DAY, locale), false) }
 }
 
 function weekdayName(day: DayIndex, locale: string): string {

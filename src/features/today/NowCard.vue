@@ -12,7 +12,7 @@ import { actualFor, type ActualStatus } from './actuals'
 import { untilClock } from './clockPhrase'
 import type { NextUp } from './nextUp'
 import { isReportable } from './statusWindow'
-import { displayLocale, formatDuration } from '@/ui/format'
+import { displayLocale, formatDuration, rangeText } from '@/ui/format'
 
 type CurrentOccurrence = DatedOccurrence & { minutesLeft: number; progress: number }
 
@@ -37,7 +37,7 @@ const { t, locale } = useI18n()
 
 const categoriesById = computed(() => new Map(props.categories.map((category) => [category.id, category])))
 const color = computed(() => categoryColor(props.current ? categoriesById.value.get(props.current.categoryId) : undefined))
-const range = computed(() => props.current ? `${time(props.current.start)} – ${time(props.current.end)}` : '')
+const range = computed(() => props.current ? rangeText(time(props.current.start), time(props.current.end)) : '')
 const progressPercent = computed(() => Math.round(Math.min(1, Math.max(0, props.current?.progress ?? 0)) * 1000) / 10)
 
 const minutesLeft = computed(() => {

@@ -48,7 +48,7 @@ it('opens the event details with the full title, range, calendar and the block i
   // Beside the routine, never over its title (docs/design/visual-design.md › Week items).
   expect([overlay.style.insetInlineStart, overlay.style.width]).toEqual(['calc(50% + 2px)', 'calc(50% - 4px)'])
   overlay.click()
-  expect(inspected).toEqual([{ title: 'Team sync with the vendor', date, range: '9:30\u00a0AM – 10:30\u00a0AM', calendar: 'Work calendar', conflictsWith: [{ blockId: deepWork.id, title: deepWork.title }] }])
+  expect(inspected).toEqual([{ title: 'Team sync with the vendor', date, range: '9:30\u00a0AM\u00a0–\u00a010:30\u00a0AM', calendar: 'Work calendar', conflictsWith: [{ blockId: deepWork.id, title: deepWork.title }] }])
 })
 
 const DATE = '2026-10-21'
@@ -85,7 +85,7 @@ it('draws every word of an unmeasured column and marks the column for the whole-
   const { root } = column({ tasks: [taskAt(540, 600)] })
   expect(root.hasAttribute('data-whole-text')).toBe(true)
   const deep = root.querySelector('.block[data-block-id="deep"]')!
-  expect(['.block-title', '.block-time', '.block-category'].map((selector) => deep.querySelector(selector)?.textContent?.trim())).toEqual(['Deep work', '9:00\u00a0AM – 11:00\u00a0AM', 'Work'])
+  expect(['.block-title', '.block-time', '.block-category'].map((selector) => deep.querySelector(selector)?.textContent?.trim())).toEqual(['Deep work', '9:00\u00a0AM\u00a0–\u00a011:00\u00a0AM', 'Work'])
   expect(root.querySelector('[data-testid="week-task"] .task-title')?.textContent).toBe('Report')
 })
 

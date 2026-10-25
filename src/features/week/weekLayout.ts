@@ -1,5 +1,6 @@
 import { MINUTES_PER_DAY, type ExternalOccurrence, type PlannerDocument, type PlannerEvent, type TaskPlacement } from '@/core/model'
 import { addLocalDays, datedOccurrences, zonedInstant, type DatedOccurrence } from '@/core/time'
+import { chunkIsLate } from '@/core/scheduling'
 import { localMinuteOf } from './localTime'
 
 export interface DayPart {
@@ -149,7 +150,7 @@ export function taskSegmentsByDate(placements: readonly TaskPlacement[], tasks: 
     if (!task || task.doneAt) continue
     for (const chunk of placement.chunks) {
       for (const part of splitByLocalDay(chunk.start, chunk.end, dates, timeZone)) {
-        byDate[part.date]?.push({ ...part, key: `${task.id}@${chunk.start}@${part.date}`, taskId: task.id, title: task.title, categoryId: task.categoryId, late: placement.late })
+        byDate[part.date]?.push({ ...part, key: `${task.id}@${chunk.start}@${part.date}`, taskId: task.id, title: task.title, categoryId: task.categoryId, late: chunkIsLate(task, chunk, timeZone) })
       }
     }
   }

@@ -1,4 +1,4 @@
-import type { PlannerDocument, ScheduleInput, Task, TaskPlacement } from './model'
+import type { PlacementChunk, PlannerDocument, ScheduleInput, Task, TaskPlacement } from './model'
 import { scheduleTasks } from './scheduler'
 import { taskWindows } from './schedulingWindows'
 import { addLocalDays, datedOccurrences, localDateOf, zonedInstant } from './time'
@@ -69,6 +69,12 @@ const compare = (a: string, b: string) => a < b ? -1 : a > b ? 1 : 0
 // The end of a task's due date in the planner's zone (exclusive); no due date never ends.
 export function dueEndOf(task: Pick<Task, 'dueDate'>, timeZone: string): number {
   return task.dueDate ? zonedInstant(addLocalDays(task.dueDate, 1), 0, timeZone).getTime() : Infinity
+}
+
+// Lateness is per piece: a piece that ends by the end of its task's due date (planner zone) is on time even when a
+// later piece of the same task is not. The task-level `late` (and its warning) stays as it is.
+export function chunkIsLate(task: Pick<Task, 'dueDate'>, chunk: PlacementChunk, timeZone: string): boolean {
+  return Date.parse(chunk.end) > dueEndOf(task, timeZone)
 }
 
 // Minutes of a placement that are done before its task's deadline.

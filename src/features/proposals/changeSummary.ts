@@ -2,7 +2,7 @@ import type { Category } from '@/core/model'
 import { addLocalDays } from '@/core/time'
 import { formatMinute } from '@/features/week/localTime'
 import { formatDate } from '@/ui/format'
-import { formatDateTime } from '@/ui/format'
+import { formatDateTime, rangeText } from '@/ui/format'
 
 export interface SummaryRow { label: string; value: string }
 export interface SummaryContext {
@@ -43,13 +43,13 @@ export function summarizeEntity(value: unknown, context: SummaryContext): Summar
   if (Array.isArray(entity.days)) rows.push(row('days', entity.days.map((day) => weekday(Number(day), locale)).join(', ')))
   if (typeof entity.start === 'number' && typeof entity.end === 'number') {
     // A routine that ends earlier than it starts runs past midnight; it is named the way the week names it.
-    const range = `${formatMinute(entity.start, locale)} – ${formatMinute(entity.end, locale)}`
+    const range = rangeText(formatMinute(entity.start, locale), formatMinute(entity.end, locale))
     rows.push(row('time', entity.end < entity.start ? t('week.grid.crossesMidnight', { range }) : range))
   } else if (typeof entity.start === 'string' && typeof entity.end === 'string') {
     // All-day export preserves stored calendar dates and uses an exclusive end.
     const when = entity.allDay === true
-      ? `${formatDate(entity.start.slice(0, 10), locale, { dateStyle: 'medium' })} – ${formatDate(addLocalDays(entity.end.slice(0, 10), -1), locale, { dateStyle: 'medium' })}`
-      : `${dateTime(entity.start, context)} – ${dateTime(entity.end, context)}`
+      ? rangeText(formatDate(entity.start.slice(0, 10), locale, { dateStyle: 'medium' }), formatDate(addLocalDays(entity.end.slice(0, 10), -1), locale, { dateStyle: 'medium' }))
+      : rangeText(dateTime(entity.start, context), dateTime(entity.end, context))
     rows.push(row('when', when))
   }
   if (typeof entity.durationMin === 'number') rows.push(row('duration', t('proposals.minutes', { minutes: entity.durationMin })))

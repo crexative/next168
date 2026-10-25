@@ -39,7 +39,7 @@ it("puts the owner's Sunday jog today in free time and says why, with no warning
   mounted = await mountWithPlanner(TasksView, planner([jog()]), 'es')
   expect(find('[data-testid=task-warnings]')).toBeNull()
   const row = find('[data-testid=placed-task]')!
-  expect(text(row)).toMatch(/Trotar ?10:00\D{0,8}–11:00/)
+  expect(text(row)).toMatch(/Trotar ?10:00\D{0,8}\u2060–\u206011:00/)
   expect(text(row.querySelector('[data-testid=outside-note]'))).toBe('Hoy no tienes bloque de Trabajo; la puse en tu tiempo libre.')
 })
 
@@ -60,7 +60,7 @@ it('"Hacerla hoy" puts an overdue task in today\'s free time, and Undo gives bac
   await nextTick()
   expect(mounted.store.document!.tasks[0]!.dueDate).toBe('2026-10-25')
   expect(find('[data-testid=task-warnings]')).toBeNull()
-  expect(text(find('[data-testid=placed-task]'))).toMatch(/10:00\D{0,8}–11:00/)
+  expect(text(find('[data-testid=placed-task]'))).toMatch(/10:00\D{0,8}\u2060–\u206011:00/)
   expect(useUndoToast().toast.value?.message).toBe('«Trotar» queda para hoy')
   useUndoToast().undo()
   await mounted.store.settled()

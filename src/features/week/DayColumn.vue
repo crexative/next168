@@ -5,7 +5,7 @@ import type { BlockActual, Category } from '@/core/model'
 import CategoryMark from '@/ui/CategoryMark.vue'
 import Icon from '@/ui/Icon.vue'
 import { categoryStroke } from '@/ui/categoryVisual'
-import { displayLocale } from '@/ui/format'
+import { displayLocale, rangeText } from '@/ui/format'
 import './registerIcons'
 import { statusOf } from './blockStatus'
 import { categoryColor } from './categoryColor'
@@ -71,7 +71,7 @@ function blockLabel(segment: BlockSegment): string {
 }
 
 function taskRange(task: TaskSegment): string {
-  return `${formatMinute(task.startMinute, displayLocale.value)} – ${formatMinute(task.endMinute % 1440, displayLocale.value)}`
+  return rangeText(formatMinute(task.startMinute, displayLocale.value), formatMinute(task.endMinute % 1440, displayLocale.value))
 }
 
 // Where every item goes and which of its words it draws: one decision for the whole column (dayColumnPlan.ts).
@@ -137,12 +137,12 @@ function taskStyle(planned: PlannedTask) {
 }
 
 function timeRange(segment: BlockSegment): string {
-  const range = `${formatTime(segment.occurrence.start, displayLocale.value, props.timeZone)} – ${formatTime(segment.occurrence.end, displayLocale.value, props.timeZone)}`
+  const range = rangeText(formatTime(segment.occurrence.start, displayLocale.value, props.timeZone), formatTime(segment.occurrence.end, displayLocale.value, props.timeZone))
   return segment.continuesAfter || segment.continuesBefore ? t('week.grid.crossesMidnight', { range }) : range
 }
 
 function inspect(item: BusySegment): void {
-  const range = `${formatTime(item.start, displayLocale.value, props.timeZone)} – ${formatTime(item.end, displayLocale.value, props.timeZone)}`
+  const range = rangeText(formatTime(item.start, displayLocale.value, props.timeZone), formatTime(item.end, displayLocale.value, props.timeZone))
   emit('inspect', {
     title: item.title,
     date: item.date,

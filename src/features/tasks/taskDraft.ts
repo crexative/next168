@@ -12,6 +12,8 @@ export interface TaskDraft {
   durationMin: number
   categoryId: string
   dueDate: string
+  // "Today" was chosen: the task is due on the planner's date when it is saved, whatever date the form showed.
+  dueToday: boolean
   priority: TaskPriority
 }
 
@@ -47,7 +49,7 @@ export function durationChoices(current: number): number[] {
 }
 
 export function newDraft(categoryId = ANY_FREE_TIME): TaskDraft {
-  return { title: '', durationMin: DEFAULT_DURATION_MIN, categoryId, dueDate: '', priority: DEFAULT_PRIORITY }
+  return { title: '', durationMin: DEFAULT_DURATION_MIN, categoryId, dueDate: '', dueToday: false, priority: DEFAULT_PRIORITY }
 }
 
 export function draftFromTask(task: Task): TaskDraft {
@@ -56,18 +58,21 @@ export function draftFromTask(task: Task): TaskDraft {
     durationMin: task.durationMin,
     categoryId: task.categoryId ?? ANY_FREE_TIME,
     dueDate: task.dueDate ?? '',
+    dueToday: false,
     priority: String(task.priority) as TaskPriority,
   }
 }
 
-// The fields a draft decides; the id, creation time and completion stay with the stored task.
-export function taskFields(draft: TaskDraft): Pick<Task, 'title' | 'durationMin' | 'priority'> & Partial<Pick<Task, 'categoryId' | 'dueDate'>> {
+// The fields a draft decides; the id, creation time and completion stay with the stored task. `today` is the planner's
+// date at the moment of saving: a draft set to "Today" before midnight and saved after it is due the new day.
+export function taskFields(draft: TaskDraft, today: string): Pick<Task, 'title' | 'durationMin' | 'priority'> & Partial<Pick<Task, 'categoryId' | 'dueDate'>> {
+  const dueDate = draft.dueToday ? today : draft.dueDate
   return {
     title: draft.title.trim(),
     durationMin: draft.durationMin,
     priority: Number(draft.priority) as Task['priority'],
     ...(draft.categoryId !== ANY_FREE_TIME ? { categoryId: draft.categoryId } : {}),
-    ...(draft.dueDate ? { dueDate: draft.dueDate } : {}),
+    ...(dueDate ? { dueDate } : {}),
   }
 }
 

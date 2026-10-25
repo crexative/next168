@@ -4,7 +4,7 @@ import { useI18n } from 'vue-i18n'
 import type { Category, Task, TaskPlacement } from '@/core/model'
 import { dueEndOf, fitTasks, minutesBeforeDue } from '@/core/scheduling'
 import { localDateOf } from '@/core/time'
-import { displayLocale, formatClock, formatDate, formatDuration } from '@/ui/format'
+import { displayLocale, formatClock, formatDate, formatDuration, rangeText } from '@/ui/format'
 import { joinInline, unbreakable } from '@/ui/inlineText'
 import { categoryColor } from '@/features/insights/categoryColor'
 import { readLastTaskCategory, rememberTaskCategory } from './lastCategory'
@@ -96,7 +96,7 @@ function dayLabel(date: string): string {
 
 function timeRange(start: string, end: string): string {
   const timeZone = document.value!.settings.timeZone
-  return `${formatClock(start, displayLocale.value, timeZone)}–${formatClock(end, displayLocale.value, timeZone)}`
+  return rangeText(formatClock(start, displayLocale.value, timeZone), formatClock(end, displayLocale.value, timeZone), false)
 }
 
 // Every fragment of a split task, in order; fragments on another day than the group's carry that day's short name.
@@ -128,14 +128,14 @@ async function addTask(): Promise<void> {
   if (!canAdd.value) return
   const { workspaceId: typedIn, categoryId, snapshot } = formBinding
   changedElsewhere.value = false
-  const task: Task = { ...taskFields({ ...form.value, categoryId }), id: crypto.randomUUID(), createdAt: new Date().toISOString() }
+  const task: Task = { ...taskFields({ ...form.value, categoryId }, plannerToday(document.value!.settings.timeZone)), id: crypto.randomUUID(), createdAt: new Date().toISOString() }
   const result = await planner.commit((draft) => {
     if (draft.workspaceId !== typedIn) throw new Error(CHANGED_ELSEWHERE)
     if (categoryId) assertEntry(draft.categories.find((category) => category.id === categoryId), snapshot)
     draft.tasks.push(task)
   })
   if (result.ok) {
-    form.value = { ...form.value, title: '', dueDate: '', categoryId: ANY_FREE_TIME }
+    form.value = { ...form.value, title: '', dueDate: '', dueToday: false, categoryId: ANY_FREE_TIME }
     // Only a category the person picked is worth suggesting again; a task for any free slot leaves it as it was.
     if (categoryId) {
       rememberTaskCategory(categoryId)
