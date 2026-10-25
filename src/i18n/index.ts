@@ -3,7 +3,7 @@ import { createI18n } from 'vue-i18n'
 export const SUPPORTED_LOCALES = ['en', 'es', 'fr', 'pt', 'de'] as const
 export type SupportedLocale = (typeof SUPPORTED_LOCALES)[number]
 
-const LANGUAGE_KEY = 'next168-language'
+export const LANGUAGE_KEY = 'next168-language'
 
 const namespaceFiles = import.meta.glob<{ default: Record<string, unknown> }>('./*/*.json', { eager: true })
 

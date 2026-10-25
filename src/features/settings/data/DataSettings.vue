@@ -9,24 +9,17 @@ import Icon from '@/ui/Icon.vue'
 import ListGroup from '@/ui/ListGroup.vue'
 import Sheet from '@/ui/Sheet.vue'
 import { useUndoToast } from '@/ui/undoToast'
-import { APPEARANCE_KEY, setAppearance } from '@/ui/appearance'
-import { resetSidebar, SIDEBAR_KEY } from '@/app/sidebar'
-import { LAST_TASK_CATEGORY_KEY } from '@/features/tasks/lastCategory'
+import { setAppearance } from '@/ui/appearance'
+import { setHourCycle } from '@/ui/format'
+import { resetSidebar } from '@/app/sidebar'
 import { calendarLifecycle, calendarSourceStore } from './calendarSourceHook'
+import { deviceStorages, removeDeviceData } from './deviceData'
 import { downloadBackup } from './exportBackup'
-import { FIRST_SEEN_KEY, LAST_EXPORT_KEY, SNOOZED_KEY } from './exportReminder'
-import { PERSIST_REQUESTED_KEY } from './storageProtection'
 import {
   freshDocument, MAX_IMPORT_BYTES, matchesConfirmation, previewImport, replaceContent,
   replaceSourceTexts, verifyStored, type ImportPreview,
 } from './dataTransfer'
 
-// Device preferences this app keeps beside the document; "delete all data" removes them in both modes.
-const PREFERENCE_KEYS = [LAST_EXPORT_KEY, FIRST_SEEN_KEY, SNOOZED_KEY, PERSIST_REQUESTED_KEY, LAST_TASK_CATEGORY_KEY, APPEARANCE_KEY, SIDEBAR_KEY]
-// Everything this app keeps outside the document, so "delete all data" leaves nothing of the person behind.
-const LEFTOVER_KEYS = [
-  STORAGE_KEYS.backup, STORAGE_KEYS.legacyV1, STORAGE_KEYS.proposals, 'next168-tutorial-completed', ...PREFERENCE_KEYS,
-]
 
 type Notice = { tone: 'ok' | 'error'; text: string }
 
@@ -129,20 +122,20 @@ async function confirmImport(): Promise<void> {
   busy.value = false
 }
 
-function removePreferences(): void {
-  for (const key of PREFERENCE_KEYS) {
-    try { window.localStorage.removeItem(key) } catch { /* a preference that cannot be removed is harmless */ }
-  }
+// Everything this app keeps on the device outside the document (preferences, reminders, the "plan since" stamp of the
+// deleted workspace, the setup's draft and dismissal), so "delete all data" leaves nothing of the person behind.
+function removeDeviceLeftovers(): void {
+  for (const storage of deviceStorages()) removeDeviceData(storage)
   // The open page follows at once, not only after a reload.
   setAppearance('auto')
+  setHourCycle('auto')
   resetSidebar()
 }
 
-// Companion mode only: the browser repository clears the legacy keys in its own delete-all.
+// Companion mode: the legacy keys go under the commit lock, as the browser repository does in its own delete-all.
 async function removeLeftovers(): Promise<void> {
-  const purge = () => LEFTOVER_KEYS.forEach((key) => window.localStorage.removeItem(key))
-  if (navigator.locks) await navigator.locks.request(STORAGE_KEYS.lockName, { mode: 'exclusive' }, purge)
-  else purge()
+  if (navigator.locks) await navigator.locks.request(STORAGE_KEYS.lockName, { mode: 'exclusive' }, removeDeviceLeftovers)
+  else removeDeviceLeftovers()
 }
 
 async function deleteEverything(): Promise<void> {
@@ -160,15 +153,13 @@ async function deleteEverything(): Promise<void> {
     result = await planner.deleteAll(replace)
     if (result.ok) {
       calendarLifecycle()?.textsChanged()
-      removePreferences()
+      removeDeviceLeftovers()
     }
   } else {
     result = await planner.commit(replace)
     if (result.ok) {
       await replaceSourceTexts(calendarSourceStore(), {})
       await removeLeftovers()
-      setAppearance('auto')
-      resetSidebar()
     }
   }
   if (result.ok) {
