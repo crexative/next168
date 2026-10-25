@@ -23,7 +23,7 @@ async function auditWeek(page: Page, state: string, columns: number, titles?: Se
   await settled(page)
   const marked = await page.evaluate(() => {
     const found = Array.from(document.querySelectorAll<HTMLElement>('.day-column'))
-    found.forEach((column) => column.setAttribute('data-whole-text', ''))
+    found.forEach((column) => { if (!column.hasAttribute('data-whole-text')) column.setAttribute('data-whole-text', '') })
     return found.length
   })
   expect(marked, `${state}: day columns on the page`).toBeGreaterThanOrEqual(columns)

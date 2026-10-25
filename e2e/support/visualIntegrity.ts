@@ -813,9 +813,27 @@ export function auditInPage(options: { focusRings: boolean }): string[] {
   // one line in the smallest size the container allows (the element marked `data-min-text`, never hyphenated), does not
   // fit the room inside the item's `data-text-inset` (top right bottom left, in px). An item that takes no pointer
   // input (a task outline) and a container with no such size (the seven-day overview) are left alone.
+  // A container marked `data-whole-text="shapes"` (the seven-day overview) draws no words by design. One without its
+  // own smallest size is held to the documented one (docs/design/visual-design.md › Week items: 11 px at 100 % text on
+  // a 1.2 line).
   function checkBlankItems(container: HTMLElement, items: Element[]): void {
-    const reference = container.querySelector<HTMLElement>('[data-min-text]')
-    if (!reference) return
+    if (container.getAttribute('data-whole-text') === 'shapes') return
+    let reference = container.querySelector<HTMLElement>('[data-min-text]')
+    let fallback: HTMLElement | null = null
+    if (!reference) {
+      fallback = document.createElement('span')
+      fallback.style.cssText = 'position: absolute; visibility: hidden; font-size: 0.6875rem; font-weight: 500; line-height: 1.2; letter-spacing: 0.01em'
+      container.append(fallback)
+      reference = fallback
+    }
+    try {
+      checkBlankItemsWith(reference, items)
+    } finally {
+      fallback?.remove()
+    }
+  }
+
+  function checkBlankItemsWith(reference: HTMLElement, items: Element[]): void {
     // Measured with a copy of the reference itself, so the word has exactly its styles and context.
     const measure = (build: (probe: HTMLElement) => void) => {
       const probe = reference.cloneNode(false) as HTMLElement

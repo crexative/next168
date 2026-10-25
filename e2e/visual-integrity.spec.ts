@@ -1013,6 +1013,13 @@ test.describe('visual integrity guard: whole text in Week', () => {
     expect(violations.some((violation) => violation.includes('draws no text though "Desayuno…" fits its 138.8×16.0 px room'))).toBe(true)
   })
 
+  test('a container without its own smallest size is held to the documented one, and a shapes-only container is not', async ({ page }) => {
+    await page.setContent(column('<button class="item" title="Desayuno con los niños" style="top: 0; left: 0; width: 150px; height: 16px"></button>'))
+    expect((await audit(page)).some((violation) => violation.includes('draws no text though "Desayuno…" fits'))).toBe(true)
+    await page.locator('[data-whole-text]').evaluate((container) => container.setAttribute('data-whole-text', 'shapes'))
+    expect(await audit(page)).toEqual([])
+  })
+
   test('a box with no words is accepted when even its first word does not fit, and outlines are left alone', async ({ page }) => {
     await page.setContent(column(`${smallest}
       <button class="item" title="Meditación" data-text-inset="0 4 0 7" style="top: 0; left: 0; width: 150px; height: 8px"></button>
