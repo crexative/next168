@@ -10,9 +10,15 @@ import { PERF_NOW, perfCase } from '../src/core/__fixtures__/schedulingPerf'
 
 const CPU_THROTTLE = 4
 const ATTEMPTS = 3
+// Budgets per machine (P0 spec §4 A6/A7: CI gates on operation counts; its wall-time budget is set from the first
+// recorded CI run). The reference machine (Apple M2) keeps the spec's budgets, about 2x the measured prototype. On CI
+// (GitHub's Ubuntu runner, `CI` set) the first run of the P0 code measured 1,656 ms at 200 tasks and 4,095 ms at
+// 1,000 (actions run 40233224227, candidate 8eb4064); the budgets give it about 2x headroom and still fail the
+// pre-P0 code by far: it showed nothing within 120 s at either size.
+const ON_CI = Boolean(process.env.CI)
 const CASES = [
-  { tasks: 200, populatedBudgetMs: 1500 },
-  { tasks: 1000, populatedBudgetMs: 3000 },
+  { tasks: 200, populatedBudgetMs: ON_CI ? 3000 : 1500 },
+  { tasks: 1000, populatedBudgetMs: ON_CI ? 8000 : 3000 },
 ] as const
 const FIRST_TAP_BUDGET_MS = 300
 
