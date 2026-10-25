@@ -7,6 +7,7 @@ import {
 } from '../setupModel'
 import { EXTRA_TOPICS, TOPICS, type TopicId } from '../setupTopics'
 import ChoiceChips from './ChoiceChips.vue'
+import OtherThingField from './OtherThingField.vue'
 import QuickReplies from './QuickReplies.vue'
 import RangeList from './RangeList.vue'
 import SetupScreen from './SetupScreen.vue'
@@ -145,10 +146,7 @@ const sleepLabels = computed(() => ({
       <ChoiceChips :chips="chips" :selected="selection" :group-label="title" @toggle="toggleChip" />
       <button v-if="!otherOpen" class="other t-body" type="button" data-testid="more-other" @click="otherOpen = true">{{ t('onboarding.guided.more.other') }}</button>
       <form v-else class="other-form" @submit.prevent="addOther">
-        <label class="field">
-          <span class="t-body">{{ t('onboarding.guided.more.otherLabel') }}</span>
-          <input v-model="otherName" class="input" type="text" maxlength="60" autocomplete="off" :placeholder="t('onboarding.guided.more.otherPlaceholder')" data-testid="more-other-name" @input="duplicate = false">
-        </label>
+        <OtherThingField v-model="otherName" :label="t('onboarding.guided.more.otherLabel')" :placeholder="t('onboarding.guided.more.otherPlaceholder')" test-id="more-other-name" @enter="addOther" @update:model-value="duplicate = false" />
         <button class="add t-body" type="submit" :disabled="otherName.trim() === ''">{{ t('onboarding.guided.more.add') }}</button>
         <p v-if="duplicate" class="t-body note" role="status">{{ t('onboarding.guided.more.duplicate') }}</p>
       </form>
@@ -167,6 +165,5 @@ const sleepLabels = computed(() => ({
 .add { border-style: solid; background: color-mix(in srgb, var(--tint) 12%, transparent); color: var(--tint-label); border-color: transparent; }
 .add:disabled { opacity: 0.4; }
 .other-form { display: flex; flex-direction: column; gap: var(--space-2); align-items: flex-start; }
-.field { display: flex; flex-direction: column; gap: var(--space-1); width: 100%; }
 .note { margin: 0; color: var(--label-2); }
 </style>

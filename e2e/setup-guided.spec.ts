@@ -2,6 +2,8 @@ import { readFileSync } from 'node:fs'
 import { expect, test, type Page } from '@playwright/test'
 import { seedLegacy } from './fixtures'
 import { storedPlanner, storedRecord } from './support/indexedDb'
+import { collectMotion, installMotionSampler } from './support/motionSampler'
+import { visualIntegrityViolations } from './support/visualIntegrity'
 import {
   bytes, calm, holdCommitLock, live, onScreen, openFromSettings, primary, secondary, setup, skipToSummary, start, storedDoc, tap, writeStoredDocument,
 } from './support/setupGuided'
@@ -653,7 +655,7 @@ test.describe('answering', () => {
     const before = (await stored(page)).revision
     const release = await holdCommitLock(page)
     await primary(page).dblclick()
-    await expect(page.locator('[data-testid=setup]').locator('xpath=ancestor::fieldset')).toHaveAttribute('disabled', '')
+    await expect(page.locator('.setup-lock')).toHaveAttribute('inert')
     await expect(setup(page)).toHaveAttribute('aria-busy', 'true')
     const head = (await live(page).getByTestId('card-work').boundingBox())!
     await page.mouse.click(head.x + head.width / 2, head.y + head.height / 2)
@@ -691,5 +693,240 @@ test.describe('a template week in a daylight-saving week', () => {
     await expect(page.getByTestId('now-left')).toHaveText('Quedan 7 h 30 min')
     await openFromSettings(page)
     await expect(live(page).getByTestId('card-sleep')).toContainText('56 h')
+  })
+})
+
+// ---------- Room for everyone: targets, text size, narrow screens, the keyboard, motion ----------
+
+interface TargetProblem { what: string; problem: string }
+
+// Every visible control in the sheet: at least 48x48, at least 8 px from its neighbours in the same layer, and the
+// control itself is what a tap at its centre reaches.
+async function targetProblems(page: Page): Promise<TargetProblem[]> {
+  return page.evaluate(() => {
+    const panel = document.querySelector('[role=dialog]')!
+    const selector = 'button, input, a[href], [role=button], [tabindex]:not([tabindex="-1"])'
+    const controls = Array.from(panel.querySelectorAll<HTMLElement>(selector)).filter((element) => {
+      const rect = element.getBoundingClientRect()
+      return rect.width > 0 && rect.height > 0 && !element.closest('[aria-hidden=true]') && getComputedStyle(element).visibility !== 'hidden'
+    })
+    const name = (element: HTMLElement) => `${element.tagName.toLowerCase()} "${(element.getAttribute('aria-label') ?? element.textContent ?? '').trim().slice(0, 40)}"`
+    const problems: { what: string; problem: string }[] = []
+    const layer = (element: HTMLElement) => (element.closest('footer') ? 'footer' : element.closest('.sheet-body') ? 'body' : 'header')
+    const scroller = panel.querySelector<HTMLElement>('.sheet-body')!
+    const boxes = controls.map((element) => {
+      element.scrollIntoView({ block: 'center', inline: 'nearest' })
+      const rect = element.getBoundingClientRect()
+      const hit = document.elementFromPoint(rect.left + rect.width / 2, rect.top + rect.height / 2)
+      if (rect.width < 47.5 || rect.height < 47.5) problems.push({ what: name(element), problem: `${Math.round(rect.width)}x${Math.round(rect.height)}` })
+      if (!hit || !(element === hit || element.contains(hit))) problems.push({ what: name(element), problem: `a tap at its centre reaches ${hit ? (hit as HTMLElement).outerHTML.slice(0, 60) : 'nothing'}` })
+      const offset = layer(element) === 'body' ? scroller.scrollTop : 0
+      return { element, layer: layer(element), left: rect.left, right: rect.right, top: rect.top + offset, bottom: rect.bottom + offset }
+    })
+    for (let a = 0; a < boxes.length; a++) {
+      for (let b = a + 1; b < boxes.length; b++) {
+        const one = boxes[a]!
+        const other = boxes[b]!
+        if (one.layer !== other.layer || one.element.contains(other.element) || other.element.contains(one.element)) continue
+        const gap = Math.max(one.left - other.right, other.left - one.right, one.top - other.bottom, other.top - one.bottom)
+        if (gap < 7.5) problems.push({ what: `${name(one.element)} and ${name(other.element)}`, problem: `${Math.round(gap)} px apart` })
+      }
+    }
+    scroller.scrollTop = 0
+    return problems
+  })
+}
+
+// Every screen of a pass with work, commute, exercise and one extra, and on range screens each picker opened in turn.
+async function walk(page: Page, visit: (label: string) => Promise<void>, options: { custom?: string } = {}): Promise<void> {
+  const pickers = async (label: string) => {
+    const range = live(page).locator('[data-range]').first()
+    for (const field of ['days', 'start', 'end'] as const) {
+      const row = range.locator(`[data-field=${field}]`)
+      if (await row.count() === 0) continue
+      await row.click()
+      if (field === 'days') await live(page).locator('[data-preset=pick]').click()
+      await visit(`${label}, ${field} picker`)
+      if (field === 'start') {
+        await live(page).getByTestId('other-time').click()
+        await visit(`${label}, time editor`)
+        await page.keyboard.press('Escape')
+      }
+      await page.keyboard.press('Escape')
+    }
+  }
+  await onScreen(page, 'sleep')
+  await visit('sleep')
+  await pickers('sleep')
+  const steps: [string, string, boolean][] = [['[data-testid=setup-primary]', 'workStudy', false], ['[data-value=both]', 'work', true], ['[data-testid=setup-primary]', 'study', true],
+    ['[data-testid=setup-primary]', 'commute', false], ['[data-value=yes]', 'commuteRanges', true], ['[data-testid=setup-primary]', 'exercise', false],
+    ['[data-value=yes]', 'exerciseRanges', true], ['[data-testid=setup-primary]', 'more', false]]
+  for (const [selector, next, hasPickers] of steps) {
+    await live(page).locator(selector).click()
+    await onScreen(page, next)
+    await visit(next)
+    if (hasPickers) await pickers(next)
+  }
+  await live(page).locator('[data-chip=family]').click()
+  if (options.custom) {
+    await live(page).getByTestId('more-other').click()
+    await live(page).getByTestId('more-other-name').fill(options.custom)
+    await visit('more, a name being typed')
+    await page.keyboard.press('Enter')
+  }
+  await visit('more, chosen')
+  await live(page).locator('[data-testid=setup-primary]').click()
+  await onScreen(page, 'extra:family')
+  await visit('extra:family')
+  if (options.custom) {
+    await live(page).locator('[data-testid=setup-primary]').click()
+    await expect(setup(page)).toHaveAttribute('data-screen', /^extra:custom/)
+    await visit('extra: the person\'s own')
+  }
+  await live(page).locator('[data-testid=setup-primary]').click()
+  await onScreen(page, 'summary')
+  await visit('summary')
+  await live(page).getByTestId('card-work').click()
+  await visit('summary, a card open')
+  await live(page).locator('[data-category=work] [data-field=start]').first().click()
+  await visit('summary, a picker open')
+}
+
+for (const size of [{ width: 390, height: 844 }, { width: 320, height: 640 }]) {
+  test(`A27: every control is at least 48x48, 8 px from its neighbours and reachable at its centre (${size.width}x${size.height})`, async ({ page }) => {
+    await start(page, { size })
+    await page.goto('./')
+    const problems: string[] = []
+    await walk(page, async (label) => {
+      await calm(page)
+      for (const problem of await targetProblems(page)) problems.push(`${label}: ${problem.what} ${problem.problem}`)
+    })
+    expect([...new Set(problems)]).toEqual([])
+  })
+}
+
+for (const theme of ['light', 'dark'] as const) {
+  test(`A28: 320x640 at 200 % text in German (${theme}): nothing overflows sideways, the main button stays in view, nothing is clipped`, async ({ page }) => {
+    await start(page, { size: { width: 320, height: 640 }, theme, language: 'de' })
+    await page.addInitScript(() => {
+      document.addEventListener('DOMContentLoaded', () => { document.documentElement.style.fontSize = '200%' })
+    })
+    await page.goto('./')
+    const problems: string[] = []
+    await walk(page, async (label) => {
+      await calm(page)
+      const layout = await page.evaluate(() => {
+        const body = document.querySelector<HTMLElement>('[role=dialog] .sheet-body')!
+        const primary = document.querySelector<HTMLElement>('[data-testid=setup] section.screen:not([aria-hidden=true]) [data-primary]')
+        const rect = primary?.getBoundingClientRect()
+        return {
+          sheet: body.scrollWidth - body.clientWidth,
+          page: document.documentElement.scrollWidth - document.documentElement.clientWidth,
+          primary: rect ? rect.top >= 0 && rect.bottom <= window.innerHeight + 0.5 && rect.left >= 0 && rect.right <= window.innerWidth + 0.5 : true,
+        }
+      })
+      if (layout.sheet > 0) problems.push(`${label}: the sheet scrolls sideways by ${layout.sheet} px`)
+      if (layout.page > 0) problems.push(`${label}: the page scrolls sideways by ${layout.page} px`)
+      if (!layout.primary) problems.push(`${label}: the main button is out of view`)
+      for (const violation of await visualIntegrityViolations(page, { focusRings: false })) problems.push(`${label}: ${violation}`)
+    }, { custom: 'Schwimmkurs mit den Kindern am Nachmittag im Hallenbad der Stad' })
+    expect([...new Set(problems)]).toEqual([])
+  })
+}
+
+test('A29: with the on-screen keyboard up, the name field and the main button are both in view', async ({ page }) => {
+  await start(page)
+  await page.goto('./')
+  await tap(page, 'Saltar')
+  await tap(page, 'Saltar')
+  await tap(page, 'Saltar')
+  await onScreen(page, 'more')
+  await live(page).getByTestId('more-other').click()
+  const field = live(page).getByTestId('more-other-name')
+  await field.focus()
+  // A keyboard proxy: the visible viewport shrinks to 360 px.
+  await page.setViewportSize({ width: 390, height: 360 })
+  await page.waitForTimeout(300)
+  await calm(page)
+  const inView = async (locator: ReturnType<typeof live>) => {
+    const box = (await locator.boundingBox())!
+    const height = await page.evaluate(() => window.visualViewport?.height ?? window.innerHeight)
+    return box.y >= 0 && box.y + box.height <= height + 0.5
+  }
+  expect(await inView(field)).toBe(true)
+  expect(await inView(primary(page))).toBe(true)
+})
+
+test('A13: valid legacy content (31 categories, 11 ranges in one, two equal names) saves unchanged, and one edit changes only its block', async ({ page }) => {
+  const categories = Array.from({ length: 31 }, (_, index) => ({ id: `c-${index}`, name: index < 2 ? 'Igual' : `Cosa ${index}`, colorKey: 'blue', goal: { type: 'none', hoursPerWeek: 0 } }))
+  const many = Array.from({ length: 11 }, (_, index) => ({ id: `b-many-${index}`, categoryId: 'c-2', title: 'Cosa 2', days: [index % 7], start: 60 * (index % 3), end: 60 * (index % 3) + 30 }))
+  const one = categories.filter((_, index) => index !== 2).map((category, index) => ({ id: `b-${category.id}`, categoryId: category.id, title: category.name, days: [index % 7], start: 300 + 30 * Math.floor(index / 7), end: 315 + 30 * Math.floor(index / 7) }))
+  const document = storedDoc({ categories, blocks: [...many, ...one] })
+  await start(page, { document })
+  await page.goto('./')
+  await openFromSettings(page)
+  await onScreen(page, 'summary')
+  const before = await bytes(page)
+  await primary(page).click()
+  await expect(setup(page)).toHaveCount(0)
+  expect(await bytes(page)).toEqual(before)
+
+  await openFromSettings(page)
+  const card = live(page).locator('[data-category]').filter({ hasText: 'Cosa 30' })
+  await card.getByRole('button', { expanded: false }).first().click()
+  await card.locator('[data-field=end]').first().click()
+  const option = card.locator('.times [data-minute]').nth(1)
+  const minute = Number(await option.getAttribute('data-minute'))
+  await option.click()
+  await primary(page).click()
+  await expect(setup(page)).toHaveCount(0)
+  const original = JSON.parse(before.document!) as Doc
+  const after = await stored(page)
+  expect(after.revision).toBe(original.revision + 1)
+  expect(after.categories).toEqual(original.categories)
+  expect(after.blocks).toEqual(original.blocks.map((block) => (block.id === 'b-c-30' ? { ...block, end: minute } : block)))
+})
+
+test.describe('reduced motion', () => {
+  async function exercise(page: Page): Promise<void> {
+    await page.goto('./')
+    await onScreen(page, 'sleep')
+    await calm(page)
+    await installMotionSampler(page, '[data-testid=setup]')
+    const press = async (locator: ReturnType<typeof live>) => {
+      const box = (await locator.boundingBox())!
+      await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2)
+      await page.mouse.down()
+      await page.waitForTimeout(150)
+      await page.mouse.up()
+    }
+    await press(primary(page))
+    await onScreen(page, 'workStudy')
+    await press(live(page).locator('[data-value=work]'))
+    await onScreen(page, 'work')
+    await live(page).locator('[data-field=days]').click()
+    await page.waitForTimeout(200)
+    await live(page).getByTestId('range-add').click()
+    await live(page).getByTestId('range-remove').last().click()
+    await page.waitForTimeout(200)
+    await live(page).getByTestId('setup-back').click()
+    await onScreen(page, 'workStudy')
+    await page.waitForTimeout(400)
+  }
+
+  test('A35: with reduced motion nothing in the setup moves by transform', async ({ page }) => {
+    await page.emulateMedia({ reducedMotion: 'reduce' })
+    await start(page)
+    await page.emulateMedia({ reducedMotion: 'reduce' })
+    await exercise(page)
+    expect(await collectMotion(page)).toEqual({ transforms: [], animations: [] })
+  })
+
+  test('A35: without it, the same sampler sees the screens slide (the sampler works)', async ({ page }) => {
+    await start(page)
+    await exercise(page)
+    const motion = await collectMotion(page)
+    expect(motion.transforms.length).toBeGreaterThan(0)
+    expect(motion.animations.length).toBeGreaterThan(0)
   })
 })

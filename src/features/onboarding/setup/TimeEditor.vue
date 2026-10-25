@@ -54,10 +54,10 @@ onMounted(() => heading.value?.focus({ preventScroll: true }))
 </template>
 
 <style scoped>
-.editor { display: flex; flex-direction: column; gap: var(--space-2); padding: var(--space-3); border-radius: var(--radius-control); background: var(--surface-2); }
+.editor { display: flex; flex-direction: column; gap: var(--space-2); min-width: 0; padding: var(--space-3); border-radius: var(--radius-control); background: var(--surface-2); }
 .value { margin: 0; font-variant-numeric: tabular-nums; outline: none; }
-.row { display: flex; align-items: center; gap: var(--space-2); }
-.name { flex: 1; min-width: 0; }
+.row { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2); }
+.name { flex: 1 0 auto; }
 .step, .period {
   display: inline-flex; align-items: center; justify-content: center; min-width: var(--tap-target); min-height: var(--tap-target);
   border: 2px solid var(--field-border); border-radius: var(--radius-control); background: var(--surface); color: var(--label);

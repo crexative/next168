@@ -308,7 +308,7 @@ function hideLeaving(element: Element): void {
     :open="open" :title="sheetTitle" full-height large-targets no-dismiss :close-label="t('onboarding.guided.close')" :locked="locked" :dirty="dirty"
     @update:open="onToggle"
   >
-    <fieldset class="setup-lock" :disabled="locked">
+    <div class="setup-lock" :inert="locked || undefined">
       <div v-if="phase === 'conflict'" class="setup conflict" data-testid="setup" data-state="conflict">
         <p class="t-title-2" role="alert" data-testid="changed-elsewhere">{{ t('onboarding.summary.changedElsewhere') }}</p>
         <Button data-primary data-testid="understood" @click="understood">{{ t('onboarding.summary.understood') }}</Button>
@@ -333,13 +333,16 @@ function hideLeaving(element: Element): void {
           </SetupQuestion>
         </Transition>
       </div>
-    </fieldset>
+    </div>
   </Sheet>
 </template>
 
 <style scoped>
-.setup-lock { min-width: 0; margin: 0; padding: 0; border: 0; }
-.setup { position: relative; display: flex; flex-direction: column; gap: var(--space-3); min-height: 100%; }
+/* The footer sits at the bottom of the panel on every screen, so the main button never jumps between questions.
+   While a save is pending the whole flow is inert: nothing in it can be pressed, typed into or focused. */
+.setup-lock { display: flex; flex-direction: column; min-width: 0; min-height: 100%; }
+.setup { position: relative; display: flex; flex: 1; flex-direction: column; gap: var(--space-3); }
+.setup > :deep(.screen) { flex: 1; }
 .conflict { align-items: flex-start; }
 .note { margin: 0; color: var(--label-2); }
 .resumed { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2); }

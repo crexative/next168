@@ -4,6 +4,7 @@ import Button from '@/ui/Button.vue'
 import Icon from '@/ui/Icon.vue'
 import { formatWholeHours } from '@/ui/format'
 import { categoryMinutes, renameDraft, type CategoryDraft, type Issue, type SetupState } from '../setupModel'
+import OtherThingField from './OtherThingField.vue'
 import RangeList from './RangeList.vue'
 import { useSetupFormat } from './useSetupFormat'
 
@@ -16,8 +17,8 @@ const minutes = computed(() => categoryMinutes(props.state, props.category))
 const amount = computed(() => (minutes.value >= 600 ? formatWholeHours(Math.round(minutes.value / 60)) : duration(minutes.value)))
 const nameIssue = computed(() => props.issues.find((issue) => issue.categoryKey === props.category.key && (issue.code === 'nameRequired' || issue.code === 'nameDuplicate')))
 
-function onName(event: Event): void {
-  renameDraft(props.category, (event.target as HTMLInputElement).value)
+function onName(name: string): void {
+  renameDraft(props.category, name)
   emit('edited')
 }
 </script>
@@ -34,10 +35,7 @@ function onName(event: Event): void {
       <Icon name="chevron-right" :size="18" />
     </button>
     <div v-if="expanded" class="body">
-      <label class="field">
-        <span class="t-body">{{ t('onboarding.summary.name') }}</span>
-        <input :value="category.name" class="input" type="text" maxlength="60" autocomplete="off" :aria-invalid="nameIssue ? true : undefined" data-testid="card-name" @input="onName">
-      </label>
+      <OtherThingField :model-value="category.name" :label="t('onboarding.summary.name')" :invalid="!!nameIssue" test-id="card-name" @update:model-value="onName" />
       <p v-if="nameIssue" class="error t-body" role="alert">{{ t(`onboarding.guided.errors.${nameIssue.code}`) }}</p>
       <RangeList :state="state" :category="category" :labels="{ there: t('onboarding.guided.commuteRanges.there'), back: t('onboarding.guided.commuteRanges.back'), bed: t('onboarding.guided.sleep.bed'), wake: t('onboarding.guided.sleep.wake'), weeknights: t('onboarding.guided.sleep.weeknights'), weekend: t('onboarding.guided.sleep.weekend') }" :sleep="category.topic === 'sleep'" />
       <p v-if="hasTasks" class="note t-body" data-testid="has-tasks">{{ t('onboarding.summary.hasTasks', { place }) }}</p>
@@ -53,13 +51,14 @@ function onName(event: Event): void {
 .head:focus-visible { outline-offset: -2px; }
 .dot { flex: none; width: 14px; height: 14px; border-radius: 50%; }
 .text { display: flex; flex: 1; flex-direction: column; gap: var(--space-1); min-width: 0; }
-.top { display: flex; align-items: baseline; justify-content: space-between; gap: var(--space-3); }
+.top { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; column-gap: var(--space-3); }
 .name { font-weight: 600; min-width: 0; overflow-wrap: anywhere; }
 .amount { flex: none; font-variant-numeric: tabular-nums; }
 .line { color: var(--label-2); overflow-wrap: anywhere; font-variant-numeric: tabular-nums; }
-.body { display: flex; flex-direction: column; gap: var(--space-3); align-items: stretch; padding: 0 var(--space-4) var(--space-4); }
+.body { display: flex; flex-direction: column; gap: var(--space-3); align-items: stretch; padding: 0 var(--space-3) var(--space-3); }
+/* Inside a card the ranges sit flat on the card's own surface: no second inset eating the width. */
+.body :deep(.range) { padding-inline: 0; }
 .body > :deep(.ui-button) { align-self: flex-start; }
-.field { display: flex; flex-direction: column; gap: var(--space-1); }
 .error { margin: 0; color: var(--danger-label); }
 .note { margin: 0; color: var(--label-2); }
 </style>

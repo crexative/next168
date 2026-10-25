@@ -180,7 +180,7 @@ describe('while a save is pending (R3.2, A24)', () => {
     live('[data-testid=setup-primary]')!.click()
     live('[data-testid=setup-primary]')!.click()
     await settle()
-    expect(setup()!.closest('fieldset')!.disabled).toBe(true)
+    expect(setup()!.closest('.setup-lock')!.hasAttribute('inert')).toBe(true)
     expect(setup()!.getAttribute('aria-busy')).toBe('true')
     const close = window.document.body.querySelector<HTMLButtonElement>('[role=dialog] .sheet-close')!
     expect(close.disabled).toBe(true)

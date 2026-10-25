@@ -47,9 +47,12 @@ onMounted(() => heading.value?.focus({ preventScroll: true }))
 </template>
 
 <style scoped>
-.screen { display: flex; flex-direction: column; gap: var(--space-3); min-height: 100%; }
-.top { display: flex; align-items: center; justify-content: space-between; gap: var(--space-2); min-height: var(--tap-target); }
-.back { min-width: var(--tap-target); }
+.screen { display: flex; flex-direction: column; gap: var(--space-3); min-height: 100%; hyphens: auto; }
+/* Long words in text may break with a hyphen; a button's words stay whole. */
+.screen :deep(button) { hyphens: manual; }
+.top { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--space-2); min-height: var(--tap-target); }
+.back { flex: none; min-width: var(--tap-target); }
+.progress { margin-inline-start: auto; }
 .progress { display: flex; align-items: center; gap: var(--space-2); margin: 0; color: var(--label-2); }
 .dots { display: inline-flex; gap: 4px; }
 .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--label-3); }

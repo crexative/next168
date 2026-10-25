@@ -73,22 +73,19 @@ function onEscape(event: KeyboardEvent): void {
 
     <button v-if="!hideDays" :ref="(element) => { rows.days = element as HTMLElement }" class="row t-body" type="button" data-field="days" :aria-expanded="open === 'days'" @click="emit('toggle', open === 'days' ? null : 'days')">
       <span class="label">{{ t('onboarding.guided.range.days') }}</span>
-      <span class="value">{{ rangeDays(category, range) }}</span>
-      <Icon name="chevron-right" :size="18" />
+      <span class="end"><span class="value">{{ rangeDays(category, range) }}</span><Icon name="chevron-right" :size="18" /></span>
     </button>
     <DayPicker v-if="open === 'days'" :days="range.days" @change="emit('change', { days: $event })" @done="close('days')" />
 
     <button :ref="(element) => { rows.start = element as HTMLElement }" class="row t-body" type="button" data-field="start" :aria-expanded="open === 'start'" @click="emit('toggle', open === 'start' ? null : 'start')">
       <span class="label">{{ startLabel ?? t('onboarding.guided.range.start') }}</span>
-      <span class="value">{{ time(range.start) }}</span>
-      <Icon name="chevron-right" :size="18" />
+      <span class="end"><span class="value">{{ time(range.start) }}</span><Icon name="chevron-right" :size="18" /></span>
     </button>
     <TimeChips v-if="open === 'start'" field="start" :value="range.start" :start="range.start" :lengths="lengths" @pick="pick('start', $event)" />
 
     <button :ref="(element) => { rows.end = element as HTMLElement }" class="row t-body" type="button" data-field="end" :aria-expanded="open === 'end'" @click="emit('toggle', open === 'end' ? null : 'end')">
       <span class="label">{{ endLabel ?? t('onboarding.guided.range.end') }}</span>
-      <span class="value">{{ nextDay ? `${time(range.end)} ${t('onboarding.guided.range.nextDay')}` : time(range.end) }}</span>
-      <Icon name="chevron-right" :size="18" />
+      <span class="end"><span class="value">{{ nextDay ? `${time(range.end)} ${t('onboarding.guided.range.nextDay')}` : time(range.end) }}</span><Icon name="chevron-right" :size="18" /></span>
     </button>
     <TimeChips v-if="open === 'end'" field="end" :value="range.end" :start="range.start" :lengths="lengths" @pick="pick('end', $event)" />
 
@@ -101,11 +98,13 @@ function onEscape(event: KeyboardEvent): void {
 .range { display: flex; flex-direction: column; gap: var(--space-2); padding: var(--space-3); border-radius: var(--radius-card); background: var(--surface-2); }
 .title { margin: 0; font-weight: 600; }
 .row {
-  display: flex; align-items: center; gap: var(--space-3); width: 100%; min-height: var(--tap-target); padding: var(--space-1) var(--space-3);
+  display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; column-gap: var(--space-3); width: 100%; min-height: var(--tap-target); padding: var(--space-1) var(--space-3);
   border: 0; border-radius: var(--radius-control); background: var(--surface); color: var(--label); text-align: start; touch-action: manipulation;
 }
-.label { flex: none; color: var(--label-2); }
-.value { flex: 1; min-width: 0; text-align: end; font-weight: 600; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+.label { color: var(--label-2); }
+/* Label and value share a line while they fit; otherwise the value takes the next line, at the end. */
+.end { display: inline-flex; align-items: center; gap: var(--space-1); min-width: 0; max-width: 100%; margin-inline-start: auto; }
+.value { min-width: 0; text-align: end; font-weight: 600; font-variant-numeric: tabular-nums; overflow-wrap: break-word; }
 .row[aria-expanded='true'] { box-shadow: inset 0 0 0 2px var(--tint); }
 .message { margin: 0; min-height: 0; color: var(--danger-label); overflow-wrap: anywhere; }
 .message:empty { display: none; }
