@@ -7,6 +7,7 @@ import { createState, ensureCategory } from '@/features/onboarding/setupModel'
 import { documentWith, env } from '@/features/onboarding/setupFixtures'
 import RangeCard from '@/features/onboarding/setup/RangeCard.vue'
 import { RulesProvider } from '@/features/assistant/RulesProvider'
+import type { AssistantProvider } from '@/features/assistant/provider'
 import { contextFor, plannerWithBlocks } from '@/features/assistant/testSupport'
 import { configurePlannerStore } from '@/stores/plannerStore'
 import { createTestRepositories, fixedNow, newTestId } from '@/repositories/testSupport'
@@ -52,7 +53,8 @@ describe.each([...SUPPORTED_LOCALES])('copy in %s', (locale) => {
     const document = plannerWithBlocks()
     document.tasks.push({ id: 't1', title: 'Write report', categoryId: 'work', durationMin: 30, priority: 1, createdAt: '2026-10-20T08:00:00Z', dueDate: '2026-10-23' })
     const question = { en: 'Which tasks do not fit?', es: '¿Qué tareas no caben?', fr: 'Quelles tâches ne tiennent pas ?', pt: 'Quais tarefas não cabem?', de: 'Welche Aufgaben passen nicht?' }[locale]!
-    const { answer } = await new RulesProvider().ask(question, contextFor(document, locale), new AbortController().signal)
+    const rules: AssistantProvider = new RulesProvider()
+    const { answer } = await rules.ask(question, contextFor(document, locale), new AbortController().signal)
     expect(answer).toContain('Write report')
     expect(answer).not.toMatch(/(^|\s)0\s?min/u)
   })

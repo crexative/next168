@@ -89,6 +89,22 @@ describe('companion HTTP and official MCP SDK client', () => {
     expect(duplicate.isError).toBe(true)
     expect(JSON.stringify(duplicate.content)).toContain('proposal.duplicateCategory:Sleep')
   })
+  // verify4 defect 2: an "any free slot" task had to get a category, so the AI invented an empty one.
+  it('propose_changes says a task may go without a category, and such a task is added with none', async () => {
+    const sdk = await client()
+    const tool = (await sdk.listTools()).tools.find(item => item.name === 'propose_changes')!
+    expect(tool.description).toContain('A task (add_task) may leave out categoryId')
+    expect(JSON.stringify(tool.inputSchema)).toContain('Leave it out for a task that fits any free time')
+    const { document } = await payload(await api('/api/document'))
+    const proposed = await sdk.callTool({ name: 'propose_changes', arguments: { contractVersion: '1.0', workspaceId: document.workspaceId, baseRevision: document.revision, summary: 'Passport', ops: [{ op: 'add_task', task: { title: 'Renew passport', durationMin: 60, priority: 2 } }] } })
+    expect(proposed.isError).not.toBe(true)
+    const proposal = (proposed.structuredContent as Record<string, unknown>).proposal as { id: string; contentHash: string }
+    expect(await (await api(`/api/proposals/${proposal.id}/apply`, 'POST', { contentHash: proposal.contentHash, baseRevision: document.revision })).json()).toMatchObject({ kind: 'applied' })
+    const after = (await payload(await api('/api/document'))).document
+    expect(after.tasks).toEqual([expect.objectContaining({ title: 'Renew passport' })])
+    expect(after.tasks[0]).not.toHaveProperty('categoryId')
+    expect(after.categories).toEqual([])
+  })
   it('does not give document, calendar or approval authority to MCP tokens or anonymous requests', async () => {
     for (const path of ['/api/document', '/api/proposals/any/apply', '/api/proposals/any/reject', '/api/calendars/any']) {
       for (const auth of ['', `Bearer ${token}`]) {

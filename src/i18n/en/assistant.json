@@ -135,7 +135,7 @@
       "noteMinutes": "start and end are minutes after midnight (09:00 = 540, 18:30 = 1110); an end smaller than the start means the block crosses midnight.",
       "noteIds": "id and categoryId must be ids from MY PLAN (id=…) or the ref of a category added earlier in the same proposal. New tasks and events get their ids when I approve them.",
       "exampleHeader": "Example of a valid block (change the content, keep the shape):",
-      "noteCategories": "If a category I need is missing, create it with add_category and a short ref (for example \"new-sleep\") and use that ref as categoryId in the later changes of the same proposal. Never create a category that MY PLAN already has: use its id.",
+      "noteCategories": "If a category I need is missing, create it with add_category and a short ref (for example \"new-sleep\") and use that ref as categoryId in the later changes of the same proposal. Never create a category that MY PLAN already has: use its id. A task that fits any free time goes without categoryId: never create a category only to hold a task.",
       "noteGroup": "Use one add_block for all the days that share a title and time (\"days\":[1,2,3,4,5]). At most {max} changes per proposal."
     }
   }

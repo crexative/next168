@@ -130,13 +130,16 @@ const blockFields = z.object({
 // app gives the category its real id and an unused palette colour when the person approves.
 export const newCategorySchema = z.object({ name: text(60), goal: goalSchema.optional() })
 const categoryRef = id.describe('Temporary id of the new category; later ops in this proposal use it as categoryId')
+// A task without a category fits any free time: an assistant leaves it out rather than inventing a category for it.
+export const ANY_FREE_TIME_TASK = 'Optional. Leave it out for a task that fits any free time; never create a category only to hold a task'
+const newTaskFields = taskSchema.omit({ id: true, createdAt: true, doneAt: true }).extend({ categoryId: id.optional().describe(ANY_FREE_TIME_TASK) })
 
 export const proposalOpSchema = z.discriminatedUnion('op', [
   z.object({ op: z.literal('add_category'), ref: categoryRef, category: newCategorySchema }),
   z.object({ op: z.literal('add_block'), block: blockFields }),
   z.object({ op: z.literal('update_block'), id, patch: blockFields.partial() }),
   z.object({ op: z.literal('delete_block'), id }),
-  z.object({ op: z.literal('add_task'), task: taskSchema.omit({ id: true, createdAt: true, doneAt: true }) }),
+  z.object({ op: z.literal('add_task'), task: newTaskFields }),
   z.object({ op: z.literal('update_task'), id, patch: taskSchema.omit({ id: true, createdAt: true, doneAt: true }).partial() }),
   z.object({ op: z.literal('complete_task'), id }),
   z.object({ op: z.literal('add_event'), event: z.object({

@@ -286,12 +286,13 @@ export function proposalFromIntent(intent: ChangeIntent, { request, document, lo
 
     case 'add_task': {
       if (!intent.title) return message('needsDetails')
-      const category = findCategory(document.categories, intent.categoryName)
-      if (!category) return message('unknownCategory', { category: intent.categoryName ?? intent.title, categories: document.categories.map((entry) => entry.name).join(', ') })
+      // Without a category named, the task fits any free time; a category that is named has to exist.
+      const category = intent.categoryName ? findCategory(document.categories, intent.categoryName) : undefined
+      if (intent.categoryName && !category) return message('unknownCategory', { category: intent.categoryName, categories: document.categories.map((entry) => entry.name).join(', ') })
       const minutes = Math.min(MAX_TASK_MINUTES, Math.max(MIN_TASK_MINUTES, blockMinutes(intent) ?? DEFAULT_TASK_MINUTES))
       const dueDate = intent.dueDate && /^\d{4}-\d{2}-\d{2}$/.test(intent.dueDate) && request.includes(intent.dueDate) ? intent.dueDate : undefined
       return proposal(
-        [{ op: 'add_task', task: { title: intent.title.slice(0, 120), categoryId: category.id, durationMin: minutes, priority: 2, ...(dueDate ? { dueDate } : {}) } }],
+        [{ op: 'add_task', task: { title: intent.title.slice(0, 120), ...(category ? { categoryId: category.id } : {}), durationMin: minutes, priority: 2, ...(dueDate ? { dueDate } : {}) } }],
         t('assistant.intent.summary.add_task', { title: intent.title, minutes }),
       )
     }

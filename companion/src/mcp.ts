@@ -17,7 +17,7 @@ export const toolDefinitions = [
   { name: 'list_tasks', description: 'Read tasks.', input: empty, output: z.object({ tasks: z.array(taskSchema) }) },
   { name: 'list_events', description: 'Read planner events intersecting an optional ISO instant range. Imported and subscribed calendars are expanded in the Next168 app, not here: externalEvents is always empty, and the warning external-calendar-expansion-unavailable is set when the workspace has calendar sources.', input: rangeInput, output: z.object({ events: z.array(plannerEventSchema), externalEvents: z.array(z.unknown()), warning: z.string().optional() }) },
   { name: 'get_stats', description: 'Read core-computed weekly statistics.', input: empty, output: objectOutput },
-  { name: 'propose_changes', description: 'Create an immutable pending proposal for the workspace and current revision. Only the user can approve in Next168. Never claim this applies a change.', input: proposalInputSchema, output: z.object({ proposal: changeProposalSchema }) },
+  { name: 'propose_changes', description: 'Create an immutable pending proposal for the workspace and current revision. Only the user can approve in Next168. Never claim this applies a change. A task (add_task) may leave out categoryId: it then fits any free time; never create a category only to hold a task.', input: proposalInputSchema, output: z.object({ proposal: changeProposalSchema }) },
   { name: 'get_proposal', description: 'Read a proposal and its review status by id.', input: idInput, output: z.object({ proposal: changeProposalSchema.nullable() }) },
 ] as const
 

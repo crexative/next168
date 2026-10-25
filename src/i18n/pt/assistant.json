@@ -135,7 +135,7 @@
       "noteMinutes": "start e end são minutos depois da meia-noite (09:00 = 540, 18:30 = 1110); um end menor que start significa que o bloco passa da meia-noite.",
       "noteIds": "id e categoryId devem ser ids de MEU PLANO (id=…) ou o ref de uma categoria criada antes na mesma proposta. Tarefas e eventos novos recebem o id quando eu os aprovo.",
       "exampleHeader": "Exemplo de um bloco válido (mude o conteúdo, mantenha a forma):",
-      "noteCategories": "Se faltar uma categoria de que eu preciso, crie-a com add_category e um ref curto (por exemplo \"new-sleep\") e use esse ref como categoryId nas mudanças seguintes da mesma proposta. Nunca crie uma categoria que MEU PLANO já tem: use o id dela.",
+      "noteCategories": "Se faltar uma categoria de que eu preciso, crie-a com add_category e um ref curto (por exemplo \"new-sleep\") e use esse ref como categoryId nas mudanças seguintes da mesma proposta. Nunca crie uma categoria que MEU PLANO já tem: use o id dela. Uma tarefa que cabe em qualquer tempo livre vai sem categoryId: nunca crie uma categoria só para uma tarefa.",
       "noteGroup": "Use um único add_block para todos os dias com o mesmo título e horário (\"days\":[1,2,3,4,5]). No máximo {max} mudanças por proposta."
     }
   }

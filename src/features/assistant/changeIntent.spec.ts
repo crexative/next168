@@ -251,8 +251,16 @@ describe('add_task', () => {
     ])
   })
 
-  it('needs a known category', () => {
-    expect(message({ intent: 'add_task', title: 'Pay rent' })).toContain('Your categories are: Work, Study')
+  it('needs a known category when it names one', () => {
+    expect(message({ intent: 'add_task', title: 'Pay rent', categoryName: 'Chores' })).toContain('Your categories are: Work, Study')
+  })
+
+  // verify4 defect 2: a task for "any free slot" had to get a category, so it was invented and unschedulable.
+  it('without a category named, adds a task that fits any free time', () => {
+    expect(ops({ intent: 'add_task', title: 'Pay rent', durationMinutes: 30 })).toEqual([
+      { op: 'add_task', task: { title: 'Pay rent', durationMin: 30, priority: 2 } },
+    ])
+    expect(ops({ intent: 'add_task', title: 'Pay rent', categoryName: '', durationMinutes: 30 })[0]).not.toHaveProperty('task.categoryId')
   })
 })
 

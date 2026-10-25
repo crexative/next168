@@ -135,7 +135,7 @@
       "noteMinutes": "start et end sont des minutes après minuit (09:00 = 540, 18:30 = 1110) ; un end inférieur à start signifie que le bloc passe minuit.",
       "noteIds": "id et categoryId doivent être des ids de MON PLAN (id=…) ou le ref d’une catégorie créée plus tôt dans la même proposition. Les nouvelles tâches et les nouveaux événements reçoivent leur id quand je les approuve.",
       "exampleHeader": "Exemple de bloc valide (change le contenu, garde la forme) :",
-      "noteCategories": "S’il manque une catégorie dont j’ai besoin, crée-la avec add_category et un ref court (par exemple \"new-sleep\"), puis utilise ce ref comme categoryId dans les changements suivants de la même proposition. Ne crée jamais une catégorie que MON PLAN a déjà : utilise son id.",
+      "noteCategories": "S’il manque une catégorie dont j’ai besoin, crée-la avec add_category et un ref court (par exemple \"new-sleep\"), puis utilise ce ref comme categoryId dans les changements suivants de la même proposition. Ne crée jamais une catégorie que MON PLAN a déjà : utilise son id. Une tâche qui tient dans n’importe quel temps libre se passe de categoryId : ne crée jamais une catégorie juste pour une tâche.",
       "noteGroup": "Utilise un seul add_block pour tous les jours qui ont le même titre et le même horaire (\"days\":[1,2,3,4,5]). Au plus {max} changements par proposition."
     }
   }
