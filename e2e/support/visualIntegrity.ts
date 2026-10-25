@@ -716,7 +716,68 @@ export function auditInPage(options: { focusRings: boolean }): string[] {
     }
   }
 
+  // Inside a `[data-whole-text]` container (a Week day column) text is whole or not drawn (docs/design/visual-design.md ›
+  // Week items). Each direct child is an item. No ellipsis or line clamp is allowed there, a line cut by any box or
+  // lying outside its item is reported, and no item's text may cross another item's box or text. An item that takes
+  // no pointer input (the now-line, a task outline) is see-through. A task marked `data-layered` lies inside its routine,
+  // so the routine's box is not in the way of the task's own text.
+  function checkWholeText(): void {
+    const containers = Array.from(scope.querySelectorAll<HTMLElement>('[data-whole-text]')).filter(rendered)
+    for (const container of containers) {
+      const items = Array.from(container.children).filter((item) => rendered(item))
+      const lines: { item: Element; text: string; box: Box }[] = []
+      const walker = document.createTreeWalker(container, NodeFilter.SHOW_TEXT, {
+        acceptNode: (node) => (node.textContent ?? '').trim() ? NodeFilter.FILTER_ACCEPT : NodeFilter.FILTER_REJECT,
+      })
+      const range = document.createRange()
+      for (let node = walker.nextNode(); node; node = walker.nextNode()) {
+        const parent = node.parentElement
+        if (!parent || !rendered(parent) || isCovered(parent)) continue
+        const item = items.find((candidate) => candidate.contains(parent))
+        if (!item) continue
+        const text = (node.textContent ?? '').trim().slice(0, 40)
+        range.selectNodeContents(node)
+        const rects = Array.from(range.getClientRects()).filter((rect) => rect.width > 0 && rect.height > 0)
+        if (rects.length === 0) continue
+        const what = `text "${text}" in ${describe(parent)}`
+        let cut = false
+        for (let clipper: HTMLElement | null = parent; clipper && clipper !== container && !cut; clipper = clipper.parentElement) {
+          const style = getComputedStyle(clipper)
+          const clipsX = style.overflowX !== 'visible'
+          const clipsY = style.overflowY !== 'visible'
+          const truncates = style.textOverflow === 'ellipsis' || (style.webkitLineClamp && style.webkitLineClamp !== 'none')
+          if (!clipsX && !clipsY && !truncates) continue
+          const area = clipper.getBoundingClientRect()
+          const left = area.left + clipper.clientLeft
+          const top = area.top + clipper.clientTop
+          const outside = rects.some((rect) => clipsX && (rect.left < left - TOLERANCE || rect.right > left + clipper.clientWidth + TOLERANCE) || clipsY && (rect.top < top - TOLERANCE || rect.bottom > top + clipper.clientHeight + TOLERANCE))
+          if (outside) {
+            violations.push(truncates ? `${what} is truncated by ${describe(clipper)} (an ellipsis or a line clamp hides part of it)` : `${what} is cut by ${describe(clipper)}`)
+            cut = true
+          }
+        }
+        if (cut) continue
+        const own = item.getBoundingClientRect()
+        if (rects.some((rect) => !intersects(rect, own) || rect.left < own.left - TOLERANCE || rect.right > own.right + TOLERANCE || rect.top < own.top - TOLERANCE || rect.bottom > own.bottom + TOLERANCE)) {
+          violations.push(`${what} runs outside its item ${describe(item)}`)
+        }
+        for (const other of items) {
+          if (other === item || getComputedStyle(other).pointerEvents === 'none') continue
+          if (layeredInside(item, other)) continue
+          if (rects.some((rect) => intersects(rect, other.getBoundingClientRect()))) violations.push(`${what} is covered by ${describe(other)}`)
+        }
+        for (const rect of rects) lines.push({ item, text, box: rect })
+      }
+      lines.forEach((first, index) => {
+        for (const second of lines.slice(index + 1)) {
+          if (first.item !== second.item && intersects(first.box, second.box)) violations.push(`text "${first.text}" and text "${second.text}" overlap in ${describe(container)}`)
+        }
+      })
+    }
+  }
+
   checkText()
+  checkWholeText()
   checkControlSpacing()
   checkSectionSpacing()
 

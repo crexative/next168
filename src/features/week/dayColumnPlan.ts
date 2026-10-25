@@ -15,6 +15,8 @@ export const TASK_INSET = { top: 2.5, bottom: 2.5, start: 13.5, end: 9.5 }
 export const PIECE_GAP_PX = 1
 export const MIN_TASK_PX = 12
 export const ICON_PX = 12
+// In the seven-day overview a short item keeps at least this height, as far as the next item in its lane allows.
+export const COMPACT_MIN_PX = 8
 // Without measurements (no layout engine) a routine keeps one 16 px title line above its tasks.
 const UNMEASURED_STRIP_PX = BLOCK_INSET.top + 16 + 2
 
@@ -35,8 +37,9 @@ export interface BlockShow { title: boolean; mark: boolean; time: boolean; categ
 export interface BusyShow { icon: boolean; word: boolean; title: boolean }
 export interface TaskShow { icon: boolean; title: boolean }
 
-export type PlannedBlock = BlockSegment & LanePosition & { show: BlockShow }
-export type PlannedBusy = BusySegment & LanePosition & { show: BusyShow }
+// `top` and `bottom` are the drawn box in px from the top of the column.
+export type PlannedBlock = BlockSegment & LanePosition & { top: number; bottom: number; show: BlockShow }
+export type PlannedBusy = BusySegment & LanePosition & { top: number; bottom: number; show: BusyShow }
 export interface PlannedTask {
   task: TaskSegment
   // The routine it was fitted into; undefined for a task in free time, which has its own lane.
@@ -135,17 +138,7 @@ export function planDayColumn(input: DayColumnInput): DayColumnPlan {
   const lanes = layoutDaySegments(input.blocks, input.busy, loose)
   const boxWidth = (lane: LanePosition) => measure ? (measure.width * lane.width) / 100 - 2 * LANE_GAP_PX : 0
 
-  if (input.compact) {
-    return {
-      blocks: lanes.blocks.map((block) => ({ ...block, show: NOTHING.block })),
-      busy: lanes.busy.map((item) => ({ ...item, show: NOTHING.busy })),
-      tasks: input.tasks.map((task) => {
-        const host = hosts.get(task)
-        const lane = host ? lanes.blocks.find((block) => block.key === host.key)! : lanes.loose.find((item) => item.task === task)!
-        return { task, hostKey: host?.key, left: lane.left, width: lane.width, top: px(task.startMinute), bottom: px(task.endMinute), outline: false, show: NOTHING.task }
-      }),
-    }
-  }
+  if (input.compact) return compactPlan(input, lanes, hosts)
 
   // Each routine keeps its title lines first; its tasks go below them.
   const titleStrip = new Map<string, number>()
@@ -199,23 +192,56 @@ export function planDayColumn(input: DayColumnInput): DayColumnPlan {
 
   // A routine draws its words only above its first task.
   const blocks = lanes.blocks.map((block): PlannedBlock => {
-    if (!measure) return { ...block, show: EVERYTHING.block }
     const top = px(block.startMinute)
+    if (!measure) return { ...block, top, bottom: px(block.endMinute), show: EVERYTHING.block }
     const firstTask = Math.min(...tasks.filter((task) => task.hostKey === block.key && !task.outline).map((task) => task.top))
     const bottom = Number.isFinite(firstTask) ? firstTask - PIECE_GAP_PX : px(block.endMinute) - BLOCK_INSET.bottom
     const pieces = blockPieces(words.block(block), measure)
     const box = { width: boxWidth(block) - BLOCK_INSET.start - BLOCK_INSET.end, height: bottom - top - BLOCK_INSET.top }
-    return { ...block, show: blockShow(words.block(block), fitPieces(pieces, box, measure.metrics, PIECE_GAP_PX)) }
+    return { ...block, top, bottom: px(block.endMinute), show: blockShow(words.block(block), fitPieces(pieces, box, measure.metrics, PIECE_GAP_PX)) }
   })
 
   const busy = lanes.busy.map((item): PlannedBusy => {
-    if (!measure) return { ...item, show: EVERYTHING.busy }
+    const drawn = { top: px(item.startMinute), bottom: px(item.endMinute) }
+    if (!measure) return { ...item, ...drawn, show: EVERYTHING.busy }
     const box = {
       width: boxWidth(item) - BUSY_INSET.start - BUSY_INSET.end,
       height: px(item.endMinute) - px(item.startMinute) - BUSY_INSET.top - BUSY_INSET.bottom,
     }
-    return { ...item, show: busyShow(words.busy(item), box, measure) }
+    return { ...item, ...drawn, show: busyShow(words.busy(item), box, measure) }
   })
 
   return { blocks, busy, tasks }
+}
+
+// The overview draws shapes at their times. A short one keeps COMPACT_MIN_PX where the next item in its lane (or, for a
+// task, the end of its routine and the next task) leaves room, so no shape is drawn over another.
+function compactPlan(input: DayColumnInput, lanes: ReturnType<typeof layoutDaySegments<{ key: string; startMinute: number; endMinute: number; task: TaskSegment }>>, hosts: Map<TaskSegment, BlockSegment | undefined>): DayColumnPlan {
+  const px = (minute: number) => (minute / 60) * input.hourHeight
+  type Shape = { key: string; left: number; width: number; top: number; bottom: number }
+  const shapes: Shape[] = [...lanes.blocks, ...lanes.busy, ...lanes.loose].map((item) => ({ key: item.key, left: item.left, width: item.width, top: px(item.startMinute), bottom: px(item.endMinute) }))
+  const grown = (shape: Shape, limit: number) => Math.max(shape.bottom, Math.min(shape.top + COMPACT_MIN_PX, limit))
+  const sameLane = (a: { left: number; width: number }, b: { left: number; width: number }) => a.left < b.left + b.width - 1e-9 && b.left < a.left + a.width - 1e-9
+  const bottoms = new Map(shapes.map((shape) => {
+    const next = Math.min(Infinity, ...shapes.filter((other) => other !== shape && other.top >= shape.bottom - 0.01 && sameLane(shape, other)).map((other) => other.top))
+    return [shape.key, grown(shape, Math.min(next, px(1440)))]
+  }))
+  const tasks: PlannedTask[] = []
+  for (const block of lanes.blocks) {
+    const held = input.tasks.filter((task) => hosts.get(task)?.key === block.key).sort((a, b) => a.startMinute - b.startMinute)
+    held.forEach((task, index) => {
+      const top = px(task.startMinute)
+      const next = held[index + 1] ? px(held[index + 1]!.startMinute) : Infinity
+      const bottom = Math.max(px(task.endMinute), Math.min(top + COMPACT_MIN_PX, next, bottoms.get(block.key)!))
+      tasks.push({ task, hostKey: block.key, left: block.left, width: block.width, top, bottom, outline: false, show: NOTHING.task })
+    })
+  }
+  for (const item of lanes.loose) {
+    tasks.push({ task: item.task, hostKey: undefined, left: item.left, width: item.width, top: px(item.startMinute), bottom: bottoms.get(item.key)!, outline: false, show: NOTHING.task })
+  }
+  return {
+    blocks: lanes.blocks.map((block) => ({ ...block, top: px(block.startMinute), bottom: bottoms.get(block.key)!, show: NOTHING.block })),
+    busy: lanes.busy.map((item) => ({ ...item, top: px(item.startMinute), bottom: bottoms.get(item.key)!, show: NOTHING.busy })),
+    tasks,
+  }
 }

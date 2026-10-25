@@ -88,8 +88,8 @@ const plan = computed(() => planDayColumn({
   },
 }))
 
-function verticalStyle(startMinute: number, endMinute: number) {
-  return { top: `${(startMinute / 60) * props.hourHeight}px`, height: `${((endMinute - startMinute) / 60) * props.hourHeight}px` }
+function verticalStyle(item: { top: number; bottom: number }) {
+  return { top: `${item.top}px`, height: `${item.bottom - item.top}px` }
 }
 
 function laneStyle(lane: { left: number; width: number }) {
@@ -98,7 +98,7 @@ function laneStyle(lane: { left: number; width: number }) {
 
 function segmentStyle(segment: PlannedBlock) {
   return {
-    ...verticalStyle(segment.startMinute, segment.endMinute),
+    ...verticalStyle(segment),
     ...laneStyle(segment),
     padding: props.compact ? undefined : `${BLOCK_INSET.top}px ${BLOCK_INSET.end}px ${BLOCK_INSET.bottom}px ${BLOCK_INSET.start}px`,
     '--block-color': categoryColor(categoriesById.value.get(segment.occurrence.categoryId)),
@@ -107,7 +107,7 @@ function segmentStyle(segment: PlannedBlock) {
 }
 
 function busyStyle(item: PlannedBusy) {
-  return { ...verticalStyle(item.startMinute, item.endMinute), ...laneStyle(item) }
+  return { ...verticalStyle(item), ...laneStyle(item) }
 }
 
 function taskStyle(planned: PlannedTask) {
@@ -336,8 +336,7 @@ function onColumnClick(event: MouseEvent, blockId?: string): void {
 .is-skipped .block-title { text-decoration: line-through; }
 
 .is-compact .block { padding: 0; border-radius: 3px; }
-/* A short block or commute stays visible instead of shrinking to a sliver. */
-.is-compact .block, .is-compact .busy, .is-compact .task-chunk { min-height: 8px; }
+/* A short block or commute keeps a drawn height where its lane has room (dayColumnPlan.ts › COMPACT_MIN_PX). */
 .is-compact .block::before { width: 2px; }
 .is-compact .busy { padding: 0; }
 .is-compact .task-box { inset: 0 2px 0 4px; padding: 0; border-width: 1px; }

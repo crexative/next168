@@ -231,7 +231,8 @@ onBeforeUnmount(() => {
   align-items: center;
   justify-content: center;
   gap: 2px;
-  min-width: var(--tap-target);
+  /* Seven days share the strip: each takes its seventh (43 px at 320 px), never a minimum that pushes it over the next. */
+  min-width: 0;
   min-height: 3.25rem;
   padding: 0;
   border: 0;

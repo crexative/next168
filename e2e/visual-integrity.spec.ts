@@ -847,6 +847,94 @@ test.describe('Week readability', () => {
   }
 })
 
+// Week items (docs/design/visual-design.md › Week items): inside a [data-whole-text] container text is whole or not
+// drawn. Each case below is a defect verify3 to verify5 found in Week ("Vendo…", "Reunió…", a second line cut, a task
+// over a routine's time, a title under the next routine).
+test.describe('visual integrity guard: whole text in Week', () => {
+  test.beforeEach(({}, testInfo) => {
+    test.skip(testInfo.project.name !== 'phone', 'the guard self-tests run once')
+  })
+
+  const column = (items: string, extraStyle = '') => `
+    <style>
+      body { margin: 0; font: 13px/16px sans-serif; }
+      .column { position: relative; width: 150px; height: 400px; margin: 0 16px; }
+      .item { position: absolute; box-sizing: border-box; display: flex; flex-direction: column; margin: 0; padding: 2px 4px; border: 0; overflow: hidden; font: inherit; text-align: start; background: #dde; }
+      .item span { display: block; }
+      ${extraStyle}
+    </style>
+    <div class="column" data-whole-text>${items}</div>`
+  const audit = (page: Page) => visualIntegrityViolations(page, { focusRings: false })
+
+  test('whole titles, a mark with no text, a hidden word and a task inside its routine are accepted', async ({ page }) => {
+    await page.setContent(column(`
+      <button class="item" style="top: 0; left: 0; width: 150px; height: 60px"><span>Deep work</span><span>9:00 – 10:00</span></button>
+      <button class="item" data-layered style="top: 38px; left: 0; width: 150px; height: 20px"><span>Report</span></button>
+      <button class="item" style="top: 60px; left: 0; width: 150px; height: 12px" aria-label="Stand-up"></button>
+      <button class="item" style="top: 72px; left: 0; width: 150px; height: 20px"><span style="position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0)">Conflict</span><span>Vendor call</span></button>
+      <div style="position: absolute; top: 30px; left: 0; right: 0; height: 2px; background: red; pointer-events: none"></div>
+    `))
+    expect(await audit(page)).toEqual([])
+  })
+
+  test('a title truncated with an ellipsis is reported ("Vendo…")', async ({ page }) => {
+    await page.setContent(column('<button class="item" style="top: 0; left: 0; width: 60px; height: 20px"><span style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap">Vendor call</span></button>'))
+    expect(await audit(page)).toContain('text "Vendor call" in <span> "Vendor call" is truncated by <span> "Vendor call" (an ellipsis or a line clamp hides part of it)')
+  })
+
+  test('a title clamped to fewer lines than it needs is reported', async ({ page }) => {
+    await page.setContent(column('<button class="item" style="top: 0; left: 0; width: 60px; height: 60px"><span style="display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden">Revisión de diseño de producto</span></button>'))
+    expect((await audit(page)).some((violation) => violation.includes('is truncated by'))).toBe(true)
+  })
+
+  test('a second line cut off by a short box is reported ("Revisión de diseño de")', async ({ page }) => {
+    await page.setContent(column('<button class="item" style="top: 0; left: 0; width: 70px; height: 36px"><span>Revisión de diseño de producto</span></button>'))
+    expect(await audit(page)).toContain('text "Revisión de diseño de producto" in <span> "Revisión de diseño de producto" is cut by <button.item> "Revisión de diseño de producto"')
+  })
+
+  test('a title whose one line is taller than its box is reported ("Reunión diaria" in 12 px)', async ({ page }) => {
+    await page.setContent(column('<button class="item" style="top: 0; left: 0; width: 150px; height: 12px"><span>Reunión diaria</span></button>'))
+    expect((await audit(page)).some((violation) => violation.startsWith('text "Reunión diaria"') && violation.includes('is cut by'))).toBe(true)
+  })
+
+  test('text that runs out of an unclipped item is reported', async ({ page }) => {
+    await page.setContent(column('<button class="item" style="top: 0; left: 0; width: 150px; height: 10px; overflow: visible"><span>Reunión diaria</span></button>'))
+    expect(await audit(page)).toContain('text "Reunión diaria" in <span> "Reunión diaria" runs outside its item <button.item> "Reunión diaria"')
+  })
+
+  test('a task box over its routine\'s time line is reported ("Revisa…" on "9:15 a. m.")', async ({ page }) => {
+    await page.setContent(column(`
+      <button class="item" style="top: 0; left: 0; width: 150px; height: 120px"><span>Trabajo profundo</span><span>9:15 – 13:00</span></button>
+      <button class="item" data-layered style="top: 18px; left: 8px; width: 140px; height: 20px; background: transparent"><span>Revisar</span></button>
+    `))
+    const violations = await audit(page)
+    expect(violations).toContain('text "9:15 – 13:00" in <span> "9:15 – 13:00" is covered by <button.item> "Revisar"')
+    expect(violations.some((violation) => violation.startsWith('text "9:15 – 13:00" and text "Revisar" overlap in <div.column>'))).toBe(true)
+  })
+
+  test('a routine title under the next item is reported (the 15-minute "Reunión diaria" under "Trabajo profundo")', async ({ page }) => {
+    await page.setContent(column(`
+      <button class="item" style="top: 0; left: 0; width: 150px; height: 12px; overflow: visible"><span>Reunión diaria</span></button>
+      <button class="item" style="top: 12px; left: 0; width: 150px; height: 120px"><span>Trabajo profundo</span></button>
+    `))
+    const violations = await audit(page)
+    expect(violations.some((violation) => violation.startsWith('text "Reunión diaria"') && violation.includes('covered by <button.item> "Trabajo profundo"'))).toBe(true)
+  })
+
+  test('an event drawn over a routine\'s title is reported', async ({ page }) => {
+    await page.setContent(column(`
+      <button class="item" style="top: 0; left: 0; width: 150px; height: 96px"><span>Deep work</span></button>
+      <button class="item" style="top: 0; left: 40px; width: 110px; height: 24px; z-index: 2"><span>Vendor call</span></button>
+    `))
+    expect(await audit(page)).toContain('text "Deep work" in <span> "Deep work" is covered by <button.item> "Vendor call"')
+  })
+
+  test('outside a whole-text container an ellipsis is still a deliberate truncation', async ({ page }) => {
+    await page.setContent(column('<button class="item" style="top: 0; left: 0; width: 60px; height: 20px"><span style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap">Vendor call</span></button>').replace(' data-whole-text', ''))
+    expect(await audit(page)).toEqual([])
+  })
+})
+
 test.describe('visual integrity guard: padded container edges', () => {
   test.beforeEach(({}, testInfo) => {
     test.skip(testInfo.project.name !== 'phone', 'the guard self-tests run once')
