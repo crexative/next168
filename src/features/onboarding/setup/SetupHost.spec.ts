@@ -255,11 +255,15 @@ describe('closing and finishing', () => {
   it('after a save whose draft removal throws, the draft is already invalid: no message and no flow on the next load (A26)', async () => {
     const { store, stored } = await mount(firstRun())
     await skipToSummary()
-    const remove = vi.spyOn(Object.getPrototypeOf(sessionStorage) as Storage, 'removeItem').mockImplementation(() => { throw new DOMException('denied', 'SecurityError') })
+    // Node versions expose sessionStorage differently (own method vs prototype), so stub both to make removal throw everywhere.
+    const denied = () => { throw new DOMException('denied', 'SecurityError') }
+    const removeOnProto = vi.spyOn(Object.getPrototypeOf(sessionStorage) as Storage, 'removeItem').mockImplementation(denied)
+    const remove = vi.spyOn(sessionStorage, 'removeItem').mockImplementation(denied)
     await click('[data-testid=setup-primary]')
     expect(stored().settings.onboardingDone).toBe(true)
     expect(sessionStorage.getItem(DRAFT_KEY)).not.toBeNull()
     remove.mockRestore()
+    removeOnProto.mockRestore()
     app!.unmount()
     window.document.body.innerHTML = ''
     const pinia = createPinia()
