@@ -69,8 +69,9 @@ const weekLabel = computed(() => formatTotal(WEEK_MINUTES))
 <style scoped>
 .week-bar { display: flex; flex-direction: column; gap: var(--space-2); padding: var(--card-padding-block) var(--card-padding); background: var(--surface); border-radius: var(--radius-card); }
 /* Words wrap between words and never inside one, so the figure stays readable at 200 % text. */
-/* A word wider than the line at 320 px and 200 % text ("zugewiesen" in German) is hyphenated in the page's language. */
-.summary { margin: 0; min-width: 0; overflow-wrap: normal; hyphens: auto; text-wrap: balance; font-variant-numeric: tabular-nums; }
+/* Like the week's day strip, the headline stops growing at large text (40 px): at 320 px and 200 % text a German word
+   ("zugewiesen", 259 px at 44 px) would otherwise be wider than the line, and the figures never break inside a word. */
+.summary { margin: 0; min-width: 0; overflow-wrap: normal; font-size: min(1.375rem, 40px); text-wrap: balance; font-variant-numeric: tabular-nums; }
 .cells { display: flex; height: 28px; overflow: hidden; border-radius: 8px; }
 .segment { display: block; flex: 0 1 auto; flex-basis: 0; min-width: 0; }
 .is-available { background: var(--surface-2); box-shadow: inset 0 0 0 1px var(--separator); }

@@ -701,7 +701,8 @@ export function auditInPage(options: { focusRings: boolean }): string[] {
     if ((control as HTMLButtonElement).disabled) continue
     const rect = control.getBoundingClientRect()
     const shownArea = shownRect(control)
-    if (!shownArea) continue
+    // A box a few pixels tall (a 5-minute shape in the week overview) touches its neighbours within rounding.
+    if (!shownArea || rect.width < 4 || rect.height < 4) continue
     const x = rect.left + rect.width / 2
     const y = rect.top + rect.height / 2
     if (x < shownArea.left || x > shownArea.right || y < shownArea.top || y > shownArea.bottom || x < 0 || y < 0 || x > viewportWidth || y > viewportHeight) continue
