@@ -1,3 +1,4 @@
+import { readFileSync } from 'node:fs'
 import { expect, test, type Page } from '@playwright/test'
 import { seedLegacy } from './fixtures'
 import { storedPlanner, storedRecord } from './support/indexedDb'
@@ -10,7 +11,15 @@ import {
 test.use({ locale: 'es-CO', timezoneId: 'America/Bogota', launchOptions: { args: ['--disable-features=WebGPU'] } })
 test.beforeEach(({}, testInfo) => { test.skip(testInfo.project.name !== 'desktop', 'sizes are set per test') })
 
-type Doc = ReturnType<typeof storedDoc>
+interface Doc {
+  revision: number
+  settings: Record<string, unknown>
+  categories: { id: string; name: string }[]
+  blocks: { id: string; categoryId: string; days: number[]; start: number; end: number }[]
+  tasks: unknown[]
+  events: unknown[]
+  checkIns: unknown[]
+}
 const SLEEP = { id: 'c-sleep', name: 'Sueño', colorKey: 'purple', icon: '😴', goal: { type: 'min', hoursPerWeek: 49 } }
 const WORK = { id: 'c-work', name: 'Trabajo', colorKey: 'blue', icon: '💼', goal: { type: 'max', hoursPerWeek: 40 } }
 const SLEEP_BLOCK = { id: 'b-sleep', categoryId: 'c-sleep', title: 'Sueño', days: [0, 1, 2, 3, 4, 5, 6], start: 1380, end: 420 }
@@ -78,7 +87,7 @@ test.describe('one guarded commit', () => {
     const opened = await stored(page)
     const other = { ...opened, categories: [{ id: 'c-b', name: 'Desde B', colorKey: 'teal', goal: { type: 'none', hoursPerWeek: 0 } }], blocks: [{ id: 'b-b', categoryId: 'c-b', title: 'Desde B', days: [2], start: 1200, end: 1260 }] }
     await writeStoredDocument(page, other)
-    return other as Doc
+    return other as unknown as Doc
   }
 
   test('A7, A11: a save over content another window replaced at the same revision is refused, then works on the current week', async ({ page }) => {
@@ -326,5 +335,361 @@ test.describe('where the setup opens', () => {
     await expect(page.getByRole('heading', { level: 1, name: 'Ajustes' })).toBeVisible()
     await expect(page.getByTestId('setup-guided-row')).toHaveCount(0)
     expect(await storedRecord(page, 'document')).toBeNull()
+  })
+})
+
+// ---------- Answering ----------
+
+const readCatalogue = (locale: string) => JSON.parse(readFileSync(new URL(`../src/i18n/${locale}/onboarding.json`, import.meta.url), 'utf8')) as Record<string, unknown>
+function catalogue(value: unknown, path = ''): [string, string][] {
+  if (typeof value === 'string') return [[path, value]]
+  return Object.entries(value as Record<string, unknown>).flatMap(([key, child]) => catalogue(child, `${path}.${key}`))
+}
+// English strings that German says differently: seeing one in a German pass means a missing translation.
+function englishOnly(locale: string): string[] {
+  const translated = new Map(catalogue(readCatalogue(locale)))
+  return catalogue(readCatalogue('en')).filter(([path, value]) => translated.get(path) !== value).map(([, value]) => value.replace(/\{\w+\}/g, '').trim()).filter((value) => value.length >= 4)
+}
+
+async function auditScreen(page: Page, label: string): Promise<void> {
+  await calm(page)
+  expect.soft(await page.locator('[data-testid=setup] [data-primary]:visible').count(), `${label}: primary buttons`).toBeLessThanOrEqual(1)
+  expect.soft(await page.locator('[data-testid=setup] input[type=color]').count(), `${label}: colour input`).toBe(0)
+  expect.soft(await page.getByTestId('setup').getByRole('radiogroup').count(), `${label}: radio group`).toBe(0)
+  expect.soft(await page.locator('[data-testid=setup] fieldset legend', { hasText: /color|colour|farbe|couleur|cor/i }).count(), `${label}: colour fieldset`).toBe(0)
+}
+
+test.describe('answering', () => {
+  test('A30, A31, A34, A37: the typical week takes 11 taps, one primary per screen, no colour control and no network; Hoy then shows Trabajo', async ({ page }) => {
+    await start(page)
+    await page.goto('./')
+    await onScreen(page, 'sleep')
+    const requests: string[] = []
+    page.on('request', (request) => requests.push(`${request.resourceType()} ${request.url()}`))
+    let taps = 0
+    const step = async (action: () => Promise<void>, next: string) => {
+      await action()
+      taps += 1
+      if (next !== '') { await onScreen(page, next); await auditScreen(page, next) }
+    }
+    await auditScreen(page, 'sleep')
+    await step(() => tap(page, 'Siguiente'), 'workStudy')
+    await step(() => tap(page, 'Trabajo'), 'work')
+    await step(() => tap(page, 'Siguiente'), 'commute')
+    await step(() => tap(page, 'Sí'), 'commuteRanges')
+    await step(() => tap(page, 'Siguiente'), 'exercise')
+    await step(() => tap(page, 'Sí'), 'exerciseRanges')
+    await step(() => tap(page, 'Siguiente'), 'more')
+    await step(() => live(page).getByRole('button', { name: 'Familia' }).click(), 'more')
+    await step(() => tap(page, 'Siguiente'), 'extra:family')
+    await step(() => tap(page, 'Siguiente'), 'summary')
+    // Pickers and the time editor never add a second filled button.
+    await live(page).getByTestId('card-work').click()
+    await live(page).locator('[data-category=work] [data-field=start]').first().click()
+    await live(page).getByTestId('other-time').click()
+    await auditScreen(page, 'summary with the time editor')
+    await live(page).getByTestId('card-done').click()
+    await step(() => primary(page).click(), '')
+    await expect(setup(page)).toHaveCount(0)
+    expect(taps).toBe(11)
+    expect(requests).toEqual([])
+
+    await expect(page.getByTestId('now-title')).toHaveText('Trabajo')
+    const saved = await stored(page)
+    expect(saved.categories.map((category: { name: string }) => category.name)).toEqual(['Sueño', 'Trabajo', 'Desplazamientos', 'Ejercicio', 'Familia'])
+  })
+
+  test('A33: a full pass in German shows no English text from the English catalogue', async ({ page }) => {
+    const warnings: string[] = []
+    page.on('console', (message) => { if (/not found|fall back|intlify/i.test(message.text())) warnings.push(message.text()) })
+    await start(page, { language: 'de' })
+    await page.goto('./')
+    await onScreen(page, 'sleep')
+    const english = englishOnly('de')
+    const check = async (label: string) => {
+      await calm(page)
+      const text = await setup(page).innerText()
+      expect.soft(english.filter((value) => text.includes(value)), label).toEqual([])
+    }
+    const steps: [string, string][] = [['[data-testid=setup-primary]', 'workStudy'], ['[data-value=work]', 'work'], ['[data-testid=setup-primary]', 'commute'], ['[data-value=yes]', 'commuteRanges'],
+      ['[data-testid=setup-primary]', 'exercise'], ['[data-value=yes]', 'exerciseRanges'], ['[data-testid=setup-primary]', 'more'], ['[data-chip=family]', 'more'], ['[data-testid=setup-primary]', 'extra:family'], ['[data-testid=setup-primary]', 'summary']]
+    await check('sleep')
+    for (const [selector, next] of steps) {
+      await live(page).locator(selector).click()
+      await onScreen(page, next)
+      await check(next)
+    }
+    await live(page).getByTestId('card-work').click()
+    await check('summary, a card open')
+    expect(warnings).toEqual([])
+  })
+
+  test('A17: a suggestion with no free time stays where it is and says why; "Sin horario fijo" saves the category with no times', async ({ page }) => {
+    const busy = { id: 'c-busy', name: 'Ocupado', colorKey: 'gray', goal: { type: 'none', hoursPerWeek: 0 } }
+    await start(page, { document: firstRun({ categories: [busy], blocks: [{ id: 'b-busy', categoryId: 'c-busy', title: 'Ocupado', days: [1, 3, 5], start: 360, end: 1320 }] }) })
+    await page.goto('./')
+    await onScreen(page, 'sleep')
+    await tap(page, 'Saltar')
+    await tap(page, 'Saltar')
+    await onScreen(page, 'exercise')
+    await tap(page, 'Sí')
+    await onScreen(page, 'exerciseRanges')
+    await expect(live(page).locator('[data-field=start] .value')).toHaveText('6:00 p. m.')
+    await expect(live(page).getByTestId('range-message')).toContainText('Se cruza con Ocupado')
+    await secondary(page).click()
+    await onScreen(page, 'more')
+    await skipToSummary(page)
+    await primary(page).click()
+    await expect(setup(page)).toHaveCount(0)
+    const saved = await stored(page)
+    const exercise = saved.categories.find((category) => category.name === 'Ejercicio')!
+    expect(exercise).toBeDefined()
+    expect(saved.blocks.filter((block) => block.categoryId === exercise.id)).toEqual([])
+    expect(saved.blocks.map((block: { id: string }) => block.id)).toEqual(['b-busy'])
+  })
+
+  test('A18: "Otra hora" sets 7:35 a. m. with steppers and a deliberate confirm; Escape cancels', async ({ page }) => {
+    await start(page)
+    await page.goto('./')
+    await tap(page, 'Siguiente')
+    await tap(page, 'Trabajo')
+    await onScreen(page, 'work')
+    await live(page).locator('[data-field=start]').click()
+    await live(page).getByTestId('other-time').click()
+    const value = live(page).getByTestId('time-value')
+    await expect(value).toHaveText('9:00 a. m.')
+    await expect(live(page).getByTestId('time-period')).toBeVisible()
+    for (let index = 0; index < 2; index++) await live(page).locator('[data-step=hour-down]').click()
+    for (let index = 0; index < 7; index++) await live(page).locator('[data-step=minutes-up]').click()
+    await expect(value).toHaveText('7:35 a. m.')
+    await expect(live(page).locator('[data-field=start] .value')).toHaveText('9:00 a. m.')
+    await live(page).getByRole('button', { name: 'Usar 7:35 a. m.' }).click()
+    await expect(live(page).locator('[data-field=start] .value')).toHaveText('7:35 a. m.')
+
+    await live(page).locator('[data-field=start]').click()
+    await live(page).getByTestId('other-time').click()
+    await live(page).locator('[data-step=minutes-up]').click()
+    await expect(value).toHaveText('7:40 a. m.')
+    await page.keyboard.press('Escape')
+    await expect(live(page).getByTestId('time-value')).toHaveCount(0)
+    await expect(setup(page)).toBeVisible()
+    await expect(live(page).locator('[data-field=start] .value')).toHaveText('7:35 a. m.')
+    await tap(page, 'Siguiente')
+    await skipToSummary(page)
+    await primary(page).click()
+    await expect(setup(page)).toHaveCount(0)
+    const saved = await stored(page)
+    const work = saved.categories.find((category) => category.name === 'Trabajo')!
+    expect(saved.blocks.filter((block) => block.categoryId === work.id)).toEqual([expect.objectContaining({ start: 455, end: 1020, days: [1, 2, 3, 4, 5] })])
+  })
+
+  test('A18: with a 24-hour clock the editor shows 09:00 and no a. m./p. m. switch', async ({ page }) => {
+    await start(page, { language: 'de' })
+    await page.goto('./')
+    await live(page).locator('[data-testid=setup-primary]').click()
+    await live(page).locator('[data-value=work]').click()
+    await onScreen(page, 'work')
+    await live(page).locator('[data-field=start]').click()
+    await live(page).getByTestId('other-time').click()
+    await expect(live(page).getByTestId('time-value')).toHaveText('9:00')
+    await expect(live(page).getByTestId('time-period')).toHaveCount(0)
+    // A 24-hour clock: ten hours back from 9:00 is 23:00, not 11 in the morning or evening of a 12-hour clock.
+    for (let index = 0; index < 10; index++) await live(page).locator('[data-step=hour-down]').click()
+    await expect(live(page).getByTestId('time-value')).toHaveText('23:00')
+  })
+
+  test('A18: a stored 7:33 is shown as it is and kept while untouched', async ({ page }) => {
+    await start(page, { document: planned({ blocks: [SLEEP_BLOCK, { ...WORK_BLOCK, start: 453 }] }) })
+    await page.goto('./')
+    await openFromSettings(page)
+    const before = await bytes(page)
+    await live(page).getByTestId('card-work').click()
+    await expect(live(page).locator('[data-category=work] [data-field=start] .value')).toHaveText('7:33 a. m.')
+    await live(page).locator('[data-category=work] [data-field=start]').click()
+    await live(page).getByTestId('other-time').click()
+    await expect(live(page).getByTestId('time-value')).toHaveText('7:33 a. m.')
+    await page.keyboard.press('Escape')
+    await page.keyboard.press('Escape')
+    await expect(setup(page)).toBeVisible()
+    await primary(page).click()
+    await expect(setup(page)).toHaveCount(0)
+    expect(await bytes(page)).toEqual(before)
+  })
+
+  test('A19: Tab explores the quick replies without answering, Enter answers, and the last range can be removed', async ({ page }) => {
+    await start(page)
+    await page.goto('./')
+    await tap(page, 'Siguiente')
+    await tap(page, 'Trabajo')
+    await tap(page, 'Siguiente')
+    await onScreen(page, 'commute')
+    await live(page).getByRole('button', { name: 'Sí', exact: true }).focus()
+    await page.keyboard.press('Tab')
+    await expect(live(page).getByRole('button', { name: 'No', exact: true })).toBeFocused()
+    await page.waitForTimeout(300)
+    await expect(setup(page)).toHaveAttribute('data-screen', 'commute')
+    await page.keyboard.press('Enter')
+    await onScreen(page, 'exercise')
+    await live(page).getByTestId('setup-back').click()
+    await onScreen(page, 'commute')
+    await expect(live(page).getByRole('button', { name: 'No (actual)' })).toBeVisible()
+    await live(page).getByRole('button', { name: 'Sí', exact: true }).focus()
+    await page.keyboard.press('Enter')
+    await onScreen(page, 'commuteRanges')
+
+    await live(page).getByTestId('setup-back').click()
+    await live(page).getByTestId('setup-back').click()
+    await onScreen(page, 'work')
+    await expect(live(page).getByTestId('range-remove')).toHaveCount(1)
+    await live(page).getByTestId('range-remove').click()
+    await expect(live(page).locator('[data-range]')).toHaveCount(0)
+    await expect(live(page).getByTestId('range-add')).toBeVisible()
+    await skipToSummary(page)
+    await expect(live(page).getByTestId('card-work')).toContainText('Sin horario')
+  })
+
+  test('A20: overlapping stored times count once: 161 h asignadas, 7 h sin asignar, and a warning', async ({ page }) => {
+    const shiftA = { id: 'c-a', name: 'Turno A', colorKey: 'blue', goal: { type: 'none', hoursPerWeek: 0 } }
+    const shiftB = { id: 'c-b', name: 'Turno B', colorKey: 'red', goal: { type: 'none', hoursPerWeek: 0 } }
+    const everyDay = [0, 1, 2, 3, 4, 5, 6]
+    await start(page, { document: storedDoc({ categories: [shiftA, shiftB], blocks: [
+      { id: 'b-a', categoryId: 'c-a', title: 'Turno A', days: everyDay, start: 0, end: 1380 },
+      { id: 'b-b', categoryId: 'c-b', title: 'Turno B', days: everyDay, start: 0, end: 1380 },
+    ] }) })
+    await page.goto('./')
+    await openFromSettings(page)
+    await expect(live(page).getByTestId('week-counter')).toHaveText('161 h asignadas · 7 h sin asignar')
+    await expect(live(page).getByTestId('overlap-warning')).toHaveText('⚠ Algunos horarios se cruzan. Las horas cruzadas cuentan una vez.')
+  })
+
+  test('A22: "Quitar" turns a card into a row that "Deshacer" restores; a category with tasks keeps its record', async ({ page }) => {
+    await start(page)
+    await page.goto('./')
+    await tap(page, 'Saltar')
+    await tap(page, 'Saltar')
+    await tap(page, 'Saltar')
+    await onScreen(page, 'more')
+    await live(page).getByRole('button', { name: 'Familia' }).click()
+    await tap(page, 'Siguiente')
+    await tap(page, 'Siguiente')
+    await onScreen(page, 'summary')
+    const card = live(page).getByTestId('card-family')
+    const text = (await card.textContent())!
+    await card.click()
+    await live(page).getByRole('button', { name: 'Quitar Familia' }).click()
+    await expect(live(page).getByTestId('removed-note')).toHaveText('«Familia» quitado.')
+    await live(page).getByRole('button', { name: 'Deshacer' }).click()
+    await expect(live(page).getByTestId('card-family')).toHaveText(text)
+  })
+
+  test('A22: a category with tasks offers no "Quitar", and answering "No" keeps it with no times', async ({ page }) => {
+    const exercise = { id: 'c-ex', name: 'Ejercicio', colorKey: 'green', icon: '🏃', goal: { type: 'min', hoursPerWeek: 3 } }
+    const task = { id: 't-run', title: 'Correr', categoryId: 'c-ex', durationMin: 30, priority: 2, createdAt: '2026-10-20T08:00:00.000Z' }
+    await start(page, { document: planned({ categories: [SLEEP, WORK, exercise], blocks: [SLEEP_BLOCK, WORK_BLOCK, { id: 'b-gym', categoryId: 'c-ex', title: 'Gimnasio', days: [1, 3, 5], start: 1080, end: 1140 }], tasks: [task] }) })
+    await page.goto('./')
+    await openFromSettings(page)
+    await live(page).getByTestId('card-exercise').click()
+    await expect(live(page).getByTestId('has-tasks')).toHaveText('Tiene tareas. Para quitarlo, ve a Ajustes › Categorías.')
+    await expect(live(page).getByTestId('card-remove')).toHaveCount(0)
+    await live(page).getByTestId('summary-review').click()
+    await onScreen(page, 'sleep')
+    await tap(page, 'Saltar')
+    await tap(page, 'Saltar')
+    await onScreen(page, 'exercise')
+    await tap(page, 'No')
+    await skipToSummary(page)
+    await expect(live(page).getByTestId('kept-for-tasks')).toHaveText('«Ejercicio» se queda sin horario porque tiene tareas.')
+    await primary(page).click()
+    await expect(setup(page)).toHaveCount(0)
+    const saved = await stored(page)
+    expect(saved.categories.map((category: { id: string }) => category.id)).toEqual(['c-sleep', 'c-work', 'c-ex'])
+    expect(saved.blocks.map((block: { id: string }) => block.id)).toEqual(['b-sleep', 'b-work'])
+    expect(saved.tasks).toEqual([task])
+  })
+
+  test('A23: a setup save withdraws a Week undo offered before it', async ({ page }) => {
+    const exercise = { id: 'c-ex', name: 'Ejercicio', colorKey: 'green', icon: '🏃', goal: { type: 'min', hoursPerWeek: 3 } }
+    await start(page, { document: planned({ categories: [SLEEP, WORK, exercise], blocks: [SLEEP_BLOCK, WORK_BLOCK, { id: 'b-gym', categoryId: 'c-ex', title: 'Gimnasio', days: [1], start: 1080, end: 1140 }] }) })
+    await page.goto('./#/week')
+    await expect(page.getByRole('heading', { level: 1, name: 'Semana' })).toBeVisible()
+    await page.locator('[data-date="2026-10-26"] [data-block-id="b-gym"]').first().click()
+    await page.getByRole('dialog').getByRole('button', { name: 'Eliminar bloque' }).click()
+    await expect(page.getByTestId('undo-toast')).toBeVisible()
+    await page.evaluate(() => { location.hash = '#/settings' })
+    await page.getByTestId('setup-guided-row').getByRole('button').click()
+    await onScreen(page, 'summary')
+    await live(page).getByTestId('card-exercise').click()
+    await live(page).locator('[data-category=exercise]').getByTestId('range-add').click()
+    await expect(page.getByTestId('undo-toast')).toBeVisible()
+    await primary(page).click()
+    await expect(setup(page)).toHaveCount(0)
+    await expect(page.getByTestId('undo-toast')).toHaveCount(0)
+    const saved = await stored(page)
+    type Block = { days: number[]; start: number; end: number }
+    const occupied = new Set<number>()
+    let overlap = false
+    for (const block of saved.blocks as Block[]) {
+      for (const day of block.days) {
+        const length = (block.end - block.start + 1440) % 1440
+        for (let minute = 0; minute < length; minute++) {
+          const at = (day * 1440 + block.start + minute) % 10080
+          if (occupied.has(at)) overlap = true
+          occupied.add(at)
+        }
+      }
+    }
+    expect(overlap).toBe(false)
+  })
+
+  test('A24: while saving nothing closes or edits the sheet, a double tap and a route change make one commit', async ({ page }) => {
+    await start(page, { document: firstRun() })
+    await page.goto('./')
+    await onScreen(page, 'sleep')
+    await tap(page, 'Siguiente')
+    await tap(page, 'Trabajo')
+    await onScreen(page, 'work')
+    await tap(page, 'Siguiente')
+    await skipToSummary(page)
+    const before = (await stored(page)).revision
+    const release = await holdCommitLock(page)
+    await primary(page).dblclick()
+    await expect(page.locator('[data-testid=setup]').locator('xpath=ancestor::fieldset')).toHaveAttribute('disabled', '')
+    await expect(setup(page)).toHaveAttribute('aria-busy', 'true')
+    const head = (await live(page).getByTestId('card-work').boundingBox())!
+    await page.mouse.click(head.x + head.width / 2, head.y + head.height / 2)
+    await expect(live(page).locator('[data-category=work] [data-field=end]')).toHaveCount(0)
+    await page.keyboard.press('Escape')
+    const close = (await page.locator('.sheet-close').boundingBox())!
+    await page.mouse.click(close.x + close.width / 2, close.y + close.height / 2)
+    await page.mouse.click(195, 8)
+    const handle = (await page.locator('.sheet-handle').boundingBox())!
+    await page.mouse.move(handle.x + 10, handle.y + 2)
+    await page.mouse.down()
+    for (let index = 1; index <= 8; index++) await page.mouse.move(handle.x + 10, handle.y + 2 + index * 60)
+    await page.mouse.up()
+    await page.evaluate(() => { location.hash = '#/week' })
+    await expect(setup(page)).toBeVisible()
+    await release()
+    await expect(setup(page)).toHaveCount(0)
+    await page.waitForTimeout(300)
+    const saved = await stored(page)
+    expect(saved.revision).toBe(before + 1)
+    const work = saved.categories.find((category) => category.name === 'Trabajo')!
+    expect(saved.blocks.filter((block) => block.categoryId === work.id)).toEqual([expect.objectContaining({ start: 540, end: 1020 })])
+  })
+})
+
+test.describe('a template week in a daylight-saving week', () => {
+  test.use({ timezoneId: 'Europe/Berlin' })
+
+  test('A25: Sueño 11 p. m. to 7 a. m. every night is 56 h in the summary, while Hoy counts the night\'s real length', async ({ page }) => {
+    const document = planned({ settings: { timeZone: 'Europe/Berlin' } })
+    // Sunday 2026-10-25 00:30 in Berlin: clocks go back at 03:00, so this night lasts an hour longer.
+    await start(page, { document, at: new Date('2026-10-24T22:30:00.000Z') })
+    await page.goto('./')
+    await expect(page.getByTestId('now-title')).toHaveText('Sueño')
+    await expect(page.getByTestId('now-left')).toHaveText('Quedan 7 h 30 min')
+    await openFromSettings(page)
+    await expect(live(page).getByTestId('card-sleep')).toContainText('56 h')
   })
 })
