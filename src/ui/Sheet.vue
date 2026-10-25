@@ -10,7 +10,12 @@ import { isHover, watchPressEnd } from './pressEnd'
 // A phone sheet ends with a dismiss button within the thumb's reach (`dismissLabel`, default "Cancel");
 // `noDismiss` leaves it out for a sheet whose own actions already include one. A `footer` slot replaces it with the
 // sheet's own actions, pinned below the scrolling body at every width.
-const props = defineProps<{ open: boolean; title: string; dirty?: boolean; dismissLabel?: string; noDismiss?: boolean }>()
+// `fullHeight`: a tall panel whose body is the only scroller (a guided flow). `largeTargets`: 48 px controls for the whole
+// panel. `closeLabel`: what the ✕ is named. `locked`: nothing closes it (a save is pending).
+const props = defineProps<{
+  open: boolean; title: string; dirty?: boolean; dismissLabel?: string; noDismiss?: boolean
+  fullHeight?: boolean; largeTargets?: boolean; closeLabel?: string; locked?: boolean
+}>()
 const emit = defineEmits<{ 'update:open': [open: boolean] }>()
 
 const { t } = useI18n()
@@ -116,13 +121,34 @@ function onKeydown(event: KeyboardEvent): void {
 }
 
 function requestClose(): void {
+  if (props.locked) return
   emit('update:open', false)
 }
+
+// While a full-height panel is open, the visible part of the page (smaller when the on-screen keyboard is up) sizes it.
+let stopViewport: (() => void) | undefined
+const viewportHeight = ref<number | null>(null)
+
+function watchViewport(): void {
+  const viewport = typeof window === 'undefined' ? undefined : window.visualViewport
+  if (!viewport) return
+  const sync = () => { viewportHeight.value = Math.round(viewport.height) }
+  sync()
+  viewport.addEventListener('resize', sync)
+  stopViewport = () => viewport.removeEventListener('resize', sync)
+}
+
+watch(() => props.open && props.fullHeight, (active) => {
+  stopViewport?.()
+  stopViewport = undefined
+  viewportHeight.value = null
+  if (active) watchViewport()
+}, { immediate: true })
 
 // A press on a control (the close button) is never a drag; elsewhere in the header it becomes one only after
 // DRAG_THRESHOLD_PX of travel, and only then is the pointer captured, so a plain click still reaches its target.
 function onGrabDown(event: PointerEvent): void {
-  if (isCentered.value || (event.pointerType === 'mouse' && event.button !== 0)) return
+  if (props.locked || isCentered.value || (event.pointerType === 'mouse' && event.button !== 0)) return
   if ((event.target as Element | null)?.closest(INTERACTIVE)) return
   endPress()
   pressStart = { pointerId: event.pointerId, pointerY: event.clientY }
@@ -215,6 +241,7 @@ watch(() => props.open && props.dirty, (unsaved) => {
 }, { immediate: true })
 
 onBeforeUnmount(() => {
+  stopViewport?.()
   endPress()
   animation?.stop()
   releaseUnsaved?.()
@@ -229,6 +256,9 @@ onBeforeUnmount(() => {
       <div
         ref="panel"
         class="sheet-panel"
+        :class="{ 'is-full': fullHeight, 'is-large': largeTargets }"
+        :style="viewportHeight !== null ? { '--vvh': `${viewportHeight}px` } : undefined"
+        :aria-busy="locked || undefined"
         role="dialog"
         aria-modal="true"
         :aria-labelledby="titleId"
@@ -246,7 +276,7 @@ onBeforeUnmount(() => {
           <span class="sheet-handle" :title="t('common.dragHandle')" aria-hidden="true" />
           <div class="sheet-header">
             <h2 :id="titleId" ref="heading" class="sheet-title t-headline" tabindex="-1">{{ title }}</h2>
-            <button class="sheet-close" type="button" :aria-label="t('common.close')" @click="requestClose">
+            <button class="sheet-close" type="button" :aria-label="closeLabel ?? t('common.close')" :disabled="locked" @click="requestClose">
               <Icon name="x" :size="20" />
             </button>
           </div>
@@ -280,6 +310,10 @@ onBeforeUnmount(() => {
   /* Clips scrolled content to the rounded corners. */
   overflow: hidden;
 }
+/* A guided flow: a tall panel, a body that scrolls, 48 px controls. --vvh follows the visible viewport (keyboard up). */
+.sheet-panel.is-large { --tap-target: 48px; }
+.sheet-panel.is-full { height: calc(min(var(--vvh, 100dvh), 100dvh) - var(--safe-top) - var(--space-6)); }
+.sheet-close:disabled { opacity: 0.4; }
 .sheet-grab { touch-action: none; padding-top: var(--space-2); cursor: grab; }
 .sheet-title:focus { outline: none; }
 .sheet-handle { display: block; width: 36px; height: 5px; margin: 0 auto var(--space-1); border-radius: 3px; background: var(--label-3); }
@@ -327,6 +361,7 @@ onBeforeUnmount(() => {
   transition: opacity 0.15s, transform var(--spring-duration) var(--ease-out);
 }
 .is-centered.is-shown .sheet-panel { opacity: 1; transform: scale(1); }
+.is-centered .sheet-panel.is-full { width: min(35rem, calc(100vw - 2rem)); height: min(42.5rem, calc(100dvh - 4rem)); }
 .is-centered .sheet-grab { cursor: default; touch-action: auto; }
 .is-centered .sheet-handle { display: none; }
 

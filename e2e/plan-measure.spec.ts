@@ -50,37 +50,47 @@ function withoutBookkeeping(document: Record<string, unknown>) {
 }
 
 test.describe('plan and measure', () => {
-  test('@smoke a fresh profile gets onboarding with templates and ends with a populated week', async ({ page }) => {
+  test('@smoke a fresh profile gets the guided setup and ends with a populated week', async ({ page }) => {
     await page.clock.setFixedTime(MONDAY_MORNING)
     await page.goto('./')
-    const dialog = page.getByRole('dialog', { name: 'Your week has 168 hours. Decide where they go.' })
+    const dialog = page.getByRole('dialog', { name: 'Set up your week' })
     await expect(dialog).toBeVisible()
-
-    // Sleep and Work come ticked.
-    await expect(dialog.getByRole('checkbox', { name: 'Use Sleep' })).toBeChecked()
-    await expect(dialog.getByRole('checkbox', { name: 'Use Work' })).toBeChecked()
-    await dialog.getByRole('checkbox', { name: 'Use Exercise' }).check()
-    await dialog.getByRole('button', { name: 'Edit Work' }).click()
-    await dialog.getByRole('textbox', { name: 'Category name' }).fill('Day job')
-    await dialog.getByRole('button', { name: 'Next' }).click()
-
-    await expect(page.getByRole('dialog', { name: 'Adjust your typical week' })).toBeVisible()
-    await expect(page.getByText('23:00–07:00 · Every day')).toBeVisible()
-    await page.getByRole('button', { name: 'Next' }).click()
-
-    await page.getByLabel('Task', { exact: true }).fill('Book a health check')
-    await page.getByRole('button', { name: 'Finish' }).click()
-    await expect(page.getByRole('dialog', { name: 'Your week is ready' })).toBeVisible()
-    await page.getByTestId('onboarding').getByRole('button', { name: 'Close' }).click()
-    await expect(page.getByTestId('onboarding')).toBeHidden()
+    const setup = page.getByTestId('setup')
+    const screen = async (name: string) => {
+      await expect(setup).toHaveAttribute('data-screen', name)
+      await expect(page.locator('[data-testid=setup] section.screen[aria-hidden=true]')).toHaveCount(0)
+    }
+    // One question per screen, each answered with the control that fits it.
+    await screen('sleep')
+    await setup.getByRole('button', { name: 'Next', exact: true }).click()
+    await screen('workStudy')
+    await setup.getByRole('button', { name: 'I work', exact: true }).click()
+    await screen('work')
+    await setup.getByRole('button', { name: 'Next', exact: true }).click()
+    await screen('commute')
+    await setup.getByRole('button', { name: 'No', exact: true }).click()
+    await screen('exercise')
+    await setup.getByRole('button', { name: 'Yes', exact: true }).click()
+    await screen('exerciseRanges')
+    await setup.getByRole('button', { name: 'Next', exact: true }).click()
+    await screen('more')
+    await setup.getByRole('button', { name: 'Skip', exact: true }).click()
+    await screen('summary')
+    await expect(page.getByTestId('week-counter')).toHaveText(/^99 h assigned · 69 h unassigned$/)
+    // Everything is editable in the summary: rename Work.
+    await setup.getByTestId('card-work').click()
+    await setup.getByTestId('card-name').fill('Day job')
+    await setup.getByTestId('card-done').click()
+    await setup.getByRole('button', { name: 'Get started', exact: true }).click()
+    await expect(setup).toBeHidden()
 
     const document = await storedDocument(page)
     expect(document.settings.onboardingDone).toBe(true)
     expect(document.categories.map((category: { name: string }) => category.name)).toEqual(['Sleep', 'Day job', 'Exercise'])
-    expect(document.categories[0].goal).toEqual({ type: 'min', hoursPerWeek: 49 })
+    // A new category's goal is what its times give, so it never starts out failing.
+    expect(document.categories[0].goal).toEqual({ type: 'min', hoursPerWeek: 56 })
     expect(document.blocks).toHaveLength(3)
-    // The default category is the first one that is not Sleep, so the task never lands in the sleep block.
-    expect(document.tasks[0]).toMatchObject({ title: 'Book a health check', categoryId: document.categories[1].id })
+    expect(document.tasks).toEqual([])
 
     await openTab(page, 'week')
     await expect(page.locator('main')).not.toBeEmpty()
@@ -89,13 +99,13 @@ test.describe('plan and measure', () => {
     await expect(page.getByTestId(`goal-row-${document.categories[0].id}`)).toContainText('✓')
   })
 
-  test('skipping onboarding keeps the planner empty and marks it done', async ({ page }) => {
+  test('closing the guided setup writes nothing and leaves it offered on Today', async ({ page }) => {
     await page.goto('./')
-    await expect(page.getByRole('dialog')).toBeVisible()
+    await expect(page.getByTestId('setup')).toBeVisible()
     await page.keyboard.press('Escape')
-    await expect(page.getByTestId('onboarding')).toBeHidden()
-    expect((await storedDocument(page)).settings.onboardingDone).toBe(true)
-    expect((await storedDocument(page)).categories).toEqual([])
+    await expect(page.getByTestId('setup')).toBeHidden()
+    expect(await storedRecord(page, 'document')).toBeNull()
+    await expect(page.getByTestId('setup-week')).toBeVisible()
   })
 
   test('a 2 h task in a category with 1 h free shows 1 h missing; complete can be undone', async ({ page }) => {

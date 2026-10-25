@@ -48,5 +48,6 @@
     "blocks": "aucune routine | {count} routine | {count} routines",
     "tasks": "aucune tâche | {count} tâche | {count} tâches"
   },
-  "chooseTarget": "Choisissez une catégorie"
+  "chooseTarget": "Choisissez une catégorie",
+  "setupWeek": "Préparer ma semaine"
 }

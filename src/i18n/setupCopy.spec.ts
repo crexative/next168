@@ -27,7 +27,7 @@ describe.each(SUPPORTED_LOCALES)('%s setup copy', (locale) => {
   })
 
   it('has singular and plural forms where a count is shown', () => {
-    for (const path of ['assistant.answers.overflow', 'onboarding.done.categories', 'onboarding.done.blocks']) {
+    for (const path of ['assistant.answers.overflow']) {
       expect(get(locale, path).split('|'), path).toHaveLength(2)
     }
     for (const path of ['categories.usage.blocks', 'categories.usage.tasks']) expect(get(locale, path).split('|'), path).toHaveLength(3)
@@ -35,7 +35,7 @@ describe.each(SUPPORTED_LOCALES)('%s setup copy', (locale) => {
 
   it('keeps the same placeholders as English in every new string', () => {
     const names = (value: string) => [...value.matchAll(/\{(\w+)\}/g)].map((match) => match[1]).sort().filter((name, index, all) => all.indexOf(name) === index)
-    for (const path of ['onboarding.counter', 'onboarding.counterOver', 'onboarding.perWeek', 'onboarding.edit', 'onboarding.done.summary', 'onboarding.done.task', 'settings.exportNudge.overdue', 'setup.backTo', 'assistant.status.line', 'categories.inUse']) {
+    for (const path of ['onboarding.summary.assigned', 'onboarding.summary.unassigned', 'onboarding.summary.remove', 'onboarding.summary.hasTasks', 'onboarding.guided.extra.custom', 'onboarding.guided.errors.overlap', 'settings.exportNudge.overdue', 'setup.backTo', 'assistant.status.line', 'categories.inUse']) {
       expect(names(get(locale, path)), `${locale}:${path}`).toEqual(names(get('en', path)))
     }
   })

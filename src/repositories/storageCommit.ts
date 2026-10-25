@@ -1,5 +1,6 @@
-import { STORAGE_KEYS, type LoadResult } from '@/core/model'
-import { parseDocument } from './core'
+import { STORAGE_KEYS, type LoadResult, type PlannerDocument } from '@/core/model'
+import { canonicalJson, sha256 } from '@/core/canonical'
+import { parseDocument, validateDocument } from './core'
 
 // The legacy localStorage surface: read for the one-time import, cleared by delete-all, never written.
 export interface StorageLike {
@@ -46,4 +47,18 @@ export function failureReason(error: unknown): string {
 // Failures of the storage itself, as opposed to conflicts or refused documents: the app cannot keep editing.
 export function isStorageFailure(reason: string | null | undefined): boolean {
   return reason === 'quota-exceeded' || (reason ?? '').startsWith('storage-failed')
+}
+
+// What a guarded write compares: "absent" for nothing stored, otherwise the hash of the canonical document, so one
+// comparison covers presence, workspace, content and a replacement that kept the same revision.
+export type StoredFingerprint = 'absent' | string
+
+export async function documentFingerprint(document: PlannerDocument): Promise<string> {
+  return sha256(canonicalJson(validateDocument(document)))
+}
+
+export async function storedFingerprintOf(raw: string | undefined): Promise<StoredFingerprint | undefined> {
+  if (raw === undefined) return 'absent'
+  const stored = parseDocument(raw)
+  return stored.kind === 'ok' ? documentFingerprint(stored.document) : undefined
 }

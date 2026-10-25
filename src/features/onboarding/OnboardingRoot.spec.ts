@@ -15,6 +15,7 @@ let mounted: Mounted | undefined
 
 beforeEach(() => {
   localStorage.clear()
+  sessionStorage.clear()
   persist.mockClear()
   vi.useFakeTimers({ toFake: ['Date'] })
   vi.setSystemTime(fixedNow())
@@ -51,11 +52,12 @@ async function prepareAssistant(): Promise<void> {
   }
 }
 
-async function clickWizard(label: string): Promise<void> {
-  const button = [...document.body.querySelectorAll<HTMLButtonElement>('[data-testid=onboarding] button')]
-    .find((candidate) => candidate.textContent?.trim() === label)!
-  button.click()
+async function clickSetup(testId: string): Promise<void> {
+  // The screen that is leaving (inert, aria-hidden) may still be in the DOM for a frame.
+  const buttons = [...document.body.querySelectorAll<HTMLButtonElement>(`[data-testid=setup] [data-testid=${testId}]`)]
+  buttons.find((button) => button.closest('[aria-hidden=true]') === null)!.click()
   await mounted!.store.settled()
+  await nextTick()
   await nextTick()
 }
 
@@ -72,18 +74,27 @@ async function saveCheckIn(text: string): Promise<void> {
 }
 
 it.each([
-  ['skip', true], ['finish', true], ['skip', false], ['finish', false],
+  ['close', true], ['finish', true], ['close', false], ['finish', false],
 ] as const)('%s with persistence granted=%s requests only after the first check-in, once across model loads and reloads', async (completion, granted) => {
   persist.mockResolvedValue(granted)
   mounted = await mountWithPlanner(screen, { settings: { ...testDocument().settings, onboardingDone: false } })
+  await vi.waitFor(() => expect(document.body.querySelector('[data-testid=setup]')).not.toBeNull())
   expect(persist).not.toHaveBeenCalled()
-  if (completion === 'skip') await clickWizard('Not now')
-  else {
-    await clickWizard('Next')
-    await clickWizard('Next')
-    await clickWizard('Finish')
+  if (completion === 'close') {
+    // Closing writes nothing: the first setup stays unfinished.
+    document.body.querySelector<HTMLButtonElement>('[role=dialog] button[aria-label="Not now"]')!.click()
+    await mounted.store.settled()
+    await nextTick()
+    expect(mounted.store.document!.settings.onboardingDone).toBe(false)
+  } else {
+    // Skip every question, then start with an empty week.
+    for (const screen of ['sleep', 'workStudy', 'exercise', 'more']) {
+      expect(document.body.querySelector('[data-testid=setup]')!.getAttribute('data-screen')).toBe(screen)
+      await clickSetup('setup-secondary')
+    }
+    await clickSetup('setup-primary')
+    await vi.waitFor(() => expect(mounted!.store.document!.settings.onboardingDone).toBe(true))
   }
-  expect(mounted.store.document!.settings.onboardingDone).toBe(true)
   expect(mounted.store.document!.checkIns).toEqual([])
   expect(persist).not.toHaveBeenCalled()
   expect(localStorage.getItem(PERSIST_REQUESTED_KEY)).toBeNull()

@@ -5,53 +5,140 @@
     "exercise": "Exercice",
     "learning": "Apprentissage",
     "family": "Famille",
-    "free-time": "Temps libre",
-    "commute": "Trajets"
+    "free-time": "Temps pour toi",
+    "commute": "Trajets",
+    "study": "Études",
+    "friends": "Amis"
   },
-  "steps": {
-    "0": {
-      "title": "Votre semaine compte 168 heures. Décidez à quoi elles servent.",
-      "description": "Sans compte. Tout reste sur cet appareil."
+  "guided": {
+    "sheetTitle": "Prépare ta semaine",
+    "close": "Pas maintenant",
+    "back": "Retour",
+    "next": "Suivant",
+    "skip": "Passer",
+    "noFixedTime": "Pas d'horaire fixe",
+    "progress": "Partie {step} sur {total}",
+    "intro": "Bonjour. Quelques questions courtes, et tu pourras tout changer à la fin.",
+    "trust": "Sans compte. Tout reste sur cet appareil.",
+    "sleep": {
+      "question": "À quelle heure te couches-tu et te lèves-tu ?",
+      "bed": "Je me couche",
+      "wake": "Je me lève",
+      "weekendDifferent": "Le week-end, c'est différent",
+      "weeknights": "En semaine",
+      "weekend": "Week-end"
     },
-    "1": {
-      "title": "Ajustez votre semaine type",
-      "description": "Gardez les blocs types voulus et ajustez l'objectif de chaque catégorie. Vous pourrez le modifier ensuite."
+    "workStudy": {
+      "question": "Tu travailles ou tu étudies ?",
+      "work": "Je travaille",
+      "study": "J'étudie",
+      "both": "Les deux",
+      "neither": "Aucun des deux"
     },
-    "2": {
-      "title": "Ajoutez une première tâche",
-      "description": "Les tâches sont placées dans le temps libre de leur catégorie."
-    }
+    "work": {
+      "question": "Quand travailles-tu ?",
+      "hint": "Horaires coupés ou samedis ? Ajoute un horaire."
+    },
+    "study": {
+      "question": "Quand étudies-tu ?"
+    },
+    "commute": {
+      "question": "L'aller-retour te prend du temps ?",
+      "hint": "Par exemple, le bus pour le travail."
+    },
+    "commuteRanges": {
+      "question": "Quand pars-tu et quand reviens-tu ?",
+      "there": "Aller",
+      "back": "Retour"
+    },
+    "yes": "Oui",
+    "no": "Non",
+    "current": "(actuel)",
+    "exercise": {
+      "question": "Fais-tu du sport ?"
+    },
+    "exerciseRanges": {
+      "question": "Quand fais-tu du sport ?"
+    },
+    "more": {
+      "question": "À quoi d'autre donnes-tu du temps chaque semaine ?",
+      "hint": "Choisis ce que tu veux.",
+      "family": "Famille",
+      "friends": "Amis",
+      "me": "Temps pour toi",
+      "learning": "Apprendre",
+      "other": "Autre chose",
+      "otherLabel": "C'est quoi ?",
+      "otherPlaceholder": "Par exemple : cours d'anglais",
+      "add": "Ajouter",
+      "duplicate": "C'est déjà dans ta liste."
+    },
+    "extra": {
+      "family": "Quand passes-tu du temps en famille ?",
+      "friends": "Quand vois-tu tes amis ?",
+      "me": "Quand as-tu du temps pour toi ?",
+      "learning": "Quand apprends-tu quelque chose de nouveau ?",
+      "custom": "Quand as-tu « {name} » ?"
+    },
+    "range": {
+      "days": "Jours",
+      "start": "Début",
+      "end": "Fin",
+      "nextDay": "(le lendemain)",
+      "otherTime": "Autre heure",
+      "add": "Ajouter un horaire",
+      "remove": "Retirer"
+    },
+    "time": {
+      "hour": "Heure",
+      "minutes": "Minutes",
+      "use": "Prendre {time}",
+      "hourDown": "Heure précédente",
+      "hourUp": "Heure suivante",
+      "minutesDown": "Moins 5 minutes",
+      "minutesUp": "Plus 5 minutes"
+    },
+    "days": {
+      "weekdays": "Lundi à vendredi",
+      "everyDay": "Tous les jours",
+      "weekend": "Le week-end",
+      "pick": "Choisir les jours",
+      "everyNight": "Toutes les nuits"
+    },
+    "errors": {
+      "noDays": "Choisis au moins un jour.",
+      "sameTime": "Ça commence et finit à la même heure. Changes-en une.",
+      "overlap": "Chevauche {name} : {when}.",
+      "nameRequired": "Écris un nom.",
+      "nameDuplicate": "Ce nom est déjà dans ta liste."
+    },
+    "resumed": "On reprend où tu t'étais arrêté.",
+    "startOver": "Recommencer",
+    "draftUnavailable": "Ce navigateur ne garde pas de brouillon. Ne recharge pas avant la fin."
   },
-  "progress": "Étape {step} sur {total}",
-  "useCategory": "Utiliser {name}",
-  "categoryName": "Nom de la catégorie",
-  "categoryColor": "Couleur de la catégorie",
-  "everyDay": "Tous les jours",
-  "needCategories": "Choisissez au moins une catégorie à l'étape 1, ou passez cette étape.",
-  "back": "Retour",
-  "next": "Suivant",
-  "finish": "Terminer",
-  "noTaskCategory": "Aucune catégorie, ignorer la tâche",
-  "notNow": "Pas maintenant",
-  "changedElsewhere": "Votre planning a changé pendant la configuration. Rien n’a été enregistré. Vérifiez les valeurs actuelles et réessayez.",
-  "counter": "{planned} h sur 168 planifiées",
-  "counterFree": "{free} h libres",
-  "counterOver": "Vous dépassez les 168 h de {over} h",
-  "perWeek": "{hours} h par semaine",
-  "edit": "Modifier {name}",
-  "editGoal": "Changer l'objectif de {name}",
-  "goalLabel": "Objectif de {name}",
-  "goal": {
-    "max": "Max {hours} h",
-    "min": "Min {hours} h",
-    "none": "Sans objectif"
-  },
-  "done": {
-    "title": "Votre semaine est prête",
-    "categories": "{count} catégorie | {count} catégories",
-    "blocks": "{count} bloc | {count} blocs",
-    "summary": "{categories} et {blocks} enregistrés sur cet appareil.",
-    "task": "« {title} » est dans vos tâches et trouvera sa place dans votre semaine.",
-    "seeWeek": "Voir dans Semaine"
+  "summary": {
+    "title": "Ta semaine type",
+    "bubble": "Voici ta semaine. Touche un élément pour le changer.",
+    "empty": "Rien pour l'instant. Ajoute quelque chose ou commence ainsi.",
+    "assigned": "{hours} attribuées",
+    "unassigned": "{hours} non attribuées",
+    "overlapping": "Certains horaires se chevauchent. Les heures communes comptent une fois.",
+    "name": "Nom",
+    "done": "OK",
+    "remove": "Retirer {name}",
+    "removed": "« {name} » retiré.",
+    "undo": "Annuler",
+    "hasTasks": "Il a des tâches. Pour le retirer, va dans {place}.",
+    "keptForTasks": "« {name} » reste sans horaire, car il a des tâches.",
+    "noTimes": "Sans horaire",
+    "add": "Ajouter autre chose",
+    "start": "Commencer",
+    "save": "Enregistrer",
+    "review": "Revoir les questions",
+    "saved": "C'est fait. Ta semaine est enregistrée.",
+    "changedElsewhere": "Ta semaine a changé dans une autre fenêtre. Voici la version actuelle.",
+    "understood": "Compris",
+    "saveFailed": "Impossible d'enregistrer. Tes réponses sont toujours là.",
+    "tooLarge": "Ta semaine a trop d'horaires pour être enregistrée. Retires-en."
   }
 }

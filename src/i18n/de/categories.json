@@ -48,5 +48,6 @@
     "blocks": "keine Routinen | {count} Routine | {count} Routinen",
     "tasks": "keine Aufgaben | {count} Aufgabe | {count} Aufgaben"
   },
-  "chooseTarget": "Kategorie wählen"
+  "chooseTarget": "Kategorie wählen",
+  "setupWeek": "Meine Woche einrichten"
 }

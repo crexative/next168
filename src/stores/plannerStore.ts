@@ -19,6 +19,10 @@ export interface RepositoryExtras {
   deleteAll?(fresh: PlannerDocument, expectedRevision: number): Promise<SaveResult>
   // Browser only: a save refused when a delete-all happened since `purgeEpoch` was read.
   saveAtEpoch?(document: PlannerDocument, expectedRevision: number, purgeEpoch: number): Promise<SaveResult>
+  // Browser only: a save refused unless storage still holds exactly what the caller opened on (and the same purge epoch).
+  saveGuarded?(document: PlannerDocument, expectedRevision: number, guard: { purgeEpoch?: number; storedFingerprint?: string }): Promise<SaveResult>
+  // Browser only, synchronous: the purge epoch this tab last loaded.
+  knownPurgeEpoch?(): number | undefined
 }
 export type PlannerRepositoryWithExtras = PlannerRepository & RepositoryExtras
 
@@ -49,6 +53,9 @@ export function activePlannerRepository(): PlannerRepositoryWithExtras {
 export interface CommitOptions {
   // Calendar writes pass the purge epoch they started under, so they never land after a delete-all.
   purgeEpoch?: number
+  // A flow that opened on a stored document (or on proven-empty storage, 'absent') passes what it opened on; the write
+  // is refused inside the commit lock unless storage still holds exactly that.
+  expect?: { storedFingerprint: string; purgeEpoch?: number }
 }
 
 export const usePlannerStore = defineStore('planner', () => {
@@ -62,6 +69,8 @@ export const usePlannerStore = defineStore('planner', () => {
   const backupAvailable = ref(false)
   // True after a write failed on storage: the error screen then says the last change was not saved.
   const lastChangeLost = ref(false)
+  // False until a load found a stored document or a commit succeeded: a proven-empty load is "nothing stored yet".
+  const stored = ref(false)
 
   let queue: Promise<unknown> = Promise.resolve()
   let stopListening: (() => void)[] = []
@@ -91,12 +100,14 @@ export const usePlannerStore = defineStore('planner', () => {
     lastChangeLost.value = false
     switch (result.kind) {
       case 'ok':
+        stored.value = true
         document.value = result.document
         migratedFrom.value = result.migratedFrom ?? null
         status.value = repository.writable === false ? 'readonly' : 'ready'
         error.value = repository.writable === false ? 'no-web-locks' : null
         break
       case 'empty':
+        stored.value = false
         document.value = createEmptyDocument({ now: now(), locale: locale(), timeZone: timeZone(), idGen: newId })
         status.value = repository.writable === false ? 'readonly' : 'ready'
         error.value = repository.writable === false ? 'no-web-locks' : null
@@ -170,6 +181,7 @@ export const usePlannerStore = defineStore('planner', () => {
       }))
       if (saved.kind === 'ok') {
         document.value = candidate
+        stored.value = true
         error.value = null
         return { ok: true }
       }
@@ -185,12 +197,16 @@ export const usePlannerStore = defineStore('planner', () => {
   }
 
   function commit(mutator: (draft: PlannerDocument) => void, options: CommitOptions = {}): Promise<CommitResult> {
-    const { purgeEpoch } = options
-    return persist(mutator, (repository, candidate, expected) => (
-      purgeEpoch !== undefined && repository.saveAtEpoch
+    const { purgeEpoch, expect } = options
+    return persist(mutator, (repository, candidate, expected) => {
+      // Without the guarded entry (the companion), the server's revision check is all there is.
+      if (expect && repository.saveGuarded) {
+        return repository.saveGuarded(candidate, expected, { storedFingerprint: expect.storedFingerprint, purgeEpoch: expect.purgeEpoch ?? purgeEpoch })
+      }
+      return purgeEpoch !== undefined && repository.saveAtEpoch
         ? repository.saveAtEpoch(candidate, expected, purgeEpoch)
         : repository.save(candidate, expected)
-    ))
+    })
   }
 
   function canDeleteAll(): boolean {
@@ -243,7 +259,7 @@ export const usePlannerStore = defineStore('planner', () => {
   }
 
   return {
-    document, status, error, migratedFrom, legacyChanged, corruptRaw, corruptReason, backupAvailable, lastChangeLost, writable,
+    document, status, error, stored, migratedFrom, legacyChanged, corruptRaw, corruptReason, backupAvailable, lastChangeLost, writable,
     start, load, commit, deleteAll, canDeleteAll, reportStorageFailure, settled, dismissError, startFresh, restoreBackup,
   }
 })

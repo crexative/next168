@@ -14,7 +14,7 @@ import { weekSplit, weekSplitHours } from '@/features/capacity/freeHours'
 import CheckInCard from '@/features/checkin/CheckInCard.vue'
 import { consumeSavedFlag } from '@/features/checkin/checkinFlash'
 import SetupWeekPrompt from '@/features/onboarding/SetupWeekPrompt.vue'
-import { setupWeekOffered } from '@/features/onboarding/reopen'
+import { setupOpen, setupWeekOffered } from '@/features/onboarding/reopen'
 import { useExternalOccurrences } from '@/features/week/externalOccurrences'
 import { formatDate } from '@/features/week/localTime'
 import { useNow } from '@/features/week/useNow'
@@ -40,8 +40,9 @@ const external = useExternalOccurrences(() => document.value ? { fromDate: today
 const nowAndNext = computed(() => document.value ? currentAndNext(document.value, now.value, timeZone.value) : { current: null, next: null })
 // Free hours from now to the end of the week, in whole hours: the one figure Today keeps from the old header card.
 const freeHours = computed(() => document.value ? weekSplitHours(weekSplit(document.value, now.value, timeZone.value)).freeAhead : 0)
-// While the first-run setup is open the week is still being decided, so its free hours would mislead: date only.
-const subtitle = computed(() => document.value?.settings.onboardingDone === false
+// While the first-run setup is on screen the week is still being decided, so its free hours would mislead: date only.
+// A setup closed without finishing leaves Hoy as usual.
+const subtitle = computed(() => document.value?.settings.onboardingDone === false && setupOpen.value
   ? dateLabel.value
   : t('today.header.subtitle', { date: dateLabel.value, hours: formatWholeHours(freeHours.value) }))
 

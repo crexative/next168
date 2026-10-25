@@ -48,5 +48,6 @@
     "blocks": "ninguna rutina | {count} rutina | {count} rutinas",
     "tasks": "ninguna tarea | {count} tarea | {count} tareas"
   },
-  "chooseTarget": "Elige una categoría"
+  "chooseTarget": "Elige una categoría",
+  "setupWeek": "Configurar mi semana"
 }

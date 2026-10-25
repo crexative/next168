@@ -5,53 +5,140 @@
     "exercise": "Exercício",
     "learning": "Aprendizado",
     "family": "Família",
-    "free-time": "Tempo livre",
-    "commute": "Deslocamento"
+    "free-time": "Tempo para você",
+    "commute": "Deslocamento",
+    "study": "Estudo",
+    "friends": "Amigos"
   },
-  "steps": {
-    "0": {
-      "title": "Sua semana tem 168 horas. Decida para onde elas vão.",
-      "description": "Sem conta. Tudo fica neste dispositivo."
+  "guided": {
+    "sheetTitle": "Monte sua semana",
+    "close": "Agora não",
+    "back": "Voltar",
+    "next": "Seguinte",
+    "skip": "Pular",
+    "noFixedTime": "Sem horário fixo",
+    "progress": "Parte {step} de {total}",
+    "intro": "Olá. São perguntas curtas e você pode mudar tudo no final.",
+    "trust": "Sem conta. Tudo fica neste aparelho.",
+    "sleep": {
+      "question": "Que horas você dorme e acorda?",
+      "bed": "Vou dormir",
+      "wake": "Acordo",
+      "weekendDifferent": "No fim de semana é diferente",
+      "weeknights": "Durante a semana",
+      "weekend": "Fim de semana"
     },
-    "1": {
-      "title": "Ajuste sua semana típica",
-      "description": "Mantenha os blocos típicos que quiser e ajuste a meta de cada categoria. Você poderá mudar depois."
+    "workStudy": {
+      "question": "Você trabalha ou estuda?",
+      "work": "Trabalho",
+      "study": "Estudo",
+      "both": "As duas coisas",
+      "neither": "Nenhuma"
     },
-    "2": {
-      "title": "Adicione uma primeira tarefa",
-      "description": "As tarefas são encaixadas no tempo livre da sua categoria."
-    }
+    "work": {
+      "question": "Quando você trabalha?",
+      "hint": "Turno dividido ou sábados? Adicione outro horário."
+    },
+    "study": {
+      "question": "Quando você estuda?"
+    },
+    "commute": {
+      "question": "Você leva tempo para ir e voltar?",
+      "hint": "Por exemplo, o ônibus para o trabalho."
+    },
+    "commuteRanges": {
+      "question": "Quando você vai e quando volta?",
+      "there": "Ida",
+      "back": "Volta"
+    },
+    "yes": "Sim",
+    "no": "Não",
+    "current": "(atual)",
+    "exercise": {
+      "question": "Você faz exercício?"
+    },
+    "exerciseRanges": {
+      "question": "Quando você faz exercício?"
+    },
+    "more": {
+      "question": "Com o que mais você passa tempo toda semana?",
+      "hint": "Escolha quantas quiser.",
+      "family": "Família",
+      "friends": "Amigos",
+      "me": "Tempo para você",
+      "learning": "Aprender",
+      "other": "Outra coisa",
+      "otherLabel": "O que é?",
+      "otherPlaceholder": "Por exemplo: aula de inglês",
+      "add": "Adicionar",
+      "duplicate": "Já está na sua lista."
+    },
+    "extra": {
+      "family": "Quando você passa tempo com a família?",
+      "friends": "Quando você vê seus amigos?",
+      "me": "Quando você tem tempo para você?",
+      "learning": "Quando você aprende algo novo?",
+      "custom": "Quando é \"{name}\"?"
+    },
+    "range": {
+      "days": "Dias",
+      "start": "Começa",
+      "end": "Termina",
+      "nextDay": "(no dia seguinte)",
+      "otherTime": "Outro horário",
+      "add": "Adicionar outro horário",
+      "remove": "Remover"
+    },
+    "time": {
+      "hour": "Hora",
+      "minutes": "Minutos",
+      "use": "Usar {time}",
+      "hourDown": "Hora anterior",
+      "hourUp": "Próxima hora",
+      "minutesDown": "Menos 5 minutos",
+      "minutesUp": "Mais 5 minutos"
+    },
+    "days": {
+      "weekdays": "Segunda a sexta",
+      "everyDay": "Todos os dias",
+      "weekend": "Fins de semana",
+      "pick": "Escolher dias",
+      "everyNight": "Todas as noites"
+    },
+    "errors": {
+      "noDays": "Escolha pelo menos um dia.",
+      "sameTime": "Começa e termina no mesmo horário. Mude um.",
+      "overlap": "Bate com {name}: {when}.",
+      "nameRequired": "Escreva um nome.",
+      "nameDuplicate": "Esse nome já está na sua lista."
+    },
+    "resumed": "Continuando de onde você parou.",
+    "startOver": "Começar de novo",
+    "draftUnavailable": "Este navegador não guarda rascunho. Não recarregue até terminar."
   },
-  "progress": "Passo {step} de {total}",
-  "useCategory": "Usar {name}",
-  "categoryName": "Nome da categoria",
-  "categoryColor": "Cor da categoria",
-  "everyDay": "Todos os dias",
-  "needCategories": "Escolha pelo menos uma categoria no passo 1 ou pule este passo.",
-  "back": "Voltar",
-  "next": "Avançar",
-  "finish": "Concluir",
-  "noTaskCategory": "Sem categoria, ignorar a tarefa",
-  "notNow": "Agora não",
-  "changedElsewhere": "Seu plano mudou enquanto a configuração estava aberta. Nada foi salvo. Confira os valores atuais e tente novamente.",
-  "counter": "{planned} h de 168 planejadas",
-  "counterFree": "{free} h livres",
-  "counterOver": "Você passa {over} h das 168",
-  "perWeek": "{hours} h por semana",
-  "edit": "Editar {name}",
-  "editGoal": "Mudar a meta de {name}",
-  "goalLabel": "Meta de {name}",
-  "goal": {
-    "max": "Máx. {hours} h",
-    "min": "Mín. {hours} h",
-    "none": "Sem meta"
-  },
-  "done": {
-    "title": "Sua semana está pronta",
-    "categories": "{count} categoria | {count} categorias",
-    "blocks": "{count} bloco | {count} blocos",
-    "summary": "Salvamos {categories} e {blocks} neste dispositivo.",
-    "task": "“{title}” está nas suas tarefas e vai caber na sua semana.",
-    "seeWeek": "Ver em Semana"
+  "summary": {
+    "title": "Sua semana típica",
+    "bubble": "Assim fica sua semana. Toque em algo para mudar.",
+    "empty": "Ainda não há nada. Adicione algo ou comece assim.",
+    "assigned": "{hours} atribuídas",
+    "unassigned": "{hours} sem atribuir",
+    "overlapping": "Alguns horários se cruzam. As horas cruzadas contam uma vez.",
+    "name": "Nome",
+    "done": "Pronto",
+    "remove": "Remover {name}",
+    "removed": "\"{name}\" removido.",
+    "undo": "Desfazer",
+    "hasTasks": "Tem tarefas. Para remover, vá em {place}.",
+    "keptForTasks": "\"{name}\" fica sem horário porque tem tarefas.",
+    "noTimes": "Sem horário",
+    "add": "Adicionar outra coisa",
+    "start": "Começar",
+    "save": "Salvar alterações",
+    "review": "Rever as perguntas",
+    "saved": "Pronto. Sua semana está salva.",
+    "changedElsewhere": "Sua semana mudou em outra janela. Aqui está a versão atual.",
+    "understood": "Entendi",
+    "saveFailed": "Não foi possível salvar. Suas respostas continuam aqui.",
+    "tooLarge": "Sua semana tem horários demais para salvar. Remova alguns."
   }
 }

@@ -1,80 +1,15 @@
 import { describe, expect, it } from 'vitest'
-import { createEmptyDocument } from '@/core/documents'
-import { validateDocument } from '@/core/documents'
-import { computeStats } from '@/core/stats'
-import { overlaps } from '@/core/time'
 import type { Category } from '@/core/model'
-import { buildOnboardingResult, CATEGORY_TEMPLATES, defaultTaskCategoryId, defaultTaskTemplateId, goalHoursValid, plannedMinutes, presetWeeklyMinutes, type TemplateChoice } from './templates'
+import { defaultTaskCategoryId, isSleepCategory } from './templates'
 
-const NOW = new Date('2026-10-24T12:00:00Z')
-let counter = 0
-const environment = { newId: () => `id-${++counter}`, now: NOW }
+describe('the task form\'s default category', () => {
+  const categories: Category[] = [
+    { id: 'c-sleep', name: 'Sleep', colorKey: 'purple', icon: '😴', goal: { type: 'min', hoursPerWeek: 49 } },
+    { id: 'c-work', name: 'Work', colorKey: 'blue', goal: { type: 'none', hoursPerWeek: 0 } },
+    { id: 'c-gym', name: 'Gym', colorKey: 'green', goal: { type: 'none', hoursPerWeek: 0 } },
+  ]
 
-const allChoices = (): TemplateChoice[] => CATEGORY_TEMPLATES.map((template) => ({
-  templateId: template.id, selected: true, name: template.id, colorKey: template.colorKey, sketch: true, goal: { ...template.goal },
-}))
-
-describe('onboarding templates', () => {
-  it('uses the documented goals', () => {
-    const goal = (id: string) => CATEGORY_TEMPLATES.find((template) => template.id === id)!.goal
-    expect(goal('sleep')).toEqual({ type: 'min', hoursPerWeek: 49 })
-    expect(goal('work')).toEqual({ type: 'max', hoursPerWeek: 40 })
-    expect(goal('exercise')).toEqual({ type: 'min', hoursPerWeek: 4 })
-    expect(goal('learning')).toEqual({ type: 'min', hoursPerWeek: 5 })
-    expect(goal('free-time')).toEqual({ type: 'min', hoursPerWeek: 10 })
-    expect(goal('family').type).toBe('none')
-  })
-
-  it('produces a valid document whose preset blocks never overlap', () => {
-    const result = buildOnboardingResult(allChoices(), { title: 'Plan', templateId: 'learning', durationMin: 60 }, environment)
-    const document = validateDocument({ ...createEmptyDocument({ now: NOW, locale: 'en', timeZone: 'UTC' }), ...result })
-    for (const [index, block] of document.blocks.entries()) {
-      for (const other of document.blocks.slice(index + 1)) expect(overlaps(block, other), `${block.title}/${other.title}`).toBe(false)
-    }
-    const sleep = computeStats(document).categories.find((row) => row.categoryId === result.categories[0]!.id)!
-    expect(sleep.plannedMinutes).toBe(7 * 8 * 60)
-    expect(sleep.goal.kind).toBe('ok')
-  })
-
-  it('skips unselected templates, sketches and tasks without a category', () => {
-    const choices = allChoices().map((choice) => ({ ...choice, selected: choice.templateId === 'work', sketch: false }))
-    const result = buildOnboardingResult(choices, { title: 'Write', templateId: 'sleep', durationMin: 30 }, environment)
-    expect(result.categories.map((category) => category.name)).toEqual(['work'])
-    expect(result.blocks).toEqual([])
-    expect(result.tasks).toEqual([])
-  })
-
-  it('honours renamed and recolored choices', () => {
-    const choices: TemplateChoice[] = [{ templateId: 'work', selected: true, name: ' Studio ', colorKey: 'red', sketch: true, goal: { type: 'max', hoursPerWeek: 40 } }]
-    const result = buildOnboardingResult(choices, { title: '', templateId: 'work', durationMin: 60 }, environment)
-    expect(result.categories[0]).toMatchObject({ name: 'Studio', colorKey: 'red' })
-    expect(result.blocks[0]!.title).toBe('Studio')
-  })
-
-  it('gives every created category a distinct colour, even when the choices repeat one', () => {
-    const defaults = buildOnboardingResult(allChoices(), { title: '', templateId: 'work', durationMin: 60 }, environment)
-    expect(new Set(defaults.categories.map((category) => category.colorKey)).size).toBe(defaults.categories.length)
-
-    const clashing = allChoices().map((choice) => ({ ...choice, colorKey: 'blue' as const }))
-    const result = buildOnboardingResult(clashing, { title: '', templateId: 'work', durationMin: 60 }, environment)
-    expect(new Set(result.categories.map((category) => category.colorKey)).size).toBe(CATEGORY_TEMPLATES.length)
-    expect(result.categories[0]!.colorKey).toBe('blue')
-  })
-
-  it('defaults the first task to the first picked category that is not Sleep', () => {
-    const pick = (...ids: string[]) => allChoices().map((choice) => ({ ...choice, selected: ids.includes(choice.templateId) }))
-    expect(defaultTaskTemplateId(pick('sleep', 'work', 'exercise'), '')).toBe('work')
-    expect(defaultTaskTemplateId(pick('sleep', 'work', 'exercise'), 'exercise')).toBe('exercise')
-    expect(defaultTaskTemplateId(pick('sleep', 'work'), 'learning')).toBe('work')
-    expect(defaultTaskTemplateId(pick('sleep'), '')).toBe('')
-  })
-
-  it('defaults the task form category to the first non-Sleep category, keeping an explicit choice', () => {
-    const categories: Category[] = [
-      { id: 'c-sleep', name: 'Sleep', colorKey: 'purple', icon: '😴', goal: { type: 'min', hoursPerWeek: 49 } },
-      { id: 'c-work', name: 'Work', colorKey: 'blue', goal: { type: 'none', hoursPerWeek: 0 } },
-      { id: 'c-gym', name: 'Gym', colorKey: 'green', goal: { type: 'none', hoursPerWeek: 0 } },
-    ]
+  it('is the first non-Sleep category, keeping an explicit choice', () => {
     expect(defaultTaskCategoryId(categories, '')).toBe('c-work')
     expect(defaultTaskCategoryId(categories, 'c-gym')).toBe('c-gym')
     expect(defaultTaskCategoryId(categories, 'gone')).toBe('c-work')
@@ -82,58 +17,10 @@ describe('onboarding templates', () => {
     expect(defaultTaskCategoryId(categories.slice(0, 1), '')).toBe('c-sleep')
     expect(defaultTaskCategoryId([], '')).toBe('')
   })
-})
 
-describe('onboarding week counter and edits', () => {
-  it('offers Sleep and Work already ticked and nothing else', () => {
-    expect(CATEGORY_TEMPLATES.filter((template) => template.preselected).map((template) => template.id)).toEqual(['sleep', 'work'])
-  })
-
-  it('adds up the typical week of the ticked categories', () => {
-    const only = (...ids: string[]) => allChoices().map((choice) => ({ ...choice, selected: ids.includes(choice.templateId) }))
-    expect(plannedMinutes(only('sleep', 'work'))).toBe((56 + 40) * 60)
-    expect(plannedMinutes(only())).toBe(0)
-    expect(plannedMinutes(only('sleep').map((choice) => ({ ...choice, sketch: false })))).toBe(0)
-    expect(presetWeeklyMinutes({ start: 23 * 60, end: 7 * 60, days: [0, 1] })).toBe(2 * 8 * 60)
-  })
-
-  it('stores an edited goal, and falls back to the template goal when its hours are unusable', () => {
-    const choices = allChoices().map((choice) => choice.templateId === 'work' ? { ...choice, goal: { type: 'max' as const, hoursPerWeek: 32 } } : choice.templateId === 'sleep' ? { ...choice, goal: { type: 'min' as const, hoursPerWeek: 0 } } : choice)
-    const result = buildOnboardingResult(choices, { title: '', templateId: 'work', durationMin: 60 }, environment)
-    expect(result.categories.find((category) => category.name === 'work')!.goal).toEqual({ type: 'max', hoursPerWeek: 32 })
-    expect(result.categories.find((category) => category.name === 'sleep')!.goal).toEqual({ type: 'min', hoursPerWeek: 49 })
-    expect(goalHoursValid({ type: 'none', hoursPerWeek: 0 })).toBe(true)
-    expect(goalHoursValid({ type: 'min', hoursPerWeek: 169 })).toBe(false)
-  })
-
-  it('reuses an existing category with the same name instead of duplicating it', () => {
-    const existing: Category[] = [{ id: 'c-existing', name: 'WORK', colorKey: 'red', goal: { type: 'none', hoursPerWeek: 0 } }]
-    const result = buildOnboardingResult(allChoices().filter((choice) => choice.templateId === 'work'), { title: 'Plan', templateId: 'work', durationMin: 30 }, { ...environment, existing })
-    expect(result.categories).toEqual([])
-    expect(result.blocks[0]!.categoryId).toBe('c-existing')
-    expect(result.tasks[0]!.categoryId).toBe('c-existing')
-  })
-
-  it('counts a recoloured kept category with its new colour, freeing the old one for a new category', () => {
-    const existing: Category[] = [{ id: 'c-sleep', name: 'Sleep', colorKey: 'purple', goal: { type: 'none', hoursPerWeek: 0 } }]
-    const choices: TemplateChoice[] = [
-      { templateId: 'sleep', existingCategoryId: 'c-sleep', selected: true, name: 'Sleep', colorKey: 'red', sketch: false, goal: { type: 'none', hoursPerWeek: 0 } },
-      { templateId: 'work', selected: true, name: 'Work', colorKey: 'red', sketch: false, goal: { type: 'none', hoursPerWeek: 0 } },
-      { templateId: 'learning', selected: true, name: 'Study', colorKey: 'purple', sketch: false, goal: { type: 'none', hoursPerWeek: 0 } },
-    ]
-    const result = buildOnboardingResult(choices, { title: '', templateId: 'work', durationMin: 30 }, { ...environment, existing })
-    expect(result.categoryUpdates).toEqual([{ id: 'c-sleep', patch: { colorKey: 'red', customColor: undefined } }])
-    const byName = new Map(result.categories.map((category) => [category.name, category.colorKey]))
-    expect(byName.get('Work')).not.toBe('red')
-    expect(byName.get('Study')).toBe('purple')
-  })
-
-  it('gives a new category a colour no kept category uses when the wizard is reopened', () => {
-    const existing: Category[] = [{ id: 'c-existing', name: 'Reading', colorKey: 'purple', goal: { type: 'none', hoursPerWeek: 0 } }]
-    const sleepOnly = allChoices().filter((choice) => choice.templateId === 'sleep')
-    expect(sleepOnly[0]!.colorKey).toBe('purple')
-    const result = buildOnboardingResult(sleepOnly, { title: '', templateId: 'sleep', durationMin: 30 }, { ...environment, existing })
-    expect(result.categories).toHaveLength(1)
-    expect(result.categories[0]!.colorKey).not.toBe('purple')
+  it('knows Sleep by its icon or its name', () => {
+    expect(isSleepCategory({ name: 'Rest', icon: '😴' })).toBe(true)
+    expect(isSleepCategory({ name: ' sleep ' })).toBe(true)
+    expect(isSleepCategory({ name: 'Work' })).toBe(false)
   })
 })

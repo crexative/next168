@@ -9,7 +9,6 @@ import { createTestRepositories, fixedNow, newTestId, testDocument } from '@/rep
 import CheckInView from './CheckInView.vue'
 import CategorySettings from '@/features/settings/categories/CategorySettings.vue'
 import TasksView from '@/features/tasks/TasksView.vue'
-import OnboardingHost from '@/features/onboarding/OnboardingHost.vue'
 import { useUndoToast } from '@/ui/undoToast'
 import DataSettings from '@/features/settings/data/DataSettings.vue'
 import { buildExportFile } from '@/features/settings/data/dataTransfer'
@@ -78,7 +77,7 @@ describe('check-in form after the workspace is replaced', () => {
 describe('other forms after the workspace is replaced', () => {
   it('does not let a category editor opened in the old workspace write into the new one', async () => {
     const { store } = await setup(CategorySettings, { ...workspace('ws-a'), revision: 1, categories: [{ id: 'c-old', name: 'Old', colorKey: 'blue', goal: { type: 'none', hoursPerWeek: 0 } }] })
-    host.querySelector<HTMLButtonElement>('.category-button')!.click()
+    host.querySelector<HTMLButtonElement>('[data-testid=category-c-old] .category-button')!.click()
     await nextTick()
     expect(document.body.querySelector('[role=dialog]')).not.toBeNull()
     const imported = { ...workspace('ws-b'), revision: 1, categories: [] }
@@ -147,7 +146,7 @@ describe('content replaced under the same workspace id (restored backup)', () =>
   it('does not let a category editor save into content restored under the same id', async () => {
     const old = { id: 'c-old', name: 'Old', colorKey: 'blue' as const, goal: { type: 'none' as const, hoursPerWeek: 0 } }
     const { store } = await setup(CategorySettings, { ...workspace('ws-a'), revision: 1, categories: [old] })
-    host.querySelector<HTMLButtonElement>('.category-button')!.click()
+    host.querySelector<HTMLButtonElement>('[data-testid=category-c-old] .category-button')!.click()
     await nextTick()
     store.document = { ...workspace('ws-a'), revision: 1, categories: [{ ...old, name: 'Restored' }] }
     document.body.querySelector('form.editor')!.dispatchEvent(new Event('submit', { cancelable: true }))
@@ -279,50 +278,9 @@ describe('forms bind to their own entry, confirmations to the content hash', () 
   })
 })
 
-describe('onboarding and undo actions stay bound to what they were prepared for', () => {
+describe('undo actions stay bound to what they were prepared for', () => {
   const category = { id: 'c-1', name: 'Work', colorKey: 'blue' as const, goal: { type: 'none' as const, hoursPerWeek: 0 } }
   const task = { id: 't-1', title: 'Existing', categoryId: 'c-1', durationMin: 30, priority: 2 as const, createdAt: '2026-10-01T00:00:00.000Z' }
-  const firstRun = (id: string) => ({ ...workspace(id), revision: 1, settings: { ...testDocument().settings, onboardingDone: false } })
-
-  async function atFinish(first: PlannerDocument) {
-    const ctx = await setup(OnboardingHost, first)
-    const click = async (label: string) => {
-      const button = [...document.body.querySelectorAll<HTMLButtonElement>('.onboarding button')].find((candidate) => candidate.textContent?.trim() === label)!
-      button.click()
-      await nextTick()
-    }
-    return { ...ctx, click }
-  }
-
-  it('rejects old wizard picks after a different first-run workspace replaces it', async () => {
-    const { store, click } = await atFinish(firstRun('ws-a'))
-    // Sleep and Work come ticked, so the wizard has picks without a tap.
-    expect(document.body.querySelector<HTMLInputElement>('.onboarding input[aria-label="Use Sleep"]')!.checked).toBe(true)
-    await click('Next')
-    await click('Next')
-    store.document = firstRun('ws-b')
-    // The watcher has not flushed yet: Finish was prepared for ws-a.
-    await click('Finish')
-    await store.settled()
-    expect(store.document?.workspaceId).toBe('ws-b')
-    expect(store.document?.categories).toEqual([])
-    expect(store.document?.settings.onboardingDone).toBe(false)
-    expect(store.error).toBeNull()
-  })
-
-  it('refuses wizard completion after the opening revision changes in the same workspace', async () => {
-    const { store, click } = await atFinish(firstRun('ws-a'))
-    expect(document.body.querySelector<HTMLInputElement>('.onboarding input[aria-label="Use Sleep"]')!.checked).toBe(true)
-    await click('Next')
-    await click('Next')
-    await store.commit((draft) => { draft.checkIns.push({ date: TODAY, note: 'x' }) })
-    await click('Finish')
-    await store.settled()
-    expect(store.document?.settings.onboardingDone).toBe(false)
-    expect(store.document?.categories).toEqual([])
-    expect(store.document?.checkIns).toEqual([{ date: TODAY, note: 'x' }])
-  })
-
   async function clickTaskButton(selector: string) {
     host.querySelector<HTMLButtonElement>(selector)!.click()
     await nextTick()

@@ -53,7 +53,7 @@ const hoursIn = (text: string) => /(\d+(?:,\d)?) h/.exec(text)?.[1]
 for (const size of Object.keys(SIZES) as (keyof typeof SIZES)[]) {
   for (const theme of THEMES) {
     test.describe(`${size} ${theme}`, () => {
-      test('empty Today and Week offer "Configurar mi semana", which reopens the wizard', async ({ page }) => {
+      test('empty Today and Week offer "Configurar mi semana", which opens the guided setup', async ({ page }) => {
         await start(page, size, theme, emptyWeek)
         await open(page, 'today', 'Hoy')
         const prompt = page.getByRole('button', { name: 'Configurar mi semana · 1 min' })
@@ -67,7 +67,8 @@ for (const size of Object.keys(SIZES) as (keyof typeof SIZES)[]) {
         await audit(page, `${size}/${theme}/empty Week`)
 
         await prompt.click()
-        await expect(page.getByTestId('onboarding')).toBeVisible()
+        await expect(page.getByTestId('setup')).toBeVisible()
+        await expect(page.getByRole('dialog', { name: 'Configura tu semana' })).toBeVisible()
       })
 
       test('the assistant and Settings sit in one place on every tab: the toolbar on a phone, the sidebar footer on a desktop', async ({ page }) => {
