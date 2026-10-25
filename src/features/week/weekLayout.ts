@@ -37,8 +37,16 @@ export interface LanePosition {
   stackWidth: number
 }
 
-// Half the column: the block keeps a strip wide enough for its title on two lines ("Deep / work"), never a letter.
-export const STACK_EVENT_INSET_PERCENT = 50
+export const STACK_EVENT_INSET_PERCENT = 28
+// An event that starts on a block's title row leaves a wider strip, so the title shows whole words on up to two lines
+// ("Deep / work"), never a letter and an ellipsis.
+export const STACK_TITLE_INSET_PERCENT = 44
+// The block's title row: 20 px of a 48 px hour.
+export const TITLE_ROW_MINUTES = 25
+
+export function coversTitle(event: { startMinute: number; endMinute: number }, block: { startMinute: number; endMinute: number }): boolean {
+  return event.startMinute < block.startMinute + TITLE_ROW_MINUTES && event.endMinute > block.startMinute && event.startMinute < block.endMinute
+}
 
 // Splits an instant range at local midnights so overnight items render on every day they touch.
 export function splitByLocalDay(start: string, end: string, dates: string[], timeZone: string): DayPart[] {
@@ -96,7 +104,10 @@ export function layoutDaySegments(blocks: BlockSegment[], busy: BusySegment[]): 
   ])
   const stacked = new Map<string, Lanes>()
   // Every event in a connected cluster shares the inset so its event lanes stay disjoint.
-  const stackedBusy = assignLanes(busy, (cluster) => cluster.some((event) => blocks.some((block) => block.startMinute < event.endMinute && event.startMinute < block.endMinute)) ? STACK_EVENT_INSET_PERCENT : 0)
+  const stackedBusy = assignLanes(busy, (cluster) => {
+    if (cluster.some((event) => blocks.some((block) => coversTitle(event, block)))) return STACK_TITLE_INSET_PERCENT
+    return cluster.some((event) => blocks.some((block) => block.startMinute < event.endMinute && event.startMinute < block.endMinute)) ? STACK_EVENT_INSET_PERCENT : 0
+  })
   for (const item of [...assignLanes(blocks), ...stackedBusy]) stacked.set(item.key, item)
   const result: ReturnType<typeof layoutDaySegments> = { blocks: [], busy: [] }
   for (const item of items) {

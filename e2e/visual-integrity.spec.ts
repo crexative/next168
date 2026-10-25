@@ -115,8 +115,10 @@ async function auditSheet(page: Page, state: string): Promise<void> {
   })
   expect.soft(focused.inside, `${state}: initial focus is inside the sheet`).toBe(true)
   expect.soft(focused.calm, `${state}: the sheet opened with a focus ring on ${focused.element}`).toBe(true)
-  // One rule for a sheet's primary action: its submit button spans the form, never hugs its label.
+  // One rule for a sheet's primary action: below 480 px its submit button spans the form, never hugs its label (from
+  // 480 px up every button hugs its label, Button.vue).
   const hugging = await page.evaluate(() => {
+    if (window.innerWidth >= 480) return []
     const dialogs = document.querySelectorAll('[role="dialog"]')
     const buttons = Array.from(dialogs[dialogs.length - 1]?.querySelectorAll<HTMLElement>('button[type="submit"]') ?? []).filter((button) => button.getClientRects().length > 0)
     return buttons.flatMap((button) => {
@@ -1024,6 +1026,15 @@ test.describe('visual integrity guard: overlapping controls', () => {
     expect(await visualIntegrityViolations(page, { focusRings: false })).toEqual(['<button.host> "Deep work" overlaps <button.task> "Report"'])
   })
 
+  test('a popover menu over a control below its trigger is a layer, not an overlap', async ({ page }, testInfo) => {
+    phoneOnly(testInfo)
+    await page.setContent(`
+      <style>body { margin: 0; font: 16px sans-serif; } .row { position: relative; height: 44px; } button { height: 44px; }</style>
+      <div class="row"><button>More</button><div role="menu" style="position: absolute; top: 44px; left: 0; width: 160px; background: #fff"><button role="menuitem" style="width: 160px">Partly</button></div></div>
+      <div class="row"><button>Done</button></div>`)
+    expect((await visualIntegrityViolations(page, { focusRings: false })).filter((violation) => violation.includes(' overlaps '))).toEqual([])
+  })
+
   test('a back link that runs under a toolbar button is reported', async ({ page }, testInfo) => {
     phoneOnly(testInfo)
     await page.setContent(`
@@ -1158,6 +1169,11 @@ test.describe('visual integrity guard: spacing', () => {
   test('a word hyphenated in the page language is accepted', async ({ page }) => {
     await page.setContent(squeezed('hyphens: auto;'))
     await page.evaluate(() => { document.documentElement.lang = 'en' })
+    expect(await audit(page)).toEqual([])
+  })
+
+  test('a word that only a button\'s own padding keeps from fitting may break', async ({ page }) => {
+    await page.setContent(spacingStage('<div style="display: flex; width: 200px"><button style="height: auto; padding: 4px 70px; font-size: 24px; line-height: 1.5; overflow-wrap: anywhere">Wochenende</button></div>'))
     expect(await audit(page)).toEqual([])
   })
 

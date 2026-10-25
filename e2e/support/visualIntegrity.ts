@@ -114,10 +114,12 @@ export function auditInPage(options: { focusRings: boolean }): string[] {
     return result
   }
 
-  // The nearest fixed or sticky layer an element floats in; content scrolls underneath such layers.
+  // The nearest fixed or sticky layer an element floats in (content scrolls underneath such layers), or a popover that
+  // floats over the content after its trigger.
   function layerOf(element: Element): Element | null {
     for (let node: Element | null = element; node; node = node.parentElement) {
-      if (/fixed|sticky/.test(getComputedStyle(node).position)) return node
+      const position = getComputedStyle(node).position
+      if (/fixed|sticky/.test(position) || position === 'absolute' && node.matches('[role="menu"], [role="listbox"], [role="dialog"], [role="group"]')) return node
     }
     return null
   }
@@ -386,16 +388,21 @@ export function auditInPage(options: { focusRings: boolean }): string[] {
 
   // The width a line of this text could have: its block, or, when that block is squeezed beside siblings in a flex row or
   // a grid track, the container that hands out the room.
+  // The insets (padding and border) of the boxes in between still apply: a word in a button gets the room minus the
+  // button's own padding.
   function lineRoom(element: HTMLElement): number {
     let node = blockOf(element)
+    let insets = 0
     for (let container = node.parentElement; container && container !== document.body; container = container.parentElement) {
       const style = getComputedStyle(container)
       const shares = /flex/.test(style.display) && !style.flexDirection.startsWith('column') || /grid/.test(style.display)
       if (!shares) break
+      const own = getComputedStyle(node)
+      insets += px(own.paddingLeft) + px(own.paddingRight) + px(own.borderLeftWidth) + px(own.borderRightWidth)
       node = container
     }
     const box = contentBox(node, getComputedStyle(node))
-    return box.right - box.left
+    return box.right - box.left - insets
   }
 
   // A word breaks across lines only when no line could hold it, or by hyphenation in the page's language; any other split
@@ -413,6 +420,10 @@ export function auditInPage(options: { focusRings: boolean }): string[] {
       const fragments = Array.from(range.getClientRects()).filter((rect) => rect.width > 0 && rect.height > 0)
       if (!fragments.some((rect) => rect.top >= fragments[0]!.bottom - 1)) continue
       room ??= lineRoom(parent)
+      // A word inside a longer unbroken run (a URL, an address) breaks because the run cannot fit a line.
+      const runStart = text.slice(0, match.index).search(/\S*$/)
+      const runEnd = match.index + match[0].length + (text.slice(match.index + match[0].length).search(/\s|$/))
+      if (textWidth(text.slice(runStart, runEnd), style) > room - TOLERANCE) continue
       const width = textWidth(match[0], style)
       if (width <= room - TOLERANCE) violations.push(`the word "${match[0]}" in ${describe(parent)} breaks mid-word though a line has room for it (${width.toFixed(1)}px of ${room.toFixed(1)}px)`)
     }

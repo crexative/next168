@@ -420,7 +420,7 @@ test.describe('tasks in Week', () => {
     expect(Number(layers.task)).toBeGreaterThan(Number(layers.line))
   })
 
-  test('a block beside an event in a narrow column keeps its title on one line, never broken in the middle of a word', async ({ page }) => {
+  test('a block whose title row an event covers, in a narrow column, shows whole words on up to two lines', async ({ page }) => {
     const document = plannerDocument({
       events: [{ id: 'e-1', title: 'Reunión', start: '2026-10-21T09:00:00.000Z', end: '2026-10-21T10:00:00.000Z', allDay: false, attendees: [] }],
       actuals: [],
@@ -429,12 +429,23 @@ test.describe('tasks in Week', () => {
     // Seven columns of about 146 px: narrower than 9.5 rem, where the title strip beside an event applies.
     await page.setViewportSize({ width: 1100, height: 900 })
     const work = column(page, WEDNESDAY).locator('[data-block-id="b-work"]')
-    await expect(work).toHaveClass(/is-beside/)
+    await expect(work).toHaveClass(/is-title-covered/)
     const title = work.locator('.block-title')
     await expect(title).toHaveCSS('word-break', 'normal')
-    await expect(title).toHaveCSS('white-space', 'nowrap')
+    await expect(title).toHaveCSS('overflow-wrap', 'normal')
     const lines = await title.evaluate((element) => element.getBoundingClientRect().height / parseFloat(getComputedStyle(element).lineHeight))
-    expect(lines).toBeLessThan(1.5)
+    expect(lines).toBeLessThan(2.5)
+    // The first word is whole on the first line: never a letter and an ellipsis.
+    const firstWord = await title.evaluate((element) => {
+      const node = Array.from(element.childNodes).find((child) => child.nodeType === Node.TEXT_NODE && (child.textContent ?? '').trim()) as Text
+      const text = node.textContent ?? ''
+      const start = text.search(/\S/)
+      const range = window.document.createRange()
+      range.setStart(node, start)
+      range.setEnd(node, start + text.slice(start).split(/\s/)[0]!.length)
+      return Array.from(range.getClientRects()).every((rect) => rect.right <= element.getBoundingClientRect().right + 0.5)
+    })
+    expect(firstWord).toBe(true)
   })
 
   test('a block whose first half hour holds a task shows only its title, not its time range', async ({ page }) => {

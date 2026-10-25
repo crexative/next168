@@ -83,16 +83,15 @@ test.describe('Week at tablet widths', () => {
         await expect(event).toHaveCount(1)
 
         // The inset band leaves a leading block strip. The event title keeps at least six painted characters; the
-        // block title is never broken in the middle of a word, so in a strip about 25 px wide it keeps its first
-        // letters and an ellipsis (the full title is the block's accessible name and is in its editor).
+        // block title (its row is above the event) shows at least four letters and wraps only between words.
         const columnBox = (await column.boundingBox())!
         const eventBox = (await event.boundingBox())!
         expect(eventBox.x).toBeGreaterThan(columnBox.x)
         expect(eventBox.width, `${title} width`).toBeGreaterThan(columnBox.width / 2)
         expect(await visibleCharacters(event.locator('.busy-title')), `${title} visible characters`).toBeGreaterThanOrEqual(6)
         const block = column.locator('.block')
-        expect(await visibleCharacters(block.locator('.block-title')), 'block title visible characters').toBeGreaterThanOrEqual(2)
-        await expect(block.locator('.block-title')).toHaveCSS('white-space', 'nowrap')
+        expect(await visibleCharacters(block.locator('.block-title')), 'block title visible characters').toBeGreaterThanOrEqual(4)
+        await expect(block.locator('.block-title')).toHaveCSS('overflow-wrap', 'normal')
         expect((await block.boundingBox())!.width).toBeGreaterThan(columnBox.width - 8)
         await expect(event.getByTestId('calendar-conflict')).toBeVisible()
 

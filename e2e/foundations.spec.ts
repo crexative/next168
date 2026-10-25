@@ -76,20 +76,26 @@ test.describe('materials', () => {
       }
       return {
         toolbar: describe(document.querySelector('.toolbar')),
+        head: describe(document.querySelector('[data-testid="week-head"]')),
         strip: describe(document.querySelector('[data-toolbar-extension]')),
         tabbar: describe(getComputedStyle(document.querySelector('.tabbar')!).display === 'none' ? null : document.querySelector('.tabbar')),
       }
     })
-    for (const bar of [bars.toolbar, bars.strip, bars.tabbar]) {
+    for (const bar of [bars.toolbar, bars.head, bars.strip, bars.tabbar]) {
       if (!bar) continue
       expect(bar.alpha).toBeGreaterThanOrEqual(0.85)
       expect(bar.filter).toContain('blur(30px)')
     }
-    // Toolbar and strip are one material: same left and right edges, no gap, the edge drawn once under the strip.
-    expect(Math.abs(bars.strip!.left - bars.toolbar!.left)).toBeLessThanOrEqual(1)
-    expect(Math.abs(bars.strip!.right - bars.toolbar!.right)).toBeLessThanOrEqual(1)
-    expect(Math.abs(bars.strip!.top - bars.toolbar!.bottom)).toBeLessThanOrEqual(1)
+    // Toolbar, the week's head (range, arrows, free hours) and the strip are one material: same left and right edges, no
+    // gaps, the edge drawn once under the strip.
+    for (const bar of [bars.head!, bars.strip!]) {
+      expect(Math.abs(bar.left - bars.toolbar!.left)).toBeLessThanOrEqual(1)
+      expect(Math.abs(bar.right - bars.toolbar!.right)).toBeLessThanOrEqual(1)
+    }
+    expect(Math.abs(bars.head!.top - bars.toolbar!.bottom)).toBeLessThanOrEqual(1)
+    expect(Math.abs(bars.strip!.top - bars.head!.bottom)).toBeLessThanOrEqual(1)
     expect(bars.toolbar!.shadow).toBe('none')
+    expect(bars.head!.shadow).toBe('none')
     expect(bars.strip!.shadow).not.toBe('none')
 
     await openView(page, 'settings/advanced')

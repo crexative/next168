@@ -10,7 +10,7 @@ import './registerIcons'
 import { statusOf } from './blockStatus'
 import { categoryColor } from './categoryColor'
 import { formatMinute, formatTime } from './localTime'
-import { HOUR_HEIGHT_PX, SLOT_MINUTES, STACK_EVENT_INSET_PERCENT, layoutDaySegments, nearestHitTarget, type BlockSegment, type HitTarget, type BusySegment, type DayPart, type LanePosition, type TaskSegment } from './weekLayout'
+import { HOUR_HEIGHT_PX, SLOT_MINUTES, STACK_TITLE_INSET_PERCENT, coversTitle, layoutDaySegments, nearestHitTarget, type BlockSegment, type HitTarget, type BusySegment, type DayPart, type LanePosition, type TaskSegment } from './weekLayout'
 import type { BusyDetails } from './busyDetails'
 
 const props = withDefaults(defineProps<{
@@ -60,6 +60,11 @@ function isBesideEvent(segment: BlockSegment): boolean {
   return props.busy.some((item) => segment.startMinute < item.endMinute && item.startMinute < segment.endMinute)
 }
 
+// An event on the block's title row: in a narrow column the title keeps only the strip the event band leaves.
+function isTitleCovered(segment: BlockSegment): boolean {
+  return props.busy.some((item) => coversTitle(item, segment))
+}
+
 function isLaned(segment: BlockSegment & LanePosition): boolean {
   return segment.lanes > 1 || isBesideEvent(segment)
 }
@@ -80,7 +85,7 @@ function segmentStyle(segment: BlockSegment & LanePosition) {
     ...itemStyle(segment),
     '--block-color': categoryColor(categoriesById.value.get(segment.occurrence.categoryId)),
     '--block-stroke': categoryStroke(categoriesById.value.get(segment.occurrence.categoryId)),
-    '--title-strip': `${STACK_EVENT_INSET_PERCENT}cqw`,
+    '--title-strip': `${STACK_TITLE_INSET_PERCENT}cqw`,
   }
 }
 
@@ -216,7 +221,7 @@ function onColumnClick(event: MouseEvent, blockId?: string): void {
       :key="segment.key"
       type="button"
       class="block"
-      :class="{ 'is-short': segment.endMinute - segment.startMinute < 45, 'is-beside': isBesideEvent(segment), 'is-laned': isLaned(segment), 'is-crowded': crowdedBlocks.has(segment.key), 'is-done': statuses.get(segment.key) === 'done', 'is-skipped': statuses.get(segment.key) === 'skipped', 'continues-before': segment.continuesBefore, 'continues-after': segment.continuesAfter }"
+      :class="{ 'is-short': segment.endMinute - segment.startMinute < 45, 'is-beside': isBesideEvent(segment), 'is-title-covered': isTitleCovered(segment), 'is-laned': isLaned(segment), 'is-crowded': crowdedBlocks.has(segment.key), 'is-done': statuses.get(segment.key) === 'done', 'is-skipped': statuses.get(segment.key) === 'skipped', 'continues-before': segment.continuesBefore, 'continues-after': segment.continuesAfter }"
       :style="segmentStyle(segment)"
       :data-block-id="segment.occurrence.blockId"
       :data-start-minute="segment.startMinute"
@@ -365,8 +370,8 @@ function onColumnClick(event: MouseEvent, blockId?: string): void {
   }
   .is-beside .block-time, .is-beside .block-category, .is-beside .block-mark { display: none; }
   .block.is-beside { padding-inline: 3px 0; }
-  /* A word is never broken in the middle: in the narrow strip the title is cut with an ellipsis. */
-  .is-beside .block-title {
+  /* An event on the title row leaves the title its strip: whole words on up to two lines, hyphenated if one is too long. */
+  .is-title-covered .block-title {
     max-width: calc(var(--title-strip) - 4px);
     min-width: 0;
     overflow-wrap: normal;
@@ -403,7 +408,7 @@ function onColumnClick(event: MouseEvent, blockId?: string): void {
 .task-box.is-tight { align-items: center; padding-block: 0; }
 .task-box.is-late { border-color: var(--danger); color: var(--danger-label); }
 /* One tight caption line, so a 20-minute chunk (16 px) still carries its title. */
-.task-title { min-width: 0; overflow: hidden; line-height: 13px; text-overflow: ellipsis; white-space: nowrap; }
+.task-title { min-width: 0; overflow: hidden; line-height: 1.1; text-overflow: ellipsis; white-space: nowrap; }
 
 .block-status { display: inline-flex; align-items: center; gap: 2px; color: var(--label-2); }
 /* One visual, one meaning: done is dimmed with its check mark; only "No" is struck through. */
