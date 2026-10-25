@@ -354,6 +354,9 @@ async function remove(blockId: string): Promise<void> {
   --add-menu-max-height: calc(100dvh - var(--fab-bottom) - var(--fab-size) - var(--space-2) - var(--safe-top) - var(--fab-margin));
   position: fixed;
   z-index: 15;
+  /* Flex, not a block: a block would hold the button on a text line, which at large text is taller than the button
+     and puts its bottom wherever the font's baseline falls (1.8 px off on Linux at 300 %). */
+  display: flex;
   inset-inline-end: calc(var(--fab-margin) + var(--safe-right));
   bottom: var(--fab-bottom);
   transition: bottom 0.2s var(--ease-out);
