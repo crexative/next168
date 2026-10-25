@@ -14,17 +14,17 @@ export function useCalendarEvents(range: MaybeRefOrGetter<CalendarRange>) {
     const document = planner.document
     if (!document) { events.value = []; return }
     loading.value = true
-    const expanded: ExternalOccurrence[] = [], failures: Record<string, string> = {}
+    const expanded: ExternalOccurrence[] = [], failures: [string, string][] = []
     for (const source of document.calendarSources) {
       try {
         const text = await calendarServices().texts.get(source.id)
-        if (text === undefined) failures[source.id] = 'calendars.missing'
+        if (text === undefined) failures.push([source.id, 'calendars.missing'])
         else expanded.push(...icsImport(text, source.id, toValue(range), document.settings.timeZone))
-      } catch (error) { failures[source.id] = calendarErrorCode(error) }
+      } catch (error) { failures.push([source.id, calendarErrorCode(error)]) }
     }
     if (current !== generation) return
     events.value = expanded
-    errors.value = failures
+    errors.value = Object.fromEntries(failures)
     loading.value = false
   }, { immediate: true })
   watch(() => planner.document?.workspaceId, () => { void calendars.refreshOnOpen().catch(error => { errors.value = { ...errors.value, refresh: calendarErrorCode(error) } }) }, { immediate: true })

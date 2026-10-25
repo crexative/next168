@@ -46,11 +46,14 @@ type PurgeRecord = z.infer<typeof purgeSchema>
 
 export const STORED_DOCUMENT_MISSING = 'stored-document-missing'
 
+// `z.record` rebuilds the object and drops a `__proto__` key, so the records keyed by user data are checked in place.
+const isPlainRecord = (value: unknown): value is Record<string, unknown> =>
+  typeof value === 'object' && value !== null && !Array.isArray(value) && Object.getPrototypeOf(value) === Object.prototype
 const preUpgradeCopySchema = z.object({
   capturedAt: z.string(),
   fromVersion: z.number(),
-  raw: z.object({ document: z.unknown(), backup: z.unknown(), proposals: z.unknown(), meta: z.record(z.string(), z.unknown()) }),
-  calendarSourceTexts: z.record(z.string(), z.string()),
+  raw: z.object({ document: z.unknown(), backup: z.unknown(), proposals: z.unknown(), meta: z.custom<Record<string, unknown>>(isPlainRecord) }),
+  calendarSourceTexts: z.custom<Record<string, string>>((value) => isPlainRecord(value) && Object.values(value).every((text) => typeof text === 'string')),
   calendarsComplete: z.literal(true),
   portableHash: z.string().nullable(),
 })

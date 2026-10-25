@@ -163,13 +163,17 @@ async function readDatabase(factory: IDBFactory, name: string, version: number, 
   }
 }
 
+function ownText(texts: Record<string, string>, id: string): string | undefined {
+  return Object.prototype.hasOwnProperty.call(texts, id) ? texts[id] : undefined
+}
+
 // The export bundle of a pre-upgrade copy: its document with the texts that document references (a missing text is
 // exported empty, as every export does). Null when the stored document does not parse.
 export function preUpgradeBundle(copy: PreUpgradeCopy): ExportBundle | null {
   if (typeof copy.raw.document !== 'string') return null
   const parsed = parseDocument(copy.raw.document)
   if (parsed.kind !== 'ok') return null
-  const texts = Object.fromEntries(parsed.document.calendarSources.map((source) => [source.id, copy.calendarSourceTexts[source.id] ?? '']))
+  const texts = Object.fromEntries(parsed.document.calendarSources.map((source) => [source.id, ownText(copy.calendarSourceTexts, source.id) ?? '']))
   try {
     return buildExportBundle(parsed.document, texts, { now: () => new Date(copy.capturedAt) })
   } catch {
@@ -186,8 +190,9 @@ async function capturePreUpgradeCopy(
     const planner = await readDatabase(factory, PLANNER_DATABASE, versions.planner, ['document', 'backup', 'proposals', 'meta'])
     document = planner.document?.get('current')
     const calendars = versions.calendars === 0 ? undefined : await readDatabase(factory, CALENDAR_DATABASE, versions.calendars, [CALENDAR_STORE])
-    const calendarSourceTexts: Record<string, string> = {}
-    for (const [key, text] of calendars?.[CALENDAR_STORE] ?? []) calendarSourceTexts[String(key)] = text as string
+    // Ids are user data: `Object.fromEntries` defines every key as an own property, `__proto__` and `constructor`
+    // included, where an assignment would set the prototype or shadow nothing.
+    const calendarSourceTexts: Record<string, string> = Object.fromEntries([...(calendars?.[CALENDAR_STORE] ?? [])].map(([key, text]) => [String(key), text as string]))
     const meta = Object.fromEntries([...(planner.meta ?? new Map())].map(([key, value]) => [String(key), value]))
     const raw = { document, backup: planner.backup?.get('current'), proposals: planner.proposals?.get('all'), meta }
     const empty = raw.document === undefined && raw.backup === undefined && raw.proposals === undefined

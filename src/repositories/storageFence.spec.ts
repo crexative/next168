@@ -4,12 +4,12 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import { IDBFactory, IDBObjectStore } from 'fake-indexeddb'
 import { createApp, nextTick } from 'vue'
 import { createPinia, setActivePinia } from 'pinia'
-import { buildExportBundle, portableHash } from '@/core/exportBundle'
+import { buildExportBundle, parseExportBundle, portableHash } from '@/core/exportBundle'
 import type { PlannerDocument } from '@/core/model'
 import { configureCalendarServices, useCalendarStore } from '@/features/calendars/calendarStore'
 import { IndexedDbCalendarSourceStore } from '@/features/calendars/calendarSourceStore'
 import { provideCalendarSourceStore } from '@/features/settings/data/calendarSourceHook'
-import { MAX_IMPORT_BYTES } from '@/features/settings/data/dataTransfer'
+import { MAX_IMPORT_BYTES, replaceSourceTexts, verifyStored } from '@/features/settings/data/dataTransfer'
 import { preUpgradeFiles } from '@/features/settings/data/preUpgradeCopy'
 import { i18n } from '@/i18n'
 import StorageErrorScreen from '@/app/StorageErrorScreen.vue'
@@ -286,6 +286,48 @@ describe('F-05: the complete pre-upgrade copy (slice 0: refresh, deletion and co
     expect(over.bundle!.bytes).toBe(MAX_IMPORT_BYTES + 1)
     expect(over.bundle!.tooLarge).toBe(true)
   }, 60_000)
+})
+
+describe('F-05: calendar ids named like Object.prototype members', () => {
+  const ids = ['__proto__', 'constructor', 'hasOwnProperty']
+  const orphan = 'toString'
+  const sources = ids.map((id) => ({ id, name: `Source ${id}`, kind: 'file' as const, colorKey: 'blue' as const }))
+  const texts = Object.fromEntries([...ids, orphan].map((id) => [id, ics(`SENTINEL ${id} café ☕`)]))
+  const entries = (record: Record<string, string>) => Object.entries(record).sort(([a], [b]) => (a < b ? -1 : 1))
+
+  it('survive capture, raw serialization, download and re-import with identical bytes', async () => {
+    const factory = new IDBFactory()
+    const lock = mutexRunner()
+    const old = await preFenceBuild(factory, lock)
+    const { document } = await seedWithPreFenceBuild(old, texts, sources)
+    expect((await old.texts.list()).sort()).toEqual([...ids, orphan].sort())
+    const fresh = newBuild(factory, lock)
+    expect((await fresh.planner.load()).kind).toBe('ok')
+
+    // Capture: the stored copy and the repository's validated read both hold every record as an own key.
+    expect(entries((await readCopy(factory))!.calendarSourceTexts)).toEqual(entries(texts))
+    const copy = (await fresh.planner.preUpgradeCopy())!
+    expect(entries(copy.calendarSourceTexts)).toEqual(entries(texts))
+
+    // Raw serialization and the bundle download.
+    const files = await preUpgradeFiles(copy)
+    expect(entries((JSON.parse(files.raw.json) as PreUpgradeCopy).calendarSourceTexts)).toEqual(entries(texts))
+    expect(files.bundle).toBeDefined()
+    const parsed = parseExportBundle(files.bundle!.json)
+    expect(parsed.kind).toBe('ok')
+    if (parsed.kind !== 'ok') return
+    const referenced = Object.fromEntries(ids.map((id) => [id, texts[id]!]))
+    expect(entries(parsed.bundle.calendarSourceTexts)).toEqual(entries(referenced))
+    expect(await portableHash(parsed.bundle)).toBe(await portableBefore(document, texts))
+
+    // Re-import into the new build on another device: the same bytes under the same ids, verified on read-back.
+    const target = newBuild(new IDBFactory(), mutexRunner())
+    await target.planner.load()
+    expect((await target.planner.save({ ...parsed.document, revision: 1 }, 0)).kind).toBe('ok')
+    await replaceSourceTexts(target.texts, parsed.bundle.calendarSourceTexts)
+    for (const id of ids) expect([id, await target.texts.get(id)]).toEqual([id, texts[id]])
+    expect((await verifyStored(parsed.bundle, () => target.planner.load(), target.texts)).ok).toBe(true)
+  })
 })
 
 describe('F-06: a calendar read failure during capture aborts the upgrade', () => {

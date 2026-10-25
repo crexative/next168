@@ -8,8 +8,19 @@ export type BundleLoadResult =
   | { kind: 'corrupt'; raw: string; reason: string }
   | { kind: 'unsupported'; schemaVersion: unknown }
 
+// The texts keyed by calendar source id, as own properties. `z.record` rebuilds the object and silently drops a
+// `__proto__` key, so the validated values are taken from the input's own entries instead.
+function ownTexts(raw: unknown): Record<string, string> {
+  const texts = (raw as { calendarSourceTexts?: unknown }).calendarSourceTexts as Record<string, unknown>
+  return Object.fromEntries(Object.entries(texts).map(([id, text]) => {
+    if (typeof text !== 'string' || text.length > 5 * 1024 * 1024) throw new Error('bundle.invalidSource')
+    return [id, text]
+  }))
+}
+
 function validateBundle(raw: unknown): ExportBundle {
   const bundle = exportBundleSchema.parse(raw)
+  bundle.calendarSourceTexts = ownTexts(raw)
   bundle.document = validateDocument(bundle.document)
   const sources = new Set(bundle.document.calendarSources.map((source) => source.id))
   for (const id of sources) {
