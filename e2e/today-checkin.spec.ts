@@ -438,7 +438,8 @@ test.describe('nightly reminder', () => {
     await stubNotifications(page, 'default')
     await start(page, SIZES[0], 'light', plan, '2026-10-21T20:30:00.000Z')
     await open(page, 'today', 'Hoy')
-    const remind = page.getByRole('button', { name: 'Recordarme a las 22:00' })
+    // es-CO reads a 12-hour clock: the reminder follows it (verify4 defect 9 wrote "Recordarme a las 22:00").
+    const remind = page.getByRole('button', { name: /^Recordarme a las 10:00\sp\.\s?m\.$/u })
     await expect(remind).toHaveAttribute('aria-pressed', 'false')
     expect((await box(remind)).height).toBeGreaterThanOrEqual(44)
     expect((await log(page)).asked).toBe(0)
