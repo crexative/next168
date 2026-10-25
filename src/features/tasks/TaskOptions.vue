@@ -6,13 +6,14 @@ import Icon from '@/ui/Icon.vue'
 import './registerIcons'
 import SegmentedControl from '@/ui/SegmentedControl.vue'
 import { formatDuration } from '@/ui/format'
-import { ANY_FREE_TIME, durationChoices, hasExtraOptions, resolveWhen, whenCategories, type TaskDraft, type TaskPriority } from './taskDraft'
+import { ANY_FREE_TIME, durationChoices, hasExtraOptions, plannerToday, resolveWhen, whenCategories, type TaskDraft, type TaskPriority } from './taskDraft'
 
 // What a task asks beyond its title: a length in one tap, "Today" in one tap, the last category chosen as a one-tap
 // suggestion (never applied by itself), and - one level deeper, under "More options" - when it may go, a due date and
 // a priority. A task with none of those set is filed under "any free time" and is still complete.
-// `today` is the planner's local date; `suggestedCategoryId` is the category the previous task was filed under.
-const props = defineProps<{ draft: TaskDraft; categories: Category[]; today: string; suggestedCategoryId?: string }>()
+// `timeZone` is the planner's ("Today" is resolved in it when tapped); `suggestedCategoryId` is the category the previous
+// task was filed under.
+const props = defineProps<{ draft: TaskDraft; categories: Category[]; timeZone: string; suggestedCategoryId?: string }>()
 // Changes travel as patches the owner merges into its current draft, so two edits in the same tick never undo each other.
 const emit = defineEmits<{ patch: [change: Partial<TaskDraft>] }>()
 
@@ -35,9 +36,10 @@ const update = (change: Partial<TaskDraft>): void => emit('patch', change)
 // "Today" makes the task due today; a second tap gives back the due date it had before.
 let dueBeforeToday = ''
 function toggleToday(): void {
-  if (props.draft.dueDate === props.today) return update({ dueDate: dueBeforeToday })
+  const today = plannerToday(props.timeZone)
+  if (props.draft.dueDate === today) return update({ dueDate: dueBeforeToday })
   dueBeforeToday = props.draft.dueDate
-  update({ dueDate: props.today })
+  update({ dueDate: today })
 }
 
 function toggleSuggestion(id: string): void {
@@ -54,7 +56,7 @@ function toggleSuggestion(id: string): void {
       @update:model-value="update({ durationMin: Number($event) })"
     />
     <div class="choices">
-      <button type="button" class="choice t-subhead" :aria-pressed="draft.dueDate === today" data-testid="task-today" @click="toggleToday">
+      <button type="button" class="choice t-subhead" :aria-pressed="draft.dueDate === plannerToday(timeZone)" data-testid="task-today" @click="toggleToday">
         <Icon name="sun" :size="16" />{{ t('tasks.add.today') }}
       </button>
       <button

@@ -107,6 +107,18 @@ it('offers the last choice for the next task only as a suggestion, never as its 
   expect(mounted.store.document!.tasks.find((task) => task.title === 'Fresh visit')).toMatchObject({ categoryId: 'c-study' })
 })
 
+it('"Today" tapped after midnight in the planner\'s zone gives the new day, not the day the form was typed on', async () => {
+  vi.setSystemTime(new Date('2026-10-26T04:50:00.000Z')) // 23:50 on the 25th in Bogotá
+  mounted = await mountWithPlanner(TasksView, { ...done, settings: { ...done.settings, timeZone: 'America/Bogota' }, categories: [WORK] })
+  await type('Jog')
+  vi.setSystemTime(new Date('2026-10-26T05:10:00.000Z')) // 00:10 on the 26th in Bogotá
+  todayChip().click()
+  await nextTick()
+  expect(todayChip().getAttribute('aria-pressed')).toBe('true')
+  await submit()
+  expect(mounted.store.document!.tasks).toMatchObject([{ title: 'Jog', dueDate: '2026-10-26' }])
+})
+
 it('"Today" in one tap makes the task due today; Enter still adds with no other tap', async () => {
   mounted = await mountWithPlanner(TasksView, { ...done, categories: [WORK] })
   await type('Jog')
