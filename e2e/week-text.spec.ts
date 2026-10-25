@@ -1,6 +1,6 @@
 import { expect, test, type Page } from '@playwright/test'
 import { V2_KEY, seedKey } from './fixtures'
-import { visualIntegrityViolations } from './support/visualIntegrity'
+import { columnsPlanned, visualIntegrityViolations } from './support/visualIntegrity'
 import { itemsMissingTitles, seededTitles, type SeededTitles } from './support/week'
 import { SEEDED_NOW, VERIFY6_NOW, VERIFY6_WEEK, VERIFY8_CALENDAR, VERIFY8_WEEK, weekFor } from './support/weekLayouts'
 
@@ -280,13 +280,29 @@ test('re-planning Week across hundreds of widths and both text sizes keeps nodes
     await setTextSize(page, 100)
     await page.setViewportSize({ width: 1440, height: 900 })
     await settled(page)
+    expect(await columnsPlanned(page), 'the columns re-plan for 1440 px at 100 %').toBe(true)
   }
+  // verify8: the same width and text size must give the same columns, the measuring probes included: every node of
+  // each day column (elements, text and comments) and its text. At 0c15701 the probes kept whatever was measured last,
+  // so the node count moved with the history of widths (+23 on Linux).
+  const columns = () => page.evaluate(() => Array.from(window.document.querySelectorAll('.day-column')).map((column) => {
+    let nodes = 0
+    const walker = window.document.createTreeWalker(column, NodeFilter.SHOW_ALL)
+    while (walker.nextNode()) nodes++
+    return `${column.getAttribute('data-planned-for')} ${nodes} ${column.textContent}`
+  }))
+  // The probes that measure text hold nothing at rest, so what was measured last never shows in the DOM.
+  const leftovers = () => page.evaluate(() => Array.from(window.document.querySelectorAll('.text-probes > [data-role]:not([data-lead]), .text-probes > [data-hyphen]'))
+    .filter((probe) => probe.childNodes.length > 0 || probe.hasAttribute('style')).map((probe) => probe.outerHTML.replace(/ data-v-[0-9a-f]+=""/g, '').slice(0, 200)))
   await replan(768)
+  expect(await leftovers(), 'measuring probes left with text or a width').toEqual([])
   const before = await counts()
+  const beforeColumns = await columns()
   expect(before.listeners, 'the app\'s listeners are counted').toBeGreaterThan(50)
   await replan(771)
   await replan(774)
   const after = await counts()
+  expect(await columns(), 'the day columns at the same width and text size').toEqual(beforeColumns)
   expect(after.listeners, 'the app\'s event listeners').toBe(before.listeners)
   expect(Math.abs(after.nodes - before.nodes), `DOM nodes ${before.nodes} → ${after.nodes}`).toBeLessThanOrEqual(20)
 })

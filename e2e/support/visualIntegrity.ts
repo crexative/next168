@@ -1158,8 +1158,13 @@ function plansMatchSizes(): boolean {
 // frame), so the audit first gives them frames to re-plan; a plan still for another size after that is reported.
 export const REPLAN_TIMEOUT_MS = 2000
 
+// Waits until every column is planned for its current size; false when one still is not after REPLAN_TIMEOUT_MS.
+export async function columnsPlanned(page: Page): Promise<boolean> {
+  return page.waitForFunction(plansMatchSizes, undefined, { timeout: REPLAN_TIMEOUT_MS }).then(() => true, () => false)
+}
+
 export async function visualIntegrityViolations(page: Page, { focusRings = true }: IntegrityOptions = {}): Promise<string[]> {
-  await page.waitForFunction(plansMatchSizes, undefined, { timeout: REPLAN_TIMEOUT_MS }).catch(() => undefined)
+  await columnsPlanned(page)
   // Any key press puts Chromium in keyboard modality, so programmatic focus shows :focus-visible as Tab would.
   if (focusRings) await page.keyboard.press('Shift')
   const violations = await page.evaluate(auditInPage, { focusRings })

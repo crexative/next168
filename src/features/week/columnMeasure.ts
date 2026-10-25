@@ -2,6 +2,8 @@ import { onBeforeUnmount, onMounted, shallowRef, type Ref } from 'vue'
 import { ICON_PX, type ColumnMeasure } from './dayColumnPlan'
 import { ELLIPSIS, type TextMetrics, type TextRole } from './itemText'
 
+// Every probe is left empty after it is read: the column's DOM at rest is the same for the same width and text size,
+// whatever was measured before (verify8: a re-plan check counted 23 more nodes, all leftover probe text).
 // Measures a day column and the page's fonts for planDayColumn: the column's width, and text widths and line heights
 // read from hidden probes that carry the same classes as the drawn text (so the text size, language and font are the
 // page's own). Widths are shared by every column: the same text in the same font has the same width.
@@ -43,6 +45,7 @@ function snapshot(column: HTMLElement, probes: HTMLElement): ColumnMeasure | nul
       const range = document.createRange()
       range.selectNodeContents(element)
       lineHeight = Math.max(lineHeight, range.getBoundingClientRect().height)
+      element.textContent = ''
     }
     fonts.set(role, { element, key: fontKey(style), lineHeight })
   }
@@ -54,18 +57,23 @@ function snapshot(column: HTMLElement, probes: HTMLElement): ColumnMeasure | nul
       if (measured === undefined) {
         font.element.textContent = text
         measured = remember(widthCache, key, font.element.getBoundingClientRect().width, WIDTH_CACHE_LIMIT)
+        font.element.textContent = ''
       }
       return measured
     },
     lineHeight: (role) => fonts.get(role)!.lineHeight,
     hyphenatedLines(text, role, width) {
+      // No room holds no text. (A width the probe cannot take used to leave the previous measurement's width in place, so
+      // the answer depended on what had been measured before.)
+      if (!(width > 0)) return null
       const font = fonts.get(role)!
       const key = `${font.key}\u0001${Math.round(width * 100)}\u0000${text}`
       let lines = hyphenCache.get(key)
       if (lines === undefined) {
         const probe = probes.querySelector<HTMLElement>(`[data-hyphen="${role}"]`)
         if (!probe) return null
-        probe.style.width = `${width}px`
+        // Set and removed as an attribute: a width set through `probe.style` leaves `style=""` behind in Chromium.
+        probe.setAttribute('style', `width: ${width}px`)
         // Drawn as the view draws it: the words, then "…" in an element of its own.
         if (text.endsWith(ELLIPSIS)) {
           const cut = document.createElement('span')
@@ -76,6 +84,8 @@ function snapshot(column: HTMLElement, probes: HTMLElement): ColumnMeasure | nul
         }
         const overflows = probe.scrollWidth > probe.clientWidth + 0.5
         lines = remember(hyphenCache, key, overflows ? null : Math.round(probe.getBoundingClientRect().height / font.lineHeight), HYPHEN_CACHE_LIMIT)
+        probe.replaceChildren()
+        probe.removeAttribute('style')
       }
       return lines
     },
