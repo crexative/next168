@@ -101,6 +101,12 @@ function drawn(show: { text?: string; cut?: boolean }, full: string): { words: s
 const insetAttribute = (inset: { top: number; end: number; bottom: number; start: number }) => `${inset.top} ${inset.end} ${inset.bottom} ${inset.start}`
 const SMALL_INSETS = { block: insetAttribute(SMALL_INSET.block), busy: insetAttribute(SMALL_INSET.busy), task: insetAttribute(SMALL_INSET.task) }
 
+// A box with no words shows its category's glyph centred in the room inside its small-caption insets; `border` is the
+// width of the box's own border, which the absolutely placed glyph sits inside.
+function glyphSlot(inset: { top: number; end: number; bottom: number; start: number }, border = 0) {
+  return { top: `${inset.top - border}px`, bottom: `${inset.bottom - border}px`, insetInlineStart: `${inset.start - border}px`, insetInlineEnd: `${inset.end - border}px` }
+}
+
 function verticalStyle(item: { top: number; bottom: number }) {
   return { top: `${item.top}px`, height: `${item.bottom - item.top}px` }
 }
@@ -194,6 +200,7 @@ function onColumnClick(event: MouseEvent, blockId?: string): void {
       <span data-role="taskTitle" />
       <span data-role="compact" data-min-text />
       <span data-role="blockTitle" data-lead="mark"><CategoryMark class="block-mark" :category="undefined" />{{ ' ' }}</span>
+      <span class="item-glyph"><CategoryMark :category="undefined" data-glyph-probe /></span>
       <span class="t-caption" data-lead="icon"><Icon name="check" :size="12" />{{ ' ' }}</span>
       <span class="t-caption" data-sentinel>M</span>
       <span class="hyphen-probe" data-role="blockTitle" data-hyphen="blockTitle" />
@@ -214,7 +221,8 @@ function onColumnClick(event: MouseEvent, blockId?: string): void {
       :data-event-id="item.kind === 'event' ? item.key.slice(0, item.key.lastIndexOf('@')) : undefined"
       @click.stop="inspect(item)"
     >
-      <span v-if="conflicting.has(item.key)" class="conflict-mark" :class="{ 'visually-hidden': !item.show.icon }" data-testid="calendar-conflict"><Icon name="triangle-alert" :size="12" /><span class="conflict-text" :class="{ 'visually-hidden': !item.show.word }">{{ t('week.grid.conflict') }}</span></span>{{ item.show.icon ? ' ' : '' }}<span class="busy-title" :class="{ 'visually-hidden': !item.show.title, 'is-hyphenated': item.show.hyphenate, 'is-small-text': item.show.small }" :aria-hidden="drawn(item.show, item.title).cut || undefined">{{ drawn(item.show, item.title).words }}<span v-if="drawn(item.show, item.title).cut" class="cut" data-cut>{{ ELLIPSIS }}</span></span><span v-if="drawn(item.show, item.title).cut" class="visually-hidden">{{ item.title }}</span>
+      <span v-if="conflicting.has(item.key)" class="conflict-mark" :class="{ 'visually-hidden': !item.show.icon }" :data-glyph="item.show.icon || undefined" data-testid="calendar-conflict"><Icon name="triangle-alert" :size="12" /><span class="conflict-text" :class="{ 'visually-hidden': !item.show.word }">{{ t('week.grid.conflict') }}</span></span>{{ item.show.icon ? ' ' : '' }}<span class="busy-title" :class="{ 'visually-hidden': !item.show.title, 'is-hyphenated': item.show.hyphenate, 'is-small-text': item.show.small }" :aria-hidden="drawn(item.show, item.title).cut || undefined">{{ drawn(item.show, item.title).words }}<span v-if="drawn(item.show, item.title).cut" class="cut" data-cut>{{ ELLIPSIS }}</span></span><span v-if="drawn(item.show, item.title).cut" class="visually-hidden">{{ item.title }}</span>
+      <span v-if="item.show.glyph" class="item-glyph" :style="glyphSlot(SMALL_INSET.busy, 1)" data-glyph><CategoryMark :category="{ name: item.title, colorKey: 'gray' }" /></span>
     </button>
     <button
       v-for="segment in plan.blocks"
@@ -237,6 +245,7 @@ function onColumnClick(event: MouseEvent, blockId?: string): void {
       <span v-if="segment.show.time" class="block-detail block-time">{{ timeRange(segment) }}</span>{{ ' ' }}
       <span v-if="segment.show.category" class="block-detail block-category">{{ categoryLine(segment) }}</span>{{ ' ' }}
       <span v-if="statuses.get(segment.key)" class="block-status t-caption" :class="{ 'visually-hidden': !segment.show.status }" data-testid="block-status"><template v-if="segment.show.statusIcon"><Icon :name="STATUS_ICON[statuses.get(segment.key)!]" :size="12" />{{ ' ' }}</template>{{ statusText(segment) }}</span>
+      <span v-if="segment.show.glyph" class="item-glyph" :style="{ ...glyphSlot(SMALL_INSET.block), top: `${segment.show.glyphAt!.top}px`, height: `${segment.show.glyphAt!.height}px`, bottom: 'auto' }" data-glyph><CategoryMark :category="categoriesById.get(segment.occurrence.categoryId)" /></span>
     </button>
     <button
       v-for="planned in plan.tasks"
@@ -259,6 +268,7 @@ function onColumnClick(event: MouseEvent, blockId?: string): void {
       @click.stop="emit('select-task', planned.task.taskId)"
     >
       <span class="task-box task-text" :class="{ 'is-late': planned.task.late, 'is-outline': planned.outline, 'is-small': planned.show.small }"><Icon v-if="planned.show.icon" class="task-icon" name="triangle-alert" :size="12" />{{ planned.show.icon ? ' ' : '' }}<span v-if="planned.show.title" class="task-title" :class="{ 'is-hyphenated': planned.show.hyphenate, 'is-small-text': planned.show.small }">{{ drawn(planned.show, planned.task.title).words }}<span v-if="drawn(planned.show, planned.task.title).cut" class="cut" data-cut aria-hidden="true">{{ ELLIPSIS }}</span></span></span>
+      <span v-if="planned.show.glyph" class="item-glyph" :style="glyphSlot(SMALL_INSET.task)" data-glyph><CategoryMark :category="categoriesById.get(planned.task.categoryId ?? '')" /></span>
     </button>
     <div v-if="nowMinute !== null" class="now-line" :style="{ top: `${(nowMinute / 60) * hourHeight}px` }" data-testid="now-line" aria-hidden="true" />
   </div>
@@ -287,6 +297,10 @@ function onColumnClick(event: MouseEvent, blockId?: string): void {
    a mark. Same weight and tracking as the caption. */
 .block-title.is-small-text, .busy-title.is-small-text, .task-title.is-small-text, [data-role='compact'] { font-size: 0.6875rem; font-weight: 500; line-height: 1.2; letter-spacing: 0.01em; }
 .block.is-centered { justify-content: center; }
+/* The glyph a box shows when it holds no word: the category mark at the small caption size, centred (the plan measures
+   it from the probe of the same class). Decorative: the box's label and title carry its name. */
+.item-glyph { font-size: 0.6875rem; line-height: 1; }
+.block > .item-glyph, .busy > .item-glyph, .task-chunk > .item-glyph { position: absolute; z-index: 3; display: flex; align-items: center; justify-content: center; pointer-events: none; }
 /* Centred in a column, the title spans the whole line width, so it wraps (and hyphenates) exactly as it was measured. */
 .busy.is-small { display: flex; flex-direction: column; justify-content: center; padding-block: 0; }
 .task-box.is-small { display: flex; flex-direction: column; justify-content: center; padding-block: 0; border-width: 1px; padding-inline: 2px; }

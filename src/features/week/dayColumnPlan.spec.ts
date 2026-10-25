@@ -16,7 +16,7 @@ function measureAt(width: number, scale = 1): ColumnMeasure {
     width: (text, role) => [...text].length * BASE[role].char * scale,
     lineHeight: (role) => BASE[role].line * scale,
   }
-  return { width, metrics, markLead: 16 * scale, iconLead: 18 * scale }
+  return { width, metrics, markLead: 16 * scale, iconLead: 18 * scale, glyph: { width: 11.25 * scale, height: 11.25 * scale } }
 }
 
 const px = (minute: number) => (minute / 60) * HOUR_HEIGHT_PX
@@ -57,7 +57,7 @@ describe('what a routine shows, by the size of its box', () => {
   it.each([
     [300, 1, 10, 'mark'], [300, 1, 15, 'mark'], [300, 1, 20, 'small'], [300, 1, 25, 'small'], [300, 1, 30, 'title'], [300, 1, 45, 'title'], [300, 1, 50, 'title+time'], [300, 1, 90, 'title+time+category'],
     [300, 2, 30, 'mark'], [300, 2, 45, 'small'], [300, 2, 60, 'title'], [300, 2, 120, 'title+time'], [300, 2, 150, 'title+time+category'],
-    [145, 1, 60, 'title+time'], [95, 1, 60, 'title'], [95, 1, 90, 'title'], [130, 1, 90, 'title+time+category'], [60, 1, 120, 'title…'], [40, 1, 120, 'mark'],
+    [145, 1, 60, 'title+time'], [95, 1, 60, 'title'], [95, 1, 90, 'title'], [130, 1, 90, 'title+time+category'], [60, 1, 120, 'title…'], [40, 1, 120, 'small'], [30, 1, 120, 'mark'],
   ])('a %i px column at %ix text, %i minutes: %s', (width, scale, minutes, expected) => {
     expect(shown(plan({ blocks: [block('meeting', 540, 540 + minutes, 'Team meeting')], measure: measureAt(width, scale) }), 'meeting')).toBe(expected)
   })

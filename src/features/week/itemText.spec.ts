@@ -120,9 +120,17 @@ describe('a word that fits is drawn', () => {
     expect(fitTitle({ text: 'Pagar la luz', role: 'caption' }, { width: 34, height: 16 }, shaped)).toMatchObject({ text: `Pagar${ELLIPSIS}` })
   })
 
-  it('hyphenates a first word that fits a line but not with its "…" ("Prepa-" / "rar…")', () => {
+  // verify7: syllables ("Pre-pa-rar…") read as choppy; a word that fits a line keeps it, and "…" takes the next one.
+  it('keeps a first word that fits a line on its own and puts "…" on the next line, rather than hyphenating it', () => {
     const hyphenating: TextMetrics = { ...metrics, hyphenatedLines: (text) => text.startsWith('Preparar') ? 2 : null }
     // "Preparar" is 48 px and fits 50 px; "Preparar…" (54 px) does not.
-    expect(fitTitle({ text: 'Preparar presentación', role: 'caption' }, { width: 50, height: 32 }, hyphenating)).toEqual({ text: `Preparar${ELLIPSIS}`, lines: 2, lead: false, truncated: true, hyphenated: true })
+    expect(fitTitle({ text: 'Preparar presentación', role: 'caption' }, { width: 50, height: 32 }, hyphenating)).toEqual({ text: `Preparar ${ELLIPSIS}`, lines: 2, lead: false, truncated: true })
+    // One line only: neither stacking nor hyphenation fits.
+    expect(fitTitle({ text: 'Preparar presentación', role: 'caption' }, { width: 50, height: 16 }, hyphenating)).toBeNull()
+  })
+
+  it('hyphenates only a first word that fits no line at all ("Prepa-" / "rar…")', () => {
+    const hyphenating: TextMetrics = { ...metrics, hyphenatedLines: (text) => text.startsWith('Preparar') ? 2 : null }
+    expect(fitTitle({ text: 'Preparar presentación', role: 'caption' }, { width: 45, height: 32 }, hyphenating)).toEqual({ text: `Preparar${ELLIPSIS}`, lines: 2, lead: false, truncated: true, hyphenated: true })
   })
 })

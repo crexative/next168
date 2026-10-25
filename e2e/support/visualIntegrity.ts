@@ -887,27 +887,59 @@ export function auditInPage(options: { focusRings: boolean }): string[] {
   // one line in the smallest size the container allows (the element marked `data-min-text`, never hyphenated), does not
   // fit the room inside the item's `data-text-inset` (top right bottom left, in px). An item that takes no pointer
   // input (a task outline) and a container with no such size (the seven-day overview) are left alone.
+  // A box with no word that is still big enough for its category glyph shows it (an element marked `data-glyph`, drawn
+  // inside the box): a blank box never appears where the glyph would fit. The glyph's size is the container's element
+  // marked `data-glyph-probe`.
   // A container marked `data-whole-text="shapes"` (the seven-day overview) draws no words by design. One without its
-  // own smallest size is held to the documented one (docs/design/visual-design.md › Week items: 11 px at 100 % text on
-  // a 1.2 line).
+  // own smallest size or glyph is held to the documented ones (docs/design/visual-design.md › Week items: 11 px at
+  // 100 % text on a 1.2 line; a glyph 1.125 times that size, square).
   function checkBlankItems(container: HTMLElement, items: Element[]): void {
     if (container.getAttribute('data-whole-text') === 'shapes') return
-    let reference = container.querySelector<HTMLElement>('[data-min-text]')
-    let fallback: HTMLElement | null = null
-    if (!reference) {
-      fallback = document.createElement('span')
-      fallback.style.cssText = 'position: absolute; visibility: hidden; font-size: 0.6875rem; font-weight: 500; line-height: 1.2; letter-spacing: 0.01em'
-      container.append(fallback)
-      reference = fallback
-    }
+    const fallbacks: HTMLElement[] = []
+    const reference = container.querySelector<HTMLElement>('[data-min-text]') ?? fallbackProbe(container, fallbacks, 'font-size: 0.6875rem; font-weight: 500; line-height: 1.2; letter-spacing: 0.01em')
+    const glyph = container.querySelector<HTMLElement>('[data-glyph-probe]') ?? fallbackProbe(container, fallbacks, 'display: block; width: calc(0.6875rem * 1.125); height: calc(0.6875rem * 1.125)')
     try {
-      checkBlankItemsWith(reference, items)
+      const { width, height } = glyph.getBoundingClientRect()
+      checkBlankItemsWith(reference, { width, height }, items)
     } finally {
-      fallback?.remove()
+      for (const fallback of fallbacks) fallback.remove()
     }
   }
 
-  function checkBlankItemsWith(reference: HTMLElement, items: Element[]): void {
+  function fallbackProbe(container: HTMLElement, fallbacks: HTMLElement[], style: string): HTMLElement {
+    const probe = document.createElement('span')
+    probe.style.cssText = `position: absolute; visibility: hidden; ${style}`
+    container.append(probe)
+    fallbacks.push(probe)
+    return probe
+  }
+
+  // The tallest span of an item that the items laid over it (`data-layered`, taking input) leave free: a routine whose
+  // tasks fill it has no room of its own for a glyph.
+  function freeHeight(item: Element, rect: DOMRect, items: Element[]): number {
+    const over = items
+      .filter((other) => other !== item && other.hasAttribute('data-layered') && getComputedStyle(other).pointerEvents !== 'none')
+      .map((other) => other.getBoundingClientRect())
+      .filter((box) => box.left < rect.right && box.right > rect.left && box.top < rect.bottom && box.bottom > rect.top)
+      .sort((a, b) => a.top - b.top)
+    let best = 0
+    let from = rect.top
+    for (const box of [...over, { top: rect.bottom, bottom: rect.bottom }]) {
+      best = Math.max(best, Math.min(box.top, rect.bottom) - from)
+      from = Math.max(from, box.bottom)
+    }
+    return best
+  }
+
+  function showsGlyph(item: Element): boolean {
+    const box = item.getBoundingClientRect()
+    return Array.from(item.querySelectorAll('[data-glyph]')).some((glyph) => {
+      const rect = glyph.getBoundingClientRect()
+      return rendered(glyph) && rect.width > 0 && rect.height > 0 && rect.left >= box.left - 0.5 && rect.right <= box.right + 0.5 && rect.top >= box.top - 0.5 && rect.bottom <= box.bottom + 0.5
+    })
+  }
+
+  function checkBlankItemsWith(reference: HTMLElement, glyph: { width: number; height: number }, items: Element[]): void {
     // Measured with a copy of the reference itself, so the word has exactly its styles and context.
     const measure = (build: (probe: HTMLElement) => void) => {
       const probe = reference.cloneNode(false) as HTMLElement
@@ -932,13 +964,23 @@ export function auditInPage(options: { focusRings: boolean }): string[] {
       const rect = item.getBoundingClientRect()
       const width = rect.width - left - right - 0.25
       const height = rect.height - top - bottom
-      if (width <= 0 || height < line - 0.01) continue
-      // Measured as a cut title is drawn: the word, then "…" in an element of its own.
-      const { width: needed } = measure((probe) => {
-        probe.textContent = words[0]!
-        if (words.length > 1) probe.append(Object.assign(document.createElement('span'), { textContent: '\u2026' }))
-      })
-      if (needed <= width) violations.push(`${describe(item)} draws no text though "${text}" fits its ${width.toFixed(1)}×${height.toFixed(1)} px room`)
+      if (width <= 0) continue
+      const room = `${width.toFixed(1)}×${height.toFixed(1)} px room`
+      if (height >= line - 0.01) {
+        // Measured as a cut title is drawn: the word, then "…" in an element of its own.
+        const { width: needed } = measure((probe) => {
+          probe.textContent = words[0]!
+          if (words.length > 1) probe.append(Object.assign(document.createElement('span'), { textContent: '\u2026' }))
+        })
+        if (needed <= width) {
+          violations.push(`${describe(item)} draws no text though "${text}" fits its ${room}`)
+          continue
+        }
+      }
+      const free = freeHeight(item, rect, items) - top - bottom
+      if (width + 0.25 >= glyph.width - 0.01 && free >= glyph.height - 0.01 && !showsGlyph(item)) {
+        violations.push(`${describe(item)} draws neither a word nor its glyph though the ${glyph.width.toFixed(1)}×${glyph.height.toFixed(1)} px glyph fits its ${width.toFixed(1)}×${free.toFixed(1)} px room`)
+      }
     }
   }
 
