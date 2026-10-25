@@ -45,8 +45,8 @@ it('opens the event details with the full title, range, calendar and the block i
   app.mount(host)
 
   const overlay = host.querySelector<HTMLButtonElement>('button.busy')!
-  expect(overlay.style.getPropertyValue('--stack-left')).toBe('28%')
-  expect(overlay.style.getPropertyValue('--stack-width')).toBe('72%')
+  // Beside the routine, never over its title (docs/design/visual-design.md › Week items).
+  expect([overlay.style.insetInlineStart, overlay.style.width]).toEqual(['calc(50% + 2px)', 'calc(50% - 4px)'])
   overlay.click()
   expect(inspected).toEqual([{ title: 'Team sync with the vendor', date, range: '9:30\u00a0AM – 10:30\u00a0AM', calendar: 'Work calendar', conflictsWith: [{ blockId: deepWork.id, title: deepWork.title }] }])
 })
@@ -79,16 +79,14 @@ const taskAt = (startMinute: number, endMinute: number, change: { categoryId?: s
 const anyTime = {}
 const click = (root: HTMLElement, y: number, x = 100) => root.dispatchEvent(new MouseEvent('click', { bubbles: true, clientX: x, clientY: y }))
 
-it('hides the block time range when a task starts in its first half hour, and keeps it otherwise', () => {
-  const early = column({ tasks: [taskAt(540, 600)] })
-  expect(early.root.querySelector('.block[data-block-id="deep"]')!.classList.contains('is-crowded')).toBe(true)
-  app!.unmount(); host!.remove()
-  const later = column({ tasks: [taskAt(600, 660)] })
-  expect(later.root.querySelector('.block[data-block-id="deep"]')!.classList.contains('is-crowded')).toBe(false)
-  app!.unmount(); host!.remove()
-  const none = column({ tasks: [taskAt(540, 600, anyTime)] })
-  // A task with no category has no block around it, so no block loses its time.
-  expect(none.root.querySelector('.block[data-block-id="deep"]')!.classList.contains('is-crowded')).toBe(false)
+// What a box shows is decided by dayColumnPlan.ts (unit tested there across sizes); before a page has measured the
+// column, every word is drawn, and the column asks the visual-integrity guard to hold its text whole.
+it('draws every word of an unmeasured column and marks the column for the whole-text guard', () => {
+  const { root } = column({ tasks: [taskAt(540, 600)] })
+  expect(root.hasAttribute('data-whole-text')).toBe(true)
+  const deep = root.querySelector('.block[data-block-id="deep"]')!
+  expect(['.block-title', '.block-time', '.block-category'].map((selector) => deep.querySelector(selector)?.textContent?.trim())).toEqual(['Deep work', '9:00\u00a0AM – 11:00\u00a0AM', 'Work'])
+  expect(root.querySelector('[data-testid="week-task"] .task-title')?.textContent).toBe('Report')
 })
 
 it('marks a done block as done (dimmed with a check) and only a skipped one as struck through', () => {

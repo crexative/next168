@@ -108,7 +108,7 @@ function busyShow(words: BusyWords, box: { width: number; height: number }, meas
     if (fits(measure.iconLead)) return { icon: true, word: false, title: true }
   }
   if (fits(0)) return { icon: false, word: false, title: true }
-  const iconFits = Boolean(words.conflict) && box.width >= ICON_PX && box.height >= Math.max(ICON_PX, metrics.lineHeight('caption'))
+  const iconFits = Boolean(words.conflict) && box.width >= ICON_PX && box.height >= ICON_PX
   return { icon: iconFits, word: false, title: false }
 }
 

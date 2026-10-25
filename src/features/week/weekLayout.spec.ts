@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { blockSegmentsByDate, busySegmentsByDate, layoutDaySegments, nearestHitTarget, placeTasks, splitByLocalDay } from './weekLayout'
+import { INSTANT_EVENT_MINUTES, blockSegmentsByDate, busySegmentsByDate, layoutDaySegments, nearestHitTarget, placeTasks, splitByLocalDay } from './weekLayout'
 import type { ExternalOccurrence, PlannerEvent, TimeBlock } from '@/core/model'
 import { weekDates } from './localTime'
 import { deepWork, plannerDocument, sleep } from './testDocument'
@@ -87,7 +87,6 @@ describe('shared day lanes', () => {
   it('gives non-overlapping items full width, including touching endpoints', () => {
     const result = layout([block('A', 540, 660)], [event('2026-10-21T11:00:00Z', '2026-10-21T12:00:00Z')])
     expect([...result.blocks, ...result.busy].map(({ left, width, lanes }) => [left, width, lanes])).toEqual([[0, 100, 1], [0, 100, 1]])
-    expect(result.busy[0]).toMatchObject({ stackLeft: 0, stackWidth: 100 })
   })
 
   it('places a block and an external event side by side', () => {
@@ -124,48 +123,41 @@ describe('shared day lanes', () => {
   })
 
   it('returns an empty layout for an empty day', () => {
-    expect(layout([], [])).toEqual({ blocks: [], busy: [] })
+    expect(layout([], [])).toEqual({ blocks: [], busy: [], loose: [] })
   })
 
-  it('also lays blocks and events out stacked, for columns too narrow to share lanes', () => {
-    const result = layout([block('a', 540, 660)], [event('2026-10-21T09:30:00Z', '2026-10-21T10:30:00Z')])
-    expect(result.blocks[0]).toMatchObject({ lanes: 2, stackLeft: 0, stackWidth: 100 })
-    expect(result.busy[0]).toMatchObject({ lanes: 2, stackLeft: 28, stackWidth: 72 })
-    const crowded = layout([block('a', 540, 660), block('b', 600, 720)], [event('2026-10-21T11:00:00Z', '2026-10-21T12:00:00Z')])
-    expect(crowded.blocks.map((item) => [item.stackLeft, item.stackWidth])).toEqual([[0, 50], [50, 50]])
-    expect(crowded.busy.map((item) => [item.stackLeft, item.stackWidth])).toEqual([[28, 72]])
-  })
-
-  it('leaves a wider leading block strip when an external or own event covers the block\'s title row', () => {
-    const external = event(`${date}T09:00:00Z`, `${date}T10:00:00Z`)
+  // Nothing is drawn over a routine at any width: an event on its title row, below it, or several events take lanes
+  // beside it (docs/design/visual-design.md › Week items).
+  it('gives an event on a routine\'s title row its own lane instead of covering the title', () => {
     for (const result of [
-      layout([block('A', 540, 600)], [external]),
-      layout([block('A', 540, 600)], [], [{ id: 'own', ...external, attendees: [] }]),
+      layout([block('A', 540, 600)], [event(`${date}T09:00:00Z`, `${date}T10:00:00Z`)]),
+      layout([block('A', 540, 660)], [event(`${date}T09:25:00Z`, `${date}T10:00:00Z`)]),
+      layout([block('A', 540, 600)], [], [{ id: 'own', title: 'Own', start: `${date}T09:10:00Z`, end: `${date}T09:40:00Z`, allDay: false, attendees: [] }]),
     ]) {
-      expect(result.blocks[0]).toMatchObject({ startMinute: 540, endMinute: 600, stackLeft: 0, stackWidth: 100 })
-      expect(result.busy[0]).toMatchObject({ startMinute: 540, endMinute: 600, stackLeft: 44, stackWidth: 56 })
+      expect(result.blocks[0]).toMatchObject({ left: 0, width: 50 })
+      expect(result.busy[0]).toMatchObject({ left: 50, width: 50 })
       expectDisjoint(result)
     }
   })
 
-  it('keeps the narrow strip for an event that starts below the block\'s title row', () => {
-    const below = layout([block('A', 540, 660)], [event(`${date}T09:25:00Z`, `${date}T10:00:00Z`)])
-    expect(below.busy[0]).toMatchObject({ stackLeft: 28, stackWidth: 72 })
-    const onTitle = layout([block('A', 540, 660)], [event(`${date}T09:20:00Z`, `${date}T10:00:00Z`)])
-    expect(onTitle.busy[0]).toMatchObject({ stackLeft: 44, stackWidth: 56 })
+  it('splits four overlapping items into four lanes', () => {
+    const first = event(`${date}T09:00:00Z`, `${date}T10:00:00Z`)
+    const result = layout([block('A', 540, 600)], [first, { ...first, uid: 'second' }, { ...first, uid: 'third' }])
+    expect([...result.blocks, ...result.busy].map(({ lane, lanes }) => [lane, lanes])).toEqual([[0, 4], [1, 4], [2, 4], [3, 4]])
+    expectDisjoint(result)
   })
 
-  it('preserves separate event lanes inside the inset band', () => {
-    const first = event(`${date}T09:00:00Z`, `${date}T10:00:00Z`)
-    const result = layout([block('A', 540, 600)], [first, { ...first, uid: 'second' }])
-    expect(result.busy.map(({ stackLeft, stackWidth }) => [stackLeft, stackWidth])).toEqual([[44, 28], [72, 28]])
+  it('gives a task in free time its own lane beside an event', () => {
+    const task = { key: 'free', startMinute: 570, endMinute: 600 }
+    const result = layoutDaySegments([], busySegmentsByDate([event(`${date}T09:00:00Z`, `${date}T10:00:00Z`)], [], [date], 'UTC')[date]!, [task])
+    expect(result.busy[0]).toMatchObject({ left: 0, width: 50 })
+    expect(result.loose[0]).toMatchObject({ key: 'free', left: 50, width: 50 })
   })
 
-  it('insets the entire event cluster when only its first event overlaps the block', () => {
-    const first = event(`${date}T09:00:00Z`, `${date}T10:00:00Z`)
-    const second = { ...event(`${date}T09:30:00Z`, `${date}T10:30:00Z`), uid: 'second' }
-    const result = layout([block('A', 540, 570)], [first, second])
-    expect(result.busy.map(({ stackLeft, stackWidth }) => [stackLeft, stackWidth])).toEqual([[44, 28], [72, 28]])
+  it('draws an event with no duration as a short span, keeping its real times for the details', () => {
+    const instant = event(`${date}T09:00:00Z`, `${date}T09:00:00Z`)
+    const [segment] = busySegmentsByDate([instant], [], [date], 'UTC')[date]!
+    expect(segment).toMatchObject({ startMinute: 540, endMinute: 540 + INSTANT_EVENT_MINUTES, start: instant.start, end: instant.end })
   })
 })
 
@@ -189,6 +181,13 @@ describe('placing the tasks of one host', () => {
     expect(placeTasks([{ top: 0, bottom: 8 }, { top: 8, bottom: 16 }], { top: 0, bottom: 24, strip: 20 }, 12)).toEqual([
       { top: 0, bottom: 24, outline: true }, { top: 0, bottom: 24, outline: true },
     ])
+  })
+
+  it('gives each task its own minimum height when one is given per task', () => {
+    expect(placeTasks([{ top: 0, bottom: 8 }, { top: 8, bottom: 16 }], host, [30, 12])).toEqual([
+      { top: 20, bottom: 50, outline: false }, { top: 50, bottom: 62, outline: false },
+    ])
+    expect(placeTasks([{ top: 0, bottom: 8 }, { top: 8, bottom: 16 }], host, [60, 30]).every((box) => box.outline)).toBe(true)
   })
 
   it('places in time order whatever the input order', () => {
