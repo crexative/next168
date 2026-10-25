@@ -8,6 +8,9 @@ export type TextRole = 'blockTitle' | 'blockDetail' | 'caption' | 'taskTitle'
 export interface TextMetrics {
   width(text: string, role: TextRole): number
   lineHeight(role: TextRole): number
+  // Lines `text` takes at `width` px when the browser hyphenates it in the page's language, or null when it still runs
+  // past the line (no hyphenation point, or no dictionary for the language).
+  hyphenatedLines?(text: string, role: TextRole, width: number): number | null
 }
 
 export interface TextPiece {
@@ -88,6 +91,8 @@ export interface TitleFit {
   lines: number
   lead: boolean
   truncated: boolean
+  // A first word too long for a line, hyphenated by the browser in the page's language.
+  hyphenated?: boolean
 }
 
 // The title in at most `maxLines` lines of `width` px, with or without its lead: every word that fits, in order, and
@@ -118,11 +123,22 @@ function titleWith(text: string, role: TextRole, lead: number, width: number, ma
     }
     placed.push({ word, line, end: used })
   }
+  if (placed.length === 0) return lead > 0 ? null : hyphenatedFirstWord(words, role, room, maxLines, metrics)
   if (placed.length === words.length) return { text, lines: line + 1, lead: lead > 0, truncated: false }
   // Words were left out: the last line ends with "…", dropping words until it fits.
   while (placed.length > 0 && placed[placed.length - 1]!.end + ellipsis > room) placed.pop()
   if (placed.length === 0) return null
   return { text: placed.map((item) => item.word).join(' ') + ELLIPSIS, lines: placed[placed.length - 1]!.line + 1, lead: lead > 0, truncated: true }
+}
+
+// A first word wider than a line: the browser may hyphenate it in the page's language ("Revi-" / "sión…"). It is drawn
+// alone (with "…" when more words follow) if its hyphenated lines fit.
+function hyphenatedFirstWord(words: readonly string[], role: TextRole, room: number, maxLines: number, metrics: TextMetrics): TitleFit | null {
+  if (!metrics.hyphenatedLines) return null
+  const text = words.length > 1 ? words[0]! + ELLIPSIS : words[0]!
+  const lines = metrics.hyphenatedLines(text, role, room)
+  if (lines === null || lines > maxLines) return null
+  return { text, lines, lead: false, truncated: words.length > 1, hyphenated: true }
 }
 
 // The best title a box can draw: whole with its lead, whole without it, else the one that keeps the most words.

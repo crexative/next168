@@ -10,9 +10,10 @@ export const LANE_GAP_PX = 2
 export const BLOCK_INSET = { top: 2, bottom: 2, start: 7, end: 4 }
 // An event keeps 2 px beside its 1 px dashed border: its hatching already sets it apart.
 export const BUSY_INSET = { top: 2, bottom: 2, start: 3, end: 3 }
-// The task outline sits 8 px in from its routine's bar and 4 px from its end; 1.5 px border, 1 px / 4 px padding.
-export const TASK_BOX_INSET = { start: 8, end: 4 }
-export const TASK_INSET = { top: 2.5, bottom: 2.5, start: 13.5, end: 9.5 }
+// The task outline sits 4 px in from its routine's edge (clear of its 3 px bar) and 2 px from its end; 1.5 px border,
+// 1 px / 2 px padding: narrow lanes keep room for words.
+export const TASK_BOX_INSET = { start: 4, end: 2 }
+export const TASK_INSET = { top: 2.5, bottom: 2.5, start: 7.5, end: 5.5 }
 export const PIECE_GAP_PX = 1
 export const MIN_TASK_PX = 12
 export const ICON_PX = 12
@@ -39,9 +40,9 @@ export interface BusyWords { title: string; conflict?: string }
 export interface TaskWords { title: string; late: boolean }
 
 // `text` is the title as drawn: whole, or its first whole words and "…". Undefined draws the whole title.
-export interface BlockShow { title: boolean; text?: string; mark: boolean; time: boolean; category: boolean; status: boolean; statusIcon: boolean }
-export interface BusyShow { icon: boolean; word: boolean; title: boolean; text?: string }
-export interface TaskShow { icon: boolean; title: boolean; text?: string }
+export interface BlockShow { title: boolean; text?: string; hyphenate?: boolean; mark: boolean; time: boolean; category: boolean; status: boolean; statusIcon: boolean }
+export interface BusyShow { icon: boolean; word: boolean; title: boolean; text?: string; hyphenate?: boolean }
+export interface TaskShow { icon: boolean; title: boolean; text?: string; hyphenate?: boolean }
 
 // `top` and `bottom` are the drawn box in px from the top of the column.
 export type PlannedBlock = BlockSegment & LanePosition & { top: number; bottom: number; show: BlockShow }
@@ -98,7 +99,7 @@ function blockShow(words: BlockWords, box: { width: number; height: number }, me
   const pieces = blockPieces(words, measure)
   const title = fitTitle(pieces[0]!, box, measure.metrics)
   if (!title) return NOTHING.block
-  const shown: BlockShow = { ...NOTHING.block, title: true, text: title.text, mark: title.lead }
+  const shown: BlockShow = { ...NOTHING.block, title: true, text: title.text, hyphenate: title.hyphenated, mark: title.lead }
   if (title.truncated) return shown
   const rest = fitPieces(pieces.slice(1), { width: box.width, height: box.height - title.lines * measure.metrics.lineHeight('blockTitle') - PIECE_GAP_PX }, measure.metrics, PIECE_GAP_PX)
   const statusIndex = words.category ? 2 : 1
@@ -131,7 +132,7 @@ function busyShow(words: BusyWords, box: { width: number; height: number }, meas
   // fitTitle may fall back to no lead; keep only fits that drew the lead they were asked for.
   const honest = fits.filter(({ option, fit }) => fit && fit.lead === option.lead > 0)
   const chosen = honest.find(({ fit }) => !fit!.truncated) ?? honest.find(({ option }) => option.icon) ?? honest[0]
-  if (chosen) return { icon: chosen.option.icon, word: chosen.option.word, title: true, text: chosen.fit!.text }
+  if (chosen) return { icon: chosen.option.icon, word: chosen.option.word, title: true, text: chosen.fit!.text, hyphenate: chosen.fit!.hyphenated }
   const iconFits = Boolean(words.conflict) && box.width >= ICON_PX && box.height >= ICON_PX
   return { icon: iconFits, word: false, title: false }
 }
@@ -151,7 +152,7 @@ function taskTextHeight(words: TaskWords, width: number, measure: ColumnMeasure,
 function taskShow(words: TaskWords, width: number, height: number, outline: boolean, measure: ColumnMeasure): TaskShow {
   if (outline) return NOTHING.task
   const fit = taskTitle(words, width, height, measure)
-  return { icon: Boolean(fit?.lead), title: Boolean(fit), text: fit?.text }
+  return { icon: Boolean(fit?.lead), title: Boolean(fit), text: fit?.text, hyphenate: fit?.hyphenated }
 }
 
 export function planDayColumn(input: DayColumnInput): DayColumnPlan {

@@ -1,11 +1,12 @@
 import { onBeforeUnmount, onMounted, shallowRef, type Ref } from 'vue'
 import { ICON_PX, type ColumnMeasure } from './dayColumnPlan'
-import type { TextMetrics, TextRole } from './itemText'
+import { ELLIPSIS, type TextMetrics, type TextRole } from './itemText'
 
 // Measures a day column and the page's fonts for planDayColumn: the column's width, and text widths and line heights
 // read from hidden probes that carry the same classes as the drawn text (so the text size, language and font are the
 // page's own). Widths are shared by every column: the same text in the same font has the same width.
 const widthCache = new Map<string, number>()
+const hyphenCache = new Map<string, number | null>()
 
 const ROLES: readonly TextRole[] = ['blockTitle', 'blockDetail', 'caption', 'taskTitle']
 
@@ -37,6 +38,28 @@ function snapshot(column: HTMLElement, probes: HTMLElement): ColumnMeasure | nul
       return measured
     },
     lineHeight: (role) => fonts.get(role)!.lineHeight,
+    hyphenatedLines(text, role, width) {
+      const font = fonts.get(role)!
+      const key = `${font.key}\u0001${width.toFixed(2)}\u0000${text}`
+      let lines = hyphenCache.get(key)
+      if (lines === undefined) {
+        const probe = probes.querySelector<HTMLElement>(`[data-hyphen="${role}"]`)
+        if (!probe) return null
+        probe.style.width = `${width}px`
+        // Drawn as the view draws it: the words, then "…" in an element of its own.
+        if (text.endsWith(ELLIPSIS)) {
+          const cut = document.createElement('span')
+          cut.textContent = ELLIPSIS
+          probe.replaceChildren(document.createTextNode(text.slice(0, -ELLIPSIS.length)), cut)
+        } else {
+          probe.textContent = text
+        }
+        const overflows = probe.scrollWidth > probe.clientWidth + 0.5
+        lines = overflows ? null : Math.round(probe.getBoundingClientRect().height / font.lineHeight)
+        hyphenCache.set(key, lines)
+      }
+      return lines
+    },
   }
   // A lead is measured as drawn: the mark or icon with the space after it.
   const lead = (name: string, fallback: number) => probes.querySelector<HTMLElement>(`[data-lead="${name}"]`)?.getBoundingClientRect().width || fallback

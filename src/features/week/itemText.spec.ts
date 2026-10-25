@@ -86,3 +86,23 @@ describe('fitTitle', () => {
     expect(fitTitle(title('Vendor call', 20), { width: 90, height: 16 }, metrics)).toMatchObject({ text: 'Vendor call', lead: true })
   })
 })
+
+describe('a first word longer than a line', () => {
+  // The browser hyphenates "Revisión…" into two lines of 40 px and cannot break "Xyzzyplugh".
+  const hyphenating: TextMetrics = { ...metrics, hyphenatedLines: (text, _role, width) => text.startsWith('Revisión') && width >= 30 ? 2 : null }
+
+  it('is hyphenated by the browser, alone and followed by "…", when its lines fit', () => {
+    expect(fitTitle({ text: 'Revisión de diseño', role: 'caption' }, { width: 41, height: 32 }, hyphenating)).toEqual({ text: `Revisión${ELLIPSIS}`, lines: 2, lead: false, truncated: true, hyphenated: true })
+  })
+
+  it('makes the box a mark when its hyphenated lines do not fit, or the browser cannot break it', () => {
+    expect(fitTitle({ text: 'Revisión de diseño', role: 'caption' }, { width: 41, height: 16 }, hyphenating)).toBeNull()
+    expect(fitTitle({ text: 'Xyzzyplugh', role: 'caption' }, { width: 41, height: 48 }, hyphenating)).toBeNull()
+  })
+
+  it('is never hyphenated when it fits a line whole', () => {
+    const fit = fitTitle({ text: 'Revisión de diseño', role: 'caption' }, { width: 70, height: 16 }, hyphenating)
+    expect(fit).toMatchObject({ text: `Revisión${ELLIPSIS}` })
+    expect(fit?.hyphenated).toBeFalsy()
+  })
+})
