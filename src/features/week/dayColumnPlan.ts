@@ -46,8 +46,10 @@ export interface ColumnMeasure {
   // A routine's category mark with the space after it, and a 12 px icon with the space after it.
   markLead: number
   iconLead: number
-  // The category glyph a mark shows when its box holds it (a circled initial or emoji in the small mark size).
+  // The category glyph a mark shows when its box holds it (a circled initial or emoji in the small mark size), and the
+  // smallest it may be drawn: a box shorter than the glyph shows it scaled down to its room, down to this size.
   glyph: { width: number; height: number }
+  glyphMin: { width: number; height: number }
 }
 
 export interface BlockWords { title: string; time: string; category?: string; status?: string }
@@ -57,9 +59,10 @@ export interface TaskWords { title: string; late: boolean }
 // `text` is the title as drawn: whole, or (when `cut`) its first whole words and the generated "…". Undefined draws the
 // whole title. A title may itself contain "…" ("Pausa…"); only `cut` says the plan left words out.
 // `small` draws the title in the small caption size, centred (`center`) unless tasks sit under it.
-export interface BlockShow { title: boolean; glyph?: boolean; glyphAt?: { top: number; height: number }; text?: string; cut?: boolean; hyphenate?: boolean; small?: boolean; center?: boolean; mark: boolean; time: boolean; category: boolean; status: boolean; statusIcon: boolean }
-export interface BusyShow { icon: boolean; glyph?: boolean; word: boolean; title: boolean; text?: string; cut?: boolean; hyphenate?: boolean; small?: boolean }
-export interface TaskShow { icon: boolean; glyph?: boolean; title: boolean; text?: string; cut?: boolean; hyphenate?: boolean; small?: boolean }
+export interface BlockShow { title: boolean; glyph?: boolean; glyphScale?: number; glyphAt?: { top: number; height: number }; text?: string; cut?: boolean; hyphenate?: boolean; small?: boolean; center?: boolean; mark: boolean; time: boolean; category: boolean; status: boolean; statusIcon: boolean }
+// A conflict's ⚠ is drawn before its title on the first line, or on a line of its own above it (`stacked`).
+export interface BusyShow { icon: boolean; stacked?: boolean; glyph?: boolean; glyphScale?: number; word: boolean; title: boolean; text?: string; cut?: boolean; hyphenate?: boolean; small?: boolean }
+export interface TaskShow { icon: boolean; glyph?: boolean; glyphScale?: number; title: boolean; text?: string; cut?: boolean; hyphenate?: boolean; small?: boolean }
 
 // `top` and `bottom` are the drawn box in px from the top of the column.
 export type PlannedBlock = BlockSegment & LanePosition & { top: number; bottom: number; show: BlockShow }
@@ -96,10 +99,20 @@ export interface DayColumnInput {
 
 const NOTHING = { block: { title: false, mark: false, time: false, category: false, status: false, statusIcon: false }, busy: { icon: false, word: false, title: false }, task: { icon: false, title: false } }
 // A box that draws no words still says something when its room inside `inset` holds the glyph: a blank box never
-// appears where a glyph would fit (docs/design/visual-design.md › Week items).
-function glyphFits(width: number, height: number, inset: { top: number; bottom: number; start: number; end: number }, measure: ColumnMeasure): boolean {
-  return width - inset.start - inset.end >= measure.glyph.width - 0.01 && height - inset.top - inset.bottom >= measure.glyph.height - 0.01
+// appears where a glyph would fit (docs/design/visual-design.md › Week items). A box shorter or narrower than the glyph
+// draws it scaled down to its room, never below `glyphMin` (a 15-minute item, 12 px at a 48 px hour, keeps its glyph).
+// The scale to draw it at, or 0 when not even the smallest glyph fits.
+function glyphScale(width: number, height: number, inset: { top: number; bottom: number; start: number; end: number }, measure: ColumnMeasure): number {
+  const room = { width: width - inset.start - inset.end, height: height - inset.top - inset.bottom }
+  const scale = Math.min(1, room.width / measure.glyph.width, room.height / measure.glyph.height)
+  return scale * measure.glyph.width >= measure.glyphMin.width - 0.01 && scale * measure.glyph.height >= measure.glyphMin.height - 0.01 ? scale : 0
 }
+
+// The space between a conflict's ⚠ and its title in the small caption size, beside it on one line.
+export const SMALL_ICON_GAP_PX = 2
+
+// Two routines of one category that touch are drawn 1 px apart, so a short one never reads as part of its neighbour.
+export const SAME_CATEGORY_GAP_PX = 1
 
 // The tallest span of a routine its tasks leave free, relative to its top: where its glyph goes when no word fits.
 function freestSpan(top: number, bottom: number, tasks: { top: number; bottom: number }[]): { top: number; height: number } {
@@ -156,28 +169,43 @@ function titleHeight(fit: TitleFit | null, role: 'blockTitle' | 'taskTitle' | 'c
   return fit ? fit.lines * measure.metrics.lineHeight(role) : 0
 }
 
-// An event's words flow on from its conflict mark: "⚠ Conflict Vendor call", then "⚠ Vendor call", then the title alone,
-// each whole first, then the most whole words with "…", then the icon alone. A word not drawn stays in the accessible name.
+// A conflict leads with its ⚠ wherever the ⚠ fits, and its title follows with whole words as the box allows: "⚠ Conflict
+// Vendor call", then "⚠ Vendor call" on the first line or under a ⚠ line of its own, then its first whole words and
+// "…", then the title in the small caption size beside the ⚠, then the ⚠ alone. Only where not even the ⚠ fits does the
+// title stand alone; the red border and hatching still mark the conflict. A word not drawn stays in the accessible name.
 function busyShow(words: BusyWords, box: { width: number; height: number }, smallBox: { width: number; height: number }, measure: ColumnMeasure): BusyShow {
   const { metrics } = measure
-  const options: { lead: number; icon: boolean; word: boolean }[] = words.conflict
-    ? [
-        { lead: ICON_PX + 2 + metrics.width(words.conflict, 'caption') + metrics.width(' ', 'caption'), icon: true, word: true },
-        { lead: measure.iconLead, icon: true, word: false },
-        { lead: 0, icon: false, word: false },
-      ]
-    : [{ lead: 0, icon: false, word: false }]
-  const fits = options.map((option) => ({ option, fit: fitTitle({ text: words.title, role: 'caption', lead: option.lead }, box, metrics) }))
-  // fitTitle may fall back to no lead; keep only fits that drew the lead they were asked for.
-  const honest = fits.filter(({ option, fit }) => fit && fit.lead === option.lead > 0)
-  const chosen = honest.find(({ fit }) => !fit!.truncated) ?? honest.find(({ option }) => option.icon) ?? honest[0]
-  if (chosen) return { icon: chosen.option.icon, word: chosen.option.word, title: true, text: chosen.fit!.text, cut: chosen.fit!.truncated, hyphenate: chosen.fit!.hyphenated }
-  const small = fitTitle({ text: words.title, role: 'compact' }, smallBox, metrics)
-  if (small) return { icon: false, word: false, title: true, text: small.text, cut: small.truncated, hyphenate: small.hyphenated, small: true }
-  // With no word, a conflict keeps its ⚠ wherever the icon fits, centred in the room inside the small insets; it never
-  // takes the plain glyph, which would hide the conflict. Smaller still, the red border and hatching mark it.
-  const iconFits = Boolean(words.conflict) && smallBox.width >= ICON_PX - 0.01 && smallBox.height >= ICON_PX - 0.01
-  return { icon: iconFits, word: false, title: false }
+  // fitTitle may drop a lead that does not fit; a fit counts only with the lead it was asked for.
+  const fitWith = (lead: number, room = box) => {
+    const fit = fitTitle({ text: words.title, role: 'caption', lead }, room, metrics)
+    return fit && fit.lead === lead > 0 ? fit : null
+  }
+  const shown = (fit: TitleFit, extra: Partial<BusyShow> = {}): BusyShow => ({ icon: false, word: false, title: true, text: fit.text, cut: fit.truncated, hyphenate: fit.hyphenated, ...extra })
+  const alone = (): BusyShow => {
+    const fit = fitWith(0)
+    if (fit) return shown(fit)
+    const small = fitTitle({ text: words.title, role: 'compact' }, smallBox, metrics)
+    return small ? shown(small, { small: true }) : { icon: false, word: false, title: false }
+  }
+  if (!words.conflict) return alone()
+  const withWord = fitWith(ICON_PX + 2 + metrics.width(words.conflict, 'caption') + metrics.width(' ', 'caption'))
+  if (withWord && !withWord.truncated) return shown(withWord, { icon: true, word: true })
+  const inline = fitWith(measure.iconLead)
+  // The ⚠ on a line of its own (ICON_PX and 1 px), the title on the lines under it.
+  const under = fitWith(0, { width: box.width, height: box.height - ICON_PX - PIECE_GAP_PX })
+  const stacked = box.width >= ICON_PX - 0.01 && box.height >= ICON_PX - 0.01 ? under : null
+  for (const [fit, extra] of [[inline, {}], [stacked, { stacked: true }]] as const) {
+    if (fit && !fit.truncated) return shown(fit, { icon: true, ...extra })
+  }
+  for (const [fit, extra] of [[inline, {}], [stacked, { stacked: true }]] as const) {
+    if (fit) return shown(fit, { icon: true, ...extra })
+  }
+  if (smallBox.width >= ICON_PX - 0.01 && smallBox.height >= ICON_PX - 0.01) {
+    // Beside the ⚠, centred on its line, in the small caption size.
+    const small = fitTitle({ text: words.title, role: 'compact' }, { width: smallBox.width - ICON_PX - SMALL_ICON_GAP_PX, height: smallBox.height }, metrics)
+    return small ? shown(small, { icon: true, small: true }) : { icon: true, word: false, title: false }
+  }
+  return alone()
 }
 
 function taskTitle(words: TaskWords, width: number, height: number, measure: ColumnMeasure, small = false): TitleFit | null {
@@ -209,7 +237,8 @@ function taskShow(words: TaskWords, width: number, height: number, outline: bool
   if (fit) return { icon: fit.lead, title: true, text: fit.text, cut: fit.truncated, hyphenate: fit.hyphenated }
   const small = taskTitle(words, width, height, measure, true)
   if (small) return { icon: false, title: true, text: small.text, cut: small.truncated, hyphenate: small.hyphenated, small: true }
-  return glyphFits(width, height, SMALL_INSET.task, measure) ? { ...NOTHING.task, glyph: true } : NOTHING.task
+  const scale = glyphScale(width, height, SMALL_INSET.task, measure)
+  return scale ? { ...NOTHING.task, glyph: true, glyphScale: scale } : NOTHING.task
 }
 
 export function planDayColumn(input: DayColumnInput): DayColumnPlan {
@@ -222,12 +251,20 @@ export function planDayColumn(input: DayColumnInput): DayColumnPlan {
 
   if (input.compact) return compactPlan(input, lanes, hosts)
 
+  // Where each routine's box ends: SAME_CATEGORY_GAP_PX early when a routine of its category starts there in its lane.
+  const blockEnd = new Map(lanes.blocks.map((block) => {
+    const touching = lanes.blocks.some((next) => next !== block && next.startMinute === block.endMinute && next.occurrence.categoryId === block.occurrence.categoryId
+      && next.left < block.left + block.width && block.left < next.left + next.width)
+    return [block.key, px(block.endMinute) - (touching ? SAME_CATEGORY_GAP_PX : 0)]
+  }))
+  const endOf = (block: { key: string; endMinute: number }) => blockEnd.get(block.key) ?? px(block.endMinute)
+
   // Each routine keeps its title lines first; its tasks go below them.
   const titleStrip = new Map<string, number>()
   for (const block of lanes.blocks) {
     if (!measure) { titleStrip.set(block.key, UNMEASURED_STRIP_PX); continue }
     const width = boxWidth(block) - BLOCK_INSET.start - BLOCK_INSET.end
-    const room = px(block.endMinute) - px(block.startMinute)
+    const room = endOf(block) - px(block.startMinute)
     const piece = blockPieces(words.block(block), measure)[0]!
     // Two lines of the title, more for a hyphenated first word ("Tra-" / "ba-" / "jo…"), else the small caption size.
     const body = (lines: number) => fitTitle(piece, { width, height: Math.min(room - BLOCK_INSET.top - BLOCK_INSET.bottom, lines * measure.metrics.lineHeight('blockTitle')) }, measure.metrics)
@@ -248,7 +285,7 @@ export function planDayColumn(input: DayColumnInput): DayColumnPlan {
     const host = hosts.get(task)
     if (host) {
       const lane = lanes.blocks.find((block) => block.key === host.key)!
-      const group = groups.get(host.key) ?? { bounds: { top: px(host.startMinute), bottom: px(host.endMinute), strip: titleStrip.get(host.key)! }, lane, hostKey: host.key, members: [] }
+      const group = groups.get(host.key) ?? { bounds: { top: px(host.startMinute), bottom: endOf(host), strip: titleStrip.get(host.key)! }, lane, hostKey: host.key, members: [] }
       group.members.push(task)
       groups.set(host.key, group)
       continue
@@ -288,17 +325,18 @@ export function planDayColumn(input: DayColumnInput): DayColumnPlan {
   // A routine draws its words only above its first task.
   const blocks = lanes.blocks.map((block): PlannedBlock => {
     const top = px(block.startMinute)
-    if (!measure) return { ...block, top, bottom: px(block.endMinute), show: EVERYTHING.block }
+    if (!measure) return { ...block, top, bottom: endOf(block), show: EVERYTHING.block }
     const firstTask = Math.min(...tasks.filter((task) => task.hostKey === block.key && !task.outline).map((task) => task.top))
-    const bottom = Number.isFinite(firstTask) ? firstTask - PIECE_GAP_PX : px(block.endMinute) - BLOCK_INSET.bottom
+    const bottom = Number.isFinite(firstTask) ? firstTask - PIECE_GAP_PX : endOf(block) - BLOCK_INSET.bottom
     const box = { width: boxWidth(block) - BLOCK_INSET.start - BLOCK_INSET.end, height: bottom - top - BLOCK_INSET.top }
     // Centred with no padding only in a box too short for one line of the routine's own title size, and with no tasks.
-    const short = px(block.endMinute) - top < BLOCK_INSET.top + measure.metrics.lineHeight('blockTitle') + BLOCK_INSET.bottom && !Number.isFinite(firstTask)
-    const smallBox = { width: boxWidth(block) - SMALL_INSET.block.start - SMALL_INSET.block.end, height: short ? px(block.endMinute) - top : box.height }
+    const short = endOf(block) - top < BLOCK_INSET.top + measure.metrics.lineHeight('blockTitle') + BLOCK_INSET.bottom && !Number.isFinite(firstTask)
+    const smallBox = { width: boxWidth(block) - SMALL_INSET.block.start - SMALL_INSET.block.end, height: short ? endOf(block) - top : box.height }
     const show = { ...blockShow(words.block(block), box, smallBox, short, measure) }
-    const glyphAt = show.title ? undefined : freestSpan(top, px(block.endMinute), tasks.filter((task) => task.hostKey === block.key && !task.outline))
-    if (glyphAt && glyphFits(boxWidth(block), glyphAt.height, SMALL_INSET.block, measure)) Object.assign(show, { glyph: true, glyphAt })
-    return { ...block, top, bottom: px(block.endMinute), show }
+    const glyphAt = show.title ? undefined : freestSpan(top, endOf(block), tasks.filter((task) => task.hostKey === block.key && !task.outline))
+    const scale = glyphAt ? glyphScale(boxWidth(block), glyphAt.height, SMALL_INSET.block, measure) : 0
+    if (scale) Object.assign(show, { glyph: true, glyphScale: scale, glyphAt })
+    return { ...block, top, bottom: endOf(block), show }
   })
 
   const busy = lanes.busy.map((item): PlannedBusy => {
@@ -314,7 +352,8 @@ export function planDayColumn(input: DayColumnInput): DayColumnPlan {
     }
     const show = { ...busyShow(words.busy(item), box, smallBox, measure) }
     const conflict = Boolean(words.busy(item).conflict)
-    if (!show.title && !show.icon && !conflict && glyphFits(boxWidth(item), drawn.bottom - drawn.top, SMALL_INSET.busy, measure)) show.glyph = true
+    const scale = !show.title && !show.icon && !conflict ? glyphScale(boxWidth(item), drawn.bottom - drawn.top, SMALL_INSET.busy, measure) : 0
+    if (scale) Object.assign(show, { glyph: true, glyphScale: scale })
     return { ...item, ...drawn, show }
   })
 

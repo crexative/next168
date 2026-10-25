@@ -2,7 +2,7 @@ import { expect, test, type Page } from '@playwright/test'
 import { V2_KEY, seedKey } from './fixtures'
 import { visualIntegrityViolations } from './support/visualIntegrity'
 import { itemsMissingTitles, seededTitles, type SeededTitles } from './support/week'
-import { SEEDED_NOW, VERIFY6_NOW, VERIFY6_WEEK, weekFor } from './support/weekLayouts'
+import { SEEDED_NOW, VERIFY6_NOW, VERIFY6_WEEK, VERIFY8_CALENDAR, VERIFY8_WEEK, weekFor } from './support/weekLayouts'
 
 // Week text, property style (docs/design/visual-design.md › Week items): many seeded weeks of 5 to 15 minute routines,
 // back-to-back short tasks, events on a routine's title row, overnight items and 2 to 4 overlapping lanes, each audited
@@ -140,6 +140,20 @@ test.describe('Week text is whole in the weeks verify4 and verify5 reported', ()
     await seedKey(page, V2_KEY, JSON.stringify(VERIFY6_WEEK))
     await openWeek(page)
     await auditEverySize(page, 'verify6 f3 es', 375, 0, seededTitles(VERIFY6_WEEK))
+  })
+
+  // verify8: conflicts with room for the ⚠ drew no ⚠ ("Demo con el cliente" at 1440, "Sincronización semanal" at
+  // 375), and 15-minute items were nameless strips. The guard requires the ⚠ wherever it fits and the glyph wherever
+  // its smallest size fits.
+  test('verify8 f4: short routines and imported conflicts at 10 to 60 minutes (Spanish)', async ({ page }) => {
+    test.setTimeout(120_000)
+    await page.setViewportSize({ width: 375, height: 720 })
+    await page.clock.install({ time: VERIFY6_NOW })
+    await page.addInitScript(() => window.localStorage.setItem('next168-language', 'es'))
+    await seedKey(page, V2_KEY, JSON.stringify(VERIFY8_WEEK))
+    await importCalendar(page, VERIFY8_CALENDAR)
+    await openWeek(page)
+    await auditEverySize(page, 'verify8 f4 es', 375, 0, await seededWeek(page))
   })
 
   test('verify4/verify5 R1: "Vendor call" and "Team sync" beside "Deep work" (English)', async ({ page }) => {

@@ -87,12 +87,15 @@ function snapshot(column: HTMLElement, probes: HTMLElement): ColumnMeasure | nul
     basis: `${Math.round(width * 10) / 10}px ${getComputedStyle(document.documentElement).fontSize}`,
     metrics,
     markLead: lead('mark', 0),
-    glyph: (() => {
-      const glyph = probes.querySelector<HTMLElement>('[data-glyph-probe="category"]')?.getBoundingClientRect()
-      return glyph ? { width: glyph.width, height: glyph.height } : { width: Infinity, height: Infinity }
-    })(),
+    glyph: glyphSize(probes, 'category'),
+    glyphMin: glyphSize(probes, 'category-min'),
     iconLead: lead('icon', ICON_PX + metrics.width(' ', 'caption')),
   }
+}
+
+function glyphSize(probes: HTMLElement, kind: string): { width: number; height: number } {
+  const glyph = probes.querySelector<HTMLElement>(`[data-glyph-probe="${kind}"]`)?.getBoundingClientRect()
+  return glyph ? { width: glyph.width, height: glyph.height } : { width: Infinity, height: Infinity }
 }
 
 // `enabled` is false for the overview, which draws no text.

@@ -107,6 +107,11 @@ function glyphSlot(inset: { top: number; end: number; bottom: number; start: num
   return { top: `${inset.top - border}px`, bottom: `${inset.bottom - border}px`, insetInlineStart: `${inset.start - border}px`, insetInlineEnd: `${inset.end - border}px` }
 }
 
+// A glyph scaled down to a box shorter than it (dayColumnPlan.ts › glyphScale): the small mark size times the scale.
+function glyphSize(show: { glyphScale?: number }) {
+  return show.glyphScale !== undefined && show.glyphScale < 1 ? { fontSize: `calc(0.6875rem * ${show.glyphScale})` } : {}
+}
+
 function verticalStyle(item: { top: number; bottom: number }) {
   return { top: `${item.top}px`, height: `${item.bottom - item.top}px` }
 }
@@ -201,6 +206,7 @@ function onColumnClick(event: MouseEvent, blockId?: string): void {
       <span data-role="compact" data-min-text />
       <span data-role="blockTitle" data-lead="mark"><CategoryMark class="block-mark" :category="undefined" />{{ ' ' }}</span>
       <span class="item-glyph"><CategoryMark :category="undefined" data-glyph-probe="category" /></span>
+      <span class="item-glyph is-smallest"><CategoryMark :category="undefined" data-glyph-probe="category-min" /></span>
       <span><Icon name="triangle-alert" :size="12" data-glyph-probe="warning" /></span>
       <span class="t-caption" data-lead="icon"><Icon name="check" :size="12" />{{ ' ' }}</span>
       <span class="t-caption" data-sentinel>M</span>
@@ -215,7 +221,7 @@ function onColumnClick(event: MouseEvent, blockId?: string): void {
       type="button"
       class="busy t-caption"
       :data-text-inset="SMALL_INSETS.busy"
-      :class="[`is-${item.kind}`, { 'is-small': item.show.small }, { 'is-conflict': conflicting.has(item.key) }, { 'is-icon-only': item.show.icon && !item.show.title }]"
+      :class="[`is-${item.kind}`, { 'is-small': item.show.small }, { 'is-conflict': conflicting.has(item.key) }, { 'is-icon-only': item.show.icon && !item.show.title }, { 'is-stacked': item.show.stacked }]"
       :data-glyph-kind="conflicting.has(item.key) ? 'warning' : undefined"
       :style="busyStyle(item)"
       :title="item.title"
@@ -224,7 +230,7 @@ function onColumnClick(event: MouseEvent, blockId?: string): void {
       @click.stop="inspect(item)"
     >
       <span v-if="conflicting.has(item.key)" class="conflict-mark" :class="{ 'visually-hidden': !item.show.icon }" :data-glyph="item.show.icon ? 'warning' : undefined" data-testid="calendar-conflict"><Icon name="triangle-alert" :size="12" /><span class="conflict-text" :class="{ 'visually-hidden': !item.show.word }">{{ t('week.grid.conflict') }}</span></span>{{ item.show.icon ? ' ' : '' }}<span class="busy-title" :class="{ 'visually-hidden': !item.show.title, 'is-hyphenated': item.show.hyphenate, 'is-small-text': item.show.small }" :aria-hidden="drawn(item.show, item.title).cut || undefined">{{ drawn(item.show, item.title).words }}<span v-if="drawn(item.show, item.title).cut" class="cut" data-cut>{{ ELLIPSIS }}</span></span><span v-if="drawn(item.show, item.title).cut" class="visually-hidden">{{ item.title }}</span>
-      <span v-if="item.show.glyph" class="item-glyph" :style="glyphSlot(SMALL_INSET.busy, 1)" data-glyph="category"><CategoryMark :category="{ name: item.title, colorKey: 'gray' }" /></span>
+      <span v-if="item.show.glyph" class="item-glyph" :style="{ ...glyphSlot(SMALL_INSET.busy, 1), ...glyphSize(item.show) }" data-glyph="category"><CategoryMark :category="{ name: item.title, colorKey: 'gray' }" /></span>
     </button>
     <button
       v-for="segment in plan.blocks"
@@ -247,7 +253,7 @@ function onColumnClick(event: MouseEvent, blockId?: string): void {
       <span v-if="segment.show.time" class="block-detail block-time">{{ timeRange(segment) }}</span>{{ ' ' }}
       <span v-if="segment.show.category" class="block-detail block-category">{{ categoryLine(segment) }}</span>{{ ' ' }}
       <span v-if="statuses.get(segment.key)" class="block-status t-caption" :class="{ 'visually-hidden': !segment.show.status }" data-testid="block-status"><template v-if="segment.show.statusIcon"><Icon :name="STATUS_ICON[statuses.get(segment.key)!]" :size="12" />{{ ' ' }}</template>{{ statusText(segment) }}</span>
-      <span v-if="segment.show.glyph" class="item-glyph" :style="{ ...glyphSlot(SMALL_INSET.block), top: `${segment.show.glyphAt!.top}px`, height: `${segment.show.glyphAt!.height}px`, bottom: 'auto' }" data-glyph="category"><CategoryMark :category="categoriesById.get(segment.occurrence.categoryId)" /></span>
+      <span v-if="segment.show.glyph" class="item-glyph" :style="{ ...glyphSlot(SMALL_INSET.block), ...glyphSize(segment.show), top: `${segment.show.glyphAt!.top}px`, height: `${segment.show.glyphAt!.height}px`, bottom: 'auto' }" data-glyph="category"><CategoryMark :category="categoriesById.get(segment.occurrence.categoryId)" /></span>
     </button>
     <button
       v-for="planned in plan.tasks"
@@ -270,7 +276,7 @@ function onColumnClick(event: MouseEvent, blockId?: string): void {
       @click.stop="emit('select-task', planned.task.taskId)"
     >
       <span class="task-box task-text" :class="{ 'is-late': planned.task.late, 'is-outline': planned.outline, 'is-small': planned.show.small }"><Icon v-if="planned.show.icon" class="task-icon" name="triangle-alert" :size="12" />{{ planned.show.icon ? ' ' : '' }}<span v-if="planned.show.title" class="task-title" :class="{ 'is-hyphenated': planned.show.hyphenate, 'is-small-text': planned.show.small }">{{ drawn(planned.show, planned.task.title).words }}<span v-if="drawn(planned.show, planned.task.title).cut" class="cut" data-cut aria-hidden="true">{{ ELLIPSIS }}</span></span></span>
-      <span v-if="planned.show.glyph" class="item-glyph" :style="glyphSlot(SMALL_INSET.task)" data-glyph="category"><CategoryMark :category="categoriesById.get(planned.task.categoryId ?? '')" /></span>
+      <span v-if="planned.show.glyph" class="item-glyph" :style="{ ...glyphSlot(SMALL_INSET.task), ...glyphSize(planned.show) }" data-glyph="category"><CategoryMark :category="categoriesById.get(planned.task.categoryId ?? '')" /></span>
     </button>
     <div v-if="nowMinute !== null" class="now-line" :style="{ top: `${(nowMinute / 60) * hourHeight}px` }" data-testid="now-line" aria-hidden="true" />
   </div>
@@ -302,6 +308,8 @@ function onColumnClick(event: MouseEvent, blockId?: string): void {
 /* The glyph a box shows when it holds no word: the category mark at the small caption size, centred (the plan measures
    it from the probe of the same class). Decorative: the box's label and title carry its name. */
 .item-glyph { font-size: 0.6875rem; line-height: 1; }
+/* The smallest a glyph is drawn: 10 px at 100 % text (the glyph is 1.125 times its font size), scaling with text size. */
+.item-glyph.is-smallest { font-size: calc(0.625rem / 1.125); }
 .block > .item-glyph, .busy > .item-glyph, .task-chunk > .item-glyph { position: absolute; z-index: 3; display: flex; align-items: center; justify-content: center; pointer-events: none; }
 /* Centred in a column, the title spans the whole line width, so it wraps (and hyphenates) exactly as it was measured. */
 .busy.is-small { display: flex; flex-direction: column; justify-content: center; padding-block: 0; }
@@ -368,6 +376,12 @@ function onColumnClick(event: MouseEvent, blockId?: string): void {
 .conflict-mark { display: inline-flex; align-items: center; gap: 2px; vertical-align: top; color: var(--danger-label); }
 /* A conflict with no room for words keeps its ⚠, centred like a glyph (dayColumnPlan.ts measures it there). */
 .busy.is-icon-only { display: flex; align-items: center; justify-content: center; padding: 0; }
+/* A conflict too narrow for "⚠ title" on one line draws its ⚠ on a line of its own above the title (ICON_PX + 1 px). */
+.busy.is-stacked .conflict-mark { display: flex; height: 12px; margin-block-end: 1px; }
+/* In the small caption size the title sits beside the ⚠, both centred on the line, 2 px apart
+   (dayColumnPlan.ts › SMALL_ICON_GAP_PX). */
+.busy.is-small:has(> .conflict-mark:not(.visually-hidden)) { flex-direction: row; align-items: center; justify-content: flex-start; }
+.busy.is-small > .conflict-mark { margin-inline-end: 2px; }
 
 /* A placed task: a dashed outline inside the lane of its block; tapping it opens the task. It has no z-index, so its
    words can be drawn above the now-line while the box stays under it. */

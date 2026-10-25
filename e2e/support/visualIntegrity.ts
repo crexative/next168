@@ -891,9 +891,12 @@ export function auditInPage(options: { focusRings: boolean }): string[] {
   // box): a blank box never appears where the glyph would fit. A box names the glyph it needs in `data-glyph-kind` (a
   // conflict needs its "warning", never the plain category glyph); the glyph's size is the container's element marked
   // `data-glyph-probe` with that kind.
+  // A glyph may be drawn scaled down to a short box: a box is held to the smallest size of its kind (the probe
+  // `data-glyph-probe="<kind>-min"`, else the probe of the kind). A box that names its kind in `data-glyph-kind` (a
+  // conflict's "warning") needs that glyph even when it draws words: a conflict always leads with its ⚠ where it fits.
   // A container marked `data-whole-text="shapes"` (the seven-day overview) draws no words by design. One without its
   // own smallest size or glyph is held to the documented ones (docs/design/visual-design.md › Week items: 11 px at
-  // 100 % text on a 1.2 line; a glyph 1.125 times that size, square).
+  // 100 % text on a 1.2 line; a glyph of 10 px, square).
   function checkBlankItems(container: HTMLElement, items: Element[]): void {
     if (container.getAttribute('data-whole-text') === 'shapes') return
     const fallbacks: HTMLElement[] = []
@@ -902,8 +905,10 @@ export function auditInPage(options: { focusRings: boolean }): string[] {
     const glyphOf = (kind: string) => {
       let size = glyphs.get(kind)
       if (!size) {
-        const probe = Array.from(container.querySelectorAll<HTMLElement>('[data-glyph-probe]')).find((candidate) => glyphKind(candidate.getAttribute('data-glyph-probe')) === kind)
-          ?? fallbackProbe(container, fallbacks, 'display: block; width: calc(0.6875rem * 1.125); height: calc(0.6875rem * 1.125)')
+        const probes = Array.from(container.querySelectorAll<HTMLElement>('[data-glyph-probe]'))
+        const probe = probes.find((candidate) => candidate.getAttribute('data-glyph-probe') === `${kind}-min`)
+          ?? probes.find((candidate) => glyphKind(candidate.getAttribute('data-glyph-probe')) === kind)
+          ?? fallbackProbe(container, fallbacks, 'display: block; width: 0.625rem; height: 0.625rem')
         const { width, height } = probe.getBoundingClientRect()
         size = { width, height }
         glyphs.set(kind, size)
@@ -955,6 +960,20 @@ export function auditInPage(options: { focusRings: boolean }): string[] {
     })
   }
 
+  // A box that names the glyph it needs (`data-glyph-kind`) and draws words still draws that glyph where it fits.
+  function checkRequiredGlyph(item: Element, glyphOf: (kind: string) => { width: number; height: number }, items: Element[]): void {
+    const kind = item.getAttribute('data-glyph-kind')
+    if (!kind) return
+    const [top = 0, right = 0, bottom = 0, left = 0] = (item.getAttribute('data-text-inset') ?? '').split(/\s+/).map(Number)
+    const rect = item.getBoundingClientRect()
+    const width = rect.width - left - right
+    const free = freeHeight(item, rect, items) - top - bottom
+    const glyph = glyphOf(kind)
+    if (width >= glyph.width - 0.01 && free >= glyph.height - 0.01 && !showsGlyph(item, kind)) {
+      violations.push(`${describe(item)} draws words but not its ${kind} glyph though the ${glyph.width.toFixed(1)}×${glyph.height.toFixed(1)} px glyph fits its ${width.toFixed(1)}×${free.toFixed(1)} px room`)
+    }
+  }
+
   function checkBlankItemsWith(reference: HTMLElement, glyphOf: (kind: string) => { width: number; height: number }, items: Element[]): void {
     // Measured with a copy of the reference itself, so the word has exactly its styles and context.
     const measure = (build: (probe: HTMLElement) => void) => {
@@ -971,7 +990,11 @@ export function auditInPage(options: { focusRings: boolean }): string[] {
     const font = getComputedStyle(reference)
     const line = Math.max(px(font.lineHeight) || px(font.fontSize) * 1.2, measure((probe) => { probe.textContent = 'Hg' }).glyphs)
     for (const item of items) {
-      if (getComputedStyle(item).pointerEvents === 'none' || drawnText(item) !== '') continue
+      if (getComputedStyle(item).pointerEvents === 'none') continue
+      if (drawnText(item) !== '') {
+        checkRequiredGlyph(item, glyphOf, items)
+        continue
+      }
       const title = (item.getAttribute('title') || item.getAttribute('aria-label') || '').replace(/\s+/g, ' ').trim()
       const words = title.split(' ').filter(Boolean)
       if (words.length === 0) continue
@@ -981,14 +1004,17 @@ export function auditInPage(options: { focusRings: boolean }): string[] {
       const width = rect.width - left - right - 0.25
       const height = rect.height - top - bottom
       if (width <= 0) continue
-      const room = `${width.toFixed(1)}×${height.toFixed(1)} px room`
+      // A box that draws its required glyph (a conflict's ⚠) holds its word beside it, 2 px apart, on one line.
+      const kindNeeded = item.getAttribute('data-glyph-kind')
+      const beside = kindNeeded && showsGlyph(item, kindNeeded) ? glyphOf(kindNeeded).width + 2 : 0
+      const room = `${(width - beside).toFixed(1)}×${height.toFixed(1)} px room${beside ? ' beside its glyph' : ''}`
       if (height >= line - 0.01) {
         // Measured as a cut title is drawn: the word, then "…" in an element of its own.
         const { width: needed } = measure((probe) => {
           probe.textContent = words[0]!
           if (words.length > 1) probe.append(Object.assign(document.createElement('span'), { textContent: '\u2026' }))
         })
-        if (needed <= width) {
+        if (needed <= width - beside) {
           violations.push(`${describe(item)} draws no text though "${text}" fits its ${room}`)
           continue
         }
