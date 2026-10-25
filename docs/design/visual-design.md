@@ -72,6 +72,8 @@ On wide windows nothing else grows: the readable column stays 720 px, sections s
 
 Guarded in `e2e/support/visualIntegrity.ts` (self-tests in `e2e/visual-integrity.spec.ts`), on every audited screen: controls closer than `--control-gap` and not joined; text or a visible control closer to a card edge than `--card-padding` (inline) or `--row-padding-block` (block); page sections closer than `--section-gap`. The guard reads the tokens from the page, so it follows the width and the text size. Fix what it reports; do not loosen it.
 
+Related rules guarded on the same screens: controls never overlap (links included, so a toolbar's back link ends before its entries); a word breaks across lines only when no line could hold it, or by hyphenation in the page's language (`hyphens: auto`; `overflow-wrap: anywhere` in a squeezed flex item cuts words like "Exerc ise" and is not used for text that can wrap first); below 480 px a sheet's primary action spans the sheet, from 480 px every button hugs its label. In Week, a block that shares its width shows whole words on up to two lines (an event on its title row leaves it 44 % of a narrow column), tasks start below the title lines, chunks of 16 px or more carry their title, and the week's range, arrows and free hours stay under the toolbar.
+
 ## Typography
 
 `font-family: system-ui, -apple-system, "SF Pro Text", "Segoe UI", Roboto, sans-serif`; no web fonts. Numbers use `font-variant-numeric: tabular-nums`.
