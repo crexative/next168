@@ -8,6 +8,7 @@ import { buildExportBundle, portableHash } from '@/core/exportBundle'
 import type { PlannerDocument } from '@/core/model'
 import { configureCalendarServices, useCalendarStore } from '@/features/calendars/calendarStore'
 import { IndexedDbCalendarSourceStore } from '@/features/calendars/calendarSourceStore'
+import { provideCalendarSourceStore } from '@/features/settings/data/calendarSourceHook'
 import { MAX_IMPORT_BYTES } from '@/features/settings/data/dataTransfer'
 import { preUpgradeFiles } from '@/features/settings/data/preUpgradeCopy'
 import { i18n } from '@/i18n'
@@ -210,6 +211,7 @@ function configurePlanner(fresh: ReturnType<typeof newBuild>, fetchText: () => s
   setActivePinia(pinia)
   configurePlannerStore({ repository: fresh.planner, now: fixedNow, newId, locale: () => 'en', timeZone: () => 'UTC' })
   configureCalendarServices({ texts: fresh.texts, fetcher: { fetch: async () => fetchText() }, now: fixedNow, newId, purgeGuard: fresh.planner })
+  provideCalendarSourceStore(fresh.texts)
   return { planner: usePlannerStore(), pinia }
 }
 
@@ -291,8 +293,9 @@ describe('F-06: a calendar read failure during capture aborts the upgrade', () =
     const { factory, lock, document } = await seeded()
     const before = await dumpDatabases(factory)
     const get = IDBObjectStore.prototype.get
-    const injected = vi.spyOn(IDBObjectStore.prototype, 'get').mockImplementation(function (this: IDBObjectStore, key: IDBValidKey | IDBKeyRange) {
-      if (this.name === 'sources' && key === 'cal-nonascii') throw new DOMException('injected read failure', 'UnknownError')
+    let failing = true
+    vi.spyOn(IDBObjectStore.prototype, 'get').mockImplementation(function (this: IDBObjectStore, key: IDBValidKey | IDBKeyRange) {
+      if (failing && this.name === 'sources' && key === 'cal-nonascii') throw new DOMException('injected read failure', 'UnknownError')
       return get.call(this, key)
     })
     const fresh = newBuild(factory, lock)
@@ -315,7 +318,15 @@ describe('F-06: a calendar read failure during capture aborts the upgrade', () =
     expect(host.textContent).toContain("The update couldn't be prepared safely; your data didn't change.")
     expect([...host.querySelectorAll('button')].map((button) => button.textContent?.trim())).toEqual(['Export a copy', 'Try again'])
 
-    injected.mockRestore()
+    // The read would work now, but exporting never re-runs the upgrade: it writes nothing and says what is missing.
+    failing = false
+    const click = vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => undefined)
+    ;[...host.querySelectorAll('button')].find((button) => button.textContent?.trim() === 'Export a copy')!.click()
+    await vi.waitFor(() => expect(click).toHaveBeenCalled())
+    await nextTick()
+    expect(host.textContent).toContain('Some calendar texts could not be read, so they were exported empty.')
+    expect(await dumpDatabases(factory)).toBe(before)
+
     ;[...host.querySelectorAll('button')].find((button) => button.textContent?.trim() === 'Try again')!.click()
     await vi.waitFor(() => expect(planner.status).toBe('ready'))
     screen.unmount()

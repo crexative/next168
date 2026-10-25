@@ -94,16 +94,21 @@ async function onDataPage(page: Page, url: string): Promise<void> {
   await expect(page.getByRole('heading', { level: 2, name: 'Your data', exact: true })).toBeVisible({ timeout: 30_000 })
 }
 
-test('F-04: after the new build upgrades, old tabs on the same origin are fenced out and change nothing', async ({ context, page }) => {
-  await context.route(FEED_URL, (route) => route.fulfill({ contentType: 'text/calendar', body: ics('SENTINEL refreshed by the old tab') }))
+test('F-04: after the new build upgrades, old tabs on the same origin are fenced out and change nothing', async ({ context, page }, testInfo) => {
+  let feed = ics('SENTINEL refreshed before the upgrade')
+  await context.route(FEED_URL, (route) => route.fulfill({ contentType: 'text/calendar', body: feed }))
   await page.goto(`${builds.origin()}/blank.html`)
   const document = planWith([{ id: 'cal-feed', name: 'Team feed', kind: 'url', url: FEED_URL, colorKey: 'blue' }])
   await seedVersionOne(page, { document: JSON.stringify(document), texts: { 'cal-feed': ics('SENTINEL original') } })
 
   // 1. Three old tabs load the plan.
   const edit = await context.newPage()
+  // A lost change notification (the new tab's commits broadcast one), so each old tab's next action is the first
+  // thing it does with storage after the upgrade: the write paths themselves must be fenced.
+  const deaf = { content: 'window.BroadcastChannel = class { postMessage() {} close() {} addEventListener() {} removeEventListener() {} set onmessage(_) {} }' }
   const refresh = await context.newPage()
   const erase = await context.newPage()
+  for (const tab of [edit, refresh, erase]) await tab.addInitScript(deaf)
   for (const tab of [edit, refresh]) {
     await openOld(tab, '#/settings/calendars')
     await expect(tab.getByTestId('calendar-source')).toHaveCount(1)
@@ -113,9 +118,13 @@ test('F-04: after the new build upgrades, old tabs on the same origin are fenced
   await erase.getByRole('dialog', { name: 'Delete everything?' }).getByRole('textbox').fill('delete')
   expect((await dumpOrigin(page)).versions).toEqual({ next168: 1, 'next168-calendars': 1 })
 
-  // 2. The new tab opens, which upgrades both databases.
+  // 2. The new tab opens, which upgrades both databases (and refreshes the feed on open: wait for that commit).
+  feed = ics('SENTINEL refreshed by the new tab')
   await page.goto(`${builds.origin()}/#/settings/calendars`)
   await expect(page.getByTestId('calendar-source')).toHaveCount(1)
+  await expect.poll(async () => (await storedPlan(page)).texts['cal-feed']).toContain('SENTINEL refreshed by the new tab')
+  await expect(page.getByRole('button', { name: 'Refresh', exact: true })).toBeEnabled()
+  feed = ics('SENTINEL refreshed by an old tab')
   const upgraded = await dumpOrigin(page)
   expect(upgraded.versions).toEqual({ next168: 2, 'next168-calendars': 2 })
 
@@ -125,8 +134,12 @@ test('F-04: after the new build upgrades, old tabs on the same origin are fenced
   await expect(edit.getByTestId('storage-error')).toBeVisible()
   expect(await dumpOrigin(page)).toEqual(upgraded)
 
+  // The pre-fence refresh reads the old text first; that read fails, so it reports calendar storage (or, if its
+  // planner reload ran first, the storage-error screen). Either way nothing is written.
   await refresh.getByRole('button', { name: 'Refresh', exact: true }).click()
-  await expect(refresh.getByRole('alert').filter({ hasText: 'Calendar storage is unavailable' }).or(refresh.getByTestId('storage-error'))).toBeVisible()
+  const calendarAlert = refresh.getByRole('alert').filter({ hasText: 'Calendar storage is unavailable' })
+  await expect(calendarAlert.or(refresh.getByTestId('storage-error'))).toBeVisible()
+  testInfo.annotations.push({ type: 'old refresh outcome', description: (await calendarAlert.isVisible()) ? 'calendar storage alert' : 'storage-error screen' })
   expect(await dumpOrigin(page)).toEqual(upgraded)
 
   await erase.getByRole('dialog', { name: 'Delete everything?' }).getByRole('button', { name: 'Delete everything' }).click()
@@ -165,10 +178,12 @@ test('F-05 (a): the pre-upgrade download keeps the original calendar bytes and i
 
   await page.goto(`${builds.origin()}/blank.html`)
   await seedVersionOne(page, { document: JSON.stringify(document), backup, proposals, texts })
+  // The pre-fence build loads it (a view that does not refresh calendars on open, so the seed stays as it is).
   const old = await context.newPage()
-  await openOld(old, '#/settings/calendars')
-  await expect(old.getByTestId('calendar-source')).toHaveCount(3)
+  await openOld(old, '#/settings/advanced')
+  await expect(old.getByTestId('data-workspace')).toHaveText(document.workspaceId)
   await old.close()
+  expect((await dumpOrigin(page)).versions).toEqual({ next168: 1, 'next168-calendars': 1 })
 
   // The new build upgrades; then a refresh, a deletion and three ordinary commits.
   await page.goto(`${builds.origin()}/#/settings/calendars`)

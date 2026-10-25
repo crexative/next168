@@ -63,8 +63,11 @@ export interface FenceOptions {
 
 export interface StorageFence {
   readonly version: number
-  // Resolves once both databases are at `version`; repositories are usable only after it.
+  // Resolves once both databases are at `version`; repositories are usable only after it. After a failed upgrade it
+  // keeps failing (an export or any other read never re-runs the upgrade) until `retry`.
   ready(): Promise<void>
+  // Runs the upgrade again after a failure: the planner's load (and its Retry) calls it.
+  retry(): Promise<void>
   open(name: FencedDatabase): Promise<IDBDatabase>
   // Whether an upgrade is waiting for older connections (another tab) to close.
   waiting(): boolean
@@ -268,6 +271,7 @@ export function createStorageFence(factory: IDBFactory | undefined, options: Fen
   const now = options.now ?? (() => new Date())
   let upgraded = false
   let pending: Promise<void> | undefined
+  let failed: { error: unknown } | undefined
   let isWaiting = false
   const listeners = new Set<(waiting: boolean) => void>()
   const setWaiting = (next: boolean) => {
@@ -279,10 +283,11 @@ export function createStorageFence(factory: IDBFactory | undefined, options: Fen
   function ready(): Promise<void> {
     if (upgraded) return Promise.resolve()
     if (!factory) return Promise.reject(failure('UnknownError', 'indexedDB missing'))
+    if (failed) return Promise.reject(failed.error)
     if (options.lockHeldInPage?.()) return Promise.reject(failure('InvalidStateError', 'storage fence not ready inside the commit lock'))
     pending ??= lock(() => upgradeAll(factory, version, now, setWaiting)).then(
       () => { upgraded = true },
-      (error: unknown) => { pending = undefined; throw error },
+      (error: unknown) => { pending = undefined; failed = { error }; throw error },
     )
     return pending
   }
@@ -297,6 +302,10 @@ export function createStorageFence(factory: IDBFactory | undefined, options: Fen
   return {
     version,
     ready,
+    retry() {
+      failed = undefined
+      return ready()
+    },
     async open(name) {
       await ready()
       try {

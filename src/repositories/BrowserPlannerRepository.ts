@@ -82,6 +82,7 @@ export class BrowserPlannerRepository implements PlannerRepository {
 
   async load(): Promise<LoadResult> {
     const { store, runExclusive } = this.deps
+    await store.prepare?.()
     const snapshot = await store.read(['document', 'migration', 'purge', 'purgeEpoch', 'unsavedBaseline'])
     this.loadedPurgeEpoch = purgeEpochOf(snapshot)
     if (this.purgePending(snapshot)) await this.finishPurge().catch((error) => console.warn('next168: purge resumes on the next load', error))

@@ -37,6 +37,8 @@ export interface Change {
 export interface BrowserStore {
   read(parts: readonly StoredPart[]): Promise<Snapshot>
   write(change: Change): Promise<void>
+  // Makes storage usable (the fence's upgrade), retrying one that failed; only the planner's load calls it.
+  prepare?(): Promise<void>
 }
 
 export const DATABASE_NAME = PLANNER_DATABASE
@@ -65,6 +67,10 @@ export class IndexedDbStore implements BrowserStore {
 
   constructor(factory: IDBFactory | undefined = globalThis.indexedDB, fence?: StorageFence) {
     this.fence = fence ?? fenceFor(factory)
+  }
+
+  prepare(): Promise<void> {
+    return this.fence.retry()
   }
 
   async read(parts: readonly StoredPart[]): Promise<Snapshot> {
