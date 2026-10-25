@@ -9,7 +9,7 @@ describe('validatePublicUrl', () => {
     // A terminal DNS dot names the same host: absolute local names, private suffixes and IP literals stay refused.
     'https://localhost./', 'https://LOCALHOST./', 'https://app.localhost./', 'https://router.local./', 'https://nas.internal./',
     'https://my-pc.lan./', 'https://my-pc.lan/', 'https://printer.home.arpa./', 'https://box.localdomain/', 'https://localhost../',
-    'https://intranet./', 'https://192.168.1.20./', 'https://3232235796/', 'https://0x7f.1/', 'https://[::1]/',
+    'https://intranet./', 'https://next..app/', 'https://192.168.1.20./', 'https://3232235796/', 'https://0x7f.1/', 'https://[::1]/',
   ])('rejects %s', (raw) => {
     expect(validatePublicUrl(raw).ok).toBe(false)
   })
