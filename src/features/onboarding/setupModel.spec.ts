@@ -292,6 +292,13 @@ describe('moving a start time', () => {
     expect([picked.start, picked.end]).toEqual([at(23, 30), 0])
   })
 
+  it('a midnight end the person picked stays when the start moves earlier', () => {
+    const late = range(at(20), at(22))
+    touch(late, { end: 0 })
+    touch(late, { start: at(19) })
+    expect([late.start, late.end]).toEqual([at(19), 0])
+  })
+
   it('lets sleep, and a range that already crossed midnight, go on into the next day', () => {
     const sleep = range(at(23), at(7))
     touch(sleep, { start: at(23, 30) }, true)

@@ -404,7 +404,8 @@ export function touch(range: RangeDraft, change: Partial<Pick<RangeDraft, 'days'
 const crossesMidnight = (range: RangeDraft) => range.end !== 0 && range.end < range.start
 
 function endAfterMovingStart(range: RangeDraft, start: number, crosses: boolean): number {
-  if (range.endSet && (crosses || start < range.end)) return range.end
+  // A picked end stays while the start is before it; a picked midnight is the end of the day, after every start.
+  if (range.endSet && (crosses || start < (range.end === 0 ? MINUTES_PER_DAY : range.end))) return range.end
   const end = start + (range.end - range.start + MINUTES_PER_DAY) % MINUTES_PER_DAY
   if (end < MINUTES_PER_DAY) return end
   // Past midnight: a night range goes on into the next day; any other range stops at midnight.
