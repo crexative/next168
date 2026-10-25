@@ -1570,4 +1570,23 @@ test.describe('Week\'s floating "+" on phones', () => {
       await expect(last).toBeInViewport({ ratio: 1 })
     })
   }
+
+  // Review of 170d7c7: at enlarged text the banners sat --space-3 (24 px at 200 %) above the bar while their published
+  // height added a fixed 12 px, so "+" came within 4 px of an "update available" notice.
+  for (const size of [{ width: 390, height: 844 }, { width: 320, height: 640 }] as const) {
+    for (const text of ['100%', '200%', '300%'] as const) {
+      test(`${size.width}x${size.height} at ${text} text: 16 px above a status banner`, async ({ page }) => {
+        await page.setViewportSize(size)
+        if (text !== '100%') await page.addInitScript((value) => { document.addEventListener('DOMContentLoaded', () => { document.documentElement.style.fontSize = value }) }, text)
+        await start(page, 'light', { ...plannedDocument, settings: { ...plannedDocument.settings, locale: 'es' } }, 'es')
+        await open(page, 'week')
+        await page.evaluate(() => { const channel = new BroadcastChannel('next168'); channel.postMessage({ type: 'update-available' }); channel.close() })
+        await expect(page.getByTestId('update-banner')).toBeVisible()
+        await settle(page)
+        const gap = await page.evaluate(() => document.querySelector('.banners')!.getBoundingClientRect().top - document.querySelector('[data-fab]')!.getBoundingClientRect().bottom)
+        expect(gap, 'measured from the banner itself').toBeCloseTo(16, 0)
+        expect(await page.evaluate(auditFloatingActionButtonInPage), `${text}, banner`).toEqual([])
+      })
+    }
+  }
 })

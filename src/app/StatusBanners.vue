@@ -16,21 +16,22 @@ const errorMessage = computed(() => {
   return code === 'conflict' ? t('app.storage.conflict') : t('app.storage.saveFailed', { reason: code })
 })
 
-// The notices float over the page; their height is published so the page keeps room for them at its end.
+// The notices float over the page; their layout height is published (--banners-block-size) and --banners-height adds
+// their gap above the tab bar in CSS, so both grow with the text and the page and Week's "+" keep clear of them.
+// The layout size, not the drawn box: a transform on an ancestor would otherwise shrink it.
 const root = ref<HTMLElement | null>(null)
 let observer: ResizeObserver | undefined
 onMounted(() => {
   if (!root.value || typeof ResizeObserver === 'undefined') return
-  const target = root.value
-  observer = new ResizeObserver(() => {
-    const height = target.getBoundingClientRect().height
-    window.document.documentElement.style.setProperty('--banners-height', height > 0 ? `${Math.ceil(height + 12)}px` : '0px')
+  observer = new ResizeObserver(([entry]) => {
+    const height = entry?.borderBoxSize?.[0]?.blockSize ?? entry?.contentRect.height ?? 0
+    window.document.documentElement.style.setProperty('--banners-block-size', `${height}px`)
   })
-  observer.observe(target)
+  observer.observe(root.value)
 })
 onBeforeUnmount(() => {
   observer?.disconnect()
-  window.document.documentElement.style.removeProperty('--banners-height')
+  window.document.documentElement.style.removeProperty('--banners-block-size')
 })
 
 const reload = () => reloadWhenReady(() => planner.settled())
@@ -69,10 +70,11 @@ const reload = () => reloadWhenReady(() => planner.settled())
 </template>
 
 <style scoped>
-/* Bottom notice above the tab bar: fixed, so a late notice never pushes the page down, and clear of the large title and the Now card. */
+/* Bottom notice above the tab bar: fixed, so a late notice never pushes the page down, and clear of the large title and the Now card.
+   Its gap above the bar is the --space-3 that --banners-height adds. */
 .banners {
   position: fixed;
-  inset: auto calc(var(--safe-right) + var(--space-4)) calc(var(--tabbar-height) + var(--safe-bottom) + var(--space-3)) calc(var(--safe-left) + var(--space-4));
+  inset: auto calc(var(--safe-right) + var(--space-4)) calc(var(--tabbar-inset) + var(--space-3)) calc(var(--safe-left) + var(--space-4));
   z-index: 30;
   display: flex;
   flex-direction: column;
@@ -113,4 +115,9 @@ const reload = () => reloadWhenReady(() => planner.settled())
 .banner.is-error { border: 1px solid var(--danger); }
 .banner > :first-child { color: var(--label-2); }
 .is-error > :first-child { color: var(--danger-label); }
+</style>
+
+<style>
+/* --banners-height is how far the notices reach above the tab bar while one shows (0 otherwise). */
+html:has(.banners > .banner) { --banners-height: calc(var(--banners-block-size, 0px) + var(--space-3)); }
 </style>
