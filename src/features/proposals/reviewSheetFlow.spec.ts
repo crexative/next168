@@ -54,7 +54,7 @@ it('a whole week reads as a one-line summary first, with every group closed and 
   const { document } = await setup(false)
   const proposal = await repository.create(syntheticWeekProposal(document.workspaceId, 0), 'import')
   await open(proposal)
-  expect(byTestId('review-overview')!.textContent).toBe('8 new categories\u00a0·\u00a032 routines\u00a0·\u00a03 tasks')
+  expect(byTestId('review-overview')!.textContent).toBe('8 new categories\u00a0· 32 routines\u00a0· 3 tasks')
   expect(window.document.querySelectorAll('.change')).toHaveLength(0)
   const footer = byTestId('sheet-actions')!
   expect([...footer.querySelectorAll('button')].map((button) => button.textContent!.trim())).toEqual(['Approve', 'Cancel'])

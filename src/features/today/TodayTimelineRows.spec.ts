@@ -33,7 +33,7 @@ describe('TodayTimeline rows', () => {
     const host = await render()
     const carry = host.querySelector('[data-testid="timeline-carry"]')!
     expect(carry.textContent?.replace(/\s+/g, ' ').trim()).toMatch(/^Sleep\s*Since yesterday · until 6:00\sAM$/)
-    expect(carry.textContent).toContain('yesterday\u00a0·\u00a0until')
+    expect(carry.textContent).toContain('yesterday\u00a0· until')
     const row = carry.closest('li')!
     expect(controls(row)).toHaveLength(0)
     expect(row.querySelector('[data-testid="timeline-start"]')).toBeNull()

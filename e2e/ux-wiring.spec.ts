@@ -114,7 +114,8 @@ for (const size of Object.keys(SIZES) as (keyof typeof SIZES)[]) {
         // Mon 00:00 → Wed 10:15 is past (58 h 15 min). Of the 109 h 45 min ahead, blocks cover 55 h 45 min: today's work
         // to 17:00 (6 h 45 min), Thu and Fri work (16 h), four nights of sleep (32 h) and Sunday night up to Monday 00:00 (1 h).
         expect(hoursIn(todaySubtitle)).toBe('54')
-        expect(todaySubtitle).toBe('miércoles, 21 de octubre · 54 h libres esta semana')
+        // The text agrees; how it may break is the separator's business, so no-break spaces read as spaces here.
+        expect(todaySubtitle.replace(/\u00a0/g, ' ')).toBe('miércoles, 21 de octubre · 54 h libres esta semana')
 
         await open(page, 'week', 'Semana')
         const slot = page.getByTestId('week-free-hours-slot')

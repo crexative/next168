@@ -103,7 +103,7 @@ for (const locale of ['es', 'de'] as const) {
   test(`the Summary figures wrap between words, never inside one, at 200 % text (${locale})`, async ({ page }) => {
     await start(page, locale, 200)
     await open(page, 'insights')
-    await expect(page.getByTestId('capacity-available')).toHaveText(/^\d+ h .+ · \d+ h .+$/)
+    await expect(page.getByTestId('capacity-available')).toHaveText(/^\d+\sh\s.+\s·\s\d+\sh\s.+$/)
     expect(await brokenWords(page, '[data-testid="capacity-available"], [data-testid="goal-line"], [data-testid="free-hours-live"], .legend-item')).toEqual([])
   })
 }

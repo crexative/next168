@@ -18,7 +18,7 @@
       "unavailable": "This device or browser cannot run the on-device model (it needs WebGPU). Quick answers still work.",
       "checking": "Checking this device…"
     },
-    "line": "Quick answers: {rules}\u00a0·\u00a0On-device model: {model}"
+    "line": "Quick answers: {rules}\u00a0· On-device model: {model}"
   },
   "optIn": {
     "title": "Turn on the on-device model",

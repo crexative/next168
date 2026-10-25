@@ -18,7 +18,7 @@
       "unavailable": "Dieses Gerät oder dieser Browser kann das Modell nicht ausführen (WebGPU nötig). Schnelle Antworten funktionieren weiterhin.",
       "checking": "Prüfe dieses Gerät…"
     },
-    "line": "Schnelle Antworten: {rules}\u00a0·\u00a0Modell auf dem Gerät: {model}"
+    "line": "Schnelle Antworten: {rules}\u00a0· Modell auf dem Gerät: {model}"
   },
   "optIn": {
     "title": "Modell auf dem Gerät aktivieren",

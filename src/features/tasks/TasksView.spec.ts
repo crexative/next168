@@ -169,5 +169,5 @@ it.each(['en', 'es', 'fr', 'pt', 'de'])('keeps the entire due phrase and its dat
   const due = subtitle.split('·').at(-1)!.trim()
   expect(due).not.toContain(' ')
   expect(due).toContain('\u00a0')
-  expect(subtitle).toContain('\u00a0·\u00a0')
+  expect(subtitle).toContain('\u00a0· ')
 })
