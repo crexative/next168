@@ -1001,6 +1001,27 @@ test.describe('visual integrity guard: whole text in Week', () => {
     expect((await audit(page)).some((violation) => violation.includes('ends "Pausa… lar…", which is not whole words of "Pausa… larga reunión"'))).toBe(true)
   })
 
+  // verify6 D1/D2/D3: boxes left blank although a word would fit. The smallest size here is 11 px on a 1.1 line.
+  const smallest = '<span data-min-text style="position: absolute; visibility: hidden; font: 500 11px/1.1 sans-serif">M</span>'
+  test('a box with no words but room for its first word in the smallest size is reported', async ({ page }) => {
+    await page.setContent(column(`${smallest}
+      <button class="item" aria-label="Correos y seguimiento 3:10 – 5:30" data-text-inset="0 4 0 7" style="top: 0; left: 0; width: 74px; height: 112px"></button>
+      <button class="item" title="Desayuno con los niños" data-text-inset="0 4 0 7" style="top: 120px; left: 0; width: 150px; height: 16px"></button>
+    `))
+    const violations = await audit(page)
+    expect(violations.some((violation) => violation.includes('"Correos y seguimiento 3:10 – 5:30" draws no text though "Correos…" fits'))).toBe(true)
+    expect(violations.some((violation) => violation.includes('draws no text though "Desayuno…" fits its 138.8×16.0 px room'))).toBe(true)
+  })
+
+  test('a box with no words is accepted when even its first word does not fit, and outlines are left alone', async ({ page }) => {
+    await page.setContent(column(`${smallest}
+      <button class="item" title="Meditación" data-text-inset="0 4 0 7" style="top: 0; left: 0; width: 150px; height: 8px"></button>
+      <button class="item" title="Abstimmungsgespräch" data-text-inset="0 4 0 7" style="top: 20px; left: 0; width: 30px; height: 40px"></button>
+      <button class="item" title="Write the report" data-layered data-text-inset="1.5 5.5 1.5 7.5" style="top: 80px; left: 0; width: 150px; height: 96px; pointer-events: none; background: transparent"></button>
+    `))
+    expect(await audit(page)).toEqual([])
+  })
+
   test('outside a whole-text container an ellipsis is still a deliberate truncation', async ({ page }) => {
     await page.setContent(column('<button class="item" style="top: 0; left: 0; width: 60px; height: 20px"><span style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap">Vendor call</span></button>').replace(' data-whole-text', ''))
     expect(await audit(page)).toEqual([])

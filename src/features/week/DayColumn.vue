@@ -12,7 +12,7 @@ import { categoryColor } from './categoryColor'
 import { formatMinute, formatTime } from './localTime'
 import { useColumnMeasure } from './columnMeasure'
 import { ELLIPSIS } from './itemText'
-import { BLOCK_INSET, LANE_GAP_PX, planDayColumn, type PlannedBlock, type PlannedBusy, type PlannedTask } from './dayColumnPlan'
+import { BLOCK_INSET, LANE_GAP_PX, SMALL_INSET, planDayColumn, type PlannedBlock, type PlannedBusy, type PlannedTask } from './dayColumnPlan'
 import { HOUR_HEIGHT_PX, SLOT_MINUTES, nearestHitTarget, type BlockSegment, type BusySegment, type HitTarget, type TaskSegment } from './weekLayout'
 import type { BusyDetails } from './busyDetails'
 
@@ -97,6 +97,10 @@ function drawn(show: { text?: string; cut?: boolean }, full: string): { words: s
   return { words: show.text.slice(0, -ELLIPSIS.length), cut: true }
 }
 
+// The room the guard checks a word against in a box drawn with no text: the insets of the small caption size.
+const insetAttribute = (inset: { top: number; end: number; bottom: number; start: number }) => `${inset.top} ${inset.end} ${inset.bottom} ${inset.start}`
+const SMALL_INSETS = { block: insetAttribute(SMALL_INSET.block), busy: insetAttribute(SMALL_INSET.busy), task: insetAttribute(SMALL_INSET.task) }
+
 function verticalStyle(item: { top: number; bottom: number }) {
   return { top: `${item.top}px`, height: `${item.bottom - item.top}px` }
 }
@@ -110,7 +114,9 @@ function segmentStyle(segment: PlannedBlock) {
     ...verticalStyle(segment),
     ...laneStyle(segment),
     // A box that draws no words needs no inset; without it a lane narrower than the inset stays inside its lane.
-    padding: props.compact || !segment.show.title ? '0' : `${BLOCK_INSET.top}px ${BLOCK_INSET.end}px ${BLOCK_INSET.bottom}px ${BLOCK_INSET.start}px`,
+    padding: props.compact || !segment.show.title ? '0' : segment.show.center
+      ? `${SMALL_INSET.block.top}px ${SMALL_INSET.block.end}px ${SMALL_INSET.block.bottom}px ${SMALL_INSET.block.start}px`
+      : `${BLOCK_INSET.top}px ${BLOCK_INSET.end}px ${BLOCK_INSET.bottom}px ${BLOCK_INSET.start}px`,
     '--block-color': categoryColor(categoriesById.value.get(segment.occurrence.categoryId)),
     '--block-stroke': categoryStroke(categoriesById.value.get(segment.occurrence.categoryId)),
   }
@@ -184,33 +190,37 @@ function onColumnClick(event: MouseEvent, blockId?: string): void {
       <span data-role="blockDetail" />
       <span class="t-caption" data-role="caption" />
       <span data-role="taskTitle" />
+      <span data-role="compact" data-min-text />
       <span data-role="blockTitle" data-lead="mark"><CategoryMark class="block-mark" :category="undefined" />{{ ' ' }}</span>
       <span class="t-caption" data-lead="icon"><Icon name="check" :size="12" />{{ ' ' }}</span>
       <span class="t-caption" data-sentinel>M</span>
       <span class="hyphen-probe" data-role="blockTitle" data-hyphen="blockTitle" />
       <span class="hyphen-probe t-caption" data-hyphen="caption" />
       <span class="hyphen-probe" data-role="taskTitle" data-hyphen="taskTitle" />
+      <span class="hyphen-probe" data-role="compact" data-hyphen="compact" />
     </div>
     <button
       v-for="item in plan.busy"
       :key="item.key"
       type="button"
       class="busy t-caption"
-      :class="[`is-${item.kind}`, { 'is-conflict': conflicting.has(item.key) }]"
+      :data-text-inset="SMALL_INSETS.busy"
+      :class="[`is-${item.kind}`, { 'is-small': item.show.small }, { 'is-conflict': conflicting.has(item.key) }]"
       :style="busyStyle(item)"
       :title="item.title"
       data-testid="busy-overlay"
       :data-event-id="item.kind === 'event' ? item.key.slice(0, item.key.lastIndexOf('@')) : undefined"
       @click.stop="inspect(item)"
     >
-      <span v-if="conflicting.has(item.key)" class="conflict-mark" :class="{ 'visually-hidden': !item.show.icon }" data-testid="calendar-conflict"><Icon name="triangle-alert" :size="12" /><span class="conflict-text" :class="{ 'visually-hidden': !item.show.word }">{{ t('week.grid.conflict') }}</span></span>{{ item.show.icon ? ' ' : '' }}<span class="busy-title" :class="{ 'visually-hidden': !item.show.title, 'is-hyphenated': item.show.hyphenate }" :aria-hidden="drawn(item.show, item.title).cut || undefined">{{ drawn(item.show, item.title).words }}<span v-if="drawn(item.show, item.title).cut" class="cut" data-cut>{{ ELLIPSIS }}</span></span><span v-if="drawn(item.show, item.title).cut" class="visually-hidden">{{ item.title }}</span>
+      <span v-if="conflicting.has(item.key)" class="conflict-mark" :class="{ 'visually-hidden': !item.show.icon }" data-testid="calendar-conflict"><Icon name="triangle-alert" :size="12" /><span class="conflict-text" :class="{ 'visually-hidden': !item.show.word }">{{ t('week.grid.conflict') }}</span></span>{{ item.show.icon ? ' ' : '' }}<span class="busy-title" :class="{ 'visually-hidden': !item.show.title, 'is-hyphenated': item.show.hyphenate, 'is-small-text': item.show.small }" :aria-hidden="drawn(item.show, item.title).cut || undefined">{{ drawn(item.show, item.title).words }}<span v-if="drawn(item.show, item.title).cut" class="cut" data-cut>{{ ELLIPSIS }}</span></span><span v-if="drawn(item.show, item.title).cut" class="visually-hidden">{{ item.title }}</span>
     </button>
     <button
       v-for="segment in plan.blocks"
       :key="segment.key"
       type="button"
       class="block"
-      :class="{ 'is-done': statuses.get(segment.key) === 'done', 'is-skipped': statuses.get(segment.key) === 'skipped', 'continues-before': segment.continuesBefore, 'continues-after': segment.continuesAfter }"
+      :data-text-inset="SMALL_INSETS.block"
+      :class="{ 'is-centered': segment.show.center, 'is-done': statuses.get(segment.key) === 'done', 'is-skipped': statuses.get(segment.key) === 'skipped', 'continues-before': segment.continuesBefore, 'continues-after': segment.continuesAfter }"
       :style="segmentStyle(segment)"
       :data-block-id="segment.occurrence.blockId"
       :data-start-minute="segment.startMinute"
@@ -221,7 +231,7 @@ function onColumnClick(event: MouseEvent, blockId?: string): void {
       :tabindex="compact ? -1 : undefined"
       @click.stop="onColumnClick($event, segment.occurrence.blockId)"
     >
-      <span v-if="segment.show.title" class="block-title" :class="{ 'is-hyphenated': segment.show.hyphenate }"><CategoryMark v-if="segment.show.mark" class="block-mark" :category="categoriesById.get(segment.occurrence.categoryId)" />{{ segment.show.mark ? ' ' : '' }}{{ drawn(segment.show, segment.occurrence.title).words }}<span v-if="drawn(segment.show, segment.occurrence.title).cut" class="cut" data-cut aria-hidden="true">{{ ELLIPSIS }}</span></span>{{ ' ' }}
+      <span v-if="segment.show.title" class="block-title" :class="{ 'is-hyphenated': segment.show.hyphenate, 'is-small-text': segment.show.small }"><CategoryMark v-if="segment.show.mark" class="block-mark" :category="categoriesById.get(segment.occurrence.categoryId)" />{{ segment.show.mark ? ' ' : '' }}{{ drawn(segment.show, segment.occurrence.title).words }}<span v-if="drawn(segment.show, segment.occurrence.title).cut" class="cut" data-cut aria-hidden="true">{{ ELLIPSIS }}</span></span>{{ ' ' }}
       <span v-if="segment.show.time" class="block-detail block-time">{{ timeRange(segment) }}</span>{{ ' ' }}
       <span v-if="segment.show.category" class="block-detail block-category">{{ categoryLine(segment) }}</span>{{ ' ' }}
       <span v-if="statuses.get(segment.key)" class="block-status t-caption" :class="{ 'visually-hidden': !segment.show.status }" data-testid="block-status"><template v-if="segment.show.statusIcon"><Icon :name="STATUS_ICON[statuses.get(segment.key)!]" :size="12" />{{ ' ' }}</template>{{ statusText(segment) }}</span>
@@ -235,6 +245,7 @@ function onColumnClick(event: MouseEvent, blockId?: string): void {
       :style="taskStyle(planned)"
       data-layered
       data-testid="week-task"
+      :data-text-inset="SMALL_INSETS.task"
       :data-task-id="planned.task.taskId"
       :data-start-minute="planned.task.startMinute"
       :data-end-minute="planned.task.endMinute"
@@ -245,7 +256,7 @@ function onColumnClick(event: MouseEvent, blockId?: string): void {
       :tabindex="compact ? -1 : undefined"
       @click.stop="emit('select-task', planned.task.taskId)"
     >
-      <span class="task-box task-text" :class="{ 'is-late': planned.task.late, 'is-outline': planned.outline }"><Icon v-if="planned.show.icon" class="task-icon" name="triangle-alert" :size="12" />{{ planned.show.icon ? ' ' : '' }}<span v-if="planned.show.title" class="task-title" :class="{ 'is-hyphenated': planned.show.hyphenate }">{{ drawn(planned.show, planned.task.title).words }}<span v-if="drawn(planned.show, planned.task.title).cut" class="cut" data-cut aria-hidden="true">{{ ELLIPSIS }}</span></span></span>
+      <span class="task-box task-text" :class="{ 'is-late': planned.task.late, 'is-outline': planned.outline, 'is-small': planned.show.small }"><Icon v-if="planned.show.icon" class="task-icon" name="triangle-alert" :size="12" />{{ planned.show.icon ? ' ' : '' }}<span v-if="planned.show.title" class="task-title" :class="{ 'is-hyphenated': planned.show.hyphenate, 'is-small-text': planned.show.small }">{{ drawn(planned.show, planned.task.title).words }}<span v-if="drawn(planned.show, planned.task.title).cut" class="cut" data-cut aria-hidden="true">{{ ELLIPSIS }}</span></span></span>
     </button>
     <div v-if="nowMinute !== null" class="now-line" :style="{ top: `${(nowMinute / 60) * hourHeight}px` }" data-testid="now-line" aria-hidden="true" />
   </div>
@@ -270,6 +281,14 @@ function onColumnClick(event: MouseEvent, blockId?: string): void {
 .block-title, [data-role='blockTitle'] { font-size: 0.8125rem; font-weight: 600; line-height: 1.25; }
 .block-detail, [data-role='blockDetail'] { font-size: 0.75rem; line-height: 1.25; font-variant-numeric: tabular-nums; }
 .task-text, [data-role='taskTitle'] { font-size: 0.75rem; font-weight: 500; line-height: 1.1; letter-spacing: 0.01em; }
+/* The small caption size (11 px at 100 % text): a short box's title on a tight line, centred, before the box becomes
+   a mark. Same weight and tracking as the caption. */
+.block-title.is-small-text, .busy-title.is-small-text, .task-title.is-small-text, [data-role='compact'] { font-size: 0.6875rem; font-weight: 500; line-height: 1.2; letter-spacing: 0.01em; }
+.block.is-centered { justify-content: center; }
+.busy.is-small { display: flex; align-items: center; padding-block: 0; }
+.task-box.is-small { display: flex; align-items: center; padding-block: 0; border-width: 1px; padding-inline: 2px; }
+/* A time range is one unit: on one line or not drawn (dayColumnPlan.ts gives it one line). */
+.block-time { white-space: nowrap; }
 .block-title, .block-detail, .block-status, .busy, .task-text { white-space: normal; overflow-wrap: normal; word-break: normal; hyphens: manual; }
 /* Only a first word longer than a line is hyphenated, in the page's language (dayColumnPlan.ts decides). */
 .block-title.is-hyphenated, .busy-title.is-hyphenated, .task-title.is-hyphenated { hyphens: auto; }

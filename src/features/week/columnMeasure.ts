@@ -19,21 +19,31 @@ export function remember<V>(cache: Map<string, V>, key: string, value: V, limit:
   return value
 }
 
-const ROLES: readonly TextRole[] = ['blockTitle', 'blockDetail', 'caption', 'taskTitle']
+const ROLES: readonly TextRole[] = ['blockTitle', 'blockDetail', 'caption', 'taskTitle', 'compact']
 
 function fontKey(style: CSSStyleDeclaration): string {
   return [style.fontStyle, style.fontWeight, style.fontSize, style.fontFamily, style.letterSpacing, style.fontVariantNumeric, style.fontKerning].join('|')
 }
 
 function snapshot(column: HTMLElement, probes: HTMLElement): ColumnMeasure | null {
-  const width = column.getBoundingClientRect().width
+  // Lanes are percentages of the column's padding box (its containing block), not of its border box.
+  const columnStyle = getComputedStyle(column)
+  const width = column.getBoundingClientRect().width - Number.parseFloat(columnStyle.borderLeftWidth) - Number.parseFloat(columnStyle.borderRightWidth)
   if (!(width > 0)) return null
   const fonts = new Map<TextRole, { element: HTMLElement; key: string; lineHeight: number }>()
   for (const role of ROLES) {
     const element = probes.querySelector<HTMLElement>(`[data-role="${role}"]`)
     if (!element) return null
     const style = getComputedStyle(element)
-    const lineHeight = Number.parseFloat(style.lineHeight) || Number.parseFloat(style.fontSize) * 1.2
+    let lineHeight = Number.parseFloat(style.lineHeight) || Number.parseFloat(style.fontSize) * 1.2
+    // The small caption size has a line tighter than its glyphs: a line needs the glyphs' own height (ascent and
+    // descent), or a box of exactly one line would cut them.
+    if (role === 'compact') {
+      element.textContent = 'Hg'
+      const range = document.createRange()
+      range.selectNodeContents(element)
+      lineHeight = Math.max(lineHeight, range.getBoundingClientRect().height)
+    }
     fonts.set(role, { element, key: fontKey(style), lineHeight })
   }
   const metrics: TextMetrics = {

@@ -809,6 +809,44 @@ export function auditInPage(options: { focusRings: boolean }): string[] {
     }
   }
 
+  // A box with no words must be one too small for any: the first word of its title (with "…" when more follows), in the
+  // smallest size the container allows (the element marked `data-min-text`), hyphenated by the browser if need be, does
+  // not fit the room inside the item's `data-text-inset` (top right bottom left, in px). An item that takes no pointer
+  // input (a task outline) and a container with no such size (the seven-day overview) are left alone.
+  function checkBlankItems(container: HTMLElement, items: Element[]): void {
+    const reference = container.querySelector<HTMLElement>('[data-min-text]')
+    if (!reference) return
+    const font = getComputedStyle(reference)
+    const shorthand = `${font.fontStyle} ${font.fontWeight} ${font.fontSize}/${font.lineHeight} ${font.fontFamily}`
+    const glyphs = document.createElement('span')
+    glyphs.textContent = 'Hg'
+    glyphs.style.cssText = `position: absolute; visibility: hidden; white-space: pre; font: ${shorthand}; letter-spacing: ${font.letterSpacing}`
+    document.body.append(glyphs)
+    const line = Math.max(px(font.lineHeight) || px(font.fontSize) * 1.2, glyphs.getBoundingClientRect().height)
+    glyphs.remove()
+    for (const item of items) {
+      if (getComputedStyle(item).pointerEvents === 'none' || drawnText(item) !== '') continue
+      const title = (item.getAttribute('title') || item.getAttribute('aria-label') || '').replace(/\s+/g, ' ').trim()
+      const words = title.split(' ').filter(Boolean)
+      if (words.length === 0) continue
+      const text = words.length > 1 ? `${words[0]}\u2026` : words[0]!
+      const [top = 0, right = 0, bottom = 0, left = 0] = (item.getAttribute('data-text-inset') ?? '').split(/\s+/).map(Number)
+      const rect = item.getBoundingClientRect()
+      const width = rect.width - left - right - 0.25
+      const height = rect.height - top - bottom
+      if (width <= 0 || height < line - 0.01) continue
+      const probe = document.createElement('div')
+      probe.textContent = text
+      probe.lang = item.closest('[lang]')?.getAttribute('lang') ?? ''
+      probe.style.cssText = `position: absolute; visibility: hidden; left: 0; top: 0; width: ${width}px; overflow: hidden; white-space: normal; overflow-wrap: normal; hyphens: auto; font: ${shorthand}; letter-spacing: ${font.letterSpacing}`
+      document.body.append(probe)
+      const overflows = probe.scrollWidth > probe.clientWidth + 0.5
+      const lines = Math.round(probe.getBoundingClientRect().height / (px(font.lineHeight) || px(font.fontSize) * 1.2))
+      probe.remove()
+      if (!overflows && lines * line <= height + 0.01) violations.push(`${describe(item)} draws no text though "${text}" fits its ${width.toFixed(1)}×${height.toFixed(1)} px room`)
+    }
+  }
+
   // Inside a `[data-whole-text]` container (a Week day column) text is whole words or not drawn (docs/design/visual-design.md ›
   // Week items). Each direct child is an item. A CSS ellipsis or line clamp is not allowed there (only the generated "…"
   // after whole words, or a "…" of the title itself, both checked by checkTitleWords), a line cut by any box or
@@ -875,6 +913,7 @@ export function auditInPage(options: { focusRings: boolean }): string[] {
           if (first.item !== second.item && intersects(first.box, second.box)) violations.push(`text "${first.text}" and text "${second.text}" overlap in ${describe(container)}`)
         }
       })
+      checkBlankItems(container, items)
     }
   }
 
