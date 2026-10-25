@@ -6,7 +6,7 @@
   "overflow": "Il manque {duration} en {category} cette semaine.",
   "overflowHint": "Ajoute environ {duration} à tes routines {category}, raccourcis la tâche ou scinde-la.",
   "late": "Elle tombe après son échéance ({date}).",
-  "lateHint": "Repousse l'échéance, relève sa priorité ou libère du temps plus tôt.",
+  "latePartial": "Il n'y a de la place que pour {duration} avant son échéance ({date}).",
   "warnings": "Alertes de planification",
   "unplaced": "Non planifiées",
   "unplacedHint": "Aucun créneau libre sur les 7 prochains jours.",
@@ -30,7 +30,8 @@
     "more": "Plus d'options",
     "when": "Quand ?",
     "anyFreeTime": "Tout créneau libre",
-    "during": "Pendant {category}"
+    "during": "Pendant {category}",
+    "today": "Aujourd'hui"
   },
   "priority": {
     "1": "Haute",
@@ -45,5 +46,18 @@
     "new": "Nouvelle tâche",
     "edit": "Modifier la tâche",
     "delete": "Supprimer la tâche"
+  },
+  "outside": {
+    "noBlockToday": "Tu n'as pas de bloc {category} aujourd'hui ; je l'ai mise dans ton temps libre.",
+    "notEnough": "Ton temps de {category} ne suffit pas avant son échéance ; je l'ai mise dans ton temps libre."
+  },
+  "fix": {
+    "label": "Solutions pour {title}",
+    "doToday": "La faire aujourd'hui",
+    "moveDue": "Déplacer au {date}",
+    "changeCategory": "Changer de catégorie",
+    "edit": "Modifier la tâche",
+    "doneToday": "« {title} » est pour aujourd'hui",
+    "dueMoved": "Nouvelle échéance de « {title} » : {date}"
   }
 }

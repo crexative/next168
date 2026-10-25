@@ -67,5 +67,34 @@ export function useTaskActions() {
     return true
   }
 
-  return { complete, remove, reopen }
+  // A warning's one-tap fix: the task gets a new due date (or none), with an undo bound to what this change left.
+  async function setDueDate(task: Task, dueDate: string, message: string): Promise<boolean> {
+    const shown = snapshotOf(task)
+    const holder: { after?: string } = {}
+    const result = await planner.commit((draft) => {
+      const target = draft.tasks.find((candidate) => candidate.id === task.id)
+      assertEntry(target, shown)
+      if (!target) return
+      target.dueDate = dueDate
+      holder.after = snapshotOf(target)
+    })
+    if (!result.ok) {
+      if (result.reason === CHANGED_ELSEWHERE) planner.dismissError()
+      return false
+    }
+    const after = holder.after
+    toast.show({
+      message,
+      onUndo: () => undoCommit((draft) => {
+        const target = draft.tasks.find((candidate) => candidate.id === task.id)
+        assertEntry(target, after)
+        if (!target) return
+        if (task.dueDate === undefined) delete target.dueDate
+        else target.dueDate = task.dueDate
+      }),
+    })
+    return true
+  }
+
+  return { complete, remove, reopen, setDueDate }
 }

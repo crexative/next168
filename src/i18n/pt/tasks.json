@@ -6,7 +6,7 @@
   "overflow": "Faltam {duration} em {category} esta semana.",
   "overflowHint": "Adicione cerca de {duration} às suas rotinas de {category}, encurte a tarefa ou divida-a.",
   "late": "Cai depois do prazo ({date}).",
-  "lateHint": "Mude o prazo, aumente a prioridade ou libere tempo mais cedo.",
+  "latePartial": "Só há espaço para {duration} antes do prazo ({date}).",
   "warnings": "Avisos de planejamento",
   "unplaced": "Não agendadas",
   "unplacedHint": "Não há horário livre nos próximos 7 dias.",
@@ -30,7 +30,8 @@
     "more": "Mais opções",
     "when": "Quando?",
     "anyFreeTime": "Em qualquer horário livre",
-    "during": "Durante {category}"
+    "during": "Durante {category}",
+    "today": "Hoje"
   },
   "priority": {
     "1": "Alta",
@@ -45,5 +46,18 @@
     "new": "Nova tarefa",
     "edit": "Editar tarefa",
     "delete": "Remover tarefa"
+  },
+  "outside": {
+    "noBlockToday": "Hoje você não tem bloco de {category}; coloquei no seu tempo livre.",
+    "notEnough": "Seu tempo de {category} não basta antes do prazo; coloquei no seu tempo livre."
+  },
+  "fix": {
+    "label": "Soluções para {title}",
+    "doToday": "Fazer hoje",
+    "moveDue": "Mover para {date}",
+    "changeCategory": "Mudar categoria",
+    "edit": "Editar tarefa",
+    "doneToday": "“{title}” fica para hoje",
+    "dueMoved": "Novo prazo de “{title}”: {date}"
   }
 }

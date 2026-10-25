@@ -6,7 +6,7 @@
   "overflow": "In {category} fehlen diese Woche {duration}.",
   "overflowHint": "Füge etwa {duration} zu deinen {category}-Routinen hinzu, verkürze die Aufgabe oder teile sie.",
   "late": "Die Aufgabe liegt nach dem Fälligkeitsdatum ({date}).",
-  "lateHint": "Verschiebe das Datum, erhöhe die Priorität oder schaffe früher Zeit.",
+  "latePartial": "Vor dem Fälligkeitsdatum ({date}) ist nur Platz für {duration}.",
   "warnings": "Planungshinweise",
   "unplaced": "Nicht eingeplant",
   "unplacedHint": "In den nächsten 7 Tagen gibt es keinen freien Zeitraum.",
@@ -30,7 +30,8 @@
     "more": "Weitere Optionen",
     "when": "Wann?",
     "anyFreeTime": "In jeder freien Lücke",
-    "during": "Während {category}"
+    "during": "Während {category}",
+    "today": "Heute"
   },
   "priority": {
     "1": "Hoch",
@@ -45,5 +46,18 @@
     "new": "Neue Aufgabe",
     "edit": "Aufgabe bearbeiten",
     "delete": "Aufgabe entfernen"
+  },
+  "outside": {
+    "noBlockToday": "Du hast heute keinen {category}-Block, also liegt sie in deiner freien Zeit.",
+    "notEnough": "Deine {category}-Zeit reicht nicht bis zum Fälligkeitsdatum, also liegt sie in deiner freien Zeit."
+  },
+  "fix": {
+    "label": "Lösungen für {title}",
+    "doToday": "Heute erledigen",
+    "moveDue": "Auf {date} verschieben",
+    "changeCategory": "Kategorie ändern",
+    "edit": "Aufgabe bearbeiten",
+    "doneToday": "„{title}“ ist jetzt für heute",
+    "dueMoved": "„{title}“ ist jetzt am {date} fällig"
   }
 }
