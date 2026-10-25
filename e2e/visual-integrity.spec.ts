@@ -1,5 +1,6 @@
 import { expect, test, type Page, type TestInfo } from '@playwright/test'
 import { legacyData, seedKey, V2_KEY } from './fixtures'
+import { auditFloatingActionButtonInPage } from './support/fabPlacement'
 import { visualIntegrityViolations } from './support/visualIntegrity'
 import { addFromMenu, itemsMissingTitles, seededTitles } from './support/week'
 import { syntheticWeekReply } from '../src/features/assistant/anyAi/syntheticWeek'
@@ -1563,4 +1564,170 @@ test.describe('visual integrity guard: label and value rows on one line', () => 
     await page.setContent(rowStage(180))
     expect(await audit(page)).toEqual([])
   })
+})
+
+// The owner's report (2026-10-25, moto g75): Week's "+" floated about 76 px over the tab bar, mid-screen over the grid.
+// Material 3 places a FAB 16 px above the bar under it and 16 px from the trailing edge (24 px from 600 px).
+test.describe('visual integrity guard: floating action button', () => {
+  test.beforeEach(({}, testInfo) => {
+    test.skip(testInfo.project.name !== 'phone', 'the guard self-tests run once')
+  })
+
+  type Stage = { fab?: string; tabbar?: string | null; toast?: string; menu?: string }
+  const fabStage = ({ fab = 'right: 16px; bottom: 72px', tabbar = 'height: 56px', toast, menu }: Stage = {}) => `
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+    <style>
+      body { margin: 0; font: 16px sans-serif; }
+      .tabbar { position: fixed; inset: auto 0 0; box-sizing: border-box; background: #eee; }
+      .fab { position: fixed; box-sizing: border-box; width: 56px; height: 56px; border: 0; border-radius: 50%; padding: 0; background: #5856d6; }
+      .toast { position: fixed; inset-inline: 16px; bottom: 68px; height: 52px; background: #fff; }
+      .menu { position: fixed; right: 16px; width: 200px; height: 150px; background: #fff; }
+    </style>
+    ${tabbar === null ? '' : `<nav class="tabbar" style="${tabbar}"></nav>`}
+    ${toast === undefined ? '' : `<div class="toast" data-testid="undo-toast" style="${toast}">Deleted</div>`}
+    <button class="fab" data-fab aria-label="Add" ${menu === undefined ? 'aria-expanded="false"' : 'aria-expanded="true" aria-controls="fab-menu"'} style="${fab}"></button>
+    ${menu === undefined ? '' : `<div id="fab-menu" class="menu" role="menu" style="${menu}"></div>`}`
+  const audit = (page: Page) => visualIntegrityViolations(page, { focusRings: false })
+  const insets = async (page: Page, bottom: number, right = 0) => {
+    const session = await page.context().newCDPSession(page)
+    await session.send('Emulation.setSafeAreaInsetsOverride' as never, { insets: { top: 0, left: 0, bottom, right } } as never)
+  }
+
+  test.beforeEach(async ({ page }) => { await page.setViewportSize({ width: 390, height: 844 }) })
+
+  test('a 56 px button 16 px above the tab bar and 16 px from the edge is accepted', async ({ page }) => {
+    await page.setContent(fabStage())
+    expect(await audit(page)).toEqual([])
+  })
+
+  test('a button floating 76 px above the tab bar is reported', async ({ page }) => {
+    await page.setContent(fabStage({ fab: 'right: 16px; bottom: 132px' }))
+    expect(await audit(page)).toEqual(['the floating button "Add" is 76.0px above the tab bar, not 16px'])
+  })
+
+  test('a button 32 px from the trailing edge is reported', async ({ page }) => {
+    await page.setContent(fabStage({ fab: 'right: 32px; bottom: 72px' }))
+    expect(await audit(page)).toEqual(['the floating button "Add" is 32.0px from the screen\'s trailing edge, not 16.0px (16px + 0.0px safe area)'])
+  })
+
+  test('a button that grew with the text (112 px at 200 %) is reported', async ({ page }) => {
+    await page.setContent(fabStage({ fab: 'right: 16px; bottom: 72px; width: 112px; height: 112px' }))
+    expect(await audit(page)).toEqual(['the floating button "Add" is 112.0x112.0px, not 56x56px'])
+  })
+
+  test('with a bottom safe area the tab bar already includes it: 16 px above the bar is accepted, adding it again is reported', async ({ page }) => {
+    await insets(page, 24)
+    await page.setContent(fabStage({ tabbar: 'height: 80px; padding-bottom: 24px', fab: 'right: 16px; bottom: 96px' }))
+    expect(await audit(page)).toEqual([])
+    await page.setContent(fabStage({ tabbar: 'height: 80px; padding-bottom: 24px', fab: 'right: 16px; bottom: 120px' }))
+    expect(await audit(page)).toEqual(['the floating button "Add" is 40.0px above the tab bar, not 16px'])
+  })
+
+  test('a trailing safe area is added to the edge margin', async ({ page }) => {
+    await insets(page, 0, 20)
+    await page.setContent(fabStage({ fab: 'right: 16px; bottom: 72px' }))
+    expect(await audit(page)).toEqual(['the floating button "Add" is 16.0px from the screen\'s trailing edge, not 36.0px (16px + 20.0px safe area)'])
+    await page.setContent(fabStage({ fab: 'right: 36px; bottom: 72px' }))
+    expect(await audit(page)).toEqual([])
+  })
+
+  test('with no tab bar the button keeps the margin from the bottom safe area', async ({ page }) => {
+    await insets(page, 24)
+    await page.setContent(fabStage({ tabbar: null, fab: 'right: 16px; bottom: 40px' }))
+    expect(await audit(page)).toEqual([])
+    await page.setContent(fabStage({ tabbar: null, fab: 'right: 16px; bottom: 16px' }))
+    expect(await audit(page)).toEqual(['the floating button "Add" is -8.0px above the bottom safe area, not 16px'])
+  })
+
+  test('the button stacks above the undo toast instead of covering it', async ({ page }) => {
+    await page.setContent(fabStage({ toast: '' }))
+    expect(await audit(page)).toEqual(['the floating button "Add" is -48.0px above the undo toast, not 16px'])
+    await page.setContent(fabStage({ toast: '', fab: 'right: 16px; bottom: 136px' }))
+    expect(await audit(page)).toEqual([])
+  })
+
+  test('from 600 px the margins are 24 px', async ({ page }) => {
+    await page.setViewportSize({ width: 640, height: 900 })
+    await page.setContent(fabStage())
+    expect(await audit(page)).toEqual([
+      'the floating button "Add" is 16.0px from the screen\'s trailing edge, not 24.0px (24px + 0.0px safe area)',
+      'the floating button "Add" is 16.0px above the tab bar, not 24px',
+    ])
+  })
+
+  test('a button set back under an open modal sheet is not audited', async ({ page }) => {
+    await page.setContent(`${fabStage({ fab: 'right: 32px; bottom: 132px' })}<div role="dialog" aria-modal="true" aria-label="Sheet" style="position: fixed; inset: 40px 0 0; background: #fff"></div>`)
+    expect(await audit(page)).toEqual([])
+  })
+
+  test('an open menu 8 px above the button and on screen is accepted; closer, or off the top, is reported', async ({ page }) => {
+    // The button's top is at 844 - 72 - 56 = 716.
+    await page.setContent(fabStage({ menu: 'top: 558px' }))
+    expect(await audit(page)).toEqual([])
+    await page.setContent(fabStage({ menu: 'top: 562px' }))
+    expect(await audit(page)).toEqual(['the menu of "Add" is 4.0px above it, less than 8px'])
+    await page.setContent(fabStage({ menu: 'top: -20px' }))
+    expect(await audit(page)).toEqual(['the menu of "Add" leaves the screen (174.0, -20.0, 374.0, 130.0 in 390x844)'])
+  })
+})
+
+// Week's "+" on the phones the owner and testers use, closed and open: the placement rule alone, so a failure names it.
+test.describe('Week\'s floating "+" on phones', () => {
+  test.beforeEach(({}, testInfo) => {
+    test.skip(testInfo.project.name !== 'phone', 'phone widths only')
+  })
+
+  const PHONES = [
+    { name: '390x844', width: 390, height: 844, safeBottom: 0, text: '100%' },
+    { name: '360x800', width: 360, height: 800, safeBottom: 0, text: '100%' },
+    { name: '412x915 with a 24 px home indicator', width: 412, height: 915, safeBottom: 24, text: '100%' },
+    { name: '320x640 at 200 % text', width: 320, height: 640, safeBottom: 0, text: '200%' },
+  ] as const
+
+  for (const phone of PHONES) {
+    test(`${phone.name}: 16 px above the tab bar and the edge, its menu on screen`, async ({ page }) => {
+      await page.setViewportSize({ width: phone.width, height: phone.height })
+      if (phone.safeBottom) {
+        const session = await page.context().newCDPSession(page)
+        await session.send('Emulation.setSafeAreaInsetsOverride' as never, { insets: { top: 0, left: 0, right: 0, bottom: phone.safeBottom } } as never)
+      }
+      if (phone.text !== '100%') await page.addInitScript((size) => { document.addEventListener('DOMContentLoaded', () => { document.documentElement.style.fontSize = size }) }, phone.text)
+      await start(page, 'light', { ...plannedDocument, settings: { ...plannedDocument.settings, locale: 'es' } }, 'es')
+      await open(page, 'week')
+      const add = page.getByTestId('week-add')
+      await expect(add).toHaveAttribute('data-fab', 'true')
+      const tabbar = (await page.locator('.tabbar').boundingBox())!
+      expect(tabbar.height, 'the tab bar includes the home indicator').toBeCloseTo(56 * (phone.text === '200%' ? 2 : 1) + phone.safeBottom, 0)
+      expect(await page.evaluate(auditFloatingActionButtonInPage), `${phone.name}, closed`).toEqual([])
+      await add.click()
+      await expect(page.getByRole('menu')).toBeVisible()
+      await settle(page)
+      expect(await page.evaluate(auditFloatingActionButtonInPage), `${phone.name}, open`).toEqual([])
+      const last = page.getByRole('menuitem').last()
+      // At 100 % text every entry shows at once; at 200 % text on 320 px the menu scrolls rather than leave the screen.
+      if (phone.text === '100%') expect(await page.getByRole('menu').evaluate((menu) => menu.scrollHeight <= menu.clientHeight)).toBe(true)
+      else await last.scrollIntoViewIfNeeded()
+      await expect(last).toBeInViewport({ ratio: 1 })
+    })
+  }
+
+  // Review of 170d7c7: at enlarged text the banners sat --space-3 (24 px at 200 %) above the bar while their published
+  // height added a fixed 12 px, so "+" came within 4 px of an "update available" notice.
+  for (const size of [{ width: 390, height: 844 }, { width: 320, height: 640 }] as const) {
+    for (const text of ['100%', '200%', '300%'] as const) {
+      test(`${size.width}x${size.height} at ${text} text: 16 px above a status banner`, async ({ page }) => {
+        await page.setViewportSize(size)
+        if (text !== '100%') await page.addInitScript((value) => { document.addEventListener('DOMContentLoaded', () => { document.documentElement.style.fontSize = value }) }, text)
+        await start(page, 'light', { ...plannedDocument, settings: { ...plannedDocument.settings, locale: 'es' } }, 'es')
+        await open(page, 'week')
+        await page.evaluate(() => { const channel = new BroadcastChannel('next168'); channel.postMessage({ type: 'update-available' }); channel.close() })
+        await expect(page.getByTestId('update-banner')).toBeVisible()
+        await settle(page)
+        // The banner's text can reflow a frame after it appears; "+" then glides 0.2 s to its new place.
+        await expect.poll(() => page.evaluate(() => document.querySelector('.banners')!.getBoundingClientRect().top - document.querySelector('[data-fab]')!.getBoundingClientRect().bottom), { message: 'measured from the banner itself' }).toBeCloseTo(16, 0)
+        await settle(page)
+        expect(await page.evaluate(auditFloatingActionButtonInPage), `${text}, banner`).toEqual([])
+      })
+    }
+  }
 })

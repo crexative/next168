@@ -245,7 +245,7 @@ dismissUndoWhenChanged(() => planner.document?.workspaceId)
   z-index: 20;
   display: flex;
   justify-content: center;
-  height: calc(var(--tabbar-height) + var(--safe-bottom));
+  height: var(--tabbar-inset);
   padding: 0 var(--safe-right) var(--safe-bottom) var(--safe-left);
   background: var(--material);
   -webkit-backdrop-filter: var(--material-filter);
@@ -391,6 +391,9 @@ dismissUndoWhenChanged(() => planner.document?.workspaceId)
 </style>
 
 <style>
+/* --tabbar-inset is what the tab bar takes from the bottom of the screen, its safe area included: floating controls
+   stand on it instead of adding the bar's height and the safe area again. The tab bar's own height is this value. */
+:root { --tabbar-inset: calc(var(--tabbar-height) + var(--safe-bottom)); }
 /* No tab bar from 768 px: bottom offsets that clear it collapse to the safe area. */
 @media (min-width: 768px) {
   :root { --tabbar-height: 0px; }

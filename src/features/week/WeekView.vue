@@ -346,14 +346,23 @@ async function remove(blockId: string): Promise<void> {
 
 <style scoped src="./stickyHeader.css"></style>
 <style scoped>
-/* The floating "+" sits above the tab bar and clear of the undo toast, which keeps the row just above the bar. */
+/* The floating "+" follows the Material FAB placement: --fab-margin above whatever is docked under it (the tab bar,
+   or a status banner or the undo toast standing on it) and from the screen's trailing edge. Its menu opens above it
+   and scrolls rather than leave the screen. */
 .fab-anchor {
+  --fab-bottom: calc(var(--tabbar-inset) + max(var(--banners-height, 0px), var(--undo-toast-lift, 0px)) + var(--fab-margin));
+  --add-menu-max-height: calc(100dvh - var(--fab-bottom) - var(--fab-size) - var(--space-2) - var(--safe-top) - var(--fab-margin));
   position: fixed;
   z-index: 15;
-  inset-inline-end: calc(var(--space-4) + var(--safe-right));
-  bottom: calc(var(--tabbar-height) + var(--safe-bottom) + var(--banners-height, 0px) + 4.75rem);
+  inset-inline-end: calc(var(--fab-margin) + var(--safe-right));
+  bottom: var(--fab-bottom);
+  transition: bottom 0.2s var(--ease-out);
 }
-.has-fab { padding-bottom: 4.5rem; }
+/* The last hours scroll clear of the "+": the page ends a margin above it. */
+.has-fab { padding-bottom: calc(var(--fab-size) + var(--fab-margin)); }
+@media (prefers-reduced-motion: reduce) {
+  .fab-anchor { transition: none; }
+}
 .week-head {
   position: sticky;
   top: calc(var(--safe-top) + var(--toolbar-height));

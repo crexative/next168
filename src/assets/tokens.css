@@ -84,12 +84,20 @@
   --tabbar-height: 3.5rem;
   --sidebar-width: 17rem;
   --tap-target: 44px;
+  /* Floating action button (Material 3): 56 px, kept 16 px from the screen edge and from the bar under it, 24 px from a
+     600 px window. Fixed px, like the system margins it follows. */
+  --fab-size: 56px;
+  --fab-margin: 16px;
 
   --spring-duration: 0.35s;
   --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
 }
 
 /* Wide windows: cards breathe a little more, as macOS insets do. */
+@media (min-width: 600px) {
+  :root { --fab-margin: 24px; }
+}
+
 @media (min-width: 1024px) {
   :root { --card-padding: 20px; --card-padding-block: var(--space-5); }
 }

@@ -225,18 +225,39 @@ for (const theme of THEMES) {
   test.describe(`week on a phone (${theme})`, () => {
     test.beforeEach(onlyProject('phone'))
 
-    test('"+" floats in the thumb zone above the tab bar, and the toolbar has no second one', async ({ page }) => {
+    // Material 3 FAB placement: 56 px, 16 px above the tab bar and 16 px from the trailing edge (the owner, 2026-10-25:
+    // "+" sat too high, over the grid).
+    test('"+" floats in the thumb zone 16 px above the tab bar, and the toolbar has no second one', async ({ page }) => {
       await openWeek(page, theme, 'phone')
       const add = page.getByTestId('week-add')
       await expect(add).toHaveCount(1)
       await expect(page.locator('#toolbar-actions').getByTestId('week-add')).toHaveCount(0)
       const target = await box(add)
       const tabbar = await box(page.locator('.tabbar'))
-      expect(target.y).toBeGreaterThan(SIZES.phone.height / 2)
-      expect(target.y + target.height).toBeLessThanOrEqual(tabbar.y)
-      expect(target.x + target.width).toBeLessThanOrEqual(SIZES.phone.width)
-      expect(target.width).toBeGreaterThanOrEqual(44)
-      expect(target.height).toBeGreaterThanOrEqual(44)
+      expect(target.width).toBeCloseTo(56, 0)
+      expect(target.height).toBeCloseTo(56, 0)
+      expect(tabbar.y - (target.y + target.height)).toBeCloseTo(16, 0)
+      expect(SIZES.phone.width - (target.x + target.width)).toBeCloseTo(16, 0)
+    })
+
+    test('the last hours scroll clear of "+", and "+" stacks above the undo toast', async ({ page }) => {
+      await openWeek(page, theme, 'phone')
+      await page.evaluate(() => window.scrollTo({ top: document.documentElement.scrollHeight, behavior: 'instant' }))
+      const add = await box(page.getByTestId('week-add'))
+      const lastHour = await box(column(page, WEDNESDAY))
+      expect(lastHour.y + lastHour.height).toBeLessThanOrEqual(add.y)
+
+      await column(page, WEDNESDAY).locator('[data-block-id="b-gym"]').first().click({ position: { x: 12, y: 6 } })
+      await page.getByRole('button', { name: 'Eliminar rutina' }).click()
+      const toast = page.getByTestId('undo-toast')
+      await expect(toast).toBeVisible()
+      await page.waitForFunction(() => document.getAnimations().every((animation) => animation.playState !== 'running'))
+      const lifted = await box(page.getByTestId('week-add'))
+      const toastBox = await box(toast)
+      expect(toastBox.y - (lifted.y + lifted.height)).toBeCloseTo(16, 0)
+      await toast.getByRole('button', { name: 'Deshacer' }).click()
+      await expect(toast).toHaveCount(0)
+      await expect.poll(async () => (await box(page.getByTestId('week-add'))).y).toBeCloseTo(add.y, 0)
     })
 
     test('one toolbar button shows the whole week at a glance and a day opens from it', async ({ page }) => {

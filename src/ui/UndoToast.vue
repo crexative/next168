@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { onBeforeUnmount, onMounted } from 'vue'
+import { onBeforeUnmount, onMounted, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useUndoToast } from './undoToast'
 
@@ -37,19 +37,32 @@ function onVisibilityChange(): void {
   else resume('hidden')
 }
 
+// The toast's height is published, so a floating button on the same edge (Week's "+") stacks above it instead of under it.
+const region = ref<HTMLElement | null>(null)
+let observer: ResizeObserver | undefined
+
 onMounted(() => {
   window.addEventListener('keydown', onKeydown)
   document.addEventListener('visibilitychange', onVisibilityChange)
   onVisibilityChange()
+  if (!region.value || typeof ResizeObserver === 'undefined') return
+  // The layout size: a transform on the way in (the toast slides up) does not change the room it takes.
+  observer = new ResizeObserver(([entry]) => {
+    const height = entry?.borderBoxSize?.[0]?.blockSize ?? entry?.contentRect.height ?? 0
+    window.document.documentElement.style.setProperty('--undo-toast-height', `${height}px`)
+  })
+  observer.observe(region.value)
 })
 onBeforeUnmount(() => {
   window.removeEventListener('keydown', onKeydown)
   document.removeEventListener('visibilitychange', onVisibilityChange)
+  observer?.disconnect()
+  window.document.documentElement.style.removeProperty('--undo-toast-height')
 })
 </script>
 
 <template>
-  <div class="toast-region" role="status" aria-live="polite">
+  <div ref="region" class="toast-region" role="status" aria-live="polite">
     <Transition name="toast" @leave="onLeave">
       <div
         v-if="toast"
@@ -119,6 +132,8 @@ onBeforeUnmount(() => {
 </style>
 
 <style>
+/* --undo-toast-lift is how far the toast reaches above the tab bar while it shows (0 otherwise). */
+html:has([data-testid='undo-toast']) { --undo-toast-lift: calc(var(--undo-toast-height, 0px) + var(--space-3)); }
 /* While a toast floats over the end of the page, the page keeps room for it: the last control (a form's Save) can
    always be scrolled clear of it instead of sitting underneath for 15 seconds. */
 html:has([data-testid='undo-toast']) .content { padding-bottom: calc(var(--tabbar-height) + var(--safe-bottom) + var(--space-3) + var(--banners-height, 0px) + var(--tap-target) + var(--space-6)); }

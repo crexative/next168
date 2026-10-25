@@ -1,4 +1,5 @@
 import type { Page } from '@playwright/test'
+import { auditFloatingActionButtonInPage } from './fabPlacement'
 
 export type IntegrityOptions = {
   // Also focus every control the way a keyboard user would and check its focus ring.
@@ -964,5 +965,6 @@ export function auditInPage(options: { focusRings: boolean }): string[] {
 export async function visualIntegrityViolations(page: Page, { focusRings = true }: IntegrityOptions = {}): Promise<string[]> {
   // Any key press puts Chromium in keyboard modality, so programmatic focus shows :focus-visible as Tab would.
   if (focusRings) await page.keyboard.press('Shift')
-  return page.evaluate(auditInPage, { focusRings })
+  const violations = await page.evaluate(auditInPage, { focusRings })
+  return [...violations, ...(await page.evaluate(auditFloatingActionButtonInPage))]
 }
