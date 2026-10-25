@@ -136,8 +136,11 @@ async function addTask(): Promise<void> {
   })
   if (result.ok) {
     form.value = { ...form.value, title: '', dueDate: '', categoryId: ANY_FREE_TIME }
-    rememberTaskCategory(categoryId)
-    if (categoryId) suggestedCategoryId.value = categoryId
+    // Only a category the person picked is worth suggesting again; a task for any free slot leaves it as it was.
+    if (categoryId) {
+      rememberTaskCategory(categoryId)
+      suggestedCategoryId.value = categoryId
+    }
   } else if (result.reason === CHANGED_ELSEWHERE) {
     planner.dismissError()
     form.value = { ...form.value, categoryId: '' }

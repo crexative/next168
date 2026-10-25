@@ -146,19 +146,53 @@ describe('adding a task from the sheet', () => {
     expect(store.error).toBeNull()
   })
 
-  it('starts with the last choice, saves without a category by default, and needs a title', async () => {
+  it('starts with no category, offers the last choice only as a suggestion, and needs a title', async () => {
     localStorage.setItem(LAST_TASK_CATEGORY_KEY, 'c-work')
     const { store } = await open(undefined, { tasks: [] })
-    expect(when().value).toBe('c-work')
+    expect(when().value).toBe('')
+    const suggestion = dialog().querySelector<HTMLButtonElement>('[data-testid=task-suggested-category]')!
+    expect(suggestion.textContent?.trim()).toBe('During Work')
+    expect(suggestion.getAttribute('aria-pressed')).toBe('false')
     expect(save().disabled).toBe(true)
     await set(titleField(), 'Call the bank')
-    await set(when(), '', 'change')
     expect(save().disabled).toBe(false)
     save().click()
     await store.settled()
     expect(store.document!.tasks).toMatchObject([{ title: 'Call the bank', durationMin: 60, priority: 2 }])
     expect(store.document!.tasks[0]).not.toHaveProperty('categoryId')
-    expect(localStorage.getItem(LAST_TASK_CATEGORY_KEY)).toBe('')
+    // A task for any free slot keeps the suggestion for the next one.
+    expect(localStorage.getItem(LAST_TASK_CATEGORY_KEY)).toBe('c-work')
+  })
+
+  it('files a task under the suggested category with one tap', async () => {
+    localStorage.setItem(LAST_TASK_CATEGORY_KEY, 'c-work')
+    const { store } = await open(undefined, { tasks: [] })
+    await set(titleField(), 'Send the invoice')
+    dialog().querySelector<HTMLButtonElement>('[data-testid=task-suggested-category]')!.click()
+    await nextTick()
+    expect(when().value).toBe('c-work')
+    save().click()
+    await store.settled()
+    expect(store.document!.tasks).toMatchObject([{ title: 'Send the invoice', categoryId: 'c-work' }])
+  })
+
+  it('"Today" makes a new task due on the planner\'s date, and a second tap takes it back', async () => {
+    // 04:30 UTC on Monday is still Sunday 25 in Bogotá.
+    vi.setSystemTime(new Date('2026-10-26T04:30:00.000Z'))
+    const { store } = await open(undefined, { tasks: [], settings: { ...testDocument().settings, timeZone: 'America/Bogota' } })
+    await set(titleField(), 'Jog')
+    const today = dialog().querySelector<HTMLButtonElement>('[data-testid=task-today]')!
+    today.click()
+    await nextTick()
+    expect(today.getAttribute('aria-pressed')).toBe('true')
+    today.click()
+    await nextTick()
+    expect(today.getAttribute('aria-pressed')).toBe('false')
+    today.click()
+    await nextTick()
+    save().click()
+    await store.settled()
+    expect(store.document!.tasks).toMatchObject([{ title: 'Jog', dueDate: '2026-10-25' }])
   })
 
   it('files a task under a category picked after the sheet opened', async () => {

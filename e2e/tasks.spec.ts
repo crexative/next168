@@ -125,3 +125,103 @@ for (const theme of THEMES) {
     })
   }
 }
+
+// The owner's report (Sunday 25 Oct, es-CO): "Trotar", filed under Trabajo (no Trabajo block on Sundays) and due that
+// day, was put on Monday 8:00 with "Cae después de su fecha límite" and no way out. The browser runs in UTC and the
+// planner in Bogotá, so every "today" below has to come from the planner's zone.
+// 9:57 a.m.: the next five-minute step is 10:00, with room for the clock to run during the test.
+const SUNDAY_MORNING_BOGOTA = new Date('2026-10-25T14:57:00.000Z')
+const sundayPlanner = (tasks: unknown[]) => ({
+  ...plannerDocument(),
+  workspaceId: 'workspace-today',
+  settings: { locale: 'es', weekStartsOn: 1, timeZone: 'America/Bogota', onboardingDone: true, theme: 'system' },
+  blocks: [
+    { id: 'b-work', categoryId: 'c-work', title: 'Trabajo', days: [1, 2, 3, 4, 5], start: 480, end: 1020 },
+    { id: 'b-sleep', categoryId: 'c-sleep', title: 'Dormir', days: [0, 1, 2, 3, 4, 5, 6], start: 1320, end: 360 },
+  ],
+  tasks,
+})
+const trotar = (dueDate: string) => ({ id: 'jog', title: 'Trotar', categoryId: 'c-work', durationMin: 60, dueDate, priority: 2, createdAt: '2026-10-25T14:00:00.000Z' })
+
+async function openOnSunday(page: Page, theme: (typeof THEMES)[number], size: keyof typeof SIZES, tasks: unknown[], tab = 'tasks'): Promise<void> {
+  await page.setViewportSize(SIZES[size])
+  await page.emulateMedia({ colorScheme: theme })
+  await page.clock.install({ time: SUNDAY_MORNING_BOGOTA })
+  await page.addInitScript(() => window.localStorage.setItem('next168-language', 'es'))
+  await seedKey(page, V2_KEY, JSON.stringify(sundayPlanner(tasks)))
+  await page.goto(`./#/${tab}`)
+  await expect(page.locator('.view-enter-active, .view-leave-active')).toHaveCount(0)
+  await page.waitForFunction(() => document.getAnimations().length === 0)
+}
+
+async function expectTapTargets(buttons: ReturnType<Page['locator']>): Promise<void> {
+  for (const button of await buttons.all()) {
+    const box = (await button.boundingBox())!
+    expect(box.height).toBeGreaterThanOrEqual(44)
+    expect(box.width).toBeGreaterThanOrEqual(44)
+  }
+}
+
+for (const theme of THEMES) {
+  for (const size of ['phone', 'desktop'] as const) {
+    test.describe(`a task can be done today (${size}, ${theme})`, () => {
+      test.beforeEach(onlyProject(size))
+
+      test("the owner's Sunday jog goes in today's free time, says why, and Hoy and Semana agree", async ({ page }) => {
+        await openOnSunday(page, theme, size, [trotar('2026-10-25')])
+        await expect(page.getByTestId('task-warnings')).toHaveCount(0)
+        const row = page.getByTestId('placed-task').filter({ hasText: 'Trotar' })
+        await expect(row).toContainText(/10:00\s*a\.\s*m\.\s*[–-]\s*11:00\s*a\.\s*m\./)
+        await expect(row.getByTestId('outside-note')).toHaveText('Hoy no tienes bloque de Trabajo; la puse en tu tiempo libre.')
+        expect(await visualIntegrityViolations(page)).toEqual([])
+
+        await page.goto('./#/today')
+        await expect(page.getByTestId('timeline-item').filter({ hasText: 'Trotar' })).toContainText(/10:00\s*a\.\s*m\./)
+        await page.goto('./#/week')
+        await expect(page.locator('[data-date="2026-10-25"] [data-task-id="jog"]').first()).toHaveAttribute('data-start-minute', '600')
+      })
+
+      test('"Hoy" in the quick add puts a new task today, and the last category is only a suggestion', async ({ page }) => {
+        await page.addInitScript(() => window.localStorage.setItem('next168-last-task-category', 'c-work'))
+        await openOnSunday(page, theme, size, [])
+        const field = page.getByPlaceholder('Añadir tarea…')
+        await field.fill('Trotar')
+        const details = page.getByTestId('task-details')
+        const suggestion = details.getByRole('button', { name: 'Durante Trabajo' })
+        await expect(suggestion).toHaveAttribute('aria-pressed', 'false')
+        const today = details.getByRole('button', { name: 'Hoy', exact: true })
+        await expect(today).toHaveAttribute('aria-pressed', 'false')
+        await expectTapTargets(details.getByTestId('task-today').or(details.getByTestId('task-suggested-category')))
+        await today.click()
+        await expect(today).toHaveAttribute('aria-pressed', 'true')
+        expect(await visualIntegrityViolations(page)).toEqual([])
+        await field.press('Enter')
+        await expect(field).toHaveValue('')
+        await expect.poll(async () => (await storedPlanner<{ tasks: { title: string }[] }>(page)).tasks).toHaveLength(1)
+        const [task] = (await storedPlanner<{ tasks: { title: string; categoryId?: string; dueDate?: string }[] }>(page)).tasks
+        expect(task).toMatchObject({ title: 'Trotar', dueDate: '2026-10-25' })
+        expect(task).not.toHaveProperty('categoryId')
+        await expect(page.getByTestId('placed-task').filter({ hasText: 'Trotar' })).toContainText(/10:00\s*a\.\s*m\.\s*[–-]\s*11:00\s*a\.\s*m\./)
+        await expect(page.getByTestId('task-warnings')).toHaveCount(0)
+      })
+
+      test('an overdue task offers one-tap fixes; "Hacerla hoy" puts it today and Deshacer brings the date back', async ({ page }) => {
+        await openOnSunday(page, theme, size, [trotar('2026-10-24')])
+        const card = page.getByTestId('warning-jog')
+        await expect(card.getByTestId('late-text')).toHaveText('Cae después de su fecha límite (24 oct).')
+        await expect(card.getByRole('button')).toHaveText(['Hacerla hoy', 'Mover al 26 oct', 'Cambiar categoría'])
+        await expectTapTargets(card.getByRole('button'))
+        expect(await visualIntegrityViolations(page)).toEqual([])
+        await card.getByRole('button', { name: 'Hacerla hoy' }).click()
+        await expect(page.getByTestId('task-warnings')).toHaveCount(0)
+        await expect(page.getByTestId('placed-task').filter({ hasText: 'Trotar' })).toContainText(/10:00\s*a\.\s*m\./)
+        await expect.poll(async () => (await storedPlanner<{ tasks: { dueDate?: string }[] }>(page)).tasks[0]!.dueDate).toBe('2026-10-25')
+        await page.getByRole('button', { name: 'Deshacer' }).click()
+        await expect.poll(async () => (await storedPlanner<{ tasks: { dueDate?: string }[] }>(page)).tasks[0]!.dueDate).toBe('2026-10-24')
+        await expect(page.getByTestId('warning-jog')).toBeVisible()
+        await page.getByTestId('warning-jog').getByRole('button', { name: 'Cambiar categoría' }).click()
+        await expect(page.getByRole('dialog', { name: 'Editar tarea' }).getByLabel('¿Cuándo?')).toHaveValue('c-work')
+      })
+    })
+  }
+}

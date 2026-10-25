@@ -58,7 +58,8 @@ const plannedDocument = {
   ],
   tasks: [
     { id: 't-report', title: 'Write the quarterly report', categoryId: 'c-work', durationMin: 90, priority: 1, createdAt: '2026-10-20T08:00:00.000Z' },
-    { id: 't-form', title: 'Hand in form', categoryId: 'c-study', durationMin: 60, dueDate: '2026-10-21', priority: 2, createdAt: '2026-10-20T08:00:00.000Z' },
+    // Due Thursday, when its Evening course block holds it: due Wednesday it would go in Wednesday's free time instead.
+    { id: 't-form', title: 'Hand in form', categoryId: 'c-study', durationMin: 60, dueDate: '2026-10-22', priority: 2, createdAt: '2026-10-20T08:00:00.000Z' },
     { id: 't-run', title: 'Long run', categoryId: 'c-exercise', durationMin: 180, priority: 3, createdAt: '2026-10-20T08:00:00.000Z' },
   ],
   checkIns: [{ date: '2026-10-20', bedtime: 1350, wake: 400, workEnd: 1080, exercise: 'yes', stress: 2, note: 'Good day' }],

@@ -94,7 +94,7 @@ async function save(): Promise<void> {
       else target.dueDate = dueDate
     })
     if (result.ok) {
-      rememberTaskCategory(fields.categoryId ?? '')
+      if (fields.categoryId !== undefined) rememberTaskCategory(fields.categoryId)
       emit('update:open', false)
     } else if (result.reason === CHANGED_ELSEWHERE) {
       planner.dismissError()

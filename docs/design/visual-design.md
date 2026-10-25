@@ -22,7 +22,7 @@ Purpose and simplicity (one primary thing per screen), familiarity (iOS Calendar
 |---|---|---|
 | Today | "Now" card (current block, time left, progress, next), today's timeline with placed tasks, evening check-in entry | — (new, from prototype) |
 | Week | Time-axis week grid (desktop: 7 columns; phone: day pager with swipe) | Calendar |
-| Tasks | Inbox of tasks auto-fitted into free time of their category's blocks; overflow warnings | — (new) |
+| Tasks | Inbox of tasks auto-fitted into free time of their category's blocks, or of the day when the category cannot meet the due date (said on the task); a "Hoy" chip; warnings with one-tap fixes (Hacerla hoy, Mover al <día>, Cambiar categoría) | — (new) |
 | Summary (Resumen) | 168-hour stacked bar, one row per goal, 7-day measures from the Day wrap-up | Statistics |
 | Settings (gear, not a tab on phone) | Categories, language, data export/import, AI assistant, connect your LLM | Categories tab, language dropdown |
 

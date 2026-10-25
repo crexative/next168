@@ -53,7 +53,7 @@ for (const size of SIZES) {
   for (const theme of THEMES) {
     const label = `${size.width}x${size.height} ${theme}`
 
-    test(`tasks: one field first, length chips after typing, "when" one level deeper, last choice remembered (${label})`, async ({ page }) => {
+    test(`tasks: one field first, length chips after typing, "when" one level deeper, last choice suggested (${label})`, async ({ page }) => {
       await start(page, size, theme, planned())
       await page.goto('./#/tasks')
       await expect(page.getByRole('heading', { level: 1, name: 'Tareas' })).toBeVisible()
@@ -84,9 +84,16 @@ for (const size of SIZES) {
       await expect(page.getByTestId('task-details')).toHaveCount(0)
       await page.reload()
       await page.getByPlaceholder('Añadir tarea…').fill('Otra más')
-      // The remembered choice shows: "More options" opens by itself when something beyond the defaults is set.
+      // The remembered choice is only a one-tap suggestion: a new task still fits any free slot unless it is tapped.
+      const suggestion = page.getByTestId('task-details').getByRole('button', { name: 'Durante Estudio' })
+      await expect(suggestion).toHaveAttribute('aria-pressed', 'false')
+      await expect(page.getByTestId('task-details').getByLabel('¿Cuándo?')).toBeHidden()
+      await suggestion.click()
+      await expect(suggestion).toHaveAttribute('aria-pressed', 'true')
+      await page.getByTestId('task-details').getByRole('button', { name: 'Más opciones' }).click()
       await expect(page.getByTestId('task-details').getByLabel('¿Cuándo?')).toHaveValue('c-study')
-      await expect(page.getByTestId('task-details').getByLabel('¿Cuándo?')).toBeVisible()
+      await calm(page)
+      expect(await visualIntegrityViolations(page)).toEqual([])
     })
 
     test(`settings: Categorías y metas, General, then Calendarios, Tus datos and Avanzado; nothing filled, nothing technical on top (${label})`, async ({ page }) => {
