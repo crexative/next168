@@ -234,13 +234,13 @@ function lateText(task: Task): string {
 
 <style scoped>
 .tasks { padding: 0 var(--space-4) var(--space-6); }
-.add { display: flex; flex-direction: column; gap: var(--space-3); padding: var(--card-padding); background: var(--surface); border-radius: var(--radius-card); }
+.add { display: flex; flex-direction: column; gap: var(--space-3); padding: var(--card-padding-block) var(--card-padding); background: var(--surface); border-radius: var(--radius-card); }
 .add > .field .input { padding-inline: min(var(--space-3), 12px); }
 .details { display: flex; flex-direction: column; gap: var(--space-3); }
 .field { display: flex; flex: 1; flex-direction: column; gap: var(--space-1); min-width: 0; }
 .warnings { margin-top: var(--section-gap); }
 .warnings ul { display: flex; flex-direction: column; gap: var(--space-3); }
-.warning { display: flex; gap: var(--space-3); padding: var(--card-padding); border-radius: var(--radius-card); background: color-mix(in srgb, var(--warning) 18%, var(--surface)); }
+.warning { display: flex; gap: var(--space-3); padding: var(--card-padding-block) var(--card-padding); border-radius: var(--radius-card); background: color-mix(in srgb, var(--warning) 18%, var(--surface)); }
 .warning-icon { flex: none; color: var(--label); margin-top: 2px; }
 .done-row :deep(.row-text) { color: var(--label-2); text-decoration: line-through; }
 </style>

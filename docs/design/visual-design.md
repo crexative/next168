@@ -48,7 +48,28 @@ All colors as CSS custom properties on `:root`, redefined under `@media (prefers
 
 Category palette (user picks, stored as a key, not a hex): blue #007AFF/#0A84FF, green #34C759/#30D158, orange #FF9500/#FF9F0A, pink #FF2D55/#FF375F, purple #AF52DE/#BF5AF2, teal #30B0C7/#40C8E0, yellow #FFCC00/#FFD60A, red #FF3B30/#FF453A, gray #8E8E93/#98989D. Storing keys lets dark mode adapt; existing hex categories migrate to the nearest key.
 
-Spacing: 4/8/12/16/20/24/32 px as rem. Radius: 10 (controls), 14 (cards), 22 (sheets). Shadows only on floating layers.
+Spacing: one scale, `--space-1` … `--space-12` (4, 8, 12, 16, 20, 24, 32, 40, 48 px, in rem), and the roles below. Radius: 10 (controls), 14 (cards), 22 (sheets). Shadows only on floating layers.
+
+## Spacing
+
+The owner's complaint (2026-10-24): screens felt stacked, with no air. The answer is not bigger everything but one set of roles, applied the same way on every screen. Components use the role tokens of `src/assets/tokens.css`, never a raw scale step or a px value for a job a role names.
+
+| Role | Token | Phone | From 1024 px | Rule |
+|---|---|---|---|---|
+| Related controls | `--control-gap` | 8 | 8 | Controls side by side or stacked are either **joined** (at most 2 px, one compound control: a segmented track, the days of a routine, rows split by a hairline) or **at least 8 px apart**. Never in between. |
+| Unrelated groups | `--group-gap` | 24 | 24 | Between groups inside one section or sheet (a field group and the next). |
+| Page sections | `--section-gap` | 32 | 32 | Between consecutive page sections (`section`, list groups, cards that stand alone). None above the first one on a page. |
+| Header to content | `--header-gap` | 16 | 16 | Under the large title (or the subtitle that belongs to it) before the first content. A section's own heading sits `--space-3` (12) above its card; an uppercase eyebrow `--space-2` (8). |
+| Card inset (inline) | `--card-padding` | 16 | 20 | Text and visible controls keep this from a card's left and right edges, also in unpadded list cards whose rows supply the inset. Fixed px, like system margins: it does not grow with text size, so 200 % text keeps its width. |
+| Card inset (block) | `--card-padding-block` | 16 | 20 | Top and bottom of content cards; grows with text. |
+| Row padding | `--row-padding-block` | 12 | 12 | Above and below a list row's text; the smallest vertical inset any card content may have. |
+| Row height | `--row-min-height` | 48 | 48 | Every list row is a full target, comfortable for a child's or an older hand. |
+
+Vertical rhythm is in rem and grows with text; horizontal insets are px. Docked bars (the setup's answer dock, a sheet's action footer) keep at least `--space-4` (16) plus the safe area under their buttons; the undo toast floats `--space-3` above the tab bar and the page reserves room under it. A full-width row is the card's surface: its hit target may touch the card edges, its text may not.
+
+On wide windows nothing else grows: the readable column stays 720 px, sections stay 32 px apart, and only the card insets go from 16 to 20 px.
+
+Guarded in `e2e/support/visualIntegrity.ts` (self-tests in `e2e/visual-integrity.spec.ts`), on every audited screen: controls closer than `--control-gap` and not joined; text or a visible control closer to a card edge than `--card-padding` (inline) or `--row-padding-block` (block); page sections closer than `--section-gap`. The guard reads the tokens from the page, so it follows the width and the text size. Fix what it reports; do not loosen it.
 
 ## Typography
 

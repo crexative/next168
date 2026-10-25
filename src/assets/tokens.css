@@ -66,6 +66,7 @@
   --section-gap: var(--space-8);
   --header-gap: var(--space-4);
   --card-padding: 16px;
+  --card-padding-block: var(--space-4);
   --row-padding-block: var(--space-3);
   --row-min-height: 48px;
   --radius-control: 10px;
@@ -89,7 +90,7 @@
 
 /* Wide windows: cards breathe a little more, as macOS insets do. */
 @media (min-width: 1024px) {
-  :root { --card-padding: 20px; }
+  :root { --card-padding: 20px; --card-padding-block: var(--space-5); }
 }
 
 @media (prefers-color-scheme: dark) {

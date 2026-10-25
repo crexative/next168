@@ -97,7 +97,7 @@ async function importWorkspace(event: Event) {
 .local-hint { margin-top: var(--space-1); }
 /* One column that may shrink below its content's natural width (a textarea is 20 characters wide by default), so
    200 % text never widens the page. */
-.connect-card { display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--space-3); margin-block: var(--space-4); padding: var(--card-padding); background: var(--surface); border-radius: var(--radius-card); }
+.connect-card { display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--space-3); margin-block: var(--space-4); padding: var(--card-padding-block) var(--card-padding); background: var(--surface); border-radius: var(--radius-card); }
 .connect-card textarea { width: 100%; min-width: 0; box-sizing: border-box; }
 /* Long German compounds ("Betriebssystemsitzung") break instead of spilling out at 200 % text. */
 .connect-card :is(p, label, a, h3) { overflow-wrap: anywhere; hyphens: auto; }

@@ -238,7 +238,7 @@ async function deleteEverything(): Promise<void> {
 .data { padding-inline: var(--space-4); }
 .note { padding: var(--row-padding-block) var(--card-padding); }
 .actions { display: flex; flex-wrap: wrap; gap: var(--space-2); }
-.preview { display: flex; flex-direction: column; gap: var(--space-2); margin-block: var(--space-4); padding: var(--card-padding); background: var(--surface); border-radius: var(--radius-card); }
+.preview { display: flex; flex-direction: column; gap: var(--space-2); margin-block: var(--space-4); padding: var(--card-padding-block) var(--card-padding); background: var(--surface); border-radius: var(--radius-card); }
 .counts { display: flex; flex-wrap: wrap; gap: var(--space-1) var(--space-4); }
 .notice { margin-block: var(--space-3); padding: var(--row-padding-block) var(--card-padding); border-radius: var(--radius-card); background: var(--surface); }
 .notice.is-ok { border-inline-start: 4px solid var(--success); }

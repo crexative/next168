@@ -28,7 +28,7 @@ const LOCALES = Object.keys(EVENT_COPY) as (keyof typeof EVENT_COPY)[]
 async function widenInputFonts(page: Page): Promise<void> {
   // Exercise the Linux CI failure on every OS, including systems with narrower default fonts.
   await page.addStyleTag({ content: `
-    [data-testid=setup] .name, [data-testid=setup] .line, [data-testid=setup] .value, .event-form input:not([type="checkbox"]), .event-form textarea, .task-form input, .task-form select {
+    [data-testid=setup] .name, [data-testid=setup] .line, [data-testid=setup] .value, [data-testid=setup] .range .label, .event-form input:not([type="checkbox"]), .event-form textarea, .task-form input, .task-form select {
       font-family: Verdana, "DejaVu Sans", sans-serif !important;
       font-size: 1.16875rem !important; /* 110% of the shared 17 px input font. */
     }
@@ -257,6 +257,29 @@ for (const theme of THEMES) {
       }
     }
 
+    // The time rows of the guided setup at 320 px with text at 200 % and wider (Linux) fonts, in every language: each
+    // label fits beside its icon or wraps (#3: "Ich gehe schlafen" ran out of its row on Linux).
+    for (const locale of LOCALES) {
+      test(`the guided setup's time rows at 320 px and 200 % text (${locale})`, async ({ page }, testInfo) => {
+        test.skip(testInfo.project.name !== 'phone', 'the narrow-width regression runs in the phone project')
+        await page.setViewportSize({ width: 320, height: 640 })
+        await start(page, theme, { ...firstRunDocument, settings: { ...firstRunDocument.settings, locale } }, locale)
+        await page.addInitScript(() => { document.addEventListener('DOMContentLoaded', () => { document.documentElement.style.fontSize = '200%' }) })
+        await page.goto('./')
+        const setup = page.getByTestId('setup')
+        const live = setup.locator('section.screen:not([aria-hidden=true])')
+        await expect(setup).toHaveAttribute('data-screen', 'sleep')
+        await widenInputFonts(page)
+        await audit(page, `${theme}/${locale}/320/200%/setup sleep`)
+        await live.locator('[data-testid=setup-primary]').click()
+        await expect(setup).toHaveAttribute('data-screen', 'workStudy')
+        await live.locator('[data-value=both]').click()
+        await expect(setup).toHaveAttribute('data-screen', 'work')
+        await expect(setup.locator('section.screen[aria-hidden=true]')).toHaveCount(0)
+        await audit(page, `${theme}/${locale}/320/200%/setup work`)
+      })
+    }
+
     for (const locale of LOCALES) {
       test(`use with your AI at 320 px (${locale})`, async ({ page }, testInfo) => {
         test.skip(testInfo.project.name !== 'phone', 'the narrow-width regression runs in the phone project')
@@ -483,8 +506,10 @@ for (const theme of THEMES) {
           range.selectNodeContents(element.querySelector('.t-body')!)
           return { leading: range.getBoundingClientRect().left - card.left, trailing: card.right - button.right }
         })
-        expect(insets.leading).toBeCloseTo(16, 0)
-        expect(insets.trailing).toBeCloseTo(16, 0)
+        // The card padding token: 16 px on a phone, 20 px from 1024 px.
+        const cardPadding = width >= 1024 ? 20 : 16
+        expect(insets.leading).toBeCloseTo(cardPadding, 0)
+        expect(insets.trailing).toBeCloseTo(cardPadding, 0)
         await reopen.click()
         await expect(page.getByTestId('done-task')).toHaveCount(0)
         await expect(page.getByTestId('placed-task')).toContainText(title)
@@ -892,7 +917,9 @@ test.describe('visual integrity guard: overlapping controls', () => {
     phoneOnly(testInfo)
     await page.setContent(stage(30, fiveFields))
     await page.locator('.body').evaluate((element) => { element.scrollTop = 20 })
-    expect(await visualIntegrityViolations(page, { focusRings: false })).toEqual([
+    // The second field then sits 6 px under the button, which the spacing rule reports too; only overlaps matter here.
+    const overlaps = (await visualIntegrityViolations(page, { focusRings: false })).filter((violation) => violation.includes(' overlaps '))
+    expect(overlaps).toEqual([
       '<button.close> "Close" overlaps <input> "Name"',
     ])
   })
@@ -925,3 +952,108 @@ test.describe('visual integrity guard: overlapping controls', () => {
   })
 })
 
+
+// The spacing rules of docs/design/visual-design.md › Spacing. Each "is reported" case fails when its rule is removed.
+test.describe('visual integrity guard: spacing', () => {
+  test.beforeEach(({}, testInfo) => {
+    test.skip(testInfo.project.name !== 'phone', 'the guard self-tests run once')
+  })
+
+  const spacingStage = (body: string, style = '') => `
+    <style>
+      body { margin: 0; padding: 40px; font: 16px/24px sans-serif; background: #f2f2f7; }
+      button { box-sizing: border-box; height: 44px; margin: 0; border: 0; padding: 0 12px; font: inherit; background: #ddd; }
+      .card { box-sizing: border-box; width: 300px; border-radius: 14px; background: #fff; }
+      ${style}
+    </style>${body}`
+  const audit = (page: Page) => visualIntegrityViolations(page, { focusRings: false })
+
+  for (const [gap, reported] of [[4, true], [8, false], [2, false]] as const) {
+    test(`two buttons ${gap} px apart are ${reported ? 'reported' : 'accepted'}`, async ({ page }) => {
+      await page.setContent(spacingStage(`<div style="display: flex; gap: ${gap}px"><button>One</button><button>Two</button></div>`))
+      const message = `<button> "One" and <button> "Two" are ${gap.toFixed(1)}px apart (joined is at most 2px, apart at least 8.0px)`
+      if (reported) expect(await audit(page)).toEqual([message])
+      else expect(await audit(page)).toEqual([])
+    })
+  }
+
+  test('stacked buttons 4 px apart are reported', async ({ page }) => {
+    await page.setContent(spacingStage('<button style="display: block">One</button><button style="display: block; margin-top: 4px">Two</button>'))
+    expect(await audit(page)).toEqual(['<button> "One" and <button> "Two" are 4.0px apart (joined is at most 2px, apart at least 8.0px)'])
+  })
+
+  test('chips drawn by the labels of transparent checkboxes are measured by their labels', async ({ page }) => {
+    await page.setContent(spacingStage(`
+      <div style="display: flex; gap: 4px">
+        <label class="chip"><input type="checkbox" aria-label="Mon">Mon</label>
+        <label class="chip"><input type="checkbox" aria-label="Tue">Tue</label>
+      </div>`, `
+      .chip { position: relative; display: inline-flex; align-items: center; height: 44px; padding: 0 12px; background: #ddd; }
+      .chip input { position: absolute; inset: 0; margin: 0; opacity: 0; }`))
+    expect(await audit(page)).toEqual(['<label.chip> "Mon" and <label.chip> "Tue" are 4.0px apart (joined is at most 2px, apart at least 8.0px)'])
+  })
+
+  test('blocks placed on a time axis are not spaced by layout', async ({ page }) => {
+    await page.setContent(spacingStage(`
+      <div style="position: relative; height: 200px">
+        <button style="position: absolute; top: 0; width: 200px">Work</button>
+        <button style="position: absolute; top: 48px; width: 200px">Meeting</button>
+      </div>`))
+    expect(await audit(page)).toEqual([])
+  })
+
+  test('the control gap follows the --control-gap token', async ({ page }) => {
+    await page.setContent(spacingStage('<div style="display: flex; gap: 8px"><button>One</button><button>Two</button></div>', ':root { --control-gap: 12px; }'))
+    expect(await audit(page)).toEqual(['<button> "One" and <button> "Two" are 8.0px apart (joined is at most 2px, apart at least 12.0px)'])
+  })
+
+  test('text of a full-width row closer to its card edge than the card padding is reported', async ({ page }) => {
+    await page.setContent(spacingStage('<ul class="card" style="padding: 0; list-style: none"><li><button class="row">Row title</button></li></ul>', `
+      .row { display: block; width: 100%; height: auto; min-height: 48px; padding: 12px 8px; background: transparent; text-align: start; }`))
+    expect(await audit(page)).toContain('text "Row title" in <button.row> "Row title" is 8.0px from the left edge of the card <ul.card> "Row title" (card padding 16.0px)')
+  })
+
+  test('a row with the card padding is accepted', async ({ page }) => {
+    await page.setContent(spacingStage('<ul class="card" style="padding: 0; list-style: none"><li><button class="row">Row title</button></li></ul>', `
+      .row { display: block; width: 100%; height: auto; min-height: 48px; padding: 12px 16px; background: transparent; text-align: start; }`))
+    expect(await audit(page)).toEqual([])
+  })
+
+  test('a card padded less than the token is reported even though its content respects that padding', async ({ page }) => {
+    await page.setContent(spacingStage('<section class="card" style="padding: 8px"><p>Now</p><button>Done</button></section>'))
+    const found = await audit(page)
+    expect(found).toContain('text "Now" in <p> "Now" is 8.0px from the left edge of the card <section.card> "NowDone" (card padding 16.0px)')
+    expect(found).toContain('<button> "Done" is 8.0px from the left edge of the card <section.card> "NowDone" (card padding 16.0px)')
+  })
+
+  test('the card padding follows the --card-padding token (20 px on wide windows)', async ({ page }) => {
+    await page.setContent(spacingStage('<section class="card" style="padding: 16px"><p>Now</p></section>', ':root { --card-padding: 20px; }'))
+    expect(await audit(page)).toContain('text "Now" in <p> "Now" is 16.0px from the left edge of the card <section.card> "Now" (card padding 20.0px)')
+  })
+
+  test('pills and plain wrappers are not cards', async ({ page }) => {
+    await page.setContent(spacingStage('<div style="padding: 0"><p style="display: inline-block; padding: 4px 8px; border-radius: 999px; background: #fff">Badge</p></div>'))
+    expect(await audit(page)).toEqual([])
+  })
+
+  for (const [gap, reported] of [[24, true], [32, false]] as const) {
+    test(`page sections ${gap} px apart are ${reported ? 'reported' : 'accepted'}`, async ({ page }) => {
+      await page.setContent(spacingStage(`<section class="card" style="padding: 16px">First</section><section class="card" style="padding: 16px; margin-top: ${gap}px">Second</section>`))
+      const message = `<section.card> "First" and the section below it <section.card> "Second" are ${gap.toFixed(1)}px apart (sections at least 32.0px)`
+      if (reported) expect(await audit(page)).toEqual([message])
+      else expect(await audit(page)).toEqual([])
+    })
+  }
+
+  test('sections wrapped in other elements are still measured to the nearest one below', async ({ page }) => {
+    await page.setContent(spacingStage('<div><section class="card" style="padding: 16px">First</section></div><div style="margin-top: 16px"><div><section class="card" style="padding: 16px">Second</section></div></div>'))
+    expect(await audit(page)).toEqual(['<section.card> "First" and the section below it <section.card> "Second" are 16.0px apart (sections at least 32.0px)'])
+  })
+
+  test('sections side by side and sections inside a sheet are not page sections in a column', async ({ page }) => {
+    await page.setContent(spacingStage(`
+      <div style="display: flex; gap: 8px"><section class="card" style="width: 140px; padding: 16px">Left</section><section class="card" style="width: 140px; padding: 16px">Right</section></div>
+      <div role="dialog"><section style="padding: 16px">One</section><section style="padding: 16px">Two</section></div>`))
+    expect(await audit(page)).toEqual([])
+  })
+})

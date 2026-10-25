@@ -98,7 +98,7 @@ async function addMore(): Promise<void> {
 /* The week, as the last message: on a phone it uses the column's full width; with room to spare it sits in a card. */
 .week { display: flex; flex-direction: column; gap: var(--space-3); }
 @media (min-width: 40rem) {
-  .week { padding: var(--card-padding); border: 0.5px solid var(--separator); border-radius: 20px; background: var(--surface); }
+  .week { padding: var(--card-padding-block) var(--card-padding); border: 0.5px solid var(--separator); border-radius: 20px; background: var(--surface); }
 }
 .week-title, .counter, .warn, .trust { margin: 0; }
 .warn { color: var(--danger-label); overflow-wrap: anywhere; }

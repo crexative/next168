@@ -187,7 +187,7 @@ onMounted(() => {
 <style scoped>
 /* Starts under the large title like Assistant; centred, it drifted away from its own title on wide windows. */
 .checkin { display: flex; flex-direction: column; gap: var(--space-4); max-width: 36rem; padding: 0 var(--space-4) var(--space-6); }
-.checkin-form { display: flex; flex-direction: column; gap: var(--space-4); }
+.checkin-form { display: flex; flex-direction: column; gap: var(--group-gap); }
 .date-line { margin: 0; }
 .facts, .pending-list { margin: 0; padding: 0; list-style: none; border-radius: var(--radius-card); background: var(--surface); }
 .facts :deep(.fact + .fact), .pending-row + .pending-row { border-top: 0.5px solid var(--separator); }
@@ -199,7 +199,8 @@ onMounted(() => {
 .field { display: flex; flex: 1; flex-direction: column; gap: var(--space-1); min-width: 8rem; }
 /* The form sits on the page background, not in a card. */
 .input { background-color: var(--surface); }
-.plan-hint { margin: calc(var(--space-2) * -1) 0 0; }
+/* The hint is the facts card's footnote: 8 px under it, not a group of its own. */
+.plan-hint { margin: calc(var(--space-2) - var(--group-gap)) 0 0; }
 .note { padding: var(--space-2) var(--space-3); resize: vertical; }
 /* Top-leading in the toolbar row, level with the settings gear on the other side. */
 .toolbar-back.is-in-toolbar { position: absolute; inset-block: 0; inset-inline-start: var(--space-4); display: flex; align-items: center; max-width: 7rem; }

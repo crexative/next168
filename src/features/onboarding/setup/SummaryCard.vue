@@ -55,7 +55,7 @@ function onName(name: string): void {
 .name { font-weight: 600; min-width: 0; overflow-wrap: anywhere; }
 .amount { flex: none; font-variant-numeric: tabular-nums; }
 .line { color: var(--label-2); overflow-wrap: anywhere; font-variant-numeric: tabular-nums; }
-.body { display: flex; flex-direction: column; gap: var(--space-3); align-items: stretch; padding: 0 var(--card-padding) var(--card-padding); }
+.body { display: flex; flex-direction: column; gap: var(--space-3); align-items: stretch; padding: 0 var(--card-padding) var(--card-padding-block); }
 /* Inside a card the ranges sit flat on the card's own surface: no second inset eating the width. */
 .body :deep(.range) { padding-inline: 0; }
 .body > :deep(.ui-button) { align-self: flex-start; }
