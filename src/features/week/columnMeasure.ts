@@ -5,8 +5,19 @@ import { ELLIPSIS, type TextMetrics, type TextRole } from './itemText'
 // Measures a day column and the page's fonts for planDayColumn: the column's width, and text widths and line heights
 // read from hidden probes that carry the same classes as the drawn text (so the text size, language and font are the
 // page's own). Widths are shared by every column: the same text in the same font has the same width.
+// Both caches are bounded: a window dragged through hundreds of widths, or text sizes changed back and forth, must not
+// grow them for the life of the page. When full, the oldest entry goes (a Map keeps insertion order).
+export const WIDTH_CACHE_LIMIT = 2000
+export const HYPHEN_CACHE_LIMIT = 500
 const widthCache = new Map<string, number>()
 const hyphenCache = new Map<string, number | null>()
+
+export function remember<V>(cache: Map<string, V>, key: string, value: V, limit: number): V {
+  cache.delete(key)
+  cache.set(key, value)
+  while (cache.size > limit) cache.delete(cache.keys().next().value!)
+  return value
+}
 
 const ROLES: readonly TextRole[] = ['blockTitle', 'blockDetail', 'caption', 'taskTitle']
 
@@ -32,8 +43,7 @@ function snapshot(column: HTMLElement, probes: HTMLElement): ColumnMeasure | nul
       let measured = widthCache.get(key)
       if (measured === undefined) {
         font.element.textContent = text
-        measured = font.element.getBoundingClientRect().width
-        widthCache.set(key, measured)
+        measured = remember(widthCache, key, font.element.getBoundingClientRect().width, WIDTH_CACHE_LIMIT)
       }
       return measured
     },
@@ -55,8 +65,7 @@ function snapshot(column: HTMLElement, probes: HTMLElement): ColumnMeasure | nul
           probe.textContent = text
         }
         const overflows = probe.scrollWidth > probe.clientWidth + 0.5
-        lines = overflows ? null : Math.round(probe.getBoundingClientRect().height / font.lineHeight)
-        hyphenCache.set(key, lines)
+        lines = remember(hyphenCache, key, overflows ? null : Math.round(probe.getBoundingClientRect().height / font.lineHeight), HYPHEN_CACHE_LIMIT)
       }
       return lines
     },
