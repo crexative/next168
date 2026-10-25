@@ -50,16 +50,9 @@ async function mount(document: PlannerDocument | null, options: { runExclusive?:
   const entry = options.entry
   app = createApp(entry ? { render: () => [h(entry), h(SetupHost)] } : SetupHost).use(pinia).use(i18n)
   app.mount(host)
-  await settle()
+  await nextTick()
+  if (!document?.settings.onboardingDone) await waitForSetup()
   return { store, memory, stored: () => JSON.parse(memory.data.get('document') as string) as PlannerDocument }
-}
-
-async function settle(): Promise<void> {
-  for (let index = 0; index < 6; index++) {
-    await nextTick()
-    await Promise.resolve()
-    await new Promise((resolve) => setTimeout(resolve, 0))
-  }
 }
 
 const setup = () => window.document.body.querySelector<HTMLElement>('[data-testid=setup]')
@@ -67,11 +60,20 @@ const screen = () => setup()?.getAttribute('data-screen')
 // The leaving screen (inert, aria-hidden) may still be in the DOM for a frame.
 const live = (selector: string) => [...window.document.body.querySelectorAll<HTMLButtonElement>(`[data-testid=setup] ${selector}`)].find((element) => element.closest('[aria-hidden=true]') === null)
 
-async function click(selector: string): Promise<void> {
+// Opening fingerprints the stored planner asynchronously; Vue ticks do not wait for Web Crypto.
+async function waitForSetup(): Promise<void> {
+  await vi.waitFor(() => {
+    expect(setup()).not.toBeNull()
+    expect(setup()!.closest('[role=dialog]')!.getAttribute('aria-busy')).not.toBe('true')
+  })
+}
+
+async function click(selector: string, outcome?: () => void): Promise<void> {
   const button = live(selector)
   if (!button) throw new Error(`no ${selector} on ${screen()}`)
   button.click()
-  await settle()
+  await nextTick()
+  if (outcome) await vi.waitFor(outcome)
 }
 
 async function skipToSummary(): Promise<void> {
@@ -104,9 +106,9 @@ describe('focus on arrival', () => {
   }
 
   async function escape(): Promise<void> {
+    await vi.waitFor(() => expect(setup()!.contains(window.document.activeElement)).toBe(true))
     window.document.activeElement!.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }))
-    await settle()
-    expect(setup()).toBeNull()
+    await vi.waitFor(() => expect(setup()).toBeNull())
   }
 
   const plannerBytes = (memory: MemoryStore) => ({ document: memory.data.get('document'), backup: memory.data.get('backup') })
@@ -118,7 +120,7 @@ describe('focus on arrival', () => {
     const { memory, stored } = await mount(document)
     const before = plannerBytes(memory)
     expect(setup()!.querySelector('[data-testid=changed-elsewhere]')).not.toBeNull()
-    expect(window.document.activeElement).toBe(live('[data-testid=understood]'))
+    await vi.waitFor(() => expect(window.document.activeElement).toBe(live('[data-testid=understood]')))
     await escape()
     expect(window.document.activeElement).toBe(opener)
     expect(plannerBytes(memory)).toEqual(before)
@@ -133,8 +135,8 @@ describe('focus on arrival', () => {
     const before = plannerBytes(memory)
     expect(setup()).toBeNull()
     setupRequest.value += 1
-    await settle()
-    expect(window.document.activeElement).toBe(live('[data-testid=understood]'))
+    await waitForSetup()
+    await vi.waitFor(() => expect(window.document.activeElement).toBe(live('[data-testid=understood]')))
     await escape()
     expect(window.document.activeElement).toBe(opener)
     expect(plannerBytes(memory)).toEqual(before)
@@ -147,8 +149,8 @@ describe('focus on arrival', () => {
     live('[data-testid=setup-primary]')!.focus()
     await memory.write({ document: JSON.stringify(firstRun({ categories: [WORK] })) })
     const before = plannerBytes(memory)
-    await click('[data-testid=setup-primary]')
-    expect(window.document.activeElement).toBe(live('[data-testid=understood]'))
+    await click('[data-testid=setup-primary]', () => expect(setup()!.querySelector('[data-testid=changed-elsewhere]')).not.toBeNull())
+    await vi.waitFor(() => expect(window.document.activeElement).toBe(live('[data-testid=understood]')))
     await escape()
     expect(plannerBytes(memory)).toEqual(before)
   })
@@ -162,7 +164,7 @@ describe('focus on arrival', () => {
     toolbar.id = 'toolbar-actions'
     window.document.body.append(toolbar)
     const { memory } = await mount(firstRun(), { entry })
-    expect(window.document.activeElement).toBe(live('h3'))
+    await vi.waitFor(() => expect(window.document.activeElement).toBe(live('h3')))
     await click('[data-testid=setup-primary]')
     expect(screen()).toBe('workStudy')
     await escape()
@@ -171,9 +173,9 @@ describe('focus on arrival', () => {
     expect(opener).not.toBeNull()
     opener.focus()
     opener.click()
-    await settle()
+    await waitForSetup()
     expect(screen()).toBe('workStudy')
-    expect(window.document.activeElement).toBe(live('h3'))
+    await vi.waitFor(() => expect(window.document.activeElement).toBe(live('h3')))
     await escape()
     expect(window.document.activeElement).toBe(opener)
     expect(plannerBytes(memory)).toEqual(before)
@@ -216,7 +218,7 @@ describe('which draft is applied (A5)', () => {
     await mount(document)
     expect(setup()).toBeNull()
     setupRequest.value += 1
-    await settle()
+    await waitForSetup()
     expect(setup()!.querySelector('[data-testid=changed-elsewhere]')).not.toBeNull()
     expect(sessionStorage.getItem(DRAFT_KEY)).toBeNull()
   })
@@ -240,15 +242,14 @@ describe('a refused commit (R3.1)', () => {
     const other = firstRun({ categories: [{ ...WORK, id: 'c-other', name: 'From the other window' }] })
     await memory.write({ document: JSON.stringify(other) })
     const load = vi.spyOn(store, 'load')
-    await click('[data-testid=setup-primary]')
+    await click('[data-testid=setup-primary]', () => expect(setup()!.querySelector('[data-testid=changed-elsewhere]')).not.toBeNull())
     expect(stored()).toEqual(other)
     expect(load).toHaveBeenCalled()
     expect(setup()!.querySelector('[role=alert]')!.textContent).toBe('Your week changed in another window. Here is the current version.')
     await click('[data-testid=understood]')
     expect(screen()).toBe('summary')
     expect(setup()!.textContent).toContain('From the other window')
-    await click('[data-testid=setup-primary]')
-    expect(setup()).toBeNull()
+    await click('[data-testid=setup-primary]', () => expect(setup()).toBeNull())
     expect(stored().revision).toBe(other.revision + 1)
     expect(stored().categories.map((category) => category.name)).toEqual(['From the other window'])
     expect(stored().settings.onboardingDone).toBe(true)
@@ -261,8 +262,7 @@ describe('a refused commit (R3.1)', () => {
     // The refusal is real; the explicit reload that follows cannot read storage any more.
     const load = store.load
     vi.spyOn(store, 'load').mockImplementation(async () => { memory.failReads = true; await load() })
-    await click('[data-testid=setup-primary]')
-    expect(store.status).toBe('error')
+    await click('[data-testid=setup-primary]', () => expect(store.status).toBe('error'))
     expect(setup()).toBeNull()
   })
 })
@@ -287,29 +287,28 @@ describe('while a save is pending (R3.2, A24)', () => {
     lock.hold()
     live('[data-testid=setup-primary]')!.click()
     live('[data-testid=setup-primary]')!.click()
-    await settle()
+    await nextTick()
     expect(setup()!.closest('.setup-lock')!.hasAttribute('inert')).toBe(true)
     expect(setup()!.getAttribute('aria-busy')).toBe('true')
     const close = window.document.body.querySelector<HTMLButtonElement>('[role=dialog] .setup-close')!
     expect(close.disabled).toBe(true)
     close.click()
     window.document.body.querySelector('[role=dialog]')!.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }))
-    await settle()
+    await nextTick()
     expect(setup()).not.toBeNull()
     lock.release()
-    await settle()
-    expect(setup()).toBeNull()
+    await vi.waitFor(() => expect(setup()).toBeNull())
     expect(stored().revision).toBe(before + 1)
   })
 
   it('has no timer that moves the flow: ten seconds on a question leave it there', async () => {
     // Fake timers from the start, so any timer the flow sets is one this test controls.
-    vi.useFakeTimers({ shouldAdvanceTime: true })
+    vi.useFakeTimers()
     await mount(firstRun())
     await click('[data-testid=setup-primary]')
     expect(screen()).toBe('workStudy')
     await vi.advanceTimersByTimeAsync(10_000)
-    await settle()
+    await nextTick()
     expect(screen()).toBe('workStudy')
   })
 })
@@ -319,18 +318,16 @@ describe('closing and finishing', () => {
     window.location.hash = '#/week'
     await mount(firstRun())
     await skipToSummary()
-    await click('[data-testid=setup-primary]')
-    expect(setup()).toBeNull()
+    await click('[data-testid=setup-primary]', () => expect(setup()).toBeNull())
     expect(window.location.hash).toBe('#/today')
     app!.unmount()
     window.document.body.innerHTML = ''
     window.location.hash = '#/week'
     await mount(firstRun({ settings: { ...testDocument().settings, onboardingDone: true }, categories: [WORK], blocks: [WORK_BLOCK] }))
     setupRequest.value += 1
-    await settle()
+    await waitForSetup()
     expect(screen()).toBe('summary')
-    await click('[data-testid=setup-primary]')
-    expect(setup()).toBeNull()
+    await click('[data-testid=setup-primary]', () => expect(setup()).toBeNull())
     expect(window.location.hash).toBe('#/week')
   })
 
@@ -340,7 +337,7 @@ describe('closing and finishing', () => {
     await click('[data-testid=setup-primary]')
     const bytes = { document: memory.data.get('document'), backup: memory.data.get('backup') }
     window.document.body.querySelector<HTMLButtonElement>('[role=dialog] .setup-close')!.click()
-    await settle()
+    await nextTick()
     expect({ document: memory.data.get('document'), backup: memory.data.get('backup') }).toEqual(bytes)
     expect(JSON.parse(sessionStorage.getItem(DRAFT_KEY)!)).toMatchObject({ open: false, screen: 'workStudy' })
     expect(localStorage.getItem('next168-setup-dismissed')).toBe('ws-1')
@@ -351,10 +348,9 @@ describe('closing and finishing', () => {
     const { store, memory } = await mount(null)
     expect(setup()).not.toBeNull()
     window.document.body.querySelector<HTMLButtonElement>('[role=dialog] .setup-close')!.click()
-    await settle()
-    expect(setup()).toBeNull()
+    await vi.waitFor(() => expect(setup()).toBeNull())
     expect(await store.commit((draft) => { draft.settings.weekStartsOn = 0 })).toEqual({ ok: true })
-    await settle()
+    await nextTick()
     expect(setup()).toBeNull()
 
     app?.unmount()
@@ -369,11 +365,11 @@ describe('closing and finishing', () => {
     window.document.body.append(host)
     app = createApp(SetupHost).use(pinia).use(i18n)
     app.mount(host)
-    await settle()
+    await nextTick()
     expect(setup()).toBeNull()
     // Opening it on purpose still works.
     setupRequest.value += 1
-    await settle()
+    await waitForSetup()
     expect(setup()).not.toBeNull()
   })
 
@@ -384,7 +380,7 @@ describe('closing and finishing', () => {
     const denied = () => { throw new DOMException('denied', 'SecurityError') }
     const removeOnProto = vi.spyOn(Object.getPrototypeOf(sessionStorage) as Storage, 'removeItem').mockImplementation(denied)
     const remove = vi.spyOn(sessionStorage, 'removeItem').mockImplementation(denied)
-    await click('[data-testid=setup-primary]')
+    await click('[data-testid=setup-primary]', () => expect(setup()).toBeNull())
     expect(stored().settings.onboardingDone).toBe(true)
     expect(sessionStorage.getItem(DRAFT_KEY)).not.toBeNull()
     remove.mockRestore()
@@ -443,7 +439,7 @@ describe('the conversation', () => {
     await quick('no')
     expect(screen()).toBe('exercise')
     turn('sleep').click()
-    await settle()
+    await nextTick()
     await click('[data-testid=setup-primary]')
     expect(screen()).toBe('exercise')
     expect(turn('commute').textContent).toContain('No')
@@ -456,7 +452,7 @@ describe('the conversation', () => {
     await click('[data-testid=setup-primary]')
     await quick('no')
     turn('workStudy').click()
-    await settle()
+    await nextTick()
     await quick('both')
     expect(screen()).toBe('study')
     await click('[data-testid=setup-primary]')
@@ -474,7 +470,7 @@ describe('the conversation', () => {
     await click('[data-testid=setup-secondary]')
     expect(screen()).toBe('summary')
     turn('sleep').click()
-    await settle()
+    await nextTick()
     await click('[data-field=end]')
     await click('[data-testid=other-time]')
     for (let hour = 0; hour < 3; hour++) await click('[data-step=hour-up]')
@@ -491,7 +487,7 @@ describe('the conversation', () => {
   it.each(['en', 'es', 'fr', 'pt', 'de'] as const)('shows a visible send label and arrow in %s', async (locale) => {
     await mount(firstRun())
     i18n.global.locale.value = locale
-    await settle()
+    await nextTick()
     const send = live('[data-testid=setup-primary]')!
     expect(send.textContent?.trim()).toBe(i18n.global.t('onboarding.guided.sendShort'))
     expect(send.textContent?.trim()).not.toBe('onboarding.guided.sendShort')
@@ -519,9 +515,9 @@ describe('the conversation', () => {
     // An edit on the work screen that must survive the detour.
     const work = window.document.body.querySelector<HTMLButtonElement>('[data-testid=setup] [data-field=end]')!
     work.click()
-    await settle()
+    await nextTick()
     window.document.body.querySelector<HTMLButtonElement>('[data-testid=setup] [data-minute="1080"]')!.click()
-    await settle()
+    await nextTick()
     await click('[data-testid=setup-primary]')
     await click('[data-testid=setup-primary]')
     await quick('yes')
@@ -530,16 +526,16 @@ describe('the conversation', () => {
     expect(turn('workStudy').getAttribute('aria-label')).toBe('Change: Do you work or study? Both')
 
     turn('workStudy').click()
-    await settle()
+    await nextTick()
     expect(screen()).toBe('workStudy')
-    expect(turns().map((element) => element.dataset.answer)).toEqual(['sleep'])
+    await vi.waitFor(() => expect(turns().map((element) => element.dataset.answer)).toEqual(['sleep']))
     await quick('neither')
     expect(screen()).toBe('exercise')
     expect(turns().map((element) => element.dataset.answer)).toEqual(['sleep', 'workStudy'])
     expect(turn('workStudy').textContent).toContain('Neither')
 
     turn('workStudy').click()
-    await settle()
+    await nextTick()
     await quick('both')
     // Only the trip ranges were still unanswered: work and study do not need reconfirmation.
     expect(screen()).toBe('commuteRanges')
@@ -565,7 +561,7 @@ describe('the conversation', () => {
     background.focus()
     await mount(firstRun())
     expect(screen()).toBe('exercise')
-    expect(window.document.activeElement).toBe(live('h3'))
+    await vi.waitFor(() => expect(window.document.activeElement).toBe(live('h3')))
     expect(turns().map((element) => [element.dataset.answer, element.textContent])).toEqual(before)
     expect(before.map(([screen]) => screen)).toEqual(['sleep', 'workStudy', 'work', 'commute'])
   })
@@ -575,10 +571,10 @@ describe('the conversation', () => {
     const heading = live('h3')!
     expect(window.document.activeElement).toBe(heading)
     heading.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }))
-    await settle()
+    await nextTick()
     expect(screen()).toBe('workStudy')
     live('h3')!.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }))
-    await settle()
+    await nextTick()
     expect(screen()).toBe('workStudy')
   })
 
@@ -592,9 +588,9 @@ describe('the conversation', () => {
   it('opened at the summary of an existing week, it shows the week with no conversation behind it', async () => {
     await mount(firstRun({ settings: { ...testDocument().settings, onboardingDone: true }, categories: [WORK], blocks: [WORK_BLOCK] }))
     setupRequest.value += 1
-    await settle()
+    await waitForSetup()
     expect(screen()).toBe('summary')
-    expect(window.document.activeElement).toBe(live('h3'))
+    await vi.waitFor(() => expect(window.document.activeElement).toBe(live('h3')))
     expect(turns()).toEqual([])
     expect(live('[data-testid=week-card]')).toBeDefined()
   })
@@ -625,9 +621,9 @@ describe('the conversation', () => {
   it('after an answer, the next answer is in reach: focus on the first reply, or on Send when the times are ready', async () => {
     await mount(firstRun())
     await click('[data-testid=setup-primary]')
-    expect(window.document.activeElement?.getAttribute('data-value')).toBe('work')
+    await vi.waitFor(() => expect(window.document.activeElement?.getAttribute('data-value')).toBe('work'))
     await quick('work')
-    expect(window.document.activeElement).toBe(live('[data-testid=setup-primary]'))
+    await vi.waitFor(() => expect(window.document.activeElement).toBe(live('[data-testid=setup-primary]')))
     expect(window.document.activeElement!.getAttribute('aria-describedby')).toBe(live('h3')!.id)
   })
 })
