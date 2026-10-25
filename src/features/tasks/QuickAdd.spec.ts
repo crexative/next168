@@ -119,6 +119,20 @@ it('"Today" tapped after midnight in the planner\'s zone gives the new day, not 
   expect(mounted.store.document!.tasks).toMatchObject([{ title: 'Jog', dueDate: '2026-10-26' }])
 })
 
+it('"Today" tapped before midnight and added after it is due the new day (verify7)', async () => {
+  vi.setSystemTime(new Date('2026-10-26T04:58:00.000Z')) // 23:58 on the 25th in Bogotá
+  mounted = await mountWithPlanner(TasksView, { ...done, settings: { ...done.settings, timeZone: 'America/Bogota' }, categories: [WORK] })
+  await type('Jog')
+  todayChip().click()
+  await nextTick()
+  vi.setSystemTime(new Date('2026-10-26T05:03:00.000Z')) // 00:03 on the 26th
+  document.dispatchEvent(new Event('visibilitychange'))
+  await nextTick()
+  expect(todayChip().getAttribute('aria-pressed')).toBe('true')
+  await submit()
+  expect(mounted.store.document!.tasks).toMatchObject([{ title: 'Jog', dueDate: '2026-10-26' }])
+})
+
 it('"Today" in one tap makes the task due today; Enter still adds with no other tap', async () => {
   mounted = await mountWithPlanner(TasksView, { ...done, categories: [WORK] })
   await type('Jog')

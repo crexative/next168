@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it } from 'vitest'
 import { i18n } from '@/i18n'
 import {
-  displayLocale, formatClock, formatDateTime, formatDuration, formatHourOfDay, formatMinuteOfDay, formatTotal, hourCycle, resolveDisplayLocale, setHourCycle,
+  displayLocale, formatClock, formatDateTime, formatDuration, formatHourOfDay, formatMinuteOfDay, formatTotal, hourCycle, rangeText, resolveDisplayLocale, setHourCycle,
   wholeHourParts,
 } from './format'
 
@@ -137,5 +137,13 @@ describe('unbreakable date and time units', () => {
     expect(parts).toHaveLength(2)
     expect(parts[0]).not.toMatch(/(?<!\u00a0)·/)
     if (locale !== 'de') expect(parts[0]).toContain('\u00a0')
+  })
+})
+
+// verify7: "11:30 a. m.–" / "11:40 a. m." on Tareas at 390 px. A range never breaks at its dash.
+describe('rangeText', () => {
+  it('joins the two ends so no line can break at the dash', () => {
+    expect(rangeText('9:00 AM', '10:00 AM')).toBe('9:00 AM – 10:00 AM')
+    expect(rangeText('11:30 a. m.', '11:40 a. m.', false)).toBe('11:30 a. m.⁠–⁠11:40 a. m.')
   })
 })

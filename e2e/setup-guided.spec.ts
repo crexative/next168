@@ -251,7 +251,7 @@ test.describe('closing never writes', () => {
     await live(page).locator('[data-minute="1080"]').click()
     await page.reload()
     await onScreen(page, 'summary')
-    await expect(live(page).getByTestId('card-work')).toContainText('9:00 a. m.–6:00 p. m.')
+    await expect(live(page).getByTestId('card-work')).toContainText('9:00 a. m.\u2060–\u20606:00 p. m.')
     expect(await bytes(page)).toEqual(before)
   })
 
@@ -972,7 +972,7 @@ test.describe('the conversation', () => {
     await onScreen(page, 'commuteRanges')
     await expect(live(page).locator('[data-field=start] .value').first()).toHaveText('8:30 a. m.')
     await expect(turns(page)).toHaveCount(5)
-    await expect(live(page).locator('[data-answer=work] .turn-answer')).toHaveText('Lunes a viernes · 9:00 a. m.–6:00 p. m.')
+    await expect(live(page).locator('[data-answer=work] .turn-answer')).toHaveText('Lunes a viernes · 9:00 a. m.\u2060–\u20606:00 p. m.')
 
     await live(page).locator('[data-answer=workStudy]').click()
     await onScreen(page, 'workStudy')
@@ -988,7 +988,7 @@ test.describe('the conversation', () => {
     await onScreen(page, 'commuteRanges')
     await expect(turns(page)).toHaveCount(5)
     await expect(live(page).locator('[data-answer]')).toHaveText([/Todas las noches/, /Las dos cosas/, /Lunes a viernes/, /Lunes, martes, miércoles y jueves/, /Sí/])
-    await expect(live(page).locator('[data-answer=work] .turn-answer')).toHaveText('Lunes a viernes · 9:00 a. m.–6:00 p. m.')
+    await expect(live(page).locator('[data-answer=work] .turn-answer')).toHaveText('Lunes a viernes · 9:00 a. m.\u2060–\u20606:00 p. m.')
     await expect(live(page).locator('[data-answer=commute] .turn-answer')).toHaveText('Sí')
     await expect(live(page).locator('[data-answer=workStudy] .turn-answer')).toHaveText('Las dos cosas')
     await expect(live(page).locator('[data-field=start] .value').first()).toHaveText('8:30 a. m.')

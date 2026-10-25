@@ -190,6 +190,53 @@ describe('adding a task from the sheet', () => {
     expect(store.document!.tasks).toMatchObject([{ title: 'Jog', dueDate: '2026-10-26' }])
   })
 
+  it('"Today" tapped before midnight and saved after it is due the new day; the chip stays on and the date follows (verify7)', async () => {
+    vi.setSystemTime(new Date('2026-10-26T04:58:00.000Z')) // 23:58 on the 25th in Bogotá
+    const { store } = await open(undefined, { tasks: [], settings: { ...testDocument().settings, timeZone: 'America/Bogota' } })
+    await set(titleField(), 'Jog')
+    const today = dialog().querySelector<HTMLButtonElement>('[data-testid=task-today]')!
+    today.click()
+    await nextTick()
+    const due = dialog().querySelector<HTMLInputElement>('[data-testid=task-due]')!
+    expect(due.value).toBe('2026-10-25')
+    vi.setSystemTime(new Date('2026-10-26T05:03:00.000Z')) // 00:03 on the 26th
+    document.dispatchEvent(new Event('visibilitychange'))
+    await nextTick()
+    await nextTick()
+    expect(today.getAttribute('aria-pressed')).toBe('true')
+    expect(due.value).toBe('2026-10-26')
+    save().click()
+    await store.settled()
+    expect(store.document!.tasks).toMatchObject([{ title: 'Jog', dueDate: '2026-10-26' }])
+  })
+
+  it('"Today" is saved as the date of the save even when the screen never saw midnight tick by', async () => {
+    vi.setSystemTime(new Date('2026-10-26T04:58:00.000Z'))
+    const { store } = await open(undefined, { tasks: [], settings: { ...testDocument().settings, timeZone: 'America/Bogota' } })
+    await set(titleField(), 'Jog')
+    dialog().querySelector<HTMLButtonElement>('[data-testid=task-today]')!.click()
+    await nextTick()
+    vi.setSystemTime(new Date('2026-10-26T05:03:00.000Z'))
+    save().click()
+    await store.settled()
+    expect(store.document!.tasks).toMatchObject([{ title: 'Jog', dueDate: '2026-10-26' }])
+  })
+
+  it('a task already due today shows "Today" on until midnight, then off, and keeps its date', async () => {
+    vi.setSystemTime(new Date('2026-10-26T04:58:00.000Z'))
+    const { store } = await open('t-1', { tasks: [{ ...TASK, dueDate: '2026-10-25' }], settings: { ...testDocument().settings, timeZone: 'America/Bogota' } })
+    const today = dialog().querySelector<HTMLButtonElement>('[data-testid=task-today]')!
+    expect(today.getAttribute('aria-pressed')).toBe('true')
+    vi.setSystemTime(new Date('2026-10-26T05:03:00.000Z'))
+    document.dispatchEvent(new Event('visibilitychange'))
+    await nextTick()
+    expect(today.getAttribute('aria-pressed')).toBe('false')
+    await set(titleField(), 'Read a chapter again')
+    save().click()
+    await store.settled()
+    expect(store.document!.tasks[0]).toMatchObject({ title: 'Read a chapter again', dueDate: '2026-10-25' })
+  })
+
   it('"Today" makes a new task due on the planner\'s date, and a second tap takes it back', async () => {
     // 04:30 UTC on Monday is still Sunday 25 in Bogotá.
     vi.setSystemTime(new Date('2026-10-26T04:30:00.000Z'))

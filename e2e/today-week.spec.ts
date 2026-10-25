@@ -170,7 +170,7 @@ test.describe('week', () => {
     const morning = block(page, THURSDAY, 'b-sleep', 0)
     await expect(evening).toHaveAttribute('data-end-minute', '1440')
     await expect(morning).toHaveAttribute('data-end-minute', '360')
-    await expect(evening).toHaveAccessibleName(/^Sleep 10:00\sPM – 6:00\sAM \(overnight\)$/)
+    await expect(evening).toHaveAccessibleName(/^Sleep 10:00\sPM\s–\s6:00\sAM \(overnight\)$/)
 
     await evening.evaluate((element) => element.scrollIntoView({ block: 'center' }))
     await expect(evening).toBeInViewport()

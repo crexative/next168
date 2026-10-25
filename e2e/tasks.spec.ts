@@ -61,7 +61,7 @@ for (const theme of THEMES) {
         expect(gift).not.toHaveProperty('categoryId')
         // Work (10:00-12:00) holds the report; the gift goes to the first free hour after now, outside work.
         const row = page.getByTestId('placed-task').filter({ hasText: 'Comprar regalo para mamá' })
-        await expect(row).toContainText(/12:00\s*p\.\s*m\.\s*[–-]\s*1:00\s*p\.\s*m\./)
+        await expect(row).toContainText(/12:00\s*p\.\s*m\.\s*\u2060?[–-]\u2060?\s*1:00\s*p\.\s*m\./)
         await expect(row).not.toContainText('Trabajo')
       })
 
@@ -171,7 +171,7 @@ for (const theme of THEMES) {
         await openOnSunday(page, theme, size, [trotar('2026-10-25')])
         await expect(page.getByTestId('task-warnings')).toHaveCount(0)
         const row = page.getByTestId('placed-task').filter({ hasText: 'Trotar' })
-        await expect(row).toContainText(/10:00\s*a\.\s*m\.\s*[–-]\s*11:00\s*a\.\s*m\./)
+        await expect(row).toContainText(/10:00\s*a\.\s*m\.\s*\u2060?[–-]\u2060?\s*11:00\s*a\.\s*m\./)
         await expect(row.getByTestId('outside-note')).toHaveText('Hoy no tienes bloque de Trabajo; la puse en tu tiempo libre.')
         expect(await visualIntegrityViolations(page)).toEqual([])
 
@@ -201,7 +201,7 @@ for (const theme of THEMES) {
         const [task] = (await storedPlanner<{ tasks: { title: string; categoryId?: string; dueDate?: string }[] }>(page)).tasks
         expect(task).toMatchObject({ title: 'Trotar', dueDate: '2026-10-25' })
         expect(task).not.toHaveProperty('categoryId')
-        await expect(page.getByTestId('placed-task').filter({ hasText: 'Trotar' })).toContainText(/10:00\s*a\.\s*m\.\s*[–-]\s*11:00\s*a\.\s*m\./)
+        await expect(page.getByTestId('placed-task').filter({ hasText: 'Trotar' })).toContainText(/10:00\s*a\.\s*m\.\s*\u2060?[–-]\u2060?\s*11:00\s*a\.\s*m\./)
         await expect(page.getByTestId('task-warnings')).toHaveCount(0)
       })
 
@@ -221,6 +221,99 @@ for (const theme of THEMES) {
         await expect(page.getByTestId('warning-jog')).toBeVisible()
         await page.getByTestId('warning-jog').getByRole('button', { name: 'Cambiar categoría' }).click()
         await expect(page.getByRole('dialog', { name: 'Editar tarea' }).getByLabel('¿Cuándo?')).toHaveValue('c-work')
+      })
+    })
+  }
+}
+
+// verify7. A 3 h task due Sunday with 1 h 30 min free that day: its Sunday pieces are on time and only Monday's is late
+// (Hoy and Semana marked every piece). Its long list of ranges never breaks a line at a dash (Tareas at 390 px wrote
+// "11:30 a. m.–" / "11:40 a. m."). "Hoy" tapped at 23:58 and added at 00:03 is due the new day.
+const longTask = { id: 'big', title: 'Informe largo', categoryId: 'c-work', durationMin: 180, dueDate: '2026-10-25', priority: 2, createdAt: '2026-10-25T14:00:00.000Z' }
+const busySunday = { id: 'e-trip', title: 'Viaje', start: '2026-10-25T15:30:00.000Z', end: '2026-10-26T02:00:00.000Z', allDay: false, attendees: [] }
+
+// The text of each line an element is drawn on, read from the position of every character.
+async function drawnLines(element: ReturnType<Page['locator']>): Promise<string[]> {
+  return element.evaluate((root) => {
+    const lines: string[] = []
+    let top: number | undefined
+    const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT)
+    for (let node = walker.nextNode(); node; node = walker.nextNode()) {
+      const text = node.textContent ?? ''
+      for (let index = 0; index < text.length; index++) {
+        const range = document.createRange()
+        range.setStart(node, index)
+        range.setEnd(node, index + 1)
+        const rect = range.getClientRects()[0]
+        if (rect && rect.width > 0 && (top === undefined || rect.top > top + 2)) {
+          lines.push('')
+          top = rect.top
+        }
+        if (!lines.length) lines.push('')
+        lines[lines.length - 1] += text[index]
+      }
+    }
+    return lines.map((line) => line.replace(/⁠/g, ''))
+  })
+}
+
+for (const theme of THEMES) {
+  for (const size of ['phone', 'desktop'] as const) {
+    test.describe(`verify7 (${size}, ${theme})`, () => {
+      test.beforeEach(onlyProject(size))
+
+      test('only the piece after the due date is late, and a range never breaks at its dash', async ({ page }) => {
+        await page.setViewportSize(SIZES[size])
+        await page.emulateMedia({ colorScheme: theme })
+        await page.clock.install({ time: SUNDAY_MORNING_BOGOTA })
+        await page.addInitScript(() => window.localStorage.setItem('next168-language', 'es'))
+        await seedKey(page, V2_KEY, JSON.stringify({ ...sundayPlanner([longTask]), events: [busySunday] }))
+        await page.goto('./#/tasks')
+        await page.waitForFunction(() => document.getAnimations().length === 0)
+
+        const subtitle = page.getByTestId('placed-task').filter({ hasText: 'Informe largo' }).locator('.task-text .t-footnote').first()
+        await expect(subtitle).toContainText(/10:00\s*a\.\s*m\.\D*10:30\s*a\.\s*m\., 9:00\s*p\.\s*m\.\D*10:00\s*p\.\s*m\., lun 6:00\s*a\.\s*m\.\D*7:30\s*a\.\s*m\./)
+        const lines = await drawnLines(subtitle)
+        for (const line of lines) {
+          expect(line.trimEnd(), lines.join(' | ')).not.toMatch(/–$/)
+          expect(line.trimStart(), lines.join(' | ')).not.toMatch(/^–/)
+        }
+        await expect(page.getByTestId('warning-big').getByTestId('late-text')).toHaveText('Solo hay hueco para 1 h 30 min antes de su fecha límite (25 oct).')
+
+        await page.goto('./#/today')
+        const pieces = page.getByTestId('timeline-item').filter({ hasText: 'Informe largo' })
+        await expect(pieces).toHaveCount(2)
+        await expect(pieces.filter({ hasText: 'Tarde' })).toHaveCount(0)
+
+        await page.goto('./#/week')
+        const sunday = page.locator('[data-date="2026-10-25"] [data-task-id="big"]')
+        await expect(sunday.first()).toBeAttached()
+        await expect(page.locator('[data-date="2026-10-25"] [data-task-id="big"][data-late]')).toHaveCount(0)
+        if (size === 'desktop') {
+          // The week starts on Monday: Monday 26 is next week, where the one late piece is.
+          await page.getByRole('button', { name: 'Semana siguiente' }).click()
+          await expect(page.locator('[data-date="2026-10-26"] [data-task-id="big"][data-late]')).toHaveCount(1)
+        }
+      })
+
+      test('"Hoy" tapped at 23:58 and added at 00:03 is due the new day, and the chip stays on', async ({ page }) => {
+        await page.setViewportSize(SIZES[size])
+        await page.emulateMedia({ colorScheme: theme })
+        await page.clock.install({ time: new Date('2026-10-26T04:58:00.000Z') }) // 23:58 on Sunday in Bogotá
+        await page.addInitScript(() => window.localStorage.setItem('next168-language', 'es'))
+        await seedKey(page, V2_KEY, JSON.stringify(sundayPlanner([])))
+        await page.goto('./#/tasks')
+        await page.waitForFunction(() => document.getAnimations().length === 0)
+        const field = page.getByPlaceholder('Añadir tarea…')
+        await field.fill('Trotar')
+        const today = page.getByTestId('task-details').getByRole('button', { name: 'Hoy', exact: true })
+        await today.click()
+        await expect(today).toHaveAttribute('aria-pressed', 'true')
+        await page.clock.fastForward('05:00')
+        await expect(today).toHaveAttribute('aria-pressed', 'true')
+        await field.press('Enter')
+        await expect.poll(async () => (await storedPlanner<{ tasks: { dueDate?: string }[] }>(page)).tasks[0]?.dueDate).toBe('2026-10-26')
+        await expect(page.getByTestId('task-warnings')).toHaveCount(0)
       })
     })
   }
