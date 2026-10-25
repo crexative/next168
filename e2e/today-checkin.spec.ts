@@ -40,7 +40,7 @@ const plan = {
 // The same plan seen for the first time today: nothing predates it.
 const freshPlan = { ...plan, tasks: [], checkIns: [] }
 
-async function start(page: Page, size: (typeof SIZES)[number], theme: (typeof THEMES)[number], doc: unknown = plan, at = NOW): Promise<void> {
+async function start(page: Page, size: { width: number; height: number }, theme: (typeof THEMES)[number], doc: unknown = plan, at = NOW): Promise<void> {
   await page.setViewportSize({ width: size.width, height: size.height })
   await page.emulateMedia({ colorScheme: theme })
   await page.clock.install({ time: new Date(at) })
@@ -529,4 +529,42 @@ test.describe('nightly reminder', () => {
       await expect(page.getByRole('button', { name: /Recordarme/ })).toHaveCount(0)
     })
   }
+})
+
+test.describe('an over-wide word in the next-block title', () => {
+  test.use({ locale: 'de-DE' })
+
+  // Real layout: the browser hyphenates the word in the page language across the card's lines.
+  test('is hyphenated inside its box in German at 375 px, never a bare ellipsis', async ({ page }) => {
+    const word = 'Donaudampfschifffahrtsgesellschaft'
+    const german = { ...plan, settings: { ...plan.settings, locale: 'de' }, blocks: plan.blocks.map((block) => block.id === 'b-gym' ? { ...block, title: word } : block) }
+    await start(page, { width: 375, height: 812 }, 'light', german, '2026-10-21T16:30:00.000Z')
+    await page.addInitScript(() => window.localStorage.setItem('next168-language', 'de'))
+    await page.goto('./#/today')
+    const card = page.getByTestId('now-card')
+    await expect(card).toBeVisible()
+    await page.waitForFunction(() => document.getAnimations().length === 0)
+    const title = card.locator('.now-next-title')
+    const shown = title.locator('.whole-word-shown')
+    await expect(title).toHaveAttribute('lang', 'de')
+    await expect(title).toHaveClass(/whole-word-hyphenated/)
+    const text = (await shown.textContent())!.trim()
+    expect(text).not.toBe('…')
+    expect(text.startsWith('Donaudampf')).toBe(true)
+    const rect = await box(title)
+    const cardRect = await box(card)
+    expect(rect.x).toBeGreaterThanOrEqual(cardRect.x)
+    expect(rect.x + rect.width).toBeLessThanOrEqual(cardRect.x + cardRect.width + 0.5)
+    // The word wraps inside the title's box: it takes more than one line and nothing runs past the box.
+    const lineHeight = await shown.evaluate((element) => Number.parseFloat(getComputedStyle(element).lineHeight) || Number.parseFloat(getComputedStyle(element).fontSize) * 1.2)
+    expect((await box(shown)).height).toBeGreaterThan(lineHeight * 1.5)
+    // Every line of the drawn word ends inside the title's box (the hidden measuring probes are not the text).
+    const lineEnds = await shown.evaluate((element) => {
+      const range = document.createRange()
+      range.selectNodeContents(element)
+      return Array.from(range.getClientRects(), (line) => line.right)
+    })
+    expect(lineEnds.length).toBeGreaterThan(1)
+    for (const right of lineEnds) expect(right).toBeLessThanOrEqual(rect.x + rect.width + 0.5)
+  })
 })
