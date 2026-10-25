@@ -16,7 +16,7 @@ function measureAt(width: number, scale = 1): ColumnMeasure {
     width: (text, role) => [...text].length * BASE[role].char * scale,
     lineHeight: (role) => BASE[role].line * scale,
   }
-  return { width, metrics, markLead: 16 * scale, iconLead: 18 * scale, glyph: { width: 11.25 * scale, height: 11.25 * scale } }
+  return { width, basis: `${width}px 16px`, metrics, markLead: 16 * scale, iconLead: 18 * scale, glyph: { width: 11.25 * scale, height: 11.25 * scale } }
 }
 
 const px = (minute: number) => (minute / 60) * HOUR_HEIGHT_PX

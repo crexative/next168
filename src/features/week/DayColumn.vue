@@ -191,7 +191,7 @@ function onColumnClick(event: MouseEvent, blockId?: string): void {
 </script>
 
 <template>
-  <div ref="root" class="day-column" :class="{ 'is-compact': compact }" :data-date="date" :aria-label="label" role="group" :data-whole-text="compact ? 'shapes' : ''" @click="onColumnClick">
+  <div ref="root" class="day-column" :class="{ 'is-compact': compact }" :data-date="date" :aria-label="label" role="group" :data-whole-text="compact ? 'shapes' : ''" :data-planned-for="measure?.basis" @click="onColumnClick">
     <!-- Hidden copies of each text style: the page's own fonts, measured for the plan. -->
     <div v-if="!compact" ref="probes" class="text-probes" aria-hidden="true">
       <span data-role="blockTitle" />

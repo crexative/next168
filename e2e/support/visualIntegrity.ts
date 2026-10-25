@@ -1008,9 +1008,23 @@ export function auditInPage(options: { focusRings: boolean }): string[] {
   // lying outside its item is reported, and no item's text may cross another item's box or text. An item that takes
   // no pointer input (the now-line, a task outline) is see-through. A task marked `data-layered` lies inside its routine,
   // so the routine's box is not in the way of the task's own text.
+  // A container that says what size its plan was measured for (`data-planned-for`: its padding-box width and the root
+  // text size, "176.5px 32px") must be planned for the size it has now: a plan for another width or text size draws
+  // words measured for boxes that are no longer there.
+  function plannedSize(container: HTMLElement): string {
+    const style = getComputedStyle(container)
+    const width = container.getBoundingClientRect().width - px(style.borderLeftWidth) - px(style.borderRightWidth)
+    return `${Math.round(width * 10) / 10}px ${getComputedStyle(document.documentElement).fontSize}`
+  }
+
   function checkWholeText(): void {
     const containers = Array.from(scope.querySelectorAll<HTMLElement>('[data-whole-text]')).filter(rendered)
     for (const container of containers) {
+      const planned = container.getAttribute('data-planned-for')
+      if (planned && planned !== plannedSize(container)) {
+        violations.push(`${describe(container)} is drawn from a plan for ${planned}, not its current ${plannedSize(container)}`)
+        continue
+      }
       const items = Array.from(container.children).filter((item) => rendered(item))
       const lines: { item: Element; text: string; box: Box }[] = []
       const checkedTitles = new Set<Element>()
@@ -1105,7 +1119,21 @@ export function auditInPage(options: { focusRings: boolean }): string[] {
   return Array.from(new Set(violations))
 }
 
+// True when every container that says what size its plan was measured for is planned for the size it has now.
+function plansMatchSizes(): boolean {
+  return Array.from(document.querySelectorAll<HTMLElement>('[data-planned-for]')).every((container) => {
+    const style = getComputedStyle(container)
+    const width = container.getBoundingClientRect().width - (Number.parseFloat(style.borderLeftWidth) || 0) - (Number.parseFloat(style.borderRightWidth) || 0)
+    return container.getAttribute('data-planned-for') === `${Math.round(width * 10) / 10}px ${getComputedStyle(document.documentElement).fontSize}`
+  })
+}
+
+// A resize or text size change reaches the page before its columns re-measure (a ResizeObserver runs with the next
+// frame), so the audit first gives them frames to re-plan; a plan still for another size after that is reported.
+export const REPLAN_TIMEOUT_MS = 2000
+
 export async function visualIntegrityViolations(page: Page, { focusRings = true }: IntegrityOptions = {}): Promise<string[]> {
+  await page.waitForFunction(plansMatchSizes, undefined, { timeout: REPLAN_TIMEOUT_MS }).catch(() => undefined)
   // Any key press puts Chromium in keyboard modality, so programmatic focus shows :focus-visible as Tab would.
   if (focusRings) await page.keyboard.press('Shift')
   const violations = await page.evaluate(auditInPage, { focusRings })

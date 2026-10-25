@@ -1143,6 +1143,16 @@ test.describe('visual integrity guard: whole text in Week', () => {
     expect(violations.filter((violation) => violation.includes('Dentist') || violation.includes('Stand-up'))).toEqual([])
   })
 
+  // P0 regression: a Week column drawn from a plan measured for another width or text size is reported (after the audit
+  // has given it frames to re-plan).
+  test('a column drawn from a plan for another size is reported', async ({ page }) => {
+    await page.setContent(column('<button class="item" style="top: 0; left: 0; width: 150px; height: 20px"><span>Deep work</span></button>'))
+    await page.locator('[data-whole-text]').evaluate((container) => container.setAttribute('data-planned-for', '120px 16px'))
+    expect(await audit(page)).toContain('<div.column> "Deep work" is drawn from a plan for 120px 16px, not its current 150px 16px')
+    await page.locator('[data-whole-text]').evaluate((container) => container.setAttribute('data-planned-for', '150px 16px'))
+    expect(await audit(page)).toEqual([])
+  })
+
   test('a container without its own glyph is held to the documented glyph size', async ({ page }) => {
     await page.setContent(column('<button class="item" title="Abstimmungsgespräch" data-text-inset="0 4 0 7" style="top: 0; left: 0; width: 30px; height: 40px"></button>'))
     expect((await audit(page)).some((violation) => violation.includes('glyph fits its 18.8×40.0 px room'))).toBe(true)

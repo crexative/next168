@@ -39,6 +39,9 @@ const UNMEASURED_STRIP_PX = BLOCK_INSET.top + 16 + 2
 export interface ColumnMeasure {
   // The day column's width in px.
   width: number
+  // What this measure was taken for: the column's width and the root text size ("176.5px 32px", the width to a tenth of a pixel). The column exposes it
+  // so a check can tell a plan drawn for the current size from one still waiting for its re-measure.
+  basis: string
   metrics: TextMetrics
   // A routine's category mark with the space after it, and a 12 px icon with the space after it.
   markLead: number

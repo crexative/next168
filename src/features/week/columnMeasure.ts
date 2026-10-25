@@ -84,6 +84,7 @@ function snapshot(column: HTMLElement, probes: HTMLElement): ColumnMeasure | nul
   const lead = (name: string, fallback: number) => probes.querySelector<HTMLElement>(`[data-lead="${name}"]`)?.getBoundingClientRect().width || fallback
   return {
     width,
+    basis: `${Math.round(width * 10) / 10}px ${getComputedStyle(document.documentElement).fontSize}`,
     metrics,
     markLead: lead('mark', 0),
     glyph: (() => {

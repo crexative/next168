@@ -195,6 +195,38 @@ test.describe('Week text is whole in every seeded layout', () => {
 
 // Re-planning must not leak: the columns re-measure on every resize and text-size change (probes, observers, caches).
 // Measured with the DevTools protocol (Chromium): DOM nodes and event listeners stay flat over hundreds of re-plans.
+// P0 regression (Linux, seeds 29 and 48 at 1920 px and 200 %): the audit ran after a resize reached the page's layout
+// but before the columns' ResizeObserver re-measured them, so it judged a plan made for 1440 px against 1920 px boxes.
+// Each column says the size its plan was measured for; a new width or text size is followed by a re-plan for it, and
+// the audit waits for that and reports a column still planned for another size.
+test('every Week column re-plans for a new width and text size and says the size it was planned for', async ({ page }, testInfo) => {
+  test.skip(testInfo.project.name !== 'desktop', 'one Chromium measurement is enough')
+  const { document: seeded } = weekFor(29)
+  await page.setViewportSize({ width: 1440, height: 900 })
+  await page.clock.install({ time: SEEDED_NOW })
+  await seedKey(page, V2_KEY, JSON.stringify(seeded))
+  await openWeek(page)
+  const plans = () => page.evaluate(() => Array.from(document.querySelectorAll<HTMLElement>('.day-column')).map((column) => {
+    const style = getComputedStyle(column)
+    const width = column.getBoundingClientRect().width - Number.parseFloat(style.borderLeftWidth) - Number.parseFloat(style.borderRightWidth)
+    return { planned: column.getAttribute('data-planned-for'), current: `${Math.round(width * 10) / 10}px ${getComputedStyle(document.documentElement).fontSize}` }
+  }))
+  await settled(page)
+  const at1440 = await plans()
+  expect(at1440).toHaveLength(7)
+  for (const { planned, current } of at1440) expect(planned).toBe(current)
+  // Text size and width change in one task, with no frame in between: the plans are for the old size until the columns
+  // re-measure, and the check sees that.
+  const stale = await page.evaluate(() => {
+    document.documentElement.style.fontSize = '200%'
+    document.querySelectorAll<HTMLElement>('.day-column').forEach((column) => { column.style.maxWidth = '120px' })
+    return Array.from(document.querySelectorAll<HTMLElement>('.day-column')).filter((column) => !column.getAttribute('data-planned-for')?.endsWith(' 32px')).length
+  })
+  expect(stale).toBe(7)
+  expect(await visualIntegrityViolations(page, { focusRings: false })).toEqual([])
+  for (const { planned, current } of await plans()) expect(planned).toBe(current)
+})
+
 test('re-planning Week across hundreds of widths and both text sizes keeps nodes and listeners flat', async ({ page }, testInfo) => {
   test.skip(testInfo.project.name !== 'desktop', 'one Chromium measurement is enough')
   test.setTimeout(120_000)
