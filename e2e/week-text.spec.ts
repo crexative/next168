@@ -19,20 +19,20 @@ const WORDS = {
   es: {
     categories: ['Trabajo', 'Sueño', 'Ejercicio', 'Familia y amigos'],
     routines: ['Reunión diaria', 'Trabajo profundo', 'Trayecto', 'Almuerzo', 'Revisión semanal del presupuesto', 'Pausa…', 'Paseo con el perro', 'Dormir'],
-    events: ['Llamada con proveedor', 'Revisión de diseño de producto', 'Dentista', 'Cumpleaños de Ana', 'Entrevista', 'Sincronización del equipo', 'Y después…'],
-    tasks: ['Revisar presupuesto trimestral', 'Responder correos', 'Llamar al banco', 'Leer un capítulo', 'Pagar la luz', 'Preparar la presentación para el cliente', 'Pendiente…'],
+    events: ['Llamada con proveedor', 'Revisión de diseño de producto', 'Dentista', 'Cumpleaños de Ana', 'Entrevista', 'Sincronización del equipo', 'Y después…', 'Pausa… larga reunión de presupuesto'],
+    tasks: ['Revisar presupuesto trimestral', 'Responder correos', 'Llamar al banco', 'Leer un capítulo', 'Pagar la luz', 'Preparar la presentación para el cliente', 'Pendiente…', 'Pausa… larga reunión de presupuesto'],
   },
   en: {
     categories: ['Work', 'Sleep', 'Exercise', 'Family and friends'],
     routines: ['Stand-up', 'Deep work', 'Commute', 'Lunch', 'Weekly budget review', 'Wait...', 'Walk the dog', 'Sleep'],
-    events: ['Vendor call', 'Product design review', 'Dentist', "Ana's birthday", 'Interview', 'Team sync', 'To be continued...'],
-    tasks: ['Write the quarterly report', 'Answer emails', 'Call the bank', 'Read a chapter', 'Pay the power bill', 'Prepare the client presentation', 'Follow up...'],
+    events: ['Vendor call', 'Product design review', 'Dentist', "Ana's birthday", 'Interview', 'Team sync', 'To be continued...', 'Wait... for the quarterly bus'],
+    tasks: ['Write the quarterly report', 'Answer emails', 'Call the bank', 'Read a chapter', 'Pay the power bill', 'Prepare the client presentation', 'Follow up...', 'Wait... for the quarterly bus'],
   },
   de: {
     categories: ['Arbeit', 'Schlaf', 'Sport', 'Familie und Freunde'],
     routines: ['Tagesabstimmung', 'Konzentriertes Arbeiten', 'Arbeitsweg', 'Mittagessen', 'Wöchentliche Budgetprüfung', 'Pause…', 'Gassi gehen', 'Schlafen'],
-    events: ['Abstimmung mit dem Lieferanten', 'Produktdesign-Review', 'Zahnarzt', 'Annas Geburtstag', 'Vorstellungsgespräch', 'Teamrunde', 'Und dann…'],
-    tasks: ['Quartalsbericht schreiben', 'E-Mails beantworten', 'Bank anrufen', 'Ein Kapitel lesen', 'Stromrechnung bezahlen', 'Kundenpräsentation vorbereiten', 'Nachfassen…'],
+    events: ['Abstimmung mit dem Lieferanten', 'Produktdesign-Review', 'Zahnarzt', 'Annas Geburtstag', 'Vorstellungsgespräch', 'Teamrunde', 'Und dann…', 'Pause… und dann Kaffee'],
+    tasks: ['Quartalsbericht schreiben', 'E-Mails beantworten', 'Bank anrufen', 'Ein Kapitel lesen', 'Stromrechnung bezahlen', 'Kundenpräsentation vorbereiten', 'Nachfassen…', 'Pause… und dann Kaffee'],
   },
 } as const
 

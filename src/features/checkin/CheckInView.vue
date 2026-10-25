@@ -203,11 +203,12 @@ onMounted(() => {
 .plan-hint { margin: calc(var(--space-2) - var(--group-gap)) 0 0; }
 .note { padding: var(--space-2) var(--space-3); resize: vertical; }
 /* Top-leading in the toolbar row, level with the settings gear on the other side. */
-/* The back link takes the leading side up to the toolbar's two 44 px entries (and the gap before them), never under them;
-   a long label ("Übersicht" at 200 %) ends in an ellipsis instead. */
+/* The back link takes the leading side up to the toolbar's two 44 px entries (and the gap before them), never under them,
+   and ends a space-1 before the collapsed toolbar title's area (LargeTitle.vue › .toolbar-title), so the two never run
+   together ("Bilan du jour" over "Aujourd'hui" at 320 px); a long label ends in an ellipsis instead. */
 .toolbar-back.is-in-toolbar {
   position: absolute; inset-block: 0; inset-inline-start: var(--page-gutter); display: flex; align-items: center;
-  max-width: min(7rem, calc(100% - var(--page-gutter) * 2 - var(--tap-target) * 2 - var(--space-2) - var(--control-gap)));
+  max-width: min(7rem, calc(100% - var(--page-gutter) * 2 - var(--tap-target) * 2 - var(--space-2) - var(--control-gap)), calc(var(--tap-target) * 2 + var(--space-2) - var(--space-1)));
 }
 .toolbar-back.is-in-toolbar :deep(.back-button) { max-width: 100%; }
 .toolbar-back.is-in-toolbar :deep(.back-button span) { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }

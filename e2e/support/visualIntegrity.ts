@@ -768,11 +768,13 @@ export function auditInPage(options: { focusRings: boolean }): string[] {
   }
 
   // The words an element draws: its text nodes, without visually hidden ones.
-  function drawnText(element: Element): string {
+  // `withoutMarker` leaves out the generated "…" of a cut title (an element marked `data-cut`).
+  function drawnText(element: Element, withoutMarker = false): string {
     const walker = document.createTreeWalker(element, NodeFilter.SHOW_TEXT)
     let text = ''
     for (let node = walker.nextNode(); node; node = walker.nextNode()) {
       const parent = node.parentElement
+      if (withoutMarker && parent?.closest('[data-cut]')) continue
       if (parent && rendered(parent) && !isCovered(parent)) text += node.textContent ?? ''
     }
     return text.replace(/\s+/g, ' ').trim()
@@ -789,29 +791,27 @@ export function auditInPage(options: { focusRings: boolean }): string[] {
     return (item.getAttribute('title') || item.getAttribute('aria-label') || item.textContent || '').replace(/\s+/g, ' ').trim()
   }
 
-  // A title cut by the plan ends with the generated "…" (an element marked `data-cut`): what is drawn before it is the
-  // start of the item's full title (its `title`, else its accessible name) and stops where that title has a space.
-  // "Revisión de…" is a title cut between words; "Reunió…" or "Vendo…" is a word cut in half.
-  function checkCutTitle(node: Text, item: Element, what: string): void {
-    const drawn = drawnText(titleHolder(node, item))
+  // A title's words are checked once, whatever ellipses they hold. The words drawn (without the generated "…", an
+  // element marked `data-cut`) must be the start of the item's full title (its `title`, else its accessible name),
+  // the title's own punctuation included ("Pausa…", "Wait..."). A cut title (with the marker) stops where the full
+  // title has a space and more follows: "Revisión de…" and "Pausa… …" are whole words; "Reunió…" or "Vendo…" is a word
+  // cut in half, whether the "…" is the marker or plain text. A title drawn without the marker is the whole title.
+  function checkTitleWords(holder: Element, item: Element, what: string): void {
+    const words = drawnText(holder, true)
     const full = fullTitle(item)
-    const stem = drawn.endsWith('\u2026') ? drawn.slice(0, -1).trimEnd() : ''
-    const whole = stem.length > 0 && full.startsWith(stem) && /\s/.test(full.charAt(stem.length))
-    if (!whole) violations.push(`${what} ends "${drawn}", which is not whole words of "${full.slice(0, 60)}" followed by "…"`)
-  }
-
-  // A "…" or "..." that is not the generated marker belongs to the title ("Pausa…", "Wait..."): the drawn words must be
-  // the whole title, as the item's full title starts. Anything else is a cut drawn as text.
-  function checkTitleEllipsis(node: Text, item: Element, what: string): void {
-    const drawn = drawnText(titleHolder(node, item))
-    const full = fullTitle(item)
-    const whole = full.startsWith(drawn) && (full.length === drawn.length || /\s/.test(full.charAt(drawn.length)))
-    if (!whole) violations.push(`${what} draws "${drawn}", a "…" that is not part of the title "${full.slice(0, 60)}"`)
+    const cut = Array.from(holder.querySelectorAll('[data-cut]')).some((marker) => rendered(marker) && !isCovered(marker))
+    const prefix = words.length > 0 && full.startsWith(words)
+    const next = full.charAt(words.length)
+    if (cut && !(prefix && /\s/.test(next))) {
+      violations.push(`${what} ends "${drawnText(holder)}", which is not whole words of "${full.slice(0, 60)}" followed by "…"`)
+    } else if (!cut && !(prefix && (next === '' || /\s/.test(next)))) {
+      violations.push(`${what} draws "${words}", a "…" that is not part of the title "${full.slice(0, 60)}"`)
+    }
   }
 
   // Inside a `[data-whole-text]` container (a Week day column) text is whole words or not drawn (docs/design/visual-design.md ›
   // Week items). Each direct child is an item. A CSS ellipsis or line clamp is not allowed there (only the generated "…"
-  // after whole words, checked by checkCutTitle, or a "…" of the title itself), a line cut by any box or
+  // after whole words, or a "…" of the title itself, both checked by checkTitleWords), a line cut by any box or
   // lying outside its item is reported, and no item's text may cross another item's box or text. An item that takes
   // no pointer input (the now-line, a task outline) is see-through. A task marked `data-layered` lies inside its routine,
   // so the routine's box is not in the way of the task's own text.
@@ -820,6 +820,7 @@ export function auditInPage(options: { focusRings: boolean }): string[] {
     for (const container of containers) {
       const items = Array.from(container.children).filter((item) => rendered(item))
       const lines: { item: Element; text: string; box: Box }[] = []
+      const checkedTitles = new Set<Element>()
       const walker = document.createTreeWalker(container, NodeFilter.SHOW_TEXT, {
         acceptNode: (node) => (node.textContent ?? '').trim() ? NodeFilter.FILTER_ACCEPT : NodeFilter.FILTER_REJECT,
       })
@@ -861,9 +862,13 @@ export function auditInPage(options: { focusRings: boolean }): string[] {
           if (rects.some((rect) => intersects(rect, other.getBoundingClientRect()))) violations.push(`${what} is covered by ${describe(other)}`)
         }
         for (const rect of rects) lines.push({ item, text, box: rect })
-        const marker = parent.closest('[data-cut]')
-        if (marker && item.contains(marker)) checkCutTitle(node as Text, item, what)
-        else if (/\u2026|\.\.\./.test(node.textContent ?? '')) checkTitleEllipsis(node as Text, item, what)
+        if (/\u2026|\.\.\./.test(node.textContent ?? '')) {
+          const holder = titleHolder(node as Text, item)
+          if (!checkedTitles.has(holder)) {
+            checkedTitles.add(holder)
+            checkTitleWords(holder, item, what)
+          }
+        }
       }
       lines.forEach((first, index) => {
         for (const second of lines.slice(index + 1)) {
