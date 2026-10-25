@@ -205,11 +205,23 @@ test('re-planning Week across hundreds of widths and both text sizes keeps nodes
   await openWeek(page)
   const client = await page.context().newCDPSession(page)
   await client.send('Performance.enable')
+  // The app's own listeners: those whose handler comes from a script the page loaded. Playwright adds and removes
+  // listeners of its own (on window, for its click checks) while it drives the page; the total listener count of the
+  // DevTools metric includes them and moved by 7 on Linux with no change in the app.
+  const scripts = new Map<string, string>()
+  client.on('Debugger.scriptParsed', (event) => scripts.set(event.scriptId, event.url))
+  await client.send('Debugger.enable')
+  const origin = new URL(page.url()).origin
   const counts = async () => {
     await client.send('HeapProfiler.collectGarbage')
     const { metrics } = await client.send('Performance.getMetrics')
-    const pick = (name: string) => metrics.find((metric) => metric.name === name)?.value ?? Number.NaN
-    return { nodes: pick('Nodes'), listeners: pick('JSEventListeners') }
+    let listeners = 0
+    for (const expression of ['window', 'document']) {
+      const { result } = await client.send('Runtime.evaluate', { expression })
+      const found = await client.send('DOMDebugger.getEventListeners', { objectId: result.objectId!, depth: -1, pierce: true })
+      listeners += found.listeners.filter((listener) => (scripts.get(listener.scriptId) ?? '').startsWith(origin)).length
+    }
+    return { nodes: metrics.find((metric) => metric.name === 'Nodes')?.value ?? Number.NaN, listeners }
   }
   const replan = async (from: number) => {
     for (const percent of [100, 200]) {
@@ -225,9 +237,10 @@ test('re-planning Week across hundreds of widths and both text sizes keeps nodes
   }
   await replan(768)
   const before = await counts()
+  expect(before.listeners, 'the app\'s listeners are counted').toBeGreaterThan(50)
   await replan(771)
   await replan(774)
   const after = await counts()
-  expect(after.listeners, 'event listeners').toBe(before.listeners)
+  expect(after.listeners, 'the app\'s event listeners').toBe(before.listeners)
   expect(Math.abs(after.nodes - before.nodes), `DOM nodes ${before.nodes} → ${after.nodes}`).toBeLessThanOrEqual(20)
 })
