@@ -1,10 +1,9 @@
 import type { FontSpec, Measure } from './fitText'
 import { CARD_FORMATS, CARD_SCALE, layoutCard, type CardCopy, type CardLayout, type ShareFormat } from './layout'
-import type { SharePalette } from './palette'
+import { CARD_FONT, type SharePalette } from './palette'
 import type { ShareSummary } from './shareSummary'
 
 // The only Canvas code of the share card: it executes the layout's draw operations, nothing more.
-export const CARD_FONT = "system-ui, -apple-system, 'SF Pro Text', 'Segoe UI', Roboto, 'Noto Sans', sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji', 'Noto Color Emoji'"
 
 export type CardContext = Pick<CanvasRenderingContext2D,
   'fillStyle' | 'strokeStyle' | 'lineWidth' | 'font' | 'textAlign' | 'textBaseline' | 'direction'

@@ -1,6 +1,10 @@
-import type { ColorKey } from '@/core/model'
+// Relative, so the E2E suite (no @ alias) can read the same palette.
+import type { ColorKey } from '../../core/model'
 
 export type ShareTheme = 'light' | 'dark'
+
+// --font-sans, then colour emoji fonts so category icons draw in colour on every system.
+export const CARD_FONT = "system-ui, -apple-system, 'SF Pro Text', 'Segoe UI', Roboto, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji', 'Noto Color Emoji'"
 
 // The card's colours: the same values as src/assets/tokens.css (palette.spec parses tokens.css and compares), because
 // a canvas cannot read custom properties. The card is a Summary card: --surface behind, --surface-2 for free hours,
