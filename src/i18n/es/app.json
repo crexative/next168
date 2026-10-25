@@ -52,7 +52,9 @@
     "lastChangeNotSaved": "Tu último cambio no se guardó. Todo lo anterior está a salvo.",
     "retry": "Reintentar",
     "exportCopy": "Exportar una copia",
-    "exportWithoutCalendars": "Algunos textos de calendario no se pudieron leer y se exportaron vacíos."
+    "exportWithoutCalendars": "Algunos textos de calendario no se pudieron leer y se exportaron vacíos.",
+    "upgradeWaiting": "Cerrando la versión anterior en otras pestañas…",
+    "upgradeCopyFailed": "No se pudo preparar la actualización sin riesgo; tus datos no cambiaron. Reintenta o exporta una copia."
   },
   "recovery": {
     "title": "No se pueden leer tus datos guardados",

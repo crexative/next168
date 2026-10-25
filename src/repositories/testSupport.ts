@@ -3,7 +3,7 @@ import { createEmptyDocument } from './core'
 import { BrowserPlannerRepository } from './BrowserPlannerRepository'
 import { BrowserProposalRepository } from './BrowserProposalRepository'
 import type { ChangeChannel } from './changeChannel'
-import { changedParts, type BrowserStore, type Change, type Snapshot, type StoredPart } from './indexedDbStore'
+import { changedParts, LOCATION, type BrowserStore, type Change, type Snapshot, type StoredPart } from './indexedDbStore'
 import type { RunExclusive, StorageLike } from './storageCommit'
 
 // The legacy localStorage of older builds. `writes` counts setItem calls: the new code must never make one.
@@ -42,9 +42,11 @@ export class MemoryStore implements BrowserStore {
 
   async write(change: Change): Promise<void> {
     const parts = changedParts(change)
-    if (parts.length === 0) return
+    const cleared = new Set<string>(change.clearStores ?? [])
+    if (parts.length === 0 && cleared.size === 0) return
     if (this.failWrites || parts.some((part) => this.failWritesTo.has(part))) throw new DOMException('quota', 'QuotaExceededError')
     this.writeTransactions++
+    for (const part of [...this.data.keys()]) if (cleared.has(LOCATION[part][0])) this.data.delete(part)
     for (const part of parts) {
       const value = change[part]
       if (value === null) this.data.delete(part)

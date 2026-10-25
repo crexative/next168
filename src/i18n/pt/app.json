@@ -52,7 +52,9 @@
     "lastChangeNotSaved": "Sua última alteração não foi salva. Tudo o que veio antes está seguro.",
     "retry": "Tentar novamente",
     "exportCopy": "Exportar uma cópia",
-    "exportWithoutCalendars": "Alguns textos de calendário não puderam ser lidos e foram exportados vazios."
+    "exportWithoutCalendars": "Alguns textos de calendário não puderam ser lidos e foram exportados vazios.",
+    "upgradeWaiting": "Fechando a versão anterior em outras abas…",
+    "upgradeCopyFailed": "Não foi possível preparar a atualização com segurança; seus dados não mudaram. Tente de novo ou exporte uma cópia."
   },
   "recovery": {
     "title": "Não foi possível ler seus dados salvos",

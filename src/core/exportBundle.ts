@@ -46,3 +46,13 @@ export async function bundleHash(bundle: ExportBundle, hash: Hasher = sha256): P
   // Export timestamps are not persisted; read-back verifies the portable content only.
   return hash(canonicalJson({ document, calendarSourceTexts }))
 }
+// The portable content of a bundle: revision, timestamp and calendar source ids are bookkeeping of one store, so they are
+// normalized (ids become positional), and the fingerprint matches across devices and after a fresh-id remap.
+export async function portableHash(bundle: ExportBundle, hash: Hasher = sha256): Promise<string> {
+  const { document, calendarSourceTexts } = validateBundle(bundle)
+  const sources = document.calendarSources
+  return hash(canonicalJson({
+    document: { ...document, revision: 0, updatedAt: '1970-01-01T00:00:00.000Z', calendarSources: sources.map((source, index) => ({ ...source, id: `s${index}` })) },
+    calendarSourceTexts: Object.fromEntries(sources.map((source, index) => [`s${index}`, calendarSourceTexts[source.id]])),
+  }))
+}

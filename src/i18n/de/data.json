@@ -65,5 +65,13 @@
     "done": "Alle Daten wurden gelöscht.",
     "failed": "Löschen nicht möglich ({reason}). Es wurde nichts geändert."
   },
-  "changedElsewhere": "Deine Daten haben sich inzwischen geändert, daher wurde nichts ersetzt. Bitte versuche es erneut."
+  "changedElsewhere": "Deine Daten haben sich inzwischen geändert, daher wurde nichts ersetzt. Bitte versuche es erneut.",
+  "preUpgrade": {
+    "title": "Kopie von vor dem Update ({date})",
+    "note": "Enthält deine Kalender. Nicht enthalten ist, was du nach dem Update geändert hast.",
+    "tooLarge": "Die Datei ist {mb} MB groß: mehr, als die App importieren kann (25 MB). Bewahre sie trotzdem auf: Darin ist dein ganzer Plan.",
+    "size": "{mb} MB",
+    "download": "Kopie herunterladen",
+    "downloadRaw": "Rohdaten herunterladen"
+  }
 }

@@ -1,9 +1,10 @@
 // The browser planner store: one IndexedDB database, `next168`, with one object store per kind of record.
-// Every call opens the database, runs exactly one transaction and closes the connection, so a connection the
-// browser drops in the background is never reused. Writes are one `strict` transaction: all of a change
+// Every call opens the database through the storage fence, runs exactly one transaction and closes the connection, so a
+// connection the browser drops in the background is never reused. Writes are one `strict` transaction: all of a change
 // commits, or none of it does.
+import { fenceFor, PLANNER_DATABASE, PRE_UPGRADE_COPY_KEY, SNAPSHOTS_STORE, type StorageFence } from './storageVersion'
 
-export type StoredPart = 'document' | 'backup' | 'proposals' | 'migration' | 'purge' | 'purgeEpoch' | 'unsavedBaseline'
+export type StoredPart = 'document' | 'backup' | 'proposals' | 'migration' | 'purge' | 'purgeEpoch' | 'unsavedBaseline' | 'preUpgradeCopy'
 
 export interface Snapshot {
   document?: string
@@ -13,7 +14,11 @@ export interface Snapshot {
   purge?: unknown
   purgeEpoch?: unknown
   unsavedBaseline?: unknown
+  preUpgradeCopy?: unknown
 }
+
+// Stores a change may empty entirely, in the same transaction (delete-all clears the snapshots).
+export type ClearableStore = typeof SNAPSHOTS_STORE
 
 // `null` deletes the record; an absent member leaves it as it is.
 export interface Change {
@@ -24,6 +29,9 @@ export interface Change {
   purge?: object | null
   purgeEpoch?: number
   unsavedBaseline?: object | null
+  // Written only by the fence's first upgrade; erased with `clearStores`.
+  preUpgradeCopy?: never
+  clearStores?: readonly ClearableStore[]
 }
 
 export interface BrowserStore {
@@ -31,9 +39,9 @@ export interface BrowserStore {
   write(change: Change): Promise<void>
 }
 
-export const DATABASE_NAME = 'next168'
-const OBJECT_STORES = ['document', 'backup', 'proposals', 'meta'] as const
-const LOCATION: Record<StoredPart, readonly [store: (typeof OBJECT_STORES)[number], key: string]> = {
+export const DATABASE_NAME = PLANNER_DATABASE
+type ObjectStore = 'document' | 'backup' | 'proposals' | 'meta' | ClearableStore
+export const LOCATION: Record<StoredPart, readonly [store: ObjectStore, key: string]> = {
   document: ['document', 'current'],
   backup: ['backup', 'current'],
   proposals: ['proposals', 'all'],
@@ -41,6 +49,7 @@ const LOCATION: Record<StoredPart, readonly [store: (typeof OBJECT_STORES)[numbe
   purge: ['meta', 'purge'],
   purgeEpoch: ['meta', 'purgeEpoch'],
   unsavedBaseline: ['meta', 'unsavedBaseline'],
+  preUpgradeCopy: [SNAPSHOTS_STORE, PRE_UPGRADE_COPY_KEY],
 }
 
 function storesOf(parts: readonly StoredPart[]): string[] {
@@ -48,11 +57,15 @@ function storesOf(parts: readonly StoredPart[]): string[] {
 }
 
 export function changedParts(change: Change): StoredPart[] {
-  return (Object.keys(change) as StoredPart[]).filter((part) => change[part] !== undefined)
+  return (Object.keys(change) as StoredPart[]).filter((part) => part in LOCATION && change[part] !== undefined)
 }
 
 export class IndexedDbStore implements BrowserStore {
-  constructor(private readonly factory: IDBFactory | undefined = globalThis.indexedDB) {}
+  private readonly fence: StorageFence
+
+  constructor(factory: IDBFactory | undefined = globalThis.indexedDB, fence?: StorageFence) {
+    this.fence = fence ?? fenceFor(factory)
+  }
 
   async read(parts: readonly StoredPart[]): Promise<Snapshot> {
     const db = await this.open()
@@ -75,17 +88,22 @@ export class IndexedDbStore implements BrowserStore {
 
   async write(change: Change): Promise<void> {
     const parts = changedParts(change)
-    if (parts.length === 0) return
+    const cleared = change.clearStores ?? []
+    if (parts.length === 0 && cleared.length === 0) return
     const db = await this.open()
     try {
       await new Promise<void>((resolve, reject) => {
-        const transaction = db.transaction(storesOf(parts), 'readwrite', { durability: 'strict' })
+        const transaction = db.transaction([...new Set([...storesOf(parts), ...cleared])], 'readwrite', { durability: 'strict' })
         // The first request error is the cause; `transaction.error` can still be null when an asynchronous
         // request failure aborts the transaction, so the promise rejects only from `onabort`.
         let cause: unknown
         transaction.oncomplete = () => resolve()
         transaction.onabort = () => reject(cause ?? transaction.error ?? new DOMException('write aborted', 'AbortError'))
         try {
+          for (const store of cleared) {
+            const request = transaction.objectStore(store).clear()
+            request.onerror = () => { cause ??= request.error }
+          }
           for (const part of parts) {
             const [store, key] = LOCATION[part]
             const value = change[part]
@@ -104,16 +122,6 @@ export class IndexedDbStore implements BrowserStore {
   }
 
   private open(): Promise<IDBDatabase> {
-    const factory = this.factory
-    if (!factory) return Promise.reject(new DOMException('indexedDB missing', 'UnknownError'))
-    return new Promise<IDBDatabase>((resolve, reject) => {
-      const request = factory.open(DATABASE_NAME, 1)
-      request.onupgradeneeded = () => {
-        for (const name of OBJECT_STORES) if (!request.result.objectStoreNames.contains(name)) request.result.createObjectStore(name)
-      }
-      request.onsuccess = () => resolve(request.result)
-      request.onerror = () => reject(request.error ?? new DOMException('open failed', 'UnknownError'))
-      request.onblocked = () => reject(new DOMException('open blocked', 'UnknownError'))
-    })
+    return this.fence.open(PLANNER_DATABASE)
   }
 }

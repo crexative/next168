@@ -23,7 +23,7 @@ const storeCases: StoreCase[] = [
     create: () => new IndexedDbStore(new IDBFactory()),
     failWritesOf: (_store, part) => {
       const put = IDBObjectStore.prototype.put
-      const keys: Record<StoredPart, string> = { document: 'current', backup: 'current', proposals: 'all', migration: 'migration', purge: 'purge', purgeEpoch: 'purgeEpoch', unsavedBaseline: 'unsavedBaseline' }
+      const keys: Record<StoredPart, string> = { document: 'current', backup: 'current', proposals: 'all', migration: 'migration', purge: 'purge', purgeEpoch: 'purgeEpoch', unsavedBaseline: 'unsavedBaseline', preUpgradeCopy: 'pre-v3' }
       vi.spyOn(IDBObjectStore.prototype, 'put').mockImplementation(function (this: IDBObjectStore, value: unknown, key?: IDBValidKey) {
         if (key === keys[part] && (this.name === part || this.name === 'meta')) throw new DOMException('q', 'QuotaExceededError')
         return put.call(this, value, key)

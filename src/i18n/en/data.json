@@ -65,5 +65,13 @@
     "done": "All data was deleted.",
     "failed": "Could not delete ({reason}). Nothing was changed."
   },
-  "changedElsewhere": "Your data changed in the meantime, so nothing was replaced. Please try again."
+  "changedElsewhere": "Your data changed in the meantime, so nothing was replaced. Please try again.",
+  "preUpgrade": {
+    "title": "Copy from before the update ({date})",
+    "note": "It includes your calendars. It doesn't include what you changed after the update.",
+    "tooLarge": "It's {mb} MB: more than the app can import (25 MB). Keep it anyway: it contains your whole plan.",
+    "size": "{mb} MB",
+    "download": "Download copy",
+    "downloadRaw": "Download raw data"
+  }
 }
