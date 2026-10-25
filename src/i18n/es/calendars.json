@@ -45,7 +45,8 @@
   "interval": "Este calendario contiene un evento que termina antes de empezar.",
   "storage": "El almacenamiento de calendarios no está disponible. Revisa los permisos del navegador e inténtalo de nuevo.",
   "save": "No se pudieron guardar los cambios. Se han conservado tus datos anteriores.",
-  "missing": "Falta el archivo original del calendario. Impórtalo de nuevo o actualiza la suscripción.",
+  "missingFile": "«{name}» no está guardado aquí, así que sus eventos no se pueden mostrar. Elimínalo e importa de nuevo su archivo .ics.",
+  "missingUrl": "«{name}» aún no se ha descargado aquí. Elige Actualizar debajo de él para descargarlo de nuevo.",
   "url": "Introduce una URL http, https o webcal sin usuario ni contraseña.",
   "fetch": "No se pudo obtener el calendario (error de CORS o de red). Los calendarios privados de Google, Outlook e iCloud suelen bloquear el acceso desde el navegador. Usa Importar archivo .ics o abre Next168 en modo companion e inténtalo de nuevo.",
   "colors": {

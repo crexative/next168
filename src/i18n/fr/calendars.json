@@ -45,7 +45,8 @@
   "interval": "Ce calendrier contient un événement se terminant avant son début.",
   "storage": "Le stockage des calendriers est indisponible. Vérifie les autorisations du navigateur et réessaie.",
   "save": "Impossible d’enregistrer les modifications. Tes données précédentes ont été conservées.",
-  "missing": "Le fichier original du calendrier est manquant. Réimporte-le ou actualise l’abonnement.",
+  "missingFile": "« {name} » n’est pas enregistré ici, ses événements ne peuvent donc pas s’afficher. Supprime-le et réimporte son fichier .ics.",
+  "missingUrl": "« {name} » n’a pas encore été téléchargé ici. Choisis Actualiser sous ce calendrier pour le télécharger à nouveau.",
   "url": "Saisis une URL http, https ou webcal sans identifiant ni mot de passe.",
   "fetch": "Impossible de récupérer ce flux (erreur CORS ou réseau). Les flux privés Google, Outlook et iCloud bloquent souvent l’accès du navigateur. Utilise Importer un fichier .ics ou ouvre Next168 en mode companion et réessaie.",
   "colors": {

@@ -28,7 +28,7 @@ S2/S4 can obtain the actual `CalendarSourceStore` through `calendarServices().te
 
 ## Storage and refresh
 
-- Metadata lives in `document.calendarSources`; raw ICS lives in IndexedDB database `next168-calendars`, object store `sources`, keyed by source id.
+- Metadata lives in `document.calendarSources`. Raw ICS lives, keyed by source id, in IndexedDB database `next168-calendars`, object store `sources` (browser mode), or in the companion's `calendars/<sourceId>.ics` through `/api/calendars/:id` (companion mode), so every browser paired with the same companion shows the same calendars. When a source's text is not there, Settings › Calendars names the calendar and says what to do: import the file again, or refresh the subscription.
 - URL refresh occurs once per workspace per open page session when a calendar view mounts, and via the explicit Refresh button. A failed refresh retains the last good feed and sync time, stores a translated error code, and allows offline expansion from the cached text.
 - File import has no runtime network dependency. Later/future ranges are expanded from the original source rather than from a cached week.
 - Source changes and removals are serialized within the calendar store. Raw writes precede the document commit and are rolled back on document-save failure. Removal commits metadata first so a failed save cannot discard the source. Failed raw cleanup can leave an unreferenced source for recovery. This does not claim an atomic transaction spanning IndexedDB and the planner repository or coordination of simultaneous raw refreshes in separate tabs.
