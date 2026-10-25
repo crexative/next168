@@ -176,6 +176,20 @@ describe('adding a task from the sheet', () => {
     expect(store.document!.tasks).toMatchObject([{ title: 'Send the invoice', categoryId: 'c-work' }])
   })
 
+  it('"Today" tapped after midnight in a sheet opened the evening before gives the new day', async () => {
+    vi.setSystemTime(new Date('2026-10-26T04:50:00.000Z')) // 23:50 on the 25th in Bogotá
+    const { store } = await open(undefined, { tasks: [], settings: { ...testDocument().settings, timeZone: 'America/Bogota' } })
+    await set(titleField(), 'Jog')
+    vi.setSystemTime(new Date('2026-10-26T05:10:00.000Z')) // 00:10 on the 26th in Bogotá
+    const today = dialog().querySelector<HTMLButtonElement>('[data-testid=task-today]')!
+    today.click()
+    await nextTick()
+    expect(today.getAttribute('aria-pressed')).toBe('true')
+    save().click()
+    await store.settled()
+    expect(store.document!.tasks).toMatchObject([{ title: 'Jog', dueDate: '2026-10-26' }])
+  })
+
   it('"Today" makes a new task due on the planner\'s date, and a second tap takes it back', async () => {
     // 04:30 UTC on Monday is still Sunday 25 in Bogotá.
     vi.setSystemTime(new Date('2026-10-26T04:30:00.000Z'))

@@ -116,3 +116,15 @@ it('a task in a category with no blocks at all offers "Hacerla hoy", which puts 
   expect(find('[data-testid=task-warnings]')).toBeNull()
   expect(text(find('[data-testid=outside-note]'))).toBe('Hoy no tienes bloque de Familia; la puse en tu tiempo libre.')
 })
+
+it('"Hacerla hoy" tapped after midnight on a card drawn the evening before makes the task due the new day', async () => {
+  vi.setSystemTime(new Date('2026-10-26T04:30:00.000Z')) // 23:30 on the 25th in Bogotá; no sleep block, so 15 min still fit
+  const document = planner([jog({ dueDate: '2026-10-24', durationMin: 15 })])
+  document.blocks = document.blocks!.filter((block) => block.id !== 'b-sleep')
+  mounted = await mountWithPlanner(TasksView, document, 'es')
+  const doToday = find('[data-testid=fix-today]')!
+  vi.setSystemTime(new Date('2026-10-26T05:10:00.000Z')) // 00:10 on the 26th in Bogotá
+  doToday.click()
+  await mounted.store.settled()
+  expect(mounted.store.document!.tasks[0]!.dueDate).toBe('2026-10-26')
+})

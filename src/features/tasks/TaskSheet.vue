@@ -8,7 +8,6 @@ import Button from '@/ui/Button.vue'
 import Sheet from '@/ui/Sheet.vue'
 import { readLastTaskCategory, rememberTaskCategory } from './lastCategory'
 import { useTaskActions } from './taskActions'
-import { localDateOf } from '@/core/time'
 import { draftFromTask, newDraft, taskFields, type TaskDraft } from './taskDraft'
 import TaskOptions from './TaskOptions.vue'
 
@@ -28,9 +27,9 @@ const saving = ref(false)
 const changedElsewhere = ref(false)
 // Bumped on every open so the options start collapsed or open for the task shown now, not the previous one.
 const generation = ref(0)
-// The planner's date when the sheet opened ("Today") and the category of the last task added, offered as a suggestion.
-const today = ref('')
+// The category of the last task added, offered as a suggestion.
 const suggestedCategoryId = ref('')
+const timeZone = computed(() => planner.document?.settings.timeZone ?? 'UTC')
 // What this form was loaded from; a save is refused when the stored entries are no longer these.
 let bound: { workspaceId: string; task: string | undefined; category: string | undefined } = { workspaceId: '', task: undefined, category: undefined }
 
@@ -53,7 +52,6 @@ watch(() => props.open, (open) => {
   }
   // A new task fits any free slot unless the person picks a category; the last one chosen is only a suggestion.
   draft.value = stored.value ? draftFromTask(stored.value) : newDraft()
-  today.value = localDateOf(new Date(), document.settings.timeZone)
   suggestedCategoryId.value = readLastTaskCategory()
   initial.value = JSON.stringify(draft.value)
   changedElsewhere.value = false
@@ -124,7 +122,7 @@ async function remove(): Promise<void> {
         <span class="t-footnote t-secondary">{{ t('tasks.add.titleLabel') }}</span>
         <input :id="`${fieldId}-title`" v-model="draft.title" class="input" type="text" maxlength="120" autocomplete="off" :placeholder="t('tasks.add.titlePlaceholder')" data-testid="task-title">
       </label>
-      <TaskOptions :key="generation" :draft="draft" :categories="categories" :today="today" :suggested-category-id="suggestedCategoryId" @patch="draft = { ...draft, ...$event }" />
+      <TaskOptions :key="generation" :draft="draft" :categories="categories" :time-zone="timeZone" :suggested-category-id="suggestedCategoryId" @patch="draft = { ...draft, ...$event }" />
       <p v-if="changedElsewhere" class="t-subhead" role="alert">{{ t('tasks.changedElsewhere') }}</p>
       <div class="actions">
         <Button type="submit" block :disabled="!canSave">{{ t(isEditing ? 'common.save' : 'tasks.add.submit') }}</Button>

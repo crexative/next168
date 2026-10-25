@@ -1,4 +1,5 @@
 import type { Category, Task } from '@/core/model'
+import { localDateOf } from '@/core/time'
 import { isSleepCategory } from '@/features/onboarding/templates'
 
 // "" is the stored-nothing choice: the task has no category and fits any free time.
@@ -32,6 +33,12 @@ export function whenCategories(categories: readonly Category[], current = ANY_FR
 // The remembered choice applies while it still names a category that is offered; anything else is "any free time".
 export function resolveWhen(categories: readonly Category[], remembered: string): string {
   return whenCategories(categories).some((category) => category.id === remembered) ? remembered : ANY_FREE_TIME
+}
+
+// "Today" is read from the clock at the moment it is asked, in the planner's zone: a screen left open across midnight
+// must not hand out the date it was opened on.
+export function plannerToday(timeZone: string): string {
+  return localDateOf(new Date(), timeZone)
 }
 
 // The duration chips, plus the task's own length when it is not one of them (a task of 45 min keeps showing 45 min).

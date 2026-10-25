@@ -18,7 +18,7 @@ import ListGroup from '@/ui/ListGroup.vue'
 import ListRow from '@/ui/ListRow.vue'
 import { planTasks, recentDone, type PlacedEntry } from './grouping'
 import { useTaskActions } from './taskActions'
-import { ANY_FREE_TIME, newDraft, resolveWhen, taskFields, type TaskDraft } from './taskDraft'
+import { ANY_FREE_TIME, newDraft, plannerToday, resolveWhen, taskFields, type TaskDraft } from './taskDraft'
 import { outsideCategoryReason, warningFixes, type FitContext } from './warningFixes'
 import TaskOptions from './TaskOptions.vue'
 import TaskRow from './TaskRow.vue'
@@ -55,7 +55,7 @@ const warnings = computed(() => {
   const context = fitContext.value
   return context && plan.value ? plan.value.warnings.map((warning) => ({ ...warning, fixes: warningFixes(context, warning.task, warning.placement) })) : []
 })
-const today = computed(() => document.value ? localDateOf(now.value, document.value.settings.timeZone) : '')
+
 const done = computed(() => recentDone(document.value?.tasks ?? []))
 
 // The title is typed first; the length, "Today" and, one level deeper, when the task may go, its due date and its
@@ -172,8 +172,9 @@ function outsideNote(entry: PlacedEntry): string {
   return reason ? t(`tasks.outside.${reason}`, { category: categoryOf(entry.task)?.name ?? '' }) : ''
 }
 
-async function doToday(task: Task, date: string): Promise<void> {
-  await actions.setDueDate(task, date, t('tasks.fix.doneToday', { title: task.title }))
+// The date is read when tapped, not when the card was drawn: a card left on screen across midnight means the new day.
+async function doToday(task: Task): Promise<void> {
+  await actions.setDueDate(task, plannerToday(document.value!.settings.timeZone), t('tasks.fix.doneToday', { title: task.title }))
 }
 
 async function moveDue(task: Task, date: string): Promise<void> {
@@ -189,7 +190,7 @@ async function moveDue(task: Task, date: string): Promise<void> {
         <input v-model="form.title" class="input" type="text" maxlength="120" autocomplete="off" enterkeyhint="done" :placeholder="t('tasks.add.titlePlaceholder')">
       </label>
       <div v-if="detailsOpen" class="details" role="group" :aria-label="t('tasks.add.details')" data-testid="task-details">
-        <TaskOptions :draft="shownDraft" :categories="categories" :today="today" :suggested-category-id="suggestedCategoryId" @patch="form = { ...form, ...$event }" />
+        <TaskOptions :draft="shownDraft" :categories="categories" :time-zone="document.settings.timeZone" :suggested-category-id="suggestedCategoryId" @patch="form = { ...form, ...$event }" />
         <Button type="submit" block :disabled="!canAdd">
           <Icon name="plus" :size="20" /> {{ t('tasks.add.submit') }}
         </Button>
@@ -211,7 +212,7 @@ async function moveDue(task: Task, date: string): Promise<void> {
             </p>
             <p v-if="warning.placement.late" class="t-subhead" data-testid="late-text">{{ lateText(warning.task, warning.placement) }}</p>
             <div class="warning-actions" role="group" :aria-label="t('tasks.fix.label', { title: warning.task.title })">
-              <Button v-if="warning.fixes.today" variant="tinted" data-testid="fix-today" @click="doToday(warning.task, warning.fixes.today)">
+              <Button v-if="warning.fixes.today" variant="tinted" data-testid="fix-today" @click="doToday(warning.task)">
                 {{ t('tasks.fix.doToday') }}
               </Button>
               <Button v-if="warning.fixes.moveDueTo" variant="tinted" data-testid="fix-move-due" @click="moveDue(warning.task, warning.fixes.moveDueTo)">
