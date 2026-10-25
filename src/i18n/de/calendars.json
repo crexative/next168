@@ -61,5 +61,12 @@
     "gray": "Grau"
   },
   "until": "Bis",
-  "more": "Mehr"
+  "more": "Mehr",
+  "guests": "Gäste",
+  "guestPlaceholder": "name{'@'}beispiel.de",
+  "addGuest": "Hinzufügen",
+  "removeGuest": "{email} entfernen",
+  "guestInvalid": "Gib eine E-Mail-Adresse ein, z. B. name{'@'}beispiel.de.",
+  "guestLimit": "Ein Termin kann bis zu 50 Gäste haben.",
+  "guestsHint": "Next168 versendet nichts. Die Gäste werden hinzugefügt, wenn du den Termin in Google Kalender oder Outlook öffnest oder seine .ics-Datei herunterlädst."
 }

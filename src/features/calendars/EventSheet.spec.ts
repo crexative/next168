@@ -48,19 +48,67 @@ const submit = () => dialog().querySelector('form')!.dispatchEvent(new Event('su
 const moreOptions = () => dialog().querySelector<HTMLElement>('.more-fields')!
 
 describe('the event sheet', () => {
-  it('asks for a title, a day, all day, and from–to; location and notes are one level deeper', async () => {
+  it('asks for a title, a day, all day, and from–to; guests, location and notes are one level deeper', async () => {
     await open()
-    expect(labels()).toEqual(['Title', 'Day', 'All day', 'From', 'To', 'Location', 'Notes'])
+    expect(labels()).toEqual(['Title', 'Day', 'All day', 'From', 'To', 'Guests', 'Location', 'Notes'])
     expect(moreOptions().style.display).toBe('none')
     dialog().querySelector<HTMLButtonElement>('[data-testid="event-more"]')!.click()
     await nextTick()
     expect(moreOptions().style.display).not.toBe('none')
   })
 
-  it('has no attendees field and no time-zone line', async () => {
+  it('has no time-zone line', async () => {
     await open()
-    expect(dialog().querySelector('input[inputmode="email"]')).toBeNull()
-    expect(dialog().textContent).not.toMatch(/Attendees|Time zone|Duration \(minutes\)/)
+    expect(dialog().textContent).not.toMatch(/Time zone|Duration \(minutes\)/)
+  })
+
+  const guestInput = () => dialog().querySelector<HTMLInputElement>('[data-testid="event-guest-input"]')!
+  const chips = () => [...dialog().querySelectorAll('.guest-email')].map((node) => node.textContent)
+  async function typeGuest(value: string, key?: string) {
+    const input = guestInput()
+    input.value = value
+    input.dispatchEvent(new Event('input', { bubbles: true }))
+    if (key) input.dispatchEvent(new KeyboardEvent('keydown', { key, bubbles: true, cancelable: true }))
+    await nextTick()
+  }
+
+  it('adds guests with Enter, a comma or Add, refuses what is not an email and removes one with its own button', async () => {
+    const { planner } = await open()
+    await type('Title', 'Planning')
+    await type('Day', '2026-10-24')
+    await typeGuest('one@example.com', 'Enter')
+    expect(chips()).toEqual(['one@example.com'])
+    expect(guestInput().value).toBe('')
+    await typeGuest('not an email', 'Enter')
+    expect(chips()).toEqual(['one@example.com'])
+    expect(dialog().querySelector('.guests .calendar-error')?.textContent).toBe('Enter an email address, like name@example.com.')
+    expect(guestInput().getAttribute('aria-invalid')).toBe('true')
+    await typeGuest('two@example.com; ONE@example.com three@example.com')
+    dialog().querySelector<HTMLButtonElement>('[data-testid="event-guest-add"]')!.click()
+    await nextTick()
+    expect(chips()).toEqual(['one@example.com', 'two@example.com', 'three@example.com'])
+    expect(dialog().querySelector('.guests .calendar-error')).toBeNull()
+    dialog().querySelector<HTMLButtonElement>('[aria-label="Remove three@example.com"]')!.click()
+    await nextTick()
+    expect(chips()).toEqual(['one@example.com', 'two@example.com'])
+    submit()
+    await vi.waitFor(() => expect(planner.document?.events).toHaveLength(1))
+    expect(planner.document!.events[0]!.attendees).toEqual(['one@example.com', 'two@example.com'])
+  })
+
+  it('saving adds the address still being typed, and refuses to save one that is not an email', async () => {
+    const { planner } = await open()
+    await type('Title', 'Planning')
+    await type('Day', '2026-10-24')
+    await typeGuest('typo@')
+    submit()
+    await nextTick()
+    expect(planner.document?.events).toEqual([])
+    expect(moreOptions().style.display).not.toBe('none')
+    await typeGuest('typed@example.com')
+    submit()
+    await vi.waitFor(() => expect(planner.document?.events).toHaveLength(1))
+    expect(planner.document!.events[0]!.attendees).toEqual(['typed@example.com'])
   })
 
   it('moves the end with the start and sets the length from the end, past midnight too', async () => {
@@ -89,10 +137,17 @@ describe('the event sheet', () => {
     expect(dialog().querySelector('.calendar-error')?.textContent).toBe('Enter a title, a day and a valid time.')
   })
 
+  it('opens the guests of an event that has only guests', async () => {
+    await open({ id: 'g1', title: 'Sync', start: '2026-10-24T14:00:00.000Z', end: '2026-10-24T15:00:00.000Z', allDay: false, attendees: ['one@example.com'] })
+    expect(moreOptions().style.display).not.toBe('none')
+    expect(chips()).toEqual(['one@example.com'])
+  })
+
   it('opens the location and notes of an event that has them, and keeps the attendees it already had', async () => {
     const existing: PlannerEvent = { id: 'e1', title: 'Review', start: '2026-10-24T14:00:00.000Z', end: '2026-10-24T15:00:00.000Z', allDay: false, location: 'Room 2', notes: 'Bring slides', attendees: ['one@example.invalid'] }
     const { planner } = await open(existing)
     expect(moreOptions().style.display).not.toBe('none')
+    expect(chips()).toEqual(['one@example.invalid'])
     expect(field('Location').value).toBe('Room 2')
     await type('To', '16:00')
     submit()

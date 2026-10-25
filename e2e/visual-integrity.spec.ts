@@ -242,9 +242,13 @@ for (const theme of THEMES) {
           await expect(times).toHaveCount(2)
           await widenInputFonts(page)
           await auditSheet(page, `${theme}/${locale}/${width}/wider fonts/new event`)
-          // No attendees, no time zone: location and notes are one level deeper.
-          await expect(page.getByRole('dialog').locator('input[inputmode="email"]')).toHaveCount(0)
+          // No time zone: guests, location and notes are one level deeper.
+          await expect(page.getByRole('dialog').locator('input[inputmode="email"]')).toBeHidden()
           await page.getByRole('dialog').getByRole('button', { name: EVENT_COPY[locale].more, exact: true }).click()
+          const guest = page.getByRole('dialog').locator('input[inputmode="email"]')
+          await guest.fill('a.very.long.guest.address.for.layout@example.org')
+          await guest.press('Enter')
+          await expect(page.getByTestId('event-guests').getByRole('listitem')).toHaveCount(1)
           await page.getByRole('dialog').locator('textarea').scrollIntoViewIfNeeded()
           await auditSheet(page, `${theme}/${locale}/${width}/wider fonts/new event with location and notes`)
         })

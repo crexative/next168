@@ -61,5 +61,12 @@
     "gray": "Gris"
   },
   "until": "À",
-  "more": "Plus"
+  "more": "Plus",
+  "guests": "Invités",
+  "guestPlaceholder": "nom{'@'}exemple.com",
+  "addGuest": "Ajouter",
+  "removeGuest": "Retirer {email}",
+  "guestInvalid": "Saisis une adresse e-mail, comme nom{'@'}exemple.com.",
+  "guestLimit": "Un événement peut avoir jusqu’à 50 invités.",
+  "guestsHint": "Next168 n’envoie rien. Les invités sont ajoutés quand tu ouvres l’événement dans Google Agenda ou Outlook, ou que tu télécharges son .ics."
 }

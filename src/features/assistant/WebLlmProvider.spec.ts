@@ -215,6 +215,17 @@ describe('WebLlmProvider prepare and ask', () => {
       .toBe('Work: 13 h planned this week.\n\nYou planned 13 h of work this week.')
   })
 
+  it('never gives the on-device model the attendee emails of an event', async () => {
+    const document = plannerWithBlocks()
+    document.events.push({ id: 'meeting', title: 'Budget review', start: '2026-10-24T15:00:00.000Z', end: '2026-10-24T16:00:00.000Z', allDay: false, attendees: ['ana@example.com'] })
+    const { provider, engine } = setup()
+    await provider.prepare(vi.fn(), signal())
+    await provider.ask('How many hours of work this week?', contextFor(document), signal())
+    await provider.ask('Add a gym block on Thursday at 18:00', contextFor(document), signal()).catch(() => undefined)
+    expect(engine.engine.create).toHaveBeenCalledTimes(2)
+    expect(JSON.stringify(engine.engine.create.mock.calls)).not.toContain('ana@example.com')
+  })
+
   it('does not repeat the computed facts when the model only echoes them (round-10 finding)', async () => {
     const echo = fakeEngine(() => '{"answer":"13 h planned this week."}')
     const { provider } = setup({ engine: echo })
