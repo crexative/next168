@@ -18,6 +18,7 @@ import { env } from '../setupFixtures'
 import SetupHost from './SetupHost.vue'
 import { registerIcons } from '@/ui/icons'
 import { ArrowUp } from 'lucide-vue-next'
+import { setHourCycle } from '@/ui/format'
 
 // The guided setup's lifecycle on a real store and repository: what a draft is applied to, the single guarded commit,
 // what a refused commit shows, and what nothing may do while a save is pending.
@@ -415,6 +416,24 @@ describe('the conversation', () => {
   const turns = () => [...window.document.body.querySelectorAll<HTMLButtonElement>('[data-testid=setup] [data-answer]')]
   const turn = (screen: string) => turns().find((element) => element.dataset.answer === screen)!
   const quick = (value: string) => click(`[data-value=${value}]`)
+
+  it('shows English PM and AM in the other-time editor with a 12-hour clock', async () => {
+    setHourCycle('h12')
+    try {
+      await mount(firstRun())
+      await click('[data-field=start]')
+      await click('[data-testid=other-time]')
+      const period = () => live('[data-testid=time-period]')!.textContent!.trim().replace(/\s/g, ' ')
+
+      expect(period()).toBe('PM')
+      expect(period()).not.toContain('p. m.')
+      await click('[data-testid=time-period]')
+      expect(period()).toBe('AM')
+      expect(period()).not.toMatch(/[ap]\.\s*m\./)
+    } finally {
+      setHourCycle('auto')
+    }
+  })
 
   it('returns from an earlier answer to the current question without reconfirming later answers', async () => {
     await mount(firstRun())

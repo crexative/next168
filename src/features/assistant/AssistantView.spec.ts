@@ -4,6 +4,8 @@ import { createPinia, setActivePinia } from 'pinia'
 import { i18n } from '@/i18n'
 import { createTestRepositories, fixedNow, newTestId } from '@/repositories/testSupport'
 import { configurePlannerStore, usePlannerStore } from '@/stores/plannerStore'
+import type { ExternalOccurrence } from '@/core/model'
+import { setExternalOccurrenceSource } from '@/features/week/externalOccurrences'
 import { AssistantError, type AssistantProvider } from './provider'
 import { RulesProvider } from './RulesProvider'
 import { createAssistant } from './useAssistant'
@@ -13,7 +15,7 @@ let assistant: ReturnType<typeof createAssistant>
 vi.mock('./useAssistant', async (importOriginal) => ({ ...(await importOriginal<typeof import('./useAssistant')>()), useAssistant: () => assistant }))
 let app: App | undefined
 let host: HTMLElement | undefined
-afterEach(() => { app?.unmount(); host?.remove(); localStorage.clear() })
+afterEach(() => { app?.unmount(); host?.remove(); localStorage.clear(); setExternalOccurrenceSource(async () => []); vi.restoreAllMocks() })
 
 it('offers a retry after a download failed online and succeeds on the second try', async () => {
   const prepare = vi.fn()
@@ -75,6 +77,20 @@ it('without the model keeps the suggestions after an answer, so the screen never
   await vi.waitFor(() => expect(view.querySelectorAll('[data-role=assistant]')).toHaveLength(1))
   expect(view.querySelector('[data-role=user]')!.textContent).toBe('How many free hours do I have?')
   expect(view.querySelectorAll('[data-testid=suggestions] button')).toHaveLength(3)
+})
+
+it('passes loaded external calendar occurrences to assistant.ask for the next suggestion', async () => {
+  const external: ExternalOccurrence[] = [{ sourceId: 'calendar', uid: 'meeting', title: 'Client call', start: '2026-10-21T10:05:00Z', end: '2026-10-21T11:00:00Z', busy: true, allDay: false }]
+  setExternalOccurrenceSource(async () => external)
+  const view = await mountView()
+  const ask = vi.spyOn(assistant, 'ask')
+
+  view.querySelectorAll<HTMLButtonElement>('[data-testid=suggestions] button')[1]!.click()
+
+  await vi.waitFor(() => expect(ask).toHaveBeenCalledWith(
+    i18n.global.t('assistant.suggestions.next'),
+    expect.objectContaining({ external }),
+  ))
 })
 
 it('with the model in use puts the question box at the bottom, under the conversation', async () => {
