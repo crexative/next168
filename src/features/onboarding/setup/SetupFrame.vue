@@ -82,6 +82,15 @@ watch(() => props.open, async (open, was) => {
   }
 }, { immediate: true })
 
+// The conversation normally focuses its question. Notices need the same handoff, including after an inert save.
+watch(() => props.open && !props.locked, async (ready) => {
+  if (!ready) return
+  await nextTick()
+  const frame = root.value
+  if (!props.open || props.locked || !frame || frame.contains(document.activeElement)) return
+  frame.querySelector<HTMLElement>('[data-setup-initial-focus]')?.focus({ preventScroll: true })
+}, { immediate: true, flush: 'post' })
+
 let releaseUnsaved: (() => void) | undefined
 watch(() => props.open && props.dirty, (unsaved) => {
   releaseUnsaved?.()

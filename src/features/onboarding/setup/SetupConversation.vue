@@ -90,7 +90,7 @@ function onFocusIn(event: FocusEvent): void {
             <div class="from-app">
               <AppMark class="avatar" :size="36" />
               <div class="bubble question is-current">
-                <h3 :id="questionId" ref="heading" class="ask" tabindex="-1">{{ now.question }}</h3>
+                <h3 :id="questionId" ref="heading" class="ask" tabindex="-1" data-setup-initial-focus>{{ now.question }}</h3>
                 <p v-if="now.hint" class="hint t-body">{{ now.hint }}</p>
               </div>
             </div>

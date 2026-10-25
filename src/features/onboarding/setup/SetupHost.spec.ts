@@ -1,6 +1,6 @@
 // @vitest-environment happy-dom
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { createApp, nextTick, type App } from 'vue'
+import { createApp, h, nextTick, type App, type Component } from 'vue'
 import { createPinia, setActivePinia } from 'pinia'
 import { i18n } from '@/i18n'
 import type { PlannerDocument } from '@/core/model'
@@ -8,6 +8,9 @@ import { configurePlannerStore, usePlannerStore, type PlannerRepositoryWithExtra
 import { documentFingerprint } from '@/repositories/storageCommit'
 import { createTestRepositories, fixedNow, MemoryStore, mutexRunner, newTestId, testDocument } from '@/repositories/testSupport'
 import type { RunExclusive } from '@/repositories/storageCommit'
+import TodayView from '@/features/today/TodayView.vue'
+import WeekView from '@/features/week/WeekView.vue'
+import CategorySettings from '@/features/settings/categories/CategorySettings.vue'
 import { draftOf, saveDraft } from '../draftStorage'
 import { setupRequest } from '../reopen'
 import { createState } from '../setupModel'
@@ -26,7 +29,7 @@ let host: HTMLElement | undefined
 
 interface Mounted { store: ReturnType<typeof usePlannerStore>; memory: MemoryStore; stored: () => PlannerDocument }
 
-async function mount(document: PlannerDocument | null, options: { runExclusive?: RunExclusive; withoutGuard?: boolean } = {}): Promise<Mounted> {
+async function mount(document: PlannerDocument | null, options: { runExclusive?: RunExclusive; withoutGuard?: boolean; entry?: Component } = {}): Promise<Mounted> {
   const pinia = createPinia()
   setActivePinia(pinia)
   const memory = new MemoryStore()
@@ -41,7 +44,8 @@ async function mount(document: PlannerDocument | null, options: { runExclusive?:
   i18n.global.locale.value = 'en'
   host = window.document.createElement('div')
   window.document.body.append(host)
-  app = createApp(SetupHost).use(pinia).use(i18n)
+  const entry = options.entry
+  app = createApp(entry ? { render: () => [h(entry), h(SetupHost)] } : SetupHost).use(pinia).use(i18n)
   app.mount(host)
   await settle()
   return { store, memory, stored: () => JSON.parse(memory.data.get('document') as string) as PlannerDocument }
@@ -84,6 +88,92 @@ afterEach(() => {
   app = undefined
   vi.useRealTimers()
   vi.restoreAllMocks()
+})
+
+describe('focus on arrival', () => {
+  function backgroundButton(): HTMLButtonElement {
+    const button = window.document.createElement('button')
+    button.textContent = 'Background action'
+    window.document.body.append(button)
+    button.focus()
+    return button
+  }
+
+  async function escape(): Promise<void> {
+    window.document.activeElement!.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }))
+    await settle()
+    expect(setup()).toBeNull()
+  }
+
+  const plannerBytes = (memory: MemoryStore) => ({ document: memory.data.get('document'), backup: memory.data.get('backup') })
+
+  it('focuses Understood for an open stale draft, so Escape leaves without writing and restores background focus', async () => {
+    const opener = backgroundButton()
+    const document = firstRun()
+    saveDraft(draftOf(createState(document, env), { kind: 'stored', workspaceId: document.workspaceId, fingerprint: 'stale' }, true))
+    const { memory, stored } = await mount(document)
+    const before = plannerBytes(memory)
+    expect(setup()!.querySelector('[data-testid=changed-elsewhere]')).not.toBeNull()
+    expect(window.document.activeElement).toBe(live('[data-testid=understood]'))
+    await escape()
+    expect(window.document.activeElement).toBe(opener)
+    expect(plannerBytes(memory)).toEqual(before)
+    expect(stored()).toEqual(document)
+  })
+
+  it('focuses Understood when a closed stale draft is reopened, and Escape writes no planner data', async () => {
+    const opener = backgroundButton()
+    const document = firstRun({ settings: { ...testDocument().settings, onboardingDone: true } })
+    saveDraft(draftOf(createState(document, env), { kind: 'stored', workspaceId: document.workspaceId, fingerprint: 'stale' }, false))
+    const { memory } = await mount(document)
+    const before = plannerBytes(memory)
+    expect(setup()).toBeNull()
+    setupRequest.value += 1
+    await settle()
+    expect(window.document.activeElement).toBe(live('[data-testid=understood]'))
+    await escape()
+    expect(window.document.activeElement).toBe(opener)
+    expect(plannerBytes(memory)).toEqual(before)
+  })
+
+  it('focuses Understood after a save conflict replaces the conversation inside the open frame', async () => {
+    const { memory } = await mount(firstRun())
+    await skipToSummary()
+    // The focused conversation disappears when the refused save reveals the conflict notice.
+    live('[data-testid=setup-primary]')!.focus()
+    await memory.write({ document: JSON.stringify(firstRun({ categories: [WORK] })) })
+    const before = plannerBytes(memory)
+    await click('[data-testid=setup-primary]')
+    expect(window.document.activeElement).toBe(live('[data-testid=understood]'))
+    await escape()
+    expect(plannerBytes(memory)).toEqual(before)
+  })
+
+  it.each([
+    ['Today', TodayView, '[data-testid=setup-week]'],
+    ['Week', WeekView, '[data-testid=setup-week]'],
+    ['Settings', CategorySettings, '[data-testid=setup-guided-row] button'],
+  ] as const)('reopening from %s focuses the current question and Escape restores the opener without writing', async (_name, entry, selector) => {
+    const toolbar = window.document.createElement('div')
+    toolbar.id = 'toolbar-actions'
+    window.document.body.append(toolbar)
+    const { memory } = await mount(firstRun(), { entry })
+    expect(window.document.activeElement).toBe(live('h3'))
+    await click('[data-testid=setup-primary]')
+    expect(screen()).toBe('workStudy')
+    await escape()
+    const before = plannerBytes(memory)
+    const opener = host!.querySelector<HTMLButtonElement>(selector)!
+    expect(opener).not.toBeNull()
+    opener.focus()
+    opener.click()
+    await settle()
+    expect(screen()).toBe('workStudy')
+    expect(window.document.activeElement).toBe(live('h3'))
+    await escape()
+    expect(window.document.activeElement).toBe(opener)
+    expect(plannerBytes(memory)).toEqual(before)
+  })
 })
 
 describe('which draft is applied (A5)', () => {
@@ -341,8 +431,12 @@ describe('the conversation', () => {
     const before = turns().map((element) => [element.dataset.answer, element.textContent])
     app!.unmount()
     window.document.body.innerHTML = ''
+    const background = window.document.createElement('button')
+    window.document.body.append(background)
+    background.focus()
     await mount(firstRun())
     expect(screen()).toBe('exercise')
+    expect(window.document.activeElement).toBe(live('h3'))
     expect(turns().map((element) => [element.dataset.answer, element.textContent])).toEqual(before)
     expect(before.map(([screen]) => screen)).toEqual(['sleep', 'workStudy', 'work', 'commute'])
   })
@@ -371,6 +465,7 @@ describe('the conversation', () => {
     setupRequest.value += 1
     await settle()
     expect(screen()).toBe('summary')
+    expect(window.document.activeElement).toBe(live('h3'))
     expect(turns()).toEqual([])
     expect(live('[data-testid=week-card]')).toBeDefined()
   })

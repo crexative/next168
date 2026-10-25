@@ -296,7 +296,7 @@ onBeforeUnmount(() => viewport?.removeEventListener('resize', scrollFocusedIntoV
       <div v-if="phase === 'conflict'" class="setup conflict" data-testid="setup" data-state="conflict">
         <div class="conflict-column">
           <p class="t-title-2" role="alert" data-testid="changed-elsewhere">{{ t('onboarding.summary.changedElsewhere') }}</p>
-          <Button data-primary data-testid="understood" @click="understood">{{ t('onboarding.summary.understood') }}</Button>
+          <Button data-primary data-setup-initial-focus data-testid="understood" @click="understood">{{ t('onboarding.summary.understood') }}</Button>
         </div>
       </div>
       <div v-else-if="flow && baseline" class="setup" data-testid="setup" :data-screen="flow.screen" :aria-busy="locked || undefined">
