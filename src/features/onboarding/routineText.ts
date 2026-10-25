@@ -22,15 +22,24 @@ export function timeRangeText(start: number, end: number, locale: string): strin
 
 export interface DayLabels { weekdays: string; everyDay: string; weekend: string; everyNight?: string }
 
-const lowerFirst = (text: string, locale: string) => (text ? text.charAt(0).toLocaleLowerCase(locale) + text.slice(1) : text)
+// A label inside a sentence: "every day", "lunes a viernes". A weekday name keeps the case its language writes it in,
+// so English reads "Monday to Friday" and German "Montag bis Freitag", never "monday to Friday".
+function inSentence(text: string, locale: string): string {
+  if (!text) return text
+  const weekday = new Intl.DateTimeFormat(locale, { weekday: 'long', timeZone: 'UTC' })
+  const names = Array.from({ length: 7 }, (_, day) => weekday.format(Date.UTC(2024, 0, 7 + day)))
+  const named = names.find((name) => text.toLocaleLowerCase(locale).startsWith(name.toLocaleLowerCase(locale)))
+  if (named) return named + text.slice(named.length)
+  return text.charAt(0).toLocaleLowerCase(locale) + text.slice(1)
+}
 const sameSet = (a: readonly number[], b: readonly number[]) => a.length === b.length && [...a].sort().join() === [...b].sort().join()
 
 // "lunes a viernes", "todos los días", "lunes, miércoles y viernes": the sentence form of a set of days.
 export function daysPhrase(days: readonly DayIndex[], locale: string, weekStartsOn: 0 | 1, labels: DayLabels, nights = false): string {
   const unique = [...new Set(days)]
-  if (unique.length === 7) return lowerFirst(nights && labels.everyNight ? labels.everyNight : labels.everyDay, locale)
-  if (sameSet(unique, [1, 2, 3, 4, 5])) return lowerFirst(labels.weekdays, locale)
-  if (sameSet(unique, [6, 0])) return lowerFirst(labels.weekend, locale)
+  if (unique.length === 7) return inSentence(nights && labels.everyNight ? labels.everyNight : labels.everyDay, locale)
+  if (sameSet(unique, [1, 2, 3, 4, 5])) return inSentence(labels.weekdays, locale)
+  if (sameSet(unique, [6, 0])) return inSentence(labels.weekend, locale)
   const name = new Intl.DateTimeFormat(locale, { weekday: 'long', timeZone: 'UTC' })
   const ordered = Array.from({ length: 7 }, (_, index) => ((index + weekStartsOn) % 7) as DayIndex).filter((day) => unique.includes(day))
   // Intl.ListFormat is newer than the project's declared library.

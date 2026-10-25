@@ -74,7 +74,9 @@ export function answerFromStats(question: string, { document, now, timeZone, loc
     if (overflowing.length === 0) return t('assistant.answers.noOverflow')
     const titles = overflowing.map((placement) => document.tasks.find((task) => task.id === placement.taskId)?.title ?? placement.taskId)
     const minutes = overflowing.reduce((sum, placement) => sum + placement.overflowMinutes, 0)
-    return t('assistant.answers.overflow', { count: overflowing.length, titles: titles.join(', '), amount: formatDuration(minutes) })
+    const listed = t('assistant.answers.overflow', { count: overflowing.length, titles: titles.join(', ') })
+    // Tasks that are only late leave nothing unscheduled: no "0 min left unscheduled".
+    return minutes > 0 ? `${listed} ${t('assistant.answers.overflowAmount', { amount: formatDuration(minutes) })}` : listed
   }
   if (!category && matchesIntent('unassigned', question)) {
     // The one live figure: hours from now to the end of the week that nothing covers, as the badge shows it.

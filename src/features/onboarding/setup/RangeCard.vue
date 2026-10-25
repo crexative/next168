@@ -3,6 +3,7 @@ import { computed, nextTick, ref } from 'vue'
 import type { DayIndex } from '@/core/model'
 import Button from '@/ui/Button.vue'
 import Icon from '@/ui/Icon.vue'
+import { withoutDoubledPeriod } from '@/ui/sentence'
 import { rangeProblem, type CategoryDraft, type RangeDraft, type SetupState } from '../setupModel'
 import { OWN_LENGTHS, TOPICS } from '../setupTopics'
 import DayPicker from './DayPicker.vue'
@@ -39,7 +40,7 @@ const message = computed(() => {
   if (!issue) return ''
   if (issue.code === 'overlap' && issue.with) {
     const other = props.state.categories.find((candidate) => candidate.key === issue.with!.categoryKey)
-    return t('onboarding.guided.errors.overlap', { name: other?.name ?? '', when: slotLine(issue.with.slot) })
+    return withoutDoubledPeriod(t('onboarding.guided.errors.overlap', { name: other?.name ?? '', when: slotLine(issue.with.slot) }))
   }
   return t(`onboarding.guided.errors.${issue.code}`)
 })

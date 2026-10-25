@@ -3,6 +3,7 @@ import { computed, nextTick, ref, useId } from 'vue'
 import { useI18n } from 'vue-i18n'
 import Icon from '@/ui/Icon.vue'
 import { displayLocale } from '@/ui/format'
+import { endSentence } from '@/ui/sentence'
 import { readsAsOne } from '@/features/today/clockPhrase'
 import { formatMinute } from '@/features/week/localTime'
 import { timeToMinute } from './checkInForm'
@@ -51,7 +52,7 @@ function onBlur(): void {
 
 <template>
   <div class="fact" :data-testid="testId">
-    <button v-if="!editing" ref="button" type="button" class="fact-row t-body" :aria-label="`${sentence}. ${t('checkin.change')}`" @click="edit">
+    <button v-if="!editing" ref="button" type="button" class="fact-row t-body" :aria-label="`${endSentence(sentence)} ${t('checkin.change')}`" @click="edit">
       <span class="fact-text" :class="{ 'is-unset': minute === undefined }">{{ sentence }}</span>
       <Icon name="chevron-right" :size="20" class="fact-chevron" />
     </button>

@@ -4,7 +4,7 @@
   "completed": "Completada «{title}»",
   "removed": "Eliminada «{title}»",
   "overflow": "Faltan {duration} en {category} esta semana.",
-  "overflowHint": "Añade unos {duration} a tus rutinas de {category}, acorta la tarea o divídela.",
+  "overflowHint": "Añade alrededor de {duration} a tus rutinas de {category}, acorta la tarea o divídela.",
   "late": "Cae después de su fecha límite ({date}).",
   "lateHint": "Mueve la fecha límite, sube su prioridad o libera tiempo antes.",
   "warnings": "Avisos de planificación",
