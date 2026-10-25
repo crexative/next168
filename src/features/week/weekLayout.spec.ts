@@ -136,6 +136,8 @@ describe('shared day lanes', () => {
     ]) {
       expect(result.blocks[0]).toMatchObject({ left: 0, width: 50 })
       expect(result.busy[0]).toMatchObject({ left: 50, width: 50 })
+      // No second, stacked placement for narrow columns: the lanes are the only layout.
+      expect(result.busy[0]).not.toHaveProperty('stackLeft')
       expectDisjoint(result)
     }
   })
@@ -144,6 +146,7 @@ describe('shared day lanes', () => {
     const first = event(`${date}T09:00:00Z`, `${date}T10:00:00Z`)
     const result = layout([block('A', 540, 600)], [first, { ...first, uid: 'second' }, { ...first, uid: 'third' }])
     expect([...result.blocks, ...result.busy].map(({ lane, lanes }) => [lane, lanes])).toEqual([[0, 4], [1, 4], [2, 4], [3, 4]])
+    expect([...result.blocks, ...result.busy].map((item) => Object.keys(item).filter((key) => key.startsWith('stack')))).toEqual([[], [], [], []])
     expectDisjoint(result)
   })
 
