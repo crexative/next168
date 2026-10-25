@@ -51,5 +51,5 @@ function add(): void {
 
 <style scoped>
 .ranges { display: flex; flex-direction: column; gap: var(--space-3); align-items: stretch; }
-.ranges > :deep(.ui-button) { align-self: flex-start; }
+.ranges > :deep(.ui-button) { align-self: flex-start; overflow-wrap: anywhere; hyphens: auto; }
 </style>

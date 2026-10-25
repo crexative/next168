@@ -69,4 +69,6 @@ onMounted(() => heading.value?.focus({ preventScroll: true }))
   margin: auto calc(var(--space-4) * -1) calc(var(--space-4) * -1); padding: var(--space-2) var(--space-4) calc(var(--space-4) + var(--safe-bottom));
   background: var(--surface); border-top: 0.5px solid var(--separator);
 }
+/* At 200 % text a long German label breaks inside the button rather than spilling past it. */
+.footer :deep(.ui-button) { overflow-wrap: anywhere; hyphens: auto; }
 </style>

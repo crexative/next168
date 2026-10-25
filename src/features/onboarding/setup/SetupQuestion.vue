@@ -161,6 +161,8 @@ const sleepLabels = computed(() => ({
 .other, .add {
   align-self: flex-start; min-height: var(--tap-target); padding: var(--space-2) var(--space-4); border: 2px dashed var(--field-border);
   border-radius: 999px; background: transparent; color: var(--label); font-weight: 600; touch-action: manipulation;
+  /* Never wider than the column: a long word ("Hinzufügen" at 200 %) breaks instead of reaching the sheet's edge. */
+  max-width: 100%; overflow-wrap: anywhere; hyphens: auto;
 }
 .add { border-style: solid; background: color-mix(in srgb, var(--tint) 12%, transparent); color: var(--tint-label); border-color: transparent; }
 .add:disabled { opacity: 0.4; }

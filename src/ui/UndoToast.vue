@@ -111,3 +111,12 @@ onBeforeUnmount(() => {
   .toast { border: 1px solid CanvasText; }
 }
 </style>
+
+<style>
+/* While a toast floats over the end of the page, the page keeps room for it: the last control (a form's Save) can
+   always be scrolled clear of it instead of sitting underneath for 15 seconds. */
+html:has([data-testid='undo-toast']) .content { padding-bottom: calc(var(--tabbar-height) + var(--safe-bottom) + var(--space-3) + var(--banners-height, 0px) + var(--tap-target) + var(--space-6)); }
+@media (min-width: 1024px) {
+  html:has([data-testid='undo-toast']) .content { padding-bottom: calc(var(--space-6) + var(--banners-height, 0px) + var(--tap-target) + var(--space-6)); }
+}
+</style>
