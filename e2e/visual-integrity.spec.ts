@@ -350,6 +350,26 @@ for (const theme of THEMES) {
       })
     }
 
+    // Summary at 320 px and 200 % text with wide fonts (Verdana here, DejaVu Sans on Linux, like the Linux runner): the
+    // headline's "zugewiesen", the title's "Standardwoche" and the empty state's "Tagesabschluss" ran out of their
+    // boxes there, the page grew wider than the screen and pushed the tab bar's "Übersicht" off it.
+    test(`Summary at 320 px and 200 % text with wide fonts (de)`, async ({ page }, testInfo) => {
+      test.skip(testInfo.project.name !== 'phone', 'the narrow-width regression runs in the phone project')
+      await page.setViewportSize({ width: 320, height: 640 })
+      await start(page, theme, { ...plannedDocument, checkIns: [], settings: { ...plannedDocument.settings, locale: 'de' } }, 'de')
+      await page.addInitScript(() => {
+        document.addEventListener('DOMContentLoaded', () => {
+          document.documentElement.style.fontSize = '200%'
+          const style = document.createElement('style')
+          style.textContent = '* { font-family: Verdana, "DejaVu Sans", sans-serif !important; }'
+          document.head.append(style)
+        })
+      })
+      await open(page, 'insights')
+      await page.getByTestId('measures-empty').getByRole('link').scrollIntoViewIfNeeded()
+      await audit(page, `${theme}/de/320/200%/wide fonts/Summary with no check-ins`)
+    })
+
     // The collapsed toolbar title beside the check-in's back link at 320 px: "Bilan du jour" ran 4 px into "Aujourd'hui"
     // whenever the page had scrolled far enough to show it (the run-together rule caught it now and then).
     for (const locale of LOCALES) {

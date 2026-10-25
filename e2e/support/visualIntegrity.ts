@@ -708,6 +708,9 @@ export function auditInPage(options: { focusRings: boolean }): string[] {
     if (x < shownArea.left || x > shownArea.right || y < shownArea.top || y > shownArea.bottom || x < 0 || y < 0 || x > viewportWidth || y > viewportHeight) continue
     const hit = document.elementFromPoint(x, y)
     if (!hit || control.contains(hit)) continue
+    // Content of a scroller under something outside it (a docked footer, a bar) is scrolled there, not laid out there.
+    const scroller = scrollerOf(control)
+    if (scroller && !scroller.contains(hit)) continue
     if (!hit.contains(control) && layerOf(hit) !== layerOf(control)) continue
     const layered = hit.closest('[data-layered]')
     if (layered && !layered.contains(control) && layeredInside(layered, control)) continue

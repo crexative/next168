@@ -28,7 +28,7 @@ const weekLabel = computed(() => formatTotal(WEEK_MINUTES))
 
 <template>
   <section class="week-bar" :aria-label="t('insights.bar.title')">
-    <h2 class="t-headline">{{ t('insights.bar.title') }}</h2>
+    <h2 class="t-headline week-bar-title">{{ t('insights.bar.title') }}</h2>
     <p class="summary t-title-2" data-testid="capacity-available">{{ headline }}</p>
     <div class="cells" :style="{ gap: `min(2px, ${capacity.gapPercent}%)` }" role="group" :aria-label="`${t('insights.bar.title')} (${weekLabel})`" data-testid="week-bar">
       <i
@@ -69,9 +69,13 @@ const weekLabel = computed(() => formatTotal(WEEK_MINUTES))
 <style scoped>
 .week-bar { display: flex; flex-direction: column; gap: var(--space-2); padding: var(--card-padding-block) var(--card-padding); background: var(--surface); border-radius: var(--radius-card); }
 /* Words wrap between words and never inside one, so the figure stays readable at 200 % text. */
-/* Like the week's day strip, the headline stops growing at large text (40 px): at 320 px and 200 % text a German word
-   ("zugewiesen", 259 px at 44 px) would otherwise be wider than the line, and the figures never break inside a word. */
-.summary { margin: 0; min-width: 0; overflow-wrap: normal; font-size: min(1.375rem, 40px); text-wrap: balance; font-variant-numeric: tabular-nums; }
+/* Like the week's day strip, the headline stops growing at large text (32 px): at 320 px and 200 % text a German word
+   ("zugewiesen", 289 px at 40 px with Linux's DejaVu Sans) would otherwise be wider than the line, and the figures never
+   break inside a word. */
+.summary { margin: 0; min-width: 0; overflow-wrap: normal; font-size: min(1.375rem, 32px); text-wrap: balance; font-variant-numeric: tabular-nums; }
+/* The section title is a label, not a figure: a word wider than the line ("Standardwoche") is hyphenated in the page's
+   language. */
+.week-bar-title { hyphens: auto; }
 .cells { display: flex; height: 28px; overflow: hidden; border-radius: 8px; }
 .segment { display: block; flex: 0 1 auto; flex-basis: 0; min-width: 0; }
 .is-available { background: var(--surface-2); box-shadow: inset 0 0 0 1px var(--separator); }
