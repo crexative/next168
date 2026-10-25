@@ -3,7 +3,7 @@ import type { DayIndex } from '@/core/model'
 import { wholeHourParts } from '@/ui/format'
 import {
   addOwnCategory, automaticGoal, blockToSleep, coveredMinutes, createState, deriveCommute, emptyState, ensureCategory, placeSlot,
-  sleepToBlock, slotMinutes, statusOf, suggestCommute, suggestRanges, validate, weekTotals, type SetupState,
+  sleepToBlock, slotMinutes, statusOf, suggestCommute, suggestRanges, touch, validate, weekTotals, type RangeDraft, type SetupState,
 } from './setupModel'
 import { block, category, documentWith, env } from './setupFixtures'
 
@@ -239,5 +239,58 @@ describe('validation scope', () => {
     expect(validate(state, new Map()).map((issue) => issue.code).sort()).toEqual(['nameDuplicate', 'nameDuplicate', 'noDays', 'sameTime'])
     a.name = ''
     expect(validate(state, new Map()).map((issue) => issue.code)).toContain('nameRequired')
+  })
+})
+
+// Round-6 verification (D6): moving exercise from 6:00 to 6:30 kept the end at 7:00 and shrank it to 30 min; moving the
+// commute start past its end turned it into an overnight range.
+describe('moving a start time', () => {
+  const range = (start: number, end: number, extra: Partial<RangeDraft> = {}): RangeDraft => ({ key: 'r', days: [1, 3, 5], start, end, accepted: true, touched: false, ...extra })
+
+  it('keeps the length: exercise 6:00–7:00 moved to 6:30 ends at 7:30', () => {
+    const exercise = range(at(6), at(7))
+    touch(exercise, { start: at(6, 30) })
+    expect([exercise.start, exercise.end]).toEqual([at(6, 30), at(7, 30)])
+  })
+
+  it('never turns a daytime range overnight: the trip 8:30–9:00 moved to 9:30 ends at 10:00', () => {
+    const trip = range(at(8, 30), at(9))
+    touch(trip, { start: at(9, 30) })
+    expect([trip.start, trip.end]).toEqual([at(9, 30), at(10)])
+  })
+
+  it('leaves an end the person picked, while the start stays before it', () => {
+    const work = range(at(9), at(17))
+    touch(work, { end: at(18) })
+    touch(work, { start: at(10) })
+    expect([work.start, work.end]).toEqual([at(10), at(18)])
+  })
+
+  it('moves a picked end too when the start passes it, rather than crossing midnight', () => {
+    const trip = range(at(8, 30), at(9))
+    touch(trip, { end: at(9, 15) })
+    touch(trip, { start: at(9, 30) })
+    expect([trip.start, trip.end]).toEqual([at(9, 30), at(10, 15)])
+  })
+
+  it('stops a daytime range at midnight instead of spilling into the next day', () => {
+    const evening = range(at(22), at(23, 30))
+    touch(evening, { start: at(23) })
+    expect([evening.start, evening.end]).toEqual([at(23), 0])
+  })
+
+  it('lets sleep, and a range that already crossed midnight, go on into the next day', () => {
+    const sleep = range(at(23), at(7))
+    touch(sleep, { start: at(23, 30) }, true)
+    expect([sleep.start, sleep.end]).toEqual([at(23, 30), at(7, 30)])
+    const nightShift = range(at(22), at(6))
+    touch(nightShift, { start: at(23) })
+    expect([nightShift.start, nightShift.end]).toEqual([at(23), at(7)])
+  })
+
+  it('an end the person picks before the start is theirs to make', () => {
+    const late = range(at(20), at(22))
+    touch(late, { end: at(1) })
+    expect([late.start, late.end]).toEqual([at(20), at(1)])
   })
 })

@@ -35,14 +35,26 @@ function inSentence(text: string, locale: string): string {
 const sameSet = (a: readonly number[], b: readonly number[]) => a.length === b.length && [...a].sort().join() === [...b].sort().join()
 
 // "lunes a viernes", "todos los días", "lunes, miércoles y viernes": the sentence form of a set of days.
-export function daysPhrase(days: readonly DayIndex[], locale: string, weekStartsOn: 0 | 1, labels: DayLabels, nights = false): string {
+// `short` is the form for a value beside its label, which keeps to one line: "lun, mié y vie", three or more days in a
+// row as a span ("lun–vie" for the work week too). A single day keeps its whole name.
+export function daysPhrase(days: readonly DayIndex[], locale: string, weekStartsOn: 0 | 1, labels: DayLabels, nights = false, form: 'long' | 'short' = 'long'): string {
   const unique = [...new Set(days)]
   if (unique.length === 7) return inSentence(nights && labels.everyNight ? labels.everyNight : labels.everyDay, locale)
-  if (sameSet(unique, [1, 2, 3, 4, 5])) return inSentence(labels.weekdays, locale)
+  if (form === 'long' && sameSet(unique, [1, 2, 3, 4, 5])) return inSentence(labels.weekdays, locale)
   if (sameSet(unique, [6, 0])) return inSentence(labels.weekend, locale)
-  const name = new Intl.DateTimeFormat(locale, { weekday: 'long', timeZone: 'UTC' })
-  const ordered = Array.from({ length: 7 }, (_, index) => ((index + weekStartsOn) % 7) as DayIndex).filter((day) => unique.includes(day))
+  const short = form === 'short' && unique.length > 1
+  const name = new Intl.DateTimeFormat(locale, { weekday: short ? 'short' : 'long', timeZone: 'UTC' })
+  const dayName = (day: DayIndex) => name.format(Date.UTC(2024, 0, 7 + day))
+  const week = Array.from({ length: 7 }, (_, index) => ((index + weekStartsOn) % 7) as DayIndex)
+  const ordered = week.filter((day) => unique.includes(day))
+  const runs: DayIndex[][] = []
+  for (const day of ordered) {
+    const last = runs[runs.length - 1]
+    if (short && last && week.indexOf(day) === week.indexOf(last[last.length - 1]!) + 1) last.push(day)
+    else runs.push([day])
+  }
+  const items = runs.flatMap((run) => (run.length >= 3 ? [`${dayName(run[0]!)}–${dayName(run[run.length - 1]!)}`] : run.map(dayName)))
   // Intl.ListFormat is newer than the project's declared library.
   const ListFormat = (Intl as unknown as { ListFormat: new (locale: string, options: { style: string; type: string }) => { format(items: string[]): string } }).ListFormat
-  return new ListFormat(locale, { style: 'long', type: 'conjunction' }).format(ordered.map((day) => name.format(Date.UTC(2024, 0, 7 + day))))
+  return new ListFormat(locale, { style: 'long', type: 'conjunction' }).format(items)
 }

@@ -2,7 +2,7 @@ import { beforeAll, describe, expect, it } from 'vitest'
 import { i18n } from '@/i18n'
 import { emptyState, prepareScreen, setAnswer, toggleMore, addOwnToMore, type ScreenId, type SetupState, type Tri, type WorkStudy } from '../setupModel'
 import { env } from '../setupFixtures'
-import { answer, hint, question, summaryRows, transcript, weekIsEmpty, type Line, type Speaker } from './conversation'
+import { answer, extraReply, hint, question, summaryRows, transcript, weekIsEmpty, type Line, type Speaker } from './conversation'
 
 // The conversation's words: each follow-up phrased from what the person said before, the defaults it offers from
 // those answers, and the answer as the person would say it. Spanish, the owner's normative copy.
@@ -118,6 +118,35 @@ describe('the answer, as the person would say it', () => {
     expect(answer(state, 'more', speaker)).toBe('Familia, Ajedrez')
     setAnswer(state, 'more', [])
     expect(answer(state, 'more', speaker)).toBe('Nada más')
+  })
+})
+
+describe('the extra reply beside the answers: a skip or an answer', () => {
+  // The owner (2026-10-25): "Lo veo después" is plain text, so people do not skip; "Sin horario fijo" is a real answer.
+  it('skipping is offered as a quiet skip on the yes/no, choice and sleep questions', () => {
+    const state = walked('both', 'yes')
+    toggleMore(state, 'family', env)
+    for (const screen of ['sleep', 'workStudy', 'commute', 'exercise', 'more'] as ScreenId[]) {
+      const reply = extraReply(state, screen)
+      expect(reply?.kind, screen).toBe('skip')
+      expect(say(reply), screen).toBe('Lo veo después')
+    }
+  })
+
+  it('"Sin horario fijo" on the other time questions is an answer, drawn like one', () => {
+    const state = walked('both', 'yes')
+    prepareScreen(state, 'commuteRanges', env)
+    prepareScreen(state, 'exerciseRanges', env)
+    toggleMore(state, 'family', env)
+    for (const screen of ['work', 'study', 'commuteRanges', 'exerciseRanges', 'extra:family'] as ScreenId[]) {
+      const reply = extraReply(state, screen)
+      expect(reply?.kind, screen).toBe('answer')
+      expect(say(reply), screen).toBe('Sin horario fijo')
+    }
+  })
+
+  it('the summary offers neither', () => {
+    expect(extraReply(walked('work'), 'summary')).toBeUndefined()
   })
 })
 

@@ -555,19 +555,23 @@ export function auditInPage(options: { focusRings: boolean }): string[] {
 
   // The spacing roles of tokens.css (docs/design/visual-design.md › Spacing), resolved to px at this width and text
   // size. Plain pages without the tokens (the guard's self-tests) fall back to the documented values.
-  function spacingToken(name: string, fallback: number): number {
+  function cssLength(value: string): number {
     const probe = document.createElement('div')
-    probe.style.cssText = `position: absolute; visibility: hidden; width: 0; height: 0; padding-left: var(${name}, ${fallback}px)`
+    probe.style.cssText = `position: absolute; visibility: hidden; width: 0; height: 0; padding-left: ${value}`
     document.body.append(probe)
-    const value = px(getComputedStyle(probe).paddingLeft)
+    const length = px(getComputedStyle(probe).paddingLeft)
     probe.remove()
-    return value
+    return length
   }
+  const spacingToken = (name: string, fallback: number): number => cssLength(`var(${name}, ${fallback}px)`)
   const SPACING = {
     card: spacingToken('--card-padding', 16),
     rowBlock: spacingToken('--row-padding-block', 12),
     control: spacingToken('--control-gap', 8),
+    group: spacingToken('--group-gap', 24),
     section: spacingToken('--section-gap', 32),
+    // Under a docked bar's buttons: 16 px plus the home indicator's safe area.
+    dockBottom: cssLength('calc(16px + env(safe-area-inset-bottom, 0px))'),
   }
   // Controls this close read as one compound control (segments of a track, rows split by a hairline).
   const JOINED = 2
@@ -746,6 +750,52 @@ export function auditInPage(options: { focusRings: boolean }): string[] {
     })
   }
 
+  // The primary action of a docked bar (marked `data-dock-primary`: the setup's Send and its summary's button) is the call
+  // to action: no other control comes closer than the group gap, whether a neighbour in its row, the answers above it or
+  // their scroller's visible edge, and it keeps 16 px plus the safe area above the bottom of the viewport.
+  function checkDockPrimary(): void {
+    const primaries = Array.from(scope.querySelectorAll<HTMLElement>('[data-dock-primary]')).filter((primary) => rendered(primary) && !isCovered(primary))
+    const shownControls = Array.from(new Set(controls.map(visibleControl).filter((control): control is HTMLElement => control !== null)))
+    for (const primary of primaries) {
+      const rect = primary.getBoundingClientRect()
+      const fromBottom = viewportHeight - rect.bottom
+      if (fromBottom < SPACING.dockBottom - TOLERANCE) {
+        violations.push(`the docked primary ${describe(primary)} is ${fromBottom.toFixed(1)}px from the bottom edge (at least ${SPACING.dockBottom.toFixed(1)}px)`)
+      }
+      for (const other of shownControls) {
+        if (other === primary || other.contains(primary) || primary.contains(other)) continue
+        const box = shownRect(other)
+        if (!box) continue
+        const gap = Math.max(box.left - rect.right, rect.left - box.right, box.top - rect.bottom, rect.top - box.bottom)
+        if (gap < SPACING.group - TOLERANCE) {
+          violations.push(`${describe(other)} is ${Math.max(gap, 0).toFixed(1)}px from the docked primary ${describe(primary)} (clear space at least ${SPACING.group.toFixed(1)}px)`)
+        }
+      }
+    }
+  }
+
+  // A label and value row marked `data-one-line` (the setup's time rows and summary rows) reads as one line at 100 % text
+  // from 360 px: all its drawn text shares one line. At larger text it may wrap, the value under its label.
+  function checkOneLineRows(): void {
+    const rootSize = px(getComputedStyle(document.documentElement).fontSize)
+    if (viewportWidth < 360 || rootSize > 16 + TOLERANCE) return
+    for (const row of Array.from(scope.querySelectorAll<HTMLElement>('[data-one-line]'))) {
+      if (!rendered(row) || isCovered(row)) continue
+      const boxes: Box[] = []
+      const walker = document.createTreeWalker(row, NodeFilter.SHOW_TEXT)
+      for (let node = walker.nextNode(); node; node = walker.nextNode()) {
+        if (!(node.textContent ?? '').trim() || !node.parentElement || !rendered(node.parentElement) || isCovered(node.parentElement)) continue
+        const range = document.createRange()
+        range.selectNodeContents(node)
+        boxes.push(...Array.from(range.getClientRects()).filter((rect) => rect.width > 0 && rect.height > 0))
+      }
+      if (boxes.length === 0) continue
+      const top = Math.max(...boxes.map((box) => box.top))
+      const bottom = Math.min(...boxes.map((box) => box.bottom))
+      if (top >= bottom - TOLERANCE) violations.push(`the row ${describe(row)} breaks onto more than one line (a label and its value share one line at 100 % text from 360 px)`)
+    }
+  }
+
   // Page sections (outside sheets) stacked in one column keep the section token between them: each section is measured
   // to the nearest section below it that overlaps it horizontally, wherever the markup nests them.
   function checkSectionSpacing(): void {
@@ -881,6 +931,8 @@ export function auditInPage(options: { focusRings: boolean }): string[] {
   checkText()
   checkWholeText()
   checkControlSpacing()
+  checkDockPrimary()
+  checkOneLineRows()
   checkSectionSpacing()
 
   if (options.focusRings) {

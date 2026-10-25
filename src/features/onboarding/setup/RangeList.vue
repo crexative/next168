@@ -14,7 +14,7 @@ const open = ref<{ key: string; field: Field } | null>(null)
 
 function change(key: string, change: { days?: DayIndex[]; start?: number; end?: number }): void {
   const range = props.category.ranges.find((candidate) => candidate.key === key)
-  if (range) touch(range, change)
+  if (range) touch(range, change, props.category.topic === 'sleep')
 }
 
 function remove(key: string): void {

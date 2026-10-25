@@ -28,7 +28,7 @@ function onName(name: string): void {
     <button class="head" type="button" :aria-expanded="expanded" :data-testid="`card-${category.key}`" @click="emit('toggle')">
       <span class="dot" aria-hidden="true" :style="{ background: color }" />
       <span class="text">
-        <span class="top"><span class="name t-body">{{ category.name || '…' }}</span><span class="amount t-body">{{ amount }}</span></span>
+        <span class="top" data-one-line><span class="name t-body">{{ category.name || '…' }}</span><span class="amount t-body">{{ amount }}</span></span>
         <span v-if="category.ranges.length === 0" class="line t-body">{{ t('onboarding.summary.noTimes') }}</span>
         <span v-for="range in category.ranges" :key="range.key" class="line t-body">{{ rangeLine(category, range) }}</span>
       </span>

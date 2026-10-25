@@ -7,14 +7,14 @@ import {
 } from '../setupModel'
 import { EXTRA_TOPICS, TOPICS, type TopicId } from '../setupTopics'
 import ChoiceChips from './ChoiceChips.vue'
-import { categoryFor, isRangeScreen } from './conversation'
+import { categoryFor, extraReply, isRangeScreen } from './conversation'
 import OtherThingField from './OtherThingField.vue'
 import QuickReplies from './QuickReplies.vue'
 import RangeList from './RangeList.vue'
 import { useSetupFormat } from './useSetupFormat'
 
 // The docked answer area of one question, like a keyboard that fits the question: quick replies that answer at once,
-// chips, the times on offer, or a name field. At most one main button, the round "Continue".
+// chips, the times on offer, or a name field. At most one main button, Send; skipping is quiet text above it.
 const props = defineProps<{ state: SetupState; busy: boolean; groupLabel: string; questionId: string }>()
 const emit = defineEmits<{ advance: []; edited: [] }>()
 const { t } = useSetupFormat()
@@ -25,10 +25,7 @@ const category = computed(() => categoryFor(props.state, screen.value))
 const ranges = computed(() => isRangeScreen(props.state, screen.value))
 const quick = computed(() => ['workStudy', 'commute', 'exercise'].includes(screen.value))
 
-const secondary = computed(() => {
-  if (ranges.value && screen.value !== 'sleep') return t('onboarding.guided.noFixedTime')
-  return ['sleep', 'workStudy', 'commute', 'exercise', 'more'].includes(screen.value) ? t('onboarding.guided.skip') : undefined
-})
+const extra = computed(() => extraReply(props.state, screen.value))
 // The send button is the validation: grey while there is nothing to send (no choice on "more", a time with no days
 // or that ends when it starts), in colour once there is. Why it is grey is in its description, for screen readers.
 const blocked = computed<'needChoice' | 'needFix' | undefined>(() => {
@@ -150,18 +147,18 @@ const labels = computed(() => ({
         </template>
 
         <RangeList v-else-if="category" :state="state" :category="category" :labels="labels" />
+        <button v-if="extra?.kind === 'answer'" class="reply-chip t-body" type="button" data-testid="setup-secondary" :disabled="busy" @click="onSecondary">{{ t(extra.key) }}</button>
       </div>
     </div>
-    <div v-if="secondary || !quick" class="dock-actions">
+    <div v-if="extra?.kind === 'skip' || !quick" class="dock-actions">
       <div class="column actions">
-        <button v-if="secondary" class="decline t-body" type="button" data-testid="setup-secondary" :disabled="busy" @click="onSecondary">{{ secondary }}</button>
-        <span v-else />
+        <button v-if="extra?.kind === 'skip'" class="skip t-body" type="button" data-testid="setup-secondary" :disabled="busy" @click="onSecondary">{{ t(extra.key) }}</button>
         <button
-          v-if="!quick" class="send" type="button" data-primary data-testid="setup-primary" :aria-label="t('onboarding.guided.send')"
+          v-if="!quick" class="send" type="button" data-primary data-dock-primary data-testid="setup-primary" :aria-label="t('onboarding.guided.send')"
           :aria-describedby="blocked ? `${questionId} ${reasonId}` : questionId" :disabled="busy || !canContinue" @click="onPrimary"
         >
           <span>{{ t('onboarding.guided.sendShort') }}</span>
-          <Icon name="send" :size="26" class="send-icon" />
+          <Icon name="send" :size="22" class="send-icon" />
         </button>
         <span v-if="blocked" :id="reasonId" class="visually-hidden" data-testid="send-reason">{{ t(`onboarding.guided.${blocked}`) }}</span>
       </div>
@@ -180,26 +177,45 @@ const labels = computed(() => ({
 .dock-answer > .column { display: flex; flex-direction: column; gap: var(--space-3); padding-block: var(--space-3) var(--space-1); }
 .dock-answer > .column:empty { display: none; }
 .dock-actions { flex: none; }
-.column { box-sizing: border-box; width: 100%; max-width: var(--column); margin-inline: auto; padding-inline: max(var(--space-4), var(--safe-left)) max(var(--space-4), var(--safe-right)); }
-.actions { display: flex; align-items: center; justify-content: space-between; gap: var(--space-3); padding-block: var(--space-2) calc(var(--space-3) + var(--safe-bottom)); }
-.actions { flex-wrap: wrap; }
-/* Not answering is a reply too: a quiet chip that lands in the conversation like any other answer. */
-.decline {
-  min-height: var(--tap-target); max-width: 100%; padding: var(--space-2) var(--space-4); border: 1.5px solid var(--field-border); border-radius: 999px;
+.column { box-sizing: border-box; width: 100%; max-width: var(--column); margin-inline: auto; padding-inline: max(var(--page-gutter), var(--safe-left)) max(var(--page-gutter), var(--safe-right)); }
+/* Send is the call to action: the group gap clears it of the answers above and of "Later" beside or above it, and the
+   bar keeps 16 px plus the safe area under it (docs/design/visual-design.md › Spacing). Below 480 px it spans the
+   column like the summary's button; from 480 px it hugs its label at the trailing edge, "Later" on the leading one. */
+.actions {
+  display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--group-gap);
+  padding-block: var(--group-gap) calc(var(--space-4) + var(--safe-bottom));
+}
+/* An answer that says "none": an outlined chip with the other answers. */
+.reply-chip {
+  align-self: flex-start; min-height: var(--tap-target); max-width: 100%; padding: var(--space-2) var(--space-4); border: 1.5px solid var(--field-border); border-radius: 999px;
   background: transparent; color: var(--label); font-weight: 600; text-align: center; overflow-wrap: anywhere; hyphens: auto; touch-action: manipulation;
   transition: transform 0.1s var(--ease-out), opacity 0.1s;
 }
-.decline:active:not(:disabled) { transform: scale(0.97); }
-/* A visible word and arrow share a target at least 44 px tall. */
+.reply-chip:active:not(:disabled) { transform: scale(0.97); }
+/* Skipping is possible but never invited: secondary text on the column's leading edge, no border or fill, a full target. */
+.skip {
+  min-width: var(--tap-target); min-height: var(--tap-target); max-width: 100%; padding: var(--space-2) 0; border: 0; border-radius: var(--radius-control);
+  background: transparent; color: var(--label-2); text-align: start; overflow-wrap: anywhere; hyphens: auto; touch-action: manipulation;
+  transition: color 0.1s, opacity 0.1s;
+}
+.skip:hover:not(:disabled) { color: var(--label); }
+.skip:active:not(:disabled) { opacity: 0.6; }
+.skip:disabled { opacity: 0.4; }
+/* The word and the arrow inset like the app's primary buttons, on a target as tall as the summary's. */
 .send {
-  display: inline-flex; flex: none; align-items: center; justify-content: center; gap: var(--space-1); min-height: 56px; padding: 0 var(--space-3); margin-inline-start: auto;
-  border: 0; border-radius: 999px; background: var(--tint); color: var(--tint-text); touch-action: manipulation;
+  display: inline-flex; flex: none; align-items: center; justify-content: center; gap: var(--space-2); min-height: 52px; max-width: 100%;
+  padding: var(--space-2) var(--space-5); margin-inline-start: auto; border: 0; border-radius: 26px; background: var(--tint); color: var(--tint-text);
+  font-size: 1.0625rem; font-weight: 600; line-height: 1.3; touch-action: manipulation;
   transition: transform 0.1s var(--ease-out), background-color 0.15s, opacity 0.15s;
 }
-.send:active:not(:disabled) { transform: scale(0.94); }
+.send:active:not(:disabled) { transform: scale(0.97); }
 .send:disabled { background: var(--label-3); color: var(--surface); }
 .send:focus-visible { outline-offset: 3px; }
+.send-icon { flex: none; }
 .send-icon:dir(rtl) { transform: scaleX(-1); }
+@media (max-width: 479px) {
+  .send { flex: 1 0 100%; }
+}
 .other, .add {
   align-self: flex-start; min-height: var(--tap-target); padding: var(--space-2) var(--space-4); border: 2px dashed var(--field-border);
   border-radius: 999px; background: transparent; color: var(--label); font-weight: 600; touch-action: manipulation;
@@ -210,6 +226,6 @@ const labels = computed(() => ({
 .other-form { display: flex; flex-direction: column; gap: var(--space-2); align-items: flex-start; }
 .note { margin: 0; color: var(--label-2); }
 @media (prefers-reduced-motion: reduce) {
-  .send:active:not(:disabled), .decline:active:not(:disabled) { transform: none; opacity: 0.7; }
+  .send:active:not(:disabled), .reply-chip:active:not(:disabled) { transform: none; opacity: 0.7; }
 }
 </style>

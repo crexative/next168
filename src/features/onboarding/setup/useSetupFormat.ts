@@ -17,8 +17,8 @@ export function useSetupFormat() {
   const time = (minute: number) => formatMinuteOfDay(minute, locale.value)
   const duration = (minutes: number) => formatDuration(minutes)
   const labels = () => ({ weekdays: t('onboarding.guided.days.weekdays'), everyDay: t('onboarding.guided.days.everyDay'), weekend: t('onboarding.guided.days.weekend'), everyNight: t('onboarding.guided.days.everyNight') })
-  const days = (list: readonly DayIndex[], nights = false) => daysPhrase(list, locale.value, weekStartsOn.value, labels(), nights)
-  const rangeDays = (category: CategoryDraft, range: RangeDraft) => (range.days.length === 0 ? '—' : days(range.days, category.topic === 'sleep'))
+  const days = (list: readonly DayIndex[], nights = false, form: 'long' | 'short' = 'long') => daysPhrase(list, locale.value, weekStartsOn.value, labels(), nights, form)
+  const rangeDays = (category: CategoryDraft, range: RangeDraft, form: 'long' | 'short' = 'long') => (range.days.length === 0 ? '—' : days(range.days, category.topic === 'sleep', form))
   const rangeLine = (category: CategoryDraft, range: RangeDraft) => `${rangeDays(category, range)} · ${timeRangeText(range.start, range.end, locale.value)}`
   const slotLine = (slot: Slot) => `${days(slot.days)} · ${timeRangeText(slot.start, slot.end, locale.value)}`
 

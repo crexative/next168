@@ -28,6 +28,8 @@ export interface RangeDraft {
   accepted: boolean
   // Edited in this session: only touched or new ranges can block a save.
   touched: boolean
+  // The person picked the end in this session: moving the start then leaves it where they put it.
+  endSet?: boolean
   label?: RangeLabel
 }
 
@@ -389,8 +391,21 @@ export function createState(document: PlannerDocument | null, env: SetupEnv): Se
 
 // ---------- Editing helpers the screens use ----------
 
-export function touch(range: RangeDraft, change: Partial<Pick<RangeDraft, 'days' | 'start' | 'end'>>): void {
-  Object.assign(range, change, { accepted: true, touched: true })
+// Moving the start keeps the range's length, the end moving with it, unless the person picked the end themselves. A range
+// never crosses midnight by itself: only one that already does, or one that may (sleep), or an end the person picks.
+export function touch(range: RangeDraft, change: Partial<Pick<RangeDraft, 'days' | 'start' | 'end'>>, mayCrossMidnight = false): void {
+  const next: Partial<RangeDraft> = { ...change, accepted: true, touched: true }
+  if (change.end !== undefined) next.endSet = true
+  else if (change.start !== undefined) next.end = endAfterMovingStart(range, change.start, mayCrossMidnight || range.end < range.start)
+  Object.assign(range, next)
+}
+
+function endAfterMovingStart(range: RangeDraft, start: number, crosses: boolean): number {
+  if (range.endSet && (crosses || start < range.end)) return range.end
+  const end = start + (range.end - range.start + MINUTES_PER_DAY) % MINUTES_PER_DAY
+  if (end < MINUTES_PER_DAY) return end
+  // Past midnight: a night range goes on into the next day; any other range stops at midnight.
+  return crosses ? end - MINUTES_PER_DAY : 0
 }
 
 export function addRange(state: SetupState, category: CategoryDraft): RangeDraft {

@@ -504,8 +504,9 @@ describe('the conversation', () => {
     const icon = send.querySelector('svg.lucide-arrow-right')
     expect(icon).not.toBeNull()
     expect(send.querySelector('svg.lucide-arrow-up')).toBeNull()
-    expect(icon?.getAttribute('width')).toBe('26')
-    expect(icon?.getAttribute('height')).toBe('26')
+    // Sized to its 17 px label, so the word and the arrow read as one control.
+    expect(icon?.getAttribute('width')).toBe('22')
+    expect(icon?.getAttribute('height')).toBe('22')
     expect(icon?.getAttribute('aria-hidden')).toBe('true')
     expect(send.getAttribute('aria-label')).toBe(i18n.global.t('onboarding.guided.send'))
   })

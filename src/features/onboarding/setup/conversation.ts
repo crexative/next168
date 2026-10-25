@@ -22,6 +22,19 @@ export function categoryFor(state: SetupState, screen: ScreenId): CategoryDraft 
 
 export const isRangeScreen = (state: SetupState, screen: ScreenId): boolean => screen !== 'more' && screen !== 'summary' && categoryFor(state, screen) !== undefined
 
+// The reply offered beside the answer controls, and how it is drawn: skipping the question ("Later") is a quiet text
+// button, so it never competes with the answers or with Send; "No fixed time" is an answer like any other and looks like
+// one. This is the one place that decides which reply is a skip and which an answer.
+export type ExtraReplyKind = 'skip' | 'answer'
+export interface ExtraReply { key: string; kind: ExtraReplyKind }
+const EXTRA_REPLY_KIND = { skip: 'skip', noFixedTime: 'answer' } as const satisfies Record<string, ExtraReplyKind>
+const SKIPPABLE: ScreenId[] = ['sleep', 'workStudy', 'commute', 'exercise', 'more']
+
+export function extraReply(state: SetupState, screen: ScreenId): ExtraReply | undefined {
+  const reply = isRangeScreen(state, screen) && screen !== 'sleep' ? 'noFixedTime' : SKIPPABLE.includes(screen) ? 'skip' : undefined
+  return reply === undefined ? undefined : { key: `onboarding.guided.${reply}`, kind: EXTRA_REPLY_KIND[reply] }
+}
+
 // Where the person goes on the way: to work, to class, or either.
 function destination(state: SetupState): 'work' | 'study' | 'both' | undefined {
   const { workStudy } = state.answers

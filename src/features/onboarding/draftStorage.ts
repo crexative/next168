@@ -74,7 +74,7 @@ function validRange(value: unknown): value is RangeDraft {
     && (value.blockId === undefined || (typeof value.blockId === 'string' && value.blockId !== ''))
     && Array.isArray(days) && days.every((day) => Number.isInteger(day) && day >= 0 && day <= 6) && new Set(days).size === days.length
     && isMinute(value.start) && isMinute(value.end)
-    && typeof value.accepted === 'boolean' && typeof value.touched === 'boolean'
+    && typeof value.accepted === 'boolean' && typeof value.touched === 'boolean' && (value.endSet === undefined || typeof value.endSet === 'boolean')
     && (value.label === undefined || LABELS.includes(value.label as string))
 }
 

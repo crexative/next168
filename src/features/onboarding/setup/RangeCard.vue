@@ -29,11 +29,13 @@ const emit = defineEmits<{
   change: [change: { days?: DayIndex[]; start?: number; end?: number }]
   remove: []
 }>()
-const { t, time, rangeDays, slotLine } = useSetupFormat()
+const { t, time, duration, rangeDays, slotLine } = useSetupFormat()
 const rows = ref<Partial<Record<Field, HTMLElement>>>({})
 
 const lengths = computed(() => (props.category.topic ? TOPICS[props.category.topic].lengths : OWN_LENGTHS))
 const nextDay = computed(() => props.range.end <= props.range.start && props.range.start !== props.range.end)
+// The length beside the end time, so moving the start (which moves the end with it) shows what changed.
+const length = computed(() => (props.range.end - props.range.start + 1440) % 1440)
 const problem = computed(() => rangeProblem(props.state, props.category, props.range))
 const message = computed(() => {
   const issue = problem.value
@@ -72,21 +74,21 @@ function onEscape(event: KeyboardEvent): void {
   <section class="range" :data-range="range.key" :aria-label="title" @keydown.esc="onEscape">
     <h4 v-if="title" class="title t-body">{{ title }}</h4>
 
-    <button v-if="!hideDays" :ref="(element) => { rows.days = element as HTMLElement }" class="row t-body" type="button" data-field="days" :aria-expanded="open === 'days'" @click="emit('toggle', open === 'days' ? null : 'days')">
+    <button v-if="!hideDays" :ref="(element) => { rows.days = element as HTMLElement }" class="row t-body" type="button" data-field="days" data-one-line :aria-expanded="open === 'days'" @click="emit('toggle', open === 'days' ? null : 'days')">
       <span class="label"><Icon name="calendar-days" :size="18" />{{ t('onboarding.guided.range.days') }}</span>
-      <span class="end"><span class="value">{{ rangeDays(category, range) }}</span><Icon name="chevron-right" :size="18" /></span>
+      <span class="end"><span class="value"><span class="days-short" aria-hidden="true">{{ rangeDays(category, range, 'short') }}</span><span class="days-long">{{ rangeDays(category, range) }}</span></span><Icon name="chevron-right" :size="18" /></span>
     </button>
     <DayPicker v-if="open === 'days'" :days="range.days" @change="emit('change', { days: $event })" @done="close('days')" />
 
-    <button :ref="(element) => { rows.start = element as HTMLElement }" class="row t-body" type="button" data-field="start" :aria-expanded="open === 'start'" @click="emit('toggle', open === 'start' ? null : 'start')">
+    <button :ref="(element) => { rows.start = element as HTMLElement }" class="row t-body" type="button" data-field="start" data-one-line :aria-expanded="open === 'start'" @click="emit('toggle', open === 'start' ? null : 'start')">
       <span class="label"><Icon name="clock" :size="18" />{{ startLabel ?? t('onboarding.guided.range.start') }}</span>
       <span class="end"><span class="value">{{ time(range.start) }}</span><Icon name="chevron-right" :size="18" /></span>
     </button>
     <TimeChips v-if="open === 'start'" field="start" :value="range.start" :start="range.start" :lengths="lengths" @pick="pick('start', $event)" />
 
-    <button :ref="(element) => { rows.end = element as HTMLElement }" class="row t-body" type="button" data-field="end" :aria-expanded="open === 'end'" @click="emit('toggle', open === 'end' ? null : 'end')">
+    <button :ref="(element) => { rows.end = element as HTMLElement }" class="row t-body" type="button" data-field="end" data-one-line :aria-expanded="open === 'end'" @click="emit('toggle', open === 'end' ? null : 'end')">
       <span class="label"><Icon name="clock" :size="18" />{{ endLabel ?? t('onboarding.guided.range.end') }}</span>
-      <span class="end"><span class="value">{{ nextDay ? `${time(range.end)} ${t('onboarding.guided.range.nextDay')}` : time(range.end) }}</span><Icon name="chevron-right" :size="18" /></span>
+      <span class="end"><span class="value">{{ time(range.end) }}<span v-if="nextDay" class="visually-hidden"> {{ t('onboarding.guided.range.nextDay') }}</span><span v-if="length > 0" class="length"> · {{ duration(length) }}</span></span><Icon name="chevron-right" :size="18" /></span>
     </button>
     <TimeChips v-if="open === 'end'" field="end" :value="range.end" :start="range.start" :lengths="lengths" @pick="pick('end', $event)" />
 
@@ -96,7 +98,7 @@ function onEscape(event: KeyboardEvent): void {
 </template>
 
 <style scoped>
-.range { display: flex; flex-direction: column; gap: var(--control-gap); padding: var(--card-padding-block) var(--card-padding); border-radius: var(--radius-card); background: var(--surface-2); }
+.range { container: range-card / inline-size; display: flex; flex-direction: column; gap: var(--control-gap); padding: var(--card-padding-block) var(--card-padding); border-radius: var(--radius-card); background: var(--surface-2); }
 .title { margin: 0; font-weight: 600; }
 .row {
   display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; column-gap: var(--space-3); width: 100%; min-height: var(--tap-target); padding: var(--space-1) min(var(--space-3), 12px);
@@ -104,10 +106,18 @@ function onEscape(event: KeyboardEvent): void {
 }
 /* A small leading icon says what the row holds: days or a time. */
 .label { display: inline-flex; align-items: center; gap: var(--space-2); min-width: 0; color: var(--label-2); }
-/* Label and value share a line while they fit; otherwise the value takes the next line, at the end. */
+/* Label and value share one line at 100 % text from 360 px (owner, 2026-10-25), guarded by data-one-line; at larger text
+   the value takes the next line, at the end. The end time's "(next day)" is only heard: the row under the start time says it. */
 .end { display: inline-flex; align-items: center; gap: var(--space-1); min-width: 0; max-width: 100%; margin-inline-start: auto; }
-/* Beside the chevron a long value ("7:00 (am nächsten Tag)" at 200 %) may still need to break a word: it hyphenates. */
+/* Beside the chevron a long value ("Montag bis Freitag" at 200 %) may still need to break a word: it hyphenates. */
 .value { min-width: 0; text-align: end; font-weight: 600; font-variant-numeric: tabular-nums; overflow-wrap: break-word; hyphens: auto; }
+/* Beside "Days" a narrow card writes the days short ("lun–vie"), a wide one in words; screen readers always hear the words. */
+.days-long { position: absolute; width: 1px; height: 1px; margin: -1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+@container range-card (min-width: 30rem) {
+  .days-short { display: none; }
+  .days-long { position: static; width: auto; height: auto; margin: 0; overflow: visible; clip: auto; white-space: normal; }
+}
+.length { color: var(--label-2); font-weight: 400; white-space: nowrap; }
 .row[aria-expanded='true'] { box-shadow: inset 0 0 0 2px var(--tint); }
 .message { margin: 0; min-height: 0; color: var(--danger-label); overflow-wrap: anywhere; }
 .message:empty { display: none; }

@@ -295,6 +295,42 @@ for (const theme of THEMES) {
       })
     }
 
+    // Label and value rows on one line at 100 % text from 360 px, in every language (owner, 2026-10-25: "Me levanto" put
+    // "7:00 a. m. (al día siguiente)" under its label): sleep, work, the trip, the summary with a card open.
+    for (const locale of LOCALES) {
+      test(`the guided setup's label and value rows on one line at 360 px (${locale})`, async ({ page }, testInfo) => {
+        test.skip(testInfo.project.name !== 'phone', 'the narrow-width regression runs in the phone project')
+        await page.setViewportSize({ width: 360, height: 780 })
+        await start(page, theme, { ...firstRunDocument, settings: { ...firstRunDocument.settings, locale } }, locale)
+        await page.goto('./')
+        const setup = page.getByTestId('setup')
+        const live = setup.locator('section.screen:not([aria-hidden=true])')
+        const settled = () => expect(setup.locator('section.screen[aria-hidden=true]')).toHaveCount(0)
+        await expect(setup).toHaveAttribute('data-screen', 'sleep')
+        await live.locator('[data-chip=split]').click()
+        await audit(page, `${theme}/${locale}/360/setup sleep, weekends different`)
+        for (const [selector, next] of [['[data-testid=setup-primary]', 'workStudy'], ['[data-value=both]', 'work'], ['[data-testid=setup-primary]', 'study'],
+          ['[data-testid=setup-primary]', 'commute'], ['[data-value=yes]', 'commuteRanges'], ['[data-testid=setup-primary]', 'exercise'], ['[data-value=yes]', 'exerciseRanges']] as const) {
+          await live.locator(selector).click()
+          await expect(setup).toHaveAttribute('data-screen', next)
+          await settled()
+          if (['work', 'study', 'commuteRanges', 'exerciseRanges'].includes(next)) await audit(page, `${theme}/${locale}/360/setup ${next}`)
+        }
+        await live.getByTestId('setup-primary').click()
+        await expect(setup).toHaveAttribute('data-screen', 'more')
+        for (const chip of ['family', 'friends', 'me', 'learning']) await live.locator(`[data-chip=${chip}]`).click()
+        for (let guard = 0; guard < 8 && (await setup.getAttribute('data-screen')) !== 'summary'; guard++) {
+          await settled()
+          await live.getByTestId('setup-primary').click()
+        }
+        await expect(setup).toHaveAttribute('data-screen', 'summary')
+        await settled()
+        await audit(page, `${theme}/${locale}/360/setup summary`)
+        await live.getByTestId('card-sleep').click()
+        await audit(page, `${theme}/${locale}/360/setup summary, sleep open`)
+      })
+    }
+
     // Summary › Day wrap-up at 320 px and 200 % text: the toolbar's back link ends before the ✦ and gear entries.
     for (const locale of ['es', 'de', 'en'] as const) {
       test(`the check-in's back link beside the toolbar entries at 320 px and 200 % text (${locale})`, async ({ page }, testInfo) => {
@@ -1421,6 +1457,110 @@ test.describe('visual integrity guard: spacing', () => {
     await page.setContent(spacingStage(`
       <div style="display: flex; gap: 8px"><section class="card" style="width: 140px; padding: 16px">Left</section><section class="card" style="width: 140px; padding: 16px">Right</section></div>
       <div role="dialog"><section style="padding: 16px">One</section><section style="padding: 16px">Two</section></div>`))
+    expect(await audit(page)).toEqual([])
+  })
+})
+
+// The setup's Send (and its summary's button) is the conversation's call to action: the owner asked for air around it
+// (2026-10-25). Its clear space is the group gap from any other control, and its bar keeps 16 px under it.
+test.describe('visual integrity guard: the docked primary action', () => {
+  test.beforeEach(({}, testInfo) => {
+    test.skip(testInfo.project.name !== 'phone', 'the guard self-tests run once')
+  })
+
+  const dockStage = ({ gap = 24, bottom = 16, top = 24, answers = '', style = '', marked = true }: { gap?: number; bottom?: number; top?: number; answers?: string; style?: string; marked?: boolean }) => `
+    <style>
+      body { margin: 0; font: 16px/24px sans-serif; background: #fff; }
+      button { box-sizing: border-box; height: 48px; margin: 0; border: 0; padding: 0 16px; font: inherit; background: #ddd; }
+      .frame { position: fixed; inset: 0; display: flex; flex-direction: column; }
+      .talk { flex: 1; }
+      .answers { flex: 0 1 auto; max-height: 120px; overflow-y: auto; padding: 0 16px; }
+      .actions { display: flex; justify-content: space-between; gap: ${gap}px; padding: ${top}px 16px ${bottom}px; }
+      ${style}
+    </style>
+    <div class="frame"><div class="talk"></div>${answers}<div class="actions"><button>Later</button><button ${marked ? 'data-dock-primary' : ''}>Send</button></div></div>`
+  const audit = (page: Page) => visualIntegrityViolations(page, { focusRings: false })
+
+  for (const [gap, reported] of [[12, true], [24, false]] as const) {
+    test(`a control ${gap} px beside the docked primary is ${reported ? 'reported' : 'accepted'}`, async ({ page }) => {
+      await page.setContent(dockStage({ gap, style: '.actions { justify-content: flex-end }' }))
+      const message = `<button> "Later" is ${gap.toFixed(1)}px from the docked primary <button> "Send" (clear space at least 24.0px)`
+      if (reported) expect(await audit(page)).toEqual([message])
+      else expect(await audit(page)).toEqual([])
+    })
+  }
+
+  for (const [bottom, reported] of [[8, true], [16, false]] as const) {
+    test(`a docked primary ${bottom} px above the bottom edge is ${reported ? 'reported' : 'accepted'}`, async ({ page }) => {
+      await page.setContent(dockStage({ bottom }))
+      const message = `the docked primary <button> "Send" is ${bottom.toFixed(1)}px from the bottom edge (at least 16.0px)`
+      if (reported) expect(await audit(page)).toEqual([message])
+      else expect(await audit(page)).toEqual([])
+    })
+  }
+
+  test('an answer in the scroller above, cut by its edge 12 px over the primary, is reported', async ({ page }) => {
+    const answers = '<div class="answers"><button style="display: block; width: 100%">Yes</button><div style="height: 8px"></div><button style="display: block; width: 100%">No</button><div style="height: 8px"></div><button style="display: block; width: 100%">Maybe</button></div>'
+    await page.setContent(dockStage({ top: 12, answers, style: '.actions { justify-content: flex-end } .actions button:first-child { display: none }' }))
+    const violations = await audit(page)
+    expect(violations).toEqual(['<button> "Maybe" is 12.0px from the docked primary <button> "Send" (clear space at least 24.0px)'])
+    await page.setContent(dockStage({ top: 24, answers, style: '.actions { justify-content: flex-end } .actions button:first-child { display: none }' }))
+    expect(await audit(page)).toEqual([])
+  })
+
+  test('the clear space follows the --group-gap token', async ({ page }) => {
+    await page.setContent(dockStage({ gap: 24, style: ':root { --group-gap: 32px; } .actions { justify-content: flex-end }' }))
+    expect(await audit(page)).toEqual(['<button> "Later" is 24.0px from the docked primary <button> "Send" (clear space at least 32.0px)'])
+  })
+
+  test('a button that is not marked as the docked primary keeps only the control gap', async ({ page }) => {
+    await page.setContent(dockStage({ gap: 12, bottom: 8, marked: false }))
+    expect(await audit(page)).toEqual([])
+  })
+})
+
+// The owner (2026-10-25): "Para textos así, es mejor por diseño, que se vea en una sola línea". A label and its value
+// share one line at 100 % text from 360 px; at larger text the row may wrap.
+test.describe('visual integrity guard: label and value rows on one line', () => {
+  test.beforeEach(({}, testInfo) => {
+    test.skip(testInfo.project.name !== 'phone', 'the guard self-tests run once')
+  })
+
+  const rowStage = (width: number, value = '7:00 (al día siguiente)', style = '') => `
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <style>
+      body { margin: 0; padding: 16px; font: 17px/22px sans-serif; background: #fff; }
+      .row { display: flex; flex-wrap: wrap; justify-content: space-between; column-gap: 12px; width: ${width}px; min-height: 48px; border: 0; padding: 0; background: none; font: inherit; text-align: start; }
+      .hidden { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+      ${style}
+    </style>
+    <button class="row" data-one-line><span>Me levanto</span><span class="value">${value}</span></button>`
+  const audit = (page: Page) => visualIntegrityViolations(page, { focusRings: false })
+  const wraps = expect.stringMatching(/^the row <button\.row> ".*" breaks onto more than one line \(a label and its value share one line at 100 % text from 360 px\)$/)
+
+  test('a value pushed under its label is reported', async ({ page }) => {
+    await page.setContent(rowStage(180))
+    expect(await audit(page)).toEqual([wraps])
+  })
+
+  test('a value that breaks inside itself beside its label is reported', async ({ page }) => {
+    await page.setContent(rowStage(230, '7:00 (al día siguiente)', '.row { flex-wrap: nowrap } .value { min-width: 0; text-align: end }'))
+    expect(await audit(page)).toEqual([wraps])
+  })
+
+  test('label and value on one line are accepted, and a visually hidden "(next day)" is not drawn text', async ({ page }) => {
+    await page.setContent(rowStage(200, '7:00<span class="hidden"> (al día siguiente)</span>'))
+    expect(await audit(page)).toEqual([])
+  })
+
+  test('at 200 % text the row may wrap', async ({ page }) => {
+    await page.setContent(rowStage(180, '7:00 (al día siguiente)', ':root { font-size: 200% }'))
+    expect(await audit(page)).toEqual([])
+  })
+
+  test('below 360 px the row may wrap', async ({ page }) => {
+    await page.setViewportSize({ width: 340, height: 700 })
+    await page.setContent(rowStage(180))
     expect(await audit(page)).toEqual([])
   })
 })

@@ -50,12 +50,12 @@ test.describe('the draft and what it is bound to', () => {
     await onScreen(page, 'work')
     await live(page).locator('[data-field=end]').click()
     await live(page).locator('[data-minute="1080"]').click()
-    await expect(live(page).locator('[data-field=end] .value')).toHaveText('6:00 p. m.')
+    await expect(live(page).locator('[data-field=end] .value')).toHaveText('6:00 p. m. · 9 h')
 
     await page.reload()
     await onScreen(page, 'work')
     await expect(live(page).getByText('Seguimos donde lo dejaste.')).toBeVisible()
-    await expect(live(page).locator('[data-field=end] .value')).toHaveText('6:00 p. m.')
+    await expect(live(page).locator('[data-field=end] .value')).toHaveText('6:00 p. m. · 9 h')
     expect(await storedRecord(page, 'document')).toBeNull()
   })
 
@@ -499,7 +499,8 @@ test.describe('answering', () => {
     await expect(setup(page)).toHaveCount(0)
     const saved = await stored(page)
     const work = saved.categories.find((category) => category.name === 'Trabajo')!
-    expect(saved.blocks.filter((block) => block.categoryId === work.id)).toEqual([expect.objectContaining({ start: 455, end: 1020, days: [1, 2, 3, 4, 5] })])
+    // Moving the start keeps the eight hours: 7:35 a. m. to 3:35 p. m. (round-6 verification, D6).
+    expect(saved.blocks.filter((block) => block.categoryId === work.id)).toEqual([expect.objectContaining({ start: 455, end: 935, days: [1, 2, 3, 4, 5] })])
   })
 
   test('A18: with a 24-hour clock the editor shows 09:00 and no a. m./p. m. switch', async ({ page }) => {
