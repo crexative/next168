@@ -4,5 +4,8 @@ export interface BusyDetails {
   date: string
   range: string
   calendar: string
+  // A Next168 event's own place and notes, when it has them.
+  location?: string
+  notes?: string
   conflictsWith: { blockId: string; title: string }[]
 }

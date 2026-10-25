@@ -11,7 +11,9 @@
     "calendar": "Agenda",
     "conflictsWith": "Chevauche {title}",
     "ownEvent": "Événement Next168",
-    "calendarFallback": "Agenda"
+    "calendarFallback": "Agenda",
+    "location": "Lieu",
+    "notes": "Notes"
   },
   "pager": {
     "days": "Jours de la semaine"

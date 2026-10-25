@@ -11,7 +11,9 @@
     "calendar": "Calendario",
     "conflictsWith": "Choca con {title}",
     "ownEvent": "Evento de Next168",
-    "calendarFallback": "Calendario"
+    "calendarFallback": "Calendario",
+    "location": "Lugar",
+    "notes": "Notas"
   },
   "pager": {
     "days": "Días de la semana"

@@ -148,6 +148,8 @@ function inspect(item: BusySegment): void {
     date: item.date,
     range: item.continuesBefore || item.continuesAfter ? t('week.grid.crossesMidnight', { range }) : range,
     calendar: item.kind === 'event' ? t('week.details.ownEvent') : item.calendar ?? t('week.details.calendarFallback'),
+    ...(item.location ? { location: item.location } : {}),
+    ...(item.notes ? { notes: item.notes } : {}),
     conflictsWith: props.segments
       .filter((segment) => segment.startMinute < item.endMinute && item.startMinute < segment.endMinute)
       .map((segment) => ({ blockId: segment.occurrence.blockId, title: segment.occurrence.title })),

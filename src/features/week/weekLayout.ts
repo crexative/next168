@@ -23,6 +23,9 @@ export interface BusySegment extends DayPart {
   start: string
   end: string
   calendar?: string
+  // A Next168 event's own place and notes.
+  location?: string
+  notes?: string
 }
 
 export interface LanePosition {
@@ -114,15 +117,15 @@ export const INSTANT_EVENT_MINUTES = 15
 export function busySegmentsByDate(external: ExternalOccurrence[], events: PlannerEvent[], dates: string[], timeZone: string, calendarNames: ReadonlyMap<string, string> = new Map()): Record<string, BusySegment[]> {
   const byDate: Record<string, BusySegment[]> = Object.fromEntries(dates.map((date) => [date, []]))
   const timed = [
-    ...external.filter((item) => item.busy && !item.allDay).map((item) => ({ key: `${item.sourceId}/${item.uid}/${item.recurrenceId ?? ''}`, title: item.title, start: item.start, end: item.end, kind: 'external' as const, calendar: calendarNames.get(item.sourceId) })),
-    ...events.filter((event) => !event.allDay).map((event) => ({ key: event.id, title: event.title, start: event.start, end: event.end, kind: 'event' as const, calendar: undefined })),
+    ...external.filter((item) => item.busy && !item.allDay).map((item) => ({ key: `${item.sourceId}/${item.uid}/${item.recurrenceId ?? ''}`, title: item.title, start: item.start, end: item.end, kind: 'external' as const, calendar: calendarNames.get(item.sourceId), location: undefined, notes: undefined })),
+    ...events.filter((event) => !event.allDay).map((event) => ({ key: event.id, title: event.title, start: event.start, end: event.end, kind: 'event' as const, calendar: undefined, location: event.location, notes: event.notes })),
   ]
   for (const item of timed) {
     // An event with no duration (a reminder in an imported calendar) still takes a short visible span, as in Apple
     // Calendar; its details keep the real times.
     const shownEnd = Date.parse(item.end) > Date.parse(item.start) ? item.end : new Date(Date.parse(item.start) + INSTANT_EVENT_MINUTES * 60_000).toISOString()
     for (const part of splitByLocalDay(item.start, shownEnd, dates, timeZone)) {
-      byDate[part.date]?.push({ ...part, key: `${item.key}@${part.date}`, title: item.title, kind: item.kind, start: item.start, end: item.end, calendar: item.calendar })
+      byDate[part.date]?.push({ ...part, key: `${item.key}@${part.date}`, title: item.title, kind: item.kind, start: item.start, end: item.end, calendar: item.calendar, ...(item.location ? { location: item.location } : {}), ...(item.notes ? { notes: item.notes } : {}) })
     }
   }
   return byDate

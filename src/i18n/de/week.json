@@ -11,7 +11,9 @@
     "calendar": "Kalender",
     "conflictsWith": "Überschneidet sich mit {title}",
     "ownEvent": "Next168-Termin",
-    "calendarFallback": "Kalender"
+    "calendarFallback": "Kalender",
+    "location": "Ort",
+    "notes": "Notizen"
   },
   "pager": {
     "days": "Wochentage"
