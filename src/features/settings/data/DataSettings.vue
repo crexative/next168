@@ -235,7 +235,7 @@ async function deleteEverything(): Promise<void> {
 </template>
 
 <style scoped>
-.data { padding-inline: var(--space-4); }
+.data { padding-inline: var(--page-gutter); }
 .note { padding: var(--row-padding-block) var(--card-padding); }
 .actions { display: flex; flex-wrap: wrap; gap: var(--space-2); }
 .preview { display: flex; flex-direction: column; gap: var(--space-2); margin-block: var(--space-4); padding: var(--card-padding-block) var(--card-padding); background: var(--surface); border-radius: var(--radius-card); }

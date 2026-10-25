@@ -44,5 +44,5 @@ const page = useSettingsPage()
 </template>
 
 <style scoped>
-.gutter, .more { padding-inline: var(--space-4); }
+.gutter, .more { padding-inline: var(--page-gutter); }
 </style>

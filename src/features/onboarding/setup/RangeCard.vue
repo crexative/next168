@@ -105,7 +105,8 @@ function onEscape(event: KeyboardEvent): void {
 .label { display: inline-flex; align-items: center; gap: var(--space-2); min-width: 0; color: var(--label-2); }
 /* Label and value share a line while they fit; otherwise the value takes the next line, at the end. */
 .end { display: inline-flex; align-items: center; gap: var(--space-1); min-width: 0; max-width: 100%; margin-inline-start: auto; }
-.value { min-width: 0; text-align: end; font-weight: 600; font-variant-numeric: tabular-nums; overflow-wrap: break-word; }
+/* Beside the chevron a long value ("7:00 (am nächsten Tag)" at 200 %) may still need to break a word: it hyphenates. */
+.value { min-width: 0; text-align: end; font-weight: 600; font-variant-numeric: tabular-nums; overflow-wrap: break-word; hyphens: auto; }
 .row[aria-expanded='true'] { box-shadow: inset 0 0 0 2px var(--tint); }
 .message { margin: 0; min-height: 0; color: var(--danger-label); overflow-wrap: anywhere; }
 .message:empty { display: none; }

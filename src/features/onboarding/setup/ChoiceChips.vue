@@ -32,7 +32,7 @@ defineEmits<{ toggle: [value: string] }>()
   border: 2px solid var(--field-border); border-radius: 999px; background: var(--surface); color: var(--label); font-weight: 600;
   transition: transform 0.1s var(--ease-out), background-color 0.1s; touch-action: manipulation;
 }
-.chip-label { min-width: 0; overflow-wrap: anywhere; text-align: start; }
+.chip-label { min-width: 0; overflow-wrap: anywhere; hyphens: auto; text-align: start; }
 .chip:active { transform: scale(0.97); }
 .chip[aria-pressed='true'] { border-color: var(--tint); background: color-mix(in srgb, var(--tint) 14%, transparent); color: var(--tint-label); }
 @media (prefers-reduced-motion: reduce) { .chip:active { transform: none; opacity: 0.7; } }

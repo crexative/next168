@@ -164,7 +164,7 @@ function overlapText(item: TimelineItem): string {
 </template>
 
 <style scoped>
-.timeline-section { margin: var(--section-gap) var(--space-4) 0; }
+.timeline-section { margin: var(--section-gap) var(--page-gutter) 0; }
 .section-title { margin: 0 0 var(--space-3); }
 .all-day { display: flex; flex-wrap: wrap; gap: var(--space-2); margin: 0 0 var(--space-2); padding: 0; list-style: none; }
 .all-day-item { padding: var(--space-1) var(--space-3); border-radius: var(--radius-control); background: var(--surface); }

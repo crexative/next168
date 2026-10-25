@@ -50,7 +50,7 @@ async function remove(): Promise<void> {
 
 <style scoped>
 /* Same side gutter as the other settings sections. */
-.assistant-settings { padding-inline: var(--space-4); }
+.assistant-settings { padding-inline: var(--page-gutter); }
 .settings-body { display: flex; flex-direction: column; align-items: flex-start; gap: var(--space-3); padding: var(--space-4) var(--card-padding); }
 /* Full width like every other segmented control, so "On-device model" does not wrap. */
 .settings-body > .segmented { align-self: stretch; }

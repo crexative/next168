@@ -83,7 +83,7 @@ const legend = computed(() => {
 
 <style scoped src="./stickyHeader.css"></style>
 <style scoped>
-.overview { padding: 0 var(--space-4) var(--space-4) var(--space-2); }
+.overview { padding: 0 var(--page-gutter) var(--space-4) var(--space-2); }
 .overview-head, .overview-body { display: grid; grid-template-columns: 2.5rem repeat(7, minmax(0, 1fr)); }
 .overview-head {
   position: sticky;

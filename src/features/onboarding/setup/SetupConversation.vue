@@ -123,7 +123,7 @@ function onFocusIn(event: FocusEvent): void {
 .screen { display: flex; flex: 1; flex-direction: column; min-height: 0; hyphens: auto; }
 .screen :deep(button) { hyphens: manual; }
 .setup-scroller { flex: 1 1 auto; min-height: 0; overflow-y: auto; overscroll-behavior: contain; }
-.column { box-sizing: border-box; width: 100%; max-width: var(--column); margin-inline: auto; padding-inline: max(var(--space-4), var(--safe-left)) max(var(--space-4), var(--safe-right)); }
+.column { box-sizing: border-box; width: 100%; max-width: var(--column); margin-inline: auto; padding-inline: max(var(--page-gutter), var(--safe-left)) max(var(--page-gutter), var(--safe-right)); }
 .setup-scroller > .column { display: flex; flex-direction: column; gap: var(--space-4); padding-block: var(--space-4) var(--space-6); }
 .transcript { display: flex; flex-direction: column; gap: var(--space-2); margin: 0; padding: 0; list-style: none; }
 .exchange { display: flex; flex-direction: column; }

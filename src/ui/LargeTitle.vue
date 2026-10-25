@@ -49,13 +49,13 @@ onBeforeUnmount(() => observer?.disconnect())
   align-items: center;
   justify-content: flex-end;
   height: var(--toolbar-height);
-  padding: 0 var(--space-4);
+  padding: 0 var(--page-gutter);
   position: relative;
 }
 .toolbar-title {
   position: absolute;
   /* Clear of the actions on both sides; at large text sizes it stops growing and truncates. */
-  inset-inline: calc(var(--tap-target) * 2 + var(--space-2) + var(--space-4));
+  inset-inline: calc(var(--tap-target) * 2 + var(--space-2) + var(--page-gutter));
   overflow: hidden;
   font-size: min(1.0625rem, 22px);
   text-align: center;
@@ -71,7 +71,7 @@ onBeforeUnmount(() => observer?.disconnect())
 .toolbar[data-collapsed] { box-shadow: 0 0.5px 0 var(--material-edge); }
 .large-title:focus { outline: none; }
 .large-title {
-  padding: calc(var(--toolbar-height) + var(--space-2)) var(--space-4) var(--header-gap);
+  padding: calc(var(--toolbar-height) + var(--space-2)) var(--page-gutter) var(--header-gap);
   /* A long single word ("Tagesabschluss", "Asistente") at 200 % text is hyphenated where the browser can, and
      otherwise breaks, instead of widening the page. */
   overflow-wrap: anywhere;

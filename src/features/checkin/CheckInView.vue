@@ -186,7 +186,7 @@ onMounted(() => {
 
 <style scoped>
 /* Starts under the large title like Assistant; centred, it drifted away from its own title on wide windows. */
-.checkin { display: flex; flex-direction: column; gap: var(--space-4); max-width: 36rem; padding: 0 var(--space-4) var(--space-6); }
+.checkin { display: flex; flex-direction: column; gap: var(--space-4); max-width: 36rem; padding: 0 var(--page-gutter) var(--space-6); }
 .checkin-form { display: flex; flex-direction: column; gap: var(--group-gap); }
 .date-line { margin: 0; }
 .facts, .pending-list { margin: 0; padding: 0; list-style: none; border-radius: var(--radius-card); background: var(--surface); }
@@ -206,8 +206,8 @@ onMounted(() => {
 /* The back link takes the leading side up to the toolbar's two 44 px entries (and the gap before them), never under them;
    a long label ("Übersicht" at 200 %) ends in an ellipsis instead. */
 .toolbar-back.is-in-toolbar {
-  position: absolute; inset-block: 0; inset-inline-start: var(--space-4); display: flex; align-items: center;
-  max-width: min(7rem, calc(100% - var(--space-4) * 2 - var(--tap-target) * 2 - var(--space-2) - var(--control-gap)));
+  position: absolute; inset-block: 0; inset-inline-start: var(--page-gutter); display: flex; align-items: center;
+  max-width: min(7rem, calc(100% - var(--page-gutter) * 2 - var(--tap-target) * 2 - var(--space-2) - var(--control-gap)));
 }
 .toolbar-back.is-in-toolbar :deep(.back-button) { max-width: 100%; }
 .toolbar-back.is-in-toolbar :deep(.back-button span) { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }

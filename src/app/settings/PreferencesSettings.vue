@@ -72,7 +72,7 @@ async function chooseWeekStart(value: '0' | '1'): Promise<void> {
 </template>
 
 <style scoped>
-.preferences { padding-inline: var(--space-4); }
+.preferences { padding-inline: var(--page-gutter); }
 .preference {
   position: relative;
   display: flex;

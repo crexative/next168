@@ -263,7 +263,7 @@ onBeforeUnmount(() => {
   display: grid;
   flex: 0 0 100%;
   grid-template-columns: 3.25rem minmax(0, 1fr);
-  padding: 0 var(--space-4) var(--space-4) var(--space-2);
+  padding: 0 var(--page-gutter) var(--space-4) var(--space-2);
 }
 .pager-track.is-fading { animation: day-fade 0.15s ease-out; }
 @keyframes day-fade { from { opacity: 0.35; } }

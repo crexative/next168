@@ -234,7 +234,7 @@ async function remove(): Promise<void> {
 
 <style scoped>
 /* The list and its Add button are one section: the section gap goes after the button, not between them. */
-.categories { display: flex; flex-direction: column; align-items: stretch; gap: var(--space-2); margin-bottom: var(--section-gap); padding-inline: var(--space-4); }
+.categories { display: flex; flex-direction: column; align-items: stretch; gap: var(--space-2); margin-bottom: var(--section-gap); padding-inline: var(--page-gutter); }
 .categories > .list-group { margin-bottom: 0; }
 .category-row + .category-row .category-button::before { content: ''; position: absolute; top: 0; right: 0; left: var(--card-padding); border-top: 1px solid var(--separator); }
 .category-button { position: relative; display: flex; align-items: center; gap: var(--space-3); width: 100%; min-height: var(--row-min-height); padding: var(--row-padding-block) var(--card-padding); border: 0; background: transparent; text-align: start; }

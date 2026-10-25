@@ -17,7 +17,7 @@ const { t } = useI18n()
 </template>
 
 <style scoped>
-.subpage { padding-inline: var(--space-4); }
+.subpage { padding-inline: var(--page-gutter); }
 .subpage-title { margin-block: var(--space-1) var(--space-4); }
 .subpage > :deep(.block + .block) { margin-top: var(--space-6); }
 /* The sections bring their own side gutter; inside a sub-page they share the page's. */

@@ -82,7 +82,8 @@ function toggle(day: DayIndex): void {
   color: var(--label); font-weight: 600; touch-action: manipulation; overflow-wrap: anywhere;
 }
 .pick[aria-pressed='true'], .toggle[aria-pressed='true'] { border-color: var(--tint); background: color-mix(in srgb, var(--tint) 14%, transparent); color: var(--tint-label); }
-/* Seven toggles wrap to 4 + 3 on a narrow screen, each at least a full target wide. */
-.toggles { display: grid; grid-template-columns: repeat(auto-fit, minmax(max(var(--tap-target), 3.2em), 1fr)); gap: var(--space-2); }
+/* Seven toggles wrap to 4 + 3 on a phone (3 + 3 + 1 at 320 px), each wide enough for the check and the short day name
+   side by side, so a chosen day never splits its name ("lu / n"). */
+.toggles { display: grid; grid-template-columns: repeat(auto-fit, minmax(max(var(--tap-target), 3.75em), 1fr)); gap: var(--control-gap); }
 .toggle { padding-inline: var(--space-1); }
 </style>

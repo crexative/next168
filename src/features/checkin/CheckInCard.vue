@@ -70,7 +70,7 @@ defineExpose({ focus: () => link.value?.focus() })
 </template>
 
 <style scoped>
-.checkin-card { margin: var(--section-gap) var(--space-4) 0; border-radius: var(--radius-card); background: var(--surface); }
+.checkin-card { margin: var(--section-gap) var(--page-gutter) 0; border-radius: var(--radius-card); background: var(--surface); }
 .checkin-row {
   display: flex;
   align-items: center;

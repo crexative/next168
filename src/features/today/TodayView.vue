@@ -152,5 +152,5 @@ function clear(occurrence: DatedOccurrence): void {
 <style scoped>
 .today-view { padding-bottom: var(--space-6); }
 /* The subtitle belongs to the title: it takes the header gap under the title and leaves it under itself. */
-.today-subtitle { margin: calc(var(--header-gap) * -1) var(--space-4) var(--header-gap); font-variant-numeric: tabular-nums; text-wrap: balance; }
+.today-subtitle { margin: calc(var(--header-gap) * -1) var(--page-gutter) var(--header-gap); font-variant-numeric: tabular-nums; text-wrap: balance; }
 </style>

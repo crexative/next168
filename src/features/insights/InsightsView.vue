@@ -113,7 +113,7 @@ function doneText(row: Row): string {
 </template>
 
 <style scoped>
-.insights { display: flex; flex-direction: column; gap: var(--section-gap); padding: 0 var(--space-4) var(--space-6); }
+.insights { display: flex; flex-direction: column; gap: var(--section-gap); padding: 0 var(--page-gutter) var(--space-6); }
 .live-line { margin: var(--space-1) 0 0; }
 .goals { display: flex; flex-direction: column; gap: var(--space-3); }
 .rows { display: flex; flex-direction: column; gap: 1px; overflow: hidden; margin: 0; padding: 0; list-style: none; background: var(--separator); border-radius: var(--radius-card); }

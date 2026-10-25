@@ -384,6 +384,40 @@ export function auditInPage(options: { focusRings: boolean }): string[] {
     return node
   }
 
+  // The width a line of this text could have: its block, or, when that block is squeezed beside siblings in a flex row or
+  // a grid track, the container that hands out the room.
+  function lineRoom(element: HTMLElement): number {
+    let node = blockOf(element)
+    for (let container = node.parentElement; container && container !== document.body; container = container.parentElement) {
+      const style = getComputedStyle(container)
+      const shares = /flex/.test(style.display) && !style.flexDirection.startsWith('column') || /grid/.test(style.display)
+      if (!shares) break
+      node = container
+    }
+    const box = contentBox(node, getComputedStyle(node))
+    return box.right - box.left
+  }
+
+  // A word breaks across lines only when no line could hold it, or by hyphenation in the page's language; any other split
+  // (overflow-wrap: anywhere in a squeezed flex item) reads as an arbitrary cut ("Exerc ise").
+  function checkWordBreaks(node: Text, parent: HTMLElement): void {
+    const style = getComputedStyle(parent)
+    if (style.hyphens === 'auto' && parent.closest('[lang]') || parent.closest('pre, code, [data-scroll-x]')) return
+    const text = node.textContent ?? ''
+    const range = document.createRange()
+    let room: number | null = null
+    for (const match of text.matchAll(/[\p{L}\p{N}]{3,}/gu)) {
+      range.setStart(node, match.index)
+      range.setEnd(node, match.index + match[0].length)
+      // Fragments on one line can differ in top (a fallback glyph); a new line starts below the previous fragment.
+      const fragments = Array.from(range.getClientRects()).filter((rect) => rect.width > 0 && rect.height > 0)
+      if (!fragments.some((rect) => rect.top >= fragments[0]!.bottom - 1)) continue
+      room ??= lineRoom(parent)
+      const width = textWidth(match[0], style)
+      if (width <= room - TOLERANCE) violations.push(`the word "${match[0]}" in ${describe(parent)} breaks mid-word though a line has room for it (${width.toFixed(1)}px of ${room.toFixed(1)}px)`)
+    }
+  }
+
   function checkText(): void {
     const walker = document.createTreeWalker(scope, NodeFilter.SHOW_TEXT, {
       acceptNode: (node) => (node.textContent ?? '').trim() ? NodeFilter.FILTER_ACCEPT : NodeFilter.FILTER_REJECT,
@@ -394,6 +428,7 @@ export function auditInPage(options: { focusRings: boolean }): string[] {
       const parent = node.parentElement
       if (!parent || parent.closest('option, script, style, svg, select, textarea') || !rendered(parent) || isCovered(parent)) continue
       blocks.add(blockOf(parent))
+      checkWordBreaks(node as Text, parent)
       range.selectNodeContents(node)
       const lines = Array.from(range.getClientRects()).filter((line) => line.width > 0 && line.height > 0)
       for (const line of lines) {

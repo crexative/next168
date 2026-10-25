@@ -60,6 +60,7 @@ The owner's complaint (2026-10-24): screens felt stacked, with no air. The answe
 | Unrelated groups | `--group-gap` | 24 | 24 | Between groups inside one section or sheet (a field group and the next). |
 | Page sections | `--section-gap` | 32 | 32 | Between consecutive page sections (`section`, list groups, cards that stand alone). None above the first one on a page. |
 | Header to content | `--header-gap` | 16 | 16 | Under the large title (or the subtitle that belongs to it) before the first content. A section's own heading sits `--space-3` (12) above its card; an uppercase eyebrow `--space-2` (8). |
+| Page gutter | `--page-gutter` | 16 | 16 | Between the screen (or sheet) edge and the content column. Fixed px. |
 | Card inset (inline) | `--card-padding` | 16 | 20 | Text and visible controls keep this from a card's left and right edges, also in unpadded list cards whose rows supply the inset. Fixed px, like system margins: it does not grow with text size, so 200 % text keeps its width. |
 | Card inset (block) | `--card-padding-block` | 16 | 20 | Top and bottom of content cards; grows with text. |
 | Row padding | `--row-padding-block` | 12 | 12 | Above and below a list row's text; the smallest vertical inset any card content may have. |

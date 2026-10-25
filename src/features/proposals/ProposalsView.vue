@@ -49,5 +49,5 @@ onBeforeUnmount(() => clearInterval(timer))
 </template>
 
 <style scoped>
-.proposals-view { padding: var(--space-4); }
+.proposals-view { padding: var(--space-4) var(--page-gutter); }
 </style>

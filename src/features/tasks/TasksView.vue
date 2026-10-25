@@ -233,7 +233,7 @@ function lateText(task: Task): string {
 </template>
 
 <style scoped>
-.tasks { padding: 0 var(--space-4) var(--space-6); }
+.tasks { padding: 0 var(--page-gutter) var(--space-6); }
 .add { display: flex; flex-direction: column; gap: var(--space-3); padding: var(--card-padding-block) var(--card-padding); background: var(--surface); border-radius: var(--radius-card); }
 .add > .field .input { padding-inline: min(var(--space-3), 12px); }
 .details { display: flex; flex-direction: column; gap: var(--space-3); }

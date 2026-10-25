@@ -19,7 +19,7 @@
 /* Text actions start on the content's leading edge and read alike, whether they are buttons or links. */
 .calendar-actions .is-plain { justify-content: flex-start; padding-inline: 0; }
 .calendar-actions a { display: inline-flex; align-items: center; min-height: var(--tap-target); color: var(--tint-label); font-weight: 600; text-decoration: none; }
-.calendar-section { padding-inline: var(--space-4); display: grid; gap: var(--space-4); margin-bottom: var(--space-6); overflow-wrap: anywhere; }
+.calendar-section { padding-inline: var(--page-gutter); display: grid; gap: var(--space-4); margin-bottom: var(--space-6); overflow-wrap: anywhere; }
 .calendar-source { display: grid; gap: var(--space-2); }
 .calendar-file { display: grid; gap: var(--space-2); padding: var(--card-padding-block) var(--card-padding); border-radius: var(--radius-card); background: var(--surface); }
 .calendar-file input { min-width: 0; width: 100%; max-width: 100%; min-height: 44px; }

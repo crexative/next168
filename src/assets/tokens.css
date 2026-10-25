@@ -65,6 +65,7 @@
   --group-gap: var(--space-6);
   --section-gap: var(--space-8);
   --header-gap: var(--space-4);
+  --page-gutter: 16px;
   --card-padding: 16px;
   --card-padding-block: var(--space-4);
   --row-padding-block: var(--space-3);

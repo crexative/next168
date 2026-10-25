@@ -317,7 +317,7 @@ onBeforeUnmount(() => {
 .sheet-grab { touch-action: none; padding-top: var(--space-2); cursor: grab; }
 .sheet-title:focus { outline: none; }
 .sheet-handle { display: block; width: 36px; height: 5px; margin: 0 auto var(--space-1); border-radius: 3px; background: var(--label-3); }
-.sheet-header { display: flex; align-items: center; justify-content: space-between; padding: 0 var(--space-2) 0 var(--space-4); }
+.sheet-header { display: flex; align-items: center; justify-content: space-between; padding: 0 var(--space-2) 0 var(--page-gutter); }
 .sheet-close {
   display: inline-flex;
   align-items: center;
@@ -331,10 +331,10 @@ onBeforeUnmount(() => {
 }
 /* Drawn inside the button so the ring never crowds the sheet's rounded corner. */
 .sheet-close:focus-visible { outline-offset: -2px; }
-.sheet-body { flex: 1; overflow-y: auto; overscroll-behavior: contain; padding: var(--space-2) var(--space-4) var(--space-4); }
+.sheet-body { flex: 1; overflow-y: auto; overscroll-behavior: contain; padding: var(--space-2) var(--page-gutter) var(--space-4); }
 /* Within the thumb's reach at the bottom of a phone sheet, always visible while the body scrolls. */
-.sheet-footer { flex: none; padding: var(--space-1) var(--space-4); border-top: 0.5px solid var(--separator); }
-.sheet-footer.is-actions { padding: var(--space-3) var(--space-4) var(--space-4); }
+.sheet-footer { flex: none; padding: var(--space-1) var(--page-gutter); border-top: 0.5px solid var(--separator); }
+.sheet-footer.is-actions { padding: var(--space-3) var(--page-gutter) var(--space-4); }
 .is-centered .sheet-footer.is-actions { padding-bottom: var(--space-3); }
 .sheet-dismiss {
   display: flex;

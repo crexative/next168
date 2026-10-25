@@ -71,7 +71,7 @@ onBeforeUnmount(() => {
   /* One cell: a toast replacing another cross-fades over it instead of sharing the row, where each would be squeezed. */
   display: grid;
   justify-items: center;
-  padding: 0 var(--space-4);
+  padding: 0 var(--page-gutter);
   pointer-events: none;
 }
 .toast {

@@ -1077,6 +1077,29 @@ test.describe('visual integrity guard: spacing', () => {
     expect(await audit(page)).toEqual([])
   })
 
+  const squeezed = (extra: string) => spacingStage(`<div class="row"><span class="icon"></span><span class="name">Exercise</span></div>`, `
+    .row { display: flex; width: 120px; gap: 8px; font-size: 24px; line-height: 30px; }
+    .icon { flex: none; width: 70px; height: 20px; background: #ccc; }
+    .name { min-width: 0; overflow-wrap: anywhere; ${extra} }`)
+
+  test('a word cut mid-word in a squeezed flex item, though its row could hold it, is reported', async ({ page }) => {
+    await page.setContent(squeezed(''))
+    const found = await audit(page)
+    expect(found).toHaveLength(1)
+    expect(found[0]).toMatch(/^the word "Exercise" in <span\.name> "Exercise" breaks mid-word though a line has room for it \([\d.]+px of 120\.0px\)$/)
+  })
+
+  test('a word hyphenated in the page language is accepted', async ({ page }) => {
+    await page.setContent(squeezed('hyphens: auto;'))
+    await page.evaluate(() => { document.documentElement.lang = 'en' })
+    expect(await audit(page)).toEqual([])
+  })
+
+  test('a word wider than any line may break', async ({ page }) => {
+    await page.setContent(spacingStage('<p style="width: 60px; font-size: 24px; overflow-wrap: anywhere">Tagesabschluss</p>'))
+    expect(await audit(page)).toEqual([])
+  })
+
   for (const [gap, reported] of [[24, true], [32, false]] as const) {
     test(`page sections ${gap} px apart are ${reported ? 'reported' : 'accepted'}`, async ({ page }) => {
       await page.setContent(spacingStage(`<section class="card" style="padding: 16px">First</section><section class="card" style="padding: 16px; margin-top: ${gap}px">Second</section>`))

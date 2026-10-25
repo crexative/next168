@@ -92,7 +92,7 @@ async function importWorkspace(event: Event) {
 </template>
 
 <style scoped>
-.connect-settings { padding: var(--space-4); }
+.connect-settings { padding: var(--space-4) var(--page-gutter); }
 .local-title { margin-top: var(--space-6); }
 .local-hint { margin-top: var(--space-1); }
 /* One column that may shrink below its content's natural width (a textarea is 20 characters wide by default), so

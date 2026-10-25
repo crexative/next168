@@ -60,7 +60,7 @@ const { locale } = useI18n()
 
 <style scoped src="./stickyHeader.css"></style>
 <style scoped>
-.week-grid { padding: 0 var(--space-4) var(--space-4) var(--space-2); }
+.week-grid { padding: 0 var(--page-gutter) var(--space-4) var(--space-2); }
 .grid-header, .grid-body { display: grid; grid-template-columns: 3.25rem repeat(7, minmax(0, 1fr)); }
 .grid-header {
   position: sticky;
