@@ -114,11 +114,11 @@ export function layoutCard(summary: ShareSummary, options: { format: ShareFormat
   ops.push(text('label', label.text, MARGIN + width, headerBaseline, { weight: 400, size: label.size }, palette.label2, labelRoom, 'right'))
   const headerBottom = headerBaseline + DESCENT * 17
 
-  // Footer: at the bottom safe line.
-  const footerBaseline = frame.height - frame.safeBottom
-  const footer = fitLine(copy.footer, { weight: 600, size: 13, min: 11, maxWidth: width }, measure)
-  const footerOp = text('footer', footer.text, MARGIN, footerBaseline, { weight: 600, size: footer.size }, palette.tintLabel, width)
-  const footerTop = footerOp.box.y
+  // Footer: its last line on the bottom safe line. Never cut, because it may carry the public address.
+  const footer = fitBlock(copy.footer, { weight: 600, size: 13, min: 11, maxLines: 1, maxWidth: width }, measure)
+  const lastFooterBaseline = frame.height - frame.safeBottom
+  const footerOps = footer.lines.map((line, index) => text('footer', line, MARGIN, lastFooterBaseline - (footer.lines.length - 1 - index) * footer.size * LINE_PITCH, { weight: 600, size: footer.size }, palette.tintLabel, width))
+  const footerTop = footerOps[0]?.box.y ?? lastFooterBaseline
 
   // Content, laid out from y = 0 and moved into place below.
   const content: DrawOp[] = []
@@ -198,7 +198,7 @@ export function layoutCard(summary: ShareSummary, options: { format: ShareFormat
   const regionBottom = footerTop - (story ? 16 : 8)
   const offset = story ? regionTop + Math.max(0, (regionBottom - regionTop - y) / 2) : regionTop
   for (const op of content) ops.push(shift(op, offset))
-  ops.push(footerOp)
+  ops.push(...footerOps)
   return { format, width: frame.width, height: frame.height, ops, contentBottom: offset + y, footerTop }
 }
 
