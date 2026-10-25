@@ -1583,8 +1583,9 @@ test.describe('Week\'s floating "+" on phones', () => {
         await page.evaluate(() => { const channel = new BroadcastChannel('next168'); channel.postMessage({ type: 'update-available' }); channel.close() })
         await expect(page.getByTestId('update-banner')).toBeVisible()
         await settle(page)
-        const gap = await page.evaluate(() => document.querySelector('.banners')!.getBoundingClientRect().top - document.querySelector('[data-fab]')!.getBoundingClientRect().bottom)
-        expect(gap, 'measured from the banner itself').toBeCloseTo(16, 0)
+        // The banner's text can reflow a frame after it appears; "+" then glides 0.2 s to its new place.
+        await expect.poll(() => page.evaluate(() => document.querySelector('.banners')!.getBoundingClientRect().top - document.querySelector('[data-fab]')!.getBoundingClientRect().bottom), { message: 'measured from the banner itself' }).toBeCloseTo(16, 0)
+        await settle(page)
         expect(await page.evaluate(auditFloatingActionButtonInPage), `${text}, banner`).toEqual([])
       })
     }
