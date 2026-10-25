@@ -1,8 +1,9 @@
 import { describe, expect, it } from 'vitest'
+import { IDBFactory } from 'fake-indexeddb'
 import type { ProposalInput } from '@/core/model'
 import { sha256 } from '@/core/canonical'
 import { BrowserProposalRepository, ProposalError } from './BrowserProposalRepository'
-import type { BrowserStore } from './indexedDbStore'
+import { IndexedDbStore, type BrowserStore } from './indexedDbStore'
 import type { RunExclusive } from './storageCommit'
 import { createTestRepositories, fixedNow, MemoryStore, mutexRunner, newTestId, testDocument } from './testSupport'
 
@@ -24,7 +25,7 @@ const storedProposals = (store: MemoryStore) => JSON.parse(store.data.get('propo
 describe('proposal repository', () => {
   it('stores a pending proposal bound to the workspace and the ops hash', async () => {
     const { proposals, input } = await setup()
-    const proposal = await proposals.create(input, 'mcp', 'client')
+    const proposal = await proposals.create(input, 'mcp', { clientName: 'client' })
     expect(proposal).toMatchObject({ status: 'pending', workspaceId: 'workspace-1', baseRevision: 1, clientName: 'client' })
     expect(proposal.contentHash).toMatch(/^[0-9a-f]{64}$/)
     expect(await proposals.list('pending')).toHaveLength(1)
@@ -33,7 +34,7 @@ describe('proposal repository', () => {
   it('rejects a proposal for another workspace before storing it', async () => {
     const { proposals, input, store } = await setup()
     await expect(proposals.create({ ...input, workspaceId: 'other' }, 'mcp')).rejects.toMatchObject({ code: 'workspace-mismatch' })
-    await expect(proposals.create(input, 'mcp', 'x'.repeat(81))).rejects.toMatchObject({ code: 'proposal-invalid' })
+    await expect(proposals.create(input, 'mcp', { clientName: 'x'.repeat(81) })).rejects.toMatchObject({ code: 'proposal-invalid' })
     expect(await proposals.list()).toHaveLength(0)
     expect(store.data.has('proposals')).toBe(false)
   })
@@ -222,5 +223,101 @@ describe('a proposal that creates categories (#3)', () => {
     expect(await proposals.approve(proposal.id, proposal.contentHash, proposal.baseRevision)).toEqual({ kind: 'stale', currentRevision: 2 })
     expect(store.data.get('document')).toBe(before)
     expect(storedProposals(store)[0].status).toBe('stale')
+  })
+})
+
+// verify4 defect 1: on a new profile nothing is stored until the first write, so "Use with your AI" could never save.
+describe('a proposal on a planner that was never stored', () => {
+  const unsaved = () => testDocument({ workspaceId: 'unsaved-1', revision: 0 })
+  const createsWork: ProposalInput['ops'] = [
+    { op: 'add_category', ref: 'new-work', category: { name: 'Work', goal: { type: 'max', hoursPerWeek: 40 } } },
+    { op: 'add_block', block: { categoryId: 'new-work', title: 'Work', days: [1, 2, 3, 4, 5], start: 540, end: 1020 } },
+    { op: 'add_task', task: { title: 'Renew passport', durationMin: 60, priority: 2 } },
+  ]
+  const inputFor = (workspaceId = 'unsaved-1'): ProposalInput => ({ contractVersion: '1.0', workspaceId, baseRevision: 0, summary: 'My week', ops: createsWork })
+
+  function empty(store: BrowserStore = new MemoryStore()) {
+    return createTestRepositories({ store })
+  }
+
+  // Each source the browser stores proposals from: a pasted reply or an imported proposal file ('import'), the
+  // on-device assistant ('assistant') and a connected assistant client ('mcp').
+  for (const source of ['import', 'assistant', 'mcp'] as const) {
+    it(`stores a "${source}" proposal and approving it creates the planner in one transaction`, async () => {
+      const { proposals, planner, store } = empty()
+      const memory = store as MemoryStore
+      const proposal = await proposals.create(inputFor(), source, { basis: unsaved() })
+      expect(proposal).toMatchObject({ status: 'pending', workspaceId: 'unsaved-1', baseRevision: 0, source })
+      expect(memory.data.has('document')).toBe(false)
+      const transactions = memory.writeTransactions
+      expect(await proposals.approve(proposal.id, proposal.contentHash, 0)).toEqual({ kind: 'applied', revision: 1 })
+      expect(memory.writeTransactions).toBe(transactions + 1)
+      const document = storedDocument(memory)
+      expect(document).toMatchObject({ workspaceId: 'unsaved-1', revision: 1, appliedProposalIds: [proposal.id] })
+      expect(document.categories.map((item: { name: string }) => item.name)).toEqual(['Work'])
+      expect(document.tasks[0].categoryId).toBeUndefined()
+      expect(memory.data.has('backup')).toBe(false)
+      expect(memory.data.has('unsavedBaseline')).toBe(false)
+      expect(await planner.load()).toMatchObject({ kind: 'ok', document: { workspaceId: 'unsaved-1', revision: 1 } })
+    })
+  }
+
+  it('works on the real IndexedDB store, and a reload shows the same unsaved planner until it is approved', async () => {
+    const { proposals, planner } = empty(new IndexedDbStore(new IDBFactory()))
+    const proposal = await proposals.create(inputFor(), 'import', { basis: unsaved() })
+    expect(await planner.load()).toEqual({ kind: 'empty', document: unsaved() })
+    expect(await proposals.approve(proposal.id, proposal.contentHash, 0)).toEqual({ kind: 'applied', revision: 1 })
+    expect(await planner.load()).toMatchObject({ kind: 'ok', document: { workspaceId: 'unsaved-1', revision: 1 } })
+  })
+
+  it('without the unsaved planner nothing can be proposed, and nothing is stored', async () => {
+    const { proposals, store } = empty()
+    await expect(proposals.create(inputFor(), 'import')).rejects.toMatchObject({ code: 'no-document' })
+    await expect(proposals.create(inputFor(), 'import', { basis: testDocument({ workspaceId: 'unsaved-1', revision: 3 }) })).rejects.toMatchObject({ code: 'no-document' })
+    expect((store as MemoryStore).data.size).toBe(0)
+  })
+
+  it('a second tab with another unsaved planner proposes against the one already stored, never replacing it', async () => {
+    const { proposals, store } = empty()
+    await proposals.create(inputFor(), 'import', { basis: unsaved() })
+    await expect(proposals.create(inputFor('unsaved-2'), 'import', { basis: testDocument({ workspaceId: 'unsaved-2' }) })).rejects.toMatchObject({ code: 'workspace-mismatch' })
+    expect(((store as MemoryStore).data.get('unsavedBaseline') as { document: string }).document).toContain('unsaved-1')
+  })
+
+  it('tells the other tabs, so they show the same unsaved planner', async () => {
+    const { proposals, bus } = empty()
+    let heard = 0
+    const stop = bus.channel().listen(() => { heard++ })
+    await proposals.create(inputFor(), 'import', { basis: unsaved() })
+    stop()
+    expect(heard).toBe(1)
+  })
+
+  it('is stale when a first write stored a planner after the proposal was made', async () => {
+    const { proposals, planner, store } = empty()
+    const proposal = await proposals.create(inputFor(), 'import', { basis: unsaved() })
+    expect(await planner.save({ ...unsaved(), revision: 1, settings: { ...unsaved().settings, weekStartsOn: 0 } }, 0)).toEqual({ kind: 'ok', revision: 1 })
+    expect((store as MemoryStore).data.has('unsavedBaseline')).toBe(false)
+    expect(await proposals.approve(proposal.id, proposal.contentHash, 0)).toEqual({ kind: 'stale', currentRevision: 1 })
+    expect(storedDocument(store as MemoryStore)).toMatchObject({ revision: 1, categories: [] })
+  })
+
+  it('is gone after a delete-all, which also drops the unsaved planner', async () => {
+    const { proposals, planner, store } = empty()
+    const proposal = await proposals.create(inputFor(), 'import', { basis: unsaved() })
+    expect(await planner.deleteAll(testDocument({ workspaceId: 'fresh', revision: 1 }), 0)).toEqual({ kind: 'ok', revision: 1 })
+    expect((store as MemoryStore).data.has('unsavedBaseline')).toBe(false)
+    expect(await proposals.approve(proposal.id, proposal.contentHash, 0)).toEqual({ kind: 'not-found' })
+    expect(storedDocument(store as MemoryStore).workspaceId).toBe('fresh')
+  })
+
+  it('is stale when the unsaved planner it was made against belongs to an older purge epoch', async () => {
+    const { proposals, store } = empty()
+    const memory = store as MemoryStore
+    const proposal = await proposals.create(inputFor(), 'import', { basis: unsaved() })
+    memory.data.set('purgeEpoch', 1)
+    expect(await proposals.approve(proposal.id, proposal.contentHash, 0)).toEqual({ kind: 'stale', currentRevision: 0 })
+    expect(memory.data.has('document')).toBe(false)
+    expect(storedProposals(memory)[0].status).toBe('stale')
   })
 })

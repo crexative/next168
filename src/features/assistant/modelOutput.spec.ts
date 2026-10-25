@@ -1,7 +1,12 @@
-import { describe, expect, it } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it } from 'vitest'
+import { setHourCycle } from '@/ui/format'
 import { answerFromChangeReply, answerText, validatedProposal } from './modelOutput'
 import { AssistantError } from './provider'
 import { contextFor, plannerWithBlocks } from './testSupport'
+
+// The summaries below are written on a 24-hour clock; the 12-hour one has its own test in changeIntent.spec.ts.
+beforeEach(() => setHourCycle('h23'))
+afterEach(() => setHourCycle('auto'))
 
 const document = plannerWithBlocks()
 const addBlock = { op: 'add_block', block: { categoryId: 'work', title: 'Gym', days: [4], start: 1080, end: 1140 } }

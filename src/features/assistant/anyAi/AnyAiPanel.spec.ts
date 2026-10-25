@@ -72,7 +72,7 @@ it('turns a pasted reply into a pending proposal and opens the review; it applie
   expect($<HTMLButtonElement>('any-ai-review')!.disabled).toBe(false)
   await click('any-ai-review')
   await vi.waitFor(() => expect(opened).toHaveBeenCalledTimes(1))
-  expect(create).toHaveBeenCalledWith(expect.objectContaining({ summary: 'Move the gym to Thursday' }), 'import')
+  expect(create).toHaveBeenCalledWith(expect.objectContaining({ summary: 'Move the gym to Thursday' }), 'import', { basis: expect.objectContaining({ workspaceId: 'workspace-1' }) })
   expect(opened.mock.calls[0]![0]).toMatchObject({ status: 'pending' })
   expect(opened.mock.calls[0]![1]).toEqual({ pastedReply: true })
   expect(mounted.store.document!.blocks[0]!.days).toEqual([2])

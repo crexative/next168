@@ -42,6 +42,7 @@
     "cancelled": "Cancelado.",
     "offline": "Você está offline e o modelo ainda não foi baixado. Conecte-se uma vez para baixá-lo.",
     "network": "Não foi possível baixar o modelo. Verifique sua conexão e tente de novo.",
+    "storage-full": "Este dispositivo não tem espaço livre suficiente para guardar o modelo (cerca de 705 MB). Libere espaço e tente de novo.",
     "out-of-memory": "Este dispositivo ficou sem memória ao carregar o modelo. As respostas rápidas serão usadas.",
     "device-lost": "O dispositivo gráfico foi perdido. As respostas rápidas serão usadas; recarregue para tentar o modelo de novo.",
     "invalid-output": "A resposta do modelo não pôde ser usada. Tente perguntar com outras palavras.",
@@ -93,7 +94,8 @@
     "nextBlock": "A seguir, em {date} às {time}: {title}.",
     "noNextBlock": "Não há mais nada planejado esta semana.",
     "noOverflow": "Todas as tarefas pendentes cabem no seu tempo livre.",
-    "overflow": "{count} tarefa não cabe ou está atrasada: {titles}. {amount} sem agendar. | {count} tarefas não cabem ou estão atrasadas: {titles}. {amount} sem agendar.",
+    "overflow": "{count} tarefa não cabe ou está atrasada: {titles}. | {count} tarefas não cabem ou estão atrasadas: {titles}.",
+    "overflowAmount": "{amount} sem agendar.",
     "freeHours": "Esta semana, resta {free} livre. | Esta semana, restam {free} livres.",
     "totalPlanned": "{planned} planejadas nesta semana de 168 h.",
     "rulesCannotChange": "Alterar o plano requer o modelo no dispositivo. Ative-o em Ajustes, em Assistente.",
@@ -133,7 +135,7 @@
       "noteMinutes": "start e end são minutos depois da meia-noite (09:00 = 540, 18:30 = 1110); um end menor que start significa que o bloco passa da meia-noite.",
       "noteIds": "id e categoryId devem ser ids de MEU PLANO (id=…) ou o ref de uma categoria criada antes na mesma proposta. Tarefas e eventos novos recebem o id quando eu os aprovo.",
       "exampleHeader": "Exemplo de um bloco válido (mude o conteúdo, mantenha a forma):",
-      "noteCategories": "Se faltar uma categoria de que eu preciso, crie-a com add_category e um ref curto (por exemplo \"new-sleep\") e use esse ref como categoryId nas mudanças seguintes da mesma proposta. Nunca crie uma categoria que MEU PLANO já tem: use o id dela.",
+      "noteCategories": "Se faltar uma categoria de que eu preciso, crie-a com add_category e um ref curto (por exemplo \"new-sleep\") e use esse ref como categoryId nas mudanças seguintes da mesma proposta. Nunca crie uma categoria que MEU PLANO já tem: use o id dela. Uma tarefa que cabe em qualquer tempo livre vai sem categoryId: nunca crie uma categoria só para uma tarefa.",
       "noteGroup": "Use um único add_block para todos os dias com o mesmo título e horário (\"days\":[1,2,3,4,5]). No máximo {max} mudanças por proposta."
     }
   }

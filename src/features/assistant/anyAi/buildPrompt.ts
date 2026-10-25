@@ -33,7 +33,7 @@ export const SCHEMA_SUMMARY = [
   '{"op":"add_block","block":{"categoryId","title","days":[0-6],"start":<minute>,"end":<minute>}}',
   '{"op":"update_block","id","patch":{any of categoryId,title,days,start,end}}',
   '{"op":"delete_block","id"}',
-  '{"op":"add_task","task":{"title","categoryId","durationMin":15-180,"priority":1|2|3,"dueDate":"YYYY-MM-DD" (optional)}}',
+  '{"op":"add_task","task":{"title","categoryId" (optional: leave it out for any free time),"durationMin":15-180,"priority":1|2|3,"dueDate":"YYYY-MM-DD" (optional)}}',
   '{"op":"update_task","id","patch":{any of title,categoryId,durationMin,priority,dueDate}}',
   '{"op":"complete_task","id"}',
   '{"op":"add_event","event":{"title","start":"<ISO time with offset>","end":"<ISO time with offset>","allDay":false,"attendees":[]}}',

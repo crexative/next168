@@ -3,7 +3,7 @@ import { createI18n } from 'vue-i18n'
 export const SUPPORTED_LOCALES = ['en', 'es', 'fr', 'pt', 'de'] as const
 export type SupportedLocale = (typeof SUPPORTED_LOCALES)[number]
 
-const LANGUAGE_KEY = 'next168-language'
+export const LANGUAGE_KEY = 'next168-language'
 
 const namespaceFiles = import.meta.glob<{ default: Record<string, unknown> }>('./*/*.json', { eager: true })
 
@@ -40,6 +40,9 @@ export const i18n = createI18n<false>({
   fallbackLocale: 'en',
   messages: collectMessages(namespaceFiles) as never,
 })
+
+// The page states the language it is written in (index.html already did before the first paint); setLocale keeps it.
+if (typeof document !== 'undefined') document.documentElement.lang = i18n.global.locale.value
 
 export const availableLocales: { code: SupportedLocale; name: string }[] = [
   { code: 'en', name: 'English' },

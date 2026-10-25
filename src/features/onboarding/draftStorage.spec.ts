@@ -147,4 +147,12 @@ describe('the dismissal flag', () => {
     clearDismissed(storage)
     expect(isDismissed('ws', storage)).toBe(false)
   })
+
+  it('made before anything was stored, it carries over to the workspace the first write stores (verify4 defect 6)', () => {
+    const storage = memory()
+    markDismissed('unsaved', storage)
+    expect(isDismissed('ws-first', storage)).toBe(true)
+    expect(isDismissed('ws-first', storage)).toBe(true)
+    expect(isDismissed('ws-other', storage)).toBe(false)
+  })
 })

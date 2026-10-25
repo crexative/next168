@@ -31,5 +31,5 @@ export async function reviewReply(reply: string, document: PlannerDocument, prop
   const mismatch = matchesPlan(extracted.input, document)
   if (mismatch) return { ok: false, reason: mismatch }
   try { await validatedProposal(extracted.input, document) } catch (error) { return unusable(error) }
-  try { return { ok: true, proposal: await proposals.create(extracted.input, 'import') } } catch (error) { return { ok: false, reason: failureOf(error) } }
+  try { return { ok: true, proposal: await proposals.create(extracted.input, 'import', { basis: document }) } } catch (error) { return { ok: false, reason: failureOf(error) } }
 }

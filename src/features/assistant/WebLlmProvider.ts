@@ -45,7 +45,9 @@ export function classifyFailure(error: unknown): AssistantFailureCode {
   const name = error instanceof Error ? error.name : ''
   const message = (error instanceof Error ? error.message : String(error)).toLowerCase()
   if (name === 'AbortError') return 'cancelled'
-  if (name === 'QuotaExceededError' || /out of memory|\boom\b|allocation|maxbuffersize|quota/.test(message)) return 'out-of-memory'
+  // QuotaExceededError is storage, not memory: the download cannot be kept, and freeing space fixes it.
+  if (name === 'QuotaExceededError' || /quota|no space|not enough space|disk (is )?full/.test(message)) return 'storage-full'
+  if (/out of memory|\boom\b|allocation|maxbuffersize/.test(message)) return 'out-of-memory'
   if (/device.{0,12}lost|gpudevicelost/.test(message)) return 'device-lost'
   // Offline means the browser says so; a failed fetch while online is a network or download error worth retrying.
   if (typeof navigator !== 'undefined' && navigator.onLine === false) return 'offline'
@@ -110,11 +112,12 @@ export class WebLlmProvider implements AssistantProvider {
         reject(new AssistantError('cancelled'))
       }, { once: true })
     })
+    let fraction = 0
     try {
       const module = await Promise.race([this.dependencies.loadModule(), cancelled])
       const engine = await Promise.race([
         module.CreateWebWorkerMLCEngine(worker, WEBLLM_MODEL_ID, {
-          initProgressCallback: ({ progress, text }) => onProgress({ fraction: progress, text }),
+          initProgressCallback: ({ progress, text }) => { fraction = progress; onProgress({ fraction: progress, text }) },
         }),
         cancelled,
       ])
@@ -122,7 +125,7 @@ export class WebLlmProvider implements AssistantProvider {
       this.worker = worker
     } catch (error) {
       worker.terminate()
-      throw this.fail(error)
+      throw await this.failDownload(error, fraction)
     }
   }
 
@@ -177,6 +180,17 @@ export class WebLlmProvider implements AssistantProvider {
     } catch {
       return false
     }
+  }
+
+  // A full disk often surfaces as a failed fetch (the browser drops a response it cannot store), so a download that
+  // fails like the network does is checked against the space left for what was still to come.
+  private async failDownload(error: unknown, fraction: number): Promise<AssistantError> {
+    const failure = this.fail(error)
+    if (failure.code !== 'network' && failure.code !== 'unknown') return failure
+    const { storageQuotaBytes, storageUsageBytes } = await this.dependencies.probe().catch(() => ({ storageQuotaBytes: undefined, storageUsageBytes: undefined }))
+    if (storageQuotaBytes === undefined) return failure
+    const remaining = WEBLLM_DOWNLOAD_BYTES * (1 - Math.min(Math.max(fraction, 0), 1))
+    return storageQuotaBytes - (storageUsageBytes ?? 0) < remaining ? new AssistantError('storage-full', { cause: error }) : failure
   }
 
   private fail(error: unknown): AssistantError {

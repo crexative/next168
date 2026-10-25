@@ -42,6 +42,7 @@
     "cancelled": "Abgebrochen.",
     "offline": "Du bist offline und das Modell ist noch nicht heruntergeladen. Verbinde dich einmal, um es zu laden.",
     "network": "Das Modell konnte nicht heruntergeladen werden. Prüfe deine Verbindung und versuche es erneut.",
+    "storage-full": "Auf diesem Gerät ist nicht genug Speicher frei, um das Modell zu behalten (etwa 705 MB). Gib Speicher frei und versuche es erneut.",
     "out-of-memory": "Diesem Gerät ging beim Laden des Modells der Speicher aus. Stattdessen werden schnelle Antworten genutzt.",
     "device-lost": "Das Grafikgerät ging verloren. Stattdessen werden schnelle Antworten genutzt; lade neu, um das Modell erneut zu versuchen.",
     "invalid-output": "Die Antwort des Modells war nicht nutzbar. Formuliere die Frage bitte anders.",
@@ -93,7 +94,8 @@
     "nextBlock": "Als Nächstes am {date} um {time}: {title}.",
     "noNextBlock": "Diese Woche ist nichts weiter geplant.",
     "noOverflow": "Alle offenen Aufgaben passen in deine freie Zeit.",
-    "overflow": "{count} Aufgabe passt nicht oder ist überfällig: {titles}. {amount} nicht eingeplant. | {count} Aufgaben passen nicht oder sind überfällig: {titles}. {amount} nicht eingeplant.",
+    "overflow": "{count} Aufgabe passt nicht oder ist überfällig: {titles}. | {count} Aufgaben passen nicht oder sind überfällig: {titles}.",
+    "overflowAmount": "{amount} nicht eingeplant.",
     "freeHours": "Diese Woche bleiben dir noch {free} frei.",
     "totalPlanned": "{planned} von 168 h diese Woche geplant.",
     "rulesCannotChange": "Den Plan zu ändern erfordert das Modell auf dem Gerät. Aktiviere es in den Einstellungen unter Assistent.",
@@ -133,7 +135,7 @@
       "noteMinutes": "start und end sind Minuten nach Mitternacht (09:00 = 540, 18:30 = 1110); ein end kleiner als start bedeutet, dass der Block über Mitternacht geht.",
       "noteIds": "id und categoryId müssen ids aus MEIN PLAN sein (id=…) oder der ref einer Kategorie, die weiter vorne im selben Vorschlag angelegt wird. Neue Aufgaben und Termine bekommen ihre id, wenn ich sie freigebe.",
       "exampleHeader": "Beispiel für einen gültigen Block (ändere den Inhalt, behalte die Form):",
-      "noteCategories": "Fehlt eine Kategorie, die ich brauche, lege sie mit add_category und einem kurzen ref an (zum Beispiel \"new-sleep\") und nutze diesen ref als categoryId in den folgenden Änderungen desselben Vorschlags. Lege nie eine Kategorie an, die MEIN PLAN schon hat: nutze ihre id.",
+      "noteCategories": "Fehlt eine Kategorie, die ich brauche, lege sie mit add_category und einem kurzen ref an (zum Beispiel \"new-sleep\") und nutze diesen ref als categoryId in den folgenden Änderungen desselben Vorschlags. Lege nie eine Kategorie an, die MEIN PLAN schon hat: nutze ihre id. Eine Aufgabe, die in jede freie Zeit passt, kommt ohne categoryId aus: lege nie eine Kategorie nur für eine Aufgabe an.",
       "noteGroup": "Nutze ein einziges add_block für alle Tage mit demselben Titel und derselben Zeit (\"days\":[1,2,3,4,5]). Höchstens {max} Änderungen pro Vorschlag."
     }
   }

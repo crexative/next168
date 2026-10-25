@@ -20,6 +20,13 @@ describe('reviewReply', () => {
     expect(proposals.create.mock.calls[0]![0]).toMatchObject({ baseRevision: 7, summary: 'Move the gym to Thursday' })
   })
 
+  it('accepts a task without a category: it fits any free time (verify4 defect 2)', async () => {
+    const proposals = repository()
+    const ops = [{ op: 'add_task', task: { title: 'Renew passport', durationMin: 60, priority: 2 } }]
+    expect(await reviewReply(reply(proposal({ ops })), realisticWeek(), proposals)).toMatchObject({ ok: true })
+    expect(proposals.create.mock.calls[0]![0].ops[0]).toEqual(ops[0])
+  })
+
   it('stores nothing for a reply without changes, or with damaged or invalid ones', async () => {
     const proposals = repository()
     expect(await reviewReply('Just chatting.', realisticWeek(), proposals)).toEqual({ ok: false, reason: 'none' })

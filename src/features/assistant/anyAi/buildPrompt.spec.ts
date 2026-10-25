@@ -63,6 +63,16 @@ describe('what the prompt tells the AI', () => {
     expect(text).toContain('Use one add_block for all the days that share a title and time ("days":[1,2,3,4,5]). At most 200 changes per proposal.')
   })
 
+  // verify4 defect 2: the contract read as if every task needed a category, so an "any free slot" task got an
+  // invented, empty one and could never be scheduled.
+  it.each([...SUPPORTED_LOCALES])('says, in %s, that a task for any free time goes without a category', (locale) => {
+    const text = prompt(realisticWeek(), locale)
+    expect(text).toContain('{"op":"add_task","task":{"title","categoryId" (optional: leave it out for any free time),')
+    const note = translatorFor(locale)('assistant.anyAi.prompt.noteCategories')
+    expect(note.match(/categoryId/g)?.length).toBe(2)
+    expect(text).toContain(note)
+  })
+
   it('with no category yet, its example creates one and uses its ref, and the example is a valid proposal', () => {
     const empty = realisticWeek({ categories: [], blocks: [], tasks: [] })
     const example = JSON.parse(/```next168\n([\s\S]*?)\n```/.exec(prompt(empty))![1]!)

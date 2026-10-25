@@ -130,13 +130,16 @@ const blockFields = z.object({
 // app gives the category its real id and an unused palette colour when the person approves.
 export const newCategorySchema = z.object({ name: text(60), goal: goalSchema.optional() })
 const categoryRef = id.describe('Temporary id of the new category; later ops in this proposal use it as categoryId')
+// A task without a category fits any free time: an assistant leaves it out rather than inventing a category for it.
+export const ANY_FREE_TIME_TASK = 'Optional. Leave it out for a task that fits any free time; never create a category only to hold a task'
+const newTaskFields = taskSchema.omit({ id: true, createdAt: true, doneAt: true }).extend({ categoryId: id.optional().describe(ANY_FREE_TIME_TASK) })
 
 export const proposalOpSchema = z.discriminatedUnion('op', [
   z.object({ op: z.literal('add_category'), ref: categoryRef, category: newCategorySchema }),
   z.object({ op: z.literal('add_block'), block: blockFields }),
   z.object({ op: z.literal('update_block'), id, patch: blockFields.partial() }),
   z.object({ op: z.literal('delete_block'), id }),
-  z.object({ op: z.literal('add_task'), task: taskSchema.omit({ id: true, createdAt: true, doneAt: true }) }),
+  z.object({ op: z.literal('add_task'), task: newTaskFields }),
   z.object({ op: z.literal('update_task'), id, patch: taskSchema.omit({ id: true, createdAt: true, doneAt: true }).partial() }),
   z.object({ op: z.literal('complete_task'), id }),
   z.object({ op: z.literal('add_event'), event: z.object({
@@ -267,7 +270,8 @@ export interface CalendarSourceStore {
 // Storage port (D4). Adapters: BrowserPlannerRepository (IndexedDB) and CompanionRepository (HTTP).
 export type LoadResult =
   | { kind: 'ok'; document: PlannerDocument; migratedFrom?: number }
-  | { kind: 'empty' }
+  // Nothing stored. `document`: the unsaved planner that pending proposals were made against (browser only).
+  | { kind: 'empty'; document?: PlannerDocument }
   | { kind: 'corrupt'; raw: string; reason: string }
   | { kind: 'unsupported'; schemaVersion: unknown }
 
@@ -291,9 +295,16 @@ export type ProposalDecision =
   | { kind: 'stale'; currentRevision: number }
   | { kind: 'not-found' }
 
+export interface ProposalCreateOptions {
+  clientName?: string
+  // The planner the proposal was made against, as the person sees it. Used only while nothing is stored yet, so a
+  // proposal can be made on a new, still unsaved planner; a stored planner always wins.
+  basis?: PlannerDocument
+}
+
 export interface ProposalRepository {
   list(status?: ChangeProposal['status']): Promise<ChangeProposal[]>
-  create(input: ProposalInput, source: ChangeProposal['source'], clientName?: string): Promise<ChangeProposal>
+  create(input: ProposalInput, source: ChangeProposal['source'], options?: ProposalCreateOptions): Promise<ChangeProposal>
   // Idempotent: a second approve of an applied proposal returns the recorded result without changing anything.
   approve(id: string, contentHash: string, baseRevision: number): Promise<ProposalDecision>
   reject(id: string): Promise<ProposalDecision>

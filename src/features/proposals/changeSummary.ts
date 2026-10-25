@@ -1,6 +1,7 @@
 import type { Category } from '@/core/model'
 import { addLocalDays } from '@/core/time'
 import { formatDate, formatMinute } from '@/features/week/localTime'
+import { formatDateTime } from '@/ui/format'
 
 export interface SummaryRow { label: string; value: string }
 export interface SummaryContext {
@@ -18,8 +19,7 @@ function weekday(day: number, locale: string): string {
 }
 
 function dateTime(value: string, context: SummaryContext): string {
-  const options: Intl.DateTimeFormatOptions = { dateStyle: 'medium', timeStyle: 'short', timeZone: context.timeZone }
-  return new Intl.DateTimeFormat(context.locale, options).format(new Date(value))
+  return formatDateTime(value, context.locale, context.timeZone)
 }
 
 function goalText(goal: Entity, context: SummaryContext): string {

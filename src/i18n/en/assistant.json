@@ -42,6 +42,7 @@
     "cancelled": "Cancelled.",
     "offline": "You are offline and the model is not downloaded yet. Connect once to download it.",
     "network": "The model could not be downloaded. Check your connection and try again.",
+    "storage-full": "This device does not have enough free space to keep the model (about 705 MB). Free up some space, then try again.",
     "out-of-memory": "This device ran out of memory loading the model. Quick answers are used instead.",
     "device-lost": "The graphics device was lost. Quick answers are used instead; reload to try the model again.",
     "invalid-output": "The model's reply could not be used. Please try asking in other words.",
@@ -93,7 +94,8 @@
     "nextBlock": "Next up on {date} at {time}: {title}.",
     "noNextBlock": "Nothing else is planned this week.",
     "noOverflow": "All unfinished tasks fit in your free time.",
-    "overflow": "{count} task does not fit or is late: {titles}. {amount} left unscheduled. | {count} tasks do not fit or are late: {titles}. {amount} left unscheduled.",
+    "overflow": "{count} task does not fit or is late: {titles}. | {count} tasks do not fit or are late: {titles}.",
+    "overflowAmount": "{amount} left unscheduled.",
     "freeHours": "{free} free this week.",
     "totalPlanned": "{planned} planned this week out of 168 h.",
     "rulesCannotChange": "Changing the plan needs the on-device model. Turn it on in Settings, under Assistant.",
@@ -133,7 +135,7 @@
       "noteMinutes": "start and end are minutes after midnight (09:00 = 540, 18:30 = 1110); an end smaller than the start means the block crosses midnight.",
       "noteIds": "id and categoryId must be ids from MY PLAN (id=…) or the ref of a category added earlier in the same proposal. New tasks and events get their ids when I approve them.",
       "exampleHeader": "Example of a valid block (change the content, keep the shape):",
-      "noteCategories": "If a category I need is missing, create it with add_category and a short ref (for example \"new-sleep\") and use that ref as categoryId in the later changes of the same proposal. Never create a category that MY PLAN already has: use its id.",
+      "noteCategories": "If a category I need is missing, create it with add_category and a short ref (for example \"new-sleep\") and use that ref as categoryId in the later changes of the same proposal. Never create a category that MY PLAN already has: use its id. A task that fits any free time goes without categoryId: never create a category only to hold a task.",
       "noteGroup": "Use one add_block for all the days that share a title and time (\"days\":[1,2,3,4,5]). At most {max} changes per proposal."
     }
   }

@@ -223,6 +223,11 @@ test.describe('plan and measure', () => {
     expect(JSON.parse(readFileSync(exportPath, 'utf8')).format).toBe('next168-export')
 
     await page.evaluate((keys) => keys.forEach((key) => window.localStorage.setItem(key, 'x')), PREFERENCE_KEYS)
+    // verify4 defect 8: keys named after the deleted workspace, and the setup's own, were left behind.
+    await page.evaluate(() => {
+      for (const key of ['next168-plan-since:ws-e2e', 'next168-setup-dismissed', 'next168-checkin-reminder-last', 'next168-hour-cycle']) window.localStorage.setItem(key, 'x')
+      window.sessionStorage.setItem('next168-setup-draft', '{}')
+    })
     await openTab(page, 'settings')
     await page.getByRole('radiogroup', { name: 'Appearance' }).getByRole('radio', { name: 'Dark' }).click()
     await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark')
@@ -241,6 +246,8 @@ test.describe('plan and measure', () => {
     expect(await storedRecord(page, 'proposals')).toBeNull()
     expect(await page.evaluate((keys) => keys.filter((key) => window.localStorage.getItem(key) !== null), LEGACY_KEYS)).toEqual([])
     expect(await page.evaluate((keys) => keys.filter((key) => window.localStorage.getItem(key) !== null), PREFERENCE_KEYS)).toEqual([])
+    const left = await page.evaluate(() => [window.localStorage, window.sessionStorage].flatMap((storage) => Object.keys(storage)).filter((key) => key.startsWith('next168-')))
+    expect(left.filter((key) => key !== 'next168-language')).toEqual([])
     // The open page goes back to the system's appearance at once.
     await expect(page.locator('html')).not.toHaveAttribute('data-theme', /./)
 

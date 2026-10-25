@@ -342,6 +342,29 @@ test.describe('time format', () => {
   })
 })
 
+// verify4 defect 5: the served page said lang="en", so Chrome offered to translate a Spanish UI.
+test.describe('the page language', () => {
+  test.use({ locale: 'es-CO' })
+
+  test('is the person\'s language before the app runs, and follows a change in Settings', async ({ page }) => {
+    await page.addInitScript(() => {
+      document.addEventListener('readystatechange', () => {
+        if (document.readyState === 'interactive') (window as unknown as { __langAtParse: string }).__langAtParse = document.documentElement.lang
+      })
+    })
+    await page.clock.install({ time: NOW })
+    await seedKey(page, V2_KEY, JSON.stringify({ ...richDocument, settings: { ...richDocument.settings, locale: 'es' } }))
+    await page.goto('./#/settings')
+    expect(await page.evaluate(() => (window as unknown as { __langAtParse: string }).__langAtParse)).toBe('es')
+    await expect(page.getByRole('heading', { level: 1, name: 'Ajustes' })).toBeVisible()
+    await expect(page.locator('html')).toHaveAttribute('lang', 'es')
+    await page.getByTestId('preference-language').selectOption('de')
+    await expect(page.locator('html')).toHaveAttribute('lang', 'de')
+    await page.reload()
+    expect(await page.evaluate(() => (window as unknown as { __langAtParse: string }).__langAtParse)).toBe('de')
+  })
+})
+
 test.describe('accessibility plumbing', () => {
   async function goTo(page: Page, name: string) {
     // From 768 to 1023 px the sidebar starts collapsed: open it over the content first.

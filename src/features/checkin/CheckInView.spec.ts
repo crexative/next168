@@ -7,6 +7,7 @@ import type { PlannerDocument } from '@/core/model'
 import { configurePlannerStore, usePlannerStore } from '@/stores/plannerStore'
 import { createTestRepositories, fixedNow, newTestId, testDocument } from '@/repositories/testSupport'
 import { useUndoToast } from '@/ui/undoToast'
+import { setHourCycle } from '@/ui/format'
 import CheckInView from './CheckInView.vue'
 import { consumeSavedFlag } from './checkinFlash'
 
@@ -94,6 +95,24 @@ describe('check-in form', () => {
     expect(text('fact-wake')).toBe('You woke up at 6:00 AM today')
     expect(host.querySelector('[data-testid="plan-hint"]')?.textContent).toContain('Times come from your plan')
     expect(host.querySelector('[data-testid="fact-bedtime"] button')?.getAttribute('aria-label')).toBe('You went to bed at 10:00 PM last night. Change')
+  })
+
+  // verify4 defect 14: "…a las 10:00 p. m.. Cambiar" and "¿A qué hora…?. Cambiar" in the accessible names.
+  it.each(['en', 'es', 'fr', 'pt', 'de'])('never doubles the end of a sentence in an accessible name (%s, 12 h)', async (locale) => {
+    setHourCycle('h12')
+    try {
+      for (const document of [planned, { ...planned, blocks: [] }]) {
+        await mount(document)
+        i18n.global.locale.value = locale
+        await nextTick()
+        const labels = [...host.querySelectorAll('[data-testid^="fact-"] button')].map((button) => button.getAttribute('aria-label') ?? '')
+        expect(labels.length).toBeGreaterThan(0)
+        for (const label of labels) expect(label, label).not.toMatch(/\.\.(?!\.)|[?!]\./u)
+        app!.unmount(); host.remove(); app = undefined
+      }
+    } finally {
+      setHourCycle('auto')
+    }
   })
 
   it('opens the time of a sentence when it is tapped, and goes back to the sentence once it is set', async () => {

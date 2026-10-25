@@ -3,6 +3,7 @@ import type { Category, DayIndex, PlannerDocument, ProposalInput, ProposalOp, Ti
 import { MINUTES_PER_DAY } from '@/core/model'
 import { AssistantError, type Translate } from './provider'
 import { matchesIntent, normalize } from './rulesLexicon'
+import { formatMinuteOfDay } from '@/ui/format'
 
 // A 1B model cannot fill the full proposal schema (ids, minutes, nested ops). It fills this small intent
 // instead; the code resolves names to ids, "HH:MM" to minutes and weekdays to day indexes, so the model
@@ -175,8 +176,9 @@ function blockMinutes({ durationHours, durationMinutes }: ChangeIntent): number 
   return durationHours === undefined && durationMinutes === undefined ? undefined : total
 }
 
-function describeTimes(start: number, end: number): { start: string; end: string } {
-  return { start: clock(start), end: clock(end % MINUTES_PER_DAY) }
+// The person's own clock (12 or 24 h), as everywhere in the app; the 24-hour `clock` is for the model only.
+function describeTimes(start: number, end: number, locale: string): { start: string; end: string } {
+  return { start: formatMinuteOfDay(start, locale), end: formatMinuteOfDay(end % MINUTES_PER_DAY, locale) }
 }
 
 function weekdayName(day: DayIndex, locale: string): string {
@@ -222,7 +224,7 @@ export function proposalFromIntent(intent: ChangeIntent, { request, document, lo
       if (length !== undefined && (length < MIN_BLOCK_MINUTES || length >= MINUTES_PER_DAY)) return message('needsDetails')
       const end = intent.end !== undefined ? parseClock(intent.end) : (start + (length ?? DEFAULT_BLOCK_MINUTES)) % MINUTES_PER_DAY
       if (end === undefined || end === start) return message('needsDetails')
-      const times = describeTimes(start, end)
+      const times = describeTimes(start, end, locale)
       return proposal(
         [{ op: 'add_block', block: { categoryId: category.id, title: intent.title.slice(0, 120), days: [day], start, end } }],
         t('assistant.intent.summary.add_block', { title: intent.title, day: weekdayName(day, locale), ...times }),
@@ -263,7 +265,7 @@ export function proposalFromIntent(intent: ChangeIntent, { request, document, lo
       }
       return proposal(
         ops,
-        t('assistant.intent.summary.move_block', { title: found.title, day: weekdayName(target, locale), ...describeTimes(start, end) }),
+        t('assistant.intent.summary.move_block', { title: found.title, day: weekdayName(target, locale), ...describeTimes(start, end, locale) }),
       )
     }
 
@@ -284,12 +286,13 @@ export function proposalFromIntent(intent: ChangeIntent, { request, document, lo
 
     case 'add_task': {
       if (!intent.title) return message('needsDetails')
-      const category = findCategory(document.categories, intent.categoryName)
-      if (!category) return message('unknownCategory', { category: intent.categoryName ?? intent.title, categories: document.categories.map((entry) => entry.name).join(', ') })
+      // Without a category named, the task fits any free time; a category that is named has to exist.
+      const category = intent.categoryName ? findCategory(document.categories, intent.categoryName) : undefined
+      if (intent.categoryName && !category) return message('unknownCategory', { category: intent.categoryName, categories: document.categories.map((entry) => entry.name).join(', ') })
       const minutes = Math.min(MAX_TASK_MINUTES, Math.max(MIN_TASK_MINUTES, blockMinutes(intent) ?? DEFAULT_TASK_MINUTES))
       const dueDate = intent.dueDate && /^\d{4}-\d{2}-\d{2}$/.test(intent.dueDate) && request.includes(intent.dueDate) ? intent.dueDate : undefined
       return proposal(
-        [{ op: 'add_task', task: { title: intent.title.slice(0, 120), categoryId: category.id, durationMin: minutes, priority: 2, ...(dueDate ? { dueDate } : {}) } }],
+        [{ op: 'add_task', task: { title: intent.title.slice(0, 120), ...(category ? { categoryId: category.id } : {}), durationMin: minutes, priority: 2, ...(dueDate ? { dueDate } : {}) } }],
         t('assistant.intent.summary.add_task', { title: intent.title, minutes }),
       )
     }

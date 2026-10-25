@@ -42,6 +42,7 @@
     "cancelled": "Cancelado.",
     "offline": "Estás sin conexión y el modelo aún no está descargado. Conéctate una vez para descargarlo.",
     "network": "No se pudo descargar el modelo. Revisa tu conexión e inténtalo de nuevo.",
+    "storage-full": "Este dispositivo no tiene espacio libre suficiente para guardar el modelo (unos 705 MB). Libera espacio y vuelve a intentarlo.",
     "out-of-memory": "Este dispositivo se quedó sin memoria al cargar el modelo. Se usan las respuestas rápidas.",
     "device-lost": "Se perdió el dispositivo gráfico. Se usan las respuestas rápidas; recarga para volver a probar el modelo.",
     "invalid-output": "No se pudo usar la respuesta del modelo. Prueba a preguntar con otras palabras.",
@@ -93,7 +94,8 @@
     "nextBlock": "Lo siguiente, el {date} a las {time}: {title}.",
     "noNextBlock": "No hay nada más planificado esta semana.",
     "noOverflow": "Todas las tareas pendientes caben en tu tiempo libre.",
-    "overflow": "{count} tarea no cabe o va tarde: {titles}. Quedan {amount} sin programar. | {count} tareas no caben o van tarde: {titles}. Quedan {amount} sin programar.",
+    "overflow": "{count} tarea no cabe o va tarde: {titles}. | {count} tareas no caben o van tarde: {titles}.",
+    "overflowAmount": "Quedan {amount} sin programar.",
     "freeHours": "Esta semana te queda {free} libre. | Esta semana te quedan {free} libres.",
     "totalPlanned": "{planned} planificadas esta semana de 168 h.",
     "rulesCannotChange": "Cambiar el plan requiere el modelo en el dispositivo. Actívalo en Ajustes, en Asistente.",
@@ -133,7 +135,7 @@
       "noteMinutes": "start y end son minutos después de medianoche (09:00 = 540, 18:30 = 1110); un end menor que start significa que el bloque cruza la medianoche.",
       "noteIds": "id y categoryId deben ser ids de MI PLAN (id=…) o el ref de una categoría creada antes en la misma propuesta. Las tareas y eventos nuevos reciben su id cuando yo los apruebo.",
       "exampleHeader": "Ejemplo de un bloque válido (cambia el contenido, conserva la forma):",
-      "noteCategories": "Si falta una categoría que necesito, créala con add_category y un ref corto (por ejemplo \"new-sleep\") y usa ese ref como categoryId en los cambios siguientes de la misma propuesta. Nunca crees una categoría que MI PLAN ya tiene: usa su id.",
+      "noteCategories": "Si falta una categoría que necesito, créala con add_category y un ref corto (por ejemplo \"new-sleep\") y usa ese ref como categoryId en los cambios siguientes de la misma propuesta. Nunca crees una categoría que MI PLAN ya tiene: usa su id. Una tarea que cabe en cualquier hueco libre va sin categoryId: nunca crees una categoría solo para una tarea.",
       "noteGroup": "Usa un solo add_block para todos los días con el mismo título y horario (\"days\":[1,2,3,4,5]). Como máximo {max} cambios por propuesta."
     }
   }

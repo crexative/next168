@@ -1,13 +1,15 @@
 import { z } from 'zod'
 import {
   changeProposalSchema, proposalInputSchema,
-  type ChangeProposal, type PlannerDocument, type ProposalDecision, type ProposalInput, type ProposalRepository,
+  type ChangeProposal, type PlannerDocument, type ProposalCreateOptions, type ProposalDecision, type ProposalInput, type ProposalRepository,
 } from '@/core/model'
 import type { Hasher } from '@/core/canonical'
-import { applyProposal, buildProposal } from './core'
+import { applyProposal, buildProposal, validateDocument } from './core'
 import type { ChangeChannel } from './changeChannel'
-import type { BrowserStore } from './indexedDbStore'
-import { NO_WEB_LOCKS, storedDocument, type RunExclusive } from './storageCommit'
+import type { BrowserStore, Snapshot } from './indexedDbStore'
+import {
+  NO_WEB_LOCKS, currentUnsavedBaseline, purgeEpochOf, storedDocument, unsavedBaselineRecord, type RunExclusive,
+} from './storageCommit'
 
 export interface ProposalRepositoryDeps {
   store: BrowserStore
@@ -37,10 +39,33 @@ function parseProposals(raw: string | undefined): ChangeProposal[] {
   return parsed.data
 }
 
-function readableDocument(raw: string | undefined): PlannerDocument {
-  const stored = storedDocument(raw)
-  if (stored.kind !== 'ok') throw new ProposalError('no-document')
-  return stored.document
+// What a proposal is made against: the stored planner or, while nothing is stored, the unsaved one shown to the person
+// (the one already stored beside earlier proposals, or else the caller's `basis`, which must never have been written).
+type ProposalBase = { document: PlannerDocument; unsaved: boolean }
+
+function unsavedBasis(basis: PlannerDocument | undefined): PlannerDocument {
+  if (!basis) throw new ProposalError('no-document')
+  let document: PlannerDocument
+  try { document = validateDocument(basis) } catch { throw new ProposalError('no-document') }
+  if (document.revision !== 0) throw new ProposalError('no-document')
+  return document
+}
+
+function baseForCreate(snapshot: Snapshot, basis: PlannerDocument | undefined): ProposalBase {
+  const stored = storedDocument(snapshot.document)
+  if (stored.kind === 'ok') return { document: stored.document, unsaved: false }
+  if (stored.kind !== 'absent') throw new ProposalError('no-document')
+  const existing = currentUnsavedBaseline(snapshot)
+  return { document: existing?.document ?? unsavedBasis(basis), unsaved: true }
+}
+
+// At approval: the stored planner, or the unsaved one this proposal was made against while storage still holds nothing.
+function baseForApproval(snapshot: Snapshot, proposal: ChangeProposal): ProposalBase | undefined {
+  const stored = storedDocument(snapshot.document)
+  if (stored.kind === 'ok') return { document: stored.document, unsaved: false }
+  if (stored.kind !== 'absent') throw new ProposalError('no-document')
+  const existing = currentUnsavedBaseline(snapshot)
+  return existing && existing.document.workspaceId === proposal.workspaceId ? { document: existing.document, unsaved: true } : undefined
 }
 
 const replaced = (all: ChangeProposal[], updated: ChangeProposal) => JSON.stringify(all.map((proposal) => (proposal.id === updated.id ? updated : proposal)))
@@ -53,18 +78,25 @@ export class BrowserProposalRepository implements ProposalRepository {
     return status ? all.filter((proposal) => proposal.status === status) : all
   }
 
-  async create(input: ProposalInput, source: ChangeProposal['source'], clientName?: string): Promise<ChangeProposal> {
+  async create(input: ProposalInput, source: ChangeProposal['source'], { clientName, basis }: ProposalCreateOptions = {}): Promise<ChangeProposal> {
     const parsed = proposalInputSchema.safeParse(input)
     if (!parsed.success) throw new ProposalError('proposal-invalid')
     return this.exclusive(async () => {
-      const snapshot = await this.deps.store.read(['document', 'proposals'])
-      const document = readableDocument(snapshot.document)
+      const snapshot = await this.deps.store.read(['document', 'proposals', 'purgeEpoch', 'unsavedBaseline'])
+      const { document, unsaved } = baseForCreate(snapshot, basis)
       if (document.workspaceId !== parsed.data.workspaceId) throw new ProposalError('workspace-mismatch')
       const proposals = parseProposals(snapshot.proposals)
       const built = await buildProposal(parsed.data, document, source, this.deps, this.deps.newId, this.deps.hash)
       const candidate = changeProposalSchema.safeParse({ ...built, ...(clientName ? { clientName } : {}) })
       if (!candidate.success) throw new ProposalError('proposal-invalid')
-      await this.deps.store.write({ proposals: JSON.stringify([...proposals, candidate.data]) })
+      const proposalsJson = JSON.stringify([...proposals, candidate.data])
+      if (!unsaved) {
+        await this.deps.store.write({ proposals: proposalsJson })
+        return candidate.data
+      }
+      await this.deps.store.write({ proposals: proposalsJson, unsavedBaseline: unsavedBaselineRecord(document, purgeEpochOf(snapshot)) })
+      // Other tabs reload and show this same unsaved planner, so their proposals are made against it too.
+      this.notify()
       return candidate.data
     })
   }
@@ -73,7 +105,7 @@ export class BrowserProposalRepository implements ProposalRepository {
   async approve(id: string, contentHash: string, baseRevision: number): Promise<ProposalDecision> {
     return this.exclusive(async () => {
       const { store, now } = this.deps
-      const snapshot = await store.read(['document', 'proposals'])
+      const snapshot = await store.read(['document', 'proposals', 'purgeEpoch', 'unsavedBaseline'])
       const proposals = parseProposals(snapshot.proposals)
       const proposal = proposals.find((candidate) => candidate.id === id)
       if (!proposal) return { kind: 'not-found' }
@@ -81,7 +113,12 @@ export class BrowserProposalRepository implements ProposalRepository {
       if (proposal.status === 'rejected') return { kind: 'rejected' }
       if (proposal.contentHash !== contentHash) throw new ProposalError('content-hash-mismatch')
 
-      const document = readableDocument(snapshot.document)
+      const base = baseForApproval(snapshot, proposal)
+      if (!base) {
+        await store.write({ proposals: replaced(proposals, { ...proposal, status: 'stale', decidedAt: now().toISOString() }) })
+        return { kind: 'stale', currentRevision: 0 }
+      }
+      const { document, unsaved } = base
       if (!document.appliedProposalIds.includes(id) && (document.revision !== baseRevision || document.revision !== proposal.baseRevision)) {
         await store.write({ proposals: replaced(proposals, { ...proposal, status: 'stale', decidedAt: now().toISOString() }) })
         return { kind: 'stale', currentRevision: document.revision }
@@ -93,7 +130,9 @@ export class BrowserProposalRepository implements ProposalRepository {
         await store.write({ proposals: replaced(proposals, { ...proposal, status: 'applied', appliedRevision: applied.document.revision, decidedAt: now().toISOString() }) })
         return { kind: 'applied', revision: applied.document.revision }
       }
-      await store.write({ document: JSON.stringify(applied.document), backup: snapshot.document!, proposals: replaced(proposals, applied.proposal) })
+      // Storage held nothing when this was read inside the lock, so the approval creates the planner (no backup yet).
+      const previous = unsaved ? { unsavedBaseline: null } : { backup: snapshot.document! }
+      await store.write({ document: JSON.stringify(applied.document), ...previous, proposals: replaced(proposals, applied.proposal) })
       this.notify()
       return { kind: 'applied', revision: applied.document.revision }
     })

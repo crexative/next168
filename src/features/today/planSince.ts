@@ -1,15 +1,17 @@
 import type { PlannerDocument } from '@/core/model'
-import { zonedInstant } from '@/core/time'
+import { addLocalDays, zonedInstant } from '@/core/time'
 
 // Today asks "how did it go?" only for blocks that started after the plan existed: a plan made at 14:00
 // has nothing to report about a 09:00 block. The document has no creation date, so the first moment Today
 // saw blocks is kept on this device, and older evidence of use (an actual, a check-in, a task) lowers it.
+// A check-in carries only its date and is made at the end of that day: it proves the plan existed by the end of the
+// day, not at its midnight, so the first Day wrap-up never turns that morning's earlier blocks askable.
 const KEY_PREFIX = 'next168-plan-since:'
 
 export function earliestEvidence(document: PlannerDocument): number | undefined {
   const instants = [
     ...document.actuals.map((actual) => Date.parse(actual.plannedStartAt)),
-    ...document.checkIns.map((checkIn) => zonedInstant(checkIn.date, 0, document.settings.timeZone).getTime()),
+    ...document.checkIns.map((checkIn) => zonedInstant(addLocalDays(checkIn.date, 1), 0, document.settings.timeZone).getTime()),
     ...document.tasks.map((task) => Date.parse(task.createdAt)),
   ].filter(Number.isFinite)
   return instants.length ? Math.min(...instants) : undefined

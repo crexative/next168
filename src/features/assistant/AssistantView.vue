@@ -20,8 +20,9 @@ const percent = computed(() => Math.round((assistant.progress.value?.fraction ??
 const modelState = computed(() => assistant.availability.webllm)
 const failureMessage = computed(() => assistant.failure.value ? t(`assistant.failures.${assistant.failure.value}`) : null)
 
-// A download that failed (network error or offline) can be tried again; the opt-in card is hidden while it runs.
-const canRetry = computed(() => (assistant.failure.value === 'network' || assistant.failure.value === 'offline') && modelState.value === 'downloadable' && !assistant.busy.value)
+// A download that failed (network error, offline, or no space left) can be tried again; the opt-in card is hidden while it runs.
+const RETRYABLE = new Set(['network', 'offline', 'storage-full'])
+const canRetry = computed(() => RETRYABLE.has(assistant.failure.value ?? '') && modelState.value === 'downloadable' && !assistant.busy.value)
 
 onMounted(() => { void assistant.refresh() })
 
@@ -67,7 +68,7 @@ async function submit(): Promise<void> {
       <ol class="messages" aria-live="polite">
         <li v-for="message in assistant.messages.value" :key="message.id" class="message" :class="`is-${message.role}`" :data-role="message.role">
           <p class="t-body bubble">{{ message.text }}</p>
-          <ProposalCard v-if="message.proposal" :input="message.proposal" />
+          <ProposalCard v-if="message.proposal" :input="message.proposal" :basis="planner.document" />
         </li>
       </ol>
       <p v-if="assistant.busy.value === 'asking'" class="t-footnote t-secondary" role="status">{{ t('assistant.chat.thinking') }}</p>

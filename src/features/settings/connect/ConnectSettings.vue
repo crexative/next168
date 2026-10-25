@@ -36,7 +36,7 @@ async function importProposal() {
   try {
     if (new TextEncoder().encode(proposalJson.value).length > 256 * 1024) throw Error('proposal-too-large')
     const input = proposalInputSchema.parse(JSON.parse(proposalJson.value))
-    await getProposalRepository().create(input, 'import')
+    await getProposalRepository().create(input, 'import', { basis: planner.document ?? undefined })
     proposalJson.value = ''; await refreshPending(); location.hash = '#/proposals'
   } catch { status.value = t('connect.importError') }
   finally { busy.value = false }

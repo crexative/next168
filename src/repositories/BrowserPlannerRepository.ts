@@ -7,11 +7,11 @@ import type { ChangeChannel } from './changeChannel'
 import type { BrowserStore, Snapshot } from './indexedDbStore'
 import { LEGACY_KEYS, planLegacyImport } from './legacyImport'
 import {
-  NO_WEB_LOCKS, failureReason, isValidDocumentText, storedDocument, storedFingerprintOf, type RunExclusive, type StorageLike,
-  type StoredDocument, type StoredFingerprint,
+  NO_WEB_LOCKS, currentUnsavedBaseline, failureReason, isValidDocumentText, purgeEpochOf, storedDocument, storedFingerprintOf,
+  type RunExclusive, type StorageLike, type StoredDocument, type StoredFingerprint,
 } from './storageCommit'
 
-export { NO_WEB_LOCKS } from './storageCommit'
+export { NO_WEB_LOCKS, purgeEpochOf } from './storageCommit'
 
 // What a write must still find in storage, checked inside the commit lock before the write.
 export interface CommitGuard {
@@ -51,10 +51,6 @@ function purgeRecord(value: unknown): PurgeRecord | undefined {
   return parsed.success ? parsed.data : undefined
 }
 
-export function purgeEpochOf(snapshot: Snapshot): number {
-  return typeof snapshot.purgeEpoch === 'number' ? snapshot.purgeEpoch : 0
-}
-
 function identityOf(raw: string | undefined): string {
   if (raw === undefined) return 'absent'
   const parsed = parseDocument(raw)
@@ -75,7 +71,7 @@ export class BrowserPlannerRepository implements PlannerRepository {
 
   async load(): Promise<LoadResult> {
     const { store, runExclusive } = this.deps
-    const snapshot = await store.read(['document', 'migration', 'purge', 'purgeEpoch'])
+    const snapshot = await store.read(['document', 'migration', 'purge', 'purgeEpoch', 'unsavedBaseline'])
     this.loadedPurgeEpoch = purgeEpochOf(snapshot)
     if (this.purgePending(snapshot)) await this.finishPurge().catch((error) => console.warn('next168: purge resumes on the next load', error))
     if (snapshot.document !== undefined) {
@@ -85,7 +81,7 @@ export class BrowserPlannerRepository implements PlannerRepository {
     // An import already ran, so the planner was lost afterwards: recover, never resurrect the old localStorage bytes.
     if (snapshot.migration !== undefined) return { kind: 'corrupt', raw: '', reason: STORED_DOCUMENT_MISSING }
     const plan = planLegacyImport(this.deps.legacy, this.importEnvironment())
-    if (plan.kind === 'none') return { kind: 'empty' }
+    if (plan.kind === 'none') return this.emptyResult(snapshot)
     if (!runExclusive) return plan.result
     return runExclusive(() => this.importOnce())
   }
@@ -210,7 +206,7 @@ export class BrowserPlannerRepository implements PlannerRepository {
       const json = JSON.stringify(checked)
       const purgeEpoch = purgeEpochOf(snapshot) + 1
       await store.write({
-        document: json, backup: null, proposals: null,
+        document: json, backup: null, proposals: null, unsavedBaseline: null,
         purge: { legacyKeys: true, calendarSourceIds }, purgeEpoch,
       })
       this.identity = identityOf(json)
@@ -250,19 +246,26 @@ export class BrowserPlannerRepository implements PlannerRepository {
 
   private async importOnce(): Promise<LoadResult> {
     const { store } = this.deps
-    const snapshot = await store.read(['document', 'migration'])
+    const snapshot = await store.read(['document', 'migration', 'purgeEpoch', 'unsavedBaseline'])
     if (snapshot.document !== undefined) {
       this.identity = identityOf(snapshot.document)
       return parseDocument(snapshot.document)
     }
     if (snapshot.migration !== undefined) return { kind: 'corrupt', raw: '', reason: STORED_DOCUMENT_MISSING }
     const plan = planLegacyImport(this.deps.legacy, this.importEnvironment())
-    if (plan.kind === 'none') return { kind: 'empty' }
+    if (plan.kind === 'none') return this.emptyResult(snapshot)
     if (plan.records) {
       await store.write({ ...plan.records, migration: { source: plan.source, at: this.deps.now().toISOString() } })
       this.identity = identityOf(plan.records.document)
     }
     return plan.result
+  }
+
+  // Nothing stored: the unsaved planner proposals were made against, if any, so every tab and reload shows that one.
+  private emptyResult(snapshot: Snapshot): LoadResult {
+    this.identity = identityOf(undefined)
+    const unsaved = currentUnsavedBaseline(snapshot)
+    return unsaved ? { kind: 'empty', document: unsaved.document } : { kind: 'empty' }
   }
 
   private async commitDocument(document: PlannerDocument, expectedRevision: number, guard: CommitGuard = {}): Promise<SaveResult> {
@@ -284,7 +287,8 @@ export class BrowserPlannerRepository implements PlannerRepository {
         return { kind: 'conflict', currentRevision }
       }
       const json = JSON.stringify(checked)
-      await store.write(snapshot.document === undefined ? { document: json } : { document: json, backup: snapshot.document })
+      // The first stored planner replaces the unsaved one proposals were made against: those proposals are stale now.
+      await store.write(snapshot.document === undefined ? { document: json, unsavedBaseline: null } : { document: json, backup: snapshot.document })
       this.identity = identityOf(json)
       return { kind: 'ok', revision: checked.revision }
     })

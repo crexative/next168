@@ -2,7 +2,7 @@ import { mkdir } from 'node:fs/promises'
 import { join } from 'node:path'
 import { randomUUID } from 'node:crypto'
 import { z } from 'zod'
-import { changeProposalSchema, type ChangeProposal, type PlannerDocument, type ProposalDecision, type ProposalInput, type ProposalRepository, type SaveResult } from '../../src/core/model'
+import { changeProposalSchema, type ChangeProposal, type PlannerDocument, type ProposalDecision, type ProposalCreateOptions, type ProposalInput, type ProposalRepository, type SaveResult } from '../../src/core/model'
 import { buildExportBundle } from '../../src/core/exportBundle'
 import type { ExportBundle } from '../../src/core/model'
 import { createEmptyDocument, parseDocument, validateDocument } from '../../src/core/documents'
@@ -84,7 +84,7 @@ export class Workspace implements ProposalRepository {
     const proposals = raw === undefined ? [] : z.array(changeProposalSchema).max(2000).parse(JSON.parse(raw))
     return status ? proposals.filter(item => item.status === status) : proposals
   }
-  async create(input: ProposalInput, source: ChangeProposal['source'], clientName?: string) {
+  async create(input: ProposalInput, source: ChangeProposal['source'], { clientName }: ProposalCreateOptions = {}) {
     return this.mutex.run(async () => {
       const document = await this.document()
       const proposal = await buildProposal(input, document, source, { now: this.now }, randomUUID)

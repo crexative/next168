@@ -176,8 +176,20 @@ export function markDismissed(workspaceKey: string, storage: KeyValueStorage | u
   try { storage?.setItem(DISMISSED_KEY, workspaceKey) } catch { /* A reload may offer the flow once more. */ }
 }
 
+// The key of a planner that is not stored yet. Its first write stores that same planner (same workspace), so a dismissal
+// made before it carries over to the stored workspace: the flow stays closed until the person opens it again.
+export const UNSAVED_WORKSPACE_KEY = 'unsaved'
+
 export function isDismissed(workspaceKey: string, storage: KeyValueStorage | undefined = local()): boolean {
-  try { return storage?.getItem(DISMISSED_KEY) === workspaceKey } catch { return false }
+  try {
+    const dismissed = storage?.getItem(DISMISSED_KEY)
+    if (dismissed === workspaceKey) return true
+    if (dismissed !== UNSAVED_WORKSPACE_KEY) return false
+    markDismissed(workspaceKey, storage)
+    return true
+  } catch {
+    return false
+  }
 }
 
 export function clearDismissed(storage: KeyValueStorage | undefined = local()): void {

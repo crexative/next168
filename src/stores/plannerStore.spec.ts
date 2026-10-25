@@ -50,6 +50,33 @@ describe('loading', () => {
   })
 })
 
+// verify4 defect 1: the review sheet reloads before it previews; a new empty planner each time made every
+// proposal on an unsaved planner "for another workspace".
+describe('a planner that was never stored', () => {
+  it('keeps the same unsaved planner (and workspace) across reloads until something is stored', async () => {
+    const { store, events } = setup()
+    await store.load()
+    const first = store.document
+    await store.load()
+    events.dispatchEvent(new Event('focus'))
+    await store.settled()
+    expect(store.document?.workspaceId).toBe(first?.workspaceId)
+    expect(store.stored).toBe(false)
+  })
+
+  it('shows the unsaved planner a proposal was made against, in any tab', async () => {
+    const storage = new MemoryStore()
+    const { store, proposals } = setup(storage)
+    await store.load()
+    const basis = testDocument({ workspaceId: 'from-other-tab' })
+    await proposals.create({ contractVersion: '1.0', workspaceId: 'from-other-tab', baseRevision: 0, summary: 'S', ops: [{ op: 'add_category', ref: 'new-a', category: { name: 'A' } }] }, 'import', { basis })
+    await store.load()
+    expect(store.document?.workspaceId).toBe('from-other-tab')
+    expect(store.stored).toBe(false)
+    expect(storage.data.has('document')).toBe(false)
+  })
+})
+
 describe('commit', () => {
   it('saves, then publishes the new revision', async () => {
     const { store, storage } = setup()

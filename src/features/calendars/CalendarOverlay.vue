@@ -5,7 +5,7 @@ import type { CalendarRange } from '@/core/icsImport'
 import { usePlannerStore } from '@/stores/plannerStore'
 import { occurrenceKey } from './calendarOverlay'
 import { useCalendarEvents } from './useCalendarEvents'
-import { displayLocale } from '@/ui/format'
+import { displayLocale, formatDateTime } from '@/ui/format'
 const props = defineProps<{ range: CalendarRange }>()
 const { t } = useI18n(), planner = usePlannerStore()
 const { events, conflicts, errors, loading } = useCalendarEvents(() => props.range)
@@ -13,8 +13,8 @@ const conflictKeys = computed(() => new Set(conflicts.value.map(occurrenceKey)))
 function sourceColor(id: string): string { return `var(--cat-${planner.document?.calendarSources.find(source => source.id === id)?.colorKey ?? 'blue'})` }
 function displayTime(start: string, end: string, allDay: boolean): string {
   if (allDay) return `${start} · ${t('calendars.allDay')}`
-  const format = new Intl.DateTimeFormat(displayLocale.value, { timeZone: planner.document?.settings.timeZone ?? 'UTC', dateStyle: 'medium', timeStyle: 'short' })
-  return `${format.format(new Date(start))} – ${format.format(new Date(end))}`
+  const timeZone = planner.document?.settings.timeZone ?? 'UTC'
+  return `${formatDateTime(start, displayLocale.value, timeZone)} – ${formatDateTime(end, displayLocale.value, timeZone)}`
 }
 </script>
 <template>

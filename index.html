@@ -19,6 +19,17 @@
         }
       } catch (error) {}
     </script>
+    <script>
+      // The page's language before the first paint (src/i18n/index.ts owns this key and the same detection), so the
+      // browser never offers to translate a page that is already in the person's language.
+      (function () {
+        var supported = ['en', 'es', 'fr', 'pt', 'de']
+        var saved = null
+        try { saved = localStorage.getItem('next168-language') } catch (error) {}
+        var browser = (navigator.language || '').split('-')[0]
+        document.documentElement.lang = supported.indexOf(saved) >= 0 ? saved : supported.indexOf(browser) >= 0 ? browser : 'en'
+      })()
+    </script>
     <title>Next168</title>
   </head>
   <body>
