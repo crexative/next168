@@ -85,6 +85,7 @@ export const usePlannerStore = defineStore('planner', () => {
 
   async function applyLoad(): Promise<void> {
     const { repository, now, newId, locale, timeZone } = requireEnvironment()
+    const unsaved = !stored.value && (status.value === 'ready' || status.value === 'readonly') ? document.value : null
     let result
     try {
       result = await repository.load()
@@ -107,8 +108,10 @@ export const usePlannerStore = defineStore('planner', () => {
         error.value = repository.writable === false ? 'no-web-locks' : null
         break
       case 'empty':
+        // The same unsaved planner while nothing is stored: a prompt copied for an AI or a proposal made against it
+        // stays valid across re-checks. Storage's own unsaved planner (made by a proposal in any tab) comes first.
+        document.value = result.document ?? (unsaved ?? createEmptyDocument({ now: now(), locale: locale(), timeZone: timeZone(), idGen: newId }))
         stored.value = false
-        document.value = createEmptyDocument({ now: now(), locale: locale(), timeZone: timeZone(), idGen: newId })
         status.value = repository.writable === false ? 'readonly' : 'ready'
         error.value = repository.writable === false ? 'no-web-locks' : null
         break

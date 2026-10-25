@@ -3,7 +3,7 @@
 // browser drops in the background is never reused. Writes are one `strict` transaction: all of a change
 // commits, or none of it does.
 
-export type StoredPart = 'document' | 'backup' | 'proposals' | 'migration' | 'purge' | 'purgeEpoch'
+export type StoredPart = 'document' | 'backup' | 'proposals' | 'migration' | 'purge' | 'purgeEpoch' | 'unsavedBaseline'
 
 export interface Snapshot {
   document?: string
@@ -12,6 +12,7 @@ export interface Snapshot {
   migration?: unknown
   purge?: unknown
   purgeEpoch?: unknown
+  unsavedBaseline?: unknown
 }
 
 // `null` deletes the record; an absent member leaves it as it is.
@@ -22,6 +23,7 @@ export interface Change {
   migration?: object | null
   purge?: object | null
   purgeEpoch?: number
+  unsavedBaseline?: object | null
 }
 
 export interface BrowserStore {
@@ -38,6 +40,7 @@ const LOCATION: Record<StoredPart, readonly [store: (typeof OBJECT_STORES)[numbe
   migration: ['meta', 'migration'],
   purge: ['meta', 'purge'],
   purgeEpoch: ['meta', 'purgeEpoch'],
+  unsavedBaseline: ['meta', 'unsavedBaseline'],
 }
 
 function storesOf(parts: readonly StoredPart[]): string[] {

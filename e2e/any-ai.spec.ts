@@ -1,3 +1,4 @@
+import { readFileSync } from 'node:fs'
 import { expect, test, type Page } from '@playwright/test'
 import { V2_KEY, seedKey } from './fixtures'
 import { storedPlanner, storedRecord } from './support/indexedDb'
@@ -325,3 +326,54 @@ for (const size of Object.keys(SIZES) as (keyof typeof SIZES)[]) {
   })
 }
 
+
+// verify4 defect 1: on a profile that never stored anything (first run, "Ahora no"), a real reply could never be saved
+// ("No se pudieron guardar los cambios"), even after a retry and a reload. The reply is Claude's, recorded by the
+// verifier for this very prompt; only its workspace id is replaced with this profile's.
+test.describe('a truly empty profile', () => {
+  test.beforeEach(({}, testInfo) => { test.skip(testInfo.project.name !== 'desktop', 'one project is enough') })
+
+  const recordedReply = (workspaceId: string) => readFileSync(new URL('./recorded/claude-reply-empty-profile.txt', import.meta.url), 'utf8').replace('{{workspaceId}}', workspaceId)
+
+  test('"Ahora no", copy, paste a real reply, reload, review and approve: the plan is created', async ({ page }) => {
+    await page.setViewportSize(SIZES.phone)
+    await page.clock.install({ time: NOW })
+    await page.addInitScript(() => {
+      window.localStorage.setItem('next168-language', 'es')
+      const copied: string[] = []
+      ;(window as unknown as { __copied: string[] }).__copied = copied
+      Object.defineProperty(navigator, 'clipboard', { configurable: true, value: { writeText: async (text: string) => { copied.push(text) } } })
+    })
+    await page.goto('./#/today')
+    await page.getByRole('button', { name: 'Ahora no' }).click()
+    expect(await storedRecord(page, 'document')).toBeNull()
+
+    await openFromAssistant(page)
+    await page.getByTestId('any-ai-copy').click()
+    const binding = promptBinding((await copiedTexts(page))[0]!)
+    expect(binding.revision).toBe(0)
+    await box(page).fill(recordedReply(binding.workspaceId))
+    await page.getByTestId('any-ai-review').click()
+    await expect(page.getByTestId('review-overview')).toHaveText('9 categorías nuevas · 17 rutinas · 2 tareas')
+    await expect(page.getByTestId('review-invalid')).toHaveCount(0)
+    expect(await storedRecord(page, 'document')).toBeNull()
+
+    // A reload in the middle keeps the same unsaved plan, so the same reply still fits it.
+    await page.reload()
+    await expect(page.getByRole('button', { name: 'Ahora no' })).toHaveCount(0)
+    await openFromAssistant(page)
+    await box(page).fill(recordedReply(binding.workspaceId))
+    await page.getByTestId('any-ai-review').click()
+    await expect(page.getByTestId('review-overview')).toHaveText('9 categorías nuevas · 17 rutinas · 2 tareas')
+    await page.getByTestId('review-approve').click()
+    await expect(page.getByTestId('proposal-review')).toHaveCount(0)
+    await expect(page.getByText('No se pudieron guardar los cambios')).toHaveCount(0)
+
+    const stored = await storedPlanner<{ workspaceId: string; revision: number; categories: { name: string }[]; tasks: { title: string }[] }>(page)
+    expect(stored).toMatchObject({ workspaceId: binding.workspaceId, revision: 1 })
+    expect(stored.categories).toHaveLength(9)
+    expect(stored.tasks.map((task) => task.title)).toEqual(['Preparar presentación trimestral', 'Renovar pasaporte'])
+    await page.goto('./#/insights')
+    await expect(page.getByTestId('capacity-available')).toContainText('h asignadas')
+  })
+})

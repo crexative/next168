@@ -5,11 +5,13 @@ import type { ChangeProposal, ProposalInput } from '@/core/model'
 import { openProposalReview } from '@/features/proposals'
 import { getProposalRepository } from '@/features/proposals/repository'
 import { lastDecision } from '@/features/proposals/reviewState'
+import { usePlannerStore } from '@/stores/plannerStore'
 import Button from '@/ui/Button.vue'
 
 const props = defineProps<{ input: ProposalInput }>()
 
 const { t } = useI18n()
+const planner = usePlannerStore()
 // The active mode's repository: in companion mode the proposal goes to the companion, never to the browser store.
 const proposals = getProposalRepository()
 
@@ -29,7 +31,7 @@ const outcome = computed(() => {
 
 async function review(): Promise<void> {
   try {
-    stored.value ??= await proposals.create(props.input, 'assistant')
+    stored.value ??= await proposals.create(props.input, 'assistant', { basis: planner.document ?? undefined })
     openProposalReview(stored.value)
   } catch {
     failed.value = true

@@ -1,6 +1,8 @@
+import { z } from 'zod'
 import { STORAGE_KEYS, type LoadResult, type PlannerDocument } from '@/core/model'
 import { canonicalJson, sha256 } from '@/core/canonical'
 import { parseDocument, validateDocument } from './core'
+import type { Snapshot } from './indexedDbStore'
 
 // The legacy localStorage surface: read for the one-time import, cleared by delete-all, never written.
 export interface StorageLike {
@@ -61,4 +63,32 @@ export async function storedFingerprintOf(raw: string | undefined): Promise<Stor
   if (raw === undefined) return 'absent'
   const stored = parseDocument(raw)
   return stored.kind === 'ok' ? documentFingerprint(stored.document) : undefined
+}
+
+export function purgeEpochOf(snapshot: Snapshot): number {
+  return typeof snapshot.purgeEpoch === 'number' ? snapshot.purgeEpoch : 0
+}
+
+// Until the first write, the planner a person sees lives only in memory. A proposal made against it (a pasted reply,
+// the on-device assistant, an imported proposal) stores that document beside the proposals, never as the planner:
+// approving creates the planner from exactly what the proposal was made for, and every tab and reload shows the same
+// unsaved planner meanwhile. It belongs to the purge epoch it was made in; a delete-all makes it void.
+export interface UnsavedBaseline {
+  document: PlannerDocument
+  purgeEpoch: number
+}
+
+const unsavedBaselineSchema = z.object({ document: z.string(), purgeEpoch: z.number().int().min(0) })
+
+export function unsavedBaselineRecord(document: PlannerDocument, purgeEpoch: number): object {
+  return { document: JSON.stringify(document), purgeEpoch }
+}
+
+// The stored unsaved document, if it is readable, never written as a planner (revision 0) and of the current epoch.
+export function currentUnsavedBaseline(snapshot: Snapshot): UnsavedBaseline | undefined {
+  const parsed = unsavedBaselineSchema.safeParse(snapshot.unsavedBaseline)
+  if (!parsed.success || parsed.data.purgeEpoch !== purgeEpochOf(snapshot)) return undefined
+  const stored = parseDocument(parsed.data.document)
+  if (stored.kind !== 'ok' || stored.document.revision !== 0) return undefined
+  return { document: stored.document, purgeEpoch: parsed.data.purgeEpoch }
 }
