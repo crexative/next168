@@ -114,6 +114,12 @@ describe('a word that fits is drawn', () => {
     expect(fitTitle({ text: 'Correos y seguimiento', role: 'caption' }, { width: 48.3, height: 16 }, metrics)).toMatchObject({ text: `Correos${ELLIPSIS}`, truncated: true })
   })
 
+  it('measures the last word together with its "…", as the browser shapes them ("Pagar…" is narrower than the sum)', () => {
+    const shaped: TextMetrics = { ...metrics, width: (text, role) => text === `Pagar${ELLIPSIS}` ? 33 : metrics.width(text, role) }
+    // "Pagar" (30 px) plus "…" (6 px) is 36 px; the pair is drawn in 33 px and fits 34 px.
+    expect(fitTitle({ text: 'Pagar la luz', role: 'caption' }, { width: 34, height: 16 }, shaped)).toMatchObject({ text: `Pagar${ELLIPSIS}` })
+  })
+
   it('hyphenates a first word that fits a line but not with its "…" ("Prepa-" / "rar…")', () => {
     const hyphenating: TextMetrics = { ...metrics, hyphenatedLines: (text) => text.startsWith('Preparar') ? 2 : null }
     // "Preparar" is 48 px and fits 50 px; "Preparar…" (54 px) does not.

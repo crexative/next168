@@ -108,7 +108,6 @@ function titleWith(text: string, role: TextRole, lead: number, width: number, ma
   if (words.length === 0 || maxLines < 1) return null
   const room = width - SPARE_PX
   const space = metrics.width(' ', role)
-  const ellipsis = metrics.width(ELLIPSIS, role)
   // Each placed word with the width its line has used once it is placed.
   const placed: { word: string; line: number; end: number }[] = []
   let line = 0
@@ -131,7 +130,9 @@ function titleWith(text: string, role: TextRole, lead: number, width: number, ma
   if (placed.length === 0) return lead > 0 ? null : hyphenatedFirstWord(words, role, room, maxLines, metrics)
   if (placed.length === words.length) return { text, lines: line + 1, lead: lead > 0, truncated: false }
   // Words were left out: the last line ends with "…", dropping words until it fits.
-  while (placed.length > 0 && placed[placed.length - 1]!.end + ellipsis > room) placed.pop()
+  // The browser shapes "…" with the word before it ("Pagar…" is narrower than "Pagar" plus "…"), so the pair is measured.
+  const endWithEllipsis = (item: { word: string; end: number }) => item.end - metrics.width(item.word, role) + metrics.width(item.word + ELLIPSIS, role)
+  while (placed.length > 0 && endWithEllipsis(placed[placed.length - 1]!) > room) placed.pop()
   // The first word fits a line but not with its "…": hyphenated, it may ("Prepa-" / "rar…").
   if (placed.length === 0) return lead > 0 ? null : hyphenatedFirstWord(words, role, room, maxLines, metrics)
   return { text: placed.map((item) => item.word).join(' ') + ELLIPSIS, lines: placed[placed.length - 1]!.line + 1, lead: lead > 0, truncated: true }
@@ -139,8 +140,10 @@ function titleWith(text: string, role: TextRole, lead: number, width: number, ma
 
 // A first word wider than a line: the browser may hyphenate it in the page's language ("Revi-" / "sión…"). It is drawn
 // alone (with "…" when more words follow) if its hyphenated lines fit.
+// The small caption size is never hyphenated: in a task's outline the browser drew it unbroken where a probe of the
+// same text broke it ("Pau-" / "se……"), so a hyphenated small title could not be measured reliably.
 function hyphenatedFirstWord(words: readonly string[], role: TextRole, room: number, maxLines: number, metrics: TextMetrics): TitleFit | null {
-  if (!metrics.hyphenatedLines) return null
+  if (!metrics.hyphenatedLines || role === 'compact') return null
   const text = words.length > 1 ? words[0]! + ELLIPSIS : words[0]!
   const lines = metrics.hyphenatedLines(text, role, room)
   if (lines === null || lines > maxLines) return null

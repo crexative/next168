@@ -285,8 +285,9 @@ function onColumnClick(event: MouseEvent, blockId?: string): void {
    a mark. Same weight and tracking as the caption. */
 .block-title.is-small-text, .busy-title.is-small-text, .task-title.is-small-text, [data-role='compact'] { font-size: 0.6875rem; font-weight: 500; line-height: 1.2; letter-spacing: 0.01em; }
 .block.is-centered { justify-content: center; }
-.busy.is-small { display: flex; align-items: center; padding-block: 0; }
-.task-box.is-small { display: flex; align-items: center; padding-block: 0; border-width: 1px; padding-inline: 2px; }
+/* Centred in a column, the title spans the whole line width, so it wraps (and hyphenates) exactly as it was measured. */
+.busy.is-small { display: flex; flex-direction: column; justify-content: center; padding-block: 0; }
+.task-box.is-small { display: flex; flex-direction: column; justify-content: center; padding-block: 0; border-width: 1px; padding-inline: 2px; }
 /* A time range is one unit: on one line or not drawn (dayColumnPlan.ts gives it one line). */
 .block-time { white-space: nowrap; }
 .block-title, .block-detail, .block-status, .busy, .task-text { white-space: normal; overflow-wrap: normal; word-break: normal; hyphens: manual; }

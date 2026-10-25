@@ -205,8 +205,12 @@ export function planDayColumn(input: DayColumnInput): DayColumnPlan {
     // Two lines of the title, more for a hyphenated first word ("Tra-" / "ba-" / "jo…"), else the small caption size.
     const body = (lines: number) => fitTitle(piece, { width, height: Math.min(room - BLOCK_INSET.top - BLOCK_INSET.bottom, lines * measure.metrics.lineHeight('blockTitle')) }, measure.metrics)
     const title = body(HOST_TITLE_LINES) ?? body(HOST_TITLE_MAX_LINES)
-    const small = title ? null : fitTitle({ text: piece.text, role: 'compact' }, { width, height: Math.min(room - BLOCK_INSET.top - BLOCK_INSET.bottom, HOST_TITLE_LINES * measure.metrics.lineHeight('compact')) }, measure.metrics)
-    titleStrip.set(block.key, title ? BLOCK_INSET.top + titleHeight(title, 'blockTitle', measure) + PIECE_GAP_PX : small ? BLOCK_INSET.top + titleHeight(small, 'compact', measure) + PIECE_GAP_PX : 0)
+    // A routine too short for a line of its own size keeps its small title centred with no padding; its tasks then become
+    // one outline around it rather than taking its only line.
+    const short = room < BLOCK_INSET.top + measure.metrics.lineHeight('blockTitle') + BLOCK_INSET.bottom
+    const smallInset = short ? 0 : BLOCK_INSET.top
+    const small = title ? null : fitTitle({ text: piece.text, role: 'compact' }, { width, height: Math.min(room - 2 * smallInset, HOST_TITLE_LINES * measure.metrics.lineHeight('compact')) }, measure.metrics)
+    titleStrip.set(block.key, title ? BLOCK_INSET.top + titleHeight(title, 'blockTitle', measure) + PIECE_GAP_PX : small ? smallInset + titleHeight(small, 'compact', measure) + PIECE_GAP_PX : 0)
   }
 
   // Tasks of one host are placed together: each first gets up to two lines of its title, then one line, then at least

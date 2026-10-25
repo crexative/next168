@@ -809,21 +809,27 @@ export function auditInPage(options: { focusRings: boolean }): string[] {
     }
   }
 
-  // A box with no words must be one too small for any: the first word of its title (with "…" when more follows), in the
-  // smallest size the container allows (the element marked `data-min-text`), hyphenated by the browser if need be, does
-  // not fit the room inside the item's `data-text-inset` (top right bottom left, in px). An item that takes no pointer
+  // A box with no words must be one too small for any: the first word of its title (with "…" when more follows), on
+  // one line in the smallest size the container allows (the element marked `data-min-text`, never hyphenated), does not
+  // fit the room inside the item's `data-text-inset` (top right bottom left, in px). An item that takes no pointer
   // input (a task outline) and a container with no such size (the seven-day overview) are left alone.
   function checkBlankItems(container: HTMLElement, items: Element[]): void {
     const reference = container.querySelector<HTMLElement>('[data-min-text]')
     if (!reference) return
+    // Measured with a copy of the reference itself, so the word has exactly its styles and context.
+    const measure = (build: (probe: HTMLElement) => void) => {
+      const probe = reference.cloneNode(false) as HTMLElement
+      probe.style.cssText += '; position: absolute; visibility: hidden; white-space: pre; width: auto; max-width: none'
+      build(probe)
+      reference.after(probe)
+      const range = document.createRange()
+      range.selectNodeContents(probe)
+      const box = { width: probe.getBoundingClientRect().width, glyphs: range.getBoundingClientRect().height }
+      probe.remove()
+      return box
+    }
     const font = getComputedStyle(reference)
-    const shorthand = `${font.fontStyle} ${font.fontWeight} ${font.fontSize}/${font.lineHeight} ${font.fontFamily}`
-    const glyphs = document.createElement('span')
-    glyphs.textContent = 'Hg'
-    glyphs.style.cssText = `position: absolute; visibility: hidden; white-space: pre; font: ${shorthand}; letter-spacing: ${font.letterSpacing}`
-    document.body.append(glyphs)
-    const line = Math.max(px(font.lineHeight) || px(font.fontSize) * 1.2, glyphs.getBoundingClientRect().height)
-    glyphs.remove()
+    const line = Math.max(px(font.lineHeight) || px(font.fontSize) * 1.2, measure((probe) => { probe.textContent = 'Hg' }).glyphs)
     for (const item of items) {
       if (getComputedStyle(item).pointerEvents === 'none' || drawnText(item) !== '') continue
       const title = (item.getAttribute('title') || item.getAttribute('aria-label') || '').replace(/\s+/g, ' ').trim()
@@ -835,15 +841,12 @@ export function auditInPage(options: { focusRings: boolean }): string[] {
       const width = rect.width - left - right - 0.25
       const height = rect.height - top - bottom
       if (width <= 0 || height < line - 0.01) continue
-      const probe = document.createElement('div')
-      probe.textContent = text
-      probe.lang = item.closest('[lang]')?.getAttribute('lang') ?? ''
-      probe.style.cssText = `position: absolute; visibility: hidden; left: 0; top: 0; width: ${width}px; overflow: hidden; white-space: normal; overflow-wrap: normal; hyphens: auto; font: ${shorthand}; letter-spacing: ${font.letterSpacing}`
-      document.body.append(probe)
-      const overflows = probe.scrollWidth > probe.clientWidth + 0.5
-      const lines = Math.round(probe.getBoundingClientRect().height / (px(font.lineHeight) || px(font.fontSize) * 1.2))
-      probe.remove()
-      if (!overflows && lines * line <= height + 0.01) violations.push(`${describe(item)} draws no text though "${text}" fits its ${width.toFixed(1)}×${height.toFixed(1)} px room`)
+      // Measured as a cut title is drawn: the word, then "…" in an element of its own.
+      const { width: needed } = measure((probe) => {
+        probe.textContent = words[0]!
+        if (words.length > 1) probe.append(Object.assign(document.createElement('span'), { textContent: '\u2026' }))
+      })
+      if (needed <= width) violations.push(`${describe(item)} draws no text though "${text}" fits its ${width.toFixed(1)}×${height.toFixed(1)} px room`)
     }
   }
 
