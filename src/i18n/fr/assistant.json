@@ -42,6 +42,7 @@
     "cancelled": "Annulé.",
     "offline": "Vous êtes hors ligne et le modèle n'est pas encore téléchargé. Connectez-vous une fois pour le télécharger.",
     "network": "Le modèle n'a pas pu être téléchargé. Vérifie ta connexion et réessaie.",
+    "storage-full": "Cet appareil n'a pas assez d'espace libre pour garder le modèle (environ 705 Mo). Libère de l'espace, puis réessaie.",
     "out-of-memory": "Cet appareil a manqué de mémoire en chargeant le modèle. Les réponses rapides sont utilisées.",
     "device-lost": "Le périphérique graphique a été perdu. Les réponses rapides sont utilisées ; rechargez pour réessayer le modèle.",
     "invalid-output": "La réponse du modèle n'a pas pu être utilisée. Essayez de reformuler.",

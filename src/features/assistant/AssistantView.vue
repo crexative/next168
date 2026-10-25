@@ -20,8 +20,9 @@ const percent = computed(() => Math.round((assistant.progress.value?.fraction ??
 const modelState = computed(() => assistant.availability.webllm)
 const failureMessage = computed(() => assistant.failure.value ? t(`assistant.failures.${assistant.failure.value}`) : null)
 
-// A download that failed (network error or offline) can be tried again; the opt-in card is hidden while it runs.
-const canRetry = computed(() => (assistant.failure.value === 'network' || assistant.failure.value === 'offline') && modelState.value === 'downloadable' && !assistant.busy.value)
+// A download that failed (network error, offline, or no space left) can be tried again; the opt-in card is hidden while it runs.
+const RETRYABLE = new Set(['network', 'offline', 'storage-full'])
+const canRetry = computed(() => RETRYABLE.has(assistant.failure.value ?? '') && modelState.value === 'downloadable' && !assistant.busy.value)
 
 onMounted(() => { void assistant.refresh() })
 

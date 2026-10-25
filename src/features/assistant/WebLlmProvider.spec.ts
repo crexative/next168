@@ -126,6 +126,28 @@ describe('WebLlmProvider prepare and ask', () => {
     expect(await provider.availability()).toBe('downloadable')
   })
 
+  // verify4 defect 10: on a full disk the browser drops the responses it cannot store, and the app said "Check your
+  // connection". A failure like the network's, with less space left than the rest of the download, is a full disk.
+  it('a download that fails while the space left cannot hold the rest says the device is out of space', async () => {
+    vi.spyOn(navigator, 'onLine', 'get').mockReturnValue(true)
+    const { provider, module } = setup({ create: async (_worker, _id, config) => {
+      config?.initProgressCallback?.({ progress: 0.4, text: 'Fetching' })
+      throw new TypeError('Failed to fetch')
+    }, capabilities: { storageQuotaBytes: 2e9, storageUsageBytes: 2e9 - 100e6 } })
+    await expect(provider.prepare(vi.fn(), signal())).rejects.toMatchObject({ code: 'storage-full' })
+    expect(module.CreateWebWorkerMLCEngine).toHaveBeenCalledTimes(1)
+    expect(provider.lastFailure).toBeUndefined()
+  })
+
+  it('a download that fails with room to spare is still a network error', async () => {
+    vi.spyOn(navigator, 'onLine', 'get').mockReturnValue(true)
+    const { provider } = setup({ create: async (_worker, _id, config) => {
+      config?.initProgressCallback?.({ progress: 0.9, text: 'Fetching' })
+      throw new TypeError('Failed to fetch')
+    }, capabilities: { storageQuotaBytes: 2e9, storageUsageBytes: 2e9 - 100e6 } })
+    await expect(provider.prepare(vi.fn(), signal())).rejects.toMatchObject({ code: 'network' })
+  })
+
   it('reloading the page offline loads the cached model without network', async () => {
     vi.spyOn(navigator, 'onLine', 'get').mockReturnValue(false)
     const { provider } = setup({ cached: true })
@@ -339,7 +361,8 @@ describe('WebLlmProvider cache management', () => {
 describe('failure classification and fact quoting', () => {
   it.each([
     [new Error('Out of memory'), 'out-of-memory'],
-    [Object.assign(new Error('x'), { name: 'QuotaExceededError' }), 'out-of-memory'],
+    [Object.assign(new Error('x'), { name: 'QuotaExceededError' }), 'storage-full'],
+    [new Error('Quota exceeded while writing the cache'), 'storage-full'],
     [new Error('Device was lost'), 'device-lost'],
     [new TypeError('Failed to fetch'), 'network'],
     [Object.assign(new Error('x'), { name: 'AbortError' }), 'cancelled'],

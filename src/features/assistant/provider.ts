@@ -37,6 +37,8 @@ export type AssistantFailureCode =
   | 'cancelled'
   | 'offline'
   | 'network'
+  // The browser could not keep the download: the device (or this site's share of it) is out of space.
+  | 'storage-full'
   | 'out-of-memory'
   | 'device-lost'
   | 'invalid-output'
