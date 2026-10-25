@@ -1,7 +1,7 @@
 import { expect, test, type Page, type TestInfo } from '@playwright/test'
 import { legacyData, seedKey, V2_KEY } from './fixtures'
 import { visualIntegrityViolations } from './support/visualIntegrity'
-import { addFromMenu } from './support/week'
+import { addFromMenu, itemsMissingTitles, seededTitles } from './support/week'
 import { syntheticWeekReply } from '../src/features/assistant/anyAi/syntheticWeek'
 
 // Every tab and every sheet, at the three project widths (1440 / 768 / 375 px) and in both themes:
@@ -817,12 +817,10 @@ test.describe('Week readability', () => {
       await expect(page.getByTestId('now-line')).toBeInViewport()
       // Every title drawn is whole (the whole-text rule of the guard), and a hidden one stays in the accessible name.
       await audit(page, `light/${width}/week with events beside routines`)
-      const unnamed = await page.locator('.week-grid').evaluate((grid) => Array.from(grid.querySelectorAll<HTMLElement>('[data-testid="busy-overlay"], .block, [data-testid="week-task"]')).flatMap((item) => {
-        const name = item.getAttribute('aria-label') ?? item.textContent ?? ''
-        const title = item.getAttribute('title') ?? item.querySelector('.block-title')?.textContent?.trim() ?? item.getAttribute('aria-label')!
-        return name.includes(title) ? [] : [`${name} does not name "${title}"`]
-      }))
-      expect.soft(unnamed).toEqual([])
+      // Each item's accessible name holds its full title as seeded (by id), drawn whole, cut or not at all.
+      const names = await itemsMissingTitles(page, seededTitles(crowded))
+      expect(names.checked, 'routines, events and tasks checked').toBeGreaterThan(20)
+      expect.soft(names.missing).toEqual([])
       // A task chunk whose box holds its whole title on one caption line shows it (verify5 N2: no empty box that had room).
       const unlabeled = await page.getByTestId('week-task').evaluateAll((chunks) => chunks.flatMap((chunk) => {
         if (!chunk.getAttribute('title')) return [`${chunk.getAttribute('aria-label')} has no tooltip`]
@@ -940,33 +938,60 @@ test.describe('visual integrity guard: whole text in Week', () => {
     expect(await audit(page)).toContain('text "Deep work" in <span> "Deep work" is covered by <button.item> "Vendor call"')
   })
 
-  test('a title cut after whole words with a drawn "…" is accepted ("Revisión de…", "Vendor…")', async ({ page }) => {
+  test('a title cut after whole words with the generated "…" is accepted ("Revisión de…", "Vendor…")', async ({ page }) => {
     await page.setContent(column(`
-      <button class="item" title="Revisión de diseño de producto" style="top: 0; left: 0; width: 80px; height: 40px"><span>Revisión de<span style="display: inline" aria-hidden="true">…</span></span></button>
-      <button class="item" aria-label="Vendor call 9:30 – 10:00" style="top: 40px; left: 0; width: 80px; height: 20px"><span>Vendor…</span></button>
+      <button class="item" title="Revisión de diseño de producto" style="top: 0; left: 0; width: 80px; height: 40px"><span>Revisión de<span style="display: inline" data-cut aria-hidden="true">…</span></span></button>
+      <button class="item" aria-label="Vendor call 9:30 – 10:00" style="top: 40px; left: 0; width: 80px; height: 20px"><span>Vendor<span style="display: inline" data-cut>…</span></span></button>
     `))
     expect(await audit(page)).toEqual([])
   })
 
-  test('a word cut before a drawn "…" is reported ("Reunió…", "Vendo…")', async ({ page }) => {
+  test('a word cut before the generated "…", or a cut drawn as plain text, is reported ("Vendo…", "Reunió…")', async ({ page }) => {
     await page.setContent(column(`
       <button class="item" title="Reunión diaria" style="top: 0; left: 0; width: 80px; height: 20px"><span>Reunió…</span></button>
-      <button class="item" aria-label="Vendor call 9:30 – 10:00" style="top: 20px; left: 0; width: 80px; height: 20px"><span>Vendo<span style="display: inline" aria-hidden="true">…</span></span></button>
+      <button class="item" aria-label="Vendor call 9:30 – 10:00" style="top: 20px; left: 0; width: 80px; height: 20px"><span>Vendo<span style="display: inline" data-cut aria-hidden="true">…</span></span></button>
     `))
     const violations = await audit(page)
-    expect(violations).toContain('text "Reunió…" in <span> "Reunió…" ends "Reunió…", which is not whole words of "Reunión diaria" followed by "…"')
+    expect(violations).toContain('text "Reunió…" in <span> "Reunió…" draws "Reunió…", a "…" that is not part of the title "Reunión diaria"')
     expect(violations.some((violation) => violation.includes('ends "Vendo…", which is not whole words of "Vendor call 9:30 – 10:00"'))).toBe(true)
   })
 
-  test('a "…" after the whole title is reported: nothing was left out', async ({ page }) => {
-    await page.setContent(column('<button class="item" title="Gym" style="top: 0; left: 0; width: 80px; height: 20px"><span>Gym…</span></button>'))
+  test('the generated "…" after the whole title is reported: nothing was left out', async ({ page }) => {
+    await page.setContent(column('<button class="item" title="Gym" style="top: 0; left: 0; width: 80px; height: 20px"><span>Gym<span style="display: inline" data-cut>…</span></span></button>'))
     expect((await audit(page)).some((violation) => violation.includes('ends "Gym…"'))).toBe(true)
+  })
+
+  // Codex review: "…" or "..." that belongs to a fully drawn title is punctuation, not a cut.
+  test('a whole title that contains "…" or "..." is accepted ("Pausa…", "Wait...")', async ({ page }) => {
+    await page.setContent(column(`
+      <button class="item" title="Pausa…" style="top: 0; left: 0; width: 120px; height: 20px"><span>Pausa…</span></button>
+      <button class="item" aria-label="Wait... 9:00 – 9:15" style="top: 20px; left: 0; width: 120px; height: 20px"><span>Wait...</span></button>
+      <button class="item" aria-label="Pausa… larga 9:15 – 9:45" style="top: 40px; left: 0; width: 120px; height: 20px"><span>Pausa… larga</span></button>
+    `))
+    expect(await audit(page)).toEqual([])
   })
 
   test('outside a whole-text container an ellipsis is still a deliberate truncation', async ({ page }) => {
     await page.setContent(column('<button class="item" style="top: 0; left: 0; width: 60px; height: 20px"><span style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap">Vendor call</span></button>').replace(' data-whole-text', ''))
     expect(await audit(page)).toEqual([])
   })
+})
+
+// Codex review: the name check once compared a hidden routine's aria-label with itself. It now takes the title from the
+// seeded week by id, so a routine whose name lost its title is reported even when nothing of it is drawn.
+test('a Week item whose accessible name lacks its seeded title is reported, drawn or not', async ({ page }, testInfo) => {
+  test.skip(testInfo.project.name !== 'phone', 'the checker self-test runs once')
+  await page.setContent(`<div class="day-column">
+    <button data-block-id="b-work" aria-label="9:00 AM – 11:00 AM Work"></button>
+    <button data-block-id="b-gym" aria-label="Gym 6:00 PM – 7:00 PM"><span>Gym</span></button>
+    <button data-event-id="e-vendor" title="Vendor call"><span aria-hidden="true">Vendor…</span><span>Vendor</span></button>
+    <button data-task-id="t-report" aria-label="Task: Write the quarterly report, 9:00 AM – 9:20 AM"></button>
+  </div>`)
+  const titles = { blocks: { 'b-work': 'Deep work', 'b-gym': 'Gym' }, events: { 'e-vendor': 'Vendor call' }, tasks: { 't-report': 'Write the quarterly report' } }
+  expect(await itemsMissingTitles(page, titles)).toEqual({ checked: 4, missing: [
+    'block b-work: "9:00 AM – 11:00 AM Work" does not name "Deep work"',
+    'event e-vendor: "Vendor" does not name "Vendor call"',
+  ] })
 })
 
 test.describe('visual integrity guard: padded container edges', () => {

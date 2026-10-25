@@ -47,7 +47,7 @@ function plan(options: { blocks?: TimeBlock[]; events?: ReturnType<typeof event>
 
 const shown = (result: DayColumnPlan, id: string) => {
   const found = result.blocks.find((segment) => segment.occurrence.blockId === id)!.show
-  const title = found.title && (found.text?.endsWith(ELLIPSIS) ? 'title…' : 'title')
+  const title = found.title && (found.cut ? 'title…' : 'title')
   return [title, found.time && 'time', found.category && 'category'].filter(Boolean).join('+') || 'mark'
 }
 
@@ -64,10 +64,17 @@ describe('what a routine shows, by the size of its box', () => {
   it('wraps a title between words, ends a cut one with "…" after its last whole word, and draws no fragment of a word', () => {
     // 95 px column: 80 px for text: "Quarterly" (63) fits a line, "Quarterly budget" (112) does not: three lines.
     const two = plan({ blocks: [block('q', 540, 600, 'Quarterly budget review')], measure: measureAt(95) }).blocks[0]!.show
-    expect(two).toMatchObject({ title: true, text: 'Quarterly budget…', time: false })
+    expect(two).toMatchObject({ title: true, text: 'Quarterly budget…', cut: true, time: false })
     expect(plan({ blocks: [block('q', 540, 630, 'Quarterly budget review')], measure: measureAt(95) }).blocks[0]!.show).toMatchObject({ title: true, text: 'Quarterly budget review' })
     // A single word wider than the box is never cut: the box is a mark.
     expect(shown(plan({ blocks: [block('q', 540, 720, 'Abstimmungsgespräch')], measure: measureAt(95) }), 'q')).toBe('mark')
+  })
+
+  // Codex review: a "…" that belongs to the title is punctuation, not a cut.
+  it('draws a title that itself ends with "…" whole, without calling it cut', () => {
+    for (const name of ['Pausa…', 'Wait...']) {
+      expect(plan({ blocks: [block('p', 540, 600, name)], measure: measureAt(300) }).blocks[0]!.show).toMatchObject({ title: true, text: name, cut: false })
+    }
   })
 
   it('drops the category mark before the title', () => {
@@ -103,12 +110,12 @@ describe('events and routines share the column', () => {
 
   it('shows a conflict as icon and word, then icon, then the title alone, then the icon alone', () => {
     const at = (width: number, minutes: number) => plan({ blocks: [block('b', 540, 600)], events: [event('Vendor call', 540, 540 + minutes)], measure: measureAt(width) }).busy[0]!.show
-    expect(at(400, 60)).toEqual({ icon: true, word: true, title: true, text: 'Vendor call' })
-    expect(at(200, 30)).toEqual({ icon: true, word: false, title: true, text: 'Vendor call' })
+    expect(at(400, 60)).toEqual({ icon: true, word: true, title: true, text: 'Vendor call', cut: false })
+    expect(at(200, 30)).toEqual({ icon: true, word: false, title: true, text: 'Vendor call', cut: false })
     // 104 px column, two lanes: 48 px boxes, 42 px for text: "Vendor" / "call" on two lines, not with the icon.
-    expect(at(104, 60)).toEqual({ icon: false, word: false, title: true, text: 'Vendor call' })
+    expect(at(104, 60)).toEqual({ icon: false, word: false, title: true, text: 'Vendor call', cut: false })
     // One line of 50 px: the first whole word and "…".
-    expect(at(120, 30)).toEqual({ icon: false, word: false, title: true, text: 'Vendor…' })
+    expect(at(120, 30)).toEqual({ icon: false, word: false, title: true, text: 'Vendor…', cut: true })
     expect(at(104, 20)).toEqual({ icon: true, word: false, title: false })
     expect(at(30, 5)).toEqual({ icon: false, word: false, title: false })
   })
@@ -187,13 +194,13 @@ describe('the plan never draws a cut or covered word', () => {
       const width = (lane: { width: number }) => (measure.width * lane.width) / 100 - 2 * LANE_GAP_PX
 
       // A drawn title is the whole title or its first whole words and "…".
-      const wholeWords = (text: string | undefined, title: string) => text === undefined || text === title || text.endsWith(ELLIPSIS) && title.startsWith(text.slice(0, -1)) && title[text.length - 1] === ' '
+      const wholeWords = (show: { text?: string; cut?: boolean }, title: string) => show.text === undefined || !show.cut && show.text === title || Boolean(show.cut) && show.text.endsWith(ELLIPSIS) && title.startsWith(show.text.slice(0, -1)) && title[show.text.length - 1] === ' '
       for (const segment of result.blocks) {
         const count = [segment.show.title, segment.show.time, segment.show.category].filter(Boolean).length
         expect([segment.show.title, segment.show.time, segment.show.category].slice(0, count).every(Boolean)).toBe(true)
         if (count === 0) continue
-        expect(wholeWords(segment.show.text, segment.occurrence.title), `${segment.show.text} of ${segment.occurrence.title}`).toBe(true)
-        if (segment.show.text?.endsWith(ELLIPSIS)) expect(count, 'nothing follows a cut title').toBe(1)
+        expect(wholeWords(segment.show, segment.occurrence.title), `${segment.show.text} of ${segment.occurrence.title}`).toBe(true)
+        if (segment.show.cut) expect(count, 'nothing follows a cut title').toBe(1)
         const pieces: TextPiece[] = [
           { text: segment.show.text ?? segment.occurrence.title, role: 'blockTitle', lead: segment.show.mark ? measure.markLead : 0 },
           { text: '9:00\u00a0AM – 10:00\u00a0AM', role: 'blockDetail' }, { text: 'Work time', role: 'blockDetail' },
@@ -205,8 +212,8 @@ describe('the plan never draws a cut or covered word', () => {
         expect(textBottom).toBeLessThanOrEqual(px(segment.endMinute) + 0.01)
         for (const chunk of result.tasks.filter((item) => item.hostKey === segment.key && !item.outline)) expect(chunk.top).toBeGreaterThanOrEqual(px(segment.startMinute) + BLOCK_INSET.top + measure.metrics.lineHeight('blockTitle') - 0.01)
       }
-      for (const chunk of result.tasks) expect(wholeWords(chunk.show.text, chunk.task.title)).toBe(true)
-      for (const item of result.busy) expect(wholeWords(item.show.text, item.title)).toBe(true)
+      for (const chunk of result.tasks) expect(wholeWords(chunk.show, chunk.task.title)).toBe(true)
+      for (const item of result.busy) expect(wholeWords(item.show, item.title)).toBe(true)
       for (const item of result.busy) {
         if (!item.show.title) continue
         expect(px(item.endMinute) - px(item.startMinute) - BUSY_INSET.top - BUSY_INSET.bottom).toBeGreaterThanOrEqual(measure.metrics.lineHeight('caption') - 0.01)
