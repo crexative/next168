@@ -46,8 +46,8 @@ function onName(name: string): void {
 </template>
 
 <style scoped>
-.card { list-style: none; border-radius: var(--radius-card); background: var(--surface-2); overflow: hidden; }
-.head { display: flex; align-items: center; gap: var(--space-3); width: 100%; min-height: var(--tap-target); padding: var(--space-3) var(--space-4); border: 0; background: transparent; color: var(--label); text-align: start; touch-action: manipulation; }
+.card { list-style: none; border-radius: var(--radius-card); background: var(--surface-2); }
+.head { border-radius: inherit; display: flex; align-items: center; gap: var(--space-3); width: 100%; min-height: var(--tap-target); padding: var(--space-3) var(--space-4); border: 0; background: transparent; color: var(--label); text-align: start; touch-action: manipulation; }
 .head:focus-visible { outline-offset: -2px; }
 .dot { flex: none; width: 14px; height: 14px; border-radius: 50%; }
 .text { display: flex; flex: 1; flex-direction: column; gap: var(--space-1); min-width: 0; }

@@ -30,31 +30,36 @@ async function openSleepDocument(page: Page, tab: 'today' | 'week', time: string
 test.describe('phone fixes', () => {
   for (const locale of LOCALES) {
     for (const width of PHONE_WIDTHS) {
-      test(`onboarding rows and the routine editor fit the phone (${locale}, ${width}px)`, async ({ page }) => {
+      test(`guided setup rows, time chips and the time editor fit the phone (${locale}, ${width}px)`, async ({ page }) => {
         await page.setViewportSize({ width, height: 915 })
         await page.addInitScript(([key, value]) => window.localStorage.setItem(key!, value!), [LANGUAGE_KEY, locale])
         await page.goto('./')
-        const onboarding = page.getByTestId('onboarding')
-        await expect(onboarding).toBeVisible()
+        const setup = page.getByTestId('setup')
+        const live = setup.locator('section.screen:not([aria-hidden=true])')
+        await expect(setup).toHaveAttribute('data-screen', 'sleep')
+        await live.getByTestId('setup-primary').click()
+        await live.locator('[data-value=both]').click()
+        await expect(setup).toHaveAttribute('data-screen', 'work')
         await page.waitForFunction(() => document.getAnimations().length === 0)
 
-        // Every name and routine line is whole inside the sheet, and the editor over it fits the same width.
-        await onboarding.getByRole('checkbox', { name: /./ }).last().check()
-        const measure = () => onboarding.locator('.routine-name, .routine-line').evaluateAll((elements) => elements.map((element) => ({
-          scrollWidth: element.scrollWidth, clientWidth: element.clientWidth, right: element.getBoundingClientRect().right,
-        })))
-        const measures = await measure()
-        expect(measures.length).toBeGreaterThan(0)
+        // Every row, value and chip is whole inside the sheet, with each picker open in turn.
         const viewportWidth = page.viewportSize()!.width
-        for (const item of measures) {
-          expect(item.scrollWidth).toBeLessThanOrEqual(item.clientWidth)
-          expect(item.right).toBeLessThanOrEqual(viewportWidth)
+        const check = async () => {
+          const items = await live.locator('.row, .value, .label, .time, .pick, .step').evaluateAll((elements) => elements.map((element) => ({
+            scrollWidth: element.scrollWidth, clientWidth: element.clientWidth, right: element.getBoundingClientRect().right,
+          })))
+          expect(items.length).toBeGreaterThan(0)
+          for (const item of items) {
+            expect(item.scrollWidth).toBeLessThanOrEqual(item.clientWidth)
+            expect(item.right).toBeLessThanOrEqual(viewportWidth)
+          }
+          expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(viewportWidth)
         }
-        await onboarding.locator('[data-template=work] .routine-line').click()
-        await page.waitForFunction(() => document.getAnimations().length === 0)
-        expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(viewportWidth)
-        const editorWidths = await page.getByRole('dialog').last().locator('.day-toggles, input, select').evaluateAll((elements) => elements.map((element) => element.getBoundingClientRect().right))
-        for (const right of editorWidths) expect(right).toBeLessThanOrEqual(viewportWidth)
+        await check()
+        await live.locator('[data-field=end]').click()
+        await check()
+        await live.getByTestId('other-time').click()
+        await check()
       })
     }
   }

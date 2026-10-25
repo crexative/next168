@@ -181,12 +181,19 @@ test('onboarding does not ask the browser to protect storage; the first check-in
   })
   await start(page, SIZES[0], 'light', firstRun())
   await page.goto('./')
-  await page.getByRole('dialog').getByRole('button', { name: 'Siguiente' }).click()
-  await page.getByRole('dialog').getByRole('button', { name: 'Terminar' }).click()
-  await expect(page.getByRole('dialog', { name: 'Listo' })).toBeVisible()
+  const setup = page.getByTestId('setup')
+  await expect(setup).toHaveAttribute('data-screen', 'sleep')
+  // Skip every question, then start: the guided setup's one commit.
+  for (let guard = 0; guard < 6 && (await setup.getAttribute('data-screen')) !== 'summary'; guard++) {
+    const screen = await setup.getAttribute('data-screen')
+    await setup.locator('section.screen:not([aria-hidden=true]) [data-testid=setup-secondary]').click()
+    await expect(setup).not.toHaveAttribute('data-screen', screen!)
+  }
+  await expect(setup).toHaveAttribute('data-screen', 'summary')
   expect(await page.evaluate(() => (window as unknown as { __persistCalls: number[] }).__persistCalls.length)).toBe(0)
-  await page.getByTestId('onboarding').getByRole('button', { name: 'Empezar' }).click()
+  await setup.getByRole('button', { name: 'Empezar' }).click()
   await expect(page.getByRole('dialog')).toHaveCount(0)
+  expect(await page.evaluate(() => (window as unknown as { __persistCalls: number[] }).__persistCalls.length)).toBe(0)
 
   await page.goto('./#/checkin')
   // An empty check-in saves nothing, so there must be something in it.

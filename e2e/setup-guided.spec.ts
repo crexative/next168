@@ -828,7 +828,7 @@ for (const theme of ['light', 'dark'] as const) {
       if (layout.sheet > 0) problems.push(`${label}: the sheet scrolls sideways by ${layout.sheet} px`)
       if (layout.page > 0) problems.push(`${label}: the page scrolls sideways by ${layout.page} px`)
       if (!layout.primary) problems.push(`${label}: the main button is out of view`)
-      for (const violation of await visualIntegrityViolations(page, { focusRings: false })) problems.push(`${label}: ${violation}`)
+      for (const violation of await visualIntegrityViolations(page)) problems.push(`${label}: ${violation}`)
     }, { custom: 'Schwimmkurs mit den Kindern am Nachmittag im Hallenbad der Stad' })
     expect([...new Set(problems)]).toEqual([])
   })

@@ -27,7 +27,7 @@ const LOCALES = Object.keys(EVENT_COPY) as (keyof typeof EVENT_COPY)[]
 async function widenInputFonts(page: Page): Promise<void> {
   // Exercise the Linux CI failure on every OS, including systems with narrower default fonts.
   await page.addStyleTag({ content: `
-    .onboarding .routine-name, .onboarding .routine-line, .event-form input[inputmode="email"] {
+    [data-testid=setup] .name, [data-testid=setup] .line, [data-testid=setup] .value, .event-form input[inputmode="email"] {
       font-family: Verdana, "DejaVu Sans", sans-serif !important;
       font-size: 1.16875rem !important; /* 110% of the shared 17 px input font. */
     }
@@ -98,7 +98,7 @@ async function audit(page: Page, state: string): Promise<void> {
 
 // A sheet that opens by itself must not light up a focus ring: focus goes to its title (or its first text field).
 async function auditSheet(page: Page, state: string): Promise<void> {
-  // The topmost sheet: the routine editor opens over the onboarding sheet.
+  // The topmost sheet.
   const dialog = page.getByRole('dialog').last()
   await expect(dialog).toBeVisible()
   await settle(page)
@@ -108,7 +108,7 @@ async function auditSheet(page: Page, state: string): Promise<void> {
     const dialogElement = dialogs[dialogs.length - 1]
     return {
       inside: Boolean(active && dialogElement?.contains(active)),
-      calm: Boolean(active && (active.matches('h1, h2, [role="dialog"], input:not([type="checkbox"]):not([type="radio"]), textarea') || !active.matches(':focus-visible'))),
+      calm: Boolean(active && (active.matches('h1, h2, h3[tabindex="-1"], [role="dialog"], input:not([type="checkbox"]):not([type="radio"]), textarea') || !active.matches(':focus-visible'))),
       element: active?.outerHTML.slice(0, 80) ?? 'none',
     }
   })
@@ -121,36 +121,45 @@ for (const theme of THEMES) {
   test.describe(`visual integrity (${theme})`, () => {
     for (const locale of LOCALES) {
       for (const width of NARROW_WIDTHS) {
-        test(`wider fonts: onboarding names (${locale}, ${width}px)`, async ({ page }, testInfo) => {
+        test(`wider fonts: the guided setup's names, times and summary (${locale}, ${width}px)`, async ({ page }, testInfo) => {
           test.skip(testInfo.project.name !== 'phone', 'the narrow-width regression runs in the phone project')
           await page.setViewportSize({ width, height: 812 })
           await start(page, theme, { ...firstRunDocument, settings: { ...firstRunDocument.settings, locale } }, locale)
           await page.goto('./')
-          const onboarding = page.getByTestId('onboarding')
-          await expect(onboarding).toBeVisible()
+          const setup = page.getByTestId('setup')
+          const live = setup.locator('section.screen:not([aria-hidden=true])')
+          await expect(setup).toHaveAttribute('data-screen', 'sleep')
           await widenInputFonts(page)
-          await expect(onboarding.locator('.routine-name')).toHaveCount(7)
-          if (locale === 'es') await expect(onboarding.locator('.routine-name').last()).toHaveText('Desplazamientos')
-          await auditSheet(page, `${theme}/${locale}/${width}/wider fonts/onboarding step 1`)
-
-          for (const checkbox of await onboarding.getByRole('checkbox').all()) await checkbox.check()
-          // Seven routines, the commute with two lines: every line is a 44 px target and none is clipped.
-          await expect(onboarding.locator('.routine-line')).toHaveCount(8)
-          await audit(page, `${theme}/${locale}/${width}/wider fonts/onboarding step 1 with every routine`)
-          const targets = await onboarding.locator('.routine-head, .routine-line').evaluateAll((elements) =>
+          await auditSheet(page, `${theme}/${locale}/${width}/wider fonts/setup sleep`)
+          // Every topic, so the summary lists every name, including the longest ones.
+          for (const [selector, next] of [['[data-testid=setup-primary]', 'workStudy'], ['[data-value=both]', 'work'], ['[data-testid=setup-primary]', 'study'],
+            ['[data-testid=setup-primary]', 'commute'], ['[data-value=yes]', 'commuteRanges'], ['[data-testid=setup-primary]', 'exercise'], ['[data-value=yes]', 'exerciseRanges'],
+            ['[data-testid=setup-primary]', 'more']] as const) {
+            await live.locator(selector).click()
+            await expect(setup).toHaveAttribute('data-screen', next)
+            await expect(setup.locator('section.screen[aria-hidden=true]')).toHaveCount(0)
+          }
+          await audit(page, `${theme}/${locale}/${width}/wider fonts/setup commute`)
+          for (const chip of ['family', 'friends', 'me', 'learning']) await live.locator(`[data-chip=${chip}]`).click()
+          await live.getByTestId('setup-primary').click()
+          for (let index = 0; index < 4; index++) {
+            await expect(setup.locator('section.screen[aria-hidden=true]')).toHaveCount(0)
+            await live.getByTestId('setup-primary').click()
+          }
+          await expect(setup).toHaveAttribute('data-screen', 'summary')
+          if (locale === 'es') await expect(live.locator('[data-category] .name')).toContainText(['Sueño', 'Trabajo', 'Estudio', 'Desplazamientos'])
+          await audit(page, `${theme}/${locale}/${width}/wider fonts/setup summary`)
+          const targets = await live.locator('[data-category] > button').evaluateAll((elements) =>
             elements.map((element) => ({ width: element.getBoundingClientRect().width, height: element.getBoundingClientRect().height })),
           )
+          expect(targets.length).toBe(9)
           for (const target of targets) {
-            expect(target.width).toBeGreaterThanOrEqual(44)
-            expect(target.height).toBeGreaterThanOrEqual(44)
+            expect(target.width).toBeGreaterThanOrEqual(48)
+            expect(target.height).toBeGreaterThanOrEqual(48)
           }
-          await onboarding.locator('[data-template=commute] .routine-line').first().click()
-          await expect(page.getByRole('dialog')).toHaveCount(2)
-          await auditSheet(page, `${theme}/${locale}/${width}/wider fonts/onboarding routine editor`)
-          await page.keyboard.press('Escape')
-          await expect(page.getByRole('dialog')).toHaveCount(1)
-          await onboarding.getByRole('button', { name: /^(Next|Siguiente|Suivant|Weiter|Avançar|Próximo)$/ }).click()
-          await audit(page, `${theme}/${locale}/${width}/wider fonts/onboarding step 2`)
+          await live.getByTestId('card-commute').click()
+          await live.locator('[data-category=commute] [data-field=end]').first().click()
+          await audit(page, `${theme}/${locale}/${width}/wider fonts/setup summary with a picker`)
         })
 
         test(`wider fonts: new event attendees (${locale}, ${width}px)`, async ({ page }, testInfo) => {
@@ -201,24 +210,44 @@ for (const theme of THEMES) {
       }
     })
 
-    test('onboarding steps 1–2, the routine editor and the confirmation (owner\'s Spanish sheet)', async ({ page }) => {
+    test('the guided setup: a question, a picker, the time editor and the summary (owner\'s Spanish sheet)', async ({ page }) => {
       await start(page, theme, { ...firstRunDocument, settings: { ...firstRunDocument.settings, locale: 'es' } }, 'es')
       await page.goto('./')
-      await auditSheet(page, `${theme}/onboarding step 1`)
-      const dialog = page.getByRole('dialog')
-      await dialog.getByRole('checkbox', { name: 'Usar Ejercicio' }).check()
-      await audit(page, `${theme}/onboarding step 1 with picks`)
-      await dialog.getByRole('button', { name: /^Editar Trabajo:/ }).click()
-      await expect(page.getByRole('dialog')).toHaveCount(2)
-      await auditSheet(page, `${theme}/onboarding editing a routine`)
+      const setup = page.getByTestId('setup')
+      const live = setup.locator('section.screen:not([aria-hidden=true])')
+      // A leaving screen stays in the DOM, inert, while it fades out.
+      const settled = () => expect(setup.locator('section.screen[aria-hidden=true]')).toHaveCount(0)
+      await expect(setup).toHaveAttribute('data-screen', 'sleep')
+      await auditSheet(page, `${theme}/setup sleep`)
+      await live.getByRole('button', { name: 'Siguiente', exact: true }).click()
+      await live.getByRole('button', { name: 'Trabajo', exact: true }).click()
+      await expect(setup).toHaveAttribute('data-screen', 'work')
+      await settled()
+      await audit(page, `${theme}/setup work`)
+      await live.locator('[data-field=days]').click()
+      await live.locator('[data-preset=pick]').click()
+      await audit(page, `${theme}/setup work days`)
       await page.keyboard.press('Escape')
-      await expect(page.getByRole('dialog')).toHaveCount(1)
-      await dialog.getByRole('button', { name: 'Siguiente' }).click()
-      await audit(page, `${theme}/onboarding step 2`)
-      await dialog.getByLabel('Tarea', { exact: true }).fill('Llamar al banco')
-      await dialog.getByRole('button', { name: 'Terminar' }).click()
-      await expect(page.getByRole('dialog', { name: 'Listo' })).toBeVisible()
-      await auditSheet(page, `${theme}/onboarding confirmation`)
+      await live.locator('[data-field=start]').click()
+      await live.getByTestId('other-time').click()
+      await audit(page, `${theme}/setup time editor`)
+      await page.keyboard.press('Escape')
+      await page.keyboard.press('Escape')
+      await live.getByRole('button', { name: 'Siguiente', exact: true }).click()
+      await expect(setup).toHaveAttribute('data-screen', 'commute')
+      await settled()
+      await audit(page, `${theme}/setup commute`)
+      for (let guard = 0; guard < 6 && (await setup.getAttribute('data-screen')) !== 'summary'; guard++) {
+        const screen = await setup.getAttribute('data-screen')
+        await live.getByTestId('setup-secondary').click()
+        await expect(setup).not.toHaveAttribute('data-screen', screen!)
+        await settled()
+      }
+      await expect(setup).toHaveAttribute('data-screen', 'summary')
+      await settled()
+      await audit(page, `${theme}/setup summary`)
+      await live.getByTestId('card-work').click()
+      await audit(page, `${theme}/setup summary with a card open`)
     })
 
     test('tasks quick add with its details, and the assistant page', async ({ page }) => {
