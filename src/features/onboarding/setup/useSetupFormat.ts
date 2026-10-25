@@ -2,7 +2,7 @@ import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 import type { DayIndex } from '@/core/model'
 import { usePlannerStore } from '@/stores/plannerStore'
-import { displayLocale, formatDuration, formatMinuteOfDay } from '@/ui/format'
+import { clockFormat, displayLocale, formatDuration, formatMinuteOfDay } from '@/ui/format'
 import { daysPhrase, timeRangeText } from '../routineText'
 import type { CategoryDraft, RangeDraft, Slot } from '../setupModel'
 
@@ -12,7 +12,7 @@ export function useSetupFormat() {
   const planner = usePlannerStore()
   const locale = computed(() => displayLocale.value)
   const weekStartsOn = computed(() => planner.document?.settings.weekStartsOn ?? 1)
-  const uses12h = computed(() => new Intl.DateTimeFormat(locale.value, { hour: 'numeric' }).resolvedOptions().hour12 === true)
+  const uses12h = computed(() => clockFormat(locale.value, { hour: 'numeric' }).resolvedOptions().hour12 === true)
 
   const time = (minute: number) => formatMinuteOfDay(minute, locale.value)
   const duration = (minutes: number) => formatDuration(minutes)

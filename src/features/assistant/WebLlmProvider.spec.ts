@@ -1,4 +1,5 @@
-import { afterEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { setHourCycle } from '@/ui/format'
 import type { DeviceCapabilities } from './capabilities'
 import { AssistantError, type AskContext } from './provider'
 import {
@@ -42,7 +43,9 @@ function setup(options: { capabilities?: Partial<DeviceCapabilities>; cached?: b
 const context = (): AskContext => contextFor(plannerWithBlocks())
 const signal = () => new AbortController().signal
 
-afterEach(() => vi.restoreAllMocks())
+// The summaries below are written on a 24-hour clock; the 12-hour one has its own test in changeIntent.spec.ts.
+beforeEach(() => setHourCycle('h23'))
+afterEach(() => { vi.restoreAllMocks(); setHourCycle('auto') })
 
 describe('WebLlmProvider availability', () => {
   it('is unavailable without WebGPU', async () => {

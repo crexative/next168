@@ -4,7 +4,7 @@ import { useI18n } from 'vue-i18n'
 import type { Category, Task } from '@/core/model'
 import { fitTasks } from '@/core/scheduling'
 import { localDateOf } from '@/core/time'
-import { displayLocale, formatDuration } from '@/ui/format'
+import { displayLocale, formatClock, formatDuration } from '@/ui/format'
 import { categoryColor } from '@/features/insights/categoryColor'
 import { readLastTaskCategory, rememberTaskCategory } from './lastCategory'
 import { assertEntry, CHANGED_ELSEWHERE, snapshotOf } from '@/features/insights/entryGuard'
@@ -84,8 +84,8 @@ function dayLabel(date: string): string {
 }
 
 function timeRange(start: string, end: string): string {
-  const format = new Intl.DateTimeFormat(displayLocale.value, { hour: 'numeric', minute: '2-digit', timeZone: document.value!.settings.timeZone })
-  return `${format.format(new Date(start))}–${format.format(new Date(end))}`
+  const timeZone = document.value!.settings.timeZone
+  return `${formatClock(start, displayLocale.value, timeZone)}–${formatClock(end, displayLocale.value, timeZone)}`
 }
 
 // Every fragment of a split task, in order; fragments on another day than the group's carry that day's short name.

@@ -1,17 +1,16 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
-import type { ChangeProposal, ProposalInput } from '@/core/model'
+import type { ChangeProposal, PlannerDocument, ProposalInput } from '@/core/model'
 import { openProposalReview } from '@/features/proposals'
 import { getProposalRepository } from '@/features/proposals/repository'
 import { lastDecision } from '@/features/proposals/reviewState'
-import { usePlannerStore } from '@/stores/plannerStore'
 import Button from '@/ui/Button.vue'
 
-const props = defineProps<{ input: ProposalInput }>()
+// `basis`: the planner the proposal was made against, so it can be stored while that planner is not stored yet.
+const props = defineProps<{ input: ProposalInput; basis?: PlannerDocument | null }>()
 
 const { t } = useI18n()
-const planner = usePlannerStore()
 // The active mode's repository: in companion mode the proposal goes to the companion, never to the browser store.
 const proposals = getProposalRepository()
 
@@ -31,7 +30,7 @@ const outcome = computed(() => {
 
 async function review(): Promise<void> {
   try {
-    stored.value ??= await proposals.create(props.input, 'assistant', { basis: planner.document ?? undefined })
+    stored.value ??= await proposals.create(props.input, 'assistant', { basis: props.basis ?? undefined })
     openProposalReview(stored.value)
   } catch {
     failed.value = true

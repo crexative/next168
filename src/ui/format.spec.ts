@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it } from 'vitest'
 import { i18n } from '@/i18n'
 import {
-  displayLocale, formatClock, formatDuration, formatHourOfDay, formatMinuteOfDay, formatTotal, hourCycle, resolveDisplayLocale, setHourCycle,
+  displayLocale, formatClock, formatDateTime, formatDuration, formatHourOfDay, formatMinuteOfDay, formatTotal, hourCycle, resolveDisplayLocale, setHourCycle,
   wholeHourParts,
 } from './format'
 
@@ -45,6 +45,19 @@ describe('clock', () => {
     expect(formatClock(afternoon, 'es', 'UTC')).toBe('13:05')
     expect(formatClock(afternoon, 'en-US-u-hc-h23', 'UTC')).toBe('13:05')
     expect(formatClock(afternoon, 'es-u-hc-h12', 'UTC')).toMatch(/^1:05\sp\.\s?m\.$/)
+  })
+
+  // verify4 defect 9: callers passing just the app's language ("Recordarme a las 22:00") ignored the setting.
+  it('follows the 12/24 h choice of the device whatever locale a caller passes', () => {
+    setHourCycle('h12')
+    expect(formatMinuteOfDay(22 * 60, 'es')).toMatch(/^10:00\sp\.\s?m\.$/)
+    expect(formatClock(Date.UTC(2026, 9, 21, 18, 0), 'es-CO', 'UTC')).toMatch(/^6:00\sp\.\s?m\.$/)
+    expect(formatHourOfDay(18, 'de')).toMatch(/PM$/)
+    expect(formatDateTime('2026-10-21T18:00:00Z', 'es', 'UTC')).toMatch(/6:00\sp\.\s?m\.$/)
+    setHourCycle('h23')
+    expect(formatMinuteOfDay(22 * 60, 'en-US')).toBe('22:00')
+    // A locale that already names its clock is taken as given.
+    expect(formatMinuteOfDay(22 * 60, 'es-u-hc-h12')).toMatch(/^10:00\sp\.\s?m\.$/)
   })
 
   it('writes both ends of the day as midnight, never 24:00 or a wrapped hour', () => {

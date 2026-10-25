@@ -1,11 +1,8 @@
 import type { DayIndex } from '@/core/model'
-import { formatMinuteOfDay } from '@/ui/format'
-
-const MINUTES_PER_DAY = 24 * 60
+import { clockFormat, formatMinuteOfDay, minuteOfDayInstant } from '@/ui/format'
 
 function clockParts(minute: number, locale: string): Intl.DateTimeFormatPart[] {
-  const normalized = ((Math.round(minute) % MINUTES_PER_DAY) + MINUTES_PER_DAY) % MINUTES_PER_DAY
-  return new Intl.DateTimeFormat(locale, { timeZone: 'UTC', hour: 'numeric', minute: '2-digit' }).formatToParts(Date.UTC(2000, 0, 1, 0, normalized))
+  return clockFormat(locale, { timeZone: 'UTC', hour: 'numeric', minute: '2-digit' }).formatToParts(minuteOfDayInstant(minute))
 }
 
 // A clock time never wraps inside itself: "7:00 a." / "m." on two lines reads as two different things.

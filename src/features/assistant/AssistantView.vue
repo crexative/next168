@@ -67,7 +67,7 @@ async function submit(): Promise<void> {
       <ol class="messages" aria-live="polite">
         <li v-for="message in assistant.messages.value" :key="message.id" class="message" :class="`is-${message.role}`" :data-role="message.role">
           <p class="t-body bubble">{{ message.text }}</p>
-          <ProposalCard v-if="message.proposal" :input="message.proposal" />
+          <ProposalCard v-if="message.proposal" :input="message.proposal" :basis="planner.document" />
         </li>
       </ol>
       <p v-if="assistant.busy.value === 'asking'" class="t-footnote t-secondary" role="status">{{ t('assistant.chat.thinking') }}</p>

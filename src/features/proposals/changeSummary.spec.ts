@@ -1,4 +1,5 @@
-import { describe, expect, it } from 'vitest'
+import { afterEach, describe, expect, it } from 'vitest'
+import { setHourCycle } from '@/ui/format'
 import { calendarExport } from '@/core/calendarExport'
 import type { PlannerEvent } from '@/core/model'
 import { summarizeEntity, type SummaryContext } from './changeSummary'
@@ -42,5 +43,21 @@ describe('routine times', () => {
   it('names a routine that runs past midnight as overnight, and a daytime one plainly', () => {
     expect(summarizeEntity({ start: 1350, end: 390 }, { ...context, t })).toContainEqual({ label: 'proposals.fields.time', value: '10:30 PM – 6:30 AM (overnight)' })
     expect(summarizeEntity({ start: 540, end: 600 }, { ...context, t })).toContainEqual({ label: 'proposals.fields.time', value: '9:00 AM – 10:00 AM' })
+  })
+})
+
+// verify4 defect 9: the review sheet wrote routine ranges as "18:00 – 19:00" on a 12-hour clock.
+describe('proposal times follow the 12/24 h setting', () => {
+  afterEach(() => setHourCycle('auto'))
+
+  it('writes a routine range and an event on the clock the person chose', () => {
+    const spanish: SummaryContext = { ...context, locale: 'es' }
+    setHourCycle('h12')
+    const range = summarizeEntity({ start: 1080, end: 1140 }, spanish).find((row) => row.label === 'proposals.fields.time')!.value
+    expect(range).toMatch(/^6:00\sp\.\s?m\.\s–\s7:00\sp\.\s?m\.$/u)
+    const event = summarizeEntity({ start: '2026-10-22T18:00:00Z', end: '2026-10-22T19:00:00Z', allDay: false }, spanish).find((row) => row.label === 'proposals.fields.when')!.value
+    expect(event).toMatch(/6:00\sp\.\s?m\./u)
+    setHourCycle('h23')
+    expect(summarizeEntity({ start: 1080, end: 1140 }, { ...context, locale: 'en-US' })[0]!.value).toBe('18:00 – 19:00')
   })
 })

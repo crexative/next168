@@ -1,10 +1,14 @@
-import { describe, expect, it } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it } from 'vitest'
+import { setHourCycle } from '@/ui/format'
 import { INTENT_JSON_SCHEMA, intentExamples, intentPlannerSummary, intentSystemPrompt, parseClock, parseIntent, proposalFromIntent } from './changeIntent'
 import { AssistantError } from './provider'
 import { plannerWithBlocks, translatorFor } from './testSupport'
 
 const document = plannerWithBlocks()
 const environment = { request: '', document, locale: 'en', translate: translatorFor('en') }
+beforeEach(() => setHourCycle('h23'))
+afterEach(() => setHourCycle('auto'))
+
 const map = (raw: Record<string, unknown>, request = '') => proposalFromIntent(parseIntent(raw), { ...environment, request })
 
 function ops(raw: Record<string, unknown>, request = '') {
@@ -43,6 +47,18 @@ describe('add_block', () => {
     if (outcome.kind !== 'proposal') throw new Error('expected a proposal')
     expect(outcome.proposal).toMatchObject({ contractVersion: '1.0', workspaceId: document.workspaceId, baseRevision: document.revision })
     expect(outcome.summary).toBe('Add "Work" on Thursday, 18:00–19:00')
+  })
+
+  // verify4 defect 9: the summary a person approves wrote 18:00–19:00 on a 12-hour clock.
+  it('writes the summary on the clock of the person', () => {
+    setHourCycle('h12')
+    const outcome = map({ intent: 'add_block', title: 'Work', day: 'thursday', start: '18:00', durationMinutes: 60 })
+    if (outcome.kind !== 'proposal') throw new Error('expected a proposal')
+    expect(outcome.summary).toMatch(/^Add "Work" on Thursday, 6:00\sPM–7:00\sPM$/u)
+    const spanish = proposalFromIntent(parseIntent({ intent: 'add_block', title: 'Work', day: 'thursday', start: '18:00', durationMinutes: 60 }), { ...environment, locale: 'es' })
+    if (spanish.kind !== 'proposal') throw new Error('expected a proposal')
+    expect(spanish.summary).not.toContain('18:00')
+    expect(spanish.summary).toMatch(/6:00\sp\.\sm\./u)
   })
 
   it('reads hours and minutes, and refuses a length that is not a block', () => {

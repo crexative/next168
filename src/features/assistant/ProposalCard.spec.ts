@@ -31,7 +31,7 @@ async function mountCard() {
   const i18n = createI18n<false>({ legacy: false, locale: 'en', messages: { en: { assistant: Object.values(files)[0]!.default } } as never })
   const root = globalThis.document.createElement('div')
   globalThis.document.body.append(root)
-  const app = createApp({ render: () => h(ProposalCard, { input }) }).use(i18n)
+  const app = createApp({ render: () => h(ProposalCard, { input, basis: document }) }).use(i18n)
   app.mount(root)
   mounted.push({ app, root })
   return root
@@ -68,7 +68,7 @@ describe('ProposalCard', () => {
     const root = await mountCard()
     root.querySelector('button')!.click()
     await vi.waitFor(() => expect(state.open).toHaveBeenCalledWith(stored))
-    expect(state.create).toHaveBeenCalledWith(input, 'assistant')
+    expect(state.create).toHaveBeenCalledWith(input, 'assistant', { basis: document })
     root.querySelector('button')!.click()
     await vi.waitFor(() => expect(state.open).toHaveBeenCalledTimes(2))
     expect(state.create).toHaveBeenCalledTimes(1)

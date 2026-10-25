@@ -59,18 +59,40 @@ export function displayLocaleFor(language: string): string {
 
 export const displayLocale = computed(() => displayLocaleFor(i18n.global.locale.value))
 
+// The locale every clock time is written with: whatever a caller passes (often just the app's language), the time
+// follows this device's 12/24 h choice and, for a bare language, the browser's region for it, as displayLocale does.
+// A locale that already carries Unicode extensions is taken as given.
+export function clockLocale(locale: string): string {
+  if (locale.includes('-u-')) return locale
+  return resolveDisplayLocale(locale, locale.includes('-') ? [] : browserLanguages(), hourCycle.value)
+}
+
+// Any user-visible format that shows a time of day goes through here.
+export function clockFormat(locale: string, options: Intl.DateTimeFormatOptions): Intl.DateTimeFormat {
+  return new Intl.DateTimeFormat(clockLocale(locale), options)
+}
+
 export function formatClock(instant: number | string | Date, locale: string, timeZone: string): string {
-  return new Intl.DateTimeFormat(locale, { timeZone, hour: 'numeric', minute: '2-digit' }).format(new Date(instant))
+  return clockFormat(locale, { timeZone, hour: 'numeric', minute: '2-digit' }).format(new Date(instant))
 }
 
 // A nominal minute of the day (0 and 1440 are both midnight); UTC keeps it independent of the host zone.
 export function formatMinuteOfDay(minute: number, locale: string): string {
+  return clockFormat(locale, { timeZone: 'UTC', hour: 'numeric', minute: '2-digit' }).format(minuteOfDayInstant(minute))
+}
+
+export function minuteOfDayInstant(minute: number): number {
   const normalized = ((Math.round(minute) % MINUTES_PER_DAY) + MINUTES_PER_DAY) % MINUTES_PER_DAY
-  return new Intl.DateTimeFormat(locale, { timeZone: 'UTC', hour: 'numeric', minute: '2-digit' }).format(Date.UTC(2000, 0, 1, 0, normalized))
+  return Date.UTC(2000, 0, 1, 0, normalized)
 }
 
 export function formatHourOfDay(hour: number, locale: string): string {
-  return new Intl.DateTimeFormat(locale, { timeZone: 'UTC', hour: 'numeric' }).format(Date.UTC(2000, 0, 1, ((hour % 24) + 24) % 24))
+  return clockFormat(locale, { timeZone: 'UTC', hour: 'numeric' }).format(Date.UTC(2000, 0, 1, ((hour % 24) + 24) % 24))
+}
+
+// A date with its time ("24 oct 2026, 6:00 p. m."), for events.
+export function formatDateTime(instant: number | string | Date, locale: string, timeZone: string): string {
+  return clockFormat(locale, { dateStyle: 'medium', timeStyle: 'short', timeZone }).format(new Date(instant))
 }
 
 // Whole hours for parts of one span (past / planned / free in the week): each part is rounded along the running total,
