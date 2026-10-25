@@ -685,7 +685,7 @@ for (const theme of THEMES) {
       await expect(deepRow.getByTestId('status-control')).toHaveAttribute('data-status', 'done')
       await audit(page, `${theme}/today: finished block answered`)
       await page.locator('[data-kind="task"]').first().getByTestId('status-control').click()
-      // The previous toast may still be leaving; the one that stays is the newest.
+      // The previous toast leaves first (out-in); the newest one is the one that appears.
       await expect(page.getByRole('button', { name: 'Deshacer' }).last()).toBeVisible()
       await audit(page, `${theme}/today: task done with the undo toast`)
 

@@ -44,7 +44,8 @@ onBeforeUnmount(() => {
 
 <template>
   <div class="toast-region" role="status" aria-live="polite">
-    <Transition name="toast">
+    <!-- A replaced toast finishes leaving before the next one enters, so two Undo buttons never share the cell. -->
+    <Transition name="toast" mode="out-in">
       <div
         v-if="toast"
         :key="toast.id"
@@ -68,7 +69,7 @@ onBeforeUnmount(() => {
   inset-inline: 0;
   bottom: calc(var(--tabbar-height) + var(--safe-bottom) + var(--space-3));
   z-index: 40;
-  /* One cell: a toast replacing another cross-fades over it instead of sharing the row, where each would be squeezed. */
+  /* One cell: a toast replacing another takes its place once it has left, instead of sharing the row squeezed. */
   display: grid;
   justify-items: center;
   padding: 0 var(--page-gutter);
