@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { fitPieces, fittedHeight, lineCount, type TextMetrics, type TextPiece } from './itemText'
+import { ELLIPSIS, fitPieces, fitTitle, fittedHeight, lineCount, type TextMetrics, type TextPiece } from './itemText'
 
 // Every character 6 px wide, every line 16 px tall.
 const metrics: TextMetrics = { width: (text) => [...text].length * 6, lineHeight: () => 16 }
@@ -58,5 +58,31 @@ describe('fitPieces', () => {
   it('measures what it fitted with the same gap', () => {
     const fits = fitPieces(pieces, { width: 200, height: 60 }, metrics, 1)
     expect(fittedHeight(pieces, fits, metrics, 1)).toBe(16 * 3 + 2)
+  })
+})
+
+describe('fitTitle', () => {
+  const title = (text: string, lead = 0): TextPiece => ({ text, role: 'caption', lead })
+
+  it('draws the whole title on as many lines as it needs', () => {
+    expect(fitTitle(title('Revisión de diseño'), { width: 70, height: 32 }, metrics)).toEqual({ text: 'Revisión de diseño', lines: 2, lead: false, truncated: false })
+  })
+
+  it('keeps every whole word that fits and ends with "…" after the last one', () => {
+    // 70 px lines (69 to spare): "Revisión de" is 66 px, "diseño de" 54, "producto" would need a third line.
+    expect(fitTitle(title('Revisión de diseño de producto'), { width: 70, height: 32 }, metrics)).toEqual({ text: `Revisión de diseño de${ELLIPSIS}`, lines: 2, lead: false, truncated: true })
+    // One line: "Revisión de" leaves no room for "…", so the line ends after "Revisión".
+    expect(fitTitle(title('Revisión de diseño de producto'), { width: 70, height: 16 }, metrics)!.text).toBe(`Revisión${ELLIPSIS}`)
+  })
+
+  it('never cuts a word: when not even the first word and "…" fit, there is no title', () => {
+    expect(fitTitle(title('Vendor call'), { width: 40, height: 16 }, metrics)).toBeNull()
+    expect(fitTitle(title('Tagesabschluss'), { width: 60, height: 100 }, metrics)).toBeNull()
+    expect(fitTitle(title('Vendor call'), { width: 100, height: 15 }, metrics)).toBeNull()
+  })
+
+  it('prefers the whole title without its lead over a cut one with it', () => {
+    expect(fitTitle(title('Vendor call', 20), { width: 70, height: 16 }, metrics)).toMatchObject({ text: 'Vendor call', lead: false })
+    expect(fitTitle(title('Vendor call', 20), { width: 90, height: 16 }, metrics)).toMatchObject({ text: 'Vendor call', lead: true })
   })
 })

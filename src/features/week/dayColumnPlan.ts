@@ -1,4 +1,4 @@
-import { fitPieces, fittedHeight, lineCount, type PieceFit, type TextMetrics, type TextPiece } from './itemText'
+import { fitPieces, fitTitle, type TextMetrics, type TextPiece, type TitleFit } from './itemText'
 import { layoutDaySegments, placeTasks, type BlockSegment, type BusySegment, type LanePosition, type TaskSegment } from './weekLayout'
 
 // One decision for a whole day column (docs/design/visual-design.md › Week items): where every routine, event and task
@@ -16,6 +16,10 @@ export const TASK_INSET = { top: 2.5, bottom: 2.5, start: 13.5, end: 9.5 }
 export const PIECE_GAP_PX = 1
 export const MIN_TASK_PX = 12
 export const ICON_PX = 12
+// A routine that holds tasks keeps at most this many title lines above them.
+export const HOST_TITLE_LINES = 2
+// A task asks for at most this many lines of its title before the tasks under it.
+export const TASK_TITLE_LINES = 2
 // In the seven-day overview a short item keeps at least this height, as far as the next item in its lane allows.
 export const COMPACT_MIN_PX = 8
 // Without measurements (no layout engine) a routine keeps one 16 px title line above its tasks.
@@ -34,9 +38,10 @@ export interface BlockWords { title: string; time: string; category?: string; st
 export interface BusyWords { title: string; conflict?: string }
 export interface TaskWords { title: string; late: boolean }
 
-export interface BlockShow { title: boolean; mark: boolean; time: boolean; category: boolean; status: boolean; statusIcon: boolean }
-export interface BusyShow { icon: boolean; word: boolean; title: boolean }
-export interface TaskShow { icon: boolean; title: boolean }
+// `text` is the title as drawn: whole, or its first whole words and "…". Undefined draws the whole title.
+export interface BlockShow { title: boolean; text?: string; mark: boolean; time: boolean; category: boolean; status: boolean; statusIcon: boolean }
+export interface BusyShow { icon: boolean; word: boolean; title: boolean; text?: string }
+export interface TaskShow { icon: boolean; title: boolean; text?: string }
 
 // `top` and `bottom` are the drawn box in px from the top of the column.
 export type PlannedBlock = BlockSegment & LanePosition & { top: number; bottom: number; show: BlockShow }
@@ -87,50 +92,66 @@ function blockPieces(words: BlockWords, measure: ColumnMeasure): TextPiece[] {
   return pieces
 }
 
-function blockShow(words: BlockWords, fits: readonly PieceFit[]): BlockShow {
-  const statusIndex = words.category ? 3 : 2
+// Title first (whole, or its first whole words and "…"), then the time, the category and the status, each whole, while
+// the box has room. A cut title means the box is full: nothing follows it.
+function blockShow(words: BlockWords, box: { width: number; height: number }, measure: ColumnMeasure): BlockShow {
+  const pieces = blockPieces(words, measure)
+  const title = fitTitle(pieces[0]!, box, measure.metrics)
+  if (!title) return NOTHING.block
+  const shown: BlockShow = { ...NOTHING.block, title: true, text: title.text, mark: title.lead }
+  if (title.truncated) return shown
+  const rest = fitPieces(pieces.slice(1), { width: box.width, height: box.height - title.lines * measure.metrics.lineHeight('blockTitle') - PIECE_GAP_PX }, measure.metrics, PIECE_GAP_PX)
+  const statusIndex = words.category ? 2 : 1
   return {
-    title: fits.length > 0,
-    mark: fits[0]?.lead ?? false,
-    time: fits.length > 1,
-    category: Boolean(words.category) && fits.length > 2,
-    status: Boolean(words.status) && fits.length > statusIndex,
+    ...shown,
+    time: rest.length > 0,
+    category: Boolean(words.category) && rest.length > 1,
+    status: Boolean(words.status) && rest.length > statusIndex,
     // The status icon is drawn only where it was measured; the word alone may fit where icon and word do not.
-    statusIcon: Boolean(words.status) && (fits[statusIndex]?.lead ?? false),
+    statusIcon: Boolean(words.status) && (rest[statusIndex]?.lead ?? false),
   }
 }
 
+function titleHeight(fit: TitleFit | null, role: 'blockTitle' | 'taskTitle', measure: ColumnMeasure): number {
+  return fit ? fit.lines * measure.metrics.lineHeight(role) : 0
+}
+
 // An event's words flow on from its conflict mark: "⚠ Conflict Vendor call", then "⚠ Vendor call", then the title alone,
-// then the icon alone. The word stays in the accessible name when it is not drawn.
+// each whole first, then the most whole words with "…", then the icon alone. A word not drawn stays in the accessible name.
 function busyShow(words: BusyWords, box: { width: number; height: number }, measure: ColumnMeasure): BusyShow {
   const { metrics } = measure
-  const fits = (lead: number) => {
-    const lines = lineCount({ text: words.title, role: 'caption', lead }, box.width, metrics)
-    return lines !== null && lines * metrics.lineHeight('caption') <= box.height + 0.01
-  }
-  if (words.conflict) {
-    const wordLead = ICON_PX + 2 + metrics.width(words.conflict, 'caption') + metrics.width(' ', 'caption')
-    if (fits(wordLead)) return { icon: true, word: true, title: true }
-    if (fits(measure.iconLead)) return { icon: true, word: false, title: true }
-  }
-  if (fits(0)) return { icon: false, word: false, title: true }
+  const options: { lead: number; icon: boolean; word: boolean }[] = words.conflict
+    ? [
+        { lead: ICON_PX + 2 + metrics.width(words.conflict, 'caption') + metrics.width(' ', 'caption'), icon: true, word: true },
+        { lead: measure.iconLead, icon: true, word: false },
+        { lead: 0, icon: false, word: false },
+      ]
+    : [{ lead: 0, icon: false, word: false }]
+  const fits = options.map((option) => ({ option, fit: fitTitle({ text: words.title, role: 'caption', lead: option.lead }, box, metrics) }))
+  // fitTitle may fall back to no lead; keep only fits that drew the lead they were asked for.
+  const honest = fits.filter(({ option, fit }) => fit && fit.lead === option.lead > 0)
+  const chosen = honest.find(({ fit }) => !fit!.truncated) ?? honest.find(({ option }) => option.icon) ?? honest[0]
+  if (chosen) return { icon: chosen.option.icon, word: chosen.option.word, title: true, text: chosen.fit!.text }
   const iconFits = Boolean(words.conflict) && box.width >= ICON_PX && box.height >= ICON_PX
   return { icon: iconFits, word: false, title: false }
 }
 
-// The height a task's own title needs in a box of `width` px, or undefined when the title cannot fit that width.
-function taskTextHeight(words: TaskWords, width: number, measure: ColumnMeasure): number | undefined {
-  const piece: TextPiece = { text: words.title, role: 'taskTitle', lead: words.late ? measure.iconLead : 0 }
-  const textWidth = width - TASK_INSET.start - TASK_INSET.end
-  const lines = lineCount(piece, textWidth, measure.metrics) ?? lineCount({ ...piece, lead: 0 }, textWidth, measure.metrics)
-  return lines === null ? undefined : lines * measure.metrics.lineHeight('taskTitle') + TASK_INSET.top + TASK_INSET.bottom
+function taskTitle(words: TaskWords, width: number, height: number, measure: ColumnMeasure): TitleFit | null {
+  const box = { width: width - TASK_INSET.start - TASK_INSET.end, height: height - TASK_INSET.top - TASK_INSET.bottom }
+  return fitTitle({ text: words.title, role: 'taskTitle', lead: words.late ? measure.iconLead : 0 }, box, measure.metrics)
+}
+
+// The height a task asks for: its whole title on up to TASK_TITLE_LINES lines (or those lines ending in "…"), or one
+// line, or undefined when not even its first word fits the width.
+function taskTextHeight(words: TaskWords, width: number, measure: ColumnMeasure, lines: number): number | undefined {
+  const fit = taskTitle(words, width, lines * measure.metrics.lineHeight('taskTitle') + TASK_INSET.top + TASK_INSET.bottom, measure)
+  return fit ? titleHeight(fit, 'taskTitle', measure) + TASK_INSET.top + TASK_INSET.bottom : undefined
 }
 
 function taskShow(words: TaskWords, width: number, height: number, outline: boolean, measure: ColumnMeasure): TaskShow {
   if (outline) return NOTHING.task
-  const box = { width: width - TASK_INSET.start - TASK_INSET.end, height: height - TASK_INSET.top - TASK_INSET.bottom }
-  const fit = fitPieces([{ text: words.title, role: 'taskTitle', lead: words.late ? measure.iconLead : 0 }], box, measure.metrics)[0]
-  return { icon: Boolean(fit?.lead), title: Boolean(fit) }
+  const fit = taskTitle(words, width, height, measure)
+  return { icon: Boolean(fit?.lead), title: Boolean(fit), text: fit?.text }
 }
 
 export function planDayColumn(input: DayColumnInput): DayColumnPlan {
@@ -147,15 +168,14 @@ export function planDayColumn(input: DayColumnInput): DayColumnPlan {
   const titleStrip = new Map<string, number>()
   for (const block of lanes.blocks) {
     if (!measure) { titleStrip.set(block.key, UNMEASURED_STRIP_PX); continue }
-    const pieces = blockPieces(words.block(block), measure)
     const width = boxWidth(block) - BLOCK_INSET.start - BLOCK_INSET.end
-    const height = px(block.endMinute) - px(block.startMinute) - BLOCK_INSET.top - BLOCK_INSET.bottom
-    const title = fitPieces(pieces.slice(0, 1), { width, height }, measure.metrics, PIECE_GAP_PX)
-    titleStrip.set(block.key, title.length ? BLOCK_INSET.top + fittedHeight(pieces, title, measure.metrics) + PIECE_GAP_PX : 0)
+    const height = Math.min(px(block.endMinute) - px(block.startMinute) - BLOCK_INSET.top - BLOCK_INSET.bottom, HOST_TITLE_LINES * measure.metrics.lineHeight('blockTitle'))
+    const title = fitTitle(blockPieces(words.block(block), measure)[0]!, { width, height }, measure.metrics)
+    titleStrip.set(block.key, title ? BLOCK_INSET.top + titleHeight(title, 'blockTitle', measure) + PIECE_GAP_PX : 0)
   }
 
-  // Tasks of one host are placed together: each first gets the height its title needs, then at least MIN_TASK_PX,
-  // else they become one outline around the host.
+  // Tasks of one host are placed together: each first gets up to two lines of its title, then one line, then at least
+  // MIN_TASK_PX, else they become one outline around the host.
   const tasks: PlannedTask[] = []
   const groups = new Map<string, { bounds: { top: number; bottom: number; strip: number }; lane: LanePosition; hostKey: string; members: TaskSegment[] }>()
   for (const task of input.tasks) {
@@ -173,8 +193,9 @@ export function planDayColumn(input: DayColumnInput): DayColumnPlan {
     const top = px(task.startMinute)
     const limit = px(Math.min(1440, ...below.map((item) => item.startMinute)))
     const width = boxWidth(lane)
-    const textHeight = measure ? taskTextHeight(words.task(task), width, measure) : undefined
-    const wanted = top + Math.max(MIN_TASK_PX, textHeight ?? MIN_TASK_PX) > limit ? top + MIN_TASK_PX : top + Math.max(MIN_TASK_PX, textHeight ?? MIN_TASK_PX)
+    // Two lines of its title, else one, else MIN_TASK_PX, as far as the free stretch allows.
+    const heights = measure ? [TASK_TITLE_LINES, 1].map((lines) => taskTextHeight(words.task(task), width, measure, lines)).filter((height): height is number => height !== undefined) : []
+    const wanted = top + Math.max(MIN_TASK_PX, heights.find((height) => top + height <= limit) ?? MIN_TASK_PX)
     const bottom = Math.max(px(task.endMinute), Math.min(wanted, limit))
     const show = measure ? taskShow(words.task(task), width, bottom - top, false, measure) : EVERYTHING.task
     tasks.push({ task, hostKey: undefined, left: lane.left, width: lane.width, top, bottom, outline: false, show })
@@ -182,11 +203,9 @@ export function planDayColumn(input: DayColumnInput): DayColumnPlan {
   for (const { bounds, lane, hostKey, members } of groups.values()) {
     const natural = members.map((task) => ({ top: px(task.startMinute), bottom: px(task.endMinute) }))
     const width = boxWidth(lane)
-    const needed = members.map((task) => {
-      const height = measure ? taskTextHeight(words.task(task), width, measure) : undefined
-      return Math.max(MIN_TASK_PX, height ?? MIN_TASK_PX)
-    })
-    let boxes = placeTasks(natural, bounds, needed)
+    const needed = (lines: number) => members.map((task) => Math.max(MIN_TASK_PX, (measure ? taskTextHeight(words.task(task), width, measure, lines) : undefined) ?? MIN_TASK_PX))
+    let boxes = placeTasks(natural, bounds, needed(TASK_TITLE_LINES))
+    if (boxes.some((box) => box.outline)) boxes = placeTasks(natural, bounds, needed(1))
     if (boxes.some((box) => box.outline)) boxes = placeTasks(natural, bounds, MIN_TASK_PX)
     members.forEach((task, index) => {
       const box = boxes[index]!
@@ -201,9 +220,8 @@ export function planDayColumn(input: DayColumnInput): DayColumnPlan {
     if (!measure) return { ...block, top, bottom: px(block.endMinute), show: EVERYTHING.block }
     const firstTask = Math.min(...tasks.filter((task) => task.hostKey === block.key && !task.outline).map((task) => task.top))
     const bottom = Number.isFinite(firstTask) ? firstTask - PIECE_GAP_PX : px(block.endMinute) - BLOCK_INSET.bottom
-    const pieces = blockPieces(words.block(block), measure)
     const box = { width: boxWidth(block) - BLOCK_INSET.start - BLOCK_INSET.end, height: bottom - top - BLOCK_INSET.top }
-    return { ...block, top, bottom: px(block.endMinute), show: blockShow(words.block(block), fitPieces(pieces, box, measure.metrics, PIECE_GAP_PX)) }
+    return { ...block, top, bottom: px(block.endMinute), show: blockShow(words.block(block), box, measure) }
   })
 
   const busy = lanes.busy.map((item): PlannedBusy => {

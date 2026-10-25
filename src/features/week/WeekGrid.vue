@@ -71,15 +71,18 @@ const { locale } = useI18n()
   padding: var(--space-2) var(--page-gutter) var(--space-2) var(--space-2);
 }
 .day-heading { display: flex; flex-direction: column; align-items: center; gap: 2px; }
-.weekday { color: var(--label-2); text-transform: uppercase; }
+/* Seven days share the header: like the system calendar (and the phone's day strip), it stops growing at large text
+   sizes, so "MON" and "TUE" never run into each other in a narrow column. */
+.day-heading { min-width: 0; }
+.weekday { color: var(--label-2); text-transform: uppercase; font-size: min(0.75rem, 13px); }
 .day-number {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  min-width: 2rem;
-  height: 2rem;
-  border-radius: 1rem;
-  font-size: 1.25rem;
+  min-width: min(2rem, 36px);
+  height: min(2rem, 36px);
+  border-radius: min(1rem, 18px);
+  font-size: min(1.25rem, 20px);
   font-weight: 700;
   font-variant-numeric: tabular-nums;
 }

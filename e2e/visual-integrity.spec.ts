@@ -940,6 +940,29 @@ test.describe('visual integrity guard: whole text in Week', () => {
     expect(await audit(page)).toContain('text "Deep work" in <span> "Deep work" is covered by <button.item> "Vendor call"')
   })
 
+  test('a title cut after whole words with a drawn "…" is accepted ("Revisión de…", "Vendor…")', async ({ page }) => {
+    await page.setContent(column(`
+      <button class="item" title="Revisión de diseño de producto" style="top: 0; left: 0; width: 80px; height: 40px"><span>Revisión de<span style="display: inline" aria-hidden="true">…</span></span></button>
+      <button class="item" aria-label="Vendor call 9:30 – 10:00" style="top: 40px; left: 0; width: 80px; height: 20px"><span>Vendor…</span></button>
+    `))
+    expect(await audit(page)).toEqual([])
+  })
+
+  test('a word cut before a drawn "…" is reported ("Reunió…", "Vendo…")', async ({ page }) => {
+    await page.setContent(column(`
+      <button class="item" title="Reunión diaria" style="top: 0; left: 0; width: 80px; height: 20px"><span>Reunió…</span></button>
+      <button class="item" aria-label="Vendor call 9:30 – 10:00" style="top: 20px; left: 0; width: 80px; height: 20px"><span>Vendo<span style="display: inline" aria-hidden="true">…</span></span></button>
+    `))
+    const violations = await audit(page)
+    expect(violations).toContain('text "Reunió…" in <span> "Reunió…" ends "Reunió…", which is not whole words of "Reunión diaria" followed by "…"')
+    expect(violations.some((violation) => violation.includes('ends "Vendo…", which is not whole words of "Vendor call 9:30 – 10:00"'))).toBe(true)
+  })
+
+  test('a "…" after the whole title is reported: nothing was left out', async ({ page }) => {
+    await page.setContent(column('<button class="item" title="Gym" style="top: 0; left: 0; width: 80px; height: 20px"><span>Gym…</span></button>'))
+    expect((await audit(page)).some((violation) => violation.includes('ends "Gym…"'))).toBe(true)
+  })
+
   test('outside a whole-text container an ellipsis is still a deliberate truncation', async ({ page }) => {
     await page.setContent(column('<button class="item" style="top: 0; left: 0; width: 60px; height: 20px"><span style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap">Vendor call</span></button>').replace(' data-whole-text', ''))
     expect(await audit(page)).toEqual([])
@@ -1168,7 +1191,9 @@ test.describe('visual integrity guard: overlapping controls', () => {
     await page.setContent(`
       <style>body { margin: 0; } .host { position: absolute; left: 10px; top: 10px; width: 200px; height: 100px; } .task { position: absolute; left: 20px; top: 30px; width: 100px; height: 30px; padding: 0; }</style>
       <button class="host">Deep work</button><button class="task" data-layered>Report</button><button class="task" data-layered>Form</button>`)
-    expect(await visualIntegrityViolations(page, { focusRings: false })).toEqual(['<button.task> "Report" overlaps <button.task> "Form"'])
+    const violations = await visualIntegrityViolations(page, { focusRings: false })
+    // Their words are drawn on each other too, which the run-together rule reports as well.
+    expect(violations.filter((violation) => !violation.startsWith('text "Report" and text "Form" run together'))).toEqual(['<button.task> "Report" overlaps <button.task> "Form"'])
   })
 
   test('a control that is not marked as layered is reported even when it lies inside another', async ({ page }, testInfo) => {
@@ -1286,6 +1311,19 @@ test.describe('visual integrity guard: spacing', () => {
     .row { display: flex; width: 120px; gap: 8px; font-size: 24px; line-height: 30px; }
     .icon { flex: none; width: 70px; height: 20px; background: #ccc; }
     .name { min-width: 0; overflow-wrap: anywhere; ${extra} }`)
+
+  // The Week grid header at 1024 px and 200 % text drew "MONTUEWED": each label fit nothing but its own cell.
+  test('labels of neighbouring cells drawn edge to edge are reported as running together', async ({ page }) => {
+    await page.setContent(`<style>body { margin: 0; font: 24px/1.2 sans-serif; } .row { display: grid; grid-template-columns: repeat(3, 40px); margin: 16px; } .row span { text-align: center; }</style>
+      <div class="row"><span>MON</span><span>TUE</span><span>WED</span></div>`)
+    expect((await visualIntegrityViolations(page, { focusRings: false })).some((violation) => /text "MON" and text "TUE" run together/.test(violation))).toBe(true)
+  })
+
+  test('labels of neighbouring cells with space between them are accepted', async ({ page }) => {
+    await page.setContent(`<style>body { margin: 0; font: 12px/1.2 sans-serif; } .row { display: grid; grid-template-columns: repeat(3, 40px); margin: 16px; } .row span { text-align: center; }</style>
+      <div class="row"><span>MON</span><span>TUE</span><span>WED</span></div>`)
+    expect(await visualIntegrityViolations(page, { focusRings: false })).toEqual([])
+  })
 
   test('a word cut mid-word in a squeezed flex item, though its row could hold it, is reported', async ({ page }) => {
     await page.setContent(squeezed(''))

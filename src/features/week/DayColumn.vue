@@ -11,6 +11,7 @@ import { statusOf } from './blockStatus'
 import { categoryColor } from './categoryColor'
 import { formatMinute, formatTime } from './localTime'
 import { useColumnMeasure } from './columnMeasure'
+import { ELLIPSIS } from './itemText'
 import { BLOCK_INSET, LANE_GAP_PX, planDayColumn, type PlannedBlock, type PlannedBusy, type PlannedTask } from './dayColumnPlan'
 import { HOUR_HEIGHT_PX, SLOT_MINUTES, nearestHitTarget, type BlockSegment, type BusySegment, type HitTarget, type TaskSegment } from './weekLayout'
 import type { BusyDetails } from './busyDetails'
@@ -87,6 +88,13 @@ const plan = computed(() => planDayColumn({
     task: (task) => ({ title: task.title, late: task.late }),
   },
 }))
+
+// A title the plan cut after its last whole word: the words, and whether "…" follows (drawn apart from the words, so
+// the visible words stay a prefix of the accessible name).
+function drawn(shown: string | undefined, full: string): { words: string; cut: boolean } {
+  if (!shown?.endsWith(ELLIPSIS)) return { words: shown ?? full, cut: false }
+  return { words: shown.slice(0, -ELLIPSIS.length), cut: true }
+}
 
 function verticalStyle(item: { top: number; bottom: number }) {
   return { top: `${item.top}px`, height: `${item.bottom - item.top}px` }
@@ -190,7 +198,7 @@ function onColumnClick(event: MouseEvent, blockId?: string): void {
       data-testid="busy-overlay"
       @click.stop="inspect(item)"
     >
-      <span v-if="conflicting.has(item.key)" class="conflict-mark" :class="{ 'visually-hidden': !item.show.icon }" data-testid="calendar-conflict"><Icon name="triangle-alert" :size="12" /><span class="conflict-text" :class="{ 'visually-hidden': !item.show.word }">{{ t('week.grid.conflict') }}</span></span>{{ item.show.icon ? ' ' : '' }}<span class="busy-title" :class="{ 'visually-hidden': !item.show.title }">{{ item.title }}</span>
+      <span v-if="conflicting.has(item.key)" class="conflict-mark" :class="{ 'visually-hidden': !item.show.icon }" data-testid="calendar-conflict"><Icon name="triangle-alert" :size="12" /><span class="conflict-text" :class="{ 'visually-hidden': !item.show.word }">{{ t('week.grid.conflict') }}</span></span>{{ item.show.icon ? ' ' : '' }}<span class="busy-title" :class="{ 'visually-hidden': !item.show.title }" :aria-hidden="drawn(item.show.text, item.title).cut || undefined">{{ drawn(item.show.text, item.title).words }}<span v-if="drawn(item.show.text, item.title).cut" class="cut">{{ ELLIPSIS }}</span></span><span v-if="drawn(item.show.text, item.title).cut" class="visually-hidden">{{ item.title }}</span>
     </button>
     <button
       v-for="segment in plan.blocks"
@@ -208,7 +216,7 @@ function onColumnClick(event: MouseEvent, blockId?: string): void {
       :tabindex="compact ? -1 : undefined"
       @click.stop="onColumnClick($event, segment.occurrence.blockId)"
     >
-      <span v-if="segment.show.title" class="block-title"><CategoryMark v-if="segment.show.mark" class="block-mark" :category="categoriesById.get(segment.occurrence.categoryId)" />{{ segment.show.mark ? ' ' : '' }}{{ segment.occurrence.title }}</span>{{ ' ' }}
+      <span v-if="segment.show.title" class="block-title"><CategoryMark v-if="segment.show.mark" class="block-mark" :category="categoriesById.get(segment.occurrence.categoryId)" />{{ segment.show.mark ? ' ' : '' }}{{ drawn(segment.show.text, segment.occurrence.title).words }}<span v-if="drawn(segment.show.text, segment.occurrence.title).cut" class="cut" aria-hidden="true">{{ ELLIPSIS }}</span></span>{{ ' ' }}
       <span v-if="segment.show.time" class="block-detail block-time">{{ timeRange(segment) }}</span>{{ ' ' }}
       <span v-if="segment.show.category" class="block-detail block-category">{{ categoryLine(segment) }}</span>{{ ' ' }}
       <span v-if="statuses.get(segment.key)" class="block-status t-caption" :class="{ 'visually-hidden': !segment.show.status }" data-testid="block-status"><template v-if="segment.show.statusIcon"><Icon :name="STATUS_ICON[statuses.get(segment.key)!]" :size="12" />{{ ' ' }}</template>{{ statusText(segment) }}</span>
@@ -232,7 +240,7 @@ function onColumnClick(event: MouseEvent, blockId?: string): void {
       :tabindex="compact ? -1 : undefined"
       @click.stop="emit('select-task', planned.task.taskId)"
     >
-      <span class="task-box task-text" :class="{ 'is-late': planned.task.late, 'is-outline': planned.outline }"><Icon v-if="planned.show.icon" class="task-icon" name="triangle-alert" :size="12" />{{ planned.show.icon ? ' ' : '' }}<span v-if="planned.show.title" class="task-title">{{ planned.task.title }}</span></span>
+      <span class="task-box task-text" :class="{ 'is-late': planned.task.late, 'is-outline': planned.outline }"><Icon v-if="planned.show.icon" class="task-icon" name="triangle-alert" :size="12" />{{ planned.show.icon ? ' ' : '' }}<span v-if="planned.show.title" class="task-title">{{ drawn(planned.show.text, planned.task.title).words }}<span v-if="drawn(planned.show.text, planned.task.title).cut" class="cut" aria-hidden="true">{{ ELLIPSIS }}</span></span></span>
     </button>
     <div v-if="nowMinute !== null" class="now-line" :style="{ top: `${(nowMinute / 60) * hourHeight}px` }" data-testid="now-line" aria-hidden="true" />
   </div>

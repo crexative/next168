@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import type { TimeBlock } from '@/core/model'
 import { BLOCK_INSET, BUSY_INSET, LANE_GAP_PX, MIN_TASK_PX, PIECE_GAP_PX, TASK_INSET, planDayColumn, type ColumnMeasure, type DayColumnPlan } from './dayColumnPlan'
-import { fittedHeight, lineCount, type TextMetrics, type TextPiece, type TextRole } from './itemText'
+import { ELLIPSIS, fittedHeight, lineCount, type TextMetrics, type TextPiece, type TextRole } from './itemText'
 import { blockSegmentsByDate, busySegmentsByDate, HOUR_HEIGHT_PX, type BusySegment, type TaskSegment } from './weekLayout'
 import { plannerDocument } from './testDocument'
 
@@ -47,7 +47,8 @@ function plan(options: { blocks?: TimeBlock[]; events?: ReturnType<typeof event>
 
 const shown = (result: DayColumnPlan, id: string) => {
   const found = result.blocks.find((segment) => segment.occurrence.blockId === id)!.show
-  return [found.title && 'title', found.time && 'time', found.category && 'category'].filter(Boolean).join('+') || 'mark'
+  const title = found.title && (found.text?.endsWith(ELLIPSIS) ? 'title…' : 'title')
+  return [title, found.time && 'time', found.category && 'category'].filter(Boolean).join('+') || 'mark'
 }
 
 describe('what a routine shows, by the size of its box', () => {
@@ -55,15 +56,17 @@ describe('what a routine shows, by the size of its box', () => {
   it.each([
     [300, 1, 15, 'mark'], [300, 1, 25, 'mark'], [300, 1, 30, 'title'], [300, 1, 45, 'title'], [300, 1, 50, 'title+time'], [300, 1, 90, 'title+time+category'],
     [300, 2, 30, 'mark'], [300, 2, 60, 'title'], [300, 2, 120, 'title+time'], [300, 2, 150, 'title+time+category'],
-    [145, 1, 60, 'title+time'], [95, 1, 60, 'title'], [95, 1, 90, 'title+time'], [60, 1, 120, 'mark'],
+    [145, 1, 60, 'title+time'], [95, 1, 60, 'title'], [95, 1, 90, 'title+time'], [60, 1, 120, 'title…'], [40, 1, 120, 'mark'],
   ])('a %i px column at %ix text, %i minutes: %s', (width, scale, minutes, expected) => {
     expect(shown(plan({ blocks: [block('meeting', 540, 540 + minutes, 'Team meeting')], measure: measureAt(width, scale) }), 'meeting')).toBe(expected)
   })
 
-  it('wraps a title onto as many whole lines as it needs, and draws no fragment when a word is wider than the box', () => {
+  it('wraps a title between words, ends a cut one with "…" after its last whole word, and draws no fragment of a word', () => {
     // 95 px column: 80 px for text: "Quarterly" (63) fits a line, "Quarterly budget" (112) does not: three lines.
-    expect(shown(plan({ blocks: [block('q', 540, 600, 'Quarterly budget review')], measure: measureAt(95) }), 'q')).toBe('mark')
-    expect(shown(plan({ blocks: [block('q', 540, 630, 'Quarterly budget review')], measure: measureAt(95) }), 'q')).toBe('title')
+    const two = plan({ blocks: [block('q', 540, 600, 'Quarterly budget review')], measure: measureAt(95) }).blocks[0]!.show
+    expect(two).toMatchObject({ title: true, text: 'Quarterly budget…', time: false })
+    expect(plan({ blocks: [block('q', 540, 630, 'Quarterly budget review')], measure: measureAt(95) }).blocks[0]!.show).toMatchObject({ title: true, text: 'Quarterly budget review' })
+    // A single word wider than the box is never cut: the box is a mark.
     expect(shown(plan({ blocks: [block('q', 540, 720, 'Abstimmungsgespräch')], measure: measureAt(95) }), 'q')).toBe('mark')
   })
 
@@ -100,10 +103,12 @@ describe('events and routines share the column', () => {
 
   it('shows a conflict as icon and word, then icon, then the title alone, then the icon alone', () => {
     const at = (width: number, minutes: number) => plan({ blocks: [block('b', 540, 600)], events: [event('Vendor call', 540, 540 + minutes)], measure: measureAt(width) }).busy[0]!.show
-    expect(at(400, 60)).toEqual({ icon: true, word: true, title: true })
-    expect(at(200, 30)).toEqual({ icon: true, word: false, title: true })
-    // 104 px column, two lanes: 48 px boxes, 38 px for text: "Vendor" fits, not with the icon.
-    expect(at(104, 60)).toEqual({ icon: false, word: false, title: true })
+    expect(at(400, 60)).toEqual({ icon: true, word: true, title: true, text: 'Vendor call' })
+    expect(at(200, 30)).toEqual({ icon: true, word: false, title: true, text: 'Vendor call' })
+    // 104 px column, two lanes: 48 px boxes, 42 px for text: "Vendor" / "call" on two lines, not with the icon.
+    expect(at(104, 60)).toEqual({ icon: false, word: false, title: true, text: 'Vendor call' })
+    // One line of 50 px: the first whole word and "…".
+    expect(at(120, 30)).toEqual({ icon: false, word: false, title: true, text: 'Vendor…' })
     expect(at(104, 20)).toEqual({ icon: true, word: false, title: false })
     expect(at(30, 5)).toEqual({ icon: false, word: false, title: false })
   })
@@ -181,14 +186,18 @@ describe('the plan never draws a cut or covered word', () => {
       const px = (value: number) => (value / 60) * HOUR_HEIGHT_PX
       const width = (lane: { width: number }) => (measure.width * lane.width) / 100 - 2 * LANE_GAP_PX
 
+      // A drawn title is the whole title or its first whole words and "…".
+      const wholeWords = (text: string | undefined, title: string) => text === undefined || text === title || text.endsWith(ELLIPSIS) && title.startsWith(text.slice(0, -1)) && title[text.length - 1] === ' '
       for (const segment of result.blocks) {
-        const pieces: TextPiece[] = [
-          { text: segment.occurrence.title, role: 'blockTitle', lead: segment.show.mark ? measure.markLead : 0 },
-          { text: '9:00 AM – 10:00 AM', role: 'blockDetail' }, { text: 'Work time', role: 'blockDetail' },
-        ]
         const count = [segment.show.title, segment.show.time, segment.show.category].filter(Boolean).length
         expect([segment.show.title, segment.show.time, segment.show.category].slice(0, count).every(Boolean)).toBe(true)
         if (count === 0) continue
+        expect(wholeWords(segment.show.text, segment.occurrence.title), `${segment.show.text} of ${segment.occurrence.title}`).toBe(true)
+        if (segment.show.text?.endsWith(ELLIPSIS)) expect(count, 'nothing follows a cut title').toBe(1)
+        const pieces: TextPiece[] = [
+          { text: segment.show.text ?? segment.occurrence.title, role: 'blockTitle', lead: segment.show.mark ? measure.markLead : 0 },
+          { text: '9:00\u00a0AM – 10:00\u00a0AM', role: 'blockDetail' }, { text: 'Work time', role: 'blockDetail' },
+        ]
         const textWidth = width(segment) - BLOCK_INSET.start - BLOCK_INSET.end
         const fits = pieces.slice(0, count).map((piece) => ({ lines: lineCount(piece, textWidth, measure.metrics), lead: false }))
         expect(fits.every((fit) => fit.lines !== null), 'every drawn piece fits its width').toBe(true)
@@ -196,6 +205,8 @@ describe('the plan never draws a cut or covered word', () => {
         expect(textBottom).toBeLessThanOrEqual(px(segment.endMinute) + 0.01)
         for (const chunk of result.tasks.filter((item) => item.hostKey === segment.key && !item.outline)) expect(chunk.top).toBeGreaterThanOrEqual(px(segment.startMinute) + BLOCK_INSET.top + measure.metrics.lineHeight('blockTitle') - 0.01)
       }
+      for (const chunk of result.tasks) expect(wholeWords(chunk.show.text, chunk.task.title)).toBe(true)
+      for (const item of result.busy) expect(wholeWords(item.show.text, item.title)).toBe(true)
       for (const item of result.busy) {
         if (!item.show.title) continue
         expect(px(item.endMinute) - px(item.startMinute) - BUSY_INSET.top - BUSY_INSET.bottom).toBeGreaterThanOrEqual(measure.metrics.lineHeight('caption') - 0.01)
