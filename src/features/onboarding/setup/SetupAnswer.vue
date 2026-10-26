@@ -2,12 +2,12 @@
 import { computed, nextTick, ref, useId } from 'vue'
 import Icon from '@/ui/Icon.vue'
 import {
-  acceptRanges, addOwnToMore, clearRanges, moreSelection, rangeProblem, setAnswer, setSleepSplit, statusOf, toggleMore,
+  acceptRanges, addOwnCategory, clearRanges, finishMore, pick, rangeProblem, roundIndex, setAnswer, setPendingName, setSleepSplit,
   type ScreenId, type SetupState, type Tri, type WorkStudy,
 } from '../setupModel'
-import { EXTRA_TOPICS, TOPICS, type TopicId } from '../setupTopics'
+import { TOPICS, type TopicId } from '../setupTopics'
 import ChoiceChips from './ChoiceChips.vue'
-import { categoryFor, extraReply, isRangeScreen } from './conversation'
+import { categoryFor, extraReply, isRangeScreen, roundReplies } from './conversation'
 import OtherThingField from './OtherThingField.vue'
 import QuickReplies from './QuickReplies.vue'
 import RangeList from './RangeList.vue'
@@ -17,19 +17,24 @@ import { useSetupFormat } from './useSetupFormat'
 // chips, the times on offer, or a name field. At most one main button, Send; skipping is quiet text above it.
 const props = defineProps<{ state: SetupState; busy: boolean; groupLabel: string; questionId: string }>()
 const emit = defineEmits<{ advance: []; edited: [] }>()
-const { t } = useSetupFormat()
+const { t, rangeLine } = useSetupFormat()
 
 const screen = computed<ScreenId>(() => props.state.screen)
 const answers = computed(() => props.state.answers)
 const category = computed(() => categoryFor(props.state, screen.value))
 const ranges = computed(() => isRangeScreen(props.state, screen.value))
 const quick = computed(() => ['workStudy', 'commute', 'exercise'].includes(screen.value))
+// A round of "Anything else?": its index, or undefined on every other screen.
+const round = computed(() => roundIndex(screen.value))
+// Questions whose replies answer on a tap have no Send.
+const answersOnTap = computed(() => quick.value || round.value !== undefined)
 
 const extra = computed(() => extraReply(props.state, screen.value))
-// The send button is the validation: grey while there is nothing to send (no choice on "more", a time with no days
-// or that ends when it starts), in colour once there is. Why it is grey is in its description, for screen readers.
-const blocked = computed<'needChoice' | 'needFix' | undefined>(() => {
-  if (screen.value === 'more') return selection.value.length > 0 ? undefined : 'needChoice'
+// The bar under the answers: the quiet skip and Send. Without it the answers keep the bar's bottom inset themselves.
+const hasActions = computed(() => extra.value?.kind === 'skip' || !answersOnTap.value)
+// The send button is the validation: grey while there is nothing to send (a time with no days or that ends when it
+// starts), in colour once there is. Why it is grey is in its description, for screen readers.
+const blocked = computed<'needFix' | undefined>(() => {
   const current = category.value
   if (!current) return undefined
   return current.ranges.some((range) => ['noDays', 'sameTime'].includes(rangeProblem(props.state, current, range)?.code ?? '')) ? 'needFix' : undefined
@@ -38,9 +43,9 @@ const canContinue = computed(() => blocked.value === undefined)
 const reasonId = useId()
 const root = ref<HTMLElement | null>(null)
 
-// On arrival the answer is in reach: the current or first reply, the first chip, or Send when the answer is ready.
+// On arrival the answer is in reach: the current or first reply, or Send when the answer is ready.
 function focusAnswer(): boolean {
-  const order = quick.value ? ['.reply.is-current', '.reply'] : screen.value === 'more' ? ['.chip'] : ['.send:not(:disabled)']
+  const order = quick.value ? ['.reply.is-current', '.reply'] : round.value !== undefined ? ['.is-current', '.reply', '[data-testid=more-other]'] : ['.send:not(:disabled)']
   const target = order.map((selector) => root.value?.querySelector<HTMLElement>(selector)).find((element) => element)
   target?.focus({ preventScroll: true })
   return target !== undefined
@@ -54,17 +59,18 @@ function done(): void {
 function onPrimary(): void {
   if (!canContinue.value) return
   if (screen.value === 'sleep') setAnswer(props.state, 'sleep', 'yes')
-  if (screen.value === 'more') setAnswer(props.state, 'more', selection.value)
   if (category.value) acceptRanges(category.value)
   done()
 }
 
 // Enter anywhere in the conversation that is not itself a control sends the answer on show.
-defineExpose({ send: () => { if (!quick.value && !props.busy) onPrimary() }, focusAnswer: async () => { await nextTick(); return focusAnswer() } })
+defineExpose({ send: () => { if (!answersOnTap.value && !props.busy) onPrimary() }, focusAnswer: async () => { await nextTick(); return focusAnswer() } })
 
 function onSecondary(): void {
-  if (screen.value === 'more') setAnswer(props.state, 'more', null)
-  else if (category.value && ranges.value && screen.value !== 'sleep') clearRanges(category.value)
+  if (screen.value === 'more') {
+    setAnswer(props.state, 'more', null)
+    setAnswer(props.state, 'moreDone', false)
+  } else if (category.value && ranges.value && screen.value !== 'sleep') clearRanges(category.value)
   done()
 }
 
@@ -81,37 +87,61 @@ function answerQuick(value: string): void {
   done()
 }
 
-// ---------- "More": topic chips, the person's own, and what is already stored ----------
-const otherOpen = ref(false)
-const otherName = ref('')
-const duplicate = ref(false)
-
-const customs = computed(() => props.state.categories.filter((candidate) => candidate.topic === undefined && statusOf(props.state, candidate) !== 'removed'
-  && (candidate.categoryId !== undefined || answers.value.more?.includes(candidate.key))))
-const chips = computed(() => [
-  ...EXTRA_TOPICS.map((topic) => ({ value: topic as string, label: t(`onboarding.guided.more.${topic}`) })),
-  ...customs.value.map((custom) => ({ value: custom.key, label: custom.name })),
-])
-const selection = computed<string[]>(() => moreSelection(props.state))
+// ---------- "Anything else?": one pick per round, "Something else" to name one, and the way out ----------
 const env = { topicName: (topic: TopicId) => t(`onboarding.templates.${TOPICS[topic].nameKey}`) }
+const speaker = { t: (key: string, params?: Record<string, unknown>) => t(key, params ?? {}), rangeLine }
+const replies = computed(() => (round.value === undefined ? undefined : roundReplies(props.state, round.value, speaker)))
+const doneLabel = computed(() => (replies.value?.done.current ? `${replies.value.done.label} ${t('onboarding.guided.current')}` : undefined))
 
-function toggleChip(value: string): void {
-  toggleMore(props.state, value, env)
-  emit('edited')
+// The name being typed lives in the draft: it is unsaved input, and a reload brings it back with its field open.
+const otherName = computed({
+  get: () => props.state.pending?.name ?? '',
+  set: (name: string) => {
+    setPendingName(props.state, name)
+    duplicate.value = false
+  },
+})
+const otherOpen = ref(otherName.value !== '')
+const duplicate = ref(false)
+const otherField = ref<InstanceType<typeof OtherThingField> | null>(null)
+
+function choose(value: string): void {
+  if (round.value === undefined || !pick(props.state, round.value, value, env)) return
+  otherName.value = ''
+  done()
+}
+
+function finish(): void {
+  if (round.value === undefined) return
+  finishMore(props.state, round.value)
+  otherName.value = ''
+  done()
+}
+
+function openOther(): void {
+  otherOpen.value = true
+  void nextTick(() => otherField.value?.focus())
+}
+
+// Escape in the field puts it away (and what was typed), back to the button that opened it; the setup stays.
+function closeOther(): void {
+  otherName.value = ''
+  otherOpen.value = false
+  void nextTick(() => root.value?.querySelector<HTMLElement>('[data-testid="more-other"]')?.focus({ preventScroll: true }))
 }
 
 function addOther(): void {
   const name = otherName.value.trim()
-  if (name === '') return
-  const { duplicate: already } = addOwnToMore(props.state, name)
-  duplicate.value = already
-  otherName.value = ''
-  if (!already) {
-    otherOpen.value = false
-    // The field leaves with its focus: focus moves to the button that adds another, so it stays in the dialog.
-    void nextTick(() => root.value?.querySelector<HTMLElement>('[data-testid="more-other"]')?.focus({ preventScroll: true }))
+  if (name === '' || round.value === undefined) return
+  // A name already on the list picks that item when it is free; one picked in another round, or stored, says so.
+  const { category: named } = addOwnCategory(props.state, name)
+  if (!pick(props.state, round.value, named.key, env)) {
+    duplicate.value = true
+    emit('edited')
+    return
   }
-  emit('edited')
+  otherName.value = ''
+  done()
 }
 
 function toggleSplit(): void {
@@ -127,7 +157,7 @@ const labels = computed(() => ({
 </script>
 
 <template>
-  <footer ref="root" class="dock" :aria-busy="busy || undefined">
+  <footer ref="root" class="dock" :class="{ 'is-bare': !hasActions }" :aria-busy="busy || undefined">
     <div class="dock-answer" data-testid="setup-dock">
       <div class="column">
         <template v-if="screen === 'sleep' && category">
@@ -140,25 +170,33 @@ const labels = computed(() => ({
           :group-label="groupLabel" @answer="answerQuick"
         />
 
-        <template v-else-if="screen === 'more'">
-          <ChoiceChips :chips="chips" :selected="selection" :group-label="groupLabel" @toggle="toggleChip" />
-          <button v-if="!otherOpen" class="other t-body" type="button" data-testid="more-other" @click="otherOpen = true">{{ t('onboarding.guided.more.other') }}</button>
-          <form v-else class="other-form" @submit.prevent="addOther">
-            <OtherThingField v-model="otherName" :label="t('onboarding.guided.more.otherLabel')" :placeholder="t('onboarding.guided.more.otherPlaceholder')" test-id="more-other-name" @enter="addOther" @update:model-value="duplicate = false" />
-            <button class="add t-body" type="submit" :disabled="otherName.trim() === ''">{{ t('onboarding.guided.more.add') }}</button>
-            <p v-if="duplicate" class="t-body note" role="status">{{ t('onboarding.guided.more.duplicate') }}</p>
-          </form>
-        </template>
+        <div v-else-if="replies" class="round" role="group" :aria-label="groupLabel">
+          <QuickReplies v-if="replies.options.length > 0" :options="replies.options" :current="replies.current" :current-label="t('onboarding.guided.current')" @answer="choose" />
+          <div class="round-more">
+            <button v-if="!otherOpen" class="other t-body" type="button" data-testid="more-other" :disabled="busy" @click="openOther">{{ t('onboarding.guided.more.other') }}</button>
+            <form v-else class="other-form" @submit.prevent="addOther" @keydown.esc.stop.prevent="closeOther">
+              <OtherThingField ref="otherField" v-model="otherName" :label="t('onboarding.guided.more.otherLabel')" :placeholder="t('onboarding.guided.more.otherPlaceholder')" test-id="more-other-name" @enter="addOther" />
+              <button class="add t-body" type="submit" data-testid="more-other-add" :disabled="busy || otherName.trim() === ''">{{ t('onboarding.guided.more.add') }}</button>
+              <p v-if="duplicate" class="t-body note" role="status">{{ t('onboarding.guided.more.duplicate') }}</p>
+            </form>
+            <button
+              class="reply-chip done t-body" :class="{ 'is-current': replies.done.current }" type="button" data-testid="more-done" :aria-label="doneLabel"
+              :disabled="busy" @click="finish"
+            >
+              {{ replies.done.label }}
+            </button>
+          </div>
+        </div>
 
         <RangeList v-else-if="category" :state="state" :category="category" :labels="labels" />
         <button v-if="extra?.kind === 'answer'" class="reply-chip t-body" type="button" data-testid="setup-secondary" :disabled="busy" @click="onSecondary">{{ t(extra.key) }}</button>
       </div>
     </div>
-    <div v-if="extra?.kind === 'skip' || !quick" class="dock-actions">
+    <div v-if="hasActions" class="dock-actions">
       <div class="column actions">
         <button v-if="extra?.kind === 'skip'" class="skip t-body" type="button" data-testid="setup-secondary" :disabled="busy" @click="onSecondary">{{ t(extra.key) }}</button>
         <button
-          v-if="!quick" class="send" type="button" data-primary data-dock-primary data-testid="setup-primary" :aria-label="t('onboarding.guided.send')"
+          v-if="!answersOnTap" class="send" type="button" data-primary data-dock-primary data-testid="setup-primary" :aria-label="t('onboarding.guided.send')"
           :aria-describedby="blocked ? `${questionId} ${reasonId}` : questionId" :disabled="busy || !canContinue" @click="onPrimary"
         >
           <span>{{ t('onboarding.guided.sendShort') }}</span>
@@ -228,6 +266,13 @@ const labels = computed(() => ({
 .add { border-style: solid; background: color-mix(in srgb, var(--tint) 12%, transparent); color: var(--tint-label); border-color: transparent; }
 .add:disabled { opacity: 0.4; }
 .other-form { display: flex; flex-direction: column; gap: var(--space-2); align-items: flex-start; }
+.round { display: flex; flex-direction: column; gap: var(--space-3); }
+/* "Something else" and the way out share a row; the name form, once open, takes the row's width. */
+.round-more { display: flex; flex-wrap: wrap; align-items: flex-start; gap: var(--space-3); }
+.round-more > .other-form { flex: 1 0 100%; }
+.dock.is-bare .dock-answer > .column { padding-block-end: calc(var(--space-4) + var(--safe-bottom)); }
+/* The round's answer when it is asked again, marked like a quick reply's. */
+.reply-chip.is-current { border-color: var(--tint); background: color-mix(in srgb, var(--tint) 12%, transparent); }
 .note { margin: 0; color: var(--label-2); }
 @media (prefers-reduced-motion: reduce) {
   .send:active:not(:disabled), .reply-chip:active:not(:disabled) { transform: none; opacity: 0.7; }

@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { createApp, nextTick } from 'vue'
 import { createI18n } from 'vue-i18n'
 import UndoToast from './UndoToast.vue'
+import { openFullScreen } from './sheetStack'
 import { useUndoToast } from './undoToast'
 
 let app: ReturnType<typeof createApp> | undefined
@@ -24,6 +25,28 @@ afterEach(() => {
 })
 
 const toastElement = () => document.querySelector<HTMLElement>('[data-testid="undo-toast"]')
+
+describe('UndoToast under a full-screen flow (N10)', () => {
+  it('keeps announcing an offer made before the flow opened, but neither its button nor Ctrl/Cmd+Z can take it', async () => {
+    const onUndo = vi.fn()
+    useUndoToast().dismiss()
+    await vi.advanceTimersByTimeAsync(500)
+    useUndoToast().show({ message: 'Routine deleted', onUndo })
+    const release = openFullScreen()
+    await nextTick()
+    const button = toastElement()!.querySelector('button')!
+    expect(button.hasAttribute('inert')).toBe(true)
+    expect(document.querySelector('[role=status]')!.textContent).toContain('Routine deleted')
+    for (const modifier of [{ ctrlKey: true }, { metaKey: true }]) window.dispatchEvent(new KeyboardEvent('keydown', { key: 'z', ...modifier, bubbles: true }))
+    expect(onUndo).not.toHaveBeenCalled()
+    expect(useUndoToast().toast.value).not.toBeNull()
+    release()
+    await nextTick()
+    expect(button.hasAttribute('inert')).toBe(false)
+    window.dispatchEvent(new KeyboardEvent('keydown', { key: 'z', ctrlKey: true, bubbles: true }))
+    expect(onUndo).toHaveBeenCalledOnce()
+  })
+})
 
 describe('UndoToast', () => {
   it('keeps the toast while its Undo stays focused after the pointer leaves', () => {

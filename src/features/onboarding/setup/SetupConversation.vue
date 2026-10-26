@@ -68,9 +68,15 @@ async function reveal(arriving: boolean): Promise<void> {
 onMounted(() => reveal(true))
 watch(screen, () => reveal(false), { flush: 'post' })
 
+// A field that opens in the docked answers makes the conversation shorter: the question it answers, the last message,
+// is brought back into view above it.
 function onFocusIn(event: FocusEvent): void {
   const target = event.target as HTMLElement
-  if (target.matches('input, textarea')) requestAnimationFrame(() => target.scrollIntoView({ block: 'center' }))
+  if (!target.matches('input, textarea')) return
+  requestAnimationFrame(() => {
+    target.scrollIntoView({ block: 'center' })
+    if (target.closest('.dock')) scroller.value?.scrollTo({ top: scroller.value.scrollHeight, behavior: prefersReducedMotion() ? 'auto' : 'smooth' })
+  })
 }
 </script>
 

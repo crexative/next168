@@ -81,7 +81,7 @@
     },
     "more": {
       "question": "À quoi d'autre donnes-tu du temps chaque semaine ?",
-      "hint": "Choisis ce que tu veux.",
+      "hint": "Choisis-en une.",
       "family": "Famille",
       "friends": "Amis",
       "me": "Temps pour toi",
@@ -91,6 +91,12 @@
       "otherPlaceholder": "Par exemple : cours d'anglais",
       "add": "Ajouter",
       "duplicate": "C'est déjà dans ta liste."
+    },
+    "again": {
+      "question": "Autre chose ?",
+      "hint": "Choisis-en une autre, ou dis-moi que c'est tout.",
+      "done": "Non, c'est tout",
+      "limit": "C'est assez pour l'instant."
     },
     "extra": {
       "family": "Quand passes-tu du temps en famille ?",
@@ -138,7 +144,6 @@
     "change": "Modifier : {question} {answer}",
     "conversation": "Conversation",
     "send": "Envoyer la réponse",
-    "needChoice": "Choisis-en au moins une, ou « Plus tard ».",
     "needFix": "Corrige d'abord l'horaire signalé.",
     "progressShort": "{step} sur {total}",
     "sendShort": "Envoyer"

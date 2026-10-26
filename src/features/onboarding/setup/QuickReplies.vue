@@ -1,14 +1,14 @@
 <script setup lang="ts">
 // A row of plain buttons that answer on activation (tap, Enter, Space). Tab only moves focus, so exploring never
-// navigates; nothing here runs on a timer.
+// navigates; nothing here runs on a timer. Without a group label the row belongs to a group around it.
 export interface QuickReply { value: string; label: string }
 
-defineProps<{ options: QuickReply[]; current?: string; currentLabel: string; groupLabel: string }>()
+defineProps<{ options: QuickReply[]; current?: string; currentLabel: string; groupLabel?: string }>()
 defineEmits<{ answer: [value: string] }>()
 </script>
 
 <template>
-  <div class="replies" role="group" :aria-label="groupLabel">
+  <div class="replies" :role="groupLabel ? 'group' : undefined" :aria-label="groupLabel">
     <button
       v-for="option in options"
       :key="option.value"
@@ -29,7 +29,7 @@ defineEmits<{ answer: [value: string] }>()
 .reply {
   flex: 1 1 8rem; min-height: var(--tap-target); padding: var(--space-2) var(--space-4); border: 2px solid var(--field-border);
   border-radius: var(--radius-control); background: var(--surface); color: var(--label); font-weight: 600; text-align: center;
-  transition: transform 0.1s var(--ease-out), background-color 0.1s; touch-action: manipulation; overflow-wrap: anywhere;
+  transition: transform 0.1s var(--ease-out), background-color 0.1s; touch-action: manipulation; overflow-wrap: anywhere; text-wrap: balance;
 }
 .reply:active { transform: scale(0.97); }
 .reply.is-current { border-color: var(--tint); background: color-mix(in srgb, var(--tint) 12%, transparent); }

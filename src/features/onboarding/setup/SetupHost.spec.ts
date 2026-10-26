@@ -13,8 +13,11 @@ import WeekView from '@/features/week/WeekView.vue'
 import CategorySettings from '@/features/settings/categories/CategorySettings.vue'
 import { draftOf, saveDraft } from '../draftStorage'
 import { setupRequest } from '../reopen'
-import { createState } from '../setupModel'
-import { env } from '../setupFixtures'
+import { addOwnCategory, clearRanges, createState, MAX_PICKS, pick } from '../setupModel'
+import { block, category, documentWith, env } from '../setupFixtures'
+import legacyDrafts from '../__fixtures__/legacyDraftsV2.json'
+import { anyFullScreenOpen, droppedSheet, openSheet } from '@/ui/sheetStack'
+import { hasUnsavedInput } from '@/ui/unsavedGuard'
 import SetupHost from './SetupHost.vue'
 import { registerIcons } from '@/ui/icons'
 import { ArrowRight } from 'lucide-vue-next'
@@ -601,15 +604,14 @@ describe('the conversation', () => {
     await click('[data-testid=setup-secondary]')
     await click('[data-testid=setup-secondary]')
     expect(screen()).toBe('more')
+    // "Anything else?" answers on a tap, like the other quick replies: it has no Send.
+    expect(live('[data-testid=setup-primary]')).toBeUndefined()
+    await click('[data-value=family]')
+    expect(screen()).toBe('extra:family')
     const send = () => live('[data-testid=setup-primary]')!
-    expect(send().disabled).toBe(true)
-    const reason = () => window.document.getElementById(send().getAttribute('aria-describedby')!.split(' ')[1]!)
-    expect(reason()!.textContent).toBe('Pick at least one, or "Later".')
-    await click('[data-chip=family]')
     expect(send().disabled).toBe(false)
     expect(send().getAttribute('aria-describedby')!.split(' ')).toHaveLength(1)
-    await click('[data-testid=setup-primary]')
-    expect(screen()).toBe('extra:family')
+    const reason = () => window.document.getElementById(send().getAttribute('aria-describedby')!.split(' ')[1]!)
     // A time with no days cannot be sent until it has one.
     await click('[data-field=days]')
     await click('[data-preset=pick]')
@@ -625,5 +627,209 @@ describe('the conversation', () => {
     await quick('work')
     await vi.waitFor(() => expect(window.document.activeElement).toBe(live('[data-testid=setup-primary]')))
     expect(window.document.activeElement!.getAttribute('aria-describedby')).toBe(live('h3')!.id)
+  })
+})
+
+describe('"Anything else?" asked again (S1-4, S1-9, N8)', () => {
+  const turn = (screen: string) => [...window.document.body.querySelectorAll<HTMLButtonElement>('[data-testid=setup] [data-answer]')].find((element) => element.dataset.answer === screen)!
+  const choose = (value: string) => click(`[data-value="${value}"]`)
+  const send = () => click('[data-testid=setup-primary]')
+  const replies = () => [...window.document.body.querySelectorAll<HTMLButtonElement>('[data-testid=setup] .reply')].map((element) => element.dataset.value)
+
+  async function toMore(): Promise<void> {
+    for (let guard = 0; guard < 3; guard++) await click('[data-testid=setup-secondary]')
+    expect(screen()).toBe('more')
+  }
+
+  async function reopen(screenId: string): Promise<void> {
+    turn(screenId).click()
+    await nextTick()
+    expect(screen()).toBe(screenId)
+  }
+
+  it('reopening the "No, that\'s all" turn and picking Friends asks its times, then the round after it, open', async () => {
+    await mount(firstRun())
+    await toMore()
+    await choose('family')
+    await send()
+    expect(screen()).toBe('more:1')
+    await click('[data-testid=more-done]')
+    expect(screen()).toBe('summary')
+    await reopen('more:1')
+    expect(live('[data-testid=more-done]')!.getAttribute('aria-label')).toBe('No, that\'s all (current)')
+    await choose('friends')
+    expect(screen()).toBe('extra:friends')
+    await send()
+    expect(screen()).toBe('more:2')
+    expect(live('[data-testid=more-done]')!.getAttribute('aria-label')).toBeNull()
+    expect(replies()).toEqual(['me', 'learning'])
+  })
+
+  it('replacing an earlier pick asks the new pick\'s times, then returns to the round the person was on', async () => {
+    await mount(firstRun())
+    await toMore()
+    await choose('family')
+    await send()
+    await choose('friends')
+    await send()
+    expect(screen()).toBe('more:2')
+    await reopen('more')
+    expect(live('.reply.is-current')!.dataset.value).toBe('family')
+    await choose('learning')
+    expect(screen()).toBe('extra:learning')
+    await send()
+    expect(screen()).toBe('more:2')
+    expect(turn('more').textContent).toContain('Learning')
+    expect(turn('more:1').textContent).toContain('Friends')
+  })
+
+  it('"No, that\'s all" at an earlier round, with picks after it, lands on the summary even when the screen left is gone', async () => {
+    await mount(firstRun())
+    await toMore()
+    await choose('family')
+    await send()
+    await choose('friends')
+    await send()
+    await choose('learning')
+    expect(screen()).toBe('extra:learning')
+    await reopen('more:1')
+    await click('[data-testid=more-done]')
+    expect(screen()).toBe('summary')
+    await vi.waitFor(() => expect(turns()).toEqual(['sleep', 'workStudy', 'exercise', 'more', 'extra:family', 'more:1']))
+  })
+
+  it('at MAX_PICKS picks no round is left open and the summary offers no other addition', async () => {
+    const document = firstRun()
+    const state = createState(document, env)
+    for (let index = 0; index < MAX_PICKS; index++) {
+      const { category: own } = addOwnCategory(state, `Thing ${index + 1}`)
+      clearRanges(own)
+      pick(state, index, own.key, env)
+    }
+    state.screen = 'summary'
+    saveDraft(draftOf(state, { kind: 'stored', workspaceId: document.workspaceId, fingerprint: await documentFingerprint(document) }, true))
+    await mount(document)
+    expect(screen()).toBe('summary')
+    expect(turn(`more:${MAX_PICKS - 1}`)).toBeDefined()
+    expect(turn(`more:${MAX_PICKS}`)).toBeUndefined()
+    expect(live('[data-testid=summary-add]')).toBeUndefined()
+    expect(live('[data-testid=summary-limit]')!.textContent).toBe('That\'s enough for now.')
+  })
+
+  it('a version 2 draft reopened on "more" reaffirms both of its answers and reaches the open round (N8)', async () => {
+    const at = (hours: number) => hours * 60
+    const document = documentWith(
+      [category('c-work', 'Work', { icon: '💼' }), category('c-family', 'Family', { icon: '👨‍👩‍👧', colorKey: 'pink' }), category('c-chess', 'Chess', { colorKey: 'green' })],
+      [
+        block('b-work', 'c-work', [1, 2, 3, 4, 5], at(9), at(17), { title: 'Work' }),
+        block('b-family', 'c-family', [6], at(10), at(14), { title: 'Family' }),
+        block('b-chess', 'c-chess', [2], at(18), at(19), { title: 'Chess' }),
+      ],
+      { settings: { ...documentWith().settings, onboardingDone: true } },
+    )
+    const legacy = { ...legacyDrafts.fixtures.d.draft, binding: { kind: 'stored', workspaceId: document.workspaceId, fingerprint: await documentFingerprint(document) } }
+    sessionStorage.setItem(DRAFT_KEY, JSON.stringify(legacy))
+    await mount(document)
+    await waitForSetup()
+    expect(screen()).toBe('more')
+    expect(live('.reply.is-current')!.dataset.value).toBe('friends')
+    await choose('friends')
+    expect(screen()).toBe('extra:friends')
+    await send()
+    expect(screen()).toBe('more:1')
+    expect(live('.reply.is-current')!.dataset.value).toBe('custom:6')
+    await choose('custom:6')
+    await send()
+    expect(screen()).toBe('more:2')
+    expect(live('.reply.is-current')).toBeUndefined()
+    expect(live('[data-testid=more-done]')!.getAttribute('aria-label')).toBeNull()
+  })
+
+  function turns(): string[] {
+    return [...window.document.body.querySelectorAll<HTMLButtonElement>('[data-testid=setup] [data-answer]')].map((element) => element.dataset.answer!)
+  }
+})
+
+describe('a name typed and not added (S1-13, N3)', () => {
+  it('is unsaved input and part of the draft; clearing it leaves the draft as it was', async () => {
+    await mount(firstRun())
+    for (let guard = 0; guard < 3; guard++) await click('[data-testid=setup-secondary]')
+    await click('[data-testid=more-other]')
+    await vi.waitFor(() => expect(window.document.activeElement).toBe(live('[data-testid=more-other-name]')))
+    const before = sessionStorage.getItem(DRAFT_KEY)
+    const field = live('[data-testid=more-other-name]') as unknown as HTMLTextAreaElement
+    field.value = 'Guitar'
+    field.dispatchEvent(new Event('input'))
+    await nextTick()
+    expect(hasUnsavedInput.value).toBe(true)
+    const typed = JSON.parse(sessionStorage.getItem(DRAFT_KEY)!)
+    expect(typed.pending).toEqual({ name: 'Guitar' })
+    expect({ ...typed, pending: undefined }).toEqual({ ...JSON.parse(before!), pending: undefined })
+    field.value = ''
+    field.dispatchEvent(new Event('input'))
+    await nextTick()
+    expect(sessionStorage.getItem(DRAFT_KEY)).toBe(before)
+  })
+})
+
+describe('admission: the frame opens only over a usable planner with nothing modal on screen (N5, N9)', () => {
+  const planned = () => firstRun({ settings: { ...testDocument().settings, onboardingDone: true }, categories: [WORK], blocks: [WORK_BLOCK] })
+
+  // The baseline's fingerprint is the one await between the request and the frame: it waits until released, then
+  // resolves at once (no real hashing), so a short wait after the release is always long enough for the frame.
+  function deferBaseline(): () => void {
+    let release!: () => void
+    const gate = new Promise<void>((resolve) => { release = resolve })
+    vi.spyOn(crypto.subtle, 'digest').mockImplementationOnce(async () => { await gate; return new ArrayBuffer(32) })
+    return release
+  }
+  const settle = () => new Promise((resolve) => setTimeout(resolve, 20))
+
+  it('control: with nothing in between, a deferred baseline opens the frame within the same wait', async () => {
+    await mount(planned())
+    const release = deferBaseline()
+    setupRequest.value += 1
+    await nextTick()
+    release()
+    await settle()
+    expect(setup()).not.toBeNull()
+  })
+
+  it('owns the whole screen while open, and gives it back on close', async () => {
+    await mount(firstRun())
+    expect(anyFullScreenOpen()).toBe(true)
+    window.document.activeElement!.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }))
+    await vi.waitFor(() => expect(setup()).toBeNull())
+    expect(anyFullScreenOpen()).toBe(false)
+  })
+
+  it('does not open when a sheet opened while the baseline was read; once it is gone, a new request opens it', async () => {
+    await mount(planned())
+    const release = deferBaseline()
+    setupRequest.value += 1
+    await nextTick()
+    const sheet = openSheet({ panel: () => null })
+    try {
+      release()
+      await settle()
+      expect(setup()).toBeNull()
+      expect(anyFullScreenOpen()).toBe(false)
+    } finally {
+      droppedSheet(sheet)
+    }
+    setupRequest.value += 1
+    await waitForSetup()
+  })
+
+  it('does not open when storage failed while the baseline was read', async () => {
+    const { store } = await mount(planned())
+    const release = deferBaseline()
+    setupRequest.value += 1
+    await nextTick()
+    store.reportStorageFailure('quota-exceeded')
+    release()
+    await settle()
+    expect(setup()).toBeNull()
+    expect(anyFullScreenOpen()).toBe(false)
   })
 })

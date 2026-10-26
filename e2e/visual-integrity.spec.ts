@@ -210,12 +210,17 @@ for (const theme of THEMES) {
             await expect(setup.locator('section.screen[aria-hidden=true]')).toHaveCount(0)
           }
           await audit(page, `${theme}/${locale}/${width}/wider fonts/setup commute`)
-          for (const chip of ['family', 'friends', 'me', 'learning']) await live.locator(`[data-chip=${chip}]`).click()
-          await live.getByTestId('setup-primary').click()
-          for (let index = 0; index < 4; index++) {
+          // "Anything else?" one at a time: each extra, its times, and the question again.
+          for (const [index, topic] of ['family', 'friends', 'me', 'learning'].entries()) {
+            await live.locator(`[data-value=${topic}]`).click()
+            await expect(setup).toHaveAttribute('data-screen', `extra:${topic}`)
             await expect(setup.locator('section.screen[aria-hidden=true]')).toHaveCount(0)
             await live.getByTestId('setup-primary').click()
+            await expect(setup).toHaveAttribute('data-screen', `more:${index + 1}`)
+            await expect(setup.locator('section.screen[aria-hidden=true]')).toHaveCount(0)
+            if (index === 0) await audit(page, `${theme}/${locale}/${width}/wider fonts/setup more:1`)
           }
+          await live.getByTestId('more-done').click()
           await expect(setup).toHaveAttribute('data-screen', 'summary')
           if (locale === 'es') await expect(live.locator('[data-category] .name')).toContainText(['Sueño', 'Trabajo', 'Estudio', 'Desplazamientos'])
           await audit(page, `${theme}/${locale}/${width}/wider fonts/setup summary`)
@@ -324,11 +329,16 @@ for (const theme of THEMES) {
         }
         await live.getByTestId('setup-primary').click()
         await expect(setup).toHaveAttribute('data-screen', 'more')
-        for (const chip of ['family', 'friends', 'me', 'learning']) await live.locator(`[data-chip=${chip}]`).click()
-        for (let guard = 0; guard < 8 && (await setup.getAttribute('data-screen')) !== 'summary'; guard++) {
+        for (const [index, topic] of ['family', 'friends', 'me', 'learning'].entries()) {
+          await settled()
+          await live.locator(`[data-value=${topic}]`).click()
+          await expect(setup).toHaveAttribute('data-screen', `extra:${topic}`)
           await settled()
           await live.getByTestId('setup-primary').click()
+          await expect(setup).toHaveAttribute('data-screen', `more:${index + 1}`)
         }
+        await settled()
+        await live.getByTestId('more-done').click()
         await expect(setup).toHaveAttribute('data-screen', 'summary')
         await settled()
         await audit(page, `${theme}/${locale}/360/setup summary`)
@@ -557,7 +567,7 @@ for (const theme of THEMES) {
       await live.getByRole('button', { name: 'No', exact: true }).click()
       await live.getByRole('button', { name: 'No', exact: true }).click()
       await expect(setup).toHaveAttribute('data-screen', 'more')
-      await audit(page, `${theme}/setup more, send waiting for a choice`)
+      await audit(page, `${theme}/setup more, the first round`)
       await live.getByTestId('more-other').click()
       await live.getByTestId('more-other-name').fill('Clases de natación')
       await audit(page, `${theme}/setup more, a name of their own being typed`)

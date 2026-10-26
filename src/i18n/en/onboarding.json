@@ -81,7 +81,7 @@
     },
     "more": {
       "question": "What else do you make time for each week?",
-      "hint": "Pick any you like.",
+      "hint": "Pick one.",
       "family": "Family",
       "friends": "Friends",
       "me": "Time for you",
@@ -91,6 +91,12 @@
       "otherPlaceholder": "For example: English class",
       "add": "Add",
       "duplicate": "It's already on your list."
+    },
+    "again": {
+      "question": "Anything else?",
+      "hint": "Pick another, or tell me that's all.",
+      "done": "No, that's all",
+      "limit": "That's enough for now."
     },
     "extra": {
       "family": "When do you spend time with family?",
@@ -138,7 +144,6 @@
     "change": "Change: {question} {answer}",
     "conversation": "Conversation",
     "send": "Send answer",
-    "needChoice": "Pick at least one, or \"Later\".",
     "needFix": "First fix the time that is marked.",
     "progressShort": "{step} of {total}",
     "sendShort": "Send"

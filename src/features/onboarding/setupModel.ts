@@ -12,9 +12,11 @@ export type WorkStudy = 'unanswered' | 'work' | 'study' | 'both' | 'neither'
 export type RangeLabel = 'there' | 'back' | 'weeknights' | 'weekend'
 export type ScreenId =
   | 'sleep' | 'workStudy' | 'work' | 'study' | 'commute' | 'commuteRanges' | 'exercise' | 'exerciseRanges' | 'more' | 'summary'
-  | `extra:${string}`
+  | `more:${number}` | `extra:${string}`
 
-export interface Answers { sleep: Tri; workStudy: WorkStudy; commute: Tri; exercise: Tri; more: string[] | null }
+// "more" is what the person picked, one per round of "Anything else?", in order (null: the first round was skipped).
+// `moreDone`: the round after the last pick was answered "No, that's all", so no round is left open.
+export interface Answers { sleep: Tri; workStudy: WorkStudy; commute: Tri; exercise: Tri; more: string[] | null; moreDone: boolean }
 
 export interface RangeDraft {
   key: string
@@ -53,6 +55,8 @@ export interface SetupState {
   sleepSplit: boolean
   categories: CategoryDraft[]
   counter: number
+  // A name typed and not added yet: part of the draft, so it counts as unsaved input and survives a reload.
+  pending?: { name: string }
 }
 
 export interface SetupEnv {
@@ -60,12 +64,17 @@ export interface SetupEnv {
 }
 
 export const MAX_NAME_LENGTH = 60
+// How many rounds of "Anything else?" a conversation offers; a bound on the talk, not on the data.
+export const MAX_PICKS = 20
 const SLEEP_NIGHT_CUTOFF = 6 * 60
 const WINDOW_END = 22 * 60
 const STEP = 30
 
 export function emptyState(): SetupState {
-  return { screen: 'sleep', answers: { sleep: 'unanswered', workStudy: 'unanswered', commute: 'unanswered', exercise: 'unanswered', more: null }, sleepSplit: false, categories: [], counter: 0 }
+  return {
+    screen: 'sleep', answers: { sleep: 'unanswered', workStudy: 'unanswered', commute: 'unanswered', exercise: 'unanswered', more: null, moreDone: false },
+    sleepSplit: false, categories: [], counter: 0,
+  }
 }
 
 // The draft is plain JSON; cloning through JSON also strips any reactive proxy the screens wrapped it in.
@@ -110,7 +119,8 @@ export function triOf(state: SetupState, category: CategoryDraft): Tri {
     // The commute question is only asked after work or study; without it the answer sleeps.
     case 'commute': return ['work', 'study', 'both'].includes(answers.workStudy) ? answers.commute : 'unanswered'
     case 'exercise': return answers.exercise
-    default: return answers.more === null ? 'unanswered' : answers.more.includes(category.key) ? 'yes' : 'no'
+    // A stored extra or own category never enters the "Anything else?" rounds: it stays unless removed in the summary.
+    default: return category.categoryId !== undefined || answers.more === null ? 'unanswered' : answers.more.includes(category.key) ? 'yes' : 'no'
   }
 }
 
@@ -461,25 +471,81 @@ export function setRemoved(state: SetupState, key: string, removed: boolean): vo
   if (!removed && category.categoryId !== undefined) category.keepOverride = true
 }
 
-// What the "more" chips show: the answer once given, otherwise the extras and own categories already stored.
-export function moreSelection(state: SetupState): string[] {
-  return state.answers.more ?? state.categories
-    .filter((category) => category.categoryId !== undefined && !category.removed && (category.topic === undefined || EXTRA_TOPICS.includes(category.topic)))
-    .map((category) => category.key)
+// ---------- "Anything else?": one pick per round ----------
+
+export const picksOf = (state: SetupState): string[] => state.answers.more ?? []
+
+// Round 0 is "more"; round i (from 1) is "more:i".
+export const roundScreen = (index: number): ScreenId => (index === 0 ? 'more' : `more:${index}`)
+
+export function roundIndex(screen: string): number | undefined {
+  if (screen === 'more') return 0
+  const match = /^more:([1-9]\d*)$/.exec(screen)
+  return match ? Number(match[1]) : undefined
 }
 
-export function toggleMore(state: SetupState, key: string, env: SetupEnv): void {
-  const selected = moreSelection(state)
-  if ((EXTRA_TOPICS as string[]).includes(key)) ensureCategory(state, key, key as TopicId, env.topicName(key as TopicId))
-  state.answers.more = selected.includes(key) ? selected.filter((item) => item !== key) : [...selected, key]
+// Every pick has its round, and one more round follows the last pick while there is room for another.
+export function roundExists(state: SetupState, index: number): boolean {
+  if (index === 0) return true
+  const picks = state.answers.more
+  return picks !== null && (index < picks.length || (index === picks.length && picks.length < MAX_PICKS))
 }
 
-// "Something else" on the "more" screen, or "Add something else" in the summary (with an empty name to type).
-export function addOwnToMore(state: SetupState, name: string): { category: CategoryDraft; duplicate: boolean } {
-  const selected = moreSelection(state)
-  const result = addOwnCategory(state, name)
-  if (!selected.includes(result.category.key)) state.answers.more = [...selected, result.category.key]
-  return result
+// What a round can offer: an extra that is not stored, or something of the person's own from this session.
+function offerable(state: SetupState, key: string): boolean {
+  const category = categoryOf(state, key)
+  if ((EXTRA_TOPICS as string[]).includes(key)) return category?.categoryId === undefined
+  return category !== undefined && category.topic === undefined && category.categoryId === undefined && category.name.trim() !== ''
+}
+
+// A round's options: the extras, then the person's own, minus everything already picked except this round's answer.
+export function roundOptions(state: SetupState, index: number): string[] {
+  const picks = picksOf(state)
+  const own = state.categories.filter((category) => category.topic === undefined).map((category) => category.key)
+  return [...EXTRA_TOPICS, ...own].filter((key) => offerable(state, key) && (!picks.includes(key) || picks[index] === key))
+}
+
+// Choosing at round i replaces its pick, or adds one at the round after the last pick (which opens the next round).
+// Refused: a key picked in another round, one that cannot be offered, and an addition past MAX_PICKS.
+export function pick(state: SetupState, index: number, key: string, env: SetupEnv): boolean {
+  const picks = picksOf(state)
+  if (!Number.isInteger(index) || index < 0 || index > picks.length) return false
+  const at = picks.indexOf(key)
+  if (at === index) return true
+  if (at >= 0 || !offerable(state, key)) return false
+  if (index === picks.length && picks.length >= MAX_PICKS) return false
+  const category = (EXTRA_TOPICS as string[]).includes(key) ? ensureCategory(state, key, key as TopicId, env.topicName(key as TopicId)) : categoryOf(state, key)!
+  category.removed = false
+  const next = [...picks]
+  next[index] = key
+  state.answers.more = next
+  if (index === picks.length) state.answers.moreDone = false
+  return true
+}
+
+// "No, that's all" at round i: the picks after it are dropped (their drafts stay, dormant) and no round is left open.
+export function finishMore(state: SetupState, index: number): void {
+  state.answers.more = picksOf(state).slice(0, index)
+  state.answers.moreDone = true
+}
+
+// The name in the "Something else" field: kept while it has text, gone when it is empty.
+export function setPendingName(state: SetupState, name: string): void {
+  if (name === '') delete state.pending
+  else state.pending = { name }
+}
+
+export const canAppend = (state: SetupState): boolean => picksOf(state).length < MAX_PICKS
+
+// "Add something else" in the summary: a new item of the person's own, picked after the others; false at the limit.
+export function appendFromSummary(state: SetupState, name: string): CategoryDraft | false {
+  if (!canAppend(state)) return false
+  const { category, duplicate } = addOwnCategory(state, name)
+  if (duplicate && picksOf(state).includes(category.key)) return false
+  if (state.answers.more === null) state.answers.moreDone = true
+  state.answers.more = [...picksOf(state), category.key]
+  category.removed = false
+  return category
 }
 
 export { EXTRA_TOPICS }

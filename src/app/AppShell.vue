@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { anySheetOpen } from '@/ui/sheetStack'
+import { anyFullScreenOpen, anyModalOpen } from '@/ui/sheetStack'
 import { computed, nextTick, onBeforeUnmount, onMounted, provide, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { PanelLeft } from 'lucide-vue-next'
@@ -51,6 +51,9 @@ const sidebarVisible = sidebar.visible
 // A persistent, visible sidebar already lists the assistant and Settings; the toolbar shows them otherwise.
 const toolbarEntriesShown = computed(() => !(layout.value === 'persistent' && sidebarVisible.value))
 const overlayOpen = computed(() => layout.value === 'overlay' && sidebarVisible.value)
+// While a full-screen flow owns the screen, everything of the shell behind it is inert. The live announcer and the undo
+// toast's announcement stay outside, so what happens is still heard (the toast's own button is inert, UndoToast.vue).
+const covered = computed(() => anyFullScreenOpen())
 
 const apple = isApplePlatform()
 const shortcutHint = apple ? '⌘\\' : 'Ctrl+\\'
@@ -68,7 +71,7 @@ function toggleSidebar(fromKeyboard: boolean): void {
 function onToggleClick(event: MouseEvent): void { toggleSidebar(event.detail === 0) }
 
 function onKeydown(event: KeyboardEvent): void {
-  if (event.defaultPrevented || layout.value === 'none') return
+  if (event.defaultPrevented || layout.value === 'none' || anyModalOpen()) return
   if (isSidebarShortcut(event, apple)) {
     event.preventDefault()
     toggleSidebar(true)
@@ -126,10 +129,10 @@ watch(current, () => { navigated = true })
 function onViewEntered(element: Element): void {
   if (!navigated || (element as HTMLElement).dataset.view !== currentView.value?.id) return
   // A view that already placed focus on something more specific (Today's "Saved" card after the check-in) keeps it,
-  // and a sheet opened meanwhile keeps it too (verify12: the heading took focus out of a review sheet).
+  // and a sheet or full-screen flow opened meanwhile keeps it too (verify12: the heading took focus out of a review sheet).
   const active = document.activeElement
   if (active && active !== element && element.contains(active)) return
-  if (anySheetOpen()) return
+  if (anyModalOpen()) return
   element.querySelector<HTMLElement>('h1')?.focus({ preventScroll: true })
   announce(pageTitle.value)
 }
@@ -151,6 +154,7 @@ dismissUndoWhenChanged(() => planner.document?.workspaceId)
       aria-controls="app-sidebar"
       :aria-keyshortcuts="apple ? 'Meta+\\' : 'Control+\\'"
       data-testid="sidebar-toggle"
+      :inert="covered || undefined"
       @click="onToggleClick"
     >
       <Icon name="panel-left" :size="22" />
@@ -162,7 +166,7 @@ dismissUndoWhenChanged(() => planner.document?.workspaceId)
       ref="sidebarElement"
       class="sidebar"
       :data-hidden="sidebarVisible ? undefined : 'true'"
-      :inert="!sidebarVisible"
+      :inert="!sidebarVisible || covered"
       :aria-label="t('app.navigation.sidebar')"
     >
       <p class="sidebar-brand" data-testid="sidebar-brand"><BrandLockup :height="28" /></p>
@@ -187,9 +191,9 @@ dismissUndoWhenChanged(() => planner.document?.workspaceId)
     <div class="content" :inert="overlayOpen">
       <!-- Early in the tab order, before the page, so its Undo is a few keystrokes away from anywhere. -->
       <UndoToast />
-      <StatusBanners />
+      <StatusBanners :inert="covered || undefined" />
       <StorageUpgradeWaiting />
-      <main id="main" class="main" tabindex="-1">
+      <main id="main" class="main" tabindex="-1" :inert="covered || undefined">
         <RecoveryScreen v-if="planner.status === 'corrupt'" />
         <StorageErrorScreen v-else-if="planner.status === 'error' || planner.error === UPGRADE_COPY_FAILED" />
         <Transition v-else name="view" mode="out-in" @after-leave="scrollToTop" @after-enter="onViewEntered">
@@ -218,7 +222,7 @@ dismissUndoWhenChanged(() => planner.document?.workspaceId)
       </main>
     </div>
 
-    <nav class="tabbar" :aria-label="t('app.navigation.tabs')">
+    <nav class="tabbar" :aria-label="t('app.navigation.tabs')" :inert="covered || undefined">
       <a
         v-for="tab in tabs"
         :key="tab.id"

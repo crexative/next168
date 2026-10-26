@@ -4,7 +4,8 @@ import {
   sameBinding, saveDraft, tabNonce,
 } from './draftStorage'
 import { planSetupCommit } from './setupCommit'
-import { createState, emptyState, ensureCategory, suggestRanges, type SetupState } from './setupModel'
+import { isKnownScreen, sequence } from './setupFlow'
+import { createState, emptyState, ensureCategory, MAX_PICKS, pick, statusOf, suggestRanges, type SetupState } from './setupModel'
 import { block, category, documentWith, env } from './setupFixtures'
 import legacyDrafts from './__fixtures__/legacyDraftsV2.json'
 
@@ -49,7 +50,13 @@ describe('what a saved draft accepts (A2)', () => {
     ['an extra screen without its category', (value: ReturnType<typeof draft>) => { value.screen = 'extra:ghost' }],
     ['a name of 61 characters', (value: ReturnType<typeof draft>) => { value.categories[0].name = 'x'.repeat(61) }],
     ['an unknown answer', (value: ReturnType<typeof draft>) => { value.answers.exercise = 'maybe' }],
-    ['a chip that is not a category', (value: ReturnType<typeof draft>) => { value.answers.more = ['ghost'] }],
+    ['a pick that is not a category', (value: ReturnType<typeof draft>) => { value.answers.more = ['ghost'] }],
+    ['the same pick twice', (value: ReturnType<typeof draft>) => { value.answers.more = ['sleep', 'sleep'] }],
+    ['a stored category as a pick', (value: ReturnType<typeof draft>) => { value.categories[0].categoryId = 'c-1'; value.answers.more = ['sleep'] }],
+    ['no "moreDone"', (value: ReturnType<typeof draft>) => { delete value.answers.moreDone }],
+    ['a skipped first round that is done', (value: ReturnType<typeof draft>) => { value.answers.moreDone = true }],
+    ['a round with no pick before it', (value: ReturnType<typeof draft>) => { value.screen = 'more:1' }],
+    ['a typed name of 61 characters', (value: ReturnType<typeof draft>) => { value.pending = { name: 'x'.repeat(61) } }],
     ['a duplicate category key', (value: ReturnType<typeof draft>) => { value.categories.push(structuredClone(value.categories[0])) }],
     ['an unknown topic', (value: ReturnType<typeof draft>) => { value.categories[0].topic = 'gardening' }],
   ])('rejects %s', (_name, damage) => {
@@ -66,6 +73,18 @@ describe('what a saved draft accepts (A2)', () => {
 })
 
 describe('keeping and dropping the draft', () => {
+  it('keeps the rounds and a name typed but not added (S1-10, N3)', () => {
+    const storage = memory()
+    const state = sampleState()
+    pick(state, 0, 'family', env)
+    pick(state, 1, 'friends', env)
+    state.screen = 'more:2'
+    state.pending = { name: 'Guitar' }
+    saveDraft(draftOf(state, stored, true), storage)
+    const loaded = loadDraft(storage)!
+    expect(loaded).toMatchObject({ version: 3, screen: 'more:2', pending: { name: 'Guitar' }, answers: { more: ['family', 'friends'], moreDone: false } })
+  })
+
   it('comes back as it was saved', () => {
     const storage = memory()
     const state = sampleState()
@@ -177,6 +196,50 @@ describe('a version 2 draft keeps the commit it was made for (S1-8)', () => {
     ),
     firstRun: () => documentWith([], [], { settings: { ...documentWith().settings, onboardingDone: false } }),
   }
+
+  const migrated = (name: string) => {
+    const parsed = parseDraft(JSON.stringify(recorded.fixtures[name]!.draft))
+    if (parsed === null || parsed === 'submitted') throw new Error(name)
+    return parsed
+  }
+  const keyOf = (state: SetupState, id: string) => state.categories.find((item) => item.categoryId === id)!
+
+  it('(a) and (b): a stored extra the old answer kept stays as it is', () => {
+    for (const name of ['a', 'b']) {
+      const state = migrated(name)
+      expect(keyOf(state, 'c-family').removed, name).toBe(false)
+      expect(statusOf(state, keyOf(state, 'c-family')), name).toBe('active')
+    }
+    expect(migrated('a').answers).toMatchObject({ more: null, moreDone: false })
+  })
+
+  it('(c): stored extras the old answer left out are marked removed, so the summary offers their Undo', () => {
+    const state = migrated('c')
+    expect([keyOf(state, 'c-family').removed, keyOf(state, 'c-chess').removed]).toEqual([true, true])
+    expect(state.answers).toMatchObject({ more: ['learning'], moreDone: true })
+  })
+
+  it('(d): reopened "more" lands on the first round with both picks kept and the rounds still open', () => {
+    const state = migrated('d')
+    expect(state.screen).toBe('more')
+    expect(state.answers).toMatchObject({ more: ['friends', 'custom:6'], moreDone: false })
+    expect(sequence(state).slice(-6)).toEqual(['more', 'extra:friends', 'more:1', 'extra:custom:6', 'more:2', 'summary'])
+  })
+
+  it('(e): keeps all 21 picks, with no round open after them', () => {
+    const state = migrated('e')
+    expect(state.answers.more).toHaveLength(21)
+    expect(MAX_PICKS).toBe(20)
+    expect(isKnownScreen(state, 'more:20')).toBe(true)
+    expect(isKnownScreen(state, 'more:21')).toBe(false)
+    expect(sequence(state).at(-2)).toBe('extra:custom:37')
+  })
+
+  it('(f): on the times of a stored extra, it goes on to the next pick\'s times', () => {
+    const state = migrated('f')
+    expect(state.screen).toBe('extra:friends')
+    expect(state.answers).toMatchObject({ more: ['friends'], moreDone: true })
+  })
 
   it.each(Object.entries(recorded.fixtures))('(%s) plans what b8d9c9f planned', (_name, fixture) => {
     expect(fixture.draft.version).toBe(2)

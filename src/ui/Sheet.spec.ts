@@ -1,7 +1,8 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { createApp, defineComponent, h, nextTick, ref } from 'vue'
+import { createApp, defineComponent, h, nextTick, onBeforeUnmount, ref } from 'vue'
 import { createI18n } from 'vue-i18n'
 import Sheet from './Sheet.vue'
+import { openFullScreen } from './sheetStack'
 
 const open = ref(false)
 let app: ReturnType<typeof createApp> | undefined
@@ -61,6 +62,52 @@ describe('Sheet', () => {
     await nextTick()
     await vi.advanceTimersByTimeAsync(500)
     expect(document.querySelector('.sheet-root')).toBeNull()
+  })
+})
+
+describe('Sheet under a full-screen flow (N5)', () => {
+  it('opened while a full-screen flow owns the screen, it renders and takes focus only after the release', async () => {
+    const release = openFullScreen()
+    open.value = true
+    await nextTick()
+    await vi.advanceTimersByTimeAsync(50)
+    expect(document.querySelector('.sheet-root')).toBeNull()
+    release()
+    await nextTick()
+    await vi.advanceTimersByTimeAsync(10)
+    expect(document.querySelector('.sheet-root.is-shown')).not.toBeNull()
+    expect(document.activeElement?.textContent).toBe('T')
+  })
+
+  it('closed while it waits, it never renders', async () => {
+    const release = openFullScreen()
+    open.value = true
+    await nextTick()
+    open.value = false
+    await nextTick()
+    release()
+    await nextTick()
+    await vi.advanceTimersByTimeAsync(50)
+    expect(document.querySelector('.sheet-root')).toBeNull()
+  })
+
+  it('a release made when its owner unmounts frees it too', async () => {
+    const owner = createApp(defineComponent({
+      setup() {
+        const release = openFullScreen()
+        onBeforeUnmount(release)
+        return () => h('div')
+      },
+    }))
+    owner.mount(document.body.appendChild(document.createElement('div')))
+    open.value = true
+    await nextTick()
+    await vi.advanceTimersByTimeAsync(10)
+    expect(document.querySelector('.sheet-root')).toBeNull()
+    owner.unmount()
+    await nextTick()
+    await vi.advanceTimersByTimeAsync(10)
+    expect(document.querySelector('.sheet-root.is-shown')).not.toBeNull()
   })
 })
 

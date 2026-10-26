@@ -1,6 +1,7 @@
 <script setup lang="ts">
-import { onBeforeUnmount, onMounted, ref } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
+import { anyFullScreenOpen } from './sheetStack'
 import { useUndoToast } from './undoToast'
 
 const { t } = useI18n()
@@ -10,9 +11,13 @@ function isEditable(target: EventTarget | null): boolean {
   return target instanceof HTMLElement && (target.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(target.tagName))
 }
 
+// While a full-screen flow owns the screen, the offer stays announced but cannot be taken: its button is inert and
+// the shortcut does nothing, so no change behind the flow happens from inside it.
+const blocked = computed(() => anyFullScreenOpen())
+
 // Cmd/Ctrl+Z undoes the offered change from anywhere except a text field, where it keeps undoing typing.
 function onKeydown(event: KeyboardEvent): void {
-  if (!toast.value || event.key.toLowerCase() !== 'z' || !(event.metaKey || event.ctrlKey) || event.shiftKey || event.altKey) return
+  if (blocked.value || !toast.value || event.key.toLowerCase() !== 'z' || !(event.metaKey || event.ctrlKey) || event.shiftKey || event.altKey) return
   if (isEditable(event.target)) return
   event.preventDefault()
   undo()
@@ -75,7 +80,7 @@ onBeforeUnmount(() => {
         @focusout="onFocusOut"
       >
         <span class="t-subhead">{{ toast.message }}</span>
-        <button class="toast-action t-headline" type="button" @click="undo">{{ t('common.undo') }}</button>
+        <button class="toast-action t-headline" type="button" :inert="blocked || undefined" @click="undo">{{ t('common.undo') }}</button>
       </div>
     </Transition>
   </div>

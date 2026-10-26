@@ -2,8 +2,9 @@ import { describe, expect, it } from 'vitest'
 import type { DayIndex } from '@/core/model'
 import { wholeHourParts } from '@/ui/format'
 import {
-  addOwnCategory, automaticGoal, blockToSleep, coveredMinutes, createState, deriveCommute, emptyState, ensureCategory, placeSlot,
-  sleepToBlock, slotMinutes, statusOf, suggestCommute, suggestRanges, touch, validate, weekTotals, type RangeDraft, type SetupState,
+  addOwnCategory, appendFromSummary, automaticGoal, blockToSleep, categoryOf, coveredMinutes, createState, deriveCommute, emptyState, ensureCategory,
+  finishMore, MAX_PICKS, pick, placeSlot, roundOptions, setRemoved, sleepToBlock, slotMinutes, statusOf, suggestCommute, suggestRanges, touch,
+  validate, weekTotals, type RangeDraft, type SetupState,
 } from './setupModel'
 import { block, category, documentWith, env } from './setupFixtures'
 
@@ -312,5 +313,96 @@ describe('moving a start time', () => {
     const late = range(at(20), at(22))
     touch(late, { end: at(1) })
     expect([late.start, late.end]).toEqual([at(20), at(1)])
+  })
+})
+
+describe('"Anything else?": one pick per round (S1-4, S1-5, S1-6, S1-7, S1-9)', () => {
+  const own = (state: SetupState, name: string) => addOwnCategory(state, name).category.key
+
+  it('appends at the round after the last pick and opens the next one; replaces below it and keeps the rest', () => {
+    const state = emptyState()
+    expect(pick(state, 0, 'family', env)).toBe(true)
+    expect(state.answers).toMatchObject({ more: ['family'], moreDone: false })
+    expect(pick(state, 1, 'friends', env)).toBe(true)
+    finishMore(state, 2)
+    expect(pick(state, 0, 'learning', env)).toBe(true)
+    expect(state.answers).toMatchObject({ more: ['learning', 'friends'], moreDone: true })
+    // Picking at the round answered "No, that's all" adds another pick and leaves the round after it open.
+    expect(pick(state, 2, 'me', env)).toBe(true)
+    expect(state.answers).toMatchObject({ more: ['learning', 'friends', 'me'], moreDone: false })
+    expect(pick(state, 4, 'family', env)).toBe(false)
+  })
+
+  it('reaffirms a round\'s own answer without changing anything, and refuses a key picked in another round (N8)', () => {
+    const state = emptyState()
+    pick(state, 0, 'family', env)
+    pick(state, 1, 'friends', env)
+    const before = JSON.stringify(state)
+    expect(pick(state, 0, 'family', env)).toBe(true)
+    expect(JSON.stringify(state)).toBe(before)
+    expect(pick(state, 1, 'family', env)).toBe(false)
+    expect(pick(state, 2, 'friends', env)).toBe(false)
+    expect(JSON.stringify(state)).toBe(before)
+  })
+
+  it('"No, that\'s all" drops the later picks, which keep their edited times when picked again (S1-5)', () => {
+    const state = emptyState()
+    pick(state, 0, 'family', env)
+    suggestRanges(state, categoryOf(state, 'family')!)
+    touch(categoryOf(state, 'family')!.ranges[0]!, { end: at(15) })
+    pick(state, 0, 'friends', env)
+    expect(statusOf(state, categoryOf(state, 'family')!)).toBe('inactive')
+    pick(state, 1, 'family', env)
+    expect(categoryOf(state, 'family')!.ranges[0]!.end).toBe(at(15))
+    finishMore(state, 1)
+    expect(state.answers).toMatchObject({ more: ['friends'], moreDone: true })
+    expect(statusOf(state, categoryOf(state, 'family')!)).toBe('inactive')
+  })
+
+  it('offers the extras and the person\'s own, minus every pick but the round\'s own answer, removed picks included (S1-6)', () => {
+    const state = emptyState()
+    const chess = own(state, 'Chess')
+    own(state, '  ')
+    pick(state, 0, 'family', env)
+    pick(state, 1, chess, env)
+    expect(roundOptions(state, 0)).toEqual(['family', 'friends', 'me', 'learning'])
+    expect(roundOptions(state, 2)).toEqual(['friends', 'me', 'learning'])
+    setRemoved(state, 'family', true)
+    expect(roundOptions(state, 2)).toEqual(['friends', 'me', 'learning'])
+    expect(pick(state, 2, 'family', env)).toBe(false)
+    setRemoved(state, 'family', false)
+    expect(statusOf(state, categoryOf(state, 'family')!)).toBe('active')
+  })
+
+  it('never offers or picks a stored extra or own category, which stays in the week whatever the rounds say (S1-7)', () => {
+    const document = documentWith([category('c-family', 'Family', { icon: '👨‍👩‍👧' }), category('c-chess', 'Chess')], [block('b-family', 'c-family', [6], at(10), at(14))])
+    const state = createState(document, env)
+    expect(roundOptions(state, 0)).toEqual(['friends', 'me', 'learning'])
+    expect(pick(state, 0, 'family', env)).toBe(false)
+    expect(pick(state, 0, 'custom:1', env)).toBe(false)
+    pick(state, 0, 'friends', env)
+    finishMore(state, 1)
+    expect(state.categories.map((item) => statusOf(state, item))).toEqual(['active', 'active', 'active'])
+    finishMore(state, 0)
+    expect(state.categories.filter((item) => item.categoryId).map((item) => statusOf(state, item))).toEqual(['active', 'active'])
+  })
+
+  it('stops adding at MAX_PICKS, from a round and from the summary (S1-9)', () => {
+    const state = emptyState()
+    for (let index = 0; index < MAX_PICKS; index++) expect(pick(state, index, own(state, `Thing ${index}`), env)).toBe(true)
+    expect(pick(state, MAX_PICKS, own(state, 'One more'), env)).toBe(false)
+    expect(appendFromSummary(state, '')).toBe(false)
+    expect(state.answers.more).toHaveLength(MAX_PICKS)
+    // Replacing a pick is still possible at the limit.
+    expect(pick(state, 0, 'family', env)).toBe(true)
+  })
+
+  it('"Add something else" in the summary picks a new item of the person\'s own after the others', () => {
+    const state = emptyState()
+    const added = appendFromSummary(state, '')
+    expect(added).not.toBe(false)
+    expect(state.answers).toMatchObject({ more: [(added as { key: string }).key], moreDone: true })
+    pick(state, 1, 'family', env)
+    expect(state.answers.more).toEqual([(added as { key: string }).key, 'family'])
   })
 })

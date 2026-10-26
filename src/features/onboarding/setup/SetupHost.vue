@@ -7,6 +7,7 @@ import { documentFingerprint } from '@/repositories/storageCommit'
 import { activePlannerRepository, usePlannerStore } from '@/stores/plannerStore'
 import { announce } from '@/ui/announcer'
 import Button from '@/ui/Button.vue'
+import { anyModalOpen, openFullScreen } from '@/ui/sheetStack'
 import { useUndoToast } from '@/ui/undoToast'
 import {
   bindingFor, clearDismissed, clearDraft, draftOf, idsMatchBaseline, isDismissed, loadDraft, markDismissed, sameBinding, saveDraft, UNSAVED_WORKSPACE_KEY, type DraftBinding, type SetupDraft,
@@ -14,7 +15,9 @@ import {
 import { setupOpen, setupRequest } from '../reopen'
 import { applySetupPlan, planSetupCommit } from '../setupCommit'
 import { nextScreen, partOf, sequence, TOTAL_PARTS } from '../setupFlow'
-import { cloneState, createState, prepareScreen, rangeProblem, type Issue, type ScreenId, type SetupEnv, type SetupState } from '../setupModel'
+import {
+  cloneState, createState, picksOf, prepareScreen, rangeProblem, roundIndex, type Issue, type ScreenId, type SetupEnv, type SetupState,
+} from '../setupModel'
 import { categoryFor } from './conversation'
 import { TOPICS } from '../setupTopics'
 import SetupConversation from './SetupConversation.vue'
@@ -64,7 +67,18 @@ function problemsOn(state: SetupState, screen: ScreenId): Issue[] {
 }
 
 const open = computed(() => phase.value !== 'closed')
-watch(open, (value) => { setupOpen.value = value }, { immediate: true })
+// The frame owns the whole screen from the moment it is published, in the same synchronous step: nothing behind it
+// (a sheet, a page heading, the sidebar) can take focus or act while it is open (sheetStack.ts).
+let releaseFullScreen: (() => void) | undefined
+watch(open, (value) => {
+  setupOpen.value = value
+  if (value) releaseFullScreen ??= openFullScreen()
+  else {
+    releaseFullScreen?.()
+    releaseFullScreen = undefined
+  }
+}, { immediate: true, flush: 'sync' })
+onBeforeUnmount(() => releaseFullScreen?.())
 const locked = computed(() => submitting.value || transitioning.value)
 const browserMode = computed(() => activePlannerRepository().saveGuarded !== undefined)
 const dirty = computed(() => flow.value !== null && JSON.stringify(flow.value) !== pristine)
@@ -108,13 +122,23 @@ function workspaceKeyNow(): string {
   return planner.stored && planner.document ? planner.document.workspaceId : UNSAVED_WORKSPACE_KEY
 }
 
+// Bumped by every storage error: an opening still waiting for its baseline is no longer about what storage holds.
+let openGeneration = 0
+watch(() => planner.status, (status) => { if (status === 'error') openGeneration += 1 }, { flush: 'sync' })
+
+// The frame only opens over a usable planner with nothing else modal on screen. That is checked again after the
+// baseline's await, right before the frame is published: a sheet or a storage error may have arrived meanwhile.
+const mayOpen = () => planner.status === 'ready' && !!planner.document && !anyModalOpen()
+
 async function openFlow(kind: 'auto' | 'entry'): Promise<void> {
-  if (phase.value !== 'closed' || transitioning.value) return
+  if (phase.value !== 'closed' || transitioning.value || !mayOpen()) return
   const raw = captureSync()
   if (!raw) return
+  const generation = ++openGeneration
   transitioning.value = true
   try {
     const from = await finishBaseline(raw)
+    if (generation !== openGeneration || !mayOpen()) return
     const draft = loadDraft()
     const matches = draft !== null && sameBinding(draft.binding, from.binding) && idsMatchBaseline(draft, from.document, from.stored)
     if (draft && matches) {
@@ -135,7 +159,9 @@ async function openFlow(kind: 'auto' | 'entry'): Promise<void> {
 }
 
 function restore(draft: SetupDraft): SetupState {
-  return { screen: draft.screen, answers: draft.answers, sleepSplit: draft.sleepSplit, categories: draft.categories, counter: draft.counter }
+  const state: SetupState = { screen: draft.screen, answers: draft.answers, sleepSplit: draft.sleepSplit, categories: draft.categories, counter: draft.counter }
+  if (draft.pending) state.pending = draft.pending
+  return state
 }
 
 // A reload brings back a flow that was on screen; a first run opens by itself unless it was closed on this device.
@@ -171,6 +197,8 @@ function go(screen: ScreenId): void {
   if (!flow.value) return
   prepareScreen(flow.value, screen, env)
   flow.value.screen = screen
+  // A name typed and not added belongs to the round it was typed on.
+  delete flow.value.pending
   resumed.value = false
   issues.value = []
   message.value = ''
@@ -186,6 +214,9 @@ function advance(): void {
     const target = screens.includes(editing.returnTo) ? editing.returnTo : nextScreen(state, editing.returnTo)
     const pending = screens.slice(0, screens.indexOf(target)).find((screen) => {
       if (editing!.handled.has(screen)) return false
+      // The round after the last pick is still open: "Anything else?" is asked before going back.
+      const round = roundIndex(screen)
+      if (round !== undefined) return state.answers.more !== null && round === picksOf(state).length && !state.answers.moreDone
       if (problemsOn(state, screen).some((issue) => !editing!.problems.has(problemKey(issue)))) return true
       if (editing!.seen.has(screen)) return false
       const category = categoryFor(state, screen)

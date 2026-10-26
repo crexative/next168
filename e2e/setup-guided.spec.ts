@@ -379,9 +379,9 @@ test.describe('answering', () => {
     await step(() => tap(page, 'Enviar respuesta'), 'exercise')
     await step(() => tap(page, 'Sí'), 'exerciseRanges')
     await step(() => tap(page, 'Enviar respuesta'), 'more')
-    await step(() => live(page).getByRole('button', { name: 'Familia' }).click(), 'more')
-    await step(() => tap(page, 'Enviar respuesta'), 'extra:family')
-    await step(() => tap(page, 'Enviar respuesta'), 'summary')
+    await step(() => tap(page, 'Familia'), 'extra:family')
+    await step(() => tap(page, 'Enviar respuesta'), 'more:1')
+    await step(() => tap(page, 'No, eso es todo'), 'summary')
     // Pickers and the time editor never add a second filled button.
     await live(page).getByTestId('card-work').click()
     await live(page).locator('[data-category=work] [data-field=start]').first().click()
@@ -431,9 +431,16 @@ test.describe('answering', () => {
       expect.soft(english.filter((value) => appearsAsWords(text, value)), label).toEqual([])
     }
     const steps: [string, string][] = [['[data-testid=setup-primary]', 'workStudy'], ['[data-value=work]', 'work'], ['[data-testid=setup-primary]', 'commute'], ['[data-value=yes]', 'commuteRanges'],
-      ['[data-testid=setup-primary]', 'exercise'], ['[data-value=yes]', 'exerciseRanges'], ['[data-testid=setup-primary]', 'more'], ['[data-chip=family]', 'more'], ['[data-testid=setup-primary]', 'extra:family'], ['[data-testid=setup-primary]', 'summary']]
+      ['[data-testid=setup-primary]', 'exercise'], ['[data-value=yes]', 'exerciseRanges'], ['[data-testid=setup-primary]', 'more'], ['[data-value=family]', 'extra:family'],
+      ['[data-testid=setup-primary]', 'more:1'], ['[data-testid=more-done]', 'summary']]
     await check('sleep')
     for (const [selector, next] of steps) {
+      if (next === 'summary') {
+        // "Etwas anderes" opens the name field of "Sonst noch etwas?"; Escape puts it away again.
+        await live(page).getByTestId('more-other').click()
+        await check('more:1, the name field open')
+        await page.keyboard.press('Escape')
+      }
       await live(page).locator(selector).click()
       await onScreen(page, next)
       await check(next)
@@ -588,9 +595,10 @@ test.describe('answering', () => {
     await tap(page, 'Lo veo después')
     await tap(page, 'Lo veo después')
     await onScreen(page, 'more')
-    await live(page).getByRole('button', { name: 'Familia' }).click()
+    await tap(page, 'Familia')
     await tap(page, 'Enviar respuesta')
-    await tap(page, 'Enviar respuesta')
+    await onScreen(page, 'more:1')
+    await tap(page, 'No, eso es todo')
     await onScreen(page, 'summary')
     const card = live(page).getByTestId('card-family')
     const text = (await card.textContent())!
@@ -786,23 +794,27 @@ async function walk(page: Page, visit: (label: string) => Promise<void>, options
     await visit(next)
     if (hasPickers) await pickers(next)
   }
-  await live(page).locator('[data-chip=family]').click()
-  if (options.custom) {
-    await live(page).getByTestId('more-other').click()
-    await live(page).getByTestId('more-other-name').fill(options.custom)
-    await visit('more, a name being typed')
-    await page.keyboard.press('Enter')
-  }
-  await visit('more, chosen')
-  await live(page).locator('[data-testid=setup-primary]').click()
+  await live(page).locator('[data-value=family]').click()
   await onScreen(page, 'extra:family')
   await visit('extra:family')
+  await live(page).locator('[data-testid=setup-primary]').click()
+  await onScreen(page, 'more:1')
+  await visit('more:1')
+  await live(page).getByTestId('more-other').click()
+  await visit('more:1, the name field open')
   if (options.custom) {
-    await live(page).locator('[data-testid=setup-primary]').click()
+    await live(page).getByTestId('more-other-name').fill(options.custom)
+    await visit('more:1, a name being typed')
+    await page.keyboard.press('Enter')
     await expect(setup(page)).toHaveAttribute('data-screen', /^extra:custom/)
     await visit('extra: the person\'s own')
+    await live(page).locator('[data-testid=setup-primary]').click()
+    await onScreen(page, 'more:2')
+    await visit('more:2')
+  } else {
+    await page.keyboard.press('Escape')
   }
-  await live(page).locator('[data-testid=setup-primary]').click()
+  await live(page).getByTestId('more-done').click()
   await onScreen(page, 'summary')
   await visit('summary')
   await live(page).getByTestId('card-work').click()
@@ -844,6 +856,19 @@ for (const theme of ['light', 'dark'] as const) {
           primary: rect ? rect.top >= 0 && rect.bottom <= window.innerHeight + 0.5 && rect.left >= 0 && rect.right <= window.innerWidth + 0.5 : true,
         }
       })
+      // Every reply, the skip, "Something else", the name form's Add and the way out can be brought into view and tapped.
+      const unreachable = await page.evaluate(() => {
+        const screen = document.querySelector('[data-testid=setup] section.screen:not([aria-hidden=true])')
+        const replies = Array.from(screen?.querySelectorAll<HTMLElement>('.reply, .skip, [data-testid=more-other], [data-testid=more-other-add], [data-testid=more-done]') ?? [])
+        return replies.filter((element) => element.getClientRects().length > 0).flatMap((element) => {
+          element.scrollIntoView({ block: 'nearest' })
+          const rect = element.getBoundingClientRect()
+          const inView = rect.top >= -0.5 && rect.bottom <= window.innerHeight + 0.5 && rect.left >= -0.5 && rect.right <= window.innerWidth + 0.5
+          const hit = document.elementFromPoint(rect.left + rect.width / 2, rect.top + rect.height / 2)
+          return inView && hit && (hit === element || element.contains(hit)) ? [] : [(element.textContent ?? '').trim().slice(0, 30)]
+        })
+      })
+      for (const name of unreachable) problems.push(`${label}: "${name}" cannot be brought into view and tapped`)
       if (layout.sheet > 0) problems.push(`${label}: the sheet scrolls sideways by ${layout.sheet} px`)
       if (layout.page > 0) problems.push(`${label}: the page scrolls sideways by ${layout.page} px`)
       if (!layout.primary) problems.push(`${label}: the main button is out of view`)
@@ -853,7 +878,7 @@ for (const theme of ['light', 'dark'] as const) {
   })
 }
 
-test('A29: with the on-screen keyboard up, the name field and the main button are both in view', async ({ page }) => {
+test('A29: with the on-screen keyboard up, the name field and its Add button are both in view', async ({ page }) => {
   await start(page)
   await page.goto('./')
   await tap(page, 'Lo veo después')
@@ -873,7 +898,7 @@ test('A29: with the on-screen keyboard up, the name field and the main button ar
     return box.y >= 0 && box.y + box.height <= height + 0.5
   }
   expect(await inView(field)).toBe(true)
-  expect(await inView(primary(page))).toBe(true)
+  expect(await inView(live(page).getByTestId('more-other-add'))).toBe(true)
 })
 
 test('A13: valid legacy content (31 categories, 11 ranges in one, two equal names) saves unchanged, and one edit changes only its block', async ({ page }) => {
@@ -927,6 +952,20 @@ test.describe('reduced motion', () => {
     await page.waitForTimeout(200)
     await live(page).getByTestId('range-add').click()
     await live(page).getByTestId('range-remove').last().click()
+    await page.waitForTimeout(200)
+    await press(primary(page))
+    await onScreen(page, 'commute')
+    await press(live(page).locator('[data-value=no]'))
+    await onScreen(page, 'exercise')
+    await press(live(page).locator('[data-value=no]'))
+    await onScreen(page, 'more')
+    await press(live(page).locator('[data-value=family]'))
+    await onScreen(page, 'extra:family')
+    await press(primary(page))
+    await onScreen(page, 'more:1')
+    await press(live(page).getByTestId('more-other'))
+    await page.waitForTimeout(200)
+    await page.keyboard.press('Escape')
     await page.waitForTimeout(200)
     await live(page).locator('[data-answer=workStudy]').click()
     await onScreen(page, 'workStudy')
@@ -1029,5 +1068,264 @@ test.describe('the conversation', () => {
     await page.keyboard.press('Escape')
     await expect(setup(page)).toHaveCount(0)
     expect(await bytes(page)).toEqual(before)
+  })
+})
+
+// ---------- "¿Algo más?": the question comes back after each pick until the person says that is all ----------
+
+test.describe('"¿Algo más?" asked again (S1)', () => {
+  const FAMILY = { id: 'c-family', name: 'Familia', colorKey: 'pink', icon: '👨‍👩‍👧', goal: { type: 'none', hoursPerWeek: 0 } }
+  const CHESS = { id: 'c-chess', name: 'Ajedrez', colorKey: 'green', goal: { type: 'none', hoursPerWeek: 0 } }
+  const FAMILY_BLOCK = { id: 'b-fam', categoryId: 'c-family', title: 'Familia', days: [6], start: 600, end: 840, notes: 'Almuerzo' }
+  const CHESS_BLOCK = { id: 'b-chess', categoryId: 'c-chess', title: 'Ajedrez', days: [2], start: 1140, end: 1200 }
+  const heading = (page: Page) => live(page).getByRole('heading', { level: 3 })
+  const reply = (page: Page, name: string) => live(page).getByRole('button', { name, exact: true })
+
+  async function toMore(page: Page): Promise<void> {
+    await onScreen(page, 'sleep')
+    for (let index = 0; index < 3; index++) await tap(page, 'Lo veo después')
+    await onScreen(page, 'more')
+  }
+
+  async function addTyped(page: Page, name: string): Promise<void> {
+    await tap(page, 'Otra cosa')
+    await expect(live(page).getByTestId('more-other-name')).toBeFocused()
+    await live(page).getByTestId('more-other-name').fill(name)
+    await tap(page, 'Añadir')
+    await expect(setup(page)).toHaveAttribute('data-screen', /^extra:custom:\d+$/)
+  }
+
+  test('S1-1: after Familia and its times, "¿Algo más?" offers what is left, "Otra cosa" and the way out', async ({ page }) => {
+    await start(page)
+    await page.goto('./')
+    await toMore(page)
+    await tap(page, 'Familia')
+    await onScreen(page, 'extra:family')
+    await tap(page, 'Enviar respuesta')
+    await onScreen(page, 'more:1')
+    await expect(heading(page)).toHaveText('¿Algo más?')
+    for (const name of ['Amigos', 'Tiempo para ti', 'Aprender', 'Otra cosa', 'No, eso es todo']) await expect(reply(page, name)).toBeVisible()
+    await expect(reply(page, 'Familia')).toHaveCount(0)
+  })
+
+  test('S1-2: "Otra cosa" focuses the field; the name added gets its times, then "¿Algo más?" again', async ({ page }) => {
+    await start(page)
+    await page.goto('./')
+    await toMore(page)
+    await addTyped(page, 'Práctica de guitarra')
+    await tap(page, 'Enviar respuesta')
+    await onScreen(page, 'more:1')
+    await expect(heading(page)).toHaveText('¿Algo más?')
+    await expect(live(page).locator('[data-answer=more] .turn-answer')).toHaveText('Práctica de guitarra')
+  })
+
+  test('S1-3: three things with their times, then "No, eso es todo" and one save with all three, in order', async ({ page }) => {
+    await start(page, { document: firstRun() })
+    await page.goto('./')
+    const before = (await stored(page)).revision
+    await toMore(page)
+    await tap(page, 'Familia')
+    await tap(page, 'Enviar respuesta')
+    await onScreen(page, 'more:1')
+    await addTyped(page, 'Práctica de guitarra')
+    await tap(page, 'Enviar respuesta')
+    await onScreen(page, 'more:2')
+    await tap(page, 'Aprender')
+    await onScreen(page, 'extra:learning')
+    await tap(page, 'Enviar respuesta')
+    await onScreen(page, 'more:3')
+    await tap(page, 'No, eso es todo')
+    await onScreen(page, 'summary')
+    await primary(page).click()
+    await expect(setup(page)).toHaveCount(0)
+    const saved = await stored(page)
+    expect(saved.revision).toBe(before + 1)
+    expect(saved.categories.map((category) => category.name)).toEqual(['Familia', 'Práctica de guitarra', 'Aprendizaje'])
+    for (const category of saved.categories) expect(saved.blocks.filter((block) => block.categoryId === category.id).length, category.name).toBeGreaterThan(0)
+  })
+
+  test('S1-4: the "No, eso es todo" turn reopens as the current answer; Amigos then asks its times and "¿Algo más?" again', async ({ page }) => {
+    await start(page)
+    await page.goto('./')
+    await toMore(page)
+    await tap(page, 'Familia')
+    await tap(page, 'Enviar respuesta')
+    await tap(page, 'No, eso es todo')
+    await onScreen(page, 'summary')
+    await live(page).locator('[data-answer="more:1"]').click()
+    await onScreen(page, 'more:1')
+    await expect(reply(page, 'No, eso es todo (actual)')).toBeVisible()
+    await tap(page, 'Amigos')
+    await onScreen(page, 'extra:friends')
+    await tap(page, 'Enviar respuesta')
+    await onScreen(page, 'more:2')
+    await expect(heading(page)).toHaveText('¿Algo más?')
+    await expect(reply(page, 'No, eso es todo')).toBeVisible()
+  })
+
+  test('S1-5: a pick that was replaced keeps the time it was given when it is picked again', async ({ page }) => {
+    await start(page)
+    await page.goto('./')
+    await toMore(page)
+    await tap(page, 'Familia')
+    await onScreen(page, 'extra:family')
+    await live(page).locator('[data-field=end]').click()
+    await live(page).locator('[data-minute="780"]').click()
+    await expect(live(page).locator('[data-field=end] .value')).toHaveText('1:00 p. m. · 3 h')
+    await tap(page, 'Enviar respuesta')
+    await onScreen(page, 'more:1')
+    await live(page).locator('[data-answer=more]').click()
+    await onScreen(page, 'more')
+    await tap(page, 'Amigos')
+    await onScreen(page, 'extra:friends')
+    await tap(page, 'Enviar respuesta')
+    await onScreen(page, 'more:1')
+    await tap(page, 'Familia')
+    await onScreen(page, 'extra:family')
+    await expect(live(page).locator('[data-field=end] .value')).toHaveText('1:00 p. m. · 3 h')
+  })
+
+  test('S1-6: Familia removed in the summary is not offered again; "Deshacer" brings it back once and it is saved', async ({ page }) => {
+    await start(page, { document: firstRun() })
+    await page.goto('./')
+    await toMore(page)
+    await tap(page, 'Familia')
+    await tap(page, 'Enviar respuesta')
+    await tap(page, 'No, eso es todo')
+    await onScreen(page, 'summary')
+    await live(page).getByTestId('card-family').click()
+    await live(page).getByRole('button', { name: 'Quitar Familia' }).click()
+    await expect(live(page).getByTestId('removed-note')).toHaveText('«Familia» quitado.')
+    await live(page).locator('[data-answer="more:1"]').click()
+    await onScreen(page, 'more:1')
+    await expect(reply(page, 'Familia')).toHaveCount(0)
+    await tap(page, 'No, eso es todo (actual)')
+    await onScreen(page, 'summary')
+    await live(page).getByRole('button', { name: 'Deshacer' }).click()
+    await expect(live(page).getByTestId('card-family')).toBeVisible()
+    await expect(live(page).locator('[data-answer="extra:family"]')).toHaveCount(1)
+    await primary(page).click()
+    await expect(setup(page)).toHaveCount(0)
+    expect((await stored(page)).categories.map((category) => category.name)).toEqual(['Familia'])
+  })
+
+  test('S1-7: stored Familia and Ajedrez are never offered and stay exactly as they are after "Nada más"', async ({ page }) => {
+    await start(page, { document: planned({ categories: [SLEEP, WORK, FAMILY, CHESS], blocks: [SLEEP_BLOCK, WORK_BLOCK, FAMILY_BLOCK, CHESS_BLOCK] }) })
+    await page.goto('./')
+    await openFromSettings(page)
+    await live(page).getByTestId('summary-review').click()
+    await onScreen(page, 'sleep')
+    while ((await setup(page).getAttribute('data-screen')) !== 'more') {
+      const screen = await setup(page).getAttribute('data-screen')
+      await secondary(page).click()
+      await expect(setup(page)).not.toHaveAttribute('data-screen', screen!)
+    }
+    await expect(reply(page, 'Familia')).toHaveCount(0)
+    await expect(reply(page, 'Ajedrez')).toHaveCount(0)
+    await tap(page, 'Nada más')
+    await onScreen(page, 'summary')
+    const before = await stored(page)
+    await primary(page).click()
+    await expect(setup(page)).toHaveCount(0)
+    const after = await stored(page)
+    expect(after.blocks.find((block) => block.id === 'b-fam')).toEqual(before.blocks.find((block) => block.id === 'b-fam'))
+    expect(after.blocks.find((block) => block.id === 'b-chess')).toEqual(before.blocks.find((block) => block.id === 'b-chess'))
+    expect(after.categories.map((category) => category.id)).toEqual(['c-sleep', 'c-work', 'c-family', 'c-chess'])
+  })
+
+  test('S1-10: a reload keeps the screen, the turns and a name typed but not added; nothing is written', async ({ page }) => {
+    await start(page, { document: firstRun() })
+    await page.goto('./')
+    await toMore(page)
+    await tap(page, 'Familia')
+    await tap(page, 'Enviar respuesta')
+    await onScreen(page, 'more:1')
+    await addTyped(page, 'Práctica de guitarra')
+    const screen = (await setup(page).getAttribute('data-screen'))!
+    const turns = await live(page).locator('[data-answer]').allTextContents()
+    const before = await bytes(page)
+    await page.reload()
+    await onScreen(page, screen)
+    await expect(live(page).locator('[data-answer]')).toHaveText(turns)
+    await expect(live(page).getByText('Seguimos donde lo dejaste.')).toBeVisible()
+    await tap(page, 'Enviar respuesta')
+    await onScreen(page, 'more:2')
+    await tap(page, 'Otra cosa')
+    await live(page).getByTestId('more-other-name').fill('Clases de baile')
+    await page.reload()
+    await onScreen(page, 'more:2')
+    await expect(live(page).getByTestId('more-other-name')).toHaveValue('Clases de baile')
+    expect(await bytes(page)).toEqual(before)
+  })
+
+  test('S1-11: focus lands on the first reply of "¿Algo más?"; Escape puts the name field away, a second one closes without writing', async ({ page }) => {
+    await start(page, { document: firstRun() })
+    await page.goto('./')
+    await toMore(page)
+    await tap(page, 'Familia')
+    await tap(page, 'Enviar respuesta')
+    await onScreen(page, 'more:1')
+    const group = live(page).getByRole('group', { name: '¿Algo más?' })
+    await expect(group.locator('.reply').first()).toBeFocused()
+    await expect(group.locator('.reply').first()).toHaveText('Amigos')
+    const before = await bytes(page)
+    await tap(page, 'Otra cosa')
+    await expect(live(page).getByTestId('more-other-name')).toBeFocused()
+    await page.keyboard.press('Escape')
+    await expect(reply(page, 'Otra cosa')).toBeFocused()
+    await expect(setup(page)).toBeVisible()
+    await page.keyboard.press('Escape')
+    await expect(setup(page)).toHaveCount(0)
+    expect(await bytes(page)).toEqual(before)
+  })
+})
+
+test.describe('the setup owns the screen (S1-12, N10)', () => {
+  test('S1-12: a route change keeps focus in the setup, the shell behind it is inert until it closes', async ({ page }) => {
+    await start(page, { document: firstRun() })
+    await page.goto('./')
+    await onScreen(page, 'sleep')
+    await expect(page.locator('main#main')).toHaveAttribute('inert', '')
+    await expect(page.locator('nav.tabbar')).toHaveAttribute('inert', '')
+    await page.evaluate(() => { location.hash = '#/tasks' })
+    await expect(page.locator('[data-view=tasks]')).toHaveCount(1)
+    await page.waitForTimeout(400)
+    expect(await page.evaluate(() => Boolean(document.activeElement?.closest('[data-testid=setup]')))).toBe(true)
+    await page.keyboard.press('Escape')
+    await expect(setup(page)).toHaveCount(0)
+    await expect(page.locator('main#main')).not.toHaveAttribute('inert')
+    await expect(page.locator('nav.tabbar')).not.toHaveAttribute('inert')
+  })
+
+  test('S1-12: at 1440x900 the sidebar shortcut does nothing while the setup is open', async ({ page }) => {
+    await start(page, { document: firstRun(), size: { width: 1440, height: 900 } })
+    await page.goto('./')
+    await onScreen(page, 'sleep')
+    const before = await page.locator('.shell').getAttribute('data-sidebar')
+    await page.keyboard.press('ControlOrMeta+Backslash')
+    await page.waitForTimeout(300)
+    expect(await page.locator('.shell').getAttribute('data-sidebar')).toBe(before)
+    await expect(page.locator('#app-sidebar')).toHaveAttribute('inert', '')
+  })
+
+  test('N10: an undo offered before the setup opened cannot be taken while it is open', async ({ page }) => {
+    const exercise = { id: 'c-ex', name: 'Ejercicio', colorKey: 'green', icon: '🏃', goal: { type: 'min', hoursPerWeek: 3 } }
+    await start(page, { document: planned({ categories: [SLEEP, WORK, exercise], blocks: [SLEEP_BLOCK, WORK_BLOCK, { id: 'b-gym', categoryId: 'c-ex', title: 'Gimnasio', days: [1], start: 1080, end: 1140 }] }) })
+    await page.goto('./#/week')
+    await expect(page.getByRole('heading', { level: 1, name: 'Semana' })).toBeVisible()
+    await page.locator('[data-date="2026-10-26"] [data-block-id="b-gym"]').first().click()
+    await page.getByRole('dialog').getByRole('button', { name: 'Eliminar rutina' }).click()
+    await expect(page.getByTestId('undo-toast')).toBeVisible()
+    await page.evaluate(() => { location.hash = '#/settings' })
+    await page.getByTestId('setup-guided-row').getByRole('button').click()
+    await onScreen(page, 'summary')
+    const before = await bytes(page)
+    await expect(page.getByTestId('undo-toast').getByRole('button', { includeHidden: true })).toHaveAttribute('inert', '')
+    await live(page).getByRole('heading', { level: 3 }).focus()
+    await page.keyboard.press('ControlOrMeta+z')
+    await page.waitForTimeout(300)
+    expect(await bytes(page)).toEqual(before)
+    expect((await stored(page)).blocks.map((block) => block.id)).not.toContain('b-gym')
+    await expect(page.getByTestId('undo-toast')).toHaveCount(1)
   })
 })

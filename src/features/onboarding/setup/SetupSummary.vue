@@ -5,7 +5,7 @@ import { categoryColor } from '@/features/insights/categoryColor'
 import { formatWholeHours, wholeHourParts } from '@/ui/format'
 import Button from '@/ui/Button.vue'
 import Icon from '@/ui/Icon.vue'
-import { addOwnToMore, clearRanges, setRemoved, weekTotals, type Issue, type SetupState } from '../setupModel'
+import { appendFromSummary, canAppend, clearRanges, setRemoved, weekTotals, type Issue, type SetupState } from '../setupModel'
 import { TOPICS } from '../setupTopics'
 import { summaryRows } from './conversation'
 import SummaryCard from './SummaryCard.vue'
@@ -57,7 +57,8 @@ function undo(key: string): void {
 }
 
 async function addMore(): Promise<void> {
-  const { category } = addOwnToMore(props.state, '')
+  const category = appendFromSummary(props.state, '')
+  if (!category) return
   clearRanges(category)
   expanded.value = category.key
   emit('edited')
@@ -88,7 +89,8 @@ async function addMore(): Promise<void> {
         />
       </template>
     </ul>
-    <Button variant="plain" data-testid="summary-add" @click="addMore"><Icon name="plus" :size="20" /> {{ t('onboarding.summary.add') }}</Button>
+    <Button v-if="canAppend(state)" variant="plain" data-testid="summary-add" @click="addMore"><Icon name="plus" :size="20" /> {{ t('onboarding.summary.add') }}</Button>
+    <p v-else class="trust t-body" data-testid="summary-limit">{{ t('onboarding.guided.again.limit') }}</p>
     <Button v-if="reviewable" variant="plain" data-testid="summary-review" @click="emit('review')">{{ t('onboarding.summary.review') }}</Button>
     <p v-if="showTrust" class="trust t-body" data-testid="setup-trust">{{ t('onboarding.guided.trust') }}</p>
   </section>

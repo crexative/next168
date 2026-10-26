@@ -1,3 +1,5 @@
+import { ref } from 'vue'
+
 // The sheets on screen, in the order they opened (Sheet.vue). One sheet may hand off to the next (a chooser opens an
 // editor, a details sheet opens the routine it conflicts with): the closing sheet finishes its animation after the
 // next one has taken focus, so focus and the page's `data-sheet-open` follow this list, never one sheet alone.
@@ -58,4 +60,31 @@ export function droppedSheet(entry: SheetEntry): void {
 // Whether a sheet is open: page-level focus moves (a new page's heading) wait for it, so they never take focus out of it.
 export function anySheetOpen(): boolean {
   return entries.some((entry) => !entry.closing)
+}
+
+// ---------- Full-screen owners ----------
+
+// A full-screen flow (the guided setup) owns the whole screen while it is open: the page behind it is inert, no sheet
+// opens over or under it (Sheet.vue waits), and page-level focus moves wait for it. It never sets `data-sheet-open`,
+// which scales the page behind a sheet.
+const fullScreenOwners = ref(0)
+
+// Registers an owner; the returned release may be called any number of times.
+export function openFullScreen(): () => void {
+  fullScreenOwners.value += 1
+  let released = false
+  return () => {
+    if (released) return
+    released = true
+    fullScreenOwners.value -= 1
+  }
+}
+
+// Reactive: a computed or template that reads it updates when an owner opens or releases.
+export function anyFullScreenOpen(): boolean {
+  return fullScreenOwners.value > 0
+}
+
+export function anyModalOpen(): boolean {
+  return anySheetOpen() || anyFullScreenOpen()
 }

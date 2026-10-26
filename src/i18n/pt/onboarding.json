@@ -81,7 +81,7 @@
     },
     "more": {
       "question": "Com o que mais você passa tempo toda semana?",
-      "hint": "Escolha quantas quiser.",
+      "hint": "Escolha uma.",
       "family": "Família",
       "friends": "Amigos",
       "me": "Tempo para você",
@@ -91,6 +91,12 @@
       "otherPlaceholder": "Por exemplo: aula de inglês",
       "add": "Adicionar",
       "duplicate": "Já está na sua lista."
+    },
+    "again": {
+      "question": "Mais alguma coisa?",
+      "hint": "Escolha outra, ou me diga que é só isso.",
+      "done": "Não, é só isso",
+      "limit": "Já está bom por agora."
     },
     "extra": {
       "family": "Quando você passa tempo com a família?",
@@ -138,7 +144,6 @@
     "change": "Mudar: {question} {answer}",
     "conversation": "Conversa",
     "send": "Enviar resposta",
-    "needChoice": "Escolha pelo menos uma, ou «Depois».",
     "needFix": "Primeiro corrija o horário marcado.",
     "progressShort": "{step} de {total}",
     "sendShort": "Enviar"

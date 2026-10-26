@@ -6,7 +6,7 @@ import { prefersReducedMotion, useMediaQuery } from './useMediaQuery'
 import { registerUnsavedInput } from './unsavedGuard'
 import { releaseVelocity, rubberBand, shouldDismiss, springTo, type Sample } from './sheetMotion'
 import { isHover, watchPressEnd } from './pressEnd'
-import { closedSheet, closingSheet, droppedSheet, openSheet, reopenedSheet, type SheetEntry } from './sheetStack'
+import { anyFullScreenOpen, closedSheet, closingSheet, droppedSheet, openSheet, reopenedSheet, type SheetEntry } from './sheetStack'
 
 // A phone sheet ends with a dismiss button within the thumb's reach (`dismissLabel`, default "Cancel");
 // `noDismiss` leaves it out for a sheet whose own actions already include one. A `footer` slot replaces it with the
@@ -223,8 +223,9 @@ function onGrabUp(event: PointerEvent): void {
 }
 
 // Focus and the page's `data-sheet-open` are shared by every sheet on screen (sheetStack.ts): a sheet that closes while
-// the next one opens never takes focus back from it.
-watch(() => props.open, async (open) => {
+// the next one opens never takes focus back from it. A sheet asked to open while a full-screen flow owns the screen
+// waits, unrendered, and opens (taking focus) only once that flow is gone; closed while it waits, it never shows.
+watch(() => props.open && (rendered.value || !anyFullScreenOpen()), async (open) => {
   if (open) {
     const interrupted = rendered.value
     if (interrupted) {

@@ -1,5 +1,7 @@
 import { sequence } from '../setupFlow'
-import { categoryOf, commuteBase, moreSelection, statusOf, type CategoryDraft, type CategoryStatus, type RangeDraft, type ScreenId, type SetupState } from '../setupModel'
+import {
+  categoryOf, commuteBase, picksOf, roundIndex, roundOptions, statusOf, type CategoryDraft, type CategoryStatus, type RangeDraft, type ScreenId, type SetupState,
+} from '../setupModel'
 import { EXTRA_TOPICS } from '../setupTopics'
 
 // What the conversation says: each question phrased from the answers before it, the answer bubble in plain words, and
@@ -20,7 +22,7 @@ export function categoryFor(state: SetupState, screen: ScreenId): CategoryDraft 
   return screen.startsWith('extra:') ? categoryOf(state, screen.slice('extra:'.length)) : undefined
 }
 
-export const isRangeScreen = (state: SetupState, screen: ScreenId): boolean => screen !== 'more' && screen !== 'summary' && categoryFor(state, screen) !== undefined
+export const isRangeScreen = (state: SetupState, screen: ScreenId): boolean => screen !== 'summary' && roundIndex(screen) === undefined && categoryFor(state, screen) !== undefined
 
 // The reply offered beside the answer controls, and how it is drawn: skipping the question ("Later") is a quiet text
 // button, so it never competes with the answers or with Send; "No fixed time" is an answer like any other and looks like
@@ -44,6 +46,7 @@ function destination(state: SetupState): 'work' | 'study' | 'both' | undefined {
 export function question(state: SetupState, screen: ScreenId): Line {
   const guided = (key: string, params?: Record<string, unknown>): Line => ({ key: `onboarding.guided.${key}`, params })
   if (screen === 'summary') return { key: weekIsEmpty(state) ? 'onboarding.summary.empty' : 'onboarding.summary.bubble' }
+  if (screen !== 'more' && roundIndex(screen) !== undefined) return guided('again.question')
   if (screen.startsWith('extra:')) {
     const category = categoryFor(state, screen)
     const topic = category?.topic
@@ -64,7 +67,7 @@ export function hint(state: SetupState, screen: ScreenId): Line | undefined {
     // Ida and vuelta come from the hours just given; saying so invites a change when they are off.
     case 'commuteRanges': return commuteBase(state) ? { key: 'onboarding.guided.commuteRanges.hint' } : undefined
     case 'more': return { key: 'onboarding.guided.more.hint' }
-    default: return undefined
+    default: return roundIndex(screen) === undefined ? undefined : { key: 'onboarding.guided.again.hint' }
   }
 }
 
@@ -89,15 +92,40 @@ export function answer(state: SetupState, screen: ScreenId, speaker: Speaker): s
     case 'workStudy': return answers.workStudy === 'unanswered' ? skipped : speaker.t(`onboarding.guided.workStudy.${answers.workStudy}`)
     case 'commute': return tri(answers.commute)
     case 'exercise': return tri(answers.exercise)
-    case 'more': {
-      if (answers.more === null) return skipped
-      const names = moreSelection(state).map((key) => {
-        const category = categoryOf(state, key)
-        return (EXTRA_TOPICS as string[]).includes(key) ? speaker.t(`onboarding.guided.more.${key}`) : category?.name ?? ''
-      }).filter((name) => name !== '')
-      return names.length === 0 ? speaker.t('onboarding.guided.nothingElse') : names.join(', ')
+    default: {
+      const round = roundIndex(screen)
+      if (round === undefined) return rangesText(state, screen, speaker)
+      const picks = picksOf(state)
+      if (round < picks.length) return pickLabel(state, picks[round]!, speaker)
+      return answers.more !== null && answers.moreDone ? speaker.t(doneKey(round)) : skipped
     }
-    default: return rangesText(state, screen, speaker)
+  }
+}
+
+// ---------- "Anything else?" ----------
+
+// How a pick reads: an extra by its name in this language, the person's own by the name they gave it.
+export function pickLabel(state: SetupState, key: string, speaker: Speaker): string {
+  return (EXTRA_TOPICS as string[]).includes(key) ? speaker.t(`onboarding.guided.more.${key}`) : categoryOf(state, key)?.name ?? ''
+}
+
+// The way out of a round: "Nothing else" when nothing was picked yet, "No, that's all" after a pick.
+const doneKey = (round: number) => (round === 0 ? 'onboarding.guided.nothingElse' : 'onboarding.guided.again.done')
+
+export interface RoundReplies {
+  options: { value: string; label: string }[]
+  // The round's answer when it is asked again: a pick, or the way out.
+  current?: string
+  done: { label: string; current: boolean }
+}
+
+export function roundReplies(state: SetupState, round: number, speaker: Speaker): RoundReplies {
+  const picks = picksOf(state)
+  const doneCurrent = round === picks.length && state.answers.more !== null && state.answers.moreDone
+  return {
+    options: roundOptions(state, round).map((key) => ({ value: key, label: pickLabel(state, key, speaker) })),
+    current: picks[round],
+    done: { label: speaker.t(doneKey(round)), current: doneCurrent },
   }
 }
 

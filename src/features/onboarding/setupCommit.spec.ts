@@ -4,7 +4,8 @@ import { validateDocument } from '@/core/documents'
 import type { PlannerDocument } from '@/core/model'
 import { applySetupPlan, planSetupCommit, SETUP_INVALID, type SetupPlan } from './setupCommit'
 import {
-  addOwnCategory, createState, emptyState, ensureCategory, setSleepSplit, suggestCommute, suggestRanges, type SetupState,
+  addOwnCategory, createState, emptyState, ensureCategory, finishMore, pick, prepareScreen, setSleepSplit, suggestCommute, suggestRanges, touch,
+  type SetupState,
 } from './setupModel'
 import { block, category, documentWith, env } from './setupFixtures'
 
@@ -218,5 +219,32 @@ describe('the plan\'s blocking checks', () => {
     setSleepSplit(state, true)
     const result = apply(documentWith(), plan(state, documentWith()).plan)
     expect(result.blocks.map((item) => [item.days, item.start, item.end])).toEqual([[[0, 1, 2, 3, 4], at(23), at(7)], [[0, 6], 0, at(8)]])
+  })
+})
+
+describe('stored extras and own categories outside the rounds (S1-7)', () => {
+  const document = () => documentWith(
+    [category('c-family', 'Family', { icon: '👨‍👩‍👧' }), category('c-chess', 'Ajedrez')],
+    [block('b-fam', 'c-family', [6], at(10), at(14), { title: 'Family' }), block('b-chess', 'c-chess', [2], at(18), at(19), { title: 'Ajedrez' })],
+    done(),
+  )
+
+  it('keeps both when the rounds pick something else and end with "Nothing else"', () => {
+    const state = createState(document(), env)
+    pick(state, 0, 'friends', env)
+    prepareScreen(state, 'extra:friends', env)
+    finishMore(state, 1)
+    const { plan: setupPlan } = plan(state, document())
+    expect(setupPlan).toMatchObject({ blockDeletes: [], categoryDeletes: [], blockUpdates: [], newCategories: [expect.objectContaining({ name: 'Friends' })] })
+    const empty = createState(document(), env)
+    finishMore(empty, 0)
+    expect(plan(empty, document()).empty).toBe(true)
+  })
+
+  it('writes exactly one block update for an explicit edit in the summary', () => {
+    const state = createState(document(), env)
+    finishMore(state, 0)
+    touch(state.categories.find((item) => item.key === 'family')!.ranges[0]!, { end: at(15) })
+    expect(plan(state, document()).plan).toMatchObject({ blockUpdates: [{ id: 'b-fam', end: at(15) }], blockDeletes: [], categoryDeletes: [], newBlocks: [], newCategories: [] })
   })
 })

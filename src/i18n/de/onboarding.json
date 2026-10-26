@@ -81,7 +81,7 @@
     },
     "more": {
       "question": "Wofür nimmst du dir sonst jede Woche Zeit?",
-      "hint": "Wähle, so viele du willst.",
+      "hint": "Wähle eins.",
       "family": "Familie",
       "friends": "Freunde",
       "me": "Zeit für dich",
@@ -91,6 +91,12 @@
       "otherPlaceholder": "Zum Beispiel: Englischkurs",
       "add": "Hinzufügen",
       "duplicate": "Das steht schon auf deiner Liste."
+    },
+    "again": {
+      "question": "Sonst noch etwas?",
+      "hint": "Wähle noch eins, oder sag mir, dass das alles ist.",
+      "done": "Nein, das ist alles",
+      "limit": "Das reicht fürs Erste."
     },
     "extra": {
       "family": "Wann verbringst du Zeit mit der Familie?",
@@ -138,7 +144,6 @@
     "change": "Ändern: {question} {answer}",
     "conversation": "Unterhaltung",
     "send": "Antwort senden",
-    "needChoice": "Wähle mindestens eins, oder „Später“.",
     "needFix": "Korrigiere zuerst die markierte Zeit.",
     "progressShort": "{step} von {total}",
     "sendShort": "Senden"
