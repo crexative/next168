@@ -40,12 +40,36 @@ jobs:
   e2e:
     runs-on: ubuntu-latest
     timeout-minutes: 30
+    # The official image ships the browsers and their system libraries, so no browser apt install runs here.
+    # The tag must equal the locked @playwright/test version; the first step enforces it.
+    container:
+      image: mcr.microsoft.com/playwright:v1.63.0-noble
+      options: --init --ipc=host
     strategy:
       fail-fast: false
       matrix:
         shard: [1, 2, 3, 4]
     steps:
       - uses: actions/checkout@v4
+
+      - name: Require the image tag to match the locked Playwright version
+        run: |
+          locked="$(node -p "require('./package-lock.json').packages['node_modules/@playwright/test'].version")"
+          image="$(grep -oE 'playwright:v[0-9]+\.[0-9]+\.[0-9]+-noble' .github/workflows/ci.yml | head -n 1 | sed -E 's/^playwright:v(.*)-noble$/\1/')"
+          if [ -z "$image" ] || [ "$image" != "$locked" ]; then
+            echo "::error::The e2e container image is Playwright '$image' but package-lock.json locks '$locked'. Update the image tag in .github/workflows/ci.yml."
+            exit 1
+          fi
+
+      - name: Trust the workspace for git
+        run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
+
+      # The image has no DejaVu; GitHub's ubuntu runners do, and the layout baseline expects it (as scripts/e2e-linux.sh).
+      - name: Install DejaVu fonts
+        timeout-minutes: 5
+        run: |
+          echo 'Acquire::http::Timeout "20"; Acquire::https::Timeout "20"; Acquire::Retries "5";' > /etc/apt/apt.conf.d/99-ci-timeouts
+          apt-get update && apt-get install -y --no-install-recommends fonts-dejavu-core
 
       - uses: actions/setup-node@v4
         with:
@@ -56,31 +80,6 @@ jobs:
 
       - name: Install companion
         run: npm --prefix companion ci
-
-      - name: Read locked Playwright version
-        id: playwright
-        run: echo "version=$(node -p "require('./package-lock.json').packages['node_modules/@playwright/test'].version")" >> "$GITHUB_OUTPUT"
-
-      - name: Cache Playwright browsers
-        id: browsers
-        uses: actions/cache@v4
-        with:
-          path: ~/.cache/ms-playwright
-          key: playwright-${{ runner.os }}-${{ steps.playwright.outputs.version }}
-
-      # A stalled apt mirror connection otherwise hangs the browser dependency install until the step limit.
-      - name: Bound apt network waits
-        run: echo 'Acquire::http::Timeout "20"; Acquire::https::Timeout "20"; Acquire::Retries "5";' | sudo tee /etc/apt/apt.conf.d/99-ci-timeouts
-
-      - name: Install browsers
-        if: steps.browsers.outputs.cache-hit != 'true'
-        timeout-minutes: 15
-        run: npx playwright install --with-deps chromium webkit || npx playwright install --with-deps chromium webkit
-
-      - name: Install browser system dependencies
-        if: steps.browsers.outputs.cache-hit == 'true'
-        timeout-minutes: 15
-        run: npx playwright install-deps chromium webkit || npx playwright install-deps chromium webkit
 
       - name: End-to-end tests (shard ${{ matrix.shard }}/4)
         run: npx playwright test --shard=${{ matrix.shard }}/4
