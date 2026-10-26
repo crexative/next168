@@ -51,7 +51,7 @@ const chipButtons = new Map<string, HTMLButtonElement>()
 let typedIn: string | undefined
 
 function freshForm(): TaskDraft {
-  return { ...newDraft(), dueToday: props.dueToday }
+  return newDraft()
 }
 
 const timeZone = computed(() => planner.document?.settings.timeZone ?? 'UTC')
@@ -84,6 +84,8 @@ const effective = computed<TaskDraft>(() => {
     if (span.field === 'duration') draft.durationMin = Number(value)
   }
   if (!manual.value.date && draft.dueDate === '' && parsed.value.fields.dueDate) draft.dueDate = parsed.value.fields.dueDate
+  // Today's add row: a task with no date of its own is due today (a typed «mañana» still wins).
+  if (props.dueToday && !draft.dueToday && draft.dueDate === '') draft.dueToday = true
   return draft
 })
 
@@ -304,6 +306,17 @@ function grow(): void {
 }
 watch(text, () => void nextTick(grow))
 
+// Row titles wrap instead of being cut: each row field is as tall as its title.
+function fit(element: HTMLTextAreaElement): void {
+  element.style.height = 'auto'
+  element.style.height = `${element.scrollHeight}px`
+}
+function growRow(event: Event): void {
+  fit(event.target as HTMLTextAreaElement)
+}
+const root = ref<HTMLFormElement | null>(null)
+watch(rows, () => void nextTick(() => root.value?.querySelectorAll<HTMLTextAreaElement>('.row-title').forEach(fit)))
+
 const statusText = computed(() => {
   switch (submission.state.value) {
     case 'checking': return t('capture.status.checking')
@@ -319,7 +332,7 @@ defineExpose({ focus: () => field.value?.focus() })
 </script>
 
 <template>
-  <form class="add" :aria-label="label ?? t('tasks.add.title')" novalidate @submit.prevent="multiLine ? undefined : addOne()">
+  <form ref="root" class="add" :aria-label="label ?? t('tasks.add.title')" novalidate @submit.prevent="multiLine ? undefined : addOne()">
     <label class="field" :for="ids.field">
       <span class="visually-hidden">{{ t('tasks.add.titleLabel') }}</span>
       <textarea
@@ -400,7 +413,7 @@ defineExpose({ focus: () => field.value?.focus() })
     </div>
 
     <div v-if="detailsOpen" class="details" role="group" :aria-label="t('tasks.add.details')" data-testid="task-details">
-      <TaskOptions :draft="shownDraft" :categories="categories" :time-zone="timeZone" :suggested-category-id="suggestedCategoryId" @patch="patch" />
+      <TaskOptions :draft="shownDraft" :categories="categories" :time-zone="timeZone" :suggested-category-id="suggestedCategoryId" standard-lengths @patch="patch" />
       <Button type="submit" block :disabled="!canAdd">
         <Icon name="plus" :size="20" /> {{ t('tasks.add.submit') }}
       </Button>
@@ -411,26 +424,28 @@ defineExpose({ focus: () => field.value?.focus() })
         <p class="t-headline">{{ t('capture.preview.title', { count: rows.length }, rows.length) }}</p>
         <ol class="rows">
           <li v-for="(row, index) in rows" :key="index" class="row" :class="{ 'is-off': !row.checked }" data-testid="capture-row">
-            <input
-              :id="`${ids.preview}-check-${index}`"
-              v-model="row.checked"
-              class="row-check"
-              type="checkbox"
-              :disabled="busy || tooLong(row.title)"
-              :aria-label="t('capture.preview.rowName', { number: index + 1, title: row.title })"
-            >
-            <div class="row-body">
+            <label class="row-check" :for="`${ids.preview}-check-${index}`">
               <input
+                :id="`${ids.preview}-check-${index}`"
+                v-model="row.checked"
+                type="checkbox"
+                :disabled="busy || tooLong(row.title)"
+                :aria-label="t('capture.preview.rowName', { number: index + 1, title: row.title })"
+              >
+            </label>
+            <div class="row-body">
+              <textarea
                 v-model="row.title"
                 class="input row-title"
-                type="text"
+                rows="1"
                 :disabled="busy"
                 :aria-label="t('capture.preview.rowTitle', { number: index + 1 })"
                 :aria-invalid="tooLong(row.title) || undefined"
                 :aria-describedby="tooLong(row.title) ? `${ids.preview}-long-${index}` : undefined"
                 data-testid="capture-row-title"
                 @keydown="onRowKeydown"
-              >
+                @input="growRow"
+              />
               <p v-if="tooLong(row.title)" :id="`${ids.preview}-long-${index}`" class="t-footnote problem">{{ t('capture.preview.lineTooLong', { max: MAX_TITLE }) }}</p>
             </div>
           </li>
@@ -490,13 +505,17 @@ defineExpose({ focus: () => field.value?.focus() })
 }
 .chip-edit { gap: var(--space-1); padding: 0 var(--space-1) 0 var(--space-3); font-weight: 600; min-width: 0; text-align: start; }
 .chip-text { overflow-wrap: anywhere; }
+.chip-edit :deep(svg) { color: var(--label-2); }
 .chip-remove { justify-content: center; min-width: var(--tap-target); color: var(--label-2); }
 .chip-edit:focus-visible, .chip-remove:focus-visible { outline-offset: -2px; border-radius: var(--radius-control); }
 .chip-editor { display: flex; flex-wrap: wrap; align-items: flex-end; gap: var(--space-2); }
 .preview { display: flex; flex-direction: column; gap: var(--space-3); }
-.rows { display: flex; flex-direction: column; gap: var(--space-2); }
+.rows { display: flex; flex-direction: column; gap: var(--space-2); margin: 0; padding: 0; list-style: none; }
 .row { display: flex; align-items: flex-start; gap: var(--space-2); }
-.row-check { flex: none; width: var(--tap-target); height: var(--tap-target); margin: 0; accent-color: var(--tint); }
+/* A 44 px target around a check of the usual size. */
+.row-check { display: inline-flex; flex: none; align-items: center; justify-content: center; width: var(--tap-target); height: var(--tap-target); }
+.row-check input { width: 22px; height: 22px; margin: 0; accent-color: var(--tint); }
+.row-title { min-height: var(--tap-target); resize: none; overflow: hidden; line-height: 1.35; padding-block: calc((var(--tap-target) - 1.35em) / 2); }
 .row-body { display: flex; flex: 1; flex-direction: column; gap: var(--space-1); min-width: 0; }
 .row.is-off .row-title { color: var(--label-2); }
 .preview-actions { display: flex; flex-wrap: wrap; gap: var(--space-2); }

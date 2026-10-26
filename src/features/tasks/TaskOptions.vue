@@ -20,7 +20,9 @@ import {
 // set is a to-do with no date, and is still complete.
 // `timeZone` is the planner's ("Today" is resolved in it when tapped); `suggestedCategoryId` is the category the previous
 // task was filed under.
-const props = defineProps<{ draft: TaskDraft; categories: Category[]; timeZone: string; suggestedCategoryId?: string }>()
+// `standardLengths`: only the usual chips are offered, a length that is not one of them stays in its own chip or field
+// (the capture box) instead of becoming a sixth segment.
+const props = defineProps<{ draft: TaskDraft; categories: Category[]; timeZone: string; suggestedCategoryId?: string; standardLengths?: boolean }>()
 // Changes travel as patches the owner merges into its current draft, so two edits in the same tick never undo each other.
 const emit = defineEmits<{ patch: [change: Partial<TaskDraft>] }>()
 
@@ -31,7 +33,7 @@ const moreOpen = ref(hasExtraOptions(props.draft))
 
 const durationOptions = computed(() => [
   { value: UNTIMED, label: t('tasks.add.untimed') },
-  ...durationChoices(props.draft.durationMin).map((minutes) => ({ value: String(minutes), label: formatDuration(minutes) })),
+  ...durationChoices(props.standardLengths ? undefined : props.draft.durationMin).map((minutes) => ({ value: String(minutes), label: formatDuration(minutes) })),
 ])
 const durationValue = computed(() => (props.draft.durationMin === undefined ? UNTIMED : String(props.draft.durationMin)))
 const maxMinutes = computed(() => (props.draft.at !== '' ? MAX_FIXED_MIN : MAX_TASK_MIN))
@@ -186,6 +188,8 @@ function toggleSuggestion(id: string): void {
 .choice[aria-pressed='true'] { border-color: transparent; background: var(--tint); color: var(--tint-text); }
 .more-options { display: flex; flex-direction: column; gap: var(--space-3); }
 .field { display: flex; flex-direction: column; gap: var(--space-1); min-width: 0; }
+/* Five lengths fit one row at 375 px; at large text they wrap whole, never inside a label. */
+.task-options :deep(.segment) { padding-inline: var(--space-2); white-space: nowrap; }
 .notes { min-height: calc(var(--tap-target) * 2); resize: vertical; }
 .problem { color: var(--danger); }
 .links { display: flex; flex-direction: column; gap: var(--space-1); }

@@ -1,7 +1,7 @@
 // @vitest-environment happy-dom
 // Tasks P1-9 (the single-line box) and P1-10 (a multi-line paste), design rev 2.1 §7.3, rev 6 §2.1, addendum 6.1 F6.
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { nextTick } from 'vue'
+import { h, nextTick } from 'vue'
 import { mountWithPlanner, type Mounted } from '@/features/settings/testSupport'
 import { testDocument } from '@/repositories/testSupport'
 import { useUndoToast } from '@/ui/undoToast'
@@ -192,5 +192,16 @@ describe('P1-10: a multi-line paste', () => {
     expect(byTestId('capture-row')).toHaveLength(0)
     expect(byTestId<HTMLAnchorElement>('capture-use-ai')[0]!.getAttribute('href')).toBe('#/assistant')
     expect(byTestId('capture-keep-one')).toHaveLength(1)
+  })
+})
+
+describe('Today\'s add row', () => {
+  it('a task with no date of its own is due today; a typed date still wins', async () => {
+    mounted = await mountWithPlanner({ render: () => h(SmartCapture, { dueToday: true }) }, { settings }, 'es')
+    await type('llamar a mamá')
+    await enter()
+    await type('dentista mañana 9am')
+    await enter()
+    expect(tasks().map((task) => [task.title, task.dueDate, task.at])).toEqual([['Llamar a mamá', '2026-10-26', undefined], ['Dentista', '2026-10-27', 540]])
   })
 })
