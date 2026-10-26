@@ -96,14 +96,16 @@
       "question": "Autre chose ?",
       "hint": "Choisis-en une autre, ou dis-moi que c'est tout.",
       "done": "Non, c'est tout",
-      "limit": "C'est assez pour l'instant."
+      "limit": "C'est assez pour l'instant.",
+      "yes": "Oui, {name}"
     },
     "add": {
       "title": "Ajouter à ta semaine",
       "question": "Pour quoi veux-tu prendre du temps ?",
       "hint": "Choisis-en une, ou écris autre chose.",
       "goesIn": "Va dans",
-      "own": "À part"
+      "own": "À part",
+      "yours": "Déjà dans ta semaine"
     },
     "extra": {
       "family": "Quand passes-tu du temps en famille ?",
@@ -148,7 +150,6 @@
     "resumed": "On reprend où tu t'étais arrêté.",
     "startOver": "Recommencer",
     "draftUnavailable": "Ce navigateur ne garde pas de brouillon. Ne recharge pas avant la fin.",
-    "nothingElse": "Rien d'autre",
     "change": "Modifier : {question} {answer}",
     "conversation": "Conversation",
     "send": "Envoyer la réponse",
@@ -183,6 +184,9 @@
     "addSave": "Ajouter à ma semaine",
     "added": "« {name} » ajouté | {count} choses ajoutées",
     "into": "dans {name}",
-    "addFailed": "Impossible d'ajouter. Réessaie."
+    "addFailed": "Impossible d'ajouter. Réessaie.",
+    "addBubble": "Ceci s'ajoute à ta semaine. Touche un élément pour le changer.",
+    "addEmpty": "Rien à ajouter pour l'instant.",
+    "addTitle": "Ce que tu ajoutes"
   }
 }

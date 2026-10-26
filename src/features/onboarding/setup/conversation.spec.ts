@@ -1,9 +1,9 @@
 import { beforeAll, describe, expect, it } from 'vitest'
 import { i18n } from '@/i18n'
 import {
-  addOwnCategory, emptyState, finishMore, pick, prepareScreen, setAnswer, type ScreenId, type SetupState, type Tri, type WorkStudy,
+  addOwnCategory, createAddState, emptyState, finishMore, pick, prepareScreen, setAnswer, type ScreenId, type SetupState, type Tri, type WorkStudy,
 } from '../setupModel'
-import { env } from '../setupFixtures'
+import { category, documentWith, env } from '../setupFixtures'
 import { answer, extraReply, hint, question, roundReplies, summaryRows, transcript, weekIsEmpty, type Line, type Speaker } from './conversation'
 
 // The conversation's words: each follow-up phrased from what the person said before, the defaults it offers from
@@ -112,16 +112,17 @@ describe('the answer, as the person would say it', () => {
     expect(answer(state, 'work', lower)).toBe('Lunes a viernes · 9:00 a. m.–5:00 p. m.')
   })
 
-  it('what else: each round answers with its pick, the way out reads "Nada más" or "No, eso es todo", skipped when not answered', () => {
+  it('what else: the first round answers with its pick, later ones with "Sí, …", the way out is always "No, eso es todo"', () => {
     const state = emptyState()
     expect(answer(state, 'more', speaker)).toBe('Lo veo después')
     pick(state, 0, 'family', env)
     pick(state, 1, addOwnCategory(state, 'Ajedrez').category.key, env)
-    expect([answer(state, 'more', speaker), answer(state, 'more:1', speaker)]).toEqual(['Familia', 'Ajedrez'])
+    expect([answer(state, 'more', speaker), answer(state, 'more:1', speaker)]).toEqual(['Familia', 'Sí, Ajedrez'])
     finishMore(state, 2)
     expect(answer(state, 'more:2', speaker)).toBe('No, eso es todo')
     finishMore(state, 0)
-    expect(answer(state, 'more', speaker)).toBe('Nada más')
+    expect(answer(state, 'more', speaker)).toBe('No, eso es todo')
+    expect(roundReplies(state, 0, speaker).done.label).toBe('No, eso es todo')
   })
 
   it('asks "¿Algo más?" from the second round on, with its own hint', () => {
@@ -195,5 +196,22 @@ describe('which exchanges stay on screen', () => {
     expect(transcript(state, false)).toEqual(['sleep', 'workStudy', 'exercise', 'more'])
     setAnswer(state, 'exercise', 'no')
     expect(transcript(state, true)).toEqual(['sleep', 'workStudy', 'exercise', 'more'])
+  })
+})
+
+describe('adding after setup: what the summary says (polish 1)', () => {
+  it('says what is added, not "this is your week"', () => {
+    const state = createAddState(documentWith(), 'routine', env)
+    pick(state, 0, 'family', env)
+    expect(say(question(state, 'summary'))).toBe('Esto se añade a tu semana. Toca algo para cambiarlo.')
+    finishMore(state, 0)
+    expect(say(question(state, 'summary'))).toBe('Aún no hay nada que añadir.')
+  })
+
+  it('offers new ideas first and what the week already has after them, marked as such (polish 4)', () => {
+    const state = createAddState(documentWith([category('c-sleep', 'Sueño', { icon: '😴' })]), 'routine', env)
+    const replies = roundReplies(state, 0, speaker)
+    expect(replies.options.map((option) => option.label)).toEqual(['Trabajo', 'Estudio', 'Ejercicio', 'Familia', 'Amigos', 'Tiempo para ti', 'Aprender'])
+    expect(replies.stored.map((option) => option.label)).toEqual(['Sueño'])
   })
 })

@@ -511,6 +511,7 @@ export function roundExists(state: SetupState, index: number): boolean {
 // Adding to a routine offers each stored category first, as "into:<id>": picking one adds time to it.
 const INTO = 'into:'
 export const intoKey = (id: string) => `${INTO}${id}`
+export const isIntoKey = (key: string) => key.startsWith(INTO)
 
 // The topics a round can offer: the extras in setup; in add mode every topic the week does not have yet.
 function offeredTopics(state: SetupState): TopicId[] {
@@ -528,13 +529,13 @@ function offerable(state: SetupState, key: string): boolean {
   return category !== undefined && category.topic === undefined && category.categoryId === undefined && category.name.trim() !== ''
 }
 
-// A round's options: stored categories (adding a routine), the topics, then the person's own, minus everything already
-// picked except this round's answer.
+// A round's options: the topics, the person's own, then (adding a routine) the stored categories, minus everything
+// already picked except this round's answer. New ideas come first: they are what adding is mostly for.
 export function roundOptions(state: SetupState, index: number): string[] {
   const picks = picksOf(state)
   const stored = state.add?.entry === 'routine' ? state.add.stored.map((category) => intoKey(category.id)) : []
-  const own = state.categories.filter((category) => category.topic === undefined && !category.key.startsWith(INTO)).map((category) => category.key)
-  return [...stored, ...offeredTopics(state), ...own].filter((key) => offerable(state, key) && (!picks.includes(key) || picks[index] === key))
+  const own = state.categories.filter((category) => category.topic === undefined && !isIntoKey(category.key)).map((category) => category.key)
+  return [...offeredTopics(state), ...own, ...stored].filter((key) => offerable(state, key) && (!picks.includes(key) || picks[index] === key))
 }
 
 // The draft a picked key stands for, created on first pick: a topic, time for a stored category, or the person's own.

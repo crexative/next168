@@ -1,6 +1,6 @@
 import { sequence } from '../setupFlow'
 import {
-  categoryOf, commuteBase, intoKey, picksOf, roundIndex, roundOptions, statusOf, type CategoryDraft, type CategoryStatus, type RangeDraft, type ScreenId, type SetupState,
+  categoryOf, commuteBase, intoKey, isIntoKey, picksOf, roundIndex, roundOptions, statusOf, type CategoryDraft, type CategoryStatus, type RangeDraft, type ScreenId, type SetupState,
 } from '../setupModel'
 import { EXTRA_TOPICS, TOPICS, type TopicId } from '../setupTopics'
 
@@ -47,7 +47,11 @@ function destination(state: SetupState): 'work' | 'study' | 'both' | undefined {
 
 export function question(state: SetupState, screen: ScreenId): Line {
   const guided = (key: string, params?: Record<string, unknown>): Line => ({ key: `onboarding.guided.${key}`, params })
-  if (screen === 'summary') return { key: weekIsEmpty(state) ? 'onboarding.summary.empty' : 'onboarding.summary.bubble' }
+  if (screen === 'summary') {
+    // Adding lists only what is added: it says so, rather than "this is your week".
+    if (state.add) return { key: weekIsEmpty(state) ? 'onboarding.summary.addEmpty' : 'onboarding.summary.addBubble' }
+    return { key: weekIsEmpty(state) ? 'onboarding.summary.empty' : 'onboarding.summary.bubble' }
+  }
   if (screen === 'more' && state.add) return guided('add.question')
   if (screen !== 'more' && roundIndex(screen) !== undefined) return guided('again.question')
   if (screen.startsWith('extra:')) {
@@ -101,8 +105,12 @@ export function answer(state: SetupState, screen: ScreenId, speaker: Speaker): s
       const round = roundIndex(screen)
       if (round === undefined) return rangesText(state, screen, speaker)
       const picks = picksOf(state)
-      if (round < picks.length) return pickLabel(state, picks[round]!, speaker)
-      return answers.more !== null && answers.moreDone ? speaker.t(doneKey(round)) : skipped
+      // "What else…?" is answered by naming it; "Anything else?" by "Yes, …" or "No, that's all".
+      if (round < picks.length) {
+        const label = pickLabel(state, picks[round]!, speaker)
+        return round === 0 ? label : speaker.t('onboarding.guided.again.yes', { name: label })
+      }
+      return answers.more !== null && answers.moreDone ? speaker.t(DONE_KEY) : skipped
     }
   }
 }
@@ -118,11 +126,13 @@ export function pickLabel(state: SetupState, key: string, speaker: Speaker): str
   return stored?.name ?? categoryOf(state, key)?.name ?? ''
 }
 
-// The way out of a round: "Nothing else" when nothing was picked yet, "No, that's all" after a pick.
-const doneKey = (round: number) => (round === 0 ? 'onboarding.guided.nothingElse' : 'onboarding.guided.again.done')
+// The way out of every round, the first one included: one wording for "that is all".
+const DONE_KEY = 'onboarding.guided.again.done'
 
 export interface RoundReplies {
+  // New ideas first; what the week already has (adding a routine) after them, in a group of its own.
   options: { value: string; label: string }[]
+  stored: { value: string; label: string }[]
   // The round's answer when it is asked again: a pick, or the way out.
   current?: string
   done: { label: string; current: boolean }
@@ -131,10 +141,12 @@ export interface RoundReplies {
 export function roundReplies(state: SetupState, round: number, speaker: Speaker): RoundReplies {
   const picks = picksOf(state)
   const doneCurrent = round === picks.length && state.answers.more !== null && state.answers.moreDone
+  const all = roundOptions(state, round).map((key) => ({ value: key, label: pickLabel(state, key, speaker) }))
   return {
-    options: roundOptions(state, round).map((key) => ({ value: key, label: pickLabel(state, key, speaker) })),
+    options: all.filter((option) => !isIntoKey(option.value)),
+    stored: all.filter((option) => isIntoKey(option.value)),
     current: picks[round],
-    done: { label: speaker.t(doneKey(round)), current: doneCurrent },
+    done: { label: speaker.t(DONE_KEY), current: doneCurrent },
   }
 }
 

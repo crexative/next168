@@ -109,6 +109,7 @@ const into = computed({
   set: (id: string) => setPendingInto(props.state, id === '' ? undefined : id),
 })
 const intoId = useId()
+const storedId = useId()
 // The first question of an add session has no "nothing else": leaving is the frame's ‹.
 const showDone = computed(() => !(props.state.add && round.value === 0))
 const duplicate = ref(false)
@@ -182,6 +183,10 @@ const labels = computed(() => ({
 
         <div v-else-if="replies" class="round" role="group" :aria-label="groupLabel">
           <QuickReplies v-if="replies.options.length > 0" :options="replies.options" :current="replies.current" :current-label="t('onboarding.guided.current')" @answer="choose" />
+          <div v-if="replies.stored.length > 0" class="stored" role="group" :aria-labelledby="storedId" data-testid="add-stored">
+            <p :id="storedId" class="stored-label t-footnote">{{ t('onboarding.guided.add.yours') }}</p>
+            <QuickReplies :options="replies.stored" :current="replies.current" :current-label="t('onboarding.guided.current')" @answer="choose" />
+          </div>
           <div class="round-more">
             <button v-if="!otherOpen" class="other t-body" type="button" data-testid="more-other" :disabled="busy" @click="openOther">{{ t('onboarding.guided.more.other') }}</button>
             <form v-else class="other-form" @submit.prevent="addOther" @keydown.esc.stop.prevent="closeOther">
@@ -285,6 +290,8 @@ const labels = computed(() => ({
 .other-form { display: flex; flex-direction: column; gap: var(--space-2); align-items: flex-start; }
 .round { display: flex; flex-direction: column; gap: var(--space-3); }
 /* "Something else" and the way out share a row; the name form, once open, takes the row's width. */
+.stored { display: flex; flex-direction: column; gap: var(--space-2); }
+.stored-label { margin: 0; color: var(--label-2); }
 .round-more { display: flex; flex-wrap: wrap; align-items: flex-start; gap: var(--space-3); }
 .round-more > .other-form { flex: 1 0 100%; }
 .goes-in { display: flex; flex-direction: column; gap: var(--space-1); width: 100%; }
