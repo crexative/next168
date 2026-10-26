@@ -140,64 +140,26 @@ Create `netlify.toml` in project root:
 
 ### GitHub Pages
 
-#### Using gh-pages Package
+https://crexative.github.io/next168/ is deployed by `.github/workflows/deploy.yml`. It runs after the `CI` workflow
+succeeds on a push to `main` (type-check, lint, unit, build, e2e: the `verify` gate), checks out that same commit,
+builds it with Node 22 and `VITE_PUBLIC_URL=https://weeklid.crexative.com/`, and publishes `dist`. A failed or
+cancelled CI run deploys nothing; `workflow_dispatch` redeploys the current `main` by hand.
 
-```bash
-# Install gh-pages
-npm install -D gh-pages
-
-# Add deploy script to package.json
-# "deploy": "npm run build && gh-pages -d dist"
-
-# Deploy
-npm run deploy
-```
-
-#### Manual Deployment
-
-1. Build the project: `npm run build`
-2. Go to your repository on GitHub
-3. Settings > Pages
-4. Source: Deploy from a branch
-5. Branch: Select your branch with `/dist` folder
-6. Save
-
-#### Update vite.config.ts
-
-If deploying to `https://username.github.io/next168/`:
-
-```typescript
-export default defineConfig({
-  base: '/next168/',
-  // ... rest of config
-})
-```
+The build uses `base: './'`, so the same `dist` works at `/next168/` without a sub-path setting. The first deploy of
+this app replaces the old "Next168" app (05d781d) at the same address; its planner (localStorage `next168-data`)
+is imported on first load. `e2e/upgrade-from-production.spec.ts` builds that old app from Git and proves the upgrade.
 
 ### Cloudflare Pages
 
-#### Via Cloudflare Dashboard
+The official address, https://weeklid.crexative.com/, is the Cloudflare Pages project `next168`, which builds the
+`main` branch (production) and pull requests (previews):
 
-1. Go to [dash.cloudflare.com](https://dash.cloudflare.com)
-2. Pages > Create a project
-3. Connect to Git provider
-4. Configure build:
-   - **Build command**: `npm run build`
-   - **Build output directory**: `dist`
-   - **Root directory**: `/`
-5. Click "Save and Deploy"
+- **Build command**: `npm run type-check && npm run build-only -- --base /`
+- **Build output directory**: `dist`
+- **Production variables**: `NODE_VERSION=22.16.0`, `VITE_PUBLIC_URL=https://weeklid.crexative.com/`
 
-#### Via Wrangler CLI
-
-```bash
-# Install Wrangler
-npm i -g wrangler
-
-# Build
-npm run build
-
-# Deploy
-wrangler pages publish dist
-```
+Cloudflare builds on every push to `main` on its own, without waiting for CI: only a `main` that is merged through a
+green `verify` keeps that address safe.
 
 ## Custom Domain Setup
 

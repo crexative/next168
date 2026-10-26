@@ -12,7 +12,7 @@ const TYPES: Record<string, string> = {
 
 export interface TwoBuilds {
   origin(host?: '127.0.0.1' | 'localhost'): string
-  // Serves `dist` at /old/ from now on: the same URL now delivers the new build, as an update would.
+  // Serves `dist` at the old mount from now on: the same URL now delivers the new build, as an update would.
   serveAtOld(dist: string): void
   close(): Promise<void>
 }
@@ -26,9 +26,9 @@ async function file(root: string, path: string): Promise<string> {
   return join(root, 'index.html')
 }
 
-// One static server, two mounts on one origin: the new build at / and the pre-fence build at /old/.
+// One static server, two mounts on one origin: the new build at / and the older build at `oldMount` (/old/ by default).
 // `/blank.html` is an empty page of the origin, for seeding storage before any build opens it.
-export async function serveTwoBuilds(port: number, newDist: string, oldDist: string): Promise<TwoBuilds> {
+export async function serveTwoBuilds(port: number, newDist: string, oldDist: string, oldMount = '/old'): Promise<TwoBuilds> {
   let old = oldDist
   const server: Server = createServer((request, response) => {
     const path = decodeURIComponent(new URL(request.url ?? '/', 'http://x').pathname)
@@ -37,7 +37,7 @@ export async function serveTwoBuilds(port: number, newDist: string, oldDist: str
         response.writeHead(200, { 'Content-Type': TYPES['.html']!, 'Cache-Control': 'no-store' })
         return response.end('<!doctype html><title>blank</title>')
       }
-      const [root, rest] = path === '/old' || path.startsWith('/old/') ? [old, path.slice('/old'.length) || '/'] : [newDist, path]
+      const [root, rest] = path === oldMount || path.startsWith(`${oldMount}/`) ? [old, path.slice(oldMount.length) || '/'] : [newDist, path]
       const target = await file(root, rest)
       response.writeHead(200, { 'Content-Type': TYPES[extname(target)] ?? 'application/octet-stream', 'Cache-Control': 'no-store' })
       response.end(await readFile(target))
