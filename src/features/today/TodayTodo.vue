@@ -13,8 +13,9 @@ import ListGroup from '@/ui/ListGroup.vue'
 import { displayLocale, formatDate, formatDuration, formatMinuteOfDay } from '@/ui/format'
 import { joinInline, unbreakable } from '@/ui/inlineText'
 
-// «Por hacer hoy» (tasks design rev 2.1 §11.3): the to-dos and fixed-time tasks due today or earlier, which the week
-// never places, with a last row that adds one for today in the same two actions as the Tasks box.
+// «Por hacer hoy» (tasks design rev 2.1 §11.3): the to-dos due today or earlier (with or without a fixed time), which
+// the week never places, with a last row that adds one for today in the same two actions as the Tasks box. A task with
+// a length is in «Tu día» instead.
 const props = defineProps<{ today: string }>()
 
 const { t, locale } = useI18n()
@@ -28,7 +29,7 @@ const sheetOpen = ref(false)
 const categories = computed(() => new Map((planner.document?.categories ?? []).map((category) => [category.id, category])))
 const order = (task: Task) => [task.dueDate! < props.today ? 0 : 1, task.at ?? 24 * 60, task.dueDate!] as const
 const tasks = computed(() => (planner.document?.tasks ?? [])
-  .filter((task) => !task.doneAt && task.dueDate !== undefined && task.dueDate <= props.today && (task.durationMin === undefined || task.at !== undefined))
+  .filter((task) => !task.doneAt && task.dueDate !== undefined && task.dueDate <= props.today && task.durationMin === undefined)
   .sort((a, b) => {
     const [lateA, atA, dueA] = order(a), [lateB, atB, dueB] = order(b)
     return lateA - lateB || dueA.localeCompare(dueB) || atA - atB || a.priority - b.priority

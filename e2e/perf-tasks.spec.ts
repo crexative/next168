@@ -47,7 +47,7 @@ async function attempt(browser: Browser, baseURL: string, tasks: number, budgetM
     await page.addInitScript(() => {
       const marks = window as unknown as { tapDownAt?: number; tapFocusAt?: number }
       addEventListener('pointerdown', (event) => { if (event.isTrusted && marks.tapDownAt === undefined) marks.tapDownAt = event.timeStamp }, true)
-      addEventListener('focusin', (event) => { if ((event.target as Element).matches('form.add input[type=text]') && marks.tapFocusAt === undefined) marks.tapFocusAt = performance.now() }, true)
+      addEventListener('focusin', (event) => { if ((event.target as Element).matches('form.add textarea') && marks.tapFocusAt === undefined) marks.tapFocusAt = performance.now() }, true)
     })
     const start = Date.now()
     // Twice the budget: past that the attempt has failed anyway (the base commit shows nothing for minutes). The
@@ -55,7 +55,7 @@ async function attempt(browser: Browser, baseURL: string, tasks: number, budgetM
     const shown = page.goto('./#/tasks', { waitUntil: 'commit' }).then(() => page.getByTestId('placed-task').first().waitFor({ state: 'visible', timeout: 0 })).then(() => true, () => false)
     if (!await Promise.race([shown, delay(budgetMs * 2).then(() => false)])) return {}
     const populatedMs = Date.now() - start
-    const field = page.locator('form.add input[type=text]')
+    const field = page.locator('form.add textarea')
     const box = (await field.boundingBox())!
     await page.touchscreen.tap(box.x + box.width / 2, box.y + box.height / 2)
     await expect(field).toBeFocused()
