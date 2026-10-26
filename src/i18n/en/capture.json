@@ -1,0 +1,43 @@
+{
+  "placeholder": "Add a task… (or paste or dictate several)",
+  "dictationHint": "Type, paste, or dictate with your keyboard's microphone.",
+  "field": {
+    "date": "Date",
+    "time": "Time",
+    "duration": "Length"
+  },
+  "chip": {
+    "group": "What I understood",
+    "edit": "Change {field}: {value}",
+    "remove": "Remove “{text}” and keep it in the title",
+    "removed": "“{text}” is back in the title",
+    "tomorrow": "Tomorrow",
+    "dayAndTime": "{day}, {time}"
+  },
+  "preview": {
+    "label": "Several tasks",
+    "title": "{count} task | {count} tasks",
+    "addAll": "Add as {count} task | Add as {count} tasks",
+    "keepOne": "Keep as one task",
+    "keepOneTooLong": "Too long for one task (max. {max} characters).",
+    "lineTooLong": "This line is too long (max. {max} characters).",
+    "rowName": "Task {number}: {title}",
+    "rowTitle": "Title of task {number}",
+    "tooMany": "That is {count} lines and this box takes {max}. Your AI can sort them for you.",
+    "useAi": "Use with your AI",
+    "discard": "Discard",
+    "shown": "{count} lines: you can add them as tasks.",
+    "count": "{count} selected"
+  },
+  "added": "Added {count} task | Added {count} tasks",
+  "addedOne": "Added “{title}”",
+  "undoRefused": "Couldn't undo: some tasks changed.",
+  "status": {
+    "checking": "Checking whether it was saved…",
+    "unverified": "Couldn't check whether it was saved.",
+    "retry": "Try again",
+    "notSaved": "It wasn't saved. Tap “Add” to try again.",
+    "changed": "Your plan changed while you were typing. Check the list and add again.",
+    "invalid": "Check this task: something isn't valid."
+  }
+}

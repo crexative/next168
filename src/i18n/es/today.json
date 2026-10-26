@@ -56,5 +56,9 @@
   },
   "header": {
     "subtitle": "{date} · {hours} libres esta semana"
+  },
+  "todo": {
+    "title": "Por hacer hoy",
+    "add": "Añadir para hoy"
   }
 }

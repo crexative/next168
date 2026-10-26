@@ -17,7 +17,7 @@
   "complete": "Complete {title}",
   "empty": {
     "title": "Nothing to do",
-    "description": "Add a task above and it finds a free slot on its own."
+    "description": "Add whatever is on your mind. Give it a length and I'll find it a slot."
   },
   "add": {
     "title": "Add task",
@@ -33,7 +33,14 @@
     "when": "When?",
     "anyFreeTime": "Any free slot",
     "during": "During {category}",
-    "today": "Today"
+    "today": "Today",
+    "untimed": "No time",
+    "at": "Fixed time",
+    "otherDuration": "Other length (min)",
+    "minutesPlaceholder": "Minutes",
+    "notes": "Notes",
+    "fixedTooLong": "A fixed-time task lasts at most {hours} h.",
+    "links": "Links in the notes"
   },
   "priority": {
     "1": "High",
@@ -61,5 +68,12 @@
     "edit": "Edit task",
     "doneToday": "“{title}” is now for today",
     "dueMoved": "“{title}” is now due {date}"
-  }
+  },
+  "sections": {
+    "overdue": "Overdue",
+    "later": "Later",
+    "undated": "No date",
+    "showAll": "See all ({count})"
+  },
+  "overdueSince": "was due {date}"
 }

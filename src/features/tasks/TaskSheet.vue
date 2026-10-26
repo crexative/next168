@@ -8,7 +8,7 @@ import Button from '@/ui/Button.vue'
 import Sheet from '@/ui/Sheet.vue'
 import { readLastTaskCategory, rememberTaskCategory } from './lastCategory'
 import { useTaskActions } from './taskActions'
-import { draftFromTask, newDraft, plannerToday, taskFields, type TaskDraft } from './taskDraft'
+import { draftFromTask, draftProblem, newDraft, plannerToday, taskFields, type TaskDraft } from './taskDraft'
 import TaskOptions from './TaskOptions.vue'
 
 // One sheet to add a task ("+" in Week) and to edit one (a tap on its row or on the grid). Delete is a plain text
@@ -37,7 +37,7 @@ const stored = computed(() => planner.document?.tasks.find((candidate) => candid
 const isEditing = computed(() => props.taskId !== undefined)
 const categories = computed(() => planner.document?.categories ?? [])
 const dirty = computed(() => JSON.stringify(draft.value) !== initial.value)
-const canSave = computed(() => planner.writable && draft.value.title.trim().length > 0 && !saving.value)
+const canSave = computed(() => planner.writable && draft.value.title.trim().length > 0 && !saving.value && !draftProblem(draft.value))
 
 function categorySnapshot(categoryId: string): string | undefined {
   return categoryId === '' ? undefined : snapshotOf(categories.value.find((category) => category.id === categoryId))
@@ -84,12 +84,13 @@ async function save(): Promise<void> {
       const target = next.tasks.find((candidate) => candidate.id === props.taskId)
       assertEntry(target, taskSnapshot)
       if (!target) return
-      const { categoryId, dueDate, ...rest } = fields
-      Object.assign(target, rest)
-      if (categoryId === undefined) delete target.categoryId
-      else target.categoryId = categoryId
-      if (dueDate === undefined) delete target.dueDate
-      else target.dueDate = dueDate
+      target.title = fields.title
+      target.priority = fields.priority
+      // An optional field the form left empty is cleared on the stored task.
+      for (const key of ['categoryId', 'dueDate', 'durationMin', 'at', 'notes'] as const) {
+        if (fields[key] === undefined) delete target[key]
+        else Object.assign(target, { [key]: fields[key] })
+      }
     })
     if (result.ok) {
       if (fields.categoryId !== undefined) rememberTaskCategory(fields.categoryId)

@@ -62,7 +62,7 @@ it('offers a quickly added task "any free slot" by default, with Work but not Sl
   const when = () => host.querySelector<HTMLSelectElement>('[data-testid=task-when]')
   // "When?" appears once there is a title to file.
   expect(when()).toBeNull()
-  const title = host.querySelector<HTMLInputElement>('input[type=text]')!
+  const title = host.querySelector<HTMLTextAreaElement>('form.add textarea')!
   title.value = 'Call the bank'
   title.dispatchEvent(new Event('input'))
   await vi.waitFor(() => expect(when()).not.toBeNull())

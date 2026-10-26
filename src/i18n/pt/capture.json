@@ -1,0 +1,43 @@
+{
+  "placeholder": "Adicionar tarefa… (ou cole ou dite várias)",
+  "dictationHint": "Escreva, cole ou dite com o microfone do teclado.",
+  "field": {
+    "date": "Data",
+    "time": "Hora",
+    "duration": "Duração"
+  },
+  "chip": {
+    "group": "O que entendi",
+    "edit": "Mudar {field}: {value}",
+    "remove": "Tirar «{text}» e deixar no título",
+    "removed": "«{text}» volta ao título",
+    "tomorrow": "Amanhã",
+    "dayAndTime": "{day}, {time}"
+  },
+  "preview": {
+    "label": "Várias tarefas",
+    "title": "{count} tarefa | {count} tarefas",
+    "addAll": "Adicionar como {count} tarefa | Adicionar como {count} tarefas",
+    "keepOne": "Deixar como uma tarefa",
+    "keepOneTooLong": "Longo demais para uma só tarefa (máx. {max} caracteres).",
+    "lineTooLong": "Esta linha é longa demais (máx. {max} caracteres).",
+    "rowName": "Tarefa {number}: {title}",
+    "rowTitle": "Título da tarefa {number}",
+    "tooMany": "São {count} linhas e aqui cabem {max}. Sua IA pode organizá-las para você.",
+    "useAi": "Usar com sua IA",
+    "discard": "Descartar",
+    "shown": "{count} linhas: você pode adicioná-las como tarefas.",
+    "count": "{count} selecionadas"
+  },
+  "added": "{count} tarefa adicionada | {count} tarefas adicionadas",
+  "addedOne": "«{title}» adicionada",
+  "undoRefused": "Não foi possível desfazer: algumas tarefas mudaram.",
+  "status": {
+    "checking": "Verificando se foi salvo…",
+    "unverified": "Não foi possível verificar se foi salvo.",
+    "retry": "Tentar de novo",
+    "notSaved": "Não foi salvo. Toque em «Adicionar» para tentar de novo.",
+    "changed": "Seu plano mudou enquanto você escrevia. Revise a lista e adicione de novo.",
+    "invalid": "Revise esta tarefa: algo não é válido."
+  }
+}

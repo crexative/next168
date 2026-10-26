@@ -1,0 +1,43 @@
+{
+  "placeholder": "Aufgabe hinzufügen … (oder mehrere einfügen oder diktieren)",
+  "dictationHint": "Tippe, füge ein oder diktiere mit dem Mikrofon der Tastatur.",
+  "field": {
+    "date": "Datum",
+    "time": "Uhrzeit",
+    "duration": "Dauer"
+  },
+  "chip": {
+    "group": "Was ich verstanden habe",
+    "edit": "{field} ändern: {value}",
+    "remove": "„{text}“ entfernen und im Titel lassen",
+    "removed": "„{text}“ steht wieder im Titel",
+    "tomorrow": "Morgen",
+    "dayAndTime": "{day}, {time}"
+  },
+  "preview": {
+    "label": "Mehrere Aufgaben",
+    "title": "{count} Aufgabe | {count} Aufgaben",
+    "addAll": "Als {count} Aufgabe hinzufügen | Als {count} Aufgaben hinzufügen",
+    "keepOne": "Als eine Aufgabe lassen",
+    "keepOneTooLong": "Zu lang für eine Aufgabe (max. {max} Zeichen).",
+    "lineTooLong": "Diese Zeile ist zu lang (max. {max} Zeichen).",
+    "rowName": "Aufgabe {number}: {title}",
+    "rowTitle": "Titel von Aufgabe {number}",
+    "tooMany": "Das sind {count} Zeilen, hier passen {max}. Deine KI kann sie für dich ordnen.",
+    "useAi": "Mit deiner KI nutzen",
+    "discard": "Verwerfen",
+    "shown": "{count} Zeilen: Du kannst sie als Aufgaben hinzufügen.",
+    "count": "{count} ausgewählt"
+  },
+  "added": "{count} Aufgabe hinzugefügt | {count} Aufgaben hinzugefügt",
+  "addedOne": "„{title}“ hinzugefügt",
+  "undoRefused": "Rückgängig ging nicht: Einige Aufgaben haben sich geändert.",
+  "status": {
+    "checking": "Wird geprüft, ob es gespeichert wurde …",
+    "unverified": "Konnte nicht prüfen, ob es gespeichert wurde.",
+    "retry": "Erneut versuchen",
+    "notSaved": "Nicht gespeichert. Tippe auf „Hinzufügen“, um es erneut zu versuchen.",
+    "changed": "Dein Plan hat sich beim Tippen geändert. Prüfe die Liste und füge erneut hinzu.",
+    "invalid": "Prüfe diese Aufgabe: Etwas ist ungültig."
+  }
+}

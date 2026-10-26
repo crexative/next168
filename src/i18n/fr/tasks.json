@@ -17,7 +17,7 @@
   "complete": "Terminer {title}",
   "empty": {
     "title": "Rien à faire",
-    "description": "Ajoute une tâche ci-dessus : elle trouve toute seule un créneau libre."
+    "description": "Ajoute ce que tu as à faire. Donne-lui une durée et je lui trouve un créneau."
   },
   "add": {
     "title": "Ajouter une tâche",
@@ -33,7 +33,14 @@
     "when": "Quand ?",
     "anyFreeTime": "Tout créneau libre",
     "during": "Pendant {category}",
-    "today": "Aujourd'hui"
+    "today": "Aujourd'hui",
+    "untimed": "Sans durée",
+    "at": "Heure fixe",
+    "otherDuration": "Autre durée (min)",
+    "minutesPlaceholder": "Minutes",
+    "notes": "Notes",
+    "fixedTooLong": "Une tâche à heure fixe dure au plus {hours} h.",
+    "links": "Liens des notes"
   },
   "priority": {
     "1": "Haute",
@@ -61,5 +68,12 @@
     "edit": "Modifier la tâche",
     "doneToday": "« {title} » est pour aujourd'hui",
     "dueMoved": "Nouvelle échéance de « {title} » : {date}"
-  }
+  },
+  "sections": {
+    "overdue": "En retard",
+    "later": "Plus tard",
+    "undated": "Sans date",
+    "showAll": "Tout voir ({count})"
+  },
+  "overdueSince": "prévue le {date}"
 }

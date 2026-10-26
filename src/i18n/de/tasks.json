@@ -17,7 +17,7 @@
   "complete": "{title} erledigen",
   "empty": {
     "title": "Nichts zu tun",
-    "description": "Füge oben eine Aufgabe hinzu; sie findet von selbst einen freien Zeitraum."
+    "description": "Füge hinzu, was ansteht. Mit einer Dauer finde ich einen freien Platz."
   },
   "add": {
     "title": "Aufgabe hinzufügen",
@@ -33,7 +33,14 @@
     "when": "Wann?",
     "anyFreeTime": "In jeder freien Lücke",
     "during": "Während {category}",
-    "today": "Heute"
+    "today": "Heute",
+    "untimed": "Ohne Zeit",
+    "at": "Feste Uhrzeit",
+    "otherDuration": "Andere Dauer (Min.)",
+    "minutesPlaceholder": "Minuten",
+    "notes": "Notizen",
+    "fixedTooLong": "Eine Aufgabe mit fester Uhrzeit dauert höchstens {hours} h.",
+    "links": "Links in den Notizen"
   },
   "priority": {
     "1": "Hoch",
@@ -61,5 +68,12 @@
     "edit": "Aufgabe bearbeiten",
     "doneToday": "„{title}“ ist jetzt für heute",
     "dueMoved": "„{title}“ ist jetzt am {date} fällig"
-  }
+  },
+  "sections": {
+    "overdue": "Überfällig",
+    "later": "Später",
+    "undated": "Ohne Datum",
+    "showAll": "Alle anzeigen ({count})"
+  },
+  "overdueSince": "war fällig am {date}"
 }

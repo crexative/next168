@@ -16,25 +16,31 @@ let mounted: Mounted | undefined
 beforeEach(() => { localStorage.clear(); vi.useFakeTimers({ toFake: ['Date'] }); vi.setSystemTime(fixedNow()) })
 afterEach(() => { mounted?.unmount(); vi.useRealTimers(); document.body.innerHTML = '' })
 
-const field = () => mounted!.host.querySelector<HTMLInputElement>('form.add input[type=text]')!
+const field = () => mounted!.host.querySelector<HTMLTextAreaElement>('form.add textarea')!
 const details = () => mounted!.host.querySelector('[data-testid=task-details]')
 const when = () => mounted!.host.querySelector<HTMLSelectElement>('[data-testid=task-when]')!
 async function type(text: string) { field().value = text; field().dispatchEvent(new Event('input')); await nextTick() }
+// The box binds the planner (an async fingerprint) before it commits, so a few turns of the event loop pass first.
 async function submit() {
   mounted!.host.querySelector<HTMLFormElement>('form.add')!.dispatchEvent(new Event('submit'))
-  await mounted!.store.settled()
+  for (let turn = 0; turn < 10; turn++) {
+    await new Promise((resolve) => setTimeout(resolve, 0))
+    await mounted!.store.settled()
+  }
+  await nextTick()
 }
 const optionValues = () => [...when().options].map((option) => option.value)
 
-it('starts as one "Add task…" field; the length and "More options" appear once there is a title', async () => {
+it('starts as one "Add a task…" field; the length and "More options" appear once there is a title', async () => {
   mounted = await mountWithPlanner(TasksView, { ...done, categories: [WORK] })
-  expect(field().placeholder).toBe('Add task…')
-  expect(mounted.host.querySelectorAll('form.add input, form.add select, form.add button')).toHaveLength(1)
+  expect(field().placeholder).toBe('Add a task… (or paste or dictate several)')
+  expect(mounted.host.querySelectorAll('form.add textarea, form.add input, form.add select, form.add button')).toHaveLength(1)
   expect(details()).toBeNull()
   await type('Call the bank')
   const chips = [...details()!.querySelectorAll('[role=radiogroup] [role=radio]')].map((chip) => chip.textContent?.trim())
-  expect(chips.slice(0, 4)).toEqual(['15 min', '30 min', '1 h', '2 h'])
-  // "When?", the due date and the priority are one level deeper.
+  expect(chips.slice(0, 5)).toEqual(['No time', '15 min', '30 min', '1 h', '2 h'])
+  expect(details()!.querySelector('[role=radio][aria-checked=true]')!.textContent?.trim()).toBe('No time')
+  // The category, the due date, a fixed time, notes and the priority are one level deeper.
   const more = details()!.querySelector<HTMLElement>('[data-testid=task-more-options]')!
   expect(more.style.display).toBe('none')
   details()!.querySelector<HTMLButtonElement>('[data-testid=task-more]')!.click()
@@ -45,13 +51,14 @@ it('starts as one "Add task…" field; the length and "More options" appear once
   expect(details()).toBeNull()
 })
 
-it('adds with Enter using the defaults: a free slot, not a category', async () => {
+it('adds with Enter using the defaults: a to-do with no time and no category', async () => {
   mounted = await mountWithPlanner(TasksView, { ...done, categories: [SLEEP, WORK] })
   await type('Buy a gift for mum')
   await submit()
   const [task] = mounted.store.document!.tasks
-  expect(task).toMatchObject({ title: 'Buy a gift for mum', durationMin: 60, priority: 2 })
+  expect(task).toMatchObject({ title: 'Buy a gift for mum', priority: 2 })
   expect(task).not.toHaveProperty('categoryId')
+  expect(task).not.toHaveProperty('durationMin')
   expect(field().value).toBe('')
 })
 
@@ -60,7 +67,7 @@ it('offers "any free slot" first and never Sleep or the commute', async () => {
   await type('x')
   expect(optionValues()).toEqual(['', 'c-work', 'c-study'])
   expect(when().value).toBe('')
-  expect([...when().options].map((option) => option.textContent?.trim())).toEqual(['Any free slot', 'During Work', 'During Study'])
+  expect([...when().options].map((option) => option.textContent?.trim())).toEqual(['Any free slot', 'Work', 'Study'])
 })
 
 it('files the task under the category chosen with "During …" and takes the length from a chip', async () => {
@@ -182,7 +189,7 @@ it('still suggests the remembered choice when the planner finishes loading after
   expect(host.querySelector('form.add')).toBeNull()
   await store.load()
   await nextTick()
-  const input = host.querySelector<HTMLInputElement>('form.add input[type=text]')!
+  const input = host.querySelector<HTMLTextAreaElement>('form.add textarea')!
   input.value = 'x'
   input.dispatchEvent(new Event('input'))
   await nextTick()

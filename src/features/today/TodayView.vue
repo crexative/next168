@@ -21,6 +21,7 @@ import { formatDate } from '@/ui/format'
 import { useNow } from '@/features/week/useNow'
 import NowCard from './NowCard.vue'
 import TodayTimeline from './TodayTimeline.vue'
+import TodayTodo from './TodayTodo.vue'
 import type { ActualStatus } from './actuals'
 import { nextUp } from './nextUp'
 import { isAskable, planSince, readPlanSince, stampPlanSince } from './planSince'
@@ -147,6 +148,7 @@ function clear(occurrence: DatedOccurrence): void {
         <Button variant="tinted" href="#/week">{{ t('today.emptyDay.action') }}</Button>
       </EmptyState>
     </template>
+    <TodayTodo :today="today" />
   </div>
 </template>
 

@@ -17,7 +17,7 @@
   "complete": "Concluir {title}",
   "empty": {
     "title": "Nada a fazer",
-    "description": "Adicione uma tarefa acima e ela encontra um horário livre sozinha."
+    "description": "Adicione o que tiver pendente. Se der um tempo, eu encontro um espaço."
   },
   "add": {
     "title": "Adicionar tarefa",
@@ -33,7 +33,14 @@
     "when": "Quando?",
     "anyFreeTime": "Em qualquer horário livre",
     "during": "Durante {category}",
-    "today": "Hoje"
+    "today": "Hoje",
+    "untimed": "Sem tempo",
+    "at": "Hora fixa",
+    "otherDuration": "Outra duração (min)",
+    "minutesPlaceholder": "Minutos",
+    "notes": "Notas",
+    "fixedTooLong": "Uma tarefa com hora fixa dura no máximo {hours} h.",
+    "links": "Links das notas"
   },
   "priority": {
     "1": "Alta",
@@ -61,5 +68,12 @@
     "edit": "Editar tarefa",
     "doneToday": "“{title}” fica para hoje",
     "dueMoved": "Novo prazo de “{title}”: {date}"
-  }
+  },
+  "sections": {
+    "overdue": "Atrasadas",
+    "later": "Mais adiante",
+    "undated": "Sem data",
+    "showAll": "Ver todas ({count})"
+  },
+  "overdueSince": "venceu em {date}"
 }
