@@ -1,8 +1,9 @@
 // @vitest-environment node
 // Tasks P1-8 (design rev 6 §2.4, addendum 6.1 F4): the person-authority boundary on the real build graphs, and the
-// mutations that must each break it.
+// mutations that must each break it. The companion's graph is checked by the companion suite
+// (companion/test/authority.test.ts), which installs the companion's own esbuild.
 import { beforeAll, describe, expect, it } from 'vitest'
-import { appGraph, authorityViolations, companionGraph, PERSON_ACTIONS, repositoryRoot, type ModuleGraph } from './authorityGraph'
+import { appGraph, authorityViolations, PERSON_ACTIONS, repositoryRoot, type ModuleGraph } from './authorityGraph'
 
 const root = repositoryRoot()
 let app: ModuleGraph
@@ -19,13 +20,6 @@ describe('P1-8: only person UI reaches the person commit', () => {
     expect([...app.keys()].some((path) => path.startsWith('src/features/proposals/'))).toBe(true)
     expect(authorityViolations(app)).toEqual([])
   })
-
-  it('the companion graph never contains it', async () => {
-    const companion = await companionGraph(root)
-    expect([...companion.keys()]).toContain('companion/src/mcp.ts')
-    expect(companion.has(PERSON_ACTIONS)).toBe(false)
-    expect(authorityViolations(companion, personExports)).toEqual([])
-  }, 60_000)
 })
 
 describe('P1-8: each way around the boundary is caught', () => {
@@ -64,10 +58,4 @@ describe('P1-8: each way around the boundary is caught', () => {
   it('a computed import() anywhere in src fails the build', async () => {
     await expect(appGraph(root, { 'src/ui/mutationComputed.ts': "export const load = (name: string) => import(name)\n" })).rejects.toThrow(/non-literal dynamic import/)
   }, 120_000)
-
-  it('a companion module importing it', async () => {
-    const outcome = await companionGraph(root, { 'companion/src/mutation.ts': "import { addCapturedTasks } from '../../src/features/tasks/personActions'\nexport const run = addCapturedTasks\n" })
-      .then((graph) => authorityViolations(graph, personExports), (error: Error) => [`build failed: ${error.message.split('\n')[0]}`])
-    expect(outcome).not.toEqual([])
-  }, 60_000)
 })
