@@ -108,7 +108,9 @@ The wordmark is set in **Plus Jakarta Sans** (weight 720) by Tokotype, licensed 
 ## Technical names that stay "next168"
 
 So existing data and setups keep working, the rename does not touch: the IndexedDB databases (`next168`,
-`next168-calendars`), localStorage keys (`next168-*`), the export format id (`next168-export`), the broadcast
+`next168-calendars`, named by `PLANNER_DATABASE` and `CALENDAR_DATABASE`, which the storage fence upgrades in
+place), the `next168-commit` Web Lock every writer, old or new, takes, the pre-fence test build's cache
+(`node_modules/.cache/next168-pre-fence`), localStorage keys (`next168-*`), the export format id (`next168-export`), the broadcast
 channels, ICS event UIDs (`@next168.app`), environment variables (`NEXT168_*`), the companion's package, command,
 MCP server name and config key, its session cookie, the local development CA's name, the repository, the
 `package.json` name and the next168.app URLs. A chat AI may answer with a block labelled `next168` (prompts copied
