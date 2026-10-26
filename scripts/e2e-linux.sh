@@ -12,6 +12,14 @@ set -euo pipefail
 
 root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$root"
+pre_fence_commit="$(sed -nE "s/^export const PRE_FENCE_COMMIT = '([0-9a-f]{40})'$/\1/p" config/preFence.ts)"
+if [[ ! "$pre_fence_commit" =~ ^[0-9a-f]{40}$ ]]; then
+  echo "Cannot read PRE_FENCE_COMMIT (expected one 40-hex constant) from config/preFence.ts" >&2
+  exit 1
+fi
+if ! git cat-file -e "${pre_fence_commit}^{commit}" 2>/dev/null; then
+  git fetch --quiet --depth=1 origin "$pre_fence_commit"
+fi
 version="$(node -p "require('./package-lock.json').packages['node_modules/@playwright/test'].version")"
 base_image="mcr.microsoft.com/playwright:v${version}-noble"
 image="next168-e2e-linux:v${version}"
@@ -34,6 +42,7 @@ DOCKERFILE
 
 container="$(docker create --init --ipc=host "${platform_args[@]}" \
   -e CI=true \
+  -e NEXT168_PRE_FENCE_SOURCE=/work/.pre-fence-source \
   -v "next168-e2e-linux-node-modules-$slot:/work/node_modules" \
   -v "next168-e2e-linux-companion-node-modules-$slot:/work/companion/node_modules" \
   -v "next168-e2e-linux-dist-$slot:/work/dist" \
@@ -53,13 +62,23 @@ container="$(docker create --init --ipc=host "${platform_args[@]}" \
     install companion
     npx playwright test "$@"
   ' -- "$@")"
-trap 'docker rm -f -v "$container" >/dev/null 2>&1 || true' EXIT
+pre_fence_marker=''
+trap '
+  docker rm -f -v "$container" >/dev/null 2>&1 || true
+  if [[ -n "$pre_fence_marker" ]]; then rm -f "$pre_fence_marker"; fi
+' EXIT
 
 # Files deleted in the working tree but still tracked are skipped.
 git ls-files -z --cached --others --exclude-standard --deduplicate \
   | while IFS= read -r -d '' file; do if [[ -e "$file" ]]; then printf '%s\0' "$file"; fi; done \
   | COPYFILE_DISABLE=1 tar --no-xattrs --null -T - -cf - \
   | docker cp - "$container:/work"
+
+git archive --format=tar --prefix=.pre-fence-source/ "$pre_fence_commit" \
+  | docker cp - "$container:/work"
+pre_fence_marker="$(mktemp)"
+printf '%s\n' "$pre_fence_commit" > "$pre_fence_marker"
+docker cp "$pre_fence_marker" "$container:/work/.pre-fence-source/.commit"
 
 status=0
 docker start -a "$container" || status=$?

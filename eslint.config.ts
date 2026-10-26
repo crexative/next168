@@ -8,7 +8,7 @@ export default defineConfigWithVueTs(
     files: ['**/*.{ts,mts,tsx,vue}'],
   },
 
-  globalIgnores(['**/dist/**', '**/dist-ssr/**', '**/coverage/**', 'e2e/.results/**', 'e2e/.report/**', 'e2e/artifacts/**', 'dev-dist/**']),
+  globalIgnores(['**/dist/**', '**/dist-ssr/**', '**/coverage/**', 'e2e/.results/**', 'e2e/.report/**', 'e2e/artifacts/**', 'dev-dist/**', '.pre-fence-source/**']),
 
   pluginVue.configs['flat/essential'],
   vueTsConfigs.recommended,
