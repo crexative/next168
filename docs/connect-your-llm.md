@@ -1,6 +1,6 @@
-# Connect your LLM to Next168
+# Connect your LLM to Weeklid
 
-Next168 works without an account or companion. Browser mode keeps data in that browser and origin. The optional companion owns a separate workspace on this computer and lets an MCP client read it and submit proposals. A proposal never edits your planner until you approve it in Next168.
+Weeklid works without an account or companion. Browser mode keeps data in that browser and origin. The optional companion owns a separate workspace on this computer and lets an MCP client read it and submit proposals. A proposal never edits your planner until you approve it in Weeklid.
 
 ## Install and run
 
@@ -26,7 +26,7 @@ Sessions expire after 24 hours and on companion restart. Only the paired browser
 
 The companion stores `planner.json`, `planner.json.bak`, `proposals.json`, `mcp-token` and `calendars/<sourceId>.ics` in its private data directory. JSON and calendar writes use a synced temporary file and atomic rename, with a backup of previous bytes. A single companion process holds the workspace lock. After a crash, a lock is reclaimed only when its recorded PID no longer exists; an unreadable lock blocks startup for inspection. Files left by an interrupted write do not replace the primary.
 
-If the primary document is corrupt, Next168 blocks writes and offers a valid backup in the recovery screen. It never automatically restores or resets data. Restoration keeps both the backup and a separate copy of the corrupt bytes. A `durability-unknown` warning means rename committed but directory sync failed; the write is successful, and reloading reads the committed file. Preserve your backup before investigating disk errors.
+If the primary document is corrupt, Weeklid blocks writes and offers a valid backup in the recovery screen. It never automatically restores or resets data. Restoration keeps both the backup and a separate copy of the corrupt bytes. A `durability-unknown` warning means rename committed but directory sync failed; the write is successful, and reloading reads the committed file. Preserve your backup before investigating disk errors.
 
 ## Proposals that create categories
 
@@ -37,13 +37,13 @@ A proposal holds up to 200 changes and may create the categories it needs, so an
 {"op":"add_block","block":{"categoryId":"new-sleep","title":"Sleep","days":[0,1,2,3,4],"start":1350,"end":390}}
 ```
 
-`ref` is a temporary id chosen by the assistant. Later changes in the same proposal use it wherever a category id goes (`categoryId` of blocks and tasks, the `id` of `update_category_goal`). `goal` is optional ("no goal" when left out). On approval, Next168 gives each new category its real id and the first unused palette colour, and applies the whole proposal in one commit, or nothing. The proposal is refused, with a plain message, when a new name matches an existing or earlier new category (ignoring case and extra spaces), when a `ref` repeats or equals an existing id, or when a change uses a `ref` before its `add_category`. Older proposals without `add_category` stay valid.
+`ref` is a temporary id chosen by the assistant. Later changes in the same proposal use it wherever a category id goes (`categoryId` of blocks and tasks, the `id` of `update_category_goal`). `goal` is optional ("no goal" when left out). On approval, Weeklid gives each new category its real id and the first unused palette colour, and applies the whole proposal in one commit, or nothing. The proposal is refused, with a plain message, when a new name matches an existing or earlier new category (ignoring case and extra spaces), when a `ref` repeats or equals an existing id, or when a change uses a `ref` before its `add_category`. Older proposals without `add_category` stay valid.
 
 ## Move an existing workspace
 
-Export a Next168 backup from the old browser/origin. Open **Settings → Connect your LLM** in the paired companion page and import it into the empty workspace. The transfer includes raw calendar source texts; after import the client reads the saved document and source texts again and compares their content hash. The destination assigns its next revision, so verification compares against that normalized revision. Keep the original export if verification fails.
+Export a Weeklid backup from the old browser/origin. Open **Settings → Connect your LLM** in the paired companion page and import it into the empty workspace. The transfer includes raw calendar source texts; after import the client reads the saved document and source texts again and compares their content hash. The destination assigns its next revision, so verification compares against that normalized revision. Keep the original export if verification fails.
 
-The workspace identifier is retained; a proposal from another workspace is rejected. Pending proposals do not travel in an export. Ask for new proposals after transferring. Before adding Next168 to an iPhone Home Screen, export first, then import from inside the installed app; browser and installed origins can have different storage.
+The workspace identifier is retained; a proposal from another workspace is rejected. Pending proposals do not travel in an export. Ask for new proposals after transferring. Before adding Weeklid to an iPhone Home Screen, export first, then import from inside the installed app; browser and installed origins can have different storage.
 
 ## Claude Desktop
 
@@ -76,7 +76,7 @@ claude mcp add --transport stdio next168 -- node /absolute/path/to/next168/compa
 
 For a non-default workspace or port, use `--env NEXT168_HOME=/absolute/path --env NEXT168_PORT=1681` before the server name. See [Claude Code's MCP documentation](https://code.claude.com/docs/en/mcp) for scopes, server status and project trust.
 
-Ask: “Read my week, then propose one focus block. Do not apply anything.” Next168 shows a pending-proposal badge within five seconds while the page is visible. Open it, examine every before/after operation and overlap/goal warning, then approve or reject. Approval binds the proposal id, immutable content hash and base revision. A stale planner requires a fresh proposal. Repeated approval returns the original applied revision; it does not create another block, including after a crash between the document and proposal-status writes.
+Ask: “Read my week, then propose one focus block. Do not apply anything.” Weeklid shows a pending-proposal badge within five seconds while the page is visible. Open it, examine every before/after operation and overlap/goal warning, then approve or reject. Approval binds the proposal id, immutable content hash and base revision. A stale planner requires a fresh proposal. Repeated approval returns the original applied revision; it does not create another block, including after a crash between the document and proposal-status writes.
 
 ## HTTP clients and protocol support
 
@@ -100,7 +100,7 @@ In **Settings → Connect your LLM**, use **Export snapshot + prompt**. The file
 
 ## ChatGPT and privacy
 
-ChatGPT cannot reach this local-only listener directly. OpenAI documents an optional [Secure MCP Tunnel](https://developers.openai.com/api/docs/guides/secure-mcp-tunnels) that creates an outbound path to supported OpenAI products and requires separate account/workspace permissions. Enabling it changes the connection boundary and requires the user's choice; Next168 neither implements nor starts a tunnel. Use snapshot export/import to keep this deliverable local.
+ChatGPT cannot reach this local-only listener directly. OpenAI documents an optional [Secure MCP Tunnel](https://developers.openai.com/api/docs/guides/secure-mcp-tunnels) that creates an outbound path to supported OpenAI products and requires separate account/workspace permissions. Enabling it changes the connection boundary and requires the user's choice; Weeklid neither implements nor starts a tunnel. Use snapshot export/import to keep this deliverable local.
 
 A cloud assistant receives whatever its tools return; local storage does not make cloud inference private. `get_week` excludes block notes, but explicit list tools return their corresponding records. Planner titles, notes and calendar text are untrusted data, never executable instructions. MCP clients have read/propose authority only. An agent controlling the user's own browser or OS session is outside this boundary, as with other local applications. Do not give untrusted code that authority.
 

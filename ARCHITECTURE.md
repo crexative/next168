@@ -2,7 +2,7 @@
 
 ## Overview
 
-Next168 follows clean architecture principles with a focus on:
+Weeklid follows clean architecture principles with a focus on:
 - **SOLID principles** - Single Responsibility, Open/Closed, Liskov Substitution, Interface Segregation, Dependency Inversion
 - **DRY (Don't Repeat Yourself)** - Reusable utilities and components
 - **KISS (Keep It Simple, Stupid)** - Simple, readable code

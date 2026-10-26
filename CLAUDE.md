@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-**Next168** is a smart weekly planner built with Vue 3, TypeScript, and Pinia. It helps users master their 168-hour week by creating categories with hour limits, scheduling time blocks, and visualizing usage through charts and statistics. The app features full internationalization (i18n) with 5 languages and follows WCAG 2.1 Level AA accessibility standards.
+**Weeklid** (formerly Next168) is a smart weekly planner built with Vue 3, TypeScript, and Pinia. It helps users master their 168-hour week by creating categories with hour limits, scheduling time blocks, and visualizing usage through charts and statistics. The app features full internationalization (i18n) with 5 languages and follows WCAG 2.1 Level AA accessibility standards.
 
 ## Commands
 
@@ -208,21 +208,10 @@ StatsDashboard uses Chart.js for data visualization:
 
 ## Branding & Design System
 
-**Next168 Brand Colors** (defined in `src/assets/base.css`):
-```css
---next168-blue-deep: #1C2E4A;      /* Trust and focus */
---next168-green-neon: #30E6A5;     /* Energy and progress */
---next168-green-dark: #0D9B6E;     /* Accessible contrast version */
---next168-gray-light: #F4F5F7;     /* Clean balance */
---next168-black: #0D0D0D;          /* Visual strength */
-```
-
-**Semantic Color Variables**:
-- `--color-primary`: Main accent color (green-neon)
-- `--color-active-bg`: Active state background (green-dark for accessibility)
-- `--color-active-text`: Active state text (#ffffff)
-- `--color-hover-bg`: Hover state background (#e5e7eb)
-- `--color-hover-text`: Hover state text (#1f2937)
+**Weeklid brand** (formerly Next168): the Lidera mark and palette are specified in `docs/brand/README.md`. Colours
+are tokens in `src/assets/tokens.css` (light, dark, increased contrast): `--tint` (brand green, fills),
+`--tint-label` (green text), `--tint-text` (label on a filled tint), `--mark` and `--accent` (the symbol's W and maize
+tick; the accent is for the mark only). The mark components are `src/ui/AppMark.vue` and `src/ui/BrandLockup.vue`.
 
 **Accessibility**:
 - WCAG 2.1 Level AA compliant
