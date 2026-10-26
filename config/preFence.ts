@@ -2,8 +2,9 @@
 // that real code (Vitest alias `@old/*`, and an e2e build served at `/old/`) against the same storage as the new code.
 // It is pinned, not a merge-base: once the fence merges, a merge-base would contain the fence itself.
 import { execFileSync } from 'node:child_process'
-import { cpSync, existsSync, mkdirSync, readFileSync, renameSync, rmSync, statSync, symlinkSync, writeFileSync } from 'node:fs'
+import { existsSync, symlinkSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
+import { stageCommitTree } from './pinnedCommit'
 
 export const PRE_FENCE_COMMIT = '239b9bccd493bc992dc067b39aa0b22ca319f890'
 
@@ -11,39 +12,9 @@ export function preFenceDir(root: string): string {
   return join(root, 'node_modules', '.cache', 'next168-pre-fence', PRE_FENCE_COMMIT)
 }
 
-function git(root: string, args: string[]): Buffer {
-  return execFileSync('git', args, { cwd: root, stdio: ['ignore', 'pipe', 'pipe'], maxBuffer: 256 * 1024 * 1024 })
-}
-
 // Stages the pre-fence tree once (a shallow CI clone fetches the commit first). Returns its directory.
 export function ensurePreFenceSource(root: string): string {
-  const dir = preFenceDir(root)
-  if (existsSync(join(dir, '.complete'))) return dir
-  const staging = `${dir}.partial-${process.pid}`
-  rmSync(staging, { recursive: true, force: true })
-  mkdirSync(staging, { recursive: true })
-  const source = process.env.NEXT168_PRE_FENCE_SOURCE
-  if (source && existsSync(source) && statSync(source).isDirectory()) {
-    cpSync(source, staging, { recursive: true })
-    if (readFileSync(join(staging, '.commit'), 'utf8').trim() !== PRE_FENCE_COMMIT) {
-      throw new Error(`Pre-fence source commit must be ${PRE_FENCE_COMMIT}: ${source}`)
-    }
-  } else {
-    try {
-      git(root, ['cat-file', '-e', `${PRE_FENCE_COMMIT}^{commit}`])
-    } catch {
-      git(root, ['fetch', '--quiet', '--depth=1', 'origin', PRE_FENCE_COMMIT])
-    }
-    const archive = git(root, ['archive', '--format=tar', PRE_FENCE_COMMIT])
-    execFileSync('tar', ['-x', '-C', staging], { input: archive })
-  }
-  writeFileSync(join(staging, '.complete'), PRE_FENCE_COMMIT)
-  if (existsSync(join(dir, '.complete'))) rmSync(staging, { recursive: true, force: true })
-  else {
-    rmSync(dir, { recursive: true, force: true })
-    renameSync(staging, dir)
-  }
-  return dir
+  return stageCommitTree(root, PRE_FENCE_COMMIT, preFenceDir(root), 'Pre-fence', process.env.NEXT168_PRE_FENCE_SOURCE)
 }
 
 // Builds the pre-fence app once (with the e2e hooks, like the new build) for the old/new e2e. Returns its dist.

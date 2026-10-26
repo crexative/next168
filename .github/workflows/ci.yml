@@ -2,9 +2,9 @@ name: CI
 
 on:
   pull_request:
-    branches: ['feature/#3-local-first-next168']
+    branches: [main, 'feature/#3-local-first-next168']
   push:
-    branches: ['feature/#3-local-first-next168']
+    branches: [main, 'feature/#3-local-first-next168']
 
 permissions:
   contents: read

@@ -1,9 +1,13 @@
 name: Deploy to GitHub Pages
 
+# Deploys only a commit whose full CI run (type-check, lint, unit, build, e2e: the `verify` gate) succeeded on a
+# push to main, so a red commit never reaches https://crexative.github.io/next168/. workflow_dispatch redeploys the
+# current main by hand.
 on:
-  push:
-    branches:
-      - main
+  workflow_run:
+    workflows: [CI]
+    types: [completed]
+    branches: [main]
   workflow_dispatch:
 
 permissions:
@@ -17,21 +21,34 @@ concurrency:
 
 jobs:
   build:
+    # A pull request from a fork whose branch is also named `main` matches the branch filter: require a push to this
+    # repository's main.
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      (github.event.workflow_run.conclusion == 'success' &&
+       github.event.workflow_run.event == 'push' &&
+       github.event.workflow_run.head_branch == 'main' &&
+       github.event.workflow_run.head_repository.full_name == github.repository)
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout
+      - name: Checkout the commit CI verified
         uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.workflow_run.head_sha || github.sha }}
 
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: '22'
           cache: 'npm'
 
       - name: Install dependencies
         run: npm ci
 
+      # The share images print this address; the official one, also for the copy served from GitHub Pages.
       - name: Build
+        env:
+          VITE_PUBLIC_URL: https://weeklid.crexative.com/
         run: npm run build
 
       - name: Setup Pages
