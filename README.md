@@ -172,6 +172,8 @@ can never test each other's build. It never reuses a server that is already runn
 CI runs on Linux, whose fonts lay text out differently from macOS, so a green run on a Mac proves
 little for layout. Before pushing, reproduce CI's rendering with `npm run test:e2e:linux` (any
 `playwright test` arguments follow `--`, for example `npm run test:e2e:linux -- e2e/visual-integrity.spec.ts`).
+The runner checks for at least 1024 MB free on Docker's data disk before building;
+see [Linux E2E runner](docs/e2e-linux.md) for the threshold override and safe cleanup.
 It needs a running Docker engine (`colima start --cpu 4 --memory 6`), runs inside Playwright's official image for
 the locked version plus DejaVu fonts as on GitHub's runners, keeps its own `node_modules` and build in Docker
 volumes, and writes reports back to `e2e/.results` and `e2e/.report`. Set `NEXT168_E2E_LINUX_PLATFORM=linux/amd64`
