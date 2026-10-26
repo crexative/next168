@@ -3,8 +3,10 @@ import {
   bindingFor, clearDismissed, clearDraft, draftOf, idsMatchBaseline, isDismissed, loadDraft, markDismissed, parseDraft, parseSetupState,
   sameBinding, saveDraft, tabNonce,
 } from './draftStorage'
+import { planSetupCommit } from './setupCommit'
 import { createState, emptyState, ensureCategory, suggestRanges, type SetupState } from './setupModel'
 import { block, category, documentWith, env } from './setupFixtures'
+import legacyDrafts from './__fixtures__/legacyDraftsV2.json'
 
 function memory(initial: Record<string, string> = {}) {
   const items = new Map(Object.entries(initial))
@@ -154,5 +156,33 @@ describe('the dismissal flag', () => {
     expect(isDismissed('ws-first', storage)).toBe(true)
     expect(isDismissed('ws-first', storage)).toBe(true)
     expect(isDismissed('ws-other', storage)).toBe(false)
+  })
+})
+
+// Drafts saved by b8d9c9f (version 2) and the plans that build made for them, recorded before the "Anything else?" loop
+// changed what the answers mean. A draft from before the change must still write exactly what it would have written.
+describe('a version 2 draft keeps the commit it was made for (S1-8)', () => {
+  interface Fixture { about: string; document: 'stored' | 'firstRun'; draft: Record<string, unknown>; plan: unknown }
+  const recorded = legacyDrafts as { fixtures: Record<string, Fixture> }
+  const at = (hours: number) => hours * 60
+  const documents = {
+    stored: () => documentWith(
+      [category('c-work', 'Work', { icon: '💼' }), category('c-family', 'Family', { icon: '👨‍👩‍👧', colorKey: 'pink' }), category('c-chess', 'Chess', { colorKey: 'green' })],
+      [
+        block('b-work', 'c-work', [1, 2, 3, 4, 5], at(9), at(17), { title: 'Work' }),
+        block('b-family', 'c-family', [6], at(10), at(14), { title: 'Family' }),
+        block('b-chess', 'c-chess', [2], at(18), at(19), { title: 'Chess' }),
+      ],
+      { settings: { ...documentWith().settings, onboardingDone: true } },
+    ),
+    firstRun: () => documentWith([], [], { settings: { ...documentWith().settings, onboardingDone: false } }),
+  }
+
+  it.each(Object.entries(recorded.fixtures))('(%s) plans what b8d9c9f planned', (_name, fixture) => {
+    expect(fixture.draft.version).toBe(2)
+    const parsed = parseDraft(JSON.stringify(fixture.draft))
+    if (parsed === null || parsed === 'submitted') throw new Error(`the draft does not load: ${fixture.about}`)
+    let id = 0
+    expect(planSetupCommit(parsed, documents[fixture.document](), () => `n${++id}`)).toEqual(fixture.plan)
   })
 })

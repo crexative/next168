@@ -1,0 +1,1403 @@
+{
+  "source": "Recorded from b8d9c9f: each draft is what that build saved (version 2), and each plan is what its planSetupCommit returned for it on the named document, with ids n1, n2, … in order.",
+  "fixtures": {
+    "a": {
+      "about": "\"more\" never answered, at the summary; Family's end edited there",
+      "document": "stored",
+      "draft": {
+        "screen": "summary",
+        "answers": {
+          "sleep": "unanswered",
+          "workStudy": "unanswered",
+          "commute": "unanswered",
+          "exercise": "unanswered",
+          "more": null
+        },
+        "sleepSplit": false,
+        "categories": [
+          {
+            "key": "work",
+            "categoryId": "c-work",
+            "topic": "work",
+            "name": "Work",
+            "ranges": [
+              {
+                "key": "r1",
+                "blockId": "b-work",
+                "days": [
+                  1,
+                  2,
+                  3,
+                  4,
+                  5
+                ],
+                "start": 540,
+                "end": 1020,
+                "accepted": true,
+                "touched": false
+              }
+            ],
+            "suggested": true,
+            "removed": false,
+            "keepOverride": false
+          },
+          {
+            "key": "family",
+            "categoryId": "c-family",
+            "topic": "family",
+            "name": "Family",
+            "ranges": [
+              {
+                "key": "r2",
+                "blockId": "b-family",
+                "days": [
+                  6
+                ],
+                "start": 600,
+                "end": 900,
+                "accepted": true,
+                "touched": true,
+                "endSet": true
+              }
+            ],
+            "suggested": true,
+            "removed": false,
+            "keepOverride": false
+          },
+          {
+            "key": "custom:3",
+            "categoryId": "c-chess",
+            "name": "Chess",
+            "ranges": [
+              {
+                "key": "r4",
+                "blockId": "b-chess",
+                "days": [
+                  2
+                ],
+                "start": 1080,
+                "end": 1140,
+                "accepted": true,
+                "touched": false
+              }
+            ],
+            "suggested": true,
+            "removed": false,
+            "keepOverride": false
+          }
+        ],
+        "counter": 4,
+        "version": 2,
+        "binding": {
+          "kind": "stored",
+          "workspaceId": "workspace-1",
+          "fingerprint": "fp-legacy"
+        },
+        "open": true
+      },
+      "plan": {
+        "kind": "plan",
+        "plan": {
+          "newCategories": [],
+          "renames": [],
+          "newBlocks": [],
+          "blockUpdates": [
+            {
+              "id": "b-family",
+              "days": [
+                6
+              ],
+              "start": 600,
+              "end": 900
+            }
+          ],
+          "blockDeletes": [],
+          "categoryDeletes": [],
+          "keptForTasks": [],
+          "onboardingDone": false
+        },
+        "empty": false
+      }
+    },
+    "b": {
+      "about": "stored Family left out of the answer, then restored with Undo (keepOverride); stored Chess left out",
+      "document": "stored",
+      "draft": {
+        "screen": "summary",
+        "answers": {
+          "sleep": "unanswered",
+          "workStudy": "unanswered",
+          "commute": "unanswered",
+          "exercise": "unanswered",
+          "more": [
+            "friends"
+          ]
+        },
+        "sleepSplit": false,
+        "categories": [
+          {
+            "key": "work",
+            "categoryId": "c-work",
+            "topic": "work",
+            "name": "Work",
+            "ranges": [
+              {
+                "key": "r1",
+                "blockId": "b-work",
+                "days": [
+                  1,
+                  2,
+                  3,
+                  4,
+                  5
+                ],
+                "start": 540,
+                "end": 1020,
+                "accepted": true,
+                "touched": false
+              }
+            ],
+            "suggested": true,
+            "removed": false,
+            "keepOverride": false
+          },
+          {
+            "key": "family",
+            "categoryId": "c-family",
+            "topic": "family",
+            "name": "Family",
+            "ranges": [
+              {
+                "key": "r2",
+                "blockId": "b-family",
+                "days": [
+                  6
+                ],
+                "start": 600,
+                "end": 840,
+                "accepted": true,
+                "touched": false
+              }
+            ],
+            "suggested": true,
+            "removed": false,
+            "keepOverride": true
+          },
+          {
+            "key": "custom:3",
+            "categoryId": "c-chess",
+            "name": "Chess",
+            "ranges": [
+              {
+                "key": "r4",
+                "blockId": "b-chess",
+                "days": [
+                  2
+                ],
+                "start": 1080,
+                "end": 1140,
+                "accepted": true,
+                "touched": false
+              }
+            ],
+            "suggested": true,
+            "removed": false,
+            "keepOverride": false
+          },
+          {
+            "key": "friends",
+            "topic": "friends",
+            "name": "Friends",
+            "ranges": [
+              {
+                "key": "r5",
+                "days": [
+                  5
+                ],
+                "start": 1200,
+                "end": 1380,
+                "accepted": true,
+                "touched": false
+              }
+            ],
+            "suggested": true,
+            "removed": false,
+            "keepOverride": false
+          }
+        ],
+        "counter": 5,
+        "version": 2,
+        "binding": {
+          "kind": "stored",
+          "workspaceId": "workspace-1",
+          "fingerprint": "fp-legacy"
+        },
+        "open": true
+      },
+      "plan": {
+        "kind": "plan",
+        "plan": {
+          "newCategories": [
+            {
+              "id": "n1",
+              "name": "Friends",
+              "colorKey": "red",
+              "icon": "🧑‍🤝‍🧑",
+              "goal": {
+                "type": "none",
+                "hoursPerWeek": 0
+              }
+            }
+          ],
+          "renames": [],
+          "newBlocks": [
+            {
+              "id": "n2",
+              "categoryId": "n1",
+              "title": "Friends",
+              "days": [
+                5
+              ],
+              "start": 1200,
+              "end": 1380
+            }
+          ],
+          "blockUpdates": [],
+          "blockDeletes": [
+            "b-chess"
+          ],
+          "categoryDeletes": [
+            "c-chess"
+          ],
+          "keptForTasks": [],
+          "onboardingDone": false
+        },
+        "empty": false
+      }
+    },
+    "c": {
+      "about": "stored Family and Chess left out of the answer, at the summary: the plan deletes both",
+      "document": "stored",
+      "draft": {
+        "screen": "summary",
+        "answers": {
+          "sleep": "unanswered",
+          "workStudy": "unanswered",
+          "commute": "unanswered",
+          "exercise": "unanswered",
+          "more": [
+            "learning"
+          ]
+        },
+        "sleepSplit": false,
+        "categories": [
+          {
+            "key": "work",
+            "categoryId": "c-work",
+            "topic": "work",
+            "name": "Work",
+            "ranges": [
+              {
+                "key": "r1",
+                "blockId": "b-work",
+                "days": [
+                  1,
+                  2,
+                  3,
+                  4,
+                  5
+                ],
+                "start": 540,
+                "end": 1020,
+                "accepted": true,
+                "touched": false
+              }
+            ],
+            "suggested": true,
+            "removed": false,
+            "keepOverride": false
+          },
+          {
+            "key": "family",
+            "categoryId": "c-family",
+            "topic": "family",
+            "name": "Family",
+            "ranges": [
+              {
+                "key": "r2",
+                "blockId": "b-family",
+                "days": [
+                  6
+                ],
+                "start": 600,
+                "end": 840,
+                "accepted": true,
+                "touched": false
+              }
+            ],
+            "suggested": true,
+            "removed": false,
+            "keepOverride": false
+          },
+          {
+            "key": "custom:3",
+            "categoryId": "c-chess",
+            "name": "Chess",
+            "ranges": [
+              {
+                "key": "r4",
+                "blockId": "b-chess",
+                "days": [
+                  2
+                ],
+                "start": 1080,
+                "end": 1140,
+                "accepted": true,
+                "touched": false
+              }
+            ],
+            "suggested": true,
+            "removed": false,
+            "keepOverride": false
+          },
+          {
+            "key": "learning",
+            "topic": "learning",
+            "name": "Learning",
+            "ranges": [
+              {
+                "key": "r5",
+                "days": [
+                  2,
+                  4
+                ],
+                "start": 1200,
+                "end": 1260,
+                "accepted": true,
+                "touched": false
+              }
+            ],
+            "suggested": true,
+            "removed": false,
+            "keepOverride": false
+          }
+        ],
+        "counter": 5,
+        "version": 2,
+        "binding": {
+          "kind": "stored",
+          "workspaceId": "workspace-1",
+          "fingerprint": "fp-legacy"
+        },
+        "open": true
+      },
+      "plan": {
+        "kind": "plan",
+        "plan": {
+          "newCategories": [
+            {
+              "id": "n1",
+              "name": "Learning",
+              "colorKey": "yellow",
+              "icon": "📚",
+              "goal": {
+                "type": "min",
+                "hoursPerWeek": 2
+              }
+            }
+          ],
+          "renames": [],
+          "newBlocks": [
+            {
+              "id": "n2",
+              "categoryId": "n1",
+              "title": "Learning",
+              "days": [
+                2,
+                4
+              ],
+              "start": 1200,
+              "end": 1260
+            }
+          ],
+          "blockUpdates": [],
+          "blockDeletes": [
+            "b-family",
+            "b-chess"
+          ],
+          "categoryDeletes": [
+            "c-family",
+            "c-chess"
+          ],
+          "keptForTasks": [],
+          "onboardingDone": false
+        },
+        "empty": false
+      }
+    },
+    "d": {
+      "about": "\"more\" reopened by tapping its answer, after Friends and an own item (\"Guitar\") got edited times; stored Family and Chess left out",
+      "document": "stored",
+      "draft": {
+        "screen": "more",
+        "answers": {
+          "sleep": "unanswered",
+          "workStudy": "unanswered",
+          "commute": "unanswered",
+          "exercise": "unanswered",
+          "more": [
+            "friends",
+            "custom:6"
+          ]
+        },
+        "sleepSplit": false,
+        "categories": [
+          {
+            "key": "work",
+            "categoryId": "c-work",
+            "topic": "work",
+            "name": "Work",
+            "ranges": [
+              {
+                "key": "r1",
+                "blockId": "b-work",
+                "days": [
+                  1,
+                  2,
+                  3,
+                  4,
+                  5
+                ],
+                "start": 540,
+                "end": 1020,
+                "accepted": true,
+                "touched": false
+              }
+            ],
+            "suggested": true,
+            "removed": false,
+            "keepOverride": false
+          },
+          {
+            "key": "family",
+            "categoryId": "c-family",
+            "topic": "family",
+            "name": "Family",
+            "ranges": [
+              {
+                "key": "r2",
+                "blockId": "b-family",
+                "days": [
+                  6
+                ],
+                "start": 600,
+                "end": 840,
+                "accepted": true,
+                "touched": false
+              }
+            ],
+            "suggested": true,
+            "removed": false,
+            "keepOverride": false
+          },
+          {
+            "key": "custom:3",
+            "categoryId": "c-chess",
+            "name": "Chess",
+            "ranges": [
+              {
+                "key": "r4",
+                "blockId": "b-chess",
+                "days": [
+                  2
+                ],
+                "start": 1080,
+                "end": 1140,
+                "accepted": true,
+                "touched": false
+              }
+            ],
+            "suggested": true,
+            "removed": false,
+            "keepOverride": false
+          },
+          {
+            "key": "friends",
+            "topic": "friends",
+            "name": "Friends",
+            "ranges": [
+              {
+                "key": "r5",
+                "days": [
+                  5
+                ],
+                "start": 1200,
+                "end": 1320,
+                "accepted": true,
+                "touched": true,
+                "endSet": true
+              }
+            ],
+            "suggested": true,
+            "removed": false,
+            "keepOverride": false
+          },
+          {
+            "key": "custom:6",
+            "name": "Guitar",
+            "ranges": [
+              {
+                "key": "r7",
+                "days": [
+                  1,
+                  2,
+                  3,
+                  4,
+                  5
+                ],
+                "start": 420,
+                "end": 480,
+                "accepted": true,
+                "touched": true
+              }
+            ],
+            "suggested": true,
+            "removed": false,
+            "keepOverride": false
+          }
+        ],
+        "counter": 7,
+        "version": 2,
+        "binding": {
+          "kind": "stored",
+          "workspaceId": "workspace-1",
+          "fingerprint": "fp-legacy"
+        },
+        "open": true
+      },
+      "plan": {
+        "kind": "plan",
+        "plan": {
+          "newCategories": [
+            {
+              "id": "n1",
+              "name": "Friends",
+              "colorKey": "red",
+              "icon": "🧑‍🤝‍🧑",
+              "goal": {
+                "type": "none",
+                "hoursPerWeek": 0
+              }
+            },
+            {
+              "id": "n3",
+              "name": "Guitar",
+              "colorKey": "green",
+              "goal": {
+                "type": "none",
+                "hoursPerWeek": 0
+              }
+            }
+          ],
+          "renames": [],
+          "newBlocks": [
+            {
+              "id": "n2",
+              "categoryId": "n1",
+              "title": "Friends",
+              "days": [
+                5
+              ],
+              "start": 1200,
+              "end": 1320
+            },
+            {
+              "id": "n4",
+              "categoryId": "n3",
+              "title": "Guitar",
+              "days": [
+                1,
+                2,
+                3,
+                4,
+                5
+              ],
+              "start": 420,
+              "end": 480
+            }
+          ],
+          "blockUpdates": [],
+          "blockDeletes": [
+            "b-family",
+            "b-chess"
+          ],
+          "categoryDeletes": [
+            "c-family",
+            "c-chess"
+          ],
+          "keptForTasks": [],
+          "onboardingDone": false
+        },
+        "empty": false
+      }
+    },
+    "e": {
+      "about": "21 picks on a first run: the four extras and 17 own items",
+      "document": "firstRun",
+      "draft": {
+        "screen": "summary",
+        "answers": {
+          "sleep": "unanswered",
+          "workStudy": "unanswered",
+          "commute": "unanswered",
+          "exercise": "unanswered",
+          "more": [
+            "family",
+            "friends",
+            "me",
+            "learning",
+            "custom:5",
+            "custom:7",
+            "custom:9",
+            "custom:11",
+            "custom:13",
+            "custom:15",
+            "custom:17",
+            "custom:19",
+            "custom:21",
+            "custom:23",
+            "custom:25",
+            "custom:27",
+            "custom:29",
+            "custom:31",
+            "custom:33",
+            "custom:35",
+            "custom:37"
+          ]
+        },
+        "sleepSplit": false,
+        "categories": [
+          {
+            "key": "family",
+            "topic": "family",
+            "name": "Family",
+            "ranges": [
+              {
+                "key": "r1",
+                "days": [
+                  6
+                ],
+                "start": 600,
+                "end": 840,
+                "accepted": true,
+                "touched": false
+              }
+            ],
+            "suggested": true,
+            "removed": false,
+            "keepOverride": false
+          },
+          {
+            "key": "friends",
+            "topic": "friends",
+            "name": "Friends",
+            "ranges": [
+              {
+                "key": "r2",
+                "days": [
+                  5
+                ],
+                "start": 1200,
+                "end": 1380,
+                "accepted": true,
+                "touched": false
+              }
+            ],
+            "suggested": true,
+            "removed": false,
+            "keepOverride": false
+          },
+          {
+            "key": "me",
+            "topic": "me",
+            "name": "Time for you",
+            "ranges": [
+              {
+                "key": "r3",
+                "days": [
+                  0
+                ],
+                "start": 900,
+                "end": 1080,
+                "accepted": true,
+                "touched": false
+              }
+            ],
+            "suggested": true,
+            "removed": false,
+            "keepOverride": false
+          },
+          {
+            "key": "learning",
+            "topic": "learning",
+            "name": "Learning",
+            "ranges": [
+              {
+                "key": "r4",
+                "days": [
+                  2,
+                  4
+                ],
+                "start": 1200,
+                "end": 1260,
+                "accepted": true,
+                "touched": false
+              }
+            ],
+            "suggested": true,
+            "removed": false,
+            "keepOverride": false
+          },
+          {
+            "key": "custom:5",
+            "name": "Thing 1",
+            "ranges": [
+              {
+                "key": "r6",
+                "days": [
+                  1,
+                  2,
+                  3,
+                  4,
+                  5
+                ],
+                "start": 1080,
+                "end": 1140,
+                "accepted": true,
+                "touched": false
+              }
+            ],
+            "suggested": true,
+            "removed": false,
+            "keepOverride": false
+          },
+          {
+            "key": "custom:7",
+            "name": "Thing 2",
+            "ranges": [
+              {
+                "key": "r8",
+                "days": [
+                  1,
+                  2,
+                  3,
+                  4,
+                  5
+                ],
+                "start": 1140,
+                "end": 1200,
+                "accepted": true,
+                "touched": false
+              }
+            ],
+            "suggested": true,
+            "removed": false,
+            "keepOverride": false
+          },
+          {
+            "key": "custom:9",
+            "name": "Thing 3",
+            "ranges": [
+              {
+                "key": "r10",
+                "days": [
+                  1,
+                  2,
+                  3,
+                  4,
+                  5
+                ],
+                "start": 360,
+                "end": 420,
+                "accepted": true,
+                "touched": false
+              }
+            ],
+            "suggested": true,
+            "removed": false,
+            "keepOverride": false
+          },
+          {
+            "key": "custom:11",
+            "name": "Thing 4",
+            "ranges": [],
+            "suggested": true,
+            "removed": false,
+            "keepOverride": false
+          },
+          {
+            "key": "custom:13",
+            "name": "Thing 5",
+            "ranges": [],
+            "suggested": true,
+            "removed": false,
+            "keepOverride": false
+          },
+          {
+            "key": "custom:15",
+            "name": "Thing 6",
+            "ranges": [],
+            "suggested": true,
+            "removed": false,
+            "keepOverride": false
+          },
+          {
+            "key": "custom:17",
+            "name": "Thing 7",
+            "ranges": [],
+            "suggested": true,
+            "removed": false,
+            "keepOverride": false
+          },
+          {
+            "key": "custom:19",
+            "name": "Thing 8",
+            "ranges": [],
+            "suggested": true,
+            "removed": false,
+            "keepOverride": false
+          },
+          {
+            "key": "custom:21",
+            "name": "Thing 9",
+            "ranges": [],
+            "suggested": true,
+            "removed": false,
+            "keepOverride": false
+          },
+          {
+            "key": "custom:23",
+            "name": "Thing 10",
+            "ranges": [],
+            "suggested": true,
+            "removed": false,
+            "keepOverride": false
+          },
+          {
+            "key": "custom:25",
+            "name": "Thing 11",
+            "ranges": [],
+            "suggested": true,
+            "removed": false,
+            "keepOverride": false
+          },
+          {
+            "key": "custom:27",
+            "name": "Thing 12",
+            "ranges": [],
+            "suggested": true,
+            "removed": false,
+            "keepOverride": false
+          },
+          {
+            "key": "custom:29",
+            "name": "Thing 13",
+            "ranges": [],
+            "suggested": true,
+            "removed": false,
+            "keepOverride": false
+          },
+          {
+            "key": "custom:31",
+            "name": "Thing 14",
+            "ranges": [],
+            "suggested": true,
+            "removed": false,
+            "keepOverride": false
+          },
+          {
+            "key": "custom:33",
+            "name": "Thing 15",
+            "ranges": [],
+            "suggested": true,
+            "removed": false,
+            "keepOverride": false
+          },
+          {
+            "key": "custom:35",
+            "name": "Thing 16",
+            "ranges": [],
+            "suggested": true,
+            "removed": false,
+            "keepOverride": false
+          },
+          {
+            "key": "custom:37",
+            "name": "Thing 17",
+            "ranges": [],
+            "suggested": true,
+            "removed": false,
+            "keepOverride": false
+          }
+        ],
+        "counter": 38,
+        "version": 2,
+        "binding": {
+          "kind": "stored",
+          "workspaceId": "workspace-1",
+          "fingerprint": "fp-legacy"
+        },
+        "open": true
+      },
+      "plan": {
+        "kind": "plan",
+        "plan": {
+          "newCategories": [
+            {
+              "id": "n1",
+              "name": "Family",
+              "colorKey": "pink",
+              "icon": "👨‍👩‍👧",
+              "goal": {
+                "type": "none",
+                "hoursPerWeek": 0
+              }
+            },
+            {
+              "id": "n3",
+              "name": "Friends",
+              "colorKey": "red",
+              "icon": "🧑‍🤝‍🧑",
+              "goal": {
+                "type": "none",
+                "hoursPerWeek": 0
+              }
+            },
+            {
+              "id": "n5",
+              "name": "Time for you",
+              "colorKey": "teal",
+              "icon": "🎈",
+              "goal": {
+                "type": "min",
+                "hoursPerWeek": 3
+              }
+            },
+            {
+              "id": "n7",
+              "name": "Learning",
+              "colorKey": "yellow",
+              "icon": "📚",
+              "goal": {
+                "type": "min",
+                "hoursPerWeek": 2
+              }
+            },
+            {
+              "id": "n9",
+              "name": "Thing 1",
+              "colorKey": "blue",
+              "goal": {
+                "type": "none",
+                "hoursPerWeek": 0
+              }
+            },
+            {
+              "id": "n11",
+              "name": "Thing 2",
+              "colorKey": "green",
+              "goal": {
+                "type": "none",
+                "hoursPerWeek": 0
+              }
+            },
+            {
+              "id": "n13",
+              "name": "Thing 3",
+              "colorKey": "orange",
+              "goal": {
+                "type": "none",
+                "hoursPerWeek": 0
+              }
+            },
+            {
+              "id": "n15",
+              "name": "Thing 4",
+              "colorKey": "purple",
+              "goal": {
+                "type": "none",
+                "hoursPerWeek": 0
+              }
+            },
+            {
+              "id": "n16",
+              "name": "Thing 5",
+              "colorKey": "gray",
+              "goal": {
+                "type": "none",
+                "hoursPerWeek": 0
+              }
+            },
+            {
+              "id": "n17",
+              "name": "Thing 6",
+              "colorKey": "blue",
+              "goal": {
+                "type": "none",
+                "hoursPerWeek": 0
+              }
+            },
+            {
+              "id": "n18",
+              "name": "Thing 7",
+              "colorKey": "green",
+              "goal": {
+                "type": "none",
+                "hoursPerWeek": 0
+              }
+            },
+            {
+              "id": "n19",
+              "name": "Thing 8",
+              "colorKey": "orange",
+              "goal": {
+                "type": "none",
+                "hoursPerWeek": 0
+              }
+            },
+            {
+              "id": "n20",
+              "name": "Thing 9",
+              "colorKey": "pink",
+              "goal": {
+                "type": "none",
+                "hoursPerWeek": 0
+              }
+            },
+            {
+              "id": "n21",
+              "name": "Thing 10",
+              "colorKey": "purple",
+              "goal": {
+                "type": "none",
+                "hoursPerWeek": 0
+              }
+            },
+            {
+              "id": "n22",
+              "name": "Thing 11",
+              "colorKey": "teal",
+              "goal": {
+                "type": "none",
+                "hoursPerWeek": 0
+              }
+            },
+            {
+              "id": "n23",
+              "name": "Thing 12",
+              "colorKey": "yellow",
+              "goal": {
+                "type": "none",
+                "hoursPerWeek": 0
+              }
+            },
+            {
+              "id": "n24",
+              "name": "Thing 13",
+              "colorKey": "red",
+              "goal": {
+                "type": "none",
+                "hoursPerWeek": 0
+              }
+            },
+            {
+              "id": "n25",
+              "name": "Thing 14",
+              "colorKey": "gray",
+              "goal": {
+                "type": "none",
+                "hoursPerWeek": 0
+              }
+            },
+            {
+              "id": "n26",
+              "name": "Thing 15",
+              "colorKey": "blue",
+              "goal": {
+                "type": "none",
+                "hoursPerWeek": 0
+              }
+            },
+            {
+              "id": "n27",
+              "name": "Thing 16",
+              "colorKey": "green",
+              "goal": {
+                "type": "none",
+                "hoursPerWeek": 0
+              }
+            },
+            {
+              "id": "n28",
+              "name": "Thing 17",
+              "colorKey": "orange",
+              "goal": {
+                "type": "none",
+                "hoursPerWeek": 0
+              }
+            }
+          ],
+          "renames": [],
+          "newBlocks": [
+            {
+              "id": "n2",
+              "categoryId": "n1",
+              "title": "Family",
+              "days": [
+                6
+              ],
+              "start": 600,
+              "end": 840
+            },
+            {
+              "id": "n4",
+              "categoryId": "n3",
+              "title": "Friends",
+              "days": [
+                5
+              ],
+              "start": 1200,
+              "end": 1380
+            },
+            {
+              "id": "n6",
+              "categoryId": "n5",
+              "title": "Time for you",
+              "days": [
+                0
+              ],
+              "start": 900,
+              "end": 1080
+            },
+            {
+              "id": "n8",
+              "categoryId": "n7",
+              "title": "Learning",
+              "days": [
+                2,
+                4
+              ],
+              "start": 1200,
+              "end": 1260
+            },
+            {
+              "id": "n10",
+              "categoryId": "n9",
+              "title": "Thing 1",
+              "days": [
+                1,
+                2,
+                3,
+                4,
+                5
+              ],
+              "start": 1080,
+              "end": 1140
+            },
+            {
+              "id": "n12",
+              "categoryId": "n11",
+              "title": "Thing 2",
+              "days": [
+                1,
+                2,
+                3,
+                4,
+                5
+              ],
+              "start": 1140,
+              "end": 1200
+            },
+            {
+              "id": "n14",
+              "categoryId": "n13",
+              "title": "Thing 3",
+              "days": [
+                1,
+                2,
+                3,
+                4,
+                5
+              ],
+              "start": 360,
+              "end": 420
+            }
+          ],
+          "blockUpdates": [],
+          "blockDeletes": [],
+          "categoryDeletes": [],
+          "keptForTasks": [],
+          "onboardingDone": true
+        },
+        "empty": false
+      }
+    },
+    "f": {
+      "about": "on the times of stored Family, picked again, with Friends after it; stored Chess left out",
+      "document": "stored",
+      "draft": {
+        "screen": "extra:family",
+        "answers": {
+          "sleep": "unanswered",
+          "workStudy": "unanswered",
+          "commute": "unanswered",
+          "exercise": "unanswered",
+          "more": [
+            "family",
+            "friends"
+          ]
+        },
+        "sleepSplit": false,
+        "categories": [
+          {
+            "key": "work",
+            "categoryId": "c-work",
+            "topic": "work",
+            "name": "Work",
+            "ranges": [
+              {
+                "key": "r1",
+                "blockId": "b-work",
+                "days": [
+                  1,
+                  2,
+                  3,
+                  4,
+                  5
+                ],
+                "start": 540,
+                "end": 1020,
+                "accepted": true,
+                "touched": false
+              }
+            ],
+            "suggested": true,
+            "removed": false,
+            "keepOverride": false
+          },
+          {
+            "key": "family",
+            "categoryId": "c-family",
+            "topic": "family",
+            "name": "Family",
+            "ranges": [
+              {
+                "key": "r2",
+                "blockId": "b-family",
+                "days": [
+                  6
+                ],
+                "start": 600,
+                "end": 840,
+                "accepted": true,
+                "touched": false
+              }
+            ],
+            "suggested": true,
+            "removed": false,
+            "keepOverride": false
+          },
+          {
+            "key": "custom:3",
+            "categoryId": "c-chess",
+            "name": "Chess",
+            "ranges": [
+              {
+                "key": "r4",
+                "blockId": "b-chess",
+                "days": [
+                  2
+                ],
+                "start": 1080,
+                "end": 1140,
+                "accepted": true,
+                "touched": false
+              }
+            ],
+            "suggested": true,
+            "removed": false,
+            "keepOverride": false
+          },
+          {
+            "key": "friends",
+            "topic": "friends",
+            "name": "Friends",
+            "ranges": [
+              {
+                "key": "r5",
+                "days": [
+                  5
+                ],
+                "start": 1200,
+                "end": 1380,
+                "accepted": true,
+                "touched": false
+              }
+            ],
+            "suggested": true,
+            "removed": false,
+            "keepOverride": false
+          }
+        ],
+        "counter": 5,
+        "version": 2,
+        "binding": {
+          "kind": "stored",
+          "workspaceId": "workspace-1",
+          "fingerprint": "fp-legacy"
+        },
+        "open": true
+      },
+      "plan": {
+        "kind": "plan",
+        "plan": {
+          "newCategories": [
+            {
+              "id": "n1",
+              "name": "Friends",
+              "colorKey": "red",
+              "icon": "🧑‍🤝‍🧑",
+              "goal": {
+                "type": "none",
+                "hoursPerWeek": 0
+              }
+            }
+          ],
+          "renames": [],
+          "newBlocks": [
+            {
+              "id": "n2",
+              "categoryId": "n1",
+              "title": "Friends",
+              "days": [
+                5
+              ],
+              "start": 1200,
+              "end": 1380
+            }
+          ],
+          "blockUpdates": [],
+          "blockDeletes": [
+            "b-chess"
+          ],
+          "categoryDeletes": [
+            "c-chess"
+          ],
+          "keptForTasks": [],
+          "onboardingDone": false
+        },
+        "empty": false
+      }
+    }
+  }
+}
