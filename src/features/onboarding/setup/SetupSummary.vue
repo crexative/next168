@@ -6,6 +6,7 @@ import { formatWholeHours, wholeHourParts } from '@/ui/format'
 import Button from '@/ui/Button.vue'
 import Icon from '@/ui/Icon.vue'
 import { appendFromSummary, canAppend, clearRanges, setRemoved, weekTotals, type Issue, type SetupState } from '../setupModel'
+import { addGoalOverruns } from '../setupCommit'
 import { TOPICS } from '../setupTopics'
 import { summaryRows } from './conversation'
 import SummaryCard from './SummaryCard.vue'
@@ -35,9 +36,27 @@ const hasTasks = (key: string) => {
   const id = props.state.categories.find((category) => category.key === key)?.categoryId
   return id !== undefined && props.document.tasks.some((task) => task.categoryId === id)
 }
+const adding = computed(() => props.state.add !== undefined)
+// Adding: each item that goes into a stored category says so, and warns when that category's "at most" goal is passed.
+const overruns = computed(() => (adding.value ? addGoalOverruns(props.state, props.document) : new Map<string, number>()))
+const destinationOf = (key: string) => {
+  const into = props.state.categories.find((candidate) => candidate.key === key)?.into
+  return into === undefined ? undefined : props.document.categories.find((candidate) => candidate.id === into)
+}
+// "in Work" under an item going into Work, unless the item is simply called that.
+const destinationLine = (key: string) => {
+  const destination = destinationOf(key)
+  const title = props.state.categories.find((candidate) => candidate.key === key)?.name.trim().toLowerCase()
+  return destination && destination.name.trim().toLowerCase() !== title ? t('onboarding.summary.into', { name: destination.name }) : undefined
+}
+const warningOf = (key: string) => {
+  const destination = destinationOf(key)
+  const minutes = destination ? overruns.value.get(destination.id) : undefined
+  return minutes === undefined ? undefined : t('week.editor.warnings.goalOver', { category: destination!.name, hours: t('week.editor.hours', { hours: Math.round((minutes / 60) * 10) / 10 }) })
+}
 const colorOf = (key: string) => {
   const category = props.state.categories.find((candidate) => candidate.key === key)!
-  const stored = props.document.categories.find((candidate) => candidate.id === category.categoryId)
+  const stored = props.document.categories.find((candidate) => candidate.id === (category.categoryId ?? category.into))
   return stored ? categoryColor(stored) : `var(--cat-${category.topic ? TOPICS[category.topic].colorKey : 'blue'})`
 }
 
@@ -70,7 +89,7 @@ async function addMore(): Promise<void> {
 <template>
   <section class="week" data-testid="week-card" :aria-label="t('onboarding.summary.title')">
     <h4 class="week-title t-headline">{{ t('onboarding.summary.title') }}</h4>
-    <p class="counter t-body" role="status" data-testid="week-counter">
+    <p v-if="!adding" class="counter t-body" role="status" data-testid="week-counter">
       <strong>{{ t('onboarding.summary.assigned', { hours: formatWholeHours(totals.assigned) }) }}</strong> · {{ t('onboarding.summary.unassigned', { hours: formatWholeHours(totals.free) }) }}
     </p>
     <p v-if="totals.overlapping" class="warn t-body" data-testid="overlap-warning">⚠ {{ t('onboarding.summary.overlapping') }}</p>
@@ -85,7 +104,7 @@ async function addMore(): Promise<void> {
         <SummaryCard
           v-else
           :state="state" :category="row.category" :color="colorOf(row.category.key)" :expanded="expanded === row.category.key"
-          :has-tasks="hasTasks(row.category.key)" :place="place" :issues="issues" @toggle="toggle(row.category.key)" @remove="remove(row.category.key)" @edited="emit('edited')"
+          :has-tasks="hasTasks(row.category.key)" :place="place" :issues="issues" :destination="destinationLine(row.category.key)" :warning="warningOf(row.category.key)" @toggle="toggle(row.category.key)" @remove="remove(row.category.key)" @edited="emit('edited')"
         />
       </template>
     </ul>

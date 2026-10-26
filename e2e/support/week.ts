@@ -6,6 +6,43 @@ export async function addFromMenu(page: Page, name: string): Promise<void> {
   await page.getByRole('menuitem', { name, exact: true }).click()
 }
 
+// The classic "New routine" form: a press on an empty hour of the visible day column (Week "+" › Routine opens the
+// guided add instead). The press lands where nothing but the column itself is under the pointer.
+export async function openClassicRoutine(page: Page): Promise<void> {
+  for (let attempt = 0; attempt < 3; attempt++) {
+    // The week scrolls to the current hour and the day pager settles on arrival: press once nothing moves.
+    await page.waitForFunction(() => document.getAnimations().every((animation) => animation.playState !== 'running'))
+    const point = await page.evaluate(async () => {
+      const scrolled = () => Array.from(document.querySelectorAll<HTMLElement>('*')).filter((element) => element.scrollTop > 0 || element.scrollLeft > 0).map((element) => `${element.scrollTop},${element.scrollLeft}`).join('|') + `|${window.scrollY}`
+      let before = scrolled()
+      for (let frames = 0; frames < 60; frames++) {
+        await new Promise((resolve) => requestAnimationFrame(resolve))
+        const now = scrolled()
+        if (now === before && frames > 3) break
+        before = now
+      }
+      const columns = Array.from(document.querySelectorAll<HTMLElement>('.day-column')).filter((column) => {
+        const rect = column.getBoundingClientRect()
+        return rect.width > 0 && rect.left >= 0 && rect.right <= window.innerWidth + 1 && !column.closest('[aria-hidden=true]')
+      })
+      for (const column of columns) {
+        const rect = column.getBoundingClientRect()
+        const x = rect.left + Math.min(20, rect.width / 2)
+        for (let y = Math.max(rect.top, 0) + 8; y < Math.min(rect.bottom, window.innerHeight) - 8; y += 12) {
+          if (document.elementFromPoint(x, y) === column) return { x, y }
+        }
+      }
+      return null
+    })
+    if (!point) throw new Error('no empty hour on screen to press')
+    await page.mouse.click(point.x, point.y)
+    if (await page.getByRole('dialog').first().isVisible({ timeout: 1000 }).catch(() => false)) return
+    await page.waitForTimeout(300)
+    if (await page.getByRole('dialog').count() > 0) return
+  }
+  throw new Error('pressing an empty hour opened no sheet')
+}
+
 // The full titles a week was seeded with, by item id: what each item's accessible name must contain, independent of
 // anything the page draws or labels.
 export interface SeededTitles {

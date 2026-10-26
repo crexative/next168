@@ -10,7 +10,12 @@ const CANONICAL: ScreenId[] = ['sleep', 'workStudy', 'work', 'study', 'commute',
 
 export function sequence(state: SetupState): ScreenId[] {
   const { answers } = state
-  const screens: ScreenId[] = ['sleep', 'workStudy']
+  // Adding to a week asks only "What do you want to make time for?" and its rounds.
+  const screens: ScreenId[] = state.add ? [] : ['sleep', 'workStudy']
+  if (state.add) {
+    screens.push(...rounds(state))
+    return screens
+  }
   if (answers.workStudy === 'work' || answers.workStudy === 'both') screens.push('work')
   if (answers.workStudy === 'study' || answers.workStudy === 'both') screens.push('study')
   const worksOrStudies = ['work', 'study', 'both'].includes(answers.workStudy)
@@ -18,8 +23,13 @@ export function sequence(state: SetupState): ScreenId[] {
   if (worksOrStudies && answers.commute === 'yes') screens.push('commuteRanges')
   screens.push('exercise')
   if (answers.exercise === 'yes') screens.push('exerciseRanges')
-  // "Anything else?" asks again after each pick and its times, until the person says that is all.
-  screens.push('more')
+  screens.push(...rounds(state))
+  return screens
+}
+
+// "Anything else?" asks again after each pick and its times, until the person says that is all; then the summary.
+function rounds(state: SetupState): ScreenId[] {
+  const screens: ScreenId[] = ['more']
   picksOf(state).forEach((key, index) => {
     if (state.categories.some((category) => category.key === key)) screens.push(`extra:${key}`)
     if (roundExists(state, index + 1)) screens.push(roundScreen(index + 1))

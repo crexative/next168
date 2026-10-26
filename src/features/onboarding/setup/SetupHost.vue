@@ -12,11 +12,12 @@ import { useUndoToast } from '@/ui/undoToast'
 import {
   bindingFor, clearDismissed, clearDraft, draftOf, idsMatchBaseline, isDismissed, loadDraft, markDismissed, sameBinding, saveDraft, UNSAVED_WORKSPACE_KEY, type DraftBinding, type SetupDraft,
 } from '../draftStorage'
-import { setupOpen, setupRequest } from '../reopen'
-import { applySetupPlan, planSetupCommit } from '../setupCommit'
+import { addRequest, setupOpen, setupRequest } from '../reopen'
+import { applyAddPlan, applySetupPlan, planAddCommit, planSetupCommit } from '../setupCommit'
 import { nextScreen, partOf, sequence, TOTAL_PARTS } from '../setupFlow'
 import {
-  cloneState, createState, picksOf, prepareScreen, rangeProblem, roundIndex, type Issue, type ScreenId, type SetupEnv, type SetupState,
+  activeCategories, cloneState, createAddState, createState, picksOf, prepareScreen, rangeProblem, roundIndex,
+  type AddEntry, type Issue, type ScreenId, type SetupEnv, type SetupState,
 } from '../setupModel'
 import { categoryFor } from './conversation'
 import { TOPICS } from '../setupTopics'
@@ -67,6 +68,8 @@ function problemsOn(state: SetupState, screen: ScreenId): Issue[] {
 }
 
 const open = computed(() => phase.value !== 'closed')
+// Adding to a week after setup: a session of its own that is never saved as a draft and only ever adds.
+const adding = computed(() => flow.value?.add !== undefined)
 // The frame owns the whole screen from the moment it is published, in the same synchronous step: nothing behind it
 // (a sheet, a page heading, the sidebar) can take focus or act while it is open (sheetStack.ts).
 let releaseFullScreen: (() => void) | undefined
@@ -108,8 +111,9 @@ function show(state: SetupState, from: Baseline): void {
   editing = null
   baseline.value = from
   flow.value = state
-  pristine = JSON.stringify(freshState(from, 'sleep'))
-  reviewable.value = from.document.blocks.length > 0
+  // An add session starts as it is shown; a setup is unsaved once it differs from a fresh one.
+  pristine = JSON.stringify(state.add ? state : freshState(from, 'sleep'))
+  reviewable.value = !state.add && from.document.blocks.length > 0
   expanded.value = null
   issues.value = []
   message.value = ''
@@ -130,7 +134,7 @@ watch(() => planner.status, (status) => { if (status === 'error') openGeneration
 // baseline's await, right before the frame is published: a sheet or a storage error may have arrived meanwhile.
 const mayOpen = () => planner.status === 'ready' && !!planner.document && !anyModalOpen()
 
-async function openFlow(kind: 'auto' | 'entry'): Promise<void> {
+async function openFlow(kind: 'auto' | 'entry' | { add: AddEntry }): Promise<void> {
   if (phase.value !== 'closed' || transitioning.value || !mayOpen()) return
   const raw = captureSync()
   if (!raw) return
@@ -139,6 +143,11 @@ async function openFlow(kind: 'auto' | 'entry'): Promise<void> {
   try {
     const from = await finishBaseline(raw)
     if (generation !== openGeneration || !mayOpen()) return
+    // Adding never reads or writes the setup's draft.
+    if (typeof kind === 'object') {
+      show(createAddState(from.document, kind.add, env), from)
+      return
+    }
     const draft = loadDraft()
     const matches = draft !== null && sameBinding(draft.binding, from.binding) && idsMatchBaseline(draft, from.document, from.stored)
     if (draft && matches) {
@@ -174,13 +183,14 @@ function maybeOpenOnLoad(): void {
 
 watch(() => [planner.status, planner.document?.settings.onboardingDone, planner.document?.workspaceId] as const, maybeOpenOnLoad, { immediate: true })
 watch(setupRequest, () => { void openFlow('entry') })
+watch(addRequest, (request) => { if (request) void openFlow({ add: request.entry }) })
 
 // ---------- Draft ----------
 
 watch(() => (flow.value ? JSON.stringify(flow.value) : ''), () => persist(), { flush: 'sync' })
 
 function persist(): void {
-  if (phase.value !== 'screen' || !flow.value || !baseline.value) return
+  if (phase.value !== 'screen' || !flow.value || !baseline.value || adding.value) return
   if (JSON.stringify(flow.value) === pristine) { clearDraft(); return }
   if (!saveDraft(draftOf(flow.value, baseline.value.binding, true))) draftUnavailable.value = true
 }
@@ -255,7 +265,8 @@ function review(): void {
 
 function closeFlow(): void {
   if (locked.value || phase.value === 'closed') return
-  if (flow.value && baseline.value) {
+  // Closing an add session discards it, as the classic sheets do.
+  if (flow.value && baseline.value && !adding.value) {
     if (JSON.stringify(flow.value) === pristine) clearDraft()
     else saveDraft(draftOf(flow.value, baseline.value.binding, false))
     markDismissed(baseline.value.workspaceKey)
@@ -265,6 +276,24 @@ function closeFlow(): void {
 }
 
 // ---------- Saving: one guarded commit on a frozen snapshot ----------
+
+// A storage failure closes the frame, so the shell's error screen (Retry, Export a copy) is reachable. The setup keeps
+// its draft, closed but not dismissed (the person did not close it); an add session is discarded, unannounced.
+watch(() => planner.status, (status) => {
+  if (status !== 'error' || phase.value === 'closed') return
+  if (flow.value && baseline.value && !adding.value && JSON.stringify(flow.value) !== pristine) saveDraft(draftOf(flow.value, baseline.value.binding, false))
+  phase.value = 'closed'
+  flow.value = null
+  submitting.value = false
+}, { flush: 'sync' })
+
+function finishAdded(count: number, name: string): void {
+  undoToast.dismiss()
+  if (count > 0) announce(t('onboarding.summary.added', { count, name }, count))
+  phase.value = 'closed'
+  flow.value = null
+  submitting.value = false
+}
 
 function finishSaved(first: boolean): void {
   clearDraft()
@@ -278,10 +307,47 @@ function finishSaved(first: boolean): void {
   if (first) window.location.hash = '#/today'
 }
 
+async function submitAdd(from: Baseline, snapshot: SetupState): Promise<void> {
+  const planned = planAddCommit(snapshot, from.document, () => crypto.randomUUID())
+  if (planned.kind === 'invalid') {
+    issues.value = planned.issues
+    message.value = planned.issues.some((issue) => issue.code === 'destinationGone') ? t('onboarding.guided.errors.destinationGone') : ''
+    focusFirstIssue(planned.issues)
+    return
+  }
+  if (planned.kind === 'tooLarge') {
+    message.value = t('onboarding.summary.tooLarge')
+    return
+  }
+  const added = activeCategories(snapshot)
+  submitting.value = true
+  if (planned.empty) {
+    finishAdded(0, '')
+    return
+  }
+  const result = await planner.commit((draft) => {
+    assertDocumentHash(draft, from.hash)
+    applyAddPlan(draft, planned.plan)
+  }, { expect: { storedFingerprint: from.fingerprint, purgeEpoch: from.purgeEpoch } })
+  // A storage failure already closed the frame and left the shell's error screen in charge.
+  if (phase.value === 'closed') return
+  if (result.ok) finishAdded(added.length, added[0]?.name.trim() ?? '')
+  else if (result.reason === 'conflict' || result.reason === CHANGED_ELSEWHERE) await showCurrentWeek()
+  else {
+    message.value = t('onboarding.summary.addFailed')
+    planner.dismissError()
+    submitting.value = false
+  }
+}
+
 async function submit(): Promise<void> {
   if (locked.value || !flow.value || !baseline.value) return
   const from = baseline.value
   const snapshot = cloneState(flow.value)
+  if (snapshot.add) {
+    await submitAdd(from, snapshot)
+    return
+  }
   const planned = planSetupCommit(snapshot, from.document, () => crypto.randomUUID())
   if (planned.kind === 'invalid') {
     issues.value = planned.issues
@@ -302,6 +368,7 @@ async function submit(): Promise<void> {
     assertDocumentHash(draft, from.hash)
     applySetupPlan(draft, planned.plan)
   }, { expect: { storedFingerprint: from.fingerprint, purgeEpoch: from.purgeEpoch } })
+  if (phase.value === 'closed') return
   if (result.ok) {
     finishSaved(planned.plan.onboardingDone)
   } else if (result.reason === 'conflict' || result.reason === CHANGED_ELSEWHERE) {
@@ -318,20 +385,22 @@ function focusFirstIssue(list: Issue[]): void {
   const first = list[0]
   if (!first || !flow.value) return
   expanded.value = first.categoryKey
-  announce(first.code === 'nameRequired' || first.code === 'nameDuplicate' ? t(`onboarding.guided.errors.${first.code}`) : t('onboarding.guided.errors.overlap', { name: '', when: '' }))
+  announce(['nameRequired', 'nameDuplicate', 'destinationGone'].includes(first.code) ? t(`onboarding.guided.errors.${first.code}`) : t('onboarding.guided.errors.overlap', { name: '', when: '' }))
 }
 
 // Storage is no longer what the flow opened on. Nothing is written: the draft is dropped, the planner is reloaded, and
 // only a usable reload reopens the flow, with every binding rebuilt together from what was loaded.
 async function showCurrentWeek(): Promise<void> {
   transitioning.value = true
-  clearDraft()
+  const entry = flow.value?.add?.entry
+  if (!entry) clearDraft()
   planner.dismissError()
   await planner.load()
   const raw = captureSync()
   if (raw) {
     const from = await finishBaseline(raw)
-    show(freshState(from, 'summary'), from)
+    // An add session starts again from its first question, on the week as it is now.
+    show(entry ? createAddState(from.document, entry, env) : freshState(from, 'summary'), from)
     phase.value = 'conflict'
   } else {
     // A failed, corrupt, unsupported or read-only reload keeps the existing error screen.
@@ -345,6 +414,20 @@ async function showCurrentWeek(): Promise<void> {
 function understood(): void {
   phase.value = 'screen'
 }
+
+// ---------- Leaving the page with an unsaved add session ----------
+
+// The setup's draft survives a reload; an add session does not, so leaving the page with one asks first.
+function warnBeforeUnload(event: BeforeUnloadEvent): void {
+  event.preventDefault()
+  event.returnValue = ''
+}
+const unloadGuarded = computed(() => adding.value && dirty.value)
+watch(unloadGuarded, (guarded) => {
+  if (guarded) window.addEventListener('beforeunload', warnBeforeUnload)
+  else window.removeEventListener('beforeunload', warnBeforeUnload)
+}, { immediate: true })
+onBeforeUnmount(() => window.removeEventListener('beforeunload', warnBeforeUnload))
 
 // ---------- A field in view when the keyboard opens ----------
 
@@ -360,19 +443,19 @@ onBeforeUnmount(() => viewport?.removeEventListener('resize', scrollFocusedIntoV
 
 <template>
   <SetupFrame
-    :open="open" :title="t('onboarding.guided.sheetTitle')" :close-label="t('onboarding.guided.close')"
+    :open="open" :title="t(adding ? 'onboarding.guided.add.title' : 'onboarding.guided.sheetTitle')" :close-label="t('onboarding.guided.close')"
     :progress-label="t('onboarding.guided.progress', { step: part, total: TOTAL_PARTS })"
-    :count-label="t('onboarding.guided.progressShort', { step: part, total: TOTAL_PARTS })" :part="part" :total="TOTAL_PARTS" :locked="locked" :dirty="dirty"
+    :count-label="t('onboarding.guided.progressShort', { step: part, total: TOTAL_PARTS })" :part="part" :total="adding ? 0 : TOTAL_PARTS" :locked="locked" :dirty="dirty"
     @close="closeFlow"
   >
     <div class="setup-lock" :inert="locked || undefined">
-      <div v-if="phase === 'conflict'" class="setup conflict" data-testid="setup" data-state="conflict">
+      <div v-if="phase === 'conflict'" class="setup conflict" data-testid="setup" data-state="conflict" :data-mode="adding ? 'add' : 'setup'">
         <div class="conflict-column">
           <p class="t-title-2" role="alert" data-testid="changed-elsewhere">{{ t('onboarding.summary.changedElsewhere') }}</p>
           <Button data-primary data-setup-initial-focus data-testid="understood" @click="understood">{{ t('onboarding.summary.understood') }}</Button>
         </div>
       </div>
-      <div v-else-if="flow && baseline" class="setup" data-testid="setup" :data-screen="flow.screen" :aria-busy="locked || undefined">
+      <div v-else-if="flow && baseline" class="setup" data-testid="setup" :data-screen="flow.screen" :data-mode="adding ? 'add' : 'setup'" :aria-busy="locked || undefined">
         <SetupConversation
           v-model:expanded="expanded" :state="flow" :document="baseline.document" :first="!baseline.document.settings.onboardingDone" :reviewable="reviewable"
           :issues="issues" :busy="locked" :message="message" :show-trust="browserMode" :resumed="resumed" :draft-unavailable="draftUnavailable"

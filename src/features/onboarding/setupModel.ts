@@ -1,7 +1,7 @@
 import { MINUTES_PER_DAY, MINUTES_PER_WEEK, type DayIndex, type Goal, type PlannerDocument, type TimeBlock } from '@/core/model'
 import { occurrences, overlaps } from '@/core/time'
 import {
-  COMMUTE_FALLBACK, EXTRA_TOPICS, OWN_DEFAULT, STUDY_WITH_WORK, TOPICS, TOPIC_IDS, type GoalKind, type TopicId, type TopicRange,
+  ADD_TOPICS, COMMUTE_FALLBACK, EXTRA_TOPICS, OWN_DEFAULT, STUDY_WITH_WORK, TOPICS, TOPIC_IDS, type GoalKind, type TopicId, type TopicRange,
 } from './setupTopics'
 
 // The guided setup's draft: everything a person has answered, in a shape that survives a reload. Pure data and pure
@@ -47,7 +47,15 @@ export interface CategoryDraft {
   removed: boolean
   // "Undo" on a category an answer removed: it stays whatever the answers say.
   keepOverride: boolean
+  // Add mode only: the stored category this draft's blocks go into (it creates no category of its own).
+  into?: string
 }
+
+// Add mode: what the week already holds, read-only context for overlaps, placement and the "Goes in" choice.
+export interface StoredRef { id: string; name: string; topic?: TopicId }
+export interface FixedSlot extends Slot { categoryId: string; name: string }
+export type AddEntry = 'routine' | 'category'
+export interface AddContext { entry: AddEntry; stored: StoredRef[]; fixed: FixedSlot[] }
 
 export interface SetupState {
   screen: ScreenId
@@ -55,8 +63,11 @@ export interface SetupState {
   sleepSplit: boolean
   categories: CategoryDraft[]
   counter: number
-  // A name typed and not added yet: part of the draft, so it counts as unsaved input and survives a reload.
-  pending?: { name: string }
+  // A name typed and not added yet: part of the draft, so it counts as unsaved input and survives a reload. In add
+  // mode, where it goes too: a stored category id ("Goes in"), and whether the person chose it themselves.
+  pending?: { name: string; into?: string; intoTouched?: boolean }
+  // Present only when adding to a week after setup: the session holds new drafts only (setup mode has none of this).
+  add?: AddContext
 }
 
 export interface SetupEnv {
@@ -130,6 +141,8 @@ export type CategoryStatus = 'active' | 'removed' | 'inactive'
 // "no" and never stored) produce nothing. A stored category nobody answered about stays as it is.
 export function statusOf(state: SetupState, category: CategoryDraft): CategoryStatus {
   if (category.removed) return 'removed'
+  // Adding: what is picked counts, whatever the setup's answers would say.
+  if (state.add) return picksOf(state).includes(category.key) ? 'active' : 'inactive'
   const stored = category.categoryId !== undefined
   if (stored && category.keepOverride) return 'active'
   const tri = triOf(state, category)
@@ -206,8 +219,10 @@ export function placeSlot(slot: Slot, taken: readonly Slot[]): { slot: Slot; cla
   return { slot, clash: true }
 }
 
+const fixedSlots = (state: SetupState): FixedSlot[] => state.add?.fixed ?? []
+
 function takenSlots(state: SetupState): Slot[] {
-  return activeRanges(state).map((item) => item.slot)
+  return [...fixedSlots(state), ...activeRanges(state).map((item) => item.slot)]
 }
 
 function newRange(state: SetupState, slot: Slot, extra: Partial<RangeDraft> = {}): RangeDraft {
@@ -322,14 +337,14 @@ export function setSleepSplit(state: SetupState, split: boolean): void {
 
 // ---------- Validation ----------
 
-export type IssueCode = 'noDays' | 'sameTime' | 'overlap' | 'nameRequired' | 'nameDuplicate'
+export type IssueCode = 'noDays' | 'sameTime' | 'overlap' | 'nameRequired' | 'nameDuplicate' | 'destinationGone'
 
 export interface Issue {
   code: IssueCode
   categoryKey: string
   rangeKey?: string
-  // For an overlap: the other range's category and its slot.
-  with?: { categoryKey: string; slot: Slot }
+  // For an overlap: the other range's category and its slot; `name` when it is a stored block (add mode).
+  with?: { categoryKey: string; slot: Slot; name?: string }
 }
 
 // What is wrong with one range, whether or not it blocks a save: shown live on the range itself.
@@ -338,7 +353,9 @@ export function rangeProblem(state: SetupState, category: CategoryDraft, range: 
   if (range.start === range.end) return { code: 'sameTime', categoryKey: category.key, rangeKey: range.key }
   const slot = blockSlot(category, range)
   const clash = activeRanges(state).find((other) => other.range.key !== range.key && slotsOverlap(slot, other.slot))
-  return clash ? { code: 'overlap', categoryKey: category.key, rangeKey: range.key, with: { categoryKey: clash.category.key, slot: clash.slot } } : undefined
+  if (clash) return { code: 'overlap', categoryKey: category.key, rangeKey: range.key, with: { categoryKey: clash.category.key, slot: clash.slot } }
+  const stored = fixedSlots(state).find((other) => slotsOverlap(slot, other))
+  return stored ? { code: 'overlap', categoryKey: category.key, rangeKey: range.key, with: { categoryKey: stored.categoryId, slot: stored, name: stored.name } } : undefined
 }
 
 // Blocking issues apply only to what this session adds or edits. Stored content that was never touched is left alone.
@@ -491,18 +508,44 @@ export function roundExists(state: SetupState, index: number): boolean {
   return picks !== null && (index < picks.length || (index === picks.length && picks.length < MAX_PICKS))
 }
 
-// What a round can offer: an extra that is not stored, or something of the person's own from this session.
+// Adding to a routine offers each stored category first, as "into:<id>": picking one adds time to it.
+const INTO = 'into:'
+export const intoKey = (id: string) => `${INTO}${id}`
+
+// The topics a round can offer: the extras in setup; in add mode every topic the week does not have yet.
+function offeredTopics(state: SetupState): TopicId[] {
+  if (!state.add) return EXTRA_TOPICS
+  const present = new Set(state.add.stored.map((category) => category.topic))
+  return ADD_TOPICS.filter((topic) => !present.has(topic))
+}
+
+// What a round can offer: a topic that is not stored, a stored category to add time to (adding a routine), or
+// something of the person's own from this session.
 function offerable(state: SetupState, key: string): boolean {
   const category = categoryOf(state, key)
-  if ((EXTRA_TOPICS as string[]).includes(key)) return category?.categoryId === undefined
+  if ((offeredTopics(state) as string[]).includes(key)) return category?.categoryId === undefined
+  if (key.startsWith(INTO)) return state.add?.entry === 'routine' && state.add.stored.some((stored) => intoKey(stored.id) === key)
   return category !== undefined && category.topic === undefined && category.categoryId === undefined && category.name.trim() !== ''
 }
 
-// A round's options: the extras, then the person's own, minus everything already picked except this round's answer.
+// A round's options: stored categories (adding a routine), the topics, then the person's own, minus everything already
+// picked except this round's answer.
 export function roundOptions(state: SetupState, index: number): string[] {
   const picks = picksOf(state)
-  const own = state.categories.filter((category) => category.topic === undefined).map((category) => category.key)
-  return [...EXTRA_TOPICS, ...own].filter((key) => offerable(state, key) && (!picks.includes(key) || picks[index] === key))
+  const stored = state.add?.entry === 'routine' ? state.add.stored.map((category) => intoKey(category.id)) : []
+  const own = state.categories.filter((category) => category.topic === undefined && !category.key.startsWith(INTO)).map((category) => category.key)
+  return [...stored, ...offeredTopics(state), ...own].filter((key) => offerable(state, key) && (!picks.includes(key) || picks[index] === key))
+}
+
+// The draft a picked key stands for, created on first pick: a topic, time for a stored category, or the person's own.
+function draftFor(state: SetupState, key: string, env: SetupEnv): CategoryDraft {
+  if (key.startsWith(INTO)) {
+    const stored = state.add!.stored.find((category) => intoKey(category.id) === key)!
+    const draft = ensureCategory(state, key, undefined, stored.name)
+    draft.into = stored.id
+    return draft
+  }
+  return TOPIC_IDS.includes(key as TopicId) ? ensureCategory(state, key, key as TopicId, env.topicName(key as TopicId)) : categoryOf(state, key)!
 }
 
 // Choosing at round i replaces its pick, or adds one at the round after the last pick (which opens the next round).
@@ -514,8 +557,7 @@ export function pick(state: SetupState, index: number, key: string, env: SetupEn
   if (at === index) return true
   if (at >= 0 || !offerable(state, key)) return false
   if (index === picks.length && picks.length >= MAX_PICKS) return false
-  const category = (EXTRA_TOPICS as string[]).includes(key) ? ensureCategory(state, key, key as TopicId, env.topicName(key as TopicId)) : categoryOf(state, key)!
-  category.removed = false
+  draftFor(state, key, env).removed = false
   const next = [...picks]
   next[index] = key
   state.answers.more = next
@@ -529,10 +571,42 @@ export function finishMore(state: SetupState, index: number): void {
   state.answers.moreDone = true
 }
 
-// The name in the "Something else" field: kept while it has text, gone when it is empty.
+// The name in the "Something else" field: kept while it has text, gone when it is empty. Adding a routine, the "Goes
+// in" choice follows the name only until the person picks it: it shows the one stored category of exactly that name.
 export function setPendingName(state: SetupState, name: string): void {
-  if (name === '') delete state.pending
-  else state.pending = { name }
+  const touched = state.pending?.intoTouched === true
+  if (name === '' && !touched) { delete state.pending; return }
+  const pending: NonNullable<SetupState['pending']> = { name }
+  if (touched) Object.assign(pending, { into: state.pending?.into, intoTouched: true })
+  else if (state.add?.entry === 'routine') {
+    const same = state.add.stored.filter((category) => category.name.trim().toLowerCase() === name.trim().toLowerCase())
+    if (same.length === 1) pending.into = same[0]!.id
+  }
+  if (pending.into === undefined) delete pending.into
+  state.pending = pending
+}
+
+export function clearPending(state: SetupState): void {
+  delete state.pending
+}
+
+// "Goes in", chosen by the person: a stored category id, or undefined for "On its own". It wins over the name.
+export function setPendingInto(state: SetupState, into: string | undefined): void {
+  state.pending = { name: state.pending?.name ?? '', intoTouched: true, ...(into === undefined ? {} : { into }) }
+}
+
+// "Add" in the name form. Adding a routine with a destination: time for that stored category under the typed title.
+// Otherwise the person's own item (an existing one of that name when there is one).
+export function addTyped(state: SetupState, name: string): CategoryDraft {
+  const into = state.add?.entry === 'routine' ? state.pending?.into : undefined
+  if (into !== undefined && state.add!.stored.some((category) => category.id === into)) {
+    const draft = ensureCategory(state, nextKey(state, 'custom:'), undefined, name.trim())
+    draft.into = into
+    return draft
+  }
+  const trimmed = name.trim().toLowerCase()
+  const same = state.categories.find((category) => category.into === undefined && category.name.trim().toLowerCase() === trimmed && statusOf(state, category) !== 'removed')
+  return same ?? ensureCategory(state, nextKey(state, 'custom:'), undefined, name.trim())
 }
 
 export const canAppend = (state: SetupState): boolean => picksOf(state).length < MAX_PICKS
@@ -549,3 +623,22 @@ export function appendFromSummary(state: SetupState, name: string): CategoryDraf
 }
 
 export { EXTRA_TOPICS }
+
+// ---------- Adding to a week after setup ----------
+
+// A new session that can only add: stored categories and blocks are context, never drafts, so nothing here can edit
+// or remove what is stored.
+export function createAddState(document: PlannerDocument, entry: AddEntry, env: SetupEnv): SetupState {
+  const state = emptyState()
+  state.screen = 'more'
+  const taken = new Set<TopicId>()
+  const stored: StoredRef[] = document.categories.map((category) => {
+    const topic = topicOf(category, taken, env)
+    if (topic) taken.add(topic)
+    return { id: category.id, name: category.name, ...(topic ? { topic } : {}) }
+  })
+  const names = new Map(document.categories.map((category) => [category.id, category.name]))
+  const fixed = document.blocks.map((block) => ({ categoryId: block.categoryId, name: names.get(block.categoryId) ?? '', days: [...block.days], start: block.start, end: block.end }))
+  state.add = { entry, stored, fixed }
+  return state
+}

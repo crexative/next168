@@ -8,7 +8,11 @@ import OtherThingField from './OtherThingField.vue'
 import RangeList from './RangeList.vue'
 import { useSetupFormat } from './useSetupFormat'
 
-const props = defineProps<{ state: SetupState; category: CategoryDraft; color: string; expanded: boolean; hasTasks: boolean; place: string; issues: Issue[] }>()
+// `destination`: where an added item goes ("in Work"); `warning`: a goal that adding would pass (both add mode only).
+const props = defineProps<{
+  state: SetupState; category: CategoryDraft; color: string; expanded: boolean; hasTasks: boolean; place: string; issues: Issue[]
+  destination?: string; warning?: string
+}>()
 const emit = defineEmits<{ toggle: []; remove: []; edited: [] }>()
 const { t, duration, rangeLine } = useSetupFormat()
 
@@ -29,8 +33,10 @@ function onName(name: string): void {
       <span class="dot" aria-hidden="true" :style="{ background: color }" />
       <span class="text">
         <span class="top" data-one-line><span class="name t-body">{{ category.name || '…' }}</span><span class="amount t-body">{{ amount }}</span></span>
+        <span v-if="destination" class="line t-body" data-testid="card-into">{{ destination }}</span>
         <span v-if="category.ranges.length === 0" class="line t-body">{{ t('onboarding.summary.noTimes') }}</span>
         <span v-for="range in category.ranges" :key="range.key" class="line t-body">{{ rangeLine(category, range) }}</span>
+        <span v-if="warning" class="line warn t-body" data-testid="card-warning">⚠ {{ warning }}</span>
       </span>
       <Icon name="chevron-right" :size="18" />
     </button>
@@ -60,5 +66,6 @@ function onName(name: string): void {
 .body :deep(.range) { padding-inline: 0; }
 .body > :deep(.ui-button) { align-self: flex-start; }
 .error { margin: 0; color: var(--danger-label); }
+.line.warn { color: var(--label); }
 .note { margin: 0; color: var(--label-2); }
 </style>

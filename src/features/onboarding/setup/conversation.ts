@@ -1,8 +1,8 @@
 import { sequence } from '../setupFlow'
 import {
-  categoryOf, commuteBase, picksOf, roundIndex, roundOptions, statusOf, type CategoryDraft, type CategoryStatus, type RangeDraft, type ScreenId, type SetupState,
+  categoryOf, commuteBase, intoKey, picksOf, roundIndex, roundOptions, statusOf, type CategoryDraft, type CategoryStatus, type RangeDraft, type ScreenId, type SetupState,
 } from '../setupModel'
-import { EXTRA_TOPICS } from '../setupTopics'
+import { EXTRA_TOPICS, TOPICS, type TopicId } from '../setupTopics'
 
 // What the conversation says: each question phrased from the answers before it, the answer bubble in plain words, and
 // which earlier exchanges stay on screen. Pure functions over the draft, so every phrasing is testable without a screen.
@@ -33,6 +33,8 @@ const EXTRA_REPLY_KIND = { skip: 'skip', noFixedTime: 'answer' } as const satisf
 const SKIPPABLE: ScreenId[] = ['sleep', 'workStudy', 'commute', 'exercise', 'more']
 
 export function extraReply(state: SetupState, screen: ScreenId): ExtraReply | undefined {
+  // Adding has nothing to skip: leaving is the frame's ‹, and the first question has no "nothing" to say.
+  if (state.add && screen === 'more') return undefined
   const reply = isRangeScreen(state, screen) && screen !== 'sleep' ? 'noFixedTime' : SKIPPABLE.includes(screen) ? 'skip' : undefined
   return reply === undefined ? undefined : { key: `onboarding.guided.${reply}`, kind: EXTRA_REPLY_KIND[reply] }
 }
@@ -46,10 +48,13 @@ function destination(state: SetupState): 'work' | 'study' | 'both' | undefined {
 export function question(state: SetupState, screen: ScreenId): Line {
   const guided = (key: string, params?: Record<string, unknown>): Line => ({ key: `onboarding.guided.${key}`, params })
   if (screen === 'summary') return { key: weekIsEmpty(state) ? 'onboarding.summary.empty' : 'onboarding.summary.bubble' }
+  if (screen === 'more' && state.add) return guided('add.question')
   if (screen !== 'more' && roundIndex(screen) !== undefined) return guided('again.question')
   if (screen.startsWith('extra:')) {
     const category = categoryFor(state, screen)
     const topic = category?.topic
+    // Adding sleep, work, study or exercise asks what the setup asks about them.
+    if (topic && !(EXTRA_TOPICS as string[]).includes(topic)) return guided(topic === 'exercise' ? 'exerciseRanges.question' : `${topic}.question`)
     return guided(topic ? `extra.${topic}` : 'extra.custom', { name: category?.name ?? '' })
   }
   const going = destination(state)
@@ -66,7 +71,7 @@ export function hint(state: SetupState, screen: ScreenId): Line | undefined {
     case 'commute': return { key: 'onboarding.guided.commute.hint' }
     // Ida and vuelta come from the hours just given; saying so invites a change when they are off.
     case 'commuteRanges': return commuteBase(state) ? { key: 'onboarding.guided.commuteRanges.hint' } : undefined
-    case 'more': return { key: 'onboarding.guided.more.hint' }
+    case 'more': return { key: state.add ? 'onboarding.guided.add.hint' : 'onboarding.guided.more.hint' }
     default: return roundIndex(screen) === undefined ? undefined : { key: 'onboarding.guided.again.hint' }
   }
 }
@@ -104,9 +109,13 @@ export function answer(state: SetupState, screen: ScreenId, speaker: Speaker): s
 
 // ---------- "Anything else?" ----------
 
-// How a pick reads: an extra by its name in this language, the person's own by the name they gave it.
+// How a pick reads: an extra by its name in this language, another topic by its category name, a stored category
+// (adding a routine) by its stored name, the person's own by the name they gave it.
 export function pickLabel(state: SetupState, key: string, speaker: Speaker): string {
-  return (EXTRA_TOPICS as string[]).includes(key) ? speaker.t(`onboarding.guided.more.${key}`) : categoryOf(state, key)?.name ?? ''
+  if ((EXTRA_TOPICS as string[]).includes(key)) return speaker.t(`onboarding.guided.more.${key}`)
+  if (key in TOPICS) return speaker.t(`onboarding.templates.${TOPICS[key as TopicId].nameKey}`)
+  const stored = state.add?.stored.find((category) => intoKey(category.id) === key)
+  return stored?.name ?? categoryOf(state, key)?.name ?? ''
 }
 
 // The way out of a round: "Nothing else" when nothing was picked yet, "No, that's all" after a pick.

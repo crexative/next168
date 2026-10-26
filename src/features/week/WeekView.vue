@@ -11,7 +11,7 @@ import { useMediaQuery } from '@/ui/useMediaQuery'
 import EventSheet from '@/features/calendars/EventSheet.vue'
 import FreeHoursBadge from '@/features/capacity/FreeHoursBadge.vue'
 import SetupWeekPrompt from '@/features/onboarding/SetupWeekPrompt.vue'
-import { setupWeekOffered } from '@/features/onboarding/reopen'
+import { openAdd, setupWeekOffered } from '@/features/onboarding/reopen'
 import { defaultTaskCategoryId } from '@/features/onboarding/templates'
 import TaskSheet from '@/features/tasks/TaskSheet.vue'
 import type { AddKind } from './addKind'
@@ -180,17 +180,11 @@ function openNew(date: string, start: number): void {
   editorOpen.value = true
 }
 
-function openNewFromButton(): void {
-  const date = isWide.value ? today.value : dates.value[pagerIndex.value] ?? today.value
-  const nextHour = Math.min(23, Math.floor(nowMinute.value / 60) + 1) * 60
-  openNew(date, date === today.value ? nextHour : 9 * 60)
-}
-
 function addFromMenu(kind: AddKind): void {
   if (!planner.writable) return
   if (kind === 'event') eventOpen.value = true
   else if (kind === 'task') openTask(undefined)
-  else openNewFromButton()
+  else openAdd('routine')
 }
 
 function openTask(taskId: string | undefined): void {
@@ -262,7 +256,7 @@ async function remove(blockId: string): Promise<void> {
     <EmptyState v-else-if="!hasContent" icon="calendar-days" :title="t('week.empty.noBlocksTitle')" :description="t('week.empty.noBlocksDescription')">
       <div class="empty-choices">
         <SetupWeekPrompt />
-        <Button :variant="setupOffered ? 'tinted' : 'filled'" :disabled="!planner.writable" @click="openNewFromButton">{{ t('week.empty.addBlock') }}</Button>
+        <Button :variant="setupOffered ? 'tinted' : 'filled'" :disabled="!planner.writable" @click="openAdd('routine')">{{ t('week.empty.addBlock') }}</Button>
       </div>
     </EmptyState>
     <template v-else>

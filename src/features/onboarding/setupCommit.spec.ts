@@ -2,10 +2,11 @@ import { describe, expect, it } from 'vitest'
 import { canonicalJson } from '@/core/canonical'
 import { validateDocument } from '@/core/documents'
 import type { PlannerDocument } from '@/core/model'
-import { applySetupPlan, planSetupCommit, SETUP_INVALID, type SetupPlan } from './setupCommit'
+import { CHANGED_ELSEWHERE } from '@/features/insights/entryGuard'
+import { addGoalOverruns, applyAddPlan, applySetupPlan, planAddCommit, planSetupCommit, SETUP_INVALID, type SetupPlan } from './setupCommit'
 import {
-  addOwnCategory, createState, emptyState, ensureCategory, finishMore, pick, prepareScreen, setSleepSplit, suggestCommute, suggestRanges, touch,
-  type SetupState,
+  addOwnCategory, addTyped, clearRanges, createAddState, createState, emptyState, ensureCategory, finishMore, intoKey, pick, prepareScreen, setPendingInto,
+  setPendingName, setSleepSplit, suggestCommute, suggestRanges, touch, type SetupState,
 } from './setupModel'
 import { block, category, documentWith, env } from './setupFixtures'
 
@@ -246,5 +247,82 @@ describe('stored extras and own categories outside the rounds (S1-7)', () => {
     finishMore(state, 0)
     touch(state.categories.find((item) => item.key === 'family')!.ranges[0]!, { end: at(15) })
     expect(plan(state, document()).plan).toMatchObject({ blockUpdates: [{ id: 'b-fam', end: at(15) }], blockDeletes: [], categoryDeletes: [], newBlocks: [], newCategories: [] })
+  })
+})
+
+describe('adding after setup writes additions only (S2-8, S2-9)', () => {
+  const stored = () => documentWith(
+    [category('c-sleep', 'Sleep', { icon: '😴', colorKey: 'purple' }), category('c-work', 'Work', { icon: '💼', goal: { type: 'max', hoursPerWeek: 40 } })],
+    [block('b-sleep', 'c-sleep', [0, 1, 2, 3, 4, 5, 6], at(23), at(7), { title: 'Sleep' }), block('b-work', 'c-work', [1, 2, 3, 4, 5], at(9), at(17), { title: 'Work', notes: 'Keep' })],
+    { ...done(), tasks: [{ id: 't1', title: 'Report', categoryId: 'c-work', durationMin: 60, priority: 1, createdAt: '2026-10-20T08:00:00.000Z' }] },
+  )
+  const addPlan = (state: SetupState, document = stored()) => {
+    const result = planAddCommit(state, document, newId)
+    if (result.kind !== 'plan') throw new Error(JSON.stringify(result))
+    return result.plan
+  }
+  const adds = (state: SetupState, key: string) => {
+    pick(state, state.answers.more?.length ?? 0, key, env)
+    prepareScreen(state, `extra:${key}`, env)
+  }
+
+  it.each([
+    ['time for a stored category', (state: SetupState) => adds(state, intoKey('c-work'))],
+    ['"No fixed time" on time for a stored category', (state: SetupState) => { adds(state, intoKey('c-work')); clearRanges(state.categories[0]!) }],
+    ['a new Sleep split into weeknights and weekend', (state: SetupState) => { const empty = createAddState(documentWith([], [], done()), 'routine', env); Object.assign(state, empty); adds(state, 'sleep'); setSleepSplit(state, true) }],
+    ['something of one\'s own going into Work', (state: SetupState) => { setPendingName(state, 'Standup'); setPendingInto(state, 'c-work'); adds(state, addTyped(state, 'Standup').key) }],
+    ['a new topic and something of one\'s own', (state: SetupState) => { adds(state, 'exercise'); adds(state, addTyped(state, 'Guitar').key) }],
+  ])('%s: only new categories and blocks, stored records byte-equal', (_name, build) => {
+    const document = stored()
+    const state = createAddState(document, 'routine', env)
+    build(state)
+    const plan = addPlan(state, document)
+    expect(Object.keys(plan).sort()).toEqual(['newBlocks', 'newCategories'])
+    const draft = structuredClone(document)
+    applyAddPlan(draft, plan)
+    const result = validateDocument(draft)
+    expect(canonicalJson(result.categories.slice(0, 2))).toBe(canonicalJson(document.categories))
+    expect(canonicalJson(result.blocks.filter((item) => document.blocks.some((old) => old.id === item.id)))).toBe(canonicalJson(document.blocks))
+    expect(result.tasks).toEqual(document.tasks)
+    expect(result.settings).toEqual(document.settings)
+  })
+
+  it('writes the split sleep as two blocks of a new Sleep category', () => {
+    const document = documentWith([], [], done())
+    const state = createAddState(document, 'category', env)
+    adds(state, 'sleep')
+    setSleepSplit(state, true)
+    const plan = addPlan(state, document)
+    expect(plan.newCategories).toEqual([expect.objectContaining({ name: 'Sleep', icon: '😴' })])
+    expect(plan.newBlocks.map((item) => [item.days, item.start, item.end])).toEqual([[[0, 1, 2, 3, 4], at(23), at(7)], [[0, 6], 0, at(8)]])
+  })
+
+  it('refuses a destination that is not in the document, and the commit refuses one deleted after the plan', () => {
+    const document = stored()
+    const state = createAddState(document, 'routine', env)
+    adds(state, intoKey('c-work'))
+    const gone = { ...document, categories: document.categories.filter((item) => item.id !== 'c-work'), blocks: document.blocks.filter((item) => item.categoryId !== 'c-work'), tasks: [] }
+    expect(planAddCommit(state, gone, newId)).toMatchObject({ kind: 'invalid', issues: [{ code: 'destinationGone' }] })
+    const plan = addPlan(state, document)
+    expect(() => applyAddPlan(structuredClone(gone), plan)).toThrow(CHANGED_ELSEWHERE)
+  })
+
+  it('gives a new category its topic colour when unused, else the first unused one', () => {
+    const document = documentWith([category('c-x', 'X', { colorKey: 'pink' })], [], done())
+    const state = createAddState(document, 'category', env)
+    adds(state, 'family')
+    adds(state, 'friends')
+    expect(addPlan(state, document).newCategories.map((item) => item.colorKey)).toEqual(['blue', 'red'])
+  })
+
+  it('adds up what goes into a stored "at most" goal over every new range', () => {
+    const document = stored()
+    const state = createAddState(document, 'routine', env)
+    adds(state, intoKey('c-work'))
+    expect(addGoalOverruns(state, document).get('c-work')).toBe(5 * 60)
+    setPendingName(state, 'Standup')
+    setPendingInto(state, 'c-work')
+    adds(state, addTyped(state, 'Standup').key)
+    expect(addGoalOverruns(state, document).get('c-work')).toBe(10 * 60)
   })
 })

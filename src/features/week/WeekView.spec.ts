@@ -22,11 +22,10 @@ beforeEach(() => { globalThis.document.body.innerHTML = '<div id="toolbar-action
 
 const tick = async () => { for (let i = 0; i < 5; i++) { await nextTick(); await new Promise((resolve) => setTimeout(resolve, 0)) } }
 
-// "+" opens a small menu; the block form is its first entry.
-async function addBlockFromMenu(): Promise<void> {
-  globalThis.document.querySelector<HTMLElement>('[data-testid="week-add"]')!.click()
-  await tick()
-  globalThis.document.querySelector<HTMLElement>('[data-testid="add-block"]')!.click()
+// Pressing an empty hour of the grid opens the classic New routine form (Week "+" › Routine opens the guided add).
+const MORNING = { id: 'morning', categoryId: 'work', title: 'Morning', start: 540, end: 600, days: [0, 1, 2, 3, 4, 5, 6] as const }
+async function newBlockFromEmptyHour(): Promise<void> {
+  globalThis.document.querySelector<HTMLElement>('.day-column')!.dispatchEvent(new MouseEvent('click', { bubbles: true, clientY: 0 }))
   await tick()
 }
 
@@ -131,7 +130,10 @@ describe('WeekView saving', () => {
     setActivePinia(pinia)
     const store = usePlannerStore()
     await store.load()
-    await store.commit((draft) => { draft.categories.push({ id: 'work', name: 'Work', colorKey: 'blue', goal: { type: 'none', hoursPerWeek: 0 } }) })
+    await store.commit((draft) => {
+      draft.categories.push({ id: 'work', name: 'Work', colorKey: 'blue', goal: { type: 'none', hoursPerWeek: 0 } })
+      draft.blocks.push({ ...MORNING, days: [...MORNING.days] })
+    })
 
     armed = true
 
@@ -143,7 +145,7 @@ describe('WeekView saving', () => {
     cleanup = () => { app.unmount(); host.remove() }
     await tick()
 
-    await addBlockFromMenu()
+    await newBlockFromEmptyHour()
     const dialog = globalThis.document.querySelector<HTMLElement>('[role="dialog"]')!
     const title = dialog.querySelector<HTMLInputElement>('input[type="text"]')!
     title.value = 'Focus'
@@ -161,7 +163,7 @@ describe('WeekView saving', () => {
     release()
     await tick()
 
-    expect(store.document?.blocks.map((block) => block.title)).toEqual(['Focus'])
+    expect(store.document?.blocks.map((block) => block.title)).toEqual(['Morning', 'Focus'])
   })
 
   it('preselects the first category that is not Sleep in the New block sheet', async () => {
@@ -176,6 +178,7 @@ describe('WeekView saving', () => {
         { id: 'sleep', name: 'Sleep', colorKey: 'purple', goal: { type: 'min', hoursPerWeek: 49 } },
         { id: 'work', name: 'Work', colorKey: 'blue', goal: { type: 'none', hoursPerWeek: 0 } },
       )
+      draft.blocks.push({ ...MORNING, days: [...MORNING.days] })
     })
     i18n.global.locale.value = 'en'
     const host = globalThis.document.createElement('div')
@@ -185,7 +188,7 @@ describe('WeekView saving', () => {
     cleanup = () => { app.unmount(); host.remove() }
     await tick()
 
-    await addBlockFromMenu()
+    await newBlockFromEmptyHour()
     // The category is a chip, selected for the first one that is not Sleep.
     expect(globalThis.document.querySelector<HTMLElement>('[role="dialog"] [role="radio"][aria-checked="true"]')!.dataset.categoryId).toBe('work')
   })

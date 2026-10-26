@@ -2,7 +2,7 @@
 import { computed, nextTick, ref, useId } from 'vue'
 import Icon from '@/ui/Icon.vue'
 import {
-  acceptRanges, addOwnCategory, clearRanges, finishMore, pick, rangeProblem, roundIndex, setAnswer, setPendingName, setSleepSplit,
+  acceptRanges, addTyped, clearPending, clearRanges, finishMore, pick, rangeProblem, roundIndex, setAnswer, setPendingInto, setPendingName, setSleepSplit,
   type ScreenId, type SetupState, type Tri, type WorkStudy,
 } from '../setupModel'
 import { TOPICS, type TopicId } from '../setupTopics'
@@ -102,19 +102,28 @@ const otherName = computed({
   },
 })
 const otherOpen = ref(otherName.value !== '')
+// Adding a routine: where a typed item goes, a stored category or on its own (the empty value).
+const destinations = computed(() => (props.state.add?.entry === 'routine' ? props.state.add.stored : []))
+const into = computed({
+  get: () => props.state.pending?.into ?? '',
+  set: (id: string) => setPendingInto(props.state, id === '' ? undefined : id),
+})
+const intoId = useId()
+// The first question of an add session has no "nothing else": leaving is the frame's ‹.
+const showDone = computed(() => !(props.state.add && round.value === 0))
 const duplicate = ref(false)
 const otherField = ref<InstanceType<typeof OtherThingField> | null>(null)
 
 function choose(value: string): void {
   if (round.value === undefined || !pick(props.state, round.value, value, env)) return
-  otherName.value = ''
+  clearPending(props.state)
   done()
 }
 
 function finish(): void {
   if (round.value === undefined) return
   finishMore(props.state, round.value)
-  otherName.value = ''
+  clearPending(props.state)
   done()
 }
 
@@ -125,7 +134,8 @@ function openOther(): void {
 
 // Escape in the field puts it away (and what was typed), back to the button that opened it; the setup stays.
 function closeOther(): void {
-  otherName.value = ''
+  clearPending(props.state)
+  duplicate.value = false
   otherOpen.value = false
   void nextTick(() => root.value?.querySelector<HTMLElement>('[data-testid="more-other"]')?.focus({ preventScroll: true }))
 }
@@ -133,14 +143,14 @@ function closeOther(): void {
 function addOther(): void {
   const name = otherName.value.trim()
   if (name === '' || round.value === undefined) return
-  // A name already on the list picks that item when it is free; one picked in another round, or stored, says so.
-  const { category: named } = addOwnCategory(props.state, name)
+  // A name already on the list picks that item when it is free; one picked in another round says so.
+  const named = addTyped(props.state, name)
   if (!pick(props.state, round.value, named.key, env)) {
     duplicate.value = true
     emit('edited')
     return
   }
-  otherName.value = ''
+  clearPending(props.state)
   done()
 }
 
@@ -160,7 +170,7 @@ const labels = computed(() => ({
   <footer ref="root" class="dock" :class="{ 'is-bare': !hasActions }" :aria-busy="busy || undefined">
     <div class="dock-answer" data-testid="setup-dock">
       <div class="column">
-        <template v-if="screen === 'sleep' && category">
+        <template v-if="category?.topic === 'sleep'">
           <RangeList :state="state" :category="category" :labels="labels" sleep />
           <ChoiceChips :chips="[{ value: 'split', label: t('onboarding.guided.sleep.weekendDifferent') }]" :selected="state.sleepSplit ? ['split'] : []" :group-label="t('onboarding.guided.sleep.weekendDifferent')" @toggle="toggleSplit" />
         </template>
@@ -176,11 +186,18 @@ const labels = computed(() => ({
             <button v-if="!otherOpen" class="other t-body" type="button" data-testid="more-other" :disabled="busy" @click="openOther">{{ t('onboarding.guided.more.other') }}</button>
             <form v-else class="other-form" @submit.prevent="addOther" @keydown.esc.stop.prevent="closeOther">
               <OtherThingField ref="otherField" v-model="otherName" :label="t('onboarding.guided.more.otherLabel')" :placeholder="t('onboarding.guided.more.otherPlaceholder')" test-id="more-other-name" @enter="addOther" />
+              <div v-if="destinations.length > 0" class="goes-in">
+                <label class="t-body" :for="intoId">{{ t('onboarding.guided.add.goesIn') }}</label>
+                <select :id="intoId" v-model="into" class="input" data-testid="goes-in">
+                  <option value="">{{ t('onboarding.guided.add.own') }}</option>
+                  <option v-for="destination in destinations" :key="destination.id" :value="destination.id">{{ destination.name }}</option>
+                </select>
+              </div>
               <button class="add t-body" type="submit" data-testid="more-other-add" :disabled="busy || otherName.trim() === ''">{{ t('onboarding.guided.more.add') }}</button>
               <p v-if="duplicate" class="t-body note" role="status">{{ t('onboarding.guided.more.duplicate') }}</p>
             </form>
             <button
-              class="reply-chip done t-body" :class="{ 'is-current': replies.done.current }" type="button" data-testid="more-done" :aria-label="doneLabel"
+              v-if="showDone" class="reply-chip done t-body" :class="{ 'is-current': replies.done.current }" type="button" data-testid="more-done" :aria-label="doneLabel"
               :disabled="busy" @click="finish"
             >
               {{ replies.done.label }}
@@ -270,6 +287,8 @@ const labels = computed(() => ({
 /* "Something else" and the way out share a row; the name form, once open, takes the row's width. */
 .round-more { display: flex; flex-wrap: wrap; align-items: flex-start; gap: var(--space-3); }
 .round-more > .other-form { flex: 1 0 100%; }
+.goes-in { display: flex; flex-direction: column; gap: var(--space-1); width: 100%; }
+.goes-in select { min-height: var(--tap-target); width: 100%; font: inherit; }
 .dock.is-bare .dock-answer > .column { padding-block-end: calc(var(--space-4) + var(--safe-bottom)); }
 /* The round's answer when it is asked again, marked like a quick reply's. */
 .reply-chip.is-current { border-color: var(--tint); background: color-mix(in srgb, var(--tint) 12%, transparent); }

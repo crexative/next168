@@ -2,10 +2,10 @@ import { describe, expect, it } from 'vitest'
 import { i18n, SUPPORTED_LOCALES } from '@/i18n'
 import { sequence } from '../setupFlow'
 import {
-  addOwnCategory, emptyState, finishMore, pick, prepareScreen, roundIndex, setAnswer, setRemoved, setSleepSplit, MAX_PICKS,
-  type ScreenId, type SetupState, type Tri, type WorkStudy,
+  addOwnCategory, addTyped, createAddState, emptyState, finishMore, intoKey, pick, prepareScreen, roundIndex, setAnswer, setPendingInto, setRemoved, setSleepSplit,
+  MAX_PICKS, type ScreenId, type SetupState, type Tri, type WorkStudy,
 } from '../setupModel'
-import { env } from '../setupFixtures'
+import { block, category, documentWith, env } from '../setupFixtures'
 import { answer, extraReply, hint, question, roundReplies, type Speaker } from './conversation'
 
 // Every key the setup computes at run time ("guided.more.<topic>", "guided.<screen>.question", the rounds' way out…)
@@ -22,6 +22,10 @@ const record = (line: { key: string } | undefined) => { if (line) recorded.add(l
 const ROUND_CONTROLS = [
   'onboarding.guided.current', 'onboarding.guided.more.other', 'onboarding.guided.more.otherLabel', 'onboarding.guided.more.otherPlaceholder',
   'onboarding.guided.more.add', 'onboarding.guided.more.duplicate', 'onboarding.guided.again.limit',
+  // Adding after setup: the frame, "Goes in", the summary's line and button, and what a save says.
+  'onboarding.guided.add.title', 'onboarding.guided.add.goesIn', 'onboarding.guided.add.own', 'onboarding.guided.errors.destinationGone',
+  'onboarding.summary.addSave', 'onboarding.summary.added', 'onboarding.summary.into', 'onboarding.summary.addFailed',
+  'week.editor.warnings.goalOver', 'week.editor.hours',
 ]
 
 function walk(state: SetupState): void {
@@ -64,6 +68,20 @@ function states(): SetupState[] {
   prepareScreen(split, 'sleep', env)
   setSleepSplit(split, true)
   result.push(split)
+  // Adding after setup, from a week with stored categories and from an empty one, from both entries.
+  const at = (hours: number) => hours * 60
+  const stored = documentWith([category('c-work', 'Work', { icon: '💼' }), category('c-x', 'Chess')], [block('b-work', 'c-work', [1, 2, 3, 4, 5], at(9), at(17))])
+  for (const document of [stored, documentWith()]) {
+    for (const entry of ['routine', 'category'] as const) {
+      const state = createAddState(document, entry, env)
+      const keys = [...(entry === 'routine' && document === stored ? [intoKey('c-work')] : []), 'sleep', 'work', 'study', 'exercise', 'family']
+      keys.forEach((key, index) => pick(state, index, key, env))
+      if (entry === 'routine' && document === stored) setPendingInto(state, 'c-work')
+      pick(state, keys.length, addTyped(state, 'Standup').key, env)
+      finishMore(state, keys.length + 1)
+      result.push(state)
+    }
+  }
   const removed = emptyState()
   pick(removed, 0, 'family', env)
   setRemoved(removed, 'family', true)
@@ -71,12 +89,14 @@ function states(): SetupState[] {
   return result
 }
 
-describe('every key the setup computes exists in every language (S1-14)', () => {
+describe('every key the setup and the guided add compute exists in every language (S1-14, S2-16)', () => {
   for (const state of states()) walk(state)
 
   it('reaches the rounds of "Anything else?", their options and their way out', () => {
     for (const key of ['onboarding.guided.more.question', 'onboarding.guided.again.question', 'onboarding.guided.again.hint', 'onboarding.guided.again.done',
-      'onboarding.guided.nothingElse', 'onboarding.guided.more.family', 'onboarding.guided.more.learning', 'onboarding.guided.extra.custom', 'onboarding.guided.skip']) {
+      'onboarding.guided.nothingElse', 'onboarding.guided.more.family', 'onboarding.guided.more.learning', 'onboarding.guided.extra.custom', 'onboarding.guided.skip',
+      'onboarding.guided.add.question', 'onboarding.guided.add.hint', 'onboarding.guided.work.question', 'onboarding.guided.exerciseRanges.question',
+      'onboarding.templates.sleep', 'onboarding.templates.study']) {
       expect(recorded.has(key), key).toBe(true)
     }
     expect([...recorded].filter((key) => (key as ScreenId).includes('more:'))).toEqual([])

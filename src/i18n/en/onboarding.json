@@ -98,6 +98,13 @@
       "done": "No, that's all",
       "limit": "That's enough for now."
     },
+    "add": {
+      "title": "Add to your week",
+      "question": "What do you want to make time for?",
+      "hint": "Pick one, or type something else.",
+      "goesIn": "Goes in",
+      "own": "On its own"
+    },
     "extra": {
       "family": "When do you spend time with family?",
       "friends": "When do you see your friends?",
@@ -135,7 +142,8 @@
       "sameTime": "It starts and ends at the same time. Change one.",
       "overlap": "Clashes with {name}: {when}.",
       "nameRequired": "Type a name.",
-      "nameDuplicate": "That name is already on your list."
+      "nameDuplicate": "That name is already on your list.",
+      "destinationGone": "What you chose in \"Goes in\" is gone. Pick another."
     },
     "resumed": "Picking up where you left off.",
     "startOver": "Start over",
@@ -171,6 +179,10 @@
     "changedElsewhere": "Your week changed in another window. Here is the current version.",
     "understood": "Got it",
     "saveFailed": "Couldn't save. Your answers are still here.",
-    "tooLarge": "Your week has too many times to save. Remove some."
+    "tooLarge": "Your week has too many times to save. Remove some.",
+    "addSave": "Add to my week",
+    "added": "Added \"{name}\" | Added {count} things",
+    "into": "in {name}",
+    "addFailed": "Couldn't add it. Try again."
   }
 }

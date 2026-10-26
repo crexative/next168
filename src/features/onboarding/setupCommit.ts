@@ -1,5 +1,7 @@
 import type { Category, DayIndex, PlannerDocument, TimeBlock } from '@/core/model'
 import { distinctColorKeys } from '@/features/insights/categoryColor'
+import { CHANGED_ELSEWHERE } from '@/features/insights/entryGuard'
+import { goalStatus, plannedMinutesByCategory } from '@/core/stats'
 import { removeCategory } from '@/features/settings/categories/categoryEditing'
 import {
   automaticGoal, blockSlot, categoryMinutes, statusOf, validate, type CategoryDraft, type Issue, type SetupState,
@@ -118,4 +120,72 @@ export function applySetupPlan(draft: PlannerDocument, plan: SetupPlan): void {
   draft.categories.push(...plan.newCategories)
   draft.blocks.push(...plan.newBlocks)
   if (plan.onboardingDone) draft.settings.onboardingDone = true
+}
+
+// ---------- Adding to a week after setup: additions only ----------
+
+// The plan of an add session has no field that could change or remove what is stored.
+export interface AddPlan {
+  newCategories: Category[]
+  newBlocks: TimeBlock[]
+}
+
+export type AddPlanResult = { kind: 'plan'; plan: AddPlan; empty: boolean } | { kind: 'invalid'; issues: Issue[] } | { kind: 'tooLarge' }
+
+export function planAddCommit(state: SetupState, current: PlannerDocument, newId: () => string): AddPlanResult {
+  const active = state.categories.filter((category) => statusOf(state, category) === 'active')
+  const gone = active.filter((category) => category.into !== undefined && !current.categories.some((stored) => stored.id === category.into))
+  const issues: Issue[] = [...gone.map((category) => ({ code: 'destinationGone' as const, categoryKey: category.key })), ...validate(state, new Map())]
+  if (issues.length > 0) return { kind: 'invalid', issues }
+
+  const plan: AddPlan = { newCategories: [], newBlocks: [] }
+  const own = active.filter((category) => category.into === undefined)
+  // A topic's colour when no stored category has it, else the first one unused (the existing allocator after that).
+  const colors = distinctColorKeys(own.map((category) => (category.topic ? TOPICS[category.topic].colorKey : OWN_COLOR)), current.categories.map((category) => category.colorKey))
+  for (const category of active) {
+    const name = category.name.trim()
+    let categoryId = category.into
+    if (categoryId === undefined) {
+      categoryId = newId()
+      const topic = category.topic ? TOPICS[category.topic] : undefined
+      plan.newCategories.push({
+        id: categoryId, name, colorKey: colors[own.indexOf(category)]!, ...(topic ? { icon: topic.icon } : {}),
+        goal: automaticGoal(topic?.goal ?? 'none', categoryMinutes(state, category)),
+      })
+    }
+    for (const range of category.ranges) {
+      const slot = blockSlot(category, range)
+      plan.newBlocks.push({ id: newId(), categoryId, title: name, days: sortedUnique(slot.days), start: slot.start, end: slot.end })
+    }
+  }
+  if (current.categories.length + plan.newCategories.length > MAX_CATEGORIES || current.blocks.length + plan.newBlocks.length > MAX_BLOCKS) return { kind: 'tooLarge' }
+  return { kind: 'plan', plan, empty: plan.newCategories.length + plan.newBlocks.length === 0 }
+}
+
+// Mutates the commit's draft. A destination deleted since the plan was made aborts the commit as a change elsewhere.
+export function applyAddPlan(draft: PlannerDocument, plan: AddPlan): void {
+  const created = new Set(plan.newCategories.map((category) => category.id))
+  for (const block of plan.newBlocks) {
+    if (!created.has(block.categoryId) && !draft.categories.some((category) => category.id === block.categoryId)) throw new Error(CHANGED_ELSEWHERE)
+  }
+  draft.categories.push(...plan.newCategories)
+  draft.blocks.push(...plan.newBlocks)
+}
+
+// What adding would take over a stored category's "at most" goal, per stored category, over every new range going into
+// it. A warning, never a block: the classic editor lets the save go ahead too.
+export function addGoalOverruns(state: SetupState, current: PlannerDocument): Map<string, number> {
+  const added = state.categories.filter((category) => category.into !== undefined && statusOf(state, category) === 'active')
+    .flatMap((category) => category.ranges.map((range, index) => {
+      const slot = blockSlot(category, range)
+      return { id: `${category.key}:${index}`, categoryId: category.into!, title: category.name, days: sortedUnique(slot.days), start: slot.start, end: slot.end }
+    }))
+  const planned = plannedMinutesByCategory({ ...current, blocks: [...current.blocks, ...added] })
+  const overruns = new Map<string, number>()
+  for (const id of new Set(added.map((block) => block.categoryId))) {
+    const category = current.categories.find((candidate) => candidate.id === id)
+    const status = category ? goalStatus(category.goal, planned[id] ?? 0) : undefined
+    if (status?.kind === 'over') overruns.set(id, status.minutes)
+  }
+  return overruns
 }

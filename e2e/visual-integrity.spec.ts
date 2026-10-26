@@ -2,7 +2,7 @@ import { expect, test, type Page, type TestInfo } from '@playwright/test'
 import { legacyData, seedKey, V2_KEY } from './fixtures'
 import { auditFloatingActionButtonInPage } from './support/fabPlacement'
 import { visualIntegrityViolations } from './support/visualIntegrity'
-import { addFromMenu, itemsMissingTitles, seededTitles } from './support/week'
+import { itemsMissingTitles, openClassicRoutine, seededTitles } from './support/week'
 import { syntheticWeekReply } from '../src/features/assistant/anyAi/syntheticWeek'
 
 // Every tab and every sheet, at the three project widths (1440 / 768 / 375 px) and in both themes:
@@ -274,8 +274,7 @@ for (const theme of THEMES) {
           await auditSheet(page, `${theme}/${locale}/${width}/wider fonts/new task with more options`)
           await page.keyboard.press('Escape')
           await expect(page.getByRole('dialog')).toHaveCount(0)
-          await page.getByTestId('week-add').click()
-          await page.getByTestId('add-block').click()
+          await openClassicRoutine(page)
           await expect(page.getByRole('dialog').getByRole('radio').first()).toBeVisible()
           await widenInputFonts(page)
           await auditSheet(page, `${theme}/${locale}/${width}/wider fonts/new routine`)
@@ -639,7 +638,7 @@ for (const theme of THEMES) {
     test('week routine editor and the day sheets', async ({ page }) => {
       await start(page, theme, plannedDocument)
       await open(page, 'week')
-      await addFromMenu(page, 'Routine')
+      await openClassicRoutine(page)
       await auditSheet(page, `${theme}/new routine`)
       await page.keyboard.press('Escape')
       await expect(page.getByRole('dialog')).toHaveCount(0)
@@ -685,9 +684,14 @@ for (const theme of THEMES) {
       await page.getByRole('button', { name: 'Edit Learning and side projects' }).click()
       await auditSheet(page, `${theme}/edit category`)
       await page.keyboard.press('Escape')
+      // "Add category" opens the guided add, a full-screen frame rather than a sheet.
       await page.getByRole('button', { name: 'Add category' }).click()
-      await auditSheet(page, `${theme}/new category`)
+      await expect(page.locator('[data-testid=setup][data-mode=add]')).toBeVisible()
+      // It may open while the edit sheet is still springing away: audit it once it has arrived.
+      await expect.poll(() => page.locator('.setup-frame').evaluate((element) => element.getBoundingClientRect().top)).toBe(0)
+      await auditSheet(page, `${theme}/add a category, first question`)
       await page.keyboard.press('Escape')
+      await expect(page.getByTestId('setup')).toHaveCount(0)
 
       await open(page, 'settings/data')
       await page.getByRole('button', { name: 'Delete all data…' }).click()

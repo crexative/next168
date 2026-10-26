@@ -450,6 +450,20 @@ test.describe('answering', () => {
     expect(warnings).toEqual([])
   })
 
+  test('A33: the guided add in German shows no English text from the English catalogue', async ({ page }) => {
+    const warnings: string[] = []
+    page.on('console', (message) => { if (/not found|fall back|intlify/i.test(message.text())) warnings.push(message.text()) })
+    await start(page, { language: 'de', document: storedDoc({ categories: [SLEEP, WORK], blocks: [SLEEP_BLOCK, WORK_BLOCK] }) })
+    await page.goto('./')
+    const english = englishOnly('de')
+    await walkAdd(page, async (label) => {
+      await calm(page)
+      const text = await setup(page).innerText()
+      expect.soft(english.filter((value) => appearsAsWords(text, value)), label).toEqual([])
+    })
+    expect(warnings).toEqual([])
+  })
+
   test('A17: a suggestion with no free time stays where it is and says why; "Sin horario fijo" saves the category with no times', async ({ page }) => {
     const busy = { id: 'c-busy', name: 'Ocupado', colorKey: 'gray', goal: { type: 'none', hoursPerWeek: 0 } }
     await start(page, { document: firstRun({ categories: [busy], blocks: [{ id: 'b-busy', categoryId: 'c-busy', title: 'Ocupado', days: [1, 3, 5], start: 360, end: 1320 }] }) })
@@ -823,59 +837,96 @@ async function walk(page: Page, visit: (label: string) => Promise<void>, options
   await visit('summary, a picker open')
 }
 
-for (const size of [{ width: 390, height: 844 }, { width: 320, height: 640 }]) {
-  test(`A27: every control is at least 48x48, 8 px from its neighbours and reachable at its centre (${size.width}x${size.height})`, async ({ page }) => {
-    await start(page, { size })
-    await page.goto('./')
-    const problems: string[] = []
-    await walk(page, async (label) => {
-      await calm(page)
-      for (const problem of await targetProblems(page)) problems.push(`${label}: ${problem.what} ${problem.problem}`)
-    })
-    expect([...new Set(problems)]).toEqual([])
-  })
+// The guided add (S2-16): its first question, "Otra cosa" with "Va en" and a long name, an extra's times, the next
+// round and the summary. From Week "+" › Rutina on a planned week.
+async function walkAdd(page: Page, visit: (label: string) => Promise<void>, options: { custom?: string } = {}): Promise<void> {
+  await page.goto('./#/week')
+  await page.getByTestId('week-add').click()
+  await page.getByTestId('add-block').click()
+  await onScreen(page, 'more')
+  await expect(page.locator('[data-testid=setup][data-mode=add]')).toBeVisible()
+  await visit('add: first question')
+  await live(page).getByTestId('more-other').click()
+  await live(page).getByTestId('goes-in').selectOption('c-work')
+  if (options.custom) await live(page).getByTestId('more-other-name').fill(options.custom)
+  await visit('add: a name with "Va en"')
+  await page.keyboard.press('Escape')
+  await live(page).locator('[data-value=family]').click()
+  await onScreen(page, 'extra:family')
+  await visit('add: extra:family')
+  await live(page).locator('[data-testid=setup-primary]').click()
+  await onScreen(page, 'more:1')
+  await visit('add: more:1')
+  await live(page).getByTestId('more-done').click()
+  await onScreen(page, 'summary')
+  await visit('add: summary')
 }
 
-for (const theme of ['light', 'dark'] as const) {
-  test(`A28: 320x640 at 200 % text in German (${theme}): nothing overflows sideways, the main button stays in view, nothing is clipped`, async ({ page }) => {
-    await start(page, { size: { width: 320, height: 640 }, theme, language: 'de' })
-    await page.addInitScript(() => {
-      document.addEventListener('DOMContentLoaded', () => { document.documentElement.style.fontSize = '200%' })
+const WALKS = [['setup', walk], ['guided add', walkAdd]] as const
+const PLANNED_FOR_ADD = { document: storedDoc({ categories: [SLEEP, WORK], blocks: [SLEEP_BLOCK, WORK_BLOCK] }) }
+
+for (const [flow, walker] of WALKS) {
+  for (const size of [{ width: 390, height: 844 }, { width: 320, height: 640 }]) {
+    test(`A27: every control is at least 48x48, 8 px from its neighbours and reachable at its centre (${flow}, ${size.width}x${size.height})`, async ({ page }) => {
+      await start(page, { size, ...(flow === 'guided add' ? PLANNED_FOR_ADD : {}) })
+      await page.goto('./')
+      const problems: string[] = []
+      await walker(page, async (label) => {
+        await calm(page)
+        for (const problem of await targetProblems(page)) problems.push(`${label}: ${problem.what} ${problem.problem}`)
+      })
+      expect([...new Set(problems)]).toEqual([])
     })
-    await page.goto('./')
-    const problems: string[] = []
-    await walk(page, async (label) => {
-      await calm(page)
-      const layout = await page.evaluate(() => {
-        const sideways = Array.from(document.querySelectorAll<HTMLElement>('[role=dialog] .setup-scroller, [role=dialog] .dock-answer')).map((element) => element.scrollWidth - element.clientWidth)
-        const primary = document.querySelector<HTMLElement>('[data-testid=setup] section.screen:not([aria-hidden=true]) [data-primary]')
-        const rect = primary?.getBoundingClientRect()
-        return {
-          sheet: Math.max(0, ...sideways),
-          page: document.documentElement.scrollWidth - document.documentElement.clientWidth,
-          primary: rect ? rect.top >= 0 && rect.bottom <= window.innerHeight + 0.5 && rect.left >= 0 && rect.right <= window.innerWidth + 0.5 : true,
-        }
-      })
-      // Every reply, the skip, "Something else", the name form's Add and the way out can be brought into view and tapped.
-      const unreachable = await page.evaluate(() => {
-        const screen = document.querySelector('[data-testid=setup] section.screen:not([aria-hidden=true])')
-        const replies = Array.from(screen?.querySelectorAll<HTMLElement>('.reply, .skip, [data-testid=more-other], [data-testid=more-other-add], [data-testid=more-done]') ?? [])
-        return replies.filter((element) => element.getClientRects().length > 0).flatMap((element) => {
-          element.scrollIntoView({ block: 'nearest' })
-          const rect = element.getBoundingClientRect()
-          const inView = rect.top >= -0.5 && rect.bottom <= window.innerHeight + 0.5 && rect.left >= -0.5 && rect.right <= window.innerWidth + 0.5
-          const hit = document.elementFromPoint(rect.left + rect.width / 2, rect.top + rect.height / 2)
-          return inView && hit && (hit === element || element.contains(hit)) ? [] : [(element.textContent ?? '').trim().slice(0, 30)]
-        })
-      })
-      for (const name of unreachable) problems.push(`${label}: "${name}" cannot be brought into view and tapped`)
-      if (layout.sheet > 0) problems.push(`${label}: the sheet scrolls sideways by ${layout.sheet} px`)
-      if (layout.page > 0) problems.push(`${label}: the page scrolls sideways by ${layout.page} px`)
-      if (!layout.primary) problems.push(`${label}: the main button is out of view`)
-      for (const violation of await visualIntegrityViolations(page)) problems.push(`${label}: ${violation}`)
-    }, { custom: 'Schwimmkurs mit den Kindern am Nachmittag im Hallenbad der Stad' })
-    expect([...new Set(problems)]).toEqual([])
+  }
+}
+
+// Nothing overflows sideways, the main button (when there is one) is in view, every reply and the name form's controls
+// can be brought into view and tapped, and nothing is clipped.
+async function layoutProblems(page: Page, label: string): Promise<string[]> {
+  await calm(page)
+  const problems: string[] = []
+  const layout = await page.evaluate(() => {
+    const sideways = Array.from(document.querySelectorAll<HTMLElement>('[role=dialog] .setup-scroller, [role=dialog] .dock-answer')).map((element) => element.scrollWidth - element.clientWidth)
+    const primary = document.querySelector<HTMLElement>('[data-testid=setup] section.screen:not([aria-hidden=true]) [data-primary]')
+    const rect = primary?.getBoundingClientRect()
+    return {
+      sheet: Math.max(0, ...sideways),
+      page: document.documentElement.scrollWidth - document.documentElement.clientWidth,
+      primary: rect ? rect.top >= 0 && rect.bottom <= window.innerHeight + 0.5 && rect.left >= 0 && rect.right <= window.innerWidth + 0.5 : true,
+    }
   })
+  const unreachable = await page.evaluate(() => {
+    const screen = document.querySelector('[data-testid=setup] section.screen:not([aria-hidden=true])')
+    const replies = Array.from(screen?.querySelectorAll<HTMLElement>('.reply, .skip, [data-testid=more-other], [data-testid=more-other-add], [data-testid=more-done], [data-testid=goes-in]') ?? [])
+    return replies.filter((element) => element.getClientRects().length > 0).flatMap((element) => {
+      element.scrollIntoView({ block: 'nearest' })
+      const rect = element.getBoundingClientRect()
+      const inView = rect.top >= -0.5 && rect.bottom <= window.innerHeight + 0.5 && rect.left >= -0.5 && rect.right <= window.innerWidth + 0.5
+      const hit = document.elementFromPoint(rect.left + rect.width / 2, rect.top + rect.height / 2)
+      return inView && hit && (hit === element || element.contains(hit)) ? [] : [(element.textContent ?? '').trim().slice(0, 30)]
+    })
+  })
+  for (const name of unreachable) problems.push(`${label}: "${name}" cannot be brought into view and tapped`)
+  if (layout.sheet > 0) problems.push(`${label}: the sheet scrolls sideways by ${layout.sheet} px`)
+  if (layout.page > 0) problems.push(`${label}: the page scrolls sideways by ${layout.page} px`)
+  if (!layout.primary) problems.push(`${label}: the main button is out of view`)
+  for (const violation of await visualIntegrityViolations(page)) problems.push(`${label}: ${violation}`)
+  return problems
+}
+
+for (const [flow, walker] of WALKS) {
+  for (const theme of ['light', 'dark'] as const) {
+    test(`A28: 320x640 at 200 % text in German (${flow}, ${theme}): nothing overflows sideways, the main button stays in view, nothing is clipped`, async ({ page }) => {
+      await start(page, { size: { width: 320, height: 640 }, theme, language: 'de', ...(flow === 'guided add' ? PLANNED_FOR_ADD : {}) })
+      await page.addInitScript(() => {
+        document.addEventListener('DOMContentLoaded', () => { document.documentElement.style.fontSize = '200%' })
+      })
+      await page.goto('./')
+      const problems: string[] = []
+      await walker(page, async (label) => { problems.push(...await layoutProblems(page, label)) }, { custom: 'Schwimmkurs mit den Kindern am Nachmittag im Hallenbad der Stad' })
+      expect([...new Set(problems)]).toEqual([])
+    })
+  }
 }
 
 test('A29: with the on-screen keyboard up, the name field and its Add button are both in view', async ({ page }) => {
@@ -977,6 +1028,17 @@ test.describe('reduced motion', () => {
     await start(page)
     await page.emulateMedia({ reducedMotion: 'reduce' })
     await exercise(page)
+    expect(await collectMotion(page)).toEqual({ transforms: [], animations: [] })
+  })
+
+  test('A35: the guided add with reduced motion moves nothing by transform', async ({ page }) => {
+    await page.emulateMedia({ reducedMotion: 'reduce' })
+    await start(page, { document: storedDoc({ categories: [SLEEP, WORK], blocks: [SLEEP_BLOCK, WORK_BLOCK] }) })
+    await page.emulateMedia({ reducedMotion: 'reduce' })
+    await page.goto('./#/week')
+    await expect(page.getByRole('heading', { level: 1, name: 'Semana' })).toBeVisible()
+    await installMotionSampler(page, '.setup-frame')
+    await walkAdd(page, async () => { await page.waitForTimeout(150) })
     expect(await collectMotion(page)).toEqual({ transforms: [], animations: [] })
   })
 
