@@ -96,14 +96,16 @@
       "question": "Anything else?",
       "hint": "Pick another, or tell me that's all.",
       "done": "No, that's all",
-      "limit": "That's enough for now."
+      "limit": "That's enough for now.",
+      "yes": "Yes, {name}"
     },
     "add": {
       "title": "Add to your week",
       "question": "What do you want to make time for?",
       "hint": "Pick one, or type something else.",
       "goesIn": "Goes in",
-      "own": "On its own"
+      "own": "On its own",
+      "yours": "Already in your week"
     },
     "extra": {
       "family": "When do you spend time with family?",
@@ -148,7 +150,6 @@
     "resumed": "Picking up where you left off.",
     "startOver": "Start over",
     "draftUnavailable": "This browser can't keep a draft. Don't reload until you finish.",
-    "nothingElse": "Nothing else",
     "change": "Change: {question} {answer}",
     "conversation": "Conversation",
     "send": "Send answer",
@@ -183,6 +184,9 @@
     "addSave": "Add to my week",
     "added": "Added \"{name}\" | Added {count} things",
     "into": "in {name}",
-    "addFailed": "Couldn't add it. Try again."
+    "addFailed": "Couldn't add it. Try again.",
+    "addBubble": "This is added to your week. Tap anything to change it.",
+    "addEmpty": "Nothing to add yet.",
+    "addTitle": "What you add"
   }
 }

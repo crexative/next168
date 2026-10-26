@@ -1170,6 +1170,28 @@ test.describe('"¿Algo más?" asked again (S1)', () => {
     await expect(reply(page, 'Familia')).toHaveCount(0)
   })
 
+  test('polish 2, 3, 5: at 1440x900 the replies sit under the question; one way out; later answers read "Sí, …"', async ({ page }) => {
+    await start(page, { size: { width: 1440, height: 900 } })
+    await page.goto('./')
+    await toMore(page)
+    await calm(page)
+    const gap = await page.evaluate(() => {
+      const bubble = document.querySelector('[data-testid=setup] section.screen:not([aria-hidden=true]) .exchange.is-current .bubble')!.getBoundingClientRect()
+      const reply = document.querySelector('[data-testid=setup] section.screen:not([aria-hidden=true]) .reply')!.getBoundingClientRect()
+      return reply.top - bubble.bottom
+    })
+    expect(gap).toBeLessThan(96)
+    await expect(reply(page, 'No, eso es todo')).toBeVisible()
+    await expect(reply(page, 'Nada más')).toHaveCount(0)
+    await tap(page, 'Familia')
+    await tap(page, 'Enviar respuesta')
+    await addTyped(page, 'Práctica de guitarra')
+    await tap(page, 'Enviar respuesta')
+    await onScreen(page, 'more:2')
+    await expect(live(page).locator('[data-answer=more] .turn-answer')).toHaveText('Familia')
+    await expect(live(page).locator('[data-answer="more:1"] .turn-answer')).toHaveText('Sí, Práctica de guitarra')
+  })
+
   test('S1-2: "Otra cosa" focuses the field; the name added gets its times, then "¿Algo más?" again', async ({ page }) => {
     await start(page)
     await page.goto('./')
@@ -1271,7 +1293,7 @@ test.describe('"¿Algo más?" asked again (S1)', () => {
     expect((await stored(page)).categories.map((category) => category.name)).toEqual(['Familia'])
   })
 
-  test('S1-7: stored Familia and Ajedrez are never offered and stay exactly as they are after "Nada más"', async ({ page }) => {
+  test('S1-7: stored Familia and Ajedrez are never offered and stay exactly as they are after "No, eso es todo"', async ({ page }) => {
     await start(page, { document: planned({ categories: [SLEEP, WORK, FAMILY, CHESS], blocks: [SLEEP_BLOCK, WORK_BLOCK, FAMILY_BLOCK, CHESS_BLOCK] }) })
     await page.goto('./')
     await openFromSettings(page)
@@ -1284,7 +1306,7 @@ test.describe('"¿Algo más?" asked again (S1)', () => {
     }
     await expect(reply(page, 'Familia')).toHaveCount(0)
     await expect(reply(page, 'Ajedrez')).toHaveCount(0)
-    await tap(page, 'Nada más')
+    await tap(page, 'No, eso es todo')
     await onScreen(page, 'summary')
     const before = await stored(page)
     await primary(page).click()

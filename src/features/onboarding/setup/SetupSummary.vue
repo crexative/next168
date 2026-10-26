@@ -87,8 +87,8 @@ async function addMore(): Promise<void> {
 </script>
 
 <template>
-  <section class="week" data-testid="week-card" :aria-label="t('onboarding.summary.title')">
-    <h4 class="week-title t-headline">{{ t('onboarding.summary.title') }}</h4>
+  <section class="week" data-testid="week-card" :aria-label="t(adding ? 'onboarding.summary.addTitle' : 'onboarding.summary.title')">
+    <h4 class="week-title t-headline">{{ t(adding ? 'onboarding.summary.addTitle' : 'onboarding.summary.title') }}</h4>
     <p v-if="!adding" class="counter t-body" role="status" data-testid="week-counter">
       <strong>{{ t('onboarding.summary.assigned', { hours: formatWholeHours(totals.assigned) }) }}</strong> · {{ t('onboarding.summary.unassigned', { hours: formatWholeHours(totals.free) }) }}
     </p>
