@@ -7,7 +7,7 @@ import { buildExportBundle, bundleHash, parseExportBundle } from '../exportBundl
 import { datedOccurrences, occurrences, zonedInstant } from '../time'
 import { sevenDayMeasures } from '../stats'
 import { scheduleTasks } from '../scheduler'
-import { applyProposal, buildProposal, canonicalContentHash, previewProposal } from '../proposals'
+import { commitProposal, buildProposal, canonicalContentHash, previewProposal } from '../proposals'
 import { clock, document, env, block, sampleV1 } from './fixtures'
 import type { ProposalInput } from '../model'
 
@@ -88,22 +88,22 @@ describe('boundary regressions', () => {
   })
   it('rejects generated id collisions atomically and captures a stable preview diff', async () => {
     const doc = document(); doc.blocks = [{ ...block, id: 'preview-1' }]
-    const input: ProposalInput = { contractVersion: '1.0', workspaceId: doc.workspaceId, baseRevision: 0, summary: '', ops: [{ op: 'add_block', block: { categoryId: 'work', title: 'Focus', days: [1], start: 540, end: 600 } }] }
+    const input: ProposalInput = { contractVersion: '1.1', workspaceId: doc.workspaceId, baseRevision: 0, summary: '', ops: [{ op: 'add_block', block: { categoryId: 'work', title: 'Focus', days: [1], start: 540, end: 600 } }] }
     const proposal = await buildProposal(input, doc, 'mcp', clock, () => 'p')
-    expect(await applyProposal(doc, proposal, () => 'preview-1', clock)).toMatchObject({ kind: 'rejected' })
+    expect(await commitProposal(doc, proposal, () => 'preview-1', clock)).toMatchObject({ kind: 'rejected' })
     expect((await previewProposal(doc, proposal)).changes[0]).toMatchObject({ after: { id: 'preview-2' } })
     expect(doc.blocks).toHaveLength(1)
   })
   it('takes snapshots before awaiting the injected asynchronous hasher', async () => {
     const doc = document()
-    const input: ProposalInput = { contractVersion: '1.0', workspaceId: doc.workspaceId, baseRevision: 0, summary: '', ops: [{ op: 'update_category_goal', id: 'work', goal: { type: 'min', hoursPerWeek: 1 } }] }
+    const input: ProposalInput = { contractVersion: '1.1', workspaceId: doc.workspaceId, baseRevision: 0, summary: '', ops: [{ op: 'update_category_goal', id: 'work', goal: { type: 'min', hoursPerWeek: 1 } }] }
     const proposal = await buildProposal(input, doc, 'mcp', clock, () => 'p')
     let release: (value: string) => void = () => {}
     const waiting = new Promise<string>((resolve) => { release = resolve })
-    const result = applyProposal(doc, proposal, () => 'id', clock, () => waiting)
+    const result = commitProposal(doc, proposal, () => 'id', clock, () => waiting)
     doc.categories[0]!.name = 'Changed after approval began'
     proposal.ops = []
-    release(await canonicalContentHash(input.ops))
+    release(await canonicalContentHash({ effectiveDate: proposal.effectiveDate, ops: input.ops }))
     const applied = await result
     if (applied.kind !== 'applied') throw Error('apply')
     expect(applied.document.categories[0]?.name).toBe('Work')

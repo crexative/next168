@@ -1,4 +1,5 @@
-import { MAX_OPS_PER_PROPOSAL, type ExternalOccurrence, type PlannerDocument, type PlannerEvent, type TimeBlock } from '@/core/model'
+import { aiProjection } from '@/core/aiProjection'
+import { CONTRACT_VERSION, MAX_OPS_PER_PROPOSAL, type ExternalOccurrence, type PlannerDocument, type TimeBlock } from '@/core/model'
 import { addLocalDays, localDateOf, zonedInstant } from '@/core/time'
 import { weekEnd, weekSplit, weekSplitHours } from '@/features/capacity/freeHours'
 import { formatHours } from '@/ui/format'
@@ -29,13 +30,13 @@ const MAX_TITLE = 60
 
 // The schema and the example are the same in every language: the AI must reproduce them character by character.
 export const SCHEMA_SUMMARY = [
-  `{"contractVersion":"1.0","workspaceId":"<as in MY PLAN>","baseRevision":<revision as in MY PLAN>,"summary":"<one short sentence>","ops":[<1 to ${MAX_OPS_PER_PROPOSAL} of these>]}`,
+  `{"contractVersion":"${CONTRACT_VERSION}","workspaceId":"<as in MY PLAN>","baseRevision":<revision as in MY PLAN>,"summary":"<one short sentence>","ops":[<1 to ${MAX_OPS_PER_PROPOSAL} of these>]}`,
   '{"op":"add_category","ref":"new-<short name>","category":{"name","goal":{"type":"max"|"min"|"none","hoursPerWeek":0-168} (optional)}}',
   '{"op":"add_block","block":{"categoryId","title","days":[0-6],"start":<minute>,"end":<minute>}}',
   '{"op":"update_block","id","patch":{any of categoryId,title,days,start,end}}',
   '{"op":"delete_block","id"}',
-  '{"op":"add_task","task":{"title","categoryId" (optional: leave it out for any free time),"durationMin":15-180,"priority":1|2|3,"dueDate":"YYYY-MM-DD" (optional)}}',
-  '{"op":"update_task","id","patch":{any of title,categoryId,durationMin,priority,dueDate}}',
+  '{"op":"add_task","task":{"title","categoryId" (optional: leave it out for any free time),"durationMin":5-1260 (optional: leave it out for a to-do with no time),"priority":1|2|3,"dueDate":"YYYY-MM-DD" (optional),"at":<minute> (optional fixed start on dueDate; needs dueDate; durationMin then at most 720)}}',
+  '{"op":"update_task","id","patch":{any of title,categoryId,durationMin,priority,dueDate,at},"unset":[any of "categoryId","dueDate","at","durationMin"] (optional)}',
   '{"op":"complete_task","id"}',
   '{"op":"add_event","event":{"title","start":"<ISO time with offset>","end":"<ISO time with offset>","allDay":false,"attendees":[]}}',
   '{"op":"update_category_goal","id","goal":{"type":"max"|"min"|"none","hoursPerWeek":0-168}}',
@@ -51,7 +52,7 @@ function exampleFor(document: PlannerDocument): string {
   const existing = document.categories[0]?.id
   const create = existing ? [] : [{ op: 'add_category', ref: 'new-example', category: { name: 'Example', goal: { type: 'min', hoursPerWeek: 1 } } }]
   return `\`\`\`${PROPOSAL_LABEL}\n${jsonLine({
-    contractVersion: '1.0', workspaceId: document.workspaceId, baseRevision: document.revision,
+    contractVersion: CONTRACT_VERSION, workspaceId: document.workspaceId, baseRevision: document.revision,
     summary: existing ? 'Add a one-hour block' : 'Add a category and a one-hour block',
     ops: [...create, { op: 'add_block', block: { categoryId: existing ?? 'new-example', title: 'Example', days: [4], start: 1080, end: 1140 } }],
   })}\n\`\`\``
@@ -129,7 +130,7 @@ function eventLine(title: string, startIso: string, endIso: string, timeZone: st
   return `${startDate} ${clock(startMinute)} → ${endDate} ${clock(endMinute)} ${quote(title)}`
 }
 
-function weekEvents(document: PlannerDocument, external: ExternalOccurrence[], from: Date, until: Date): string[] {
+function weekEvents(document: Pick<PlannerDocument, 'settings'> & { events: { title: string; start: string; end: string; allDay: boolean }[] }, external: ExternalOccurrence[], from: Date, until: Date): string[] {
   const timeZone = document.settings.timeZone
   const dayStart = (date: string) => zonedInstant(date, 0, timeZone).getTime()
   const items: WeekEvent[] = []
@@ -140,12 +141,14 @@ function weekEvents(document: PlannerDocument, external: ExternalOccurrence[], f
     if (!(start < until.getTime() && end > from.getTime())) return
     items.push({ start, line: eventLine(title, startIso, endIso, timeZone, allDay) })
   }
-  for (const event of document.events as PlannerEvent[]) add(event.title, event.start, event.end, event.allDay)
+  for (const event of document.events) add(event.title, event.start, event.end, event.allDay)
   for (const event of external) add(event.title, event.start, event.end, event.allDay)
   return items.sort((a, b) => a.start - b.start || a.line.localeCompare(b.line)).map((item) => item.line)
 }
 
 export function buildAiPrompt({ document, now, locale, translate: t, external = [] }: PromptInput): string {
+  // Every line of planner text comes from the AI projection: no note of any kind is ever copied.
+  const shared = aiProjection(document)
   const timeZone = document.settings.timeZone
   const today = localDateOf(now, timeZone)
   const dates = weekDates(today, document.settings.weekStartsOn)
@@ -155,16 +158,22 @@ export function buildAiPrompt({ document, now, locale, translate: t, external = 
   const order = orderedDays(document.settings.weekStartsOn)
   const p = (key: string, params?: Record<string, unknown>) => t(`assistant.anyAi.prompt.${key}`, params)
 
-  const categories = document.categories.map((category) => {
+  const categories = shared.categories.map((category) => {
     const goal = category.goal.type === 'none' ? p('goalNone') : p(category.goal.type === 'max' ? 'goalMax' : 'goalMin', { hours: category.goal.hoursPerWeek })
     return `${quote(category.name)} [id=${data(category.id)}] ${goal}`
   })
-  const routine = routineLines(document.blocks, order, locale)
-  const tasks = document.tasks.filter((task) => !task.doneAt).map((task) => {
+  const routine = routineLines(shared.blocks, order, locale)
+  // Due first, then by priority, so the cap keeps what matters soonest.
+  const open = shared.tasks.filter((task) => !task.doneAt)
+    .sort((a, b) => (a.dueDate ?? '9999-12-31').localeCompare(b.dueDate ?? '9999-12-31') || a.priority - b.priority)
+  const tasks = open.map((task) => {
     const due = task.dueDate ? ` dueDate=${task.dueDate}` : ''
-    return `${quote(task.title)} ${task.durationMin} min [id=${data(task.id)}${task.categoryId === undefined ? '' : ` category=${data(task.categoryId)}`} durationMin=${task.durationMin} priority=${task.priority}${due}]`
+    const at = task.at !== undefined ? ` at=${task.at}` : ''
+    const length = task.durationMin !== undefined ? `${task.durationMin} min` : p('noTime')
+    const minutes = task.durationMin !== undefined ? ` durationMin=${task.durationMin}` : ''
+    return `${quote(task.title)} ${length} [id=${data(task.id)}${task.categoryId === undefined ? '' : ` category=${data(task.categoryId)}`}${minutes} priority=${task.priority}${due}${at}]`
   })
-  const events = weekEvents(document, external, zonedInstant(dates[0]!, 0, timeZone), end)
+  const events = weekEvents(shared, external, zonedInstant(dates[0]!, 0, timeZone), end)
   const section = (title: string, lines: string[], empty: string, cut = true) => [`${title}`, ...(lines.length ? (cut ? capped(lines, t) : lines) : [empty])].join('\n')
 
   return [

@@ -9,7 +9,7 @@ import { plannerWithBlocks } from './testSupport'
 const document = plannerWithBlocks()
 const files = import.meta.glob<{ default: Record<string, unknown> }>('../../i18n/en/assistant.json', { eager: true })
 const input: ProposalInput = {
-  contractVersion: '1.0', workspaceId: document.workspaceId, baseRevision: document.revision, source: 'assistant', summary: 'Move Review',
+  contractVersion: '1.1', workspaceId: document.workspaceId, baseRevision: document.revision, summary: 'Move Review',
   ops: [{ op: 'update_block', id: 'work-fri', patch: { start: 570, end: 1005, days: [4, 5] } }],
 } as unknown as ProposalInput
 

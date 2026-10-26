@@ -128,6 +128,7 @@
       "tasksHeader": "Offene Aufgaben:",
       "eventsHeader": "Kalendertermine in dieser Woche (24-Stunden-Uhr, Ortszeit):",
       "none": "(keine)",
+      "noTime": "ohne Zeit",
       "more": "(+{count} weitere nicht angezeigt)",
       "answerHeader": "SO ANTWORTEST DU MIT ÄNDERUNGEN",
       "answerIntro": "Setze in den weeklid-Block ein JSON-Objekt in dieser Form (ops sind die Änderungen):",

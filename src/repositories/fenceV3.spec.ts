@@ -2,6 +2,7 @@
 // (d325df4, the real code through `@fencedV2/*`) can no longer write anything once a P1 tab has opened the databases.
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { IDBFactory } from 'fake-indexeddb'
+import type { ProposalInput } from '@/core/model'
 import { IndexedDbCalendarSourceStore } from '@/features/calendars/calendarSourceStore'
 import { databaseVersion, dumpDatabases, fencedV2Build, fencedV2Source, ics } from '@/test/storageFence'
 import { BrowserPlannerRepository } from './BrowserPlannerRepository'
@@ -47,7 +48,8 @@ async function seededByV2() {
   expect((await v2.planner.save(first, 0)).kind).toBe('ok')
   const second = { ...first, revision: 2, blocks: [{ id: 'b-1', categoryId: 'c-1', title: 'SENTINEL-block', days: [1], start: 540, end: 600 }] }
   expect((await v2.planner.save(second, 1)).kind).toBe('ok')
-  const input = (summary: string) => ({ contractVersion: '1.0' as const, workspaceId: first.workspaceId, baseRevision: 2, summary, ops: [{ op: 'delete_block' as const, id: 'b-1' }] })
+  // Contract 1.0, d325df4's own contract (the types here are the current build's).
+  const input = (summary: string) => ({ contractVersion: '1.0', workspaceId: first.workspaceId, baseRevision: 2, summary, ops: [{ op: 'delete_block', id: 'b-1' }] }) as unknown as ProposalInput
   const a = await v2.proposals.create(input('SENTINEL-A'), 'mcp')
   const b = await v2.proposals.create(input('SENTINEL-B'), 'mcp')
   return { factory, lock, v2, document: second, a, b }
@@ -61,7 +63,7 @@ function operationsOf(v2: Awaited<ReturnType<typeof fencedV2Build>>, document: {
     saveGuarded: () => v2.planner.saveGuarded(next, 2, {}),
     deleteAll: () => v2.planner.deleteAll(v2.testDocument({ workspaceId: 'ws-fresh' }), 2),
     restoreBackup: () => v2.planner.restoreBackup(),
-    proposalCreate: () => v2.proposals.create({ contractVersion: '1.0', workspaceId: document.workspaceId, baseRevision: 2, summary: 'x', ops: [{ op: 'delete_block', id: 'b-1' }] }, 'mcp'),
+    proposalCreate: () => v2.proposals.create({ contractVersion: '1.0', workspaceId: document.workspaceId, baseRevision: 2, summary: 'x', ops: [{ op: 'delete_block', id: 'b-1' }] } as unknown as ProposalInput, 'mcp'),
     proposalApprove: () => v2.proposals.approve(proposal.id, proposal.contentHash, 2),
     // K1's probe: rejecting A rewrote the whole list with the old schema and stripped B's newer fields.
     proposalReject: () => v2.proposals.reject(proposal.id),
@@ -96,7 +98,11 @@ describe('P1-1: the P1 fence excludes the build fenced at version 2', () => {
     expect((await p1.planner.load()).kind).toBe('ok')
     expect(await databaseVersion(factory, PLANNER_DATABASE)).toBe(STORAGE_VERSION)
     expect(await databaseVersion(factory, CALENDAR_DATABASE)).toBe(STORAGE_VERSION)
+    // K1's probe: a P1 proposal carrying the task fields d325df4 strips (a fixed time and notes); an old reject of
+    // another proposal rewrote the whole list with the old schema. Now it cannot run at all.
+    const b = await p1.proposals.create({ contractVersion: '1.1', workspaceId: document.workspaceId, baseRevision: 2, summary: 'SENTINEL-B', ops: [{ op: 'add_task', task: { title: 'Dentist', dueDate: '2026-10-27', at: 540, notes: 'SENTINEL-notes', priority: 2 } }] }, 'mcp')
     await expectFencedOut(factory, operationsOf(v2, document, a))
+    expect((await p1.proposals.list()).find((proposal) => proposal.id === b.id)?.ops).toEqual(b.ops)
   })
 
   it('a d325df4 write queued while the upgrade waits for an open connection fails once it runs, and writes nothing', async () => {

@@ -46,9 +46,12 @@ it('runs the built serve CLI as the only writer and serves authenticated review 
     const cookie = pair.headers.get('set-cookie')!.split(';')[0]!
     await client.connect(new StreamableHTTPClientTransport(new URL(`${url}/mcp`), { requestInit: { headers: { Authorization: `Bearer ${token}` } } }))
     const week = (await client.callTool({ name: 'get_week', arguments: {} })).structuredContent as { workspaceId: string; revision: number }
-    const proposed = await client.callTool({ name: 'propose_changes', arguments: { contractVersion: '1.0', workspaceId: week.workspaceId, baseRevision: week.revision, summary: 'CLI meeting', ops: [{ op: 'add_event', event: { title: 'CLI meeting', start: '2026-10-26T10:00:00Z', end: '2026-10-26T11:00:00Z', allDay: false, attendees: [] } }] } })
+    const proposed = await client.callTool({ name: 'propose_changes', arguments: { contractVersion: '1.1', workspaceId: week.workspaceId, baseRevision: week.revision, summary: 'CLI meeting', ops: [{ op: 'add_event', event: { title: 'CLI meeting', start: '2026-10-26T10:00:00Z', end: '2026-10-26T11:00:00Z', allDay: false, attendees: [] } }] } })
     expect(proposed.isError).not.toBe(true)
-    const proposal = (proposed.structuredContent as { proposal: { id: string; contentHash: string } }).proposal
+    // An AI sees what the proposal does; the app reads the stored record (and its content hash) itself.
+    const { id } = (proposed.structuredContent as { proposal: { id: string } }).proposal
+    const listed = await fetch(`${url}/api/proposals`, { headers: { Cookie: cookie } })
+    const proposal = ((await listed.json()) as { proposals: { id: string; contentHash: string }[] }).proposals.find(item => item.id === id)!
     const result = await fetch(`${url}/api/proposals/${proposal.id}/apply`, { method: 'POST', headers: { Cookie: cookie, 'Content-Type': 'application/json' }, body: JSON.stringify({ contentHash: proposal.contentHash, baseRevision: week.revision }) })
     expect(await result.json()).toMatchObject({ kind: 'applied', revision: 1 })
     const persisted = JSON.parse(await readFile(join(home, 'planner.json'), 'utf8'))

@@ -45,6 +45,7 @@
       "stale": "Tu plan cambió después de copiarlo para tu IA. Copia de nuevo y pídele que repita los cambios.",
       "unusable": "Algunos cambios no encajan con tu plan actual, por ejemplo una rutina que ya no existe. Copia de nuevo y pídele a tu IA que lo intente otra vez.",
       "saveFailed": "No se pudieron guardar los cambios. Inténtalo de nuevo.",
+      "retired": "Esta respuesta es de una versión anterior. Pide a tu IA una propuesta nueva (copia el texto otra vez).",
       "tooManyOps": "Tu IA envió {count} cambios y una propuesta admite como máximo {max}. Pídele que junte en un solo cambio los días con la misma rutina, o que te mande el resto después de aprobar esta parte.",
       "duplicateCategory": "Tu IA quiere crear la categoría «{name}», pero ya la tienes. Pídele que use la que ya existe y que te mande los cambios otra vez."
     },

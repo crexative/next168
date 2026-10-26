@@ -10,7 +10,7 @@ afterEach(() => setHourCycle('auto'))
 
 const document = plannerWithBlocks()
 const addBlock = { op: 'add_block', block: { categoryId: 'work', title: 'Gym', days: [4], start: 1080, end: 1140 } }
-const proposalFor = (op: Record<string, unknown>) => ({ contractVersion: '1.0', workspaceId: document.workspaceId, baseRevision: document.revision, summary: 'Add a gym block', ops: [op] })
+const proposalFor = (op: Record<string, unknown>) => ({ contractVersion: '1.1', workspaceId: document.workspaceId, baseRevision: document.revision, summary: 'Add a gym block', ops: [op] })
 
 async function code(promise: Promise<unknown>): Promise<string | undefined> {
   return promise.then(() => undefined, (error: unknown) => (error instanceof AssistantError ? error.code : 'not-assistant-error'))

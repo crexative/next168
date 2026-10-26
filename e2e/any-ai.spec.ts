@@ -39,7 +39,7 @@ function plannerDocument() {
 // What ChatGPT typically answers: friendly prose around one fenced block.
 function chatGptReply(overrides: Record<string, unknown> = {}): string {
   const proposal = {
-    contractVersion: '1.0', workspaceId: WORKSPACE, baseRevision: 1, summary: 'Mover el gimnasio del martes al jueves',
+    contractVersion: '1.1', workspaceId: WORKSPACE, baseRevision: 1, summary: 'Mover el gimnasio del martes al jueves',
     ops: [{ op: 'update_block', id: 'b-gym', patch: { days: [4] } }], ...overrides,
   }
   return `¡Claro! Mover el gimnasio al jueves deja libre tu martes por la tarde y el jueves a esa hora no tienes nada.

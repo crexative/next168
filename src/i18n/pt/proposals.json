@@ -81,5 +81,18 @@
   "discardOnCancel": "Se você cancelar, estas mudanças são descartadas e seu plano fica como está.",
   "keepOnCancel": "Se você cancelar, a proposta continua pendente em Propostas.",
   "duplicateCategory": "Você já tem uma categoria chamada «{name}». Peça uma proposta que a use.",
-  "emptyCategory": "«{name}» fica vazia; pode excluí-la em Ajustes."
+  "emptyCategory": "«{name}» fica vazia; pode excluí-la em Ajustes.",
+  "history": {
+    "earlier": "De uma versão anterior",
+    "earlierFooter": "Esta proposta é de uma versão anterior; peça uma nova.",
+    "unreadable": "Proposta ilegível",
+    "unreadableFooter": "O Weeklid não consegue ler estes dados e nunca os aplica. Você pode salvá-los como estão.",
+    "exportRaw": "Exportar dados brutos",
+    "statuses": {
+      "stale": "Não pode mais ser aplicada",
+      "applied": "Aplicada",
+      "rejected": "Rejeitada",
+      "pending": "Pendente"
+    }
+  }
 }

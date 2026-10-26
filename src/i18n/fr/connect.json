@@ -45,6 +45,7 @@
       "stale": "Ton plan a changé après la copie pour ton IA. Copie à nouveau et demande-lui de refaire les changements.",
       "unusable": "Certains changements ne correspondent pas à ton plan actuel, par exemple un bloc qui n’existe plus. Copie à nouveau et demande à ton IA de réessayer.",
       "saveFailed": "Les changements n’ont pas pu être enregistrés. Réessaie.",
+      "retired": "Cette réponse vient d’une version précédente. Demande à ton IA une nouvelle proposition (copie le texte à nouveau).",
       "tooManyOps": "Ton IA a envoyé {count} changements et une proposition en contient au plus {max}. Demande-lui de regrouper en un seul changement les jours qui ont la même routine, ou d’envoyer le reste après ton approbation de cette partie.",
       "duplicateCategory": "Ton IA veut créer la catégorie « {name} », mais tu l’as déjà. Demande-lui d’utiliser celle qui existe et de renvoyer les changements."
     },

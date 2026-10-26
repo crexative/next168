@@ -32,7 +32,7 @@ it.each([
   await workspace.initialize()
   if (path === 'proposal') {
     const document = await workspace.document()
-    const proposal = await workspace.create({ contractVersion: '1.0', workspaceId: document.workspaceId, baseRevision: 0, summary: 'Read', ops: [{ op: 'add_task', task: { title: 'Read', durationMin: 15, priority: 1 } }] }, 'mcp')
+    const proposal = await workspace.create({ contractVersion: '1.1', workspaceId: document.workspaceId, baseRevision: 0, summary: 'Read', ops: [{ op: 'add_task', task: { title: 'Read', durationMin: 15, priority: 1 } }] }, 'mcp')
     await workspace.approve(proposal.id, proposal.contentHash, 0)
   }
   localStorage.clear()

@@ -40,7 +40,7 @@ async function setup(withCategory = true) {
   return { document, planner }
 }
 
-const focusHour = (workspaceId: string) => ({ contractVersion: '1.0' as const, workspaceId, baseRevision: 0, summary: 'A focused hour', ops: [
+const focusHour = (workspaceId: string) => ({ contractVersion: '1.1' as const, workspaceId, baseRevision: 0, summary: 'A focused hour', ops: [
   { op: 'add_block' as const, block: { categoryId: 'focus', title: 'Focused planning', days: [1], start: 540, end: 600 } },
 ] })
 

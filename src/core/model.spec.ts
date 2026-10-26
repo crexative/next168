@@ -24,7 +24,7 @@ describe('planner document contract', () => {
   })
 
   it('rejects unknown proposal operations', () => {
-    const result = proposalInputSchema.safeParse({ contractVersion: '1.0', workspaceId: 'w1', baseRevision: 0, summary: '', ops: [{ op: 'apply_changes' }] })
+    const result = proposalInputSchema.safeParse({ contractVersion: '1.1', workspaceId: 'w1', baseRevision: 0, summary: '', ops: [{ op: 'apply_changes' }] })
     expect(result.success).toBe(false)
   })
 })

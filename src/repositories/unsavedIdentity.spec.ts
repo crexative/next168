@@ -42,7 +42,7 @@ it('copies an unsaved plan, reloads, and opens the review of the reply from that
   document.body.innerHTML = ''
   const after = await load(createTestRepositories({ store: first.store, runExclusive: first.runExclusive }))
   const box = document.querySelector<HTMLTextAreaElement>('[data-testid=any-ai-paste]')!
-  box.value = `\`\`\`next168\n${JSON.stringify({ contractVersion: '1.0', workspaceId, baseRevision: 0, summary: 'Read', ops: [{ op: 'add_task', task: { title: 'Read', durationMin: 15, priority: 1 } }] })}\n\`\`\``
+  box.value = `\`\`\`next168\n${JSON.stringify({ contractVersion: '1.1', workspaceId, baseRevision: 0, summary: 'Read', ops: [{ op: 'add_task', task: { title: 'Read', durationMin: 15, priority: 1 } }] })}\n\`\`\``
   box.dispatchEvent(new Event('input'))
   await nextTick()
   document.querySelector<HTMLButtonElement>('[data-testid=any-ai-review]')!.click()

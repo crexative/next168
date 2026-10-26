@@ -70,7 +70,7 @@ describe('a planner that was never stored', () => {
     const storage = new MemoryStore()
     const { store, proposals } = setup(storage)
     const basis = testDocument({ workspaceId: 'from-other-tab' })
-    await proposals.create({ contractVersion: '1.0', workspaceId: 'from-other-tab', baseRevision: 0, summary: 'S', ops: [{ op: 'add_category', ref: 'new-a', category: { name: 'A' } }] }, 'import', { basis })
+    await proposals.create({ contractVersion: '1.1', workspaceId: 'from-other-tab', baseRevision: 0, summary: 'S', ops: [{ op: 'add_category', ref: 'new-a', category: { name: 'A' } }] }, 'import', { basis })
     await store.load()
     expect(store.document?.workspaceId).toBe('from-other-tab')
     expect(store.stored).toBe(false)

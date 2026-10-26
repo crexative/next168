@@ -304,7 +304,7 @@ describe.each(storeCases)('$name', ({ create, failWritesOf }) => {
       const { planner, proposals, legacy } = repositories
       await planner.save(saved(1, { categories: [{ id: 'work', name: 'Work', colorKey: 'blue', goal: { type: 'none', hoursPerWeek: 0 } }], calendarSources: [sourceA, { ...sourceA, id: 'source-b' }] }), 0)
       await planner.save({ ...(await loaded(planner)), revision: 2 }, 1)
-      await proposals.create({ contractVersion: '1.0', workspaceId: 'workspace-1', baseRevision: 2, summary: 'S', ops: [{ op: 'add_block', block: { categoryId: 'work', title: 'F', days: [1], start: 540, end: 600 } }] }, 'mcp')
+      await proposals.create({ contractVersion: '1.1', workspaceId: 'workspace-1', baseRevision: 2, summary: 'S', ops: [{ op: 'add_block', block: { categoryId: 'work', title: 'F', days: [1], start: 540, end: 600 } }] }, 'mcp')
       calendarTexts.data.set('source-a', 'A-TEXT')
       calendarTexts.data.set('source-b', 'B-TEXT')
       for (const key of LEGACY_KEYS) legacy.data.set(key, key === KEYS.legacyV1 ? v1 : 'x')

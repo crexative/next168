@@ -81,5 +81,18 @@
   "discardOnCancel": "Si cancelas, estos cambios se descartan y tu plan queda como está.",
   "keepOnCancel": "Si cancelas, la propuesta sigue pendiente en Propuestas.",
   "duplicateCategory": "Ya tienes una categoría llamada «{name}». Pide una propuesta que la use.",
-  "emptyCategory": "«{name}» queda vacía; puedes eliminarla en Ajustes."
+  "emptyCategory": "«{name}» queda vacía; puedes eliminarla en Ajustes.",
+  "history": {
+    "earlier": "De una versión anterior",
+    "earlierFooter": "Esta propuesta es de una versión anterior; pide una nueva.",
+    "unreadable": "Propuesta ilegible",
+    "unreadableFooter": "Weeklid no puede leer estos datos y nunca los aplica. Puedes guardarlos tal cual.",
+    "exportRaw": "Exportar datos sin procesar",
+    "statuses": {
+      "stale": "Ya no se puede aplicar",
+      "applied": "Aplicada",
+      "rejected": "Rechazada",
+      "pending": "Pendiente"
+    }
+  }
 }

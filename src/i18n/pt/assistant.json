@@ -128,6 +128,7 @@
       "tasksHeader": "Tarefas pendentes:",
       "eventsHeader": "Eventos do calendário nesta semana (relógio de 24 horas, hora local):",
       "none": "(nenhum)",
+      "noTime": "sem tempo",
       "more": "(+{count} a mais não mostrados)",
       "answerHeader": "COMO RESPONDER COM MUDANÇAS",
       "answerIntro": "Dentro do bloco weeklid coloque um objeto JSON neste formato (ops são as mudanças):",

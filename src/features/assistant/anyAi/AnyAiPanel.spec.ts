@@ -28,7 +28,7 @@ const $ = <T extends HTMLElement>(id: string) => mounted!.host.querySelector<T>(
 const click = async (id: string) => { $(id)!.click(); await vi.waitFor(() => undefined); await nextTick() }
 const type = async (text: string) => { const box = $<HTMLTextAreaElement>('any-ai-paste')!; box.value = text; box.dispatchEvent(new Event('input')); await nextTick() }
 const gymToThursday = (overrides: Record<string, unknown> = {}) => `Sure! I moved it.\n\n\`\`\`weeklid\n${JSON.stringify({
-  contractVersion: '1.0', workspaceId: 'workspace-1', baseRevision: 1, summary: 'Move the gym to Thursday',
+  contractVersion: '1.1', workspaceId: 'workspace-1', baseRevision: 1, summary: 'Move the gym to Thursday',
   ops: [{ op: 'update_block', id: 'b-gym', patch: { days: [4] } }], ...overrides,
 })}\n\`\`\`\nAnything else?`
 const CALENDAR = { id: 's', name: 'Work calendar', kind: 'file' as const, colorKey: 'teal' as const }

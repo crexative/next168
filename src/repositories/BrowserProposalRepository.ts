@@ -1,10 +1,11 @@
-import { z } from 'zod'
 import {
   changeProposalSchema, proposalInputSchema,
-  type ChangeProposal, type PlannerDocument, type ProposalCreateOptions, type ProposalDecision, type ProposalInput, type ProposalRepository,
+  type ChangeProposal, type PlannerDocument, type ProposalCreateOptions, type ProposalDecision, type ProposalHistory, type ProposalInput, type ProposalRepository,
 } from '@/core/model'
 import type { Hasher } from '@/core/canonical'
-import { applyProposal, buildProposal, validateDocument } from './core'
+import { CONTRACT_RETIRED, isRetiredContract } from '@/core/proposals'
+import { currentProposals, legacyProposals, readProposalStore, withProposal, writeProposalStore, type ProposalStore } from '@/core/proposalRecords'
+import { buildProposal, commitProposal, validateDocument } from './core'
 import type { ChangeChannel } from './changeChannel'
 import type { BrowserStore, Snapshot } from './indexedDbStore'
 import {
@@ -26,18 +27,6 @@ export class ProposalError extends Error {
   }
 }
 
-function parseProposals(raw: string | undefined): ChangeProposal[] {
-  if (raw === undefined) return []
-  let value: unknown
-  try {
-    value = JSON.parse(raw)
-  } catch {
-    throw new ProposalError('proposals-unreadable')
-  }
-  const parsed = z.array(changeProposalSchema).safeParse(value)
-  if (!parsed.success) throw new ProposalError('proposals-unreadable')
-  return parsed.data
-}
 
 // What a proposal is made against: the stored planner or, while nothing is stored, the unsaved one shown to the person
 // (the one already stored beside earlier proposals, or else the caller's `basis`, which must never have been written).
@@ -68,28 +57,39 @@ function baseForApproval(snapshot: Snapshot, proposal: ChangeProposal): Proposal
   return existing && existing.document.workspaceId === proposal.workspaceId ? { document: existing.document, unsaved: true } : undefined
 }
 
-const replaced = (all: ChangeProposal[], updated: ChangeProposal) => JSON.stringify(all.map((proposal) => (proposal.id === updated.id ? updated : proposal)))
+function storedRevision(snapshot: Snapshot): number {
+  const stored = storedDocument(snapshot.document)
+  return stored.kind === 'ok' ? stored.document.revision : 0
+}
+
+const replaced = (store: ProposalStore, updated: ChangeProposal) => writeProposalStore(withProposal(store, updated))
 
 export class BrowserProposalRepository implements ProposalRepository {
   constructor(private readonly deps: ProposalRepositoryDeps) {}
 
   async list(status?: ChangeProposal['status']): Promise<ChangeProposal[]> {
-    const all = parseProposals((await this.deps.store.read(['proposals'])).proposals)
+    const all = currentProposals(readProposalStore((await this.deps.store.read(['proposals'])).proposals))
     return status ? all.filter((proposal) => proposal.status === status) : all
   }
 
+  async history(): Promise<ProposalHistory> {
+    const store = readProposalStore((await this.deps.store.read(['proposals'])).proposals)
+    return { proposals: currentProposals(store), legacy: legacyProposals(store), quarantine: store.quarantine }
+  }
+
   async create(input: ProposalInput, source: ChangeProposal['source'], { clientName, basis }: ProposalCreateOptions = {}): Promise<ChangeProposal> {
+    if (isRetiredContract(input)) throw new ProposalError(CONTRACT_RETIRED)
     const parsed = proposalInputSchema.safeParse(input)
     if (!parsed.success) throw new ProposalError('proposal-invalid')
     return this.exclusive(async () => {
       const snapshot = await this.deps.store.read(['document', 'proposals', 'purgeEpoch', 'unsavedBaseline'])
       const { document, unsaved } = baseForCreate(snapshot, basis)
       if (document.workspaceId !== parsed.data.workspaceId) throw new ProposalError('workspace-mismatch')
-      const proposals = parseProposals(snapshot.proposals)
+      const proposals = readProposalStore(snapshot.proposals)
       const built = await buildProposal(parsed.data, document, source, this.deps, this.deps.newId, this.deps.hash)
       const candidate = changeProposalSchema.safeParse({ ...built, ...(clientName ? { clientName } : {}) })
       if (!candidate.success) throw new ProposalError('proposal-invalid')
-      const proposalsJson = JSON.stringify([...proposals, candidate.data])
+      const proposalsJson = writeProposalStore(withProposal(proposals, candidate.data))
       if (!unsaved) {
         await this.deps.store.write({ proposals: proposalsJson })
         return candidate.data
@@ -106,9 +106,10 @@ export class BrowserProposalRepository implements ProposalRepository {
     return this.exclusive(async () => {
       const { store, now } = this.deps
       const snapshot = await store.read(['document', 'proposals', 'purgeEpoch', 'unsavedBaseline'])
-      const proposals = parseProposals(snapshot.proposals)
-      const proposal = proposals.find((candidate) => candidate.id === id)
-      if (!proposal) return { kind: 'not-found' }
+      const proposals = readProposalStore(snapshot.proposals)
+      const proposal = currentProposals(proposals).find((candidate) => candidate.id === id)
+      // Only a contract 1.1 record can execute: a 1.0 one is stale history, a quarantined one is not a proposal at all.
+      if (!proposal) return legacyProposals(proposals).some((legacy) => legacy.id === id) ? { kind: 'stale', currentRevision: storedRevision(snapshot) } : { kind: 'not-found' }
       if (proposal.status === 'applied') return { kind: 'applied', revision: proposal.appliedRevision ?? 0 }
       if (proposal.status === 'rejected') return { kind: 'rejected' }
       if (proposal.contentHash !== contentHash) throw new ProposalError('content-hash-mismatch')
@@ -124,7 +125,7 @@ export class BrowserProposalRepository implements ProposalRepository {
         return { kind: 'stale', currentRevision: document.revision }
       }
 
-      const applied = await applyProposal(document, proposal, this.deps.newId, this.deps, this.deps.hash)
+      const applied = await commitProposal(document, proposal, this.deps.newId, this.deps, this.deps.hash)
       if (applied.kind === 'rejected') throw new ProposalError(applied.reason)
       if (applied.kind === 'already-applied') {
         await store.write({ proposals: replaced(proposals, { ...proposal, status: 'applied', appliedRevision: applied.document.revision, decidedAt: now().toISOString() }) })
@@ -142,9 +143,9 @@ export class BrowserProposalRepository implements ProposalRepository {
     return this.exclusive(async () => {
       const { store, now } = this.deps
       const snapshot = await store.read(['document', 'proposals'])
-      const proposals = parseProposals(snapshot.proposals)
-      const proposal = proposals.find((candidate) => candidate.id === id)
-      if (!proposal) return { kind: 'not-found' }
+      const proposals = readProposalStore(snapshot.proposals)
+      const proposal = currentProposals(proposals).find((candidate) => candidate.id === id)
+      if (!proposal) return legacyProposals(proposals).some((legacy) => legacy.id === id) ? { kind: 'rejected' } : { kind: 'not-found' }
       if (proposal.status === 'applied') return { kind: 'applied', revision: proposal.appliedRevision ?? 0 }
       if (proposal.status === 'pending' || proposal.status === 'stale') {
         // A proposal the document already applied (inconsistent imported tester data) is recorded as applied.

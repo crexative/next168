@@ -6,7 +6,7 @@ import { createApp, nextTick } from 'vue'
 import { createPinia, setActivePinia } from 'pinia'
 import { parseExportBundle, portableDigest } from '@/core/exportBundle'
 import { validateBundleV2 } from '@/core/legacy/v2'
-import type { PlannerDocument } from '@/core/model'
+import type { PlannerDocument, ProposalInput } from '@/core/model'
 import { configureCalendarServices, useCalendarStore } from '@/features/calendars/calendarStore'
 import { IndexedDbCalendarSourceStore } from '@/features/calendars/calendarSourceStore'
 import { provideCalendarSourceStore } from '@/features/settings/data/calendarSourceHook'
@@ -115,7 +115,8 @@ describe('F-01: two real builds on one IndexedDB factory', () => {
       saveGuarded: () => old.planner.saveGuarded(next, 2, {}),
       deleteAll: () => old.planner.deleteAll(old.testDocument({ workspaceId: 'ws-fresh' }), 2),
       restoreBackup: () => old.planner.restoreBackup(),
-      proposalCreate: () => old.proposals.create({ contractVersion: '1.0', workspaceId: document.workspaceId, baseRevision: 2, summary: 'x', ops: [{ op: 'delete_block', id: 'b-sentinel' }] }, 'mcp'),
+      // Contract 1.0: the pre-fence build's own contract (the types here are the current build's).
+      proposalCreate: () => old.proposals.create({ contractVersion: '1.0', workspaceId: document.workspaceId, baseRevision: 2, summary: 'x', ops: [{ op: 'delete_block', id: 'b-sentinel' }] } as unknown as ProposalInput, 'mcp'),
       proposalApprove: () => old.proposals.approve(proposal.id, proposal.contentHash, 2),
       proposalReject: () => old.proposals.reject(proposal.id),
       calendarPut: () => old.texts.put('cal-file', ics('SENTINEL-overwrite')),

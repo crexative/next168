@@ -5,6 +5,7 @@ import { createMcpHandler } from '@modelcontextprotocol/server'
 import { toNodeHandler } from '@modelcontextprotocol/node'
 import { z } from 'zod'
 import { changeProposalSchema, proposalInputSchema, type PlannerDocument } from '../../src/core/model'
+import { CONTRACT_RETIRED, isRetiredContract } from '../../src/core/proposals'
 import { parseExportBundle } from '../../src/core/exportBundle'
 import { Workspace } from './workspace'
 import { atomicWrite, readOptional } from './files'
@@ -120,10 +121,12 @@ export async function startCompanion(options: Options) {
         const parsed = status ? changeProposalSchema.shape.status.parse(status) : undefined
         json(response, 200, { proposals: await workspace.list(parsed) }); return
       }
+      if (url.pathname === '/api/proposals/history' && method === 'GET') { json(response, 200, await workspace.history()); return }
       if (url.pathname === '/api/proposals' && method === 'POST') {
         const payload = await jsonBody(request)
         if (payload.input && typeof payload.input === 'object' && 'ops' in payload.input && Array.isArray(payload.input.ops) && payload.input.ops.length > 50) throw new HttpError(413, 'ops-too-large')
         const source = z.enum(['assistant', 'import']).parse(payload.source)
+        if (isRetiredContract(payload.input)) throw new HttpError(422, CONTRACT_RETIRED)
         const proposal = await workspace.create(proposalInputSchema.parse(payload.input), source)
         json(response, 201, { proposal }); return
       }

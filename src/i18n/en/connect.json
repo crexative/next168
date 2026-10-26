@@ -45,6 +45,7 @@
       "stale": "Your plan changed after you copied it for your AI. Copy again and ask your AI to repeat the changes.",
       "unusable": "Some changes don’t fit your current plan, for example a block that no longer exists. Copy again and ask your AI to try again.",
       "saveFailed": "The changes couldn’t be saved. Try again.",
+      "retired": "This reply is from an earlier version. Ask your AI for a new proposal (copy the text again).",
       "tooManyOps": "Your AI sent {count} changes and a proposal holds at most {max}. Ask it to put the days that share a routine in one change, or to send the rest after you approve this part.",
       "duplicateCategory": "Your AI wants to create the category “{name}”, but you already have it. Ask it to use the one you have and to send the changes again."
     },

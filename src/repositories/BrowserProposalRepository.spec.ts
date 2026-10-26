@@ -13,14 +13,14 @@ async function setup() {
   const repos = createTestRepositories()
   await repos.planner.save(testDocument({ revision: 1, categories: [category] }), 0)
   const input: ProposalInput = {
-    contractVersion: '1.0', workspaceId: 'workspace-1', baseRevision: 1, summary: 'Add focus block',
+    contractVersion: '1.1', workspaceId: 'workspace-1', baseRevision: 1, summary: 'Add focus block',
     ops: [{ op: 'add_block', block: { categoryId: 'work', title: 'Focus', days: [1], start: 540, end: 600 } }],
   }
   return { ...repos, store: repos.store as MemoryStore, input }
 }
 
 const storedDocument = (store: MemoryStore) => JSON.parse(store.data.get('document') as string)
-const storedProposals = (store: MemoryStore) => JSON.parse(store.data.get('proposals') as string)
+const storedProposals = (store: MemoryStore) => JSON.parse(store.data.get('proposals') as string).records
 
 describe('proposal repository', () => {
   it('stores a pending proposal bound to the workspace and the ops hash', async () => {
@@ -105,7 +105,7 @@ describe('proposal repository', () => {
     const document = testDocument({ revision: 1, categories: [category] })
     await planner.save(document, 0)
     const proposal = await proposals.create({
-      contractVersion: '1.0', workspaceId: document.workspaceId, baseRevision: 1, summary: 'Focus',
+      contractVersion: '1.1', workspaceId: document.workspaceId, baseRevision: 1, summary: 'Focus',
       ops: [{ op: 'add_block', block: { categoryId: 'work', title: 'Focus', days: [1], start: 540, end: 600 } }],
     }, 'mcp')
     pause = true
@@ -156,10 +156,12 @@ describe('proposal repository', () => {
     expect(await proposals.list('pending')).toHaveLength(1)
   })
 
-  it('reports unreadable stored proposals', async () => {
+  it('keeps unreadable stored proposals in quarantine instead of failing the list', async () => {
     const { proposals, store } = await setup()
     store.data.set('proposals', '{not json')
-    await expect(proposals.list()).rejects.toMatchObject({ code: 'proposals-unreadable' })
+    // Unreadable text is quarantined (kept byte for byte), never thrown at the whole list.
+    expect(await proposals.list()).toEqual([])
+    expect((await proposals.history()).quarantine).toEqual(['{not json'])
   })
 
   it('marks a proposal stale when the document moved on', async () => {
@@ -234,7 +236,7 @@ describe('a proposal on a planner that was never stored', () => {
     { op: 'add_block', block: { categoryId: 'new-work', title: 'Work', days: [1, 2, 3, 4, 5], start: 540, end: 1020 } },
     { op: 'add_task', task: { title: 'Renew passport', durationMin: 60, priority: 2 } },
   ]
-  const inputFor = (workspaceId = 'unsaved-1'): ProposalInput => ({ contractVersion: '1.0', workspaceId, baseRevision: 0, summary: 'My week', ops: createsWork })
+  const inputFor = (workspaceId = 'unsaved-1'): ProposalInput => ({ contractVersion: '1.1', workspaceId, baseRevision: 0, summary: 'My week', ops: createsWork })
 
   function empty(store: BrowserStore = new MemoryStore()) {
     return createTestRepositories({ store })

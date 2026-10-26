@@ -1,13 +1,14 @@
 // @vitest-environment node
 import { describe, expect, it } from 'vitest'
-import { applyProposal, buildProposal, previewProposal } from '../proposals'
+import { legacyChangeProposalSchema } from '../legacy/v2'
+import { commitProposal, buildProposal, previewProposal } from '../proposals'
 import { changeProposalSchema, COLOR_KEYS, MAX_OPS_PER_PROPOSAL, proposalInputSchema, type PlannerDocument, type ProposalInput, type ProposalOp } from '../model'
 import { computeStats } from '../stats'
 import { clock, document } from './fixtures'
 import { syntheticWeekProposal, SYNTHETIC_RANGE_COUNT } from '../../features/assistant/anyAi/syntheticWeek'
 
 // add_category (#3): a proposal can create categories and use them through their temporary ref in later ops.
-const input = (ops: ProposalOp[], doc: PlannerDocument = document()): ProposalInput => ({ contractVersion: '1.0', workspaceId: doc.workspaceId, baseRevision: doc.revision, summary: 'Move my week', ops })
+const input = (ops: ProposalOp[], doc: PlannerDocument = document()): ProposalInput => ({ contractVersion: '1.1', workspaceId: doc.workspaceId, baseRevision: doc.revision, summary: 'Move my week', ops })
 const ids = () => { let i = 0; return () => `id-${++i}` }
 const empty = (): PlannerDocument => ({ ...document(), categories: [] })
 const sleep: ProposalOp = { op: 'add_category', ref: 'new-sleep', category: { name: 'Sueño', goal: { type: 'min', hoursPerWeek: 56 } } }
@@ -17,7 +18,7 @@ const overnight: ProposalOp = { op: 'add_block', block: { categoryId: 'new-sleep
 
 async function apply(doc: PlannerDocument, ops: ProposalOp[], id = 'p') {
   const proposal = await buildProposal(input(ops, doc), doc, 'import', clock, () => id)
-  return { proposal, result: await applyProposal(doc, proposal, ids(), clock) }
+  return { proposal, result: await commitProposal(doc, proposal, ids(), clock) }
 }
 
 describe('add_category', () => {
@@ -79,7 +80,7 @@ describe('add_category', () => {
     const doc = empty()
     const { proposal, result } = await apply(doc, [sleep, overnight])
     if (result.kind !== 'applied') throw Error('apply')
-    expect(await applyProposal(result.document, proposal, ids(), clock)).toEqual({ kind: 'already-applied', document: result.document })
+    expect(await commitProposal(result.document, proposal, ids(), clock)).toEqual({ kind: 'already-applied', document: result.document })
     expect(result.document.categories).toHaveLength(1)
   })
 
@@ -87,12 +88,14 @@ describe('add_category', () => {
     const doc = empty()
     const proposal = await buildProposal(input([sleep], doc), doc, 'import', clock, () => 'p')
     const changed = { ...doc, revision: doc.revision + 1, categories: [{ id: 'tab-2', name: 'Sueño', colorKey: 'blue' as const, goal: { type: 'none' as const, hoursPerWeek: 0 } }] }
-    expect(await applyProposal(changed, proposal, ids(), clock)).toEqual({ kind: 'rejected', reason: 'proposal.staleRevision' })
+    expect(await commitProposal(changed, proposal, ids(), clock)).toEqual({ kind: 'rejected', reason: 'proposal.staleRevision' })
   })
 
-  it('keeps older proposals valid and allows a whole week in one proposal', async () => {
-    expect(changeProposalSchema.safeParse({ id: 'p', workspaceId: 'w', source: 'mcp', baseRevision: 0, contentHash: '0'.repeat(64), summary: '', status: 'pending', createdAt: clock.now().toISOString(),
-      ops: [{ op: 'update_category_goal', id: 'work', goal: { type: 'min', hoursPerWeek: 1 } }] }).success).toBe(true)
+  it('reads older (contract 1.0) proposals only as history, and allows a whole week in one proposal', async () => {
+    const legacy = { id: 'p', workspaceId: 'w', source: 'mcp', baseRevision: 0, contentHash: '0'.repeat(64), summary: '', status: 'pending', createdAt: clock.now().toISOString(),
+      ops: [{ op: 'update_category_goal', id: 'work', goal: { type: 'min', hoursPerWeek: 1 } }] }
+    expect(legacyChangeProposalSchema.safeParse(legacy).success).toBe(true)
+    expect(changeProposalSchema.safeParse(legacy).success).toBe(false)
     expect(MAX_OPS_PER_PROPOSAL).toBe(200)
     const tooMany = Array.from({ length: 201 }, () => ({ op: 'delete_block', id: 'x' }))
     expect(proposalInputSchema.safeParse({ ...input([]), ops: tooMany }).success).toBe(false)
@@ -101,7 +104,7 @@ describe('add_category', () => {
     const doc = empty()
     const week = syntheticWeekProposal(doc.workspaceId, doc.revision)
     const proposal = await buildProposal(week, doc, 'import', clock, () => 'week')
-    const result = await applyProposal(doc, proposal, ids(), clock)
+    const result = await commitProposal(doc, proposal, ids(), clock)
     if (result.kind !== 'applied') throw Error(JSON.stringify(result))
     expect(result.document.categories).toHaveLength(8)
     expect(result.document.blocks.reduce((sum, block) => sum + block.days.length, 0)).toBe(SYNTHETIC_RANGE_COUNT)

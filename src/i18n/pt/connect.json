@@ -45,6 +45,7 @@
       "stale": "O seu plano mudou depois de você copiá-lo para a sua IA. Copie de novo e peça que ela repita as mudanças.",
       "unusable": "Algumas mudanças não combinam com o seu plano atual, por exemplo um bloco que não existe mais. Copie de novo e peça à sua IA que tente outra vez.",
       "saveFailed": "Não foi possível salvar as mudanças. Tente de novo.",
+      "retired": "Esta resposta é de uma versão anterior. Peça à sua IA uma proposta nova (copie o texto de novo).",
       "tooManyOps": "Sua IA enviou {count} mudanças e uma proposta aceita no máximo {max}. Peça que junte em uma só mudança os dias com a mesma rotina, ou que mande o resto depois que você aprovar esta parte.",
       "duplicateCategory": "Sua IA quer criar a categoria «{name}», mas você já a tem. Peça que use a que já existe e mande as mudanças de novo."
     },

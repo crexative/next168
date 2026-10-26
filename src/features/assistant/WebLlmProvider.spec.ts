@@ -6,7 +6,7 @@ import {
   WEBLLM_MODEL_ID, WebLlmProvider, classifyFailure, quoteFacts,
   type WebLlmDependencies, type WebLlmEngine, type WebLlmModule,
 } from './WebLlmProvider'
-import { applyProposal, buildProposal } from '@/core/proposals'
+import { commitProposal, buildProposal } from '@/core/proposals'
 import { contextFor, plannerWithBlocks } from './testSupport'
 
 const capable: DeviceCapabilities = { webGpu: true, shaderF16: true, maxBufferSize: 2 ** 31, deviceMemoryGb: 8, storageQuotaBytes: 50e9, storageUsageBytes: 1e9 }
@@ -293,7 +293,7 @@ describe('WebLlmProvider prepare and ask', () => {
     })
     const clock = { now: () => new Date('2026-10-24T12:00:00Z') }
     const proposal = await buildProposal(reply.proposal, document, 'assistant', clock, () => 'move-proposal')
-    const applied = await applyProposal(document, proposal, () => 'unused', clock)
+    const applied = await commitProposal(document, proposal, () => 'unused', clock)
     if (applied.kind !== 'applied') throw new Error('expected the move to apply')
     expect(applied.document.blocks).toEqual(before.blocks.map((block) => block.id === 'work-fri'
       ? { ...block, days: [4], start: 600, end: 660 }
@@ -326,7 +326,7 @@ describe('WebLlmProvider prepare and ask', () => {
     expect(reply.proposal).toBeDefined()
     const clock = { now: () => new Date('2026-10-24T12:00:00Z') }
     const proposal = await buildProposal(reply.proposal, document, 'assistant', clock, () => 'move-proposal')
-    const applied = await applyProposal(document, proposal, () => 'moved-occurrence', clock)
+    const applied = await commitProposal(document, proposal, () => 'moved-occurrence', clock)
     if (applied.kind !== 'applied') throw new Error('expected the move to apply')
     expect(applied.document.blocks).toEqual([
       { ...before.blocks[0], days: [1, 3] },

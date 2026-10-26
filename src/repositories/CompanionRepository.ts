@@ -1,8 +1,9 @@
 import { ref } from 'vue'
 import {
   changeProposalSchema, plannerDocumentSchema, type CalendarSourceStore, type ChangeProposal, type LoadResult,
-  type PlannerDocument, type PlannerRepository, type ProposalDecision, type ProposalInput, type ProposalRepository, type SaveResult,
+  type PlannerDocument, type PlannerRepository, type ProposalDecision, type ProposalHistory, type ProposalInput, type ProposalRepository, type SaveResult,
 } from '@/core/model'
+import { legacyChangeProposalSchema } from '@/core/legacy/v2'
 import { validateDocument } from '@/core/documents'
 
 declare global { interface Window { __NEXT168__?: { mode: 'companion' } } }
@@ -80,6 +81,14 @@ export class CompanionProposalRepository implements ProposalRepository {
     const response = await companionRequest(`/proposals${status ? `?status=${status}` : ''}`)
     const payload = await readResponse<{ proposals: unknown[] }>(response)
     return payload.proposals.map(proposal => changeProposalSchema.parse(proposal))
+  }
+  async history(): Promise<ProposalHistory> {
+    const payload = await readResponse<{ proposals: unknown[]; legacy: unknown[]; quarantine: unknown[] }>(await companionRequest('/proposals/history'))
+    return {
+      proposals: payload.proposals.map((proposal) => changeProposalSchema.parse(proposal)),
+      legacy: payload.legacy.map((proposal) => legacyChangeProposalSchema.parse(proposal)),
+      quarantine: payload.quarantine.filter((raw): raw is string => typeof raw === 'string'),
+    }
   }
   async create(input: ProposalInput, source: ChangeProposal['source']): Promise<ChangeProposal> {
     const response = await companionRequest('/proposals', { method: 'POST', body: JSON.stringify({ input, source }) })

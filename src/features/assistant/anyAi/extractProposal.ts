@@ -1,4 +1,5 @@
 import { MAX_OPS_PER_PROPOSAL, proposalInputSchema, type PlannerDocument, type ProposalInput } from '@/core/model'
+import { isRetiredContract } from '@/core/proposals'
 
 // Finds the proposal in the whole reply of a chat AI. The reply is prose with, ideally, one fenced block labelled
 // `weeklid` (or `next168`, the label of prompts written before the rename, still in people's chats). Copying from a chat window often loses the fences, a model sometimes labels the block `json`, and
@@ -6,7 +7,8 @@ import { MAX_OPS_PER_PROPOSAL, proposalInputSchema, type PlannerDocument, type P
 
 export const MAX_REPLY_BYTES = 256 * 1024
 
-export type ExtractFailure = 'empty' | 'tooLarge' | 'none' | 'malformed' | 'invalid' | 'tooManyOps'
+// 'retired': a contract 1.0 proposal (a reply to a prompt copied before contract 1.1); it is never read further.
+export type ExtractFailure = 'empty' | 'tooLarge' | 'none' | 'malformed' | 'invalid' | 'tooManyOps' | 'retired'
 // `count` is how many changes a proposal over the limit had, so the message can name both numbers.
 export type ExtractResult = { ok: true; input: ProposalInput } | { ok: false; reason: ExtractFailure; count?: number }
 
@@ -70,17 +72,19 @@ export function extractProposal(reply: string): ExtractResult {
   const text = reply.replace(/\r\n?/g, '\n')
   if (!text.trim()) return { ok: false, reason: 'empty' }
   if (new TextEncoder().encode(text).length > MAX_REPLY_BYTES) return { ok: false, reason: 'tooLarge' }
-  let malformed = false, invalid = false, tooMany = 0
+  let malformed = false, invalid = false, retired = false, tooMany = 0
   for (const candidate of candidates(text)) {
     let value: unknown
     try { value = parseLeniently(candidate.text.trim()) } catch { malformed = true; continue }
     if (value === null || typeof value !== 'object' || Array.isArray(value)) { if (candidate.fenced) invalid = true; continue }
+    if (isRetiredContract(value)) { retired = true; continue }
     const parsed = proposalInputSchema.safeParse(value)
     if (parsed.success) return { ok: true, input: parsed.data }
     const ops = (value as { ops?: unknown }).ops
     if (Array.isArray(ops) && ops.length > MAX_OPS_PER_PROPOSAL) tooMany = Math.max(tooMany, ops.length)
     invalid = true
   }
+  if (retired) return { ok: false, reason: 'retired' }
   if (tooMany) return { ok: false, reason: 'tooManyOps', count: tooMany }
   if (invalid) return { ok: false, reason: 'invalid' }
   if (malformed || /"ops"\s*:/.test(text)) return { ok: false, reason: 'malformed' }

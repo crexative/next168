@@ -249,7 +249,7 @@ for (const theme of THEMES) {
   test(`proposals: a capsule pill that keeps the end of the page clear, and a calm review sheet (${theme})`, async ({ page }) => {
     await start(page, SIZES[0], theme, planned())
     await page.goto('./#/settings/advanced')
-    const proposal = { contractVersion: '1.0', workspaceId: 'ws-e2e-onboarded', baseRevision: 1, summary: 'Añadir una hora de estudio', ops: [{ op: 'add_block', block: { categoryId: 'c-study', title: 'Estudio', days: [2], start: 1080, end: 1140 } }] }
+    const proposal = { contractVersion: '1.1', workspaceId: 'ws-e2e-onboarded', baseRevision: 1, summary: 'Añadir una hora de estudio', ops: [{ op: 'add_block', block: { categoryId: 'c-study', title: 'Estudio', days: [2], start: 1080, end: 1140 } }] }
     await page.locator('#proposal-json').fill(JSON.stringify(proposal))
     await page.getByRole('button', { name: 'Importar propuesta JSON' }).click()
     await expect(page).toHaveURL(/#\/proposals$/)

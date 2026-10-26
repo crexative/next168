@@ -105,12 +105,11 @@ describe('export bundles', () => {
   })
 })
 describe('assistant context', () => {
-  it('exports compact computed facts and opts into notes explicitly', () => {
+  it('exports compact computed facts and never the notes, only that one exists', () => {
     const doc = document(); doc.blocks = [{ ...block, notes: 'Private note' }]
     const context = JSON.parse(assistantContext(doc))
-    expect(context).toMatchObject({ workspaceId: 'workspace', revision: 0, categories: [{ id: 'work' }], blocks: [{ id: 'block' }], stats: { plannedMinutes: 480 } })
+    expect(context).toMatchObject({ workspaceId: 'workspace', revision: 0, categories: [{ id: 'work' }], blocks: [{ id: 'block', hasNotes: true }], stats: { plannedMinutes: 480 } })
     expect(assistantContext(doc)).not.toContain('Private note')
-    expect(assistantContext(doc, { includeNotes: true })).toContain('Private note')
     expect(proposalJsonSchema()).toMatchObject({ type: 'object', required: expect.arrayContaining(['workspaceId', 'baseRevision', 'ops']) })
     expect(assistantContext(doc)).not.toContain('\n')
   })

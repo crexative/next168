@@ -205,7 +205,7 @@ export function proposalFromIntent(intent: ChangeIntent, { request, document, lo
   const proposal = (ops: ProposalOp[], summary: string): IntentOutcome => ({
     kind: 'proposal',
     summary: summary.slice(0, SUMMARY_MAX),
-    proposal: { contractVersion: '1.0', workspaceId: document.workspaceId, baseRevision: document.revision, summary: summary.slice(0, SUMMARY_MAX), ops },
+    proposal: { contractVersion: '1.1', workspaceId: document.workspaceId, baseRevision: document.revision, summary: summary.slice(0, SUMMARY_MAX), ops },
   })
   const day = dayIndex(intent.day)
   const fromDay = dayIndex(intent.fromDay)

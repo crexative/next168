@@ -112,10 +112,11 @@ export async function seedWithPreFenceBuild(old: PreFenceBuild, texts: Record<st
   expectOk(await old.planner.save(first, 0))
   const second = { ...first, revision: 2, blocks: [{ id: 'b-sentinel', categoryId: CATEGORY.id, title: 'SENTINEL-block', days: [1], start: 540, end: 600 }] }
   expectOk(await old.planner.save(second as typeof first, 1))
-  const input: ProposalInput = {
+  // A contract 1.0 input: the old builds' own contract (the types here are the current build's).
+  const input = {
     contractVersion: '1.0', workspaceId: first.workspaceId, baseRevision: 2, summary: 'SENTINEL-proposal',
     ops: [{ op: 'add_block', block: { categoryId: CATEGORY.id, title: 'Focus', days: [2], start: 540, end: 600 } }],
-  }
+  } as unknown as ProposalInput
   const proposal = await old.proposals.create(input, 'mcp')
   return { document: second, proposal }
 }

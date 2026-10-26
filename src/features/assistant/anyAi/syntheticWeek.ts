@@ -69,7 +69,7 @@ export const SYNTHETIC_RANGE_COUNT = SYNTHETIC_ROUTINE.reduce((sum, item) => sum
 // The proposal a chat AI sends for an empty Weeklid: create the categories, then the routine and tasks that use them.
 export function syntheticWeekProposal(workspaceId: string, baseRevision: number) {
   return {
-    contractVersion: '1.0' as const, workspaceId, baseRevision,
+    contractVersion: '1.1' as const, workspaceId, baseRevision,
     summary: 'Trasladar las categorías, la rutina semanal y los pendientes desde el otro planner',
     ops: [
       ...SYNTHETIC_CATEGORIES.map(({ ref, name, goal }) => ({ op: 'add_category' as const, ref, category: goal.type === 'none' ? { name } : { name, goal } })),

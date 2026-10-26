@@ -38,6 +38,11 @@ async function client(mode: 'legacy' | { pin: string } = { pin: '2026-07-28' }) 
 function api(path: string, method = 'GET', payload?: unknown, extra: Record<string, string> = {}) {
   return fetch(`${running.url}${path}`, { method, headers: { Cookie: cookie, 'Content-Type': 'application/json', ...extra }, ...(payload === undefined ? {} : { body: JSON.stringify(payload) }) })
 }
+// An AI sees what a proposal does, never its stored record; the app reads the record (and its content hash) itself.
+async function stored(proposed: { structuredContent?: unknown }): Promise<ChangeProposal> {
+  const { id } = (proposed.structuredContent as { proposal: { id: string } }).proposal
+  return (await payload(await api('/api/proposals'))).proposals.find(item => item.id === id)!
+}
 describe('companion HTTP and official MCP SDK client', () => {
   it.each([{ pin: '2026-07-28' }, 'legacy'] as const)('lists eight tools, reads and proposes using %j protocol', async mode => {
     const sdk = await client(mode)
@@ -52,9 +57,9 @@ describe('companion HTTP and official MCP SDK client', () => {
     expect((await api('/api/document', 'PUT', { document }, { 'If-Match': '0' })).status).toBe(200)
     const week = await sdk.callTool({ name: 'get_week', arguments: {} })
     expect(week.structuredContent).toMatchObject({ workspaceId: document.workspaceId, revision: 1 })
-    const proposed = await sdk.callTool({ name: 'propose_changes', arguments: { contractVersion: '1.0', workspaceId: document.workspaceId, baseRevision: 1, summary: 'Focus', ops: [{ op: 'add_block', block: { categoryId: 'focus', title: 'Deep focus', days: [1], start: 540, end: 600 } }] } })
+    const proposed = await sdk.callTool({ name: 'propose_changes', arguments: { contractVersion: '1.1', workspaceId: document.workspaceId, baseRevision: 1, summary: 'Focus', ops: [{ op: 'add_block', block: { categoryId: 'focus', title: 'Deep focus', days: [1], start: 540, end: 600 } }] } })
     expect(proposed.isError).not.toBe(true)
-    const proposal = (proposed.structuredContent as Record<string, unknown>).proposal as { id: string; contentHash: string }
+    const proposal = await stored(proposed)
     expect((await payload(await api('/api/proposals?status=pending'))).proposals).toHaveLength(1)
     expect((await payload(await api('/api/document'))).document.blocks).toHaveLength(0)
     expect((await sdk.callTool({ name: 'get_proposal', arguments: { id: proposal.id } })).structuredContent).toMatchObject({ proposal: { status: 'pending' } })
@@ -75,17 +80,17 @@ describe('companion HTTP and official MCP SDK client', () => {
       { op: 'add_block', block: { categoryId: 'new-sleep', title: 'Sleep', days: [0, 1, 2, 3, 4], start: 1350, end: 390 } },
       { op: 'add_task', task: { title: 'Buy earplugs', categoryId: 'new-sleep', durationMin: 15, priority: 3 } },
     ]
-    const proposed = await sdk.callTool({ name: 'propose_changes', arguments: { contractVersion: '1.0', workspaceId: document.workspaceId, baseRevision: document.revision, summary: 'Sleep', ops } })
+    const proposed = await sdk.callTool({ name: 'propose_changes', arguments: { contractVersion: '1.1', workspaceId: document.workspaceId, baseRevision: document.revision, summary: 'Sleep', ops } })
     expect(proposed.isError).not.toBe(true)
     expect((await payload(await api('/api/document'))).document.categories).toEqual([])
-    const proposal = (proposed.structuredContent as Record<string, unknown>).proposal as { id: string; contentHash: string }
+    const proposal = await stored(proposed)
     const applied = await api(`/api/proposals/${proposal.id}/apply`, 'POST', { contentHash: proposal.contentHash, baseRevision: document.revision })
     expect(await applied.json()).toMatchObject({ kind: 'applied' })
     const after = (await payload(await api('/api/document'))).document
     expect(after.categories).toEqual([expect.objectContaining({ name: 'Sleep', goal: { type: 'min', hoursPerWeek: 56 } })])
     expect(after.blocks[0]!.categoryId).toBe(after.categories[0]!.id)
     expect(after.tasks[0]!.categoryId).toBe(after.categories[0]!.id)
-    const duplicate = await sdk.callTool({ name: 'propose_changes', arguments: { contractVersion: '1.0', workspaceId: document.workspaceId, baseRevision: after.revision, summary: 'Again', ops: [ops[0]] } })
+    const duplicate = await sdk.callTool({ name: 'propose_changes', arguments: { contractVersion: '1.1', workspaceId: document.workspaceId, baseRevision: after.revision, summary: 'Again', ops: [ops[0]] } })
     expect(duplicate.isError).toBe(true)
     expect(JSON.stringify(duplicate.content)).toContain('proposal.duplicateCategory:Sleep')
   })
@@ -96,9 +101,9 @@ describe('companion HTTP and official MCP SDK client', () => {
     expect(tool.description).toContain('A task (add_task) may leave out categoryId')
     expect(JSON.stringify(tool.inputSchema)).toContain('Leave it out for a task that fits any free time')
     const { document } = await payload(await api('/api/document'))
-    const proposed = await sdk.callTool({ name: 'propose_changes', arguments: { contractVersion: '1.0', workspaceId: document.workspaceId, baseRevision: document.revision, summary: 'Passport', ops: [{ op: 'add_task', task: { title: 'Renew passport', durationMin: 60, priority: 2 } }] } })
+    const proposed = await sdk.callTool({ name: 'propose_changes', arguments: { contractVersion: '1.1', workspaceId: document.workspaceId, baseRevision: document.revision, summary: 'Passport', ops: [{ op: 'add_task', task: { title: 'Renew passport', durationMin: 60, priority: 2 } }] } })
     expect(proposed.isError).not.toBe(true)
-    const proposal = (proposed.structuredContent as Record<string, unknown>).proposal as { id: string; contentHash: string }
+    const proposal = await stored(proposed)
     expect(await (await api(`/api/proposals/${proposal.id}/apply`, 'POST', { contentHash: proposal.contentHash, baseRevision: document.revision })).json()).toMatchObject({ kind: 'applied' })
     const after = (await payload(await api('/api/document'))).document
     expect(after.tasks).toEqual([expect.objectContaining({ title: 'Renew passport' })])
@@ -118,7 +123,7 @@ describe('companion HTTP and official MCP SDK client', () => {
       const result = await sdk.callTool({ name, arguments: {} })
       expect(JSON.stringify(result)).not.toMatch(/ana@example\.com|luis@example\.org/)
     }
-    expect((await sdk.listTools()).tools.find(tool => tool.name === 'list_events')!.description).toContain('Attendee emails are excluded')
+    expect((await sdk.listTools()).tools.find(tool => tool.name === 'list_events')!.description).toContain('Notes and attendee emails are excluded')
   })
   it('does not give document, calendar or approval authority to MCP tokens or anonymous requests', async () => {
     for (const path of ['/api/document', '/api/proposals/any/apply', '/api/proposals/any/reject', '/api/calendars/any']) {
@@ -174,7 +179,7 @@ describe('companion HTTP and official MCP SDK client', () => {
   })
   it('returns 409 for a stale approval and enforces token rotation on the running server', async () => {
     const document = await running.workspace.document()
-    const proposal = await running.workspace.create({ contractVersion: '1.0', workspaceId: document.workspaceId, baseRevision: 0, summary: 'Meeting', ops: [{ op: 'add_event', event: { title: 'Meeting', start: '2026-10-26T10:00:00Z', end: '2026-10-26T11:00:00Z', allDay: false, attendees: [] } }] }, 'mcp')
+    const proposal = await running.workspace.create({ contractVersion: '1.1', workspaceId: document.workspaceId, baseRevision: 0, summary: 'Meeting', ops: [{ op: 'add_event', event: { title: 'Meeting', start: '2026-10-26T10:00:00Z', end: '2026-10-26T11:00:00Z', allDay: false, attendees: [] } }] }, 'mcp')
     document.revision++
     expect((await api('/api/document', 'PUT', { document }, { 'If-Match': '0' })).status).toBe(200)
     const stale = await api(`/api/proposals/${proposal.id}/apply`, 'POST', { contentHash: proposal.contentHash, baseRevision: 0 })

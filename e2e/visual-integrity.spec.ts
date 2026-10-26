@@ -167,7 +167,7 @@ async function anyAiStates(page: Page, theme: string, label: string, includeSett
   await page.getByTestId('any-ai-copy').click()
   await expect(page.getByTestId('any-ai-manual')).toBeVisible()
   await check(page, `${theme}/${label}/use with your AI, text to copy by hand`)
-  const reply = (overrides: Record<string, unknown>) => `Listo:\n\`\`\`weeklid\n${JSON.stringify({ contractVersion: '1.0', workspaceId: 'workspace-visual', baseRevision: 1, summary: 'Mover', ops: [{ op: 'update_block', id: 'b-gym', patch: { days: [4] } }], ...overrides })}\n\`\`\``
+  const reply = (overrides: Record<string, unknown>) => `Listo:\n\`\`\`weeklid\n${JSON.stringify({ contractVersion: '1.1', workspaceId: 'workspace-visual', baseRevision: 1, summary: 'Mover', ops: [{ op: 'update_block', id: 'b-gym', patch: { days: [4] } }], ...overrides })}\n\`\`\``
   await page.getByTestId('any-ai-paste').fill('Sin cambios aquí, solo texto largo que ocupa varias líneas para comprobar que el campo y el mensaje no se cortan en ninguna pantalla.')
   await expect(page.getByTestId('any-ai-review')).toBeEnabled()
   await page.getByTestId('any-ai-review').click()
