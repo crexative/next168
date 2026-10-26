@@ -54,7 +54,8 @@
     "location": "Lugar",
     "attendees": "Asistentes",
     "notes": "Notas",
-    "goal": "Meta"
+    "goal": "Meta",
+    "at": "Hora fija"
   },
   "goal": {
     "max": "Como máximo {hours} h por semana",
@@ -94,5 +95,6 @@
       "rejected": "Rechazada",
       "pending": "Pendiente"
     }
-  }
+  },
+  "noFixedTime": "Ninguna"
 }

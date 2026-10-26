@@ -61,7 +61,12 @@ export type CaptureOutcome =
 export type UndoOutcome = 'undone' | 'changed-elsewhere' | 'unknown'
 
 const ALREADY_APPLIED = 'capture.alreadyApplied'
+const UNDO_REFUSED = 'capture.undoRefused'
 const MAX_APPLIED_CAPTURES = 200
+
+// The receipt each attempt's commit staged, kept with the attempt: after a lost response the planner is read again only
+// to confirm the attempt was stored, never to rebuild what Undo is bound to from later content.
+const stagedReceipts = new WeakMap<CaptureAttempt, CaptureReceipt>()
 
 const newId = () => crypto.randomUUID()
 
@@ -107,10 +112,15 @@ function receiptFrom(document: PlannerDocument, attempt: CaptureAttempt): Captur
   }
 }
 
-// The receipt of an attempt the planner in memory already holds.
+// The staged receipt of an attempt the planner in memory holds. Without one (it was staged elsewhere) the receipt
+// matches nothing, so its Undo is refused rather than bound to content it never saw.
 function appliedReceipt(attempt: CaptureAttempt): CaptureReceipt | undefined {
   const document = usePlannerStore().document
-  return document?.appliedCaptureIds.includes(attempt.attemptId) ? receiptFrom(document, attempt) : undefined
+  if (!document?.appliedCaptureIds.includes(attempt.attemptId)) return undefined
+  return stagedReceipts.get(attempt) ?? {
+    workspaceId: document.workspaceId, generation: -1, attemptId: attempt.attemptId,
+    createdIds: [...attempt.taskIds], snapshots: attempt.taskIds.map(() => UNDO_REFUSED),
+  }
 }
 
 function outcomeOf(reason: string, attempt: CaptureAttempt): CaptureOutcome {
@@ -133,6 +143,7 @@ export async function commitPersonOps(attempt: CaptureAttempt, binding: CaptureB
     stageOps(draft, structuredClone([...attempt.ops]), () => ids.shift() ?? newId(), { now: () => now })
     recordAttempt(draft, attempt.attemptId)
     holder.receipt = receiptFrom(draft, attempt)
+    stagedReceipts.set(attempt, holder.receipt)
   }, {
     expect: { storedFingerprint: binding.storedFingerprint, purgeEpoch: binding.purgeEpoch, workspaceId: binding.workspaceId },
     expectRevision: binding.revision,
@@ -161,24 +172,34 @@ export async function reconcileCapture(attempt: CaptureAttempt): Promise<Capture
 }
 
 // Removes exactly the receipt's tasks, all or nothing, only while the workspace, its generation and every one of them are
-// as the commit left them. An edit elsewhere in the planner never blocks it.
+// as the commit left them. The write is also bound to the stored planner this check ran on (its fingerprint, inside the
+// storage lock): a backup restored elsewhere meanwhile cannot be overwritten. An edit elsewhere in the planner never
+// blocks it: the check runs once more on the planner as stored.
 export async function undoCapture(receipt: CaptureReceipt): Promise<UndoOutcome> {
   const planner = usePlannerStore()
   const undoId = newId()
-  const result = await planner.commit((draft) => {
-    if (draft.workspaceId !== receipt.workspaceId || draft.generation !== receipt.generation) throw new Error(CHANGED_ELSEWHERE)
-    receipt.createdIds.forEach((id, index) => {
-      if (snapshotOf(draft.tasks.find((task) => task.id === id)) !== receipt.snapshots[index]) throw new Error(CHANGED_ELSEWHERE)
+  for (let pass = 0; pass < 2; pass++) {
+    const binding = await bindToPlanner()
+    if (!binding) return 'unknown'
+    const result = await planner.commit((draft) => {
+      if (draft.workspaceId !== receipt.workspaceId || draft.generation !== receipt.generation) throw new Error(UNDO_REFUSED)
+      receipt.createdIds.forEach((id, index) => {
+        if (snapshotOf(draft.tasks.find((task) => task.id === id)) !== receipt.snapshots[index]) throw new Error(UNDO_REFUSED)
+      })
+      const created = new Set(receipt.createdIds)
+      draft.tasks = draft.tasks.filter((task) => !created.has(task.id))
+      recordAttempt(draft, undoId)
+    }, {
+      expect: { storedFingerprint: binding.storedFingerprint, purgeEpoch: binding.purgeEpoch, workspaceId: binding.workspaceId },
+      expectRevision: binding.revision,
     })
-    const created = new Set(receipt.createdIds)
-    draft.tasks = draft.tasks.filter((task) => !created.has(task.id))
-    recordAttempt(draft, undoId)
-  })
-  if (result.ok) return 'undone'
-  planner.dismissError()
-  if (result.reason === CHANGED_ELSEWHERE || result.reason === 'conflict') return 'changed-elsewhere'
-  const reconciled = await reconcileUndo(undoId)
-  return reconciled
+    if (result.ok) return 'undone'
+    planner.dismissError()
+    if (result.reason === UNDO_REFUSED) return 'changed-elsewhere'
+    if (result.reason !== CHANGED_ELSEWHERE && result.reason !== 'conflict') return reconcileUndo(undoId)
+    // The stored planner moved on (the store has read it again): check the receipt once more against it.
+  }
+  return 'changed-elsewhere'
 }
 
 async function reconcileUndo(undoId: string): Promise<UndoOutcome> {

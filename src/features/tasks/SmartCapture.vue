@@ -14,7 +14,7 @@ import { useUndoToast } from '@/ui/undoToast'
 import { useNow } from '@/features/week/useNow'
 import { useCaptureSubmission } from './captureSubmission'
 import { readLastTaskCategory, rememberTaskCategory } from './lastCategory'
-import { undoCapture, type CaptureBinding, type CapturedTask } from './personActions'
+import { undoCapture, type CaptureBinding, type CapturedTask, type CaptureReceipt } from './personActions'
 import { ANY_FREE_TIME, clockText, minuteOf, newDraft, plannerToday, resolveWhen, taskFields, type TaskDraft } from './taskDraft'
 import TaskOptions from './TaskOptions.vue'
 import './registerIcons'
@@ -206,10 +206,27 @@ async function addOne(): Promise<void> {
     rememberTaskCategory(categoryId)
     suggestedCategoryId.value = categoryId
   }
-  announce(t('capture.addedOne', { title: row.title }))
-  resetBox()
-  emit('added', 1)
+  added(receipt, t('capture.addedOne', { title: row.title }))
 }
+
+// Every stored capture ends here, whichever path confirmed it (a save, or a read-back after a lost response): the box
+// is cleared, the result is announced, and Undo is offered for exactly the tasks of its receipt.
+function added(receipt: CaptureReceipt, message: string): void {
+  resetBox()
+  rows.value = []
+  announce(message)
+  toast.show({
+    message,
+    onUndo: () => {
+      void undoCapture(receipt).then((outcome) => {
+        if (outcome !== 'undone') announce(t('capture.undoRefused'))
+      })
+    },
+  })
+  emit('added', receipt.createdIds.length)
+}
+
+const addedText = (count: number) => t('capture.added', { count }, count)
 
 // Enter: never while composing (IME); a row editor confirms only itself; two or more lines never submit; one line saves.
 function onKeydown(event: KeyboardEvent): void {
@@ -256,28 +273,12 @@ async function addAll(): Promise<void> {
     return
   }
   if (!receipt) return
-  const count = receipt.createdIds.length
-  resetBox()
-  rows.value = []
-  announce(t('capture.added', { count }, count))
-  toast.show({
-    message: t('capture.added', { count }, count),
-    onUndo: () => {
-      void undoCapture(receipt).then((outcome) => {
-        if (outcome !== 'undone') announce(t('capture.undoRefused'))
-      })
-    },
-  })
-  emit('added', count)
+  added(receipt, addedText(receipt.createdIds.length))
 }
 
 async function retryCheck(): Promise<void> {
   const receipt = await submission.check()
-  if (receipt) {
-    resetBox()
-    rows.value = []
-    emit('added', receipt.createdIds.length)
-  }
+  if (receipt) added(receipt, addedText(receipt.createdIds.length))
 }
 
 function keepAsOne(): void {

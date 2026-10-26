@@ -54,7 +54,8 @@
     "location": "Location",
     "attendees": "Attendees",
     "notes": "Notes",
-    "goal": "Goal"
+    "goal": "Goal",
+    "at": "Fixed time"
   },
   "goal": {
     "max": "At most {hours} h per week",
@@ -94,5 +95,6 @@
       "rejected": "Rejected",
       "pending": "Pending"
     }
-  }
+  },
+  "noFixedTime": "None"
 }

@@ -265,3 +265,50 @@ describe('captureAttempt builds strict contract ops from plain rows', () => {
   })
 })
 
+
+for (const mode of ['browser', 'companion'] as const) {
+  describe(`P1 review fixes (${mode})`, () => {
+    // F1: a receipt from generation 0; another client commits, then restores its backup (generation 1, same revision
+    // number as the receipt's planner). The stale Undo must not delete anything nor write generation 0 back.
+    it('F1: an Undo never crosses a backup restored elsewhere', async () => {
+      const { other, stored, restoreBackup } = await setup(mode)
+      const added = await addCapturedTasks(captureAttempt(rows), (await bindToPlanner())!)
+      if (added.kind !== 'added') throw new Error(added.kind)
+      const current = await other.load()
+      await other.save({ ...current, revision: current.revision + 1, settings: { ...current.settings, weekStartsOn: 0 } })
+      await restoreBackup()
+      const restored = await stored()
+      expect(restored.revision).toBe(current.revision)
+      expect(restored.generation).toBe(1)
+      expect(await undoCapture(added.receipt)).toBe('changed-elsewhere')
+      expect(await stored()).toEqual(restored)
+    })
+
+    it('an unrelated edit in another client, not yet read here, does not block Undo', async () => {
+      const { other, stored } = await setup(mode)
+      const added = await addCapturedTasks(captureAttempt(rows), (await bindToPlanner())!)
+      if (added.kind !== 'added') throw new Error(added.kind)
+      const current = await other.load()
+      await other.save({ ...current, revision: current.revision + 1, categories: [{ ...work, name: 'Oficina' }] })
+      expect(await undoCapture(added.receipt)).toBe('undone')
+      expect(titles(await stored())).toEqual(['Existing'])
+      expect((await stored()).categories[0]!.name).toBe('Oficina')
+    })
+
+    // F2: the commit stored, its response was lost, another client edited a created task, then the outcome was read
+    // back. The receipt is the one the commit staged, so Undo leaves the edited task alone.
+    it('F2: after a lost response, Undo is bound to what the commit staged, not to later edits', async () => {
+      const { control, other, stored } = await setup(mode)
+      const attempt = captureAttempt(rows)
+      control.dropNext = true
+      expect(await addCapturedTasks(attempt, (await bindToPlanner())!)).toEqual({ kind: 'unknown' })
+      const current = await other.load()
+      await other.save({ ...current, revision: current.revision + 1, tasks: current.tasks.map((task) => (task.title === 'Pagar luz' ? { ...task, title: 'Pagar luz y agua' } : task)) })
+      const reconciled = await reconcileCapture(attempt)
+      if (reconciled.kind !== 'added') throw new Error(reconciled.kind)
+      expect(await undoCapture(reconciled.receipt)).toBe('changed-elsewhere')
+      expect(titles(await stored())).toContain('Pagar luz y agua')
+      expect(titles(await stored())).toHaveLength(4)
+    })
+  })
+}

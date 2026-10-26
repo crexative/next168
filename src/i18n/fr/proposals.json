@@ -54,7 +54,8 @@
     "location": "Lieu",
     "attendees": "Participants",
     "notes": "Notes",
-    "goal": "Objectif"
+    "goal": "Objectif",
+    "at": "Heure fixe"
   },
   "goal": {
     "max": "Au plus {hours} h par semaine",
@@ -94,5 +95,6 @@
       "rejected": "Refusée",
       "pending": "En attente"
     }
-  }
+  },
+  "noFixedTime": "Aucune"
 }

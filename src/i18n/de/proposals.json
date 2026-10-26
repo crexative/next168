@@ -54,7 +54,8 @@
     "location": "Ort",
     "attendees": "Teilnehmende",
     "notes": "Notizen",
-    "goal": "Ziel"
+    "goal": "Ziel",
+    "at": "Feste Uhrzeit"
   },
   "goal": {
     "max": "Höchstens {hours} Std. pro Woche",
@@ -94,5 +95,6 @@
       "rejected": "Abgelehnt",
       "pending": "Offen"
     }
-  }
+  },
+  "noFixedTime": "Keine"
 }

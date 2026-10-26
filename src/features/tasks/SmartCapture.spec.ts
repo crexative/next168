@@ -1,9 +1,12 @@
 // @vitest-environment happy-dom
 // Tasks P1-9 (the single-line box) and P1-10 (a multi-line paste), design rev 2.1 §7.3, rev 6 §2.1, addendum 6.1 F6.
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { h, nextTick } from 'vue'
+import { createApp, h, nextTick } from 'vue'
+import { createPinia, getActivePinia, setActivePinia } from 'pinia'
+import { i18n } from '@/i18n'
+import { configurePlannerStore, usePlannerStore, type PlannerRepositoryWithExtras } from '@/stores/plannerStore'
 import { mountWithPlanner, type Mounted } from '@/features/settings/testSupport'
-import { testDocument } from '@/repositories/testSupport'
+import { createTestRepositories, MemoryStore, testDocument } from '@/repositories/testSupport'
 import { useUndoToast } from '@/ui/undoToast'
 import SmartCapture from './SmartCapture.vue'
 
@@ -203,5 +206,55 @@ describe('Today\'s add row', () => {
     await type('dentista mañana 9am')
     await enter()
     expect(tasks().map((task) => [task.title, task.dueDate, task.at])).toEqual([['Llamar a mamá', '2026-10-26', undefined], ['Dentista', '2026-10-27', 540]])
+  })
+})
+
+describe('P1 review F5: every stored capture offers Undo', () => {
+  it('a single line', async () => {
+    await mount()
+    await type('Comprar pan')
+    await enter()
+    expect(tasks()).toHaveLength(1)
+    useUndoToast().undo()
+    await settle()
+    expect(tasks()).toEqual([])
+  })
+
+  it('a list confirmed by «Reintentar» after its response was lost and the first check failed', async () => {
+    setActivePinia(createPinia())
+    const store = new MemoryStore()
+    const repos = createTestRepositories({ store })
+    await repos.planner.save({ ...testDocument(), settings, revision: 1 }, 0)
+    const planner: PlannerRepositoryWithExtras = Object.create(repos.planner)
+    let drop = true
+    planner.saveGuarded = async (...args) => {
+      const result = await repos.planner.saveGuarded(...args)
+      if (!drop) return result
+      drop = false
+      store.failReads = true
+      return { kind: 'error', reason: 'network-lost' }
+    }
+    configurePlannerStore({ repository: planner, now: () => NOW, newId: () => crypto.randomUUID(), locale: () => 'es', timeZone: () => 'America/Bogota' })
+    const pinia = getActivePinia()!
+    const planStore = usePlannerStore()
+    await planStore.load()
+    i18n.global.locale.value = 'es'
+    const root = document.createElement('div')
+    document.body.append(root)
+    const app = createApp(SmartCapture).use(pinia).use(i18n)
+    app.mount(root)
+    mounted = { host: root, store: planStore, unmount: () => { app.unmount(); root.remove() } }
+    await type('Comprar pan\nLeche')
+    byTestId<HTMLButtonElement>('capture-add-all')[0]!.click()
+    await settle()
+    expect(byTestId('capture-status')[0]!.textContent).toContain('No se pudo comprobar')
+    store.failReads = false
+    byTestId<HTMLButtonElement>('capture-retry')[0]!.click()
+    await settle()
+    expect(JSON.parse(store.data.get('document') as string).tasks).toHaveLength(2)
+    expect(field().value).toBe('')
+    useUndoToast().undo()
+    await settle()
+    expect(JSON.parse(store.data.get('document') as string).tasks).toEqual([])
   })
 })

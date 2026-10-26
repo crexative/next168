@@ -61,3 +61,20 @@ describe('proposal times follow the 12/24 h setting', () => {
     expect(summarizeEntity({ start: 1080, end: 1140 }, { ...context, locale: 'en-US' })[0]!.value).toBe('18:00\u00a0–\u00a019:00')
   })
 })
+
+describe('a task\'s fixed start and length in the approval summary (P1 review F4)', () => {
+  const task = { id: 't', title: 'Dentista', priority: 2, createdAt: '2026-10-20T08:00:00.000Z', dueDate: '2026-10-27' }
+  const fieldOf = (value: unknown, label: string) => summarizeEntity(value, context).find((row) => row.label === `proposals.fields.${label}`)?.value
+
+  it('a move from 09:00 to 17:00 reads differently before and after', () => {
+    const plain = (value: string | undefined) => value?.replace(/[\u00a0\u202f]/g, ' ')
+    expect(plain(fieldOf({ ...task, at: 540 }, 'at'))).toBe('9:00 AM')
+    expect(plain(fieldOf({ ...task, at: 1020 }, 'at'))).toBe('5:00 PM')
+  })
+
+  it('removing the fixed time or the length shows on the after side', () => {
+    expect(fieldOf({ ...task }, 'at')).toBe('proposals.noFixedTime')
+    expect(fieldOf({ ...task, durationMin: 30 }, 'duration')).toBe('proposals.minutes')
+    expect(fieldOf({ ...task }, 'duration')).toBe('tasks.add.untimed')
+  })
+})
