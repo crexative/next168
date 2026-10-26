@@ -292,3 +292,15 @@ describe('a commit with expect', () => {
     expect(save).toHaveBeenCalledTimes(1)
   })
 })
+
+describe('a commit bound to the revision a preview was built on', () => {
+  it('is refused before its mutator runs once the planner in memory moved on', async () => {
+    const { store } = setup()
+    await store.load()
+    expect((await store.commit((draft) => { draft.settings.weekStartsOn = 0 })).ok).toBe(true)
+    const mutator = vi.fn()
+    expect(await store.commit(mutator, { expectRevision: 0 })).toEqual({ ok: false, reason: 'changed-elsewhere' })
+    expect(mutator).not.toHaveBeenCalled()
+    expect((await store.commit((draft) => { draft.settings.weekStartsOn = 1 }, { expectRevision: 1 })).ok).toBe(true)
+  })
+})

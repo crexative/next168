@@ -21,6 +21,8 @@ export interface CommitGuard {
   purgeEpoch?: number
   // Refuse unless the stored document is exactly this ('absent' = nothing stored).
   storedFingerprint?: StoredFingerprint
+  // Refuse unless the stored document belongs to this workspace (the fingerprint already implies it).
+  workspaceId?: string
 }
 
 export interface BrowserPlannerRepositoryDeps {
@@ -325,6 +327,7 @@ export class BrowserPlannerRepository implements PlannerRepository {
       if (guard.storedFingerprint !== undefined && (await storedFingerprintOf(snapshot.document)) !== guard.storedFingerprint) {
         return { kind: 'conflict', currentRevision }
       }
+      if (guard.workspaceId !== undefined && stored.kind === 'ok' && stored.document.workspaceId !== guard.workspaceId) return { kind: 'conflict', currentRevision }
       const json = JSON.stringify(checked)
       // The first stored planner replaces the unsaved one proposals were made against: those proposals are stale now.
       await store.write(snapshot.document === undefined ? { document: json, unsavedBaseline: null } : { document: json, backup: snapshot.document })

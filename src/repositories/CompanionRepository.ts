@@ -38,9 +38,21 @@ export class CompanionRepository implements PlannerRepository {
     if (payload.kind === 'corrupt' || payload.kind === 'unsupported' || payload.kind === 'empty') return payload as LoadResult
     throw Error('invalid-companion-response')
   }
-  async save(document: PlannerDocument, expectedRevision: number): Promise<SaveResult> {
+  save(document: PlannerDocument, expectedRevision: number): Promise<SaveResult> {
+    return this.put(document, { 'If-Match': String(expectedRevision) })
+  }
+  // A save the server refuses (409) unless its stored document is exactly the one the caller opened on, compared inside
+  // its mutex: a revision number alone repeats after a backup restore.
+  saveGuarded(document: PlannerDocument, expectedRevision: number, guard: { storedFingerprint?: string; workspaceId?: string }): Promise<SaveResult> {
+    return this.put(document, {
+      'If-Match': String(expectedRevision),
+      ...(guard.storedFingerprint ? { 'X-Weeklid-Fingerprint': guard.storedFingerprint } : {}),
+      ...(guard.workspaceId ? { 'X-Weeklid-Workspace': guard.workspaceId } : {}),
+    })
+  }
+  private async put(document: PlannerDocument, headers: Record<string, string>): Promise<SaveResult> {
     try {
-      const response = await companionRequest('/document', { method: 'PUT', headers: { 'If-Match': String(expectedRevision) }, body: JSON.stringify({ document: validateDocument(document) }) })
+      const response = await companionRequest('/document', { method: 'PUT', headers, body: JSON.stringify({ document: validateDocument(document) }) })
       return await readResponse<SaveResult>(response)
     } catch (error) { return { kind: 'error', reason: error instanceof Error ? error.message : 'save-failed' } }
   }

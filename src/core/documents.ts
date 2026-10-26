@@ -1,5 +1,6 @@
 import { MAX_FIXED_MIN, plannerDocumentSchema, SCHEMA_VERSION, type Clock, type LoadResult, type PlannerDocument } from './model'
 import { widenToCurrent } from './widening'
+import { canonicalJson, sha256 } from './canonical'
 
 export interface DocumentEnvironment {
   now: Date
@@ -72,4 +73,10 @@ export function nextGeneration(current: Pick<PlannerDocument, 'generation'> | un
 
 export function nextRevision(document: PlannerDocument, clock: Clock): PlannerDocument {
   return validateDocument({ ...document, revision: document.revision + 1, updatedAt: clock.now().toISOString() })
+}
+
+// The fingerprint a guarded write compares, in the browser and the companion alike: the hash of the canonical document,
+// so one comparison covers workspace, content, generation and a replacement that kept the same revision.
+export async function documentFingerprint(document: PlannerDocument): Promise<string> {
+  return sha256(canonicalJson(validateDocument(document)))
 }

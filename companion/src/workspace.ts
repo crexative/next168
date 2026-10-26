@@ -4,7 +4,7 @@ import { randomUUID } from 'node:crypto'
 import type { ChangeProposal, PlannerDocument, ProposalDecision, ProposalCreateOptions, ProposalHistory, ProposalInput, ProposalRepository, SaveResult } from '../../src/core/model'
 import { buildExportBundle } from '../../src/core/exportBundle'
 import type { ExportBundle } from '../../src/core/model'
-import { createEmptyDocument, nextGeneration, parseDocument, validateDocument } from '../../src/core/documents'
+import { createEmptyDocument, documentFingerprint, nextGeneration, parseDocument, validateDocument } from '../../src/core/documents'
 import { buildProposal, commitProposal, CONTRACT_RETIRED, isRetiredContract, previewProposal } from '../../src/core/proposals'
 import { currentProposals, legacyProposals, readProposalStore, withProposal, writeProposalStore, type ProposalStore } from '../../src/core/proposalRecords'
 import { atomicWrite, Mutex, readOptional } from './files'
@@ -64,10 +64,14 @@ export class Workspace implements ProposalRepository {
     if (loaded.kind !== 'ok') throw Error('stored-document-unreadable')
     return loaded.document
   }
-  async save(candidate: PlannerDocument, expectedRevision: number): Promise<SaveResult> {
+  // `guard`: the document the caller opened on (fingerprint) and its workspace, compared inside the mutex. A revision alone
+  // can repeat after a backup restore, so a stale preview would otherwise overwrite different content.
+  async save(candidate: PlannerDocument, expectedRevision: number, guard: { storedFingerprint?: string; workspaceId?: string } = {}): Promise<SaveResult> {
     return this.mutex.run(async () => {
       const current = await this.document()
       if (current.revision !== expectedRevision) return { kind: 'conflict', currentRevision: current.revision }
+      if (guard.workspaceId !== undefined && guard.workspaceId !== current.workspaceId) return { kind: 'conflict', currentRevision: current.revision }
+      if (guard.storedFingerprint !== undefined && guard.storedFingerprint !== await documentFingerprint(current)) return { kind: 'conflict', currentRevision: current.revision }
       const checked = validateDocument(candidate)
       if (checked.revision !== expectedRevision + 1) throw Error('invalid-revision')
       if (checked.workspaceId === current.workspaceId && JSON.stringify(checked.appliedProposalIds) !== JSON.stringify(current.appliedProposalIds)) throw Error('immutable-approval-record')

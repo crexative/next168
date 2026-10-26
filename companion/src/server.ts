@@ -111,7 +111,9 @@ export async function startCompanion(options: Options) {
         if (typeof expected !== 'string' || !/^\d+$/.test(expected)) throw new HttpError(400, 'if-match-required')
         const payload = await jsonBody(request, 16 * 1024 * 1024)
         boundDocumentCollections(payload.document)
-        const saved = await workspace.save(payload.document as PlannerDocument, Number(expected))
+        const header = (name: string) => (typeof request.headers[name] === 'string' ? request.headers[name] as string : undefined)
+        const guard = { storedFingerprint: header('x-weeklid-fingerprint'), workspaceId: header('x-weeklid-workspace') }
+        const saved = await workspace.save(payload.document as PlannerDocument, Number(expected), guard)
         json(response, saved.kind === 'conflict' ? 409 : 200, { ...saved, warnings: [...workspace.warnings] }); return
       }
       if (url.pathname === '/api/backup' && method === 'GET') { json(response, 200, { document: await workspace.backup() ?? null }); return }

@@ -4,6 +4,7 @@ import type { PlannerDocument, PlannerRepository, SaveResult } from '@/core/mode
 import { createEmptyDocument, nextRevision, parseDocument } from '@/repositories/core'
 import { failureReason, isStorageFailure } from '@/repositories/storageCommit'
 import { UPGRADE_COPY_FAILED, UpgradeCopyFailedError, type PreUpgradeCopy } from '@/repositories/storageVersion'
+import { CHANGED_ELSEWHERE } from '@/features/insights/entryGuard'
 
 export type PlannerStatus = 'loading' | 'ready' | 'readonly' | 'corrupt' | 'unsupported' | 'error'
 
@@ -21,7 +22,7 @@ export interface RepositoryExtras {
   // Browser only: a save refused when a delete-all happened since `purgeEpoch` was read.
   saveAtEpoch?(document: PlannerDocument, expectedRevision: number, purgeEpoch: number): Promise<SaveResult>
   // Browser only: a save refused unless storage still holds exactly what the caller opened on (and the same purge epoch).
-  saveGuarded?(document: PlannerDocument, expectedRevision: number, guard: { purgeEpoch?: number; storedFingerprint?: string }): Promise<SaveResult>
+  saveGuarded?(document: PlannerDocument, expectedRevision: number, guard: { purgeEpoch?: number; storedFingerprint?: string; workspaceId?: string }): Promise<SaveResult>
   // Browser only, synchronous: the purge epoch this tab last loaded.
   knownPurgeEpoch?(): number | undefined
   // Browser only: the complete copy taken before the first storage upgrade, if any.
@@ -58,7 +59,10 @@ export interface CommitOptions {
   purgeEpoch?: number
   // A flow that opened on a stored document (or on proven-empty storage, 'absent') passes what it opened on; the write
   // is refused inside the commit lock unless storage still holds exactly that.
-  expect?: { storedFingerprint: string; purgeEpoch?: number }
+  expect?: { storedFingerprint: string; purgeEpoch?: number; workspaceId?: string }
+  // The revision a preview was built on. The commit is refused before its mutator runs when the planner in memory has
+  // moved on, and it is the revision the write expects (the companion's If-Match), not whatever is in memory then.
+  expectRevision?: number
 }
 
 export const usePlannerStore = defineStore('planner', () => {
@@ -176,11 +180,13 @@ export const usePlannerStore = defineStore('planner', () => {
   function persist(
     mutator: (draft: PlannerDocument) => void,
     write: (repository: PlannerRepositoryWithExtras, candidate: PlannerDocument, expectedRevision: number) => Promise<SaveResult>,
+    expectRevision?: number,
   ): Promise<CommitResult> {
     return serialized(async () => {
       const { repository } = requireEnvironment()
       const base = document.value
       if (status.value !== 'ready' || !base) return { ok: false, reason: status.value }
+      if (expectRevision !== undefined && base.revision !== expectRevision) return { ok: false, reason: CHANGED_ELSEWHERE }
 
       let candidate: PlannerDocument
       try {
@@ -211,16 +217,16 @@ export const usePlannerStore = defineStore('planner', () => {
   }
 
   function commit(mutator: (draft: PlannerDocument) => void, options: CommitOptions = {}): Promise<CommitResult> {
-    const { purgeEpoch, expect } = options
+    const { purgeEpoch, expect, expectRevision } = options
     return persist(mutator, (repository, candidate, expected) => {
-      // Without the guarded entry (the companion), the server's revision check is all there is.
+      // Without the guarded entry, the revision check is all there is.
       if (expect && repository.saveGuarded) {
-        return repository.saveGuarded(candidate, expected, { storedFingerprint: expect.storedFingerprint, purgeEpoch: expect.purgeEpoch ?? purgeEpoch })
+        return repository.saveGuarded(candidate, expected, { storedFingerprint: expect.storedFingerprint, purgeEpoch: expect.purgeEpoch ?? purgeEpoch, workspaceId: expect.workspaceId })
       }
       return purgeEpoch !== undefined && repository.saveAtEpoch
         ? repository.saveAtEpoch(candidate, expected, purgeEpoch)
         : repository.save(candidate, expected)
-    })
+    }, expectRevision)
   }
 
   function canDeleteAll(): boolean {
