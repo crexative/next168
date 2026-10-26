@@ -4,7 +4,7 @@ import { buildShareSummary } from './shareSummary'
 import { summaryText } from './summaryText'
 import { overlapDocument, sentinelDocument } from './testFixtures'
 
-const brand = { name: 'Next168', slug: 'next168' }
+const brand = { name: 'Weeklid', slug: 'weeklid' }
 const t = (locale: string) => {
   i18n.global.locale.value = locale as typeof i18n.global.locale.value
   return i18n.global.t
@@ -25,7 +25,7 @@ describe('summaryText', () => {
   it.each(SUPPORTED_LOCALES)('states the raw 465 h and why the image is proportional (%s)', (locale) => {
     const text = summaryText(buildShareSummary(overlapDocument(), { includeNames: true, brand }), t(locale), locale)
     expect(text).toMatch(OVERLAP_CLAUSE[locale]!)
-    expect(text).toContain('Next168')
+    expect(text).toContain('Weeklid')
   })
 
   it.each(SUPPORTED_LOCALES)('has no overlap clause when routines do not overlap (%s)', (locale) => {
@@ -36,6 +36,6 @@ describe('summaryText', () => {
 
   it('lists every category with its hours, in the order of the card', () => {
     const text = summaryText(buildShareSummary(sentinelDocument(), { includeNames: true, brand }), t('en'), 'en')
-    expect(text).toBe('My typical week in Next168: 102 h of 168 h planned. Sleep 56 h, Work 44 h, Gym 2 h.')
+    expect(text).toBe('My typical week in Weeklid: 102 h of 168 h planned. Sleep 56 h, Work 44 h, Gym 2 h.')
   })
 })

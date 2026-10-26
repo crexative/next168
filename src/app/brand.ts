@@ -20,6 +20,6 @@ const publicUrl = publicUrlFrom(import.meta.env.VITE_PUBLIC_URL)
 
 export const BRAND: Brand = {
   get name() { return i18n.global.t('app.name') },
-  slug: 'next168',
+  slug: 'weeklid',
   ...(publicUrl ? { publicUrl } : {}),
 }

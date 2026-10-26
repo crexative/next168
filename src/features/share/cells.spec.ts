@@ -3,7 +3,7 @@ import { cellsFor, FREE_CELL } from './cells'
 import { buildShareSummary, shareGroups } from './shareSummary'
 import { overlapDocument, sentinelDocument } from './testFixtures'
 
-const brand = { name: 'Next168', slug: 'next168' }
+const brand = { name: 'Weeklid', slug: 'weeklid' }
 const count = (cells: number[], owner: number) => cells.filter((cell) => cell === owner).length
 
 // T-1B-02

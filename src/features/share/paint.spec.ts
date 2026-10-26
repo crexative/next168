@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { i18n } from '@/i18n'
+import { BRAND } from '@/app/brand'
+import { SYMBOL_TICK, SYMBOL_W, WORDMARK_PATH } from '@/ui/brandMark'
 import { layoutCard } from './layout'
 import { canvasMeasure, paint, type CardContext } from './paint'
 import { paletteFor } from './palette'
@@ -12,7 +14,8 @@ function recordingContext(): CardContext & { drawn: string[] } {
   const drawn: string[] = []
   const context = {
     drawn, fillStyle: '', strokeStyle: '', lineWidth: 1, font: '12px sans-serif', textAlign: 'left', textBaseline: 'alphabetic', direction: 'ltr',
-    fillRect() {}, beginPath() {}, roundRect() {}, fill() {}, stroke() {},
+    lineCap: 'butt', lineJoin: 'miter',
+    fillRect() {}, beginPath() {}, roundRect() {}, fill() {}, stroke() {}, save() {}, restore() {}, translate() {}, scale() {},
     fillText(text: string) { drawn.push(text) },
     measureText(text: string) { return { width: text.length * Number.parseFloat(context.font.split(' ')[1]!) * 0.6 } as TextMetrics },
   }
@@ -20,10 +23,10 @@ function recordingContext(): CardContext & { drawn: string[] } {
 }
 
 function paintCard(includeNames: boolean): string[] {
-  const summary = buildShareSummary(sentinelDocument(), { includeNames, brand: { name: 'Next168', slug: 'next168' } })
+  const summary = buildShareSummary(sentinelDocument(), { includeNames, brand: { name: 'Weeklid', slug: 'weeklid' } })
   const context = recordingContext()
   for (const format of ['story', 'square'] as const) {
-    paint(context, layoutCard(summary, { format, copy: cardCopy(summary, i18n.global.t, 'en'), palette: paletteFor('light') }, canvasMeasure(context)))
+    paint(context, layoutCard(summary, { format, copy: cardCopy(summary, i18n.global.t, 'en'), palette: paletteFor('light') }, canvasMeasure(context)), 3, () => ({}) as Path2D)
   }
   return context.drawn
 }
@@ -44,8 +47,31 @@ describe('paint', () => {
 
   it('never puts a routine title in the shared text or the alt, whatever the switch says', () => {
     for (const includeNames of [false, true]) {
-      const summary = buildShareSummary(sentinelDocument(), { includeNames, brand: { name: 'Next168', slug: 'next168' } })
+      const summary = buildShareSummary(sentinelDocument(), { includeNames, brand: { name: 'Weeklid', slug: 'weeklid' } })
       expect(summaryText(summary, i18n.global.t, 'en')).not.toMatch(/SENTINEL/)
     }
+  })
+
+  // Weeklid on the card: its own lockup paths in the brand colours, the planned figure in green, no old name.
+  it.each(['light', 'dark'] as const)('draws the Weeklid lockup and the green figure (%s)', (theme) => {
+    const palette = paletteFor(theme)
+    const summary = buildShareSummary(sentinelDocument(), { includeNames: false, brand: BRAND })
+    const strokes: [string, string][] = []
+    const fills: [string, string][] = []
+    const texts: [string, string][] = []
+    const context = recordingContext()
+    Object.assign(context, {
+      stroke(path?: { data: string }) { if (path) strokes.push([path.data, String(context.strokeStyle)]) },
+      fill(path?: { data: string }) { if (path) fills.push([path.data, String(context.fillStyle)]) },
+      fillText(text: string) { texts.push([text, String(context.fillStyle)]) },
+    })
+    const copy = cardCopy(summary, i18n.global.t, 'en')
+    paint(context, layoutCard(summary, { format: 'story', copy, palette }, canvasMeasure(context)), 3, (data) => ({ data }) as unknown as Path2D)
+    expect(strokes).toEqual([[SYMBOL_W, palette.mark], [SYMBOL_TICK, palette.accent]])
+    expect(fills).toEqual([[WORDMARK_PATH, palette.label]])
+    expect(texts.find(([text]) => text === '102 h')).toEqual(['102 h', palette.mark])
+    expect(texts.map(([text]) => text).join(' ')).not.toMatch(/next168/i)
+    expect(summaryText(summary, i18n.global.t, 'en')).toMatch(/^My typical week in Weeklid: /)
+    expect(texts.map(([text]) => text)).toContain('Plan your 168 h with Weeklid')
   })
 })

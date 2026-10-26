@@ -81,7 +81,7 @@ test.describe('share my typical week', () => {
     expect(await previewSize(page)).toEqual([1080, 1920])
     expect(await firstCellColor(page)).toBe(paletteFor('light').category.purple)
     const text = await page.getByTestId('share-summary-text').textContent()
-    expect(text).toBe('My typical week in Next168: 99 h of 168 h planned. Sleep 56 h, Work 40 h, Exercise 3 h.')
+    expect(text).toBe('My typical week in Weeklid: 99 h of 168 h planned. Sleep 56 h, Work 40 h, Exercise 3 h.')
     await expect(page.getByTestId('share-preview')).toHaveAttribute('alt', text!)
 
     await page.getByRole('radio', { name: 'Square' }).click()
@@ -180,7 +180,7 @@ test.describe('share my typical week', () => {
       let count = 0
       for (let index = 0; index < card.length; index += 1) if (card[index] !== reference[index]) count += 1
       return count
-    }, { font: CARD_FONT, footer: english.footerNoUrl.replace('{app}', 'Next168'), colors: paletteFor('light') })
+    }, { font: CARD_FONT, footer: english.footerNoUrl.replace('{app}', 'Weeklid'), colors: paletteFor('light') })
     expect(differing).toBe(0)
   })
 

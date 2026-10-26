@@ -1,3 +1,4 @@
+import { LOCKUP_SYMBOL_TRANSFORM, LOCKUP_VIEW_BOX, LOCKUP_WORDMARK_TRANSFORM, SYMBOL_STROKE_WIDTH, SYMBOL_TICK, SYMBOL_W, WORDMARK_PATH } from '@/ui/brandMark'
 import type { FontSpec, Measure } from './fitText'
 import { CARD_FORMATS, CARD_SCALE, layoutCard, type CardCopy, type CardLayout, type ShareFormat } from './layout'
 import { CARD_FONT, type SharePalette } from './palette'
@@ -6,8 +7,44 @@ import type { ShareSummary } from './shareSummary'
 // The only Canvas code of the share card: it executes the layout's draw operations, nothing more.
 
 export type CardContext = Pick<CanvasRenderingContext2D,
-  'fillStyle' | 'strokeStyle' | 'lineWidth' | 'font' | 'textAlign' | 'textBaseline' | 'direction'
-  | 'fillRect' | 'beginPath' | 'roundRect' | 'fill' | 'stroke' | 'fillText' | 'measureText'>
+  'fillStyle' | 'strokeStyle' | 'lineWidth' | 'lineCap' | 'lineJoin' | 'font' | 'textAlign' | 'textBaseline' | 'direction'
+  | 'fillRect' | 'beginPath' | 'roundRect' | 'fill' | 'stroke' | 'fillText' | 'measureText' | 'save' | 'restore' | 'translate' | 'scale'>
+
+// Path2D from SVG path data; injected so tests can paint without a browser canvas.
+export type MakePath = (data: string) => Path2D
+const browserPath: MakePath = (data) => new Path2D(data)
+
+// "translate(x y) scale(s)" or "translate(x y)" from brandMark.ts.
+function applyTransform(context: CardContext, transform: string): void {
+  const translate = /translate\(([-\d.]+)[ ,]+([-\d.]+)\)/.exec(transform)
+  const scale = /scale\(([-\d.]+)\)/.exec(transform)
+  if (translate) context.translate(Number(translate[1]), Number(translate[2]))
+  if (scale) context.scale(Number(scale[1]), Number(scale[1]))
+}
+
+// The lockup drawn from the brand's own paths (src/ui/brandMark.ts), never a copy of the SVG.
+function paintLockup(context: CardContext, op: Extract<CardLayout['ops'][number], { kind: 'lockup' }>, scale: number, makePath: MakePath): void {
+  const [minX, minY, , boxHeight] = LOCKUP_VIEW_BOX.split(' ').map(Number) as [number, number, number, number]
+  const unit = (op.height / boxHeight) * scale
+  context.save()
+  context.translate(op.x * scale, op.y * scale)
+  context.scale(unit, unit)
+  context.translate(-minX, -minY)
+  context.save()
+  applyTransform(context, LOCKUP_SYMBOL_TRANSFORM)
+  context.lineWidth = SYMBOL_STROKE_WIDTH
+  context.lineCap = 'round'
+  context.lineJoin = 'round'
+  context.strokeStyle = op.mark
+  context.stroke(makePath(SYMBOL_W))
+  context.strokeStyle = op.accent
+  context.stroke(makePath(SYMBOL_TICK))
+  context.restore()
+  applyTransform(context, LOCKUP_WORDMARK_TRANSFORM)
+  context.fillStyle = op.word
+  context.fill(makePath(WORDMARK_PATH))
+  context.restore()
+}
 
 function fontString(font: FontSpec, scale: number): string {
   return `${font.weight} ${font.size * scale}px ${CARD_FONT}`
@@ -21,10 +58,12 @@ export function canvasMeasure(context: CardContext, scale: number = CARD_SCALE):
   }
 }
 
-export function paint(context: CardContext, card: CardLayout, scale: number = CARD_SCALE): void {
+export function paint(context: CardContext, card: CardLayout, scale: number = CARD_SCALE, makePath: MakePath = browserPath): void {
   context.textBaseline = 'alphabetic'
   for (const op of card.ops) {
-    if (op.kind === 'background') {
+    if (op.kind === 'lockup') {
+      paintLockup(context, op, scale, makePath)
+    } else if (op.kind === 'background') {
       context.fillStyle = op.color
       context.fillRect(0, 0, card.width * scale, card.height * scale)
     } else if (op.kind === 'rect') {

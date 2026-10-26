@@ -14,7 +14,7 @@ function deferred<T>() {
 // A builder whose encodes the test resolves by hand, in any order. Each PNG's bytes name the inputs it was made from.
 function harness(initial: Partial<ShareInputs> = {}) {
   const inputs = reactive<ShareInputs>({
-    workspaceId: 'ws-a', purgeEpoch: 1, revision: 4, includeNames: true, format: 'story', theme: 'light', locale: 'en', brandName: 'Next168', ...initial,
+    workspaceId: 'ws-a', purgeEpoch: 1, revision: 4, includeNames: true, format: 'story', theme: 'light', locale: 'en', brandName: 'Weeklid', ...initial,
   })
   const open = reactive({ value: true })
   const pending = new Map<string, ReturnType<typeof deferred<Blob | null>>>()
@@ -28,14 +28,14 @@ function harness(initial: Partial<ShareInputs> = {}) {
   }
   const scope = effectScope()
   const artifact = scope.run(() => useShareArtifact(() => (open.value ? { ...inputs } : null), {
-    summarize: (): ShareSummary => ({ brandName: 'Next168', assignedHours: 0, unassignedHours: 168, plannedTotalHours: 0, overlap: false, categories: [] }),
+    summarize: (): ShareSummary => ({ brandName: 'Weeklid', assignedHours: 0, unassignedHours: 168, plannedTotalHours: 0, overlap: false, categories: [] }),
     paint: (_summary, current) => shareArtifactKey(current),
     encode: (key) => {
       const wait = deferred<Blob | null>()
       pending.set(key, wait)
       return wait.promise
     },
-    fileName: () => 'next168-my-typical-week.png',
+    fileName: () => 'weeklid-my-typical-week.png',
   }, environment))!
   async function resolve(key: string): Promise<void> {
     await flush()

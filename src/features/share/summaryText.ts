@@ -24,6 +24,7 @@ export function cardCopy(summary: ShareSummary, t: Translate, language: string =
   return {
     label: t('share.label'),
     headline: t('share.headline', { assigned: formatWholeHours(summary.assignedHours, locale) }),
+    headlineFigure: formatWholeHours(summary.assignedHours, locale),
     caption: summary.overlap ? t('share.overlapHint', { total: formatWholeNumber(summary.plannedTotalHours, locale) }) : t('share.cellHint'),
     footer: summary.publicUrl ? t('share.footer', { url: displayPublicUrl(summary.publicUrl) }) : t('share.footerNoUrl', { app: summary.brandName }),
     hours: (minutes) => formatTotal(minutes, locale),

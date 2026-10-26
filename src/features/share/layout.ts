@@ -1,3 +1,4 @@
+import { LOCKUP_VIEW_BOX } from '@/ui/brandMark'
 import { contrast, rgb } from '@/ui/contrast'
 import { cellsFor, FREE_CELL } from './cells'
 import { fitBlock, fitLine, type FontSpec, type Measure } from './fitText'
@@ -24,11 +25,16 @@ const ASCENT = 0.93
 const DESCENT = 0.25
 const LINE_PITCH = 1.2
 const OTHERS_GLYPH = '+'
+// The lockup's height in points: its wordmark's letters are then about 16 pt tall (13.75 pt on the square, which has
+// less height to spare), like a 17 pt bold name.
+const LOCKUP_HEIGHT: Record<ShareFormat, number> = { story: 26, square: 22 }
 const RTL = /[֐-ࣿיִ-﷿ﹰ-ﻼ]/
 
 export interface CardCopy {
   label: string
   headline: string
+  // The planned hours as written in the headline ("110 h"), drawn in the brand green.
+  headlineFigure: string
   caption: string
   footer: string
   hours(minutes: number): string
@@ -37,10 +43,12 @@ export interface CardCopy {
 
 export interface Box { x: number; y: number; width: number; height: number }
 
-export type TextRole = 'brand' | 'label' | 'headline' | 'caption' | 'legend-name' | 'legend-hours' | 'legend-routines' | 'glyph' | 'footer'
+export type TextRole = 'label' | 'headline' | 'caption' | 'legend-name' | 'legend-hours' | 'legend-routines' | 'glyph' | 'footer'
 
 export type DrawOp =
   | { kind: 'background'; color: string }
+  // Weeklid's horizontal lockup (src/ui/brandMark.ts): the W in --mark, its tick in --accent, the wordmark in --label.
+  | { kind: 'lockup'; x: number; y: number; width: number; height: number; mark: string; accent: string; word: string }
   | { kind: 'rect'; role: 'cell' | 'swatch'; group: number; x: number; y: number; width: number; height: number; radius: number; fill?: string; outline?: { color: string; width: number } }
   | { kind: 'text'; role: TextRole; text: string; font: FontSpec; color: string; direction: 'ltr' | 'rtl'; baseline: number; box: Box; maxWidth: number }
 
@@ -103,15 +111,17 @@ export function layoutCard(summary: ShareSummary, options: { format: ShareFormat
 
   const ops: DrawOp[] = [{ kind: 'background', color: palette.background }]
 
-  // Header: the brand and "My typical week" on one line, at the top safe line.
-  const headerBaseline = frame.safeTop + 14
-  const brand = fitLine(summary.brandName, { weight: 700, size: 17, min: 14, maxWidth: width * 0.6 }, measure)
-  const brandOp = text('brand', brand.text, MARGIN, headerBaseline, { weight: 700, size: brand.size }, palette.label, width * 0.6)
-  ops.push(brandOp)
-  const labelRoom = width - brandOp.box.width - 12
+  // Header: Weeklid's lockup and "My typical week" on one line, at the top safe line. The lockup's box is 64 units high
+  // and its wordmark sits on the box's line 52 (12 above the letters' top, 40 for the letters).
+  const [, , lockupBoxWidth, lockupBoxHeight] = LOCKUP_VIEW_BOX.split(' ').map(Number) as [number, number, number, number]
+  const lockupHeight = Math.min(LOCKUP_HEIGHT[format], (width * 0.6) * lockupBoxHeight / lockupBoxWidth)
+  const lockup = { kind: 'lockup' as const, x: MARGIN, y: frame.safeTop, width: lockupHeight * lockupBoxWidth / lockupBoxHeight, height: lockupHeight, mark: palette.mark, accent: palette.accent, word: palette.label }
+  ops.push(lockup)
+  const headerBaseline = frame.safeTop + lockupHeight * 52 / lockupBoxHeight
+  const labelRoom = width - lockup.width - 12
   const label = fitLine(copy.label, { weight: 400, size: 15, min: 12, maxWidth: labelRoom }, measure)
   ops.push(text('label', label.text, MARGIN + width, headerBaseline, { weight: 400, size: label.size }, palette.label2, labelRoom, 'right'))
-  const headerBottom = headerBaseline + DESCENT * 17
+  const headerBottom = frame.safeTop + lockupHeight
 
   // Footer: its last line on the bottom safe line. Never cut, because it may carry the public address.
   const footer = fitBlock(copy.footer, { weight: 600, size: 13, min: 11, maxLines: 1, maxWidth: width }, measure)
@@ -125,9 +135,20 @@ export function layoutCard(summary: ShareSummary, options: { format: ShareFormat
   const headline = story
     ? fitBlock(copy.headline, { weight: 700, size: 30, min: 17, maxLines: 2, maxWidth: width }, measure)
     : fitBlock(copy.headline, { weight: 700, size: 22, min: 17, maxLines: 1, maxWidth: width }, measure)
+  const headlineFont = { weight: 700, size: headline.size }
   for (const line of headline.lines) {
     const baseline = y + ASCENT * headline.size
-    content.push(text('headline', line, MARGIN, baseline, { weight: 700, size: headline.size }, palette.label, width))
+    // The planned figure ("110 h") in the brand green, the rest of the sentence in --label.
+    const at = copy.headlineFigure ? line.indexOf(copy.headlineFigure) : -1
+    const runs = at < 0
+      ? [{ value: line, color: palette.label }]
+      : [{ value: line.slice(0, at), color: palette.label }, { value: copy.headlineFigure, color: palette.mark }, { value: line.slice(at + copy.headlineFigure.length), color: palette.label }]
+    let x = MARGIN
+    for (const run of runs.filter((candidate) => candidate.value)) {
+      const op = text('headline', run.value, x, baseline, headlineFont, run.color, MARGIN + width - x)
+      content.push(op)
+      x += op.box.width
+    }
     y += headline.size * LINE_PITCH
   }
   y += story ? 14 : 8
@@ -196,7 +217,7 @@ export function layoutCard(summary: ShareSummary, options: { format: ShareFormat
   y += legendRows > 0 ? (legendRows - 1) * rowHeight + (names ? 31 + DESCENT * 12 : 15 + DESCENT * 15) : 0
 
   // Story: the content block centred between the header and the footer. Square: top-aligned under the header.
-  const regionTop = headerBottom + (story ? 16 : 10)
+  const regionTop = headerBottom + (story ? 16 : 8)
   const regionBottom = footerTop - (story ? 16 : 8)
   const offset = story ? regionTop + Math.max(0, (regionBottom - regionTop - y) / 2) : regionTop
   for (const op of content) ops.push(shift(op, offset))
@@ -205,7 +226,7 @@ export function layoutCard(summary: ShareSummary, options: { format: ShareFormat
 }
 
 function shift(op: DrawOp, dy: number): DrawOp {
-  if (op.kind === 'rect') return { ...op, y: op.y + dy }
+  if (op.kind === 'rect' || op.kind === 'lockup') return { ...op, y: op.y + dy }
   if (op.kind === 'text') return { ...op, baseline: op.baseline + dy, box: { ...op.box, y: op.box.y + dy } }
   return op
 }

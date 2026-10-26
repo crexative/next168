@@ -10,7 +10,7 @@ import { manyCategoriesDocument, overlapDocument, plannedDocument, sentinelDocum
 type TextOp = Extract<DrawOp, { kind: 'text' }>
 type RectOp = Extract<DrawOp, { kind: 'rect' }>
 const EPSILON = 0.01
-const brand = { name: 'Next168', slug: 'next168' }
+const brand = { name: 'Weeklid', slug: 'weeklid' }
 
 function withLocale<T>(locale: string, run: () => T): T {
   i18n.global.locale.value = locale as typeof i18n.global.locale.value
@@ -43,6 +43,11 @@ function layoutProblems(card: CardLayout, headline: string, caption: string): st
   ops.forEach((a, i) => ops.slice(i + 1).forEach((b) => {
     if (intersects(a.box, b.box)) problems.push(`"${a.text}" (${a.role}) overlaps "${b.text}" (${b.role})`)
   }))
+  const lockup = card.ops.find((op) => op.kind === 'lockup')
+  if (!lockup) problems.push('no Weeklid lockup')
+  else for (const op of ops) {
+    if (op.box.y < lockup.y + lockup.height - EPSILON && op.box.y + op.box.height > lockup.y + EPSILON && op.box.x < lockup.x + lockup.width - EPSILON) problems.push(`"${op.text}" (${op.role}) overlaps the lockup`)
+  }
   if (card.contentBottom > card.footerTop + EPSILON) problems.push(`content ends at ${card.contentBottom}, below the footer top ${card.footerTop}`)
   const joined = (role: string) => ops.filter((op) => op.role === role).map((op) => op.text).join(' ')
   if (joined('headline').replace(/\s+/g, '') !== headline.replace(/\s+/g, '')) problems.push(`headline "${joined('headline')}" is not "${headline}"`)
@@ -133,7 +138,7 @@ describe('layoutCard', () => {
     for (const format of ['story', 'square'] as const) {
       const { card } = render(sentinelDocument(), { format, includeNames: true })
       expect(texts(card).filter((op) => /http|:\/\/|www\./i.test(op.text))).toEqual([])
-      expect(texts(card).find((op) => op.role === 'footer')!.text).toBe('Plan your 168 h with Next168')
+      expect(texts(card).find((op) => op.role === 'footer')!.text).toBe('Plan your 168 h with Weeklid')
     }
     const summary = buildShareSummary(sentinelDocument(), { includeNames: true, brand })
     expect(summaryText(summary, i18n.global.t, 'en')).not.toMatch(/http/)

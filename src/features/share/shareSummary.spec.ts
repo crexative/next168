@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { buildShareSummary, shareGroups } from './shareSummary'
 import { BLOCK_SENTINEL, manyCategoriesDocument, sentinelDocument } from './testFixtures'
 
-const brand = { name: 'Next168', slug: 'next168' }
+const brand = { name: 'Weeklid', slug: 'weeklid' }
 const ISO_DATE = /\d{4}-\d{2}-\d{2}/
 
 // T-1B-01: only allowlisted fields reach the summary.
@@ -28,7 +28,7 @@ describe('buildShareSummary', () => {
     const summary = buildShareSummary(sentinelDocument(), { includeNames: false, brand })
     expect(summary.categories.map(({ name, plannedMinutes }) => [name, plannedMinutes])).toEqual([['Sleep', 3360], ['Work', 2610], ['Gym', 120]])
     expect(summary.assignedHours + summary.unassignedHours).toBe(168)
-    expect(summary).toMatchObject({ brandName: 'Next168', assignedHours: 102, plannedTotalHours: 102, overlap: false })
+    expect(summary).toMatchObject({ brandName: 'Weeklid', assignedHours: 102, plannedTotalHours: 102, overlap: false })
     expect(summary.categories[0]).toEqual({ name: 'Sleep', glyph: 'S', color: { key: 'purple' }, plannedMinutes: 3360 })
     expect('publicUrl' in summary).toBe(false)
   })

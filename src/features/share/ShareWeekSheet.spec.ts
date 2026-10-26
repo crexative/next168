@@ -20,7 +20,8 @@ let blobResult: () => Blob | null = () => new Blob(['png'], { type: 'image/png' 
 function fakeContext() {
   return {
     fillStyle: '', strokeStyle: '', lineWidth: 1, font: '12px sans-serif', textAlign: 'left', textBaseline: 'alphabetic', direction: 'ltr',
-    fillRect() {}, beginPath() {}, roundRect() {}, fill() {}, stroke() {}, fillText() {},
+    lineCap: 'butt', lineJoin: 'miter',
+    fillRect() {}, beginPath() {}, roundRect() {}, fill() {}, stroke() {}, fillText() {}, save() {}, restore() {}, translate() {}, scale() {},
     measureText(text: string) { return { width: text.length * 20 } },
   }
 }
@@ -69,6 +70,8 @@ beforeEach(() => {
     return url
   })
   vi.spyOn(URL, 'revokeObjectURL').mockImplementation(() => {})
+  // happy-dom has no Path2D; the lockup only needs an object to stroke and fill.
+  vi.stubGlobal('Path2D', class { constructor(readonly data: string) {} })
   vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockImplementation(() => fakeContext() as never)
   HTMLCanvasElement.prototype.toBlob = function (callback: BlobCallback) { setTimeout(() => callback(blobResult()), 0) }
   Object.defineProperty(navigator, 'canShare', { configurable: true, value: () => true })
@@ -82,6 +85,7 @@ afterEach(() => {
   document.body.innerHTML = ''
   i18n.global.locale.value = 'en'
   vi.restoreAllMocks()
+  vi.unstubAllGlobals()
   vi.useRealTimers()
   performance.clearMarks()
   performance.clearMeasures()
@@ -100,7 +104,7 @@ describe('share sheet', () => {
     expect(shared).toHaveLength(1)
     expect(shared[0]!.files![0]).toBe(files.get(image.src))
     expect(shared[0]!.text).toBe(text)
-    expect(shared[0]!.files![0]!.name).toBe('next168-my-typical-week.png')
+    expect(shared[0]!.files![0]!.name).toBe('weeklid-my-typical-week.png')
   })
 
   it('disables the actions in the same tick the names switch changes', async () => {
