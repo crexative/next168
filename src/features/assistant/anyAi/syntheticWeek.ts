@@ -66,7 +66,7 @@ export const SYNTHETIC_TASKS: SyntheticTask[] = [
 
 export const SYNTHETIC_RANGE_COUNT = SYNTHETIC_ROUTINE.reduce((sum, item) => sum + item.days.length, 0)
 
-// The proposal a chat AI sends for an empty Next168: create the categories, then the routine and tasks that use them.
+// The proposal a chat AI sends for an empty Weeklid: create the categories, then the routine and tasks that use them.
 export function syntheticWeekProposal(workspaceId: string, baseRevision: number) {
   return {
     contractVersion: '1.0' as const, workspaceId, baseRevision,
@@ -79,7 +79,7 @@ export function syntheticWeekProposal(workspaceId: string, baseRevision: number)
   }
 }
 
-// What the reply looks like in a chat window: prose, a summary table, one next168 block and a closing note.
+// What the reply looks like in a chat window: prose, a summary table, one weeklid block and a closing note.
 export function syntheticWeekReply(workspaceId: string, baseRevision: number): string {
   const proposal = syntheticWeekProposal(workspaceId, baseRevision)
   const lines = proposal.ops.map((op) => JSON.stringify(op)).join(',\n')
@@ -97,11 +97,11 @@ export function syntheticWeekReply(workspaceId: string, baseRevision: number): s
 
 Los bloques de dormir cruzan la medianoche, así que su fin es menor que su inicio.
 
-\`\`\`next168
+\`\`\`weeklid
 ${opening},"ops":[
 ${lines}
 ]}
 \`\`\`
 
-Revisa los cambios en Next168 y apruébalos si todo está bien. ¿Quieres que luego ajuste algo del fin de semana?`
+Revisa los cambios en Weeklid y apruébalos si todo está bien. ¿Quieres que luego ajuste algo del fin de semana?`
 }

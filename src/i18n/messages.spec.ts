@@ -36,9 +36,9 @@ describe('i18n catalogs', () => {
     expect(englishKeys.length).toBeGreaterThan(10)
     for (const locale of SUPPORTED_LOCALES) {
       const app = messages[locale]?.app as { name?: unknown } | undefined
-      expect(app?.name).toBe('Next168')
+      expect(app?.name).toBe('Weeklid')
     }
-    expect(i18n.global.t('app.name')).toBe('Next168')
+    expect(i18n.global.t('app.name')).toBe('Weeklid')
   })
 
   it('provides every supported locale', () => {

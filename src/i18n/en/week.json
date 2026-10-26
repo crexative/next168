@@ -12,7 +12,7 @@
     "when": "When",
     "calendar": "Calendar",
     "conflictsWith": "Conflicts with {title}",
-    "ownEvent": "Next168 event",
+    "ownEvent": "Weeklid event",
     "calendarFallback": "Calendar",
     "location": "Location",
     "notes": "Notes"

@@ -1,5 +1,5 @@
 {
-  "name": "Next168",
+  "name": "Weeklid",
   "tabs": {
     "today": "Today",
     "week": "Week",
@@ -42,13 +42,13 @@
     "blocked": "Save or close the open form before reloading."
   },
   "storage": {
-    "readonlyNoLocks": "This browser cannot coordinate several tabs safely, so Next168 is read-only here. Use a current version of Chrome, Edge, Firefox or Safari.",
-    "unsupported": "This data was saved by a newer version of Next168 and is read-only until you update.",
-    "legacyChanged": "An older version of Next168 is open in another tab. Changes made there are not carried over.",
+    "readonlyNoLocks": "This browser cannot coordinate several tabs safely, so Weeklid is read-only here. Use a current version of Chrome, Edge, Firefox or Safari.",
+    "unsupported": "This data was saved by a newer version of Weeklid and is read-only until you update.",
+    "legacyChanged": "An older version of Weeklid is open in another tab. Changes made there are not carried over.",
     "conflict": "Another tab changed your data first. The latest version was loaded — please try again.",
     "saveFailed": "Could not save ({reason}). Your previous data is unchanged.",
-    "unavailableTitle": "Next168 can't use this browser's storage",
-    "unavailableBody": "Next168 stopped so nothing gets lost. Your data on this device was not changed. Try again in a moment.",
+    "unavailableTitle": "Weeklid can't use this browser's storage",
+    "unavailableBody": "Weeklid stopped so nothing gets lost. Your data on this device was not changed. Try again in a moment.",
     "lastChangeNotSaved": "Your last change was not saved. Everything before it is safe.",
     "retry": "Try again",
     "exportCopy": "Export a copy",
@@ -56,7 +56,7 @@
   },
   "recovery": {
     "title": "Your saved data can't be read",
-    "description": "Next168 stopped to protect it and changed nothing. You can download the raw data, restore the last backup, or start with an empty planner.",
+    "description": "Weeklid stopped to protect it and changed nothing. You can download the raw data, restore the last backup, or start with an empty planner.",
     "reason": "Reason: {reason}",
     "export": "Download raw data",
     "restoreBackup": "Restore last backup",

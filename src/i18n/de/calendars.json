@@ -48,7 +48,7 @@
   "missingFile": "„{name}“ ist hier nicht gespeichert, daher können seine Termine nicht angezeigt werden. Entferne ihn und importiere seine .ics-Datei erneut.",
   "missingUrl": "„{name}“ wurde hier noch nicht heruntergeladen. Wähle darunter „Aktualisieren“, um ihn erneut herunterzuladen.",
   "url": "Gib eine http-, https- oder webcal-URL ohne Benutzername oder Passwort ein.",
-  "fetch": "Dieser Kalender konnte nicht abgerufen werden (CORS- oder Netzwerkfehler). Private Feeds von Google, Outlook und iCloud blockieren häufig den Browserzugriff. Nutze .ics-Datei importieren oder öffne Next168 im Companion-Modus und versuche es erneut.",
+  "fetch": "Dieser Kalender konnte nicht abgerufen werden (CORS- oder Netzwerkfehler). Private Feeds von Google, Outlook und iCloud blockieren häufig den Browserzugriff. Nutze .ics-Datei importieren oder öffne Weeklid im Companion-Modus und versuche es erneut.",
   "colors": {
     "blue": "Blau",
     "green": "Grün",
@@ -68,5 +68,5 @@
   "removeGuest": "{email} entfernen",
   "guestInvalid": "Gib eine E-Mail-Adresse ein, z. B. name{'@'}beispiel.de.",
   "guestLimit": "Ein Termin kann bis zu 50 Gäste haben.",
-  "guestsHint": "Next168 versendet nichts. Die Gäste werden hinzugefügt, wenn du den Termin in Google Kalender oder Outlook öffnest oder seine .ics-Datei herunterlädst."
+  "guestsHint": "Weeklid versendet nichts. Die Gäste werden hinzugefügt, wenn du den Termin in Google Kalender oder Outlook öffnest oder seine .ics-Datei herunterlädst."
 }

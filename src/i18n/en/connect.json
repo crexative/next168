@@ -5,8 +5,8 @@
   "pairCode": "Pairing code",
   "pair": "Pair browser",
   "pairError": "The code is invalid, expired or already used. Request a new code in the terminal.",
-  "transferHint": "To move data, export a Next168 backup from the old workspace and import it here. Export before adding the app to your iPhone Home Screen, then import in the installed app.",
-  "importWorkspace": "Import a Next168 backup into this empty workspace",
+  "transferHint": "To move data, export a Weeklid backup from the old workspace and import it here. Export before adding the app to your iPhone Home Screen, then import in the installed app.",
+  "importWorkspace": "Import a Weeklid backup into this empty workspace",
   "desktopInstructions": "Add this server to claude_desktop_config.json. Replace the absolute path and restart Claude Desktop. Keep the companion running.",
   "customHome": "If you use a custom NEXT168_HOME or NEXT168_PORT, set the same environment variables in the MCP client configuration.",
   "rotateHint": "To revoke the MCP token, run this command and reconnect your clients:",
@@ -23,7 +23,7 @@
     "subtitle": "Plan your week by chatting with the AI you already use, on any device. No account, no server.",
     "steps": {
       "copy": "Tap “Copy for your AI” and paste it into a new chat in ChatGPT, Claude, Gemini or any other.",
-      "chat": "Talk about your week. When you want changes, ask: “give me the changes in the next168 block”.",
+      "chat": "Talk about your week. When you want changes, ask: “give me the changes in the weeklid block”.",
       "paste": "Copy its whole reply, paste it below and review the changes before approving them."
     },
     "copy": "Copy for your AI",
@@ -34,12 +34,12 @@
     "pasteLabel": "Paste your AI’s reply",
     "pastePlaceholder": "Paste the whole reply here, including the text around the changes.",
     "review": "Review changes",
-    "safety": "You share your plan with the AI you choose. Nothing changes in Next168 until you approve it.",
+    "safety": "You share your plan with the AI you choose. Nothing changes in Weeklid until you approve it.",
     "errors": {
       "empty": "Paste your AI’s reply first.",
       "tooLarge": "That text is too long. Paste only your AI’s last reply.",
-      "none": "Your AI answered without changes for Next168: maybe it only talked, or it needs something from you first. Read its message. To change your plan, ask it: “give me the changes in the next168 block”.",
-      "malformed": "The changes in that reply are cut off or damaged. Ask your AI to send them again in a single next168 block.",
+      "none": "Your AI answered without changes for Weeklid: maybe it only talked, or it needs something from you first. Read its message. To change your plan, ask it: “give me the changes in the weeklid block”.",
+      "malformed": "The changes in that reply are cut off or damaged. Ask your AI to send them again in a single weeklid block.",
       "invalid": "I couldn’t understand those changes. Copy again so your AI knows the format, then ask it to try again.",
       "wrongWorkspace": "These changes were made for a different plan. Copy again and start a new chat with your AI.",
       "stale": "Your plan changed after you copied it for your AI. Copy again and ask your AI to repeat the changes.",
@@ -54,6 +54,6 @@
   },
   "local": {
     "title": "Claude Desktop or Claude Code (on this computer)",
-    "hint": "For advanced users: connects directly to the Next168 companion running on this computer."
+    "hint": "For advanced users: connects directly to the Weeklid companion running on this computer."
   }
 }

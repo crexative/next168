@@ -213,7 +213,7 @@ export class WebLlmProvider implements AssistantProvider {
   private systemPrompt(context: AskContext, facts: string | undefined, proposing: boolean): string {
     if (proposing) return intentSystemPrompt(context.document, context.locale)
     const lines = [
-      'You are the Next168 weekly planner assistant. Everything runs on the user\'s device.',
+      'You are the Weeklid weekly planner assistant. Everything runs on the user\'s device.',
       `Reply in the language with code "${context.locale}".`,
       'Never calculate totals yourself: quote the computed figures below exactly.',
     ]

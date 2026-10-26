@@ -48,7 +48,7 @@
   "missingFile": "“{name}” is not saved here, so its events cannot be shown. Remove it and import its .ics file again.",
   "missingUrl": "“{name}” has not been downloaded here yet. Choose Refresh under it to download it again.",
   "url": "Enter an http, https or webcal URL without a username or password.",
-  "fetch": "This feed could not be fetched (CORS or network error). Google, Outlook and iCloud private feeds usually block browser access. Use Import .ics file, or open Next168 in companion mode and try again.",
+  "fetch": "This feed could not be fetched (CORS or network error). Google, Outlook and iCloud private feeds usually block browser access. Use Import .ics file, or open Weeklid in companion mode and try again.",
   "colors": {
     "blue": "Blue",
     "green": "Green",
@@ -68,5 +68,5 @@
   "removeGuest": "Remove {email}",
   "guestInvalid": "Enter an email address, like name{'@'}example.com.",
   "guestLimit": "An event can have up to 50 guests.",
-  "guestsHint": "Next168 sends nothing. The guests are added when you open the event in Google Calendar or Outlook, or download its .ics."
+  "guestsHint": "Weeklid sends nothing. The guests are added when you open the event in Google Calendar or Outlook, or download its .ics."
 }

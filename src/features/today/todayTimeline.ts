@@ -21,7 +21,7 @@ export interface TimelineInput {
 
 const intersects = (start: string, end: string, from: number, to: number) => Date.parse(start) < to && Date.parse(end) > from
 
-// Blocks, Next168 events and busy calendar events that overlap each other each name the others.
+// Blocks, Weeklid events and busy calendar events that overlap each other each name the others.
 // Task chunks are placed inside free block time by the scheduler, so they never count.
 function markOverlaps(items: TimelineItem[]): TimelineItem[] {
   const candidates = items.filter((item) => item.kind === 'block' || item.kind === 'event' || item.kind === 'external')

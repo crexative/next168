@@ -20,8 +20,8 @@ describe('export and import', () => {
   it('names the file with the export date and round-trips through the preview', async () => {
     const document = sample()
     const { fileName, json } = await buildExportFile(document, undefined, { now: () => NOW })
-    expect(fileName).toBe('next168-export-2026-10-24.json')
-    expect(exportFileName(new Date('2026-01-02T23:59:59Z'))).toBe('next168-export-2026-01-02.json')
+    expect(fileName).toBe('weeklid-export-2026-10-24.json')
+    expect(exportFileName(new Date('2026-01-02T23:59:59Z'))).toBe('weeklid-export-2026-01-02.json')
     const result = previewImport(json, createEmptyDocument({ now: NOW, locale: 'de', timeZone: 'UTC' }), NOW)
     expect(result.kind).toBe('ok')
     if (result.kind !== 'ok') return

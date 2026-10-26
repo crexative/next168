@@ -48,7 +48,7 @@
   "missingFile": "«{name}» no está guardado aquí, así que sus eventos no se pueden mostrar. Elimínalo e importa de nuevo su archivo .ics.",
   "missingUrl": "«{name}» aún no se ha descargado aquí. Elige Actualizar debajo de él para descargarlo de nuevo.",
   "url": "Introduce una URL http, https o webcal sin usuario ni contraseña.",
-  "fetch": "No se pudo obtener el calendario (error de CORS o de red). Los calendarios privados de Google, Outlook e iCloud suelen bloquear el acceso desde el navegador. Usa Importar archivo .ics o abre Next168 en modo companion e inténtalo de nuevo.",
+  "fetch": "No se pudo obtener el calendario (error de CORS o de red). Los calendarios privados de Google, Outlook e iCloud suelen bloquear el acceso desde el navegador. Usa Importar archivo .ics o abre Weeklid en modo companion e inténtalo de nuevo.",
   "colors": {
     "blue": "Azul",
     "green": "Verde",
@@ -68,5 +68,5 @@
   "removeGuest": "Quitar a {email}",
   "guestInvalid": "Escribe una dirección de correo, como nombre{'@'}ejemplo.com.",
   "guestLimit": "Un evento puede tener hasta 50 invitados.",
-  "guestsHint": "Next168 no envía nada. Los invitados se añaden al abrir el evento en Google Calendar u Outlook, o al descargar su .ics."
+  "guestsHint": "Weeklid no envía nada. Los invitados se añaden al abrir el evento en Google Calendar u Outlook, o al descargar su .ics."
 }

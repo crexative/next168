@@ -13,7 +13,7 @@ async function waitForExit(child: ChildProcess): Promise<number | null> {
 it('runs the built serve CLI as the only writer and serves authenticated review APIs', async () => {
   const home = await mkdtemp(join(tmpdir(), 'next168-cli-'))
   const dist = join(home, 'app'); await mkdir(dist)
-  await writeFile(join(dist, 'index.html'), '<html><head></head><body>Next168 fixture</body></html>')
+  await writeFile(join(dist, 'index.html'), '<html><head></head><body>Weeklid fixture</body></html>')
   const port = await new Promise<number>((resolve, reject) => {
     const probe = createServer(); probe.on('error', reject)
     probe.listen(0, '127.0.0.1', () => { const port = (probe.address() as { port: number }).port; probe.close(() => resolve(port)) })
