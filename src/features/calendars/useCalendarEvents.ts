@@ -18,7 +18,8 @@ export function useCalendarEvents(range: MaybeRefOrGetter<CalendarRange>) {
     for (const source of document.calendarSources) {
       try {
         const text = await calendarServices().texts.get(source.id)
-        if (text === undefined) failures.push([source.id, 'calendars.missing'])
+        // A file can only be imported again; a subscription can be downloaded again.
+        if (text === undefined) failures.push([source.id, source.kind === 'url' ? 'calendars.missingUrl' : 'calendars.missingFile'])
         else expanded.push(...icsImport(text, source.id, toValue(range), document.settings.timeZone))
       } catch (error) { failures.push([source.id, calendarErrorCode(error)]) }
     }

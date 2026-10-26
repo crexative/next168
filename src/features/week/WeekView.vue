@@ -18,6 +18,8 @@ import type { AddKind } from './addKind'
 import AddMenu from './AddMenu.vue'
 import BlockEditorSheet from './BlockEditorSheet.vue'
 import BusyDetailsSheet from './BusyDetailsSheet.vue'
+import PressChooserSheet from './PressChooserSheet.vue'
+import type { PressOption } from './pressOption'
 import DayPager from './DayPager.vue'
 import WeekGrid from './WeekGrid.vue'
 import WeekNav from './WeekNav.vue'
@@ -29,7 +31,7 @@ import { dayIndexOf, formatDate, localMinuteOf, weekDates } from './localTime'
 import { scrollToNow } from './scrollToNow'
 import { keepWhereTheyWere, useTaskPlacements, type MovedNotice } from './taskPlacement'
 import { useNow } from './useNow'
-import { HOUR_HEIGHT_PX, blockSegmentsByDate, busySegmentsByDate, taskSegmentsByDate } from './weekLayout'
+import { HOUR_HEIGHT_PX, allDayByDate, blockSegmentsByDate, busySegmentsByDate, taskSegmentsByDate } from './weekLayout'
 import { pagerIndexFor, shiftWeek } from './weekNavigation'
 
 const DEFAULT_BLOCK_MINUTES = 60
@@ -73,10 +75,9 @@ const { placements, notice, recompute } = useTaskPlacements(() => document.value
 
 const segments = computed(() => document.value ? blockSegmentsByDate(document.value, dates.value, timeZone.value) : {})
 const taskSegments = computed(() => document.value ? taskSegmentsByDate(placements.value, document.value.tasks, dates.value, timeZone.value) : {})
-const busy = computed(() => busySegmentsByDate(
-  external.value, document.value?.events ?? [], dates.value, timeZone.value,
-  new Map((document.value?.calendarSources ?? []).map((source) => [source.id, source.name])),
-))
+const calendarNames = computed(() => new Map((document.value?.calendarSources ?? []).map((source) => [source.id, source.name])))
+const busy = computed(() => busySegmentsByDate(external.value, document.value?.events ?? [], dates.value, timeZone.value, calendarNames.value))
+const allDay = computed(() => allDayByDate(external.value, document.value?.events ?? [], dates.value, calendarNames.value))
 const blockCount = computed(() => document.value?.blocks.length ?? 0)
 const hasCategories = computed(() => (document.value?.categories.length ?? 0) > 0)
 // An event added from "+" has to show up even before the first block exists.
@@ -126,6 +127,14 @@ watch(notice, (moved) => {
     onUndo: () => { keepWhereTheyWere(moved); recompute() },
   })
 }, { immediate: true })
+
+// A press where Week items crowd each other asks which one to open.
+const chooserOpen = ref(false)
+const chooserOptions = ref<PressOption[]>([])
+function choose(options: PressOption[]): void {
+  chooserOptions.value = options
+  chooserOpen.value = true
+}
 
 // Open on the current hour once the grid is first shown; later changes keep the reader's position.
 const root = ref<HTMLElement | null>(null)
@@ -280,6 +289,7 @@ async function remove(blockId: string): Promise<void> {
         :today="today"
         :segments="segments"
         :busy="busy"
+        :all-day="allDay"
         :tasks="taskSegments"
         :actuals="document.actuals"
         :categories="document.categories"
@@ -290,6 +300,7 @@ async function remove(blockId: string): Promise<void> {
         @select-task="openTask"
         @create="openNew"
         @inspect="inspect"
+        @choose="choose"
       />
       <WeekOverview
         v-else-if="viewMode === 'week'"
@@ -311,6 +322,7 @@ async function remove(blockId: string): Promise<void> {
         :today="today"
         :segments="segments"
         :busy="busy"
+        :all-day="allDay"
         :tasks="taskSegments"
         :actuals="document.actuals"
         :categories="document.categories"
@@ -321,6 +333,7 @@ async function remove(blockId: string): Promise<void> {
         @select-task="openTask"
         @create="openNew"
         @inspect="inspect"
+        @choose="choose"
       />
     </template>
 
@@ -329,6 +342,7 @@ async function remove(blockId: string): Promise<void> {
       <AddMenu variant="fab" placement="above" @choose="addFromMenu" />
     </div>
 
+    <PressChooserSheet v-model:open="chooserOpen" :options="chooserOptions" />
     <BusyDetailsSheet v-if="details" v-model:open="detailsOpen" :details="details" :editable="planner.writable" @select="openConflict" />
     <BlockEditorSheet
       v-model:open="editorOpen"

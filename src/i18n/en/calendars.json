@@ -45,7 +45,8 @@
   "interval": "This calendar contains an event ending before it starts.",
   "storage": "Calendar storage is unavailable. Check browser storage permissions and try again.",
   "save": "Changes could not be saved. Your previous data has been retained.",
-  "missing": "The calendar source text is missing. Import the file again or refresh its subscription.",
+  "missingFile": "“{name}” is not saved here, so its events cannot be shown. Remove it and import its .ics file again.",
+  "missingUrl": "“{name}” has not been downloaded here yet. Choose Refresh under it to download it again.",
   "url": "Enter an http, https or webcal URL without a username or password.",
   "fetch": "This feed could not be fetched (CORS or network error). Google, Outlook and iCloud private feeds usually block browser access. Use Import .ics file, or open Next168 in companion mode and try again.",
   "colors": {
@@ -60,5 +61,12 @@
     "gray": "Gray"
   },
   "until": "To",
-  "more": "More"
+  "more": "More",
+  "guests": "Guests",
+  "guestPlaceholder": "name{'@'}example.com",
+  "addGuest": "Add",
+  "removeGuest": "Remove {email}",
+  "guestInvalid": "Enter an email address, like name{'@'}example.com.",
+  "guestLimit": "An event can have up to 50 guests.",
+  "guestsHint": "Next168 sends nothing. The guests are added when you open the event in Google Calendar or Outlook, or download its .ics."
 }

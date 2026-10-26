@@ -13,7 +13,7 @@ import { announceUpdate, createUpdateApplier } from './app/updates'
 import { i18n } from './i18n'
 import type { ProposalInput } from './core/model'
 import { createBrowserRepositories } from './repositories/browserRepositories'
-import { companionMode } from './repositories/CompanionRepository'
+import { CompanionCalendarSourceStore, companionMode } from './repositories/CompanionRepository'
 import { configureCalendarServices } from './features/calendars/calendarStore'
 import { configurePlannerStore, usePlannerStore } from './stores/plannerStore'
 
@@ -27,8 +27,8 @@ configurePlannerStore({
 })
 
 // Browser calendar writes share the planner's lock and purge epoch, so none lands after a delete-all.
-// Companion mode keeps its own calendar services (configured lazily).
-if (!companionMode) configureCalendarServices({ texts: repositories.calendarTexts, purgeGuard: repositories.planner })
+// Companion mode keeps the raw calendar text in the companion's calendars/ folder, so every paired browser reads it.
+configureCalendarServices(companionMode ? { texts: new CompanionCalendarSourceStore() } : { texts: repositories.calendarTexts, purgeGuard: repositories.planner })
 
 registerBuiltinViews(shell.registry)
 registerFeatures(shell.registry)

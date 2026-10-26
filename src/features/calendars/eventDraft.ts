@@ -1,9 +1,28 @@
+import { z } from 'zod'
 import { plannerEventSchema, type PlannerEvent } from '@/core/model'
 import { addLocalDays, localDateOf, zonedInstant } from '@/core/time'
 
 export interface EventDraft {
   title: string; date: string; time: string; allDay: boolean; duration: number
   location: string; notes: string; attendees: string
+}
+// The model's own limits for an event's attendees.
+export const MAX_ATTENDEES = 50
+const attendeeEmail = z.email()
+export function attendeeList(text: string): string[] {
+  return [...new Set(text.split(/[\s,;]+/).filter(Boolean))]
+}
+// Adds what was typed or pasted (one or several addresses) to the list. What is not an email address (rejected)
+// and what no longer fits (overflow) is handed back, never dropped; an address already listed adds nothing.
+export function addAttendees(current: string[], typed: string): { attendees: string[]; rejected: string[]; overflow: string[] } {
+  const attendees = [...current], rejected: string[] = [], overflow: string[] = []
+  for (const candidate of attendeeList(typed)) {
+    if (!attendeeEmail.safeParse(candidate).success) rejected.push(candidate)
+    else if (attendees.some(email => email.toLowerCase() === candidate.toLowerCase())) continue
+    else if (attendees.length >= MAX_ATTENDEES) overflow.push(candidate)
+    else attendees.push(candidate)
+  }
+  return { attendees, rejected, overflow }
 }
 // "09:30" <-> minutes since midnight, for the form's time-of-day fields.
 export function minutesOf(time: string): number {
@@ -20,7 +39,7 @@ export function buildEvent(draft: EventDraft, id: string, timeZone: string): Pla
   const start = draft.allDay ? new Date(`${draft.date}T00:00:00Z`) : zonedInstant(draft.date, hour! * 60 + minute!, timeZone)
   const end = draft.allDay ? new Date(`${addLocalDays(draft.date, draft.duration)}T00:00:00Z`) : new Date(start.getTime() + draft.duration * 60000)
   return plannerEventSchema.parse({ id, title: draft.title, start: start.toISOString(), end: end.toISOString(), allDay: draft.allDay,
-    location: draft.location || undefined, notes: draft.notes || undefined, attendees: [...new Set(draft.attendees.split(/[\s,;]+/).filter(Boolean))] })
+    location: draft.location || undefined, notes: draft.notes || undefined, attendees: attendeeList(draft.attendees) })
 }
 export function draftFromEvent(event: PlannerEvent, timeZone: string): EventDraft {
   const parts = new Intl.DateTimeFormat('en-GB', { timeZone, hour: '2-digit', minute: '2-digit', hourCycle: 'h23' }).format(new Date(event.start))

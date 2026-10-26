@@ -3,6 +3,8 @@
   "add": "Adicionar",
   "deleted": "“{title}” excluído",
   "grid": {
+    "allDay": "Dia inteiro",
+    "allDayItem": "{title}, dia inteiro",
     "conflict": "Conflito",
     "crossesMidnight": "{range} (noturno)"
   },
@@ -91,5 +93,13 @@
     "tomorrowMany": "{count} tarefas passaram para amanhã",
     "later": "“{title}” passou para {day}",
     "laterMany": "{count} tarefas passaram para outro dia"
+  },
+  "chooser": {
+    "title": "Qual quer abrir?",
+    "kind": {
+      "block": "Rotina",
+      "task": "Tarefa",
+      "event": "Evento"
+    }
   }
 }
