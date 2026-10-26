@@ -1192,6 +1192,20 @@ export function auditInPage(options: { focusRings: boolean }): string[] {
     }
   }
 
+  // While a modal dialog is open, focus is inside one: a keyboard or screen reader user is never left on the page
+  // behind it (verify12: a sheet closing after the next one opened took focus back to the page). A sheet on its way
+  // out (`.sheet-root` without `is-shown`) does not count as open.
+  function checkModalFocus(): void {
+    const open = Array.from(document.querySelectorAll<HTMLElement>('[role="dialog"][aria-modal="true"]'))
+      .filter((dialog) => rendered(dialog) && !dialog.closest('.sheet-root:not(.is-shown)'))
+    if (open.length === 0) return
+    const active = document.activeElement
+    if (!active || !open.some((dialog) => dialog.contains(active))) {
+      violations.push(`focus is on ${active ? describe(active) : 'nothing'}, outside the open dialog ${describe(open[open.length - 1]!)}`)
+    }
+  }
+
+  checkModalFocus()
   checkText()
   checkWholeText()
   checkHitTargets()

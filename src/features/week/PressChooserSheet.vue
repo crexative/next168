@@ -9,7 +9,10 @@ defineProps<{ open: boolean; options: PressOption[] }>()
 const emit = defineEmits<{ 'update:open': [open: boolean] }>()
 const { t } = useI18n()
 
+// The chosen item's own control takes focus first: the sheet it opens returns focus there (the shared target itself
+// is not focusable).
 function pick(option: PressOption): void {
+  option.anchor()?.focus({ preventScroll: true })
   emit('update:open', false)
   option.activate()
 }

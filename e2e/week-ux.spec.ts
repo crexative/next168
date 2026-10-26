@@ -512,6 +512,47 @@ test.describe('tasks in Week', () => {
     await expect(page.getByRole('dialog', { name: 'Editar rutina' })).toBeVisible()
   })
 
+  // verify12: the chooser closed after the editor had taken focus and handed focus back to the page, so Escape did
+  // nothing in the editor (focus on <main>, outside the dialog). Focus stays in the newest sheet; closing it returns
+  // focus to the item chosen.
+  const focusInside = (page: Page, name: string) => page.getByRole('dialog', { name }).evaluate((dialog) => dialog.contains(document.activeElement))
+  for (const [label, row, editor, anchor] of [
+    ['a routine', /Gimnasio/, 'Editar rutina', '[data-block-id="b-gym"]'],
+    ['a task', /Planear la ruta/, 'Editar tarea', '[data-task-id="t-route"]'],
+  ] as const) {
+    test(`${label} opened from the chooser keeps focus, closes on Escape and gives focus back to it`, async ({ page }) => {
+      const document = plannerDocument({
+        tasks: [{ id: 't-route', title: 'Planear la ruta', categoryId: 'c-exercise', durationMin: 45, priority: 1, createdAt: '2026-10-20T08:00:00.000Z' }],
+        actuals: [],
+      })
+      await openWeek(page, 'light', 'desktop', document)
+      const gym = column(page, WEDNESDAY).locator('[data-block-id="b-gym"]')
+      const chooser = await pressSharedTarget(page, (await gym.getAttribute('data-hit-key'))!)
+      await chooser.getByRole('button', { name: row }).click()
+      const sheet = page.getByRole('dialog', { name: editor })
+      await expect(sheet).toBeVisible()
+      await expect(chooser).toBeHidden()
+      // Past the chooser's own close animation.
+      await page.waitForTimeout(400)
+      expect(await focusInside(page, editor)).toBe(true)
+      await page.keyboard.press('Escape')
+      await expect(sheet).toBeHidden()
+      await expect(column(page, WEDNESDAY).locator(anchor)).toBeFocused()
+    })
+  }
+
+  test('a sheet opened from the add menu closes on Escape and gives focus back to the menu button', async ({ page }) => {
+    await openWeek(page, 'light', 'desktop')
+    await addFromMenu(page, 'Rutina')
+    const sheet = page.getByRole('dialog', { name: 'Nueva rutina' })
+    await expect(sheet).toBeVisible()
+    await page.waitForTimeout(400)
+    expect(await focusInside(page, 'Nueva rutina')).toBe(true)
+    await page.keyboard.press('Escape')
+    await expect(sheet).toBeHidden()
+    await expect(page.getByTestId('week-add')).toBeFocused()
+  })
+
   test('the sticky day header is a thick material that hides what scrolls under it, and labels are drawn above the now-line', async ({ page }) => {
     await openWeek(page, 'light', 'desktop')
     const header = await page.locator('.grid-header').evaluate((element) => getComputedStyle(element).backgroundColor)

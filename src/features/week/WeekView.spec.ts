@@ -75,7 +75,7 @@ describe('WeekView saving', () => {
     expect(useUndoToast().toast.value).toBeNull()
   })
 
-  it('opens the selected conflicting block by id and removes the event sheet', async () => {
+  it('opens the selected conflicting block by id and closes the event sheet', async () => {
     vi.useFakeTimers({ toFake: ['Date'] })
     vi.setSystemTime(new Date('2026-10-21T10:15:00Z'))
     const { planner } = createTestRepositories()
@@ -109,8 +109,10 @@ describe('WeekView saving', () => {
     conflicts[1]!.click()
     await tick()
 
-    expect(globalThis.document.querySelector('[data-testid="busy-details"]')).toBeNull()
-    const dialogs = globalThis.document.querySelectorAll<HTMLElement>('[role="dialog"]')
+    // The details sheet is on its way out (it finishes closing after the editor opened; ui/sheetStack.ts keeps focus in
+    // the editor), and the editor is the one sheet shown.
+    expect(globalThis.document.querySelector('.sheet-root.is-shown [data-testid="busy-details"]')).toBeNull()
+    const dialogs = globalThis.document.querySelectorAll<HTMLElement>('.sheet-root.is-shown [role="dialog"]')
     expect(dialogs).toHaveLength(1)
     expect(dialogs[0]!.querySelector('h2')?.textContent).toBe('Edit routine')
     expect(dialogs[0]!.querySelector<HTMLInputElement>('input[type="text"]')!.value).toBe('Focus')
