@@ -678,6 +678,18 @@ for (const theme of THEMES) {
       }
     })
 
+    test('the share sheet: story and square, names on', async ({ page }) => {
+      await start(page, theme, plannedDocument)
+      await open(page, 'insights')
+      await page.getByRole('button', { name: 'Share my typical week' }).click()
+      await expect(page.getByTestId('share-primary')).toBeEnabled()
+      await auditSheet(page, `${theme}/share sheet, story`)
+      await page.getByRole('radio', { name: 'Square' }).click()
+      await page.getByRole('switch', { name: 'Show routine names' }).check()
+      await expect(page.getByTestId('share-primary')).toBeEnabled()
+      await audit(page, `${theme}/share sheet, square with names`)
+    })
+
     test('settings sheets, import preview and calendar details', async ({ page }, testInfo) => {
       await start(page, theme, plannedDocument)
       await open(page, 'settings')

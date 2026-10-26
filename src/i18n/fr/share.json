@@ -1,0 +1,31 @@
+{
+  "entry": "Partager ma semaine type",
+  "title": "Partager ma semaine type",
+  "label": "Ma semaine type",
+  "headline": "{assigned} de mes 168 h sont planifiées",
+  "cellHint": "Chaque carré est 1 heure de ta semaine type",
+  "overlapHint": "Tes routines font {total} h car certaines se chevauchent ; les carrés montrent la proportion",
+  "others": "{count} autres",
+  "format": {
+    "label": "Format",
+    "story": "Story",
+    "square": "Carré"
+  },
+  "showNames": "Afficher les noms des routines",
+  "showNamesFootnote": "Tes catégories et tes heures sont toujours visibles. Les noms de tes routines, seulement si tu l'actives.",
+  "action": {
+    "share": "Partager l'image",
+    "download": "Télécharger l'image"
+  },
+  "copyText": "Copier le texte",
+  "copied": "Texte copié",
+  "summaryLabel": "Texte de l'image",
+  "text": "Ma semaine type dans {app} : {assigned} sur 168 h planifiées. {categories}.",
+  "textOverlap": "Ma semaine type dans {app} : mes routines font {total} h car certaines se chevauchent ; l'image montre la proportion. {categories}.",
+  "textNote": "Ce texte accompagne l'image, mais certaines apps le suppriment au partage.",
+  "footer": "Planifie tes 168 h · {url}",
+  "footerNoUrl": "Planifie tes 168 h avec {app}",
+  "fileStem": "ma-semaine-type",
+  "ready": "Image prête",
+  "failed": "Impossible de partager ({reason}). Tu peux télécharger l'image."
+}

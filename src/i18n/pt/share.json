@@ -1,0 +1,31 @@
+{
+  "entry": "Compartilhar minha semana típica",
+  "title": "Compartilhar minha semana típica",
+  "label": "Minha semana típica",
+  "headline": "{assigned} das minhas 168 h têm plano",
+  "cellHint": "Cada quadrado é 1 hora da sua semana típica",
+  "overlapHint": "Suas rotinas somam {total} h porque algumas se sobrepõem; os quadrados mostram a proporção",
+  "others": "Outras {count}",
+  "format": {
+    "label": "Formato",
+    "story": "Story",
+    "square": "Quadrado"
+  },
+  "showNames": "Mostrar nomes das rotinas",
+  "showNamesFootnote": "Suas categorias e horas sempre aparecem. Os nomes das rotinas, só se você ativar.",
+  "action": {
+    "share": "Compartilhar imagem",
+    "download": "Baixar imagem"
+  },
+  "copyText": "Copiar texto",
+  "copied": "Texto copiado",
+  "summaryLabel": "Texto da imagem",
+  "text": "Minha semana típica no {app}: {assigned} de 168 h com plano. {categories}.",
+  "textOverlap": "Minha semana típica no {app}: minhas rotinas somam {total} h porque algumas se sobrepõem; a imagem mostra a proporção. {categories}.",
+  "textNote": "Este texto acompanha a imagem, mas alguns apps o descartam ao compartilhar.",
+  "footer": "Planeje suas 168 h · {url}",
+  "footerNoUrl": "Planeje suas 168 h com {app}",
+  "fileStem": "minha-semana-tipica",
+  "ready": "Imagem pronta",
+  "failed": "Não foi possível compartilhar ({reason}). Você pode baixar a imagem."
+}
