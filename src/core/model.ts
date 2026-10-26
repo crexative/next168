@@ -302,7 +302,13 @@ export interface Clock { now(): Date }
 export interface PlacementChunk { start: string; end: string } // ISO instants, half-open; derive local display values
 // outsideCategory: the task's category blocks could not hold it before its due date, so it went to free time instead
 // (a category is a preference, not a wall, when the deadline is at stake).
-export interface TaskPlacement { taskId: string; chunks: PlacementChunk[]; overflowMinutes: number; late: boolean; outsideCategory?: true }
+// fixed: a one-off fixed start (`at`) with a duration, one contiguous chunk. at: the instant of a fixed start without a
+// duration (a point: no chunk, nothing reserved). key: what the placement was made for (scheduling.placementKey); a
+// shown placement is reused only for the same key.
+export interface TaskPlacement {
+  taskId: string; chunks: PlacementChunk[]; overflowMinutes: number; late: boolean; outsideCategory?: true
+  fixed?: true; at?: string; key?: string
+}
 export interface BusyInterval { start: string; end: string } // ISO instants, half-open
 
 export interface ScheduleInput {
