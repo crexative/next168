@@ -21,7 +21,8 @@ export function useExternalOccurrences(range: () => OccurrenceRange | null): Ref
     const current = range()
     // The previous occurrences stay until the new expansion resolves, so a refresh never flashes an empty overlay.
     const expanded = current ? await source(current).catch(() => []) : []
-    if (active) occurrences.value = expanded
+    // No calendars before and none now is no change: a new empty list would make every screen fit its tasks again.
+    if (active && (expanded.length || occurrences.value.length)) occurrences.value = expanded
   }, { immediate: true })
   return occurrences
 }

@@ -19,7 +19,7 @@ import ListRow from '@/ui/ListRow.vue'
 import { planTasks, recentDone, type PlacedEntry } from './grouping'
 import { useTaskActions } from './taskActions'
 import { ANY_FREE_TIME, newDraft, plannerToday, resolveWhen, taskFields, type TaskDraft } from './taskDraft'
-import { outsideCategoryReason, warningFixes, type FitContext } from './warningFixes'
+import { outsideCategoryReason, warningFixes, type FitContext, type WarningFixes } from './warningFixes'
 import TaskOptions from './TaskOptions.vue'
 import TaskRow from './TaskRow.vue'
 import TaskSheet from './TaskSheet.vue'
@@ -50,11 +50,24 @@ const plan = computed(() => {
   if (!context) return null
   return planTasks(context.document, fitTasks({ ...context, timeZone: context.document.settings.timeZone }))
 })
-// Every warning comes with the fixes that really put its task on time, tried on a copy of the planner.
+// Every warning card on screen comes with the fixes that really put its task on time, tried on a copy of the planner.
+// Each try is a whole fit, so only the cards on screen are worked out: the first few, then a page more per «Ver todas».
+const FIRST_WARNING_CARDS = 3
+const WARNING_CARDS_PER_PAGE = 10
+const warningCards = ref(FIRST_WARNING_CARDS)
+// The fixes worked out for this plan, by task: showing more cards works out only the new ones; a new plan starts over.
+const fixesOfPlan = computed(() => plan.value && new Map<string, WarningFixes>())
 const warnings = computed(() => {
   const context = fitContext.value
-  return context && plan.value ? plan.value.warnings.map((warning) => ({ ...warning, fixes: warningFixes(context, warning.task, warning.placement) })) : []
+  const known = fixesOfPlan.value
+  if (!context || !plan.value || !known) return []
+  return plan.value.warnings.slice(0, warningCards.value).map((warning) => {
+    let fixes = known.get(warning.task.id)
+    if (!fixes) known.set(warning.task.id, fixes = warningFixes(context, warning.task, warning.placement))
+    return { ...warning, fixes }
+  })
 })
+const hiddenWarnings = computed(() => (plan.value?.warnings.length ?? 0) - warnings.value.length)
 
 const done = computed(() => recentDone(document.value?.tasks ?? []))
 
@@ -224,6 +237,12 @@ async function moveDue(task: Task, date: string): Promise<void> {
             </div>
           </div>
         </li>
+        <li v-if="hiddenWarnings > 0" class="warning-summary" data-testid="warning-summary">
+          <p class="t-subhead">{{ t('tasks.moreWarnings', { count: hiddenWarnings }) }}</p>
+          <Button variant="tinted" data-testid="show-all-warnings" @click="warningCards += WARNING_CARDS_PER_PAGE">
+            {{ t('tasks.showAllWarnings') }}
+          </Button>
+        </li>
       </ul>
     </section>
 
@@ -289,6 +308,8 @@ async function moveDue(task: Task, date: string): Promise<void> {
 .warning-icon { flex: none; color: var(--label); margin-top: 2px; }
 .warning-body { display: flex; flex: 1; flex-direction: column; min-width: 0; }
 .warning-actions { display: flex; flex-wrap: wrap; gap: var(--space-2); margin-top: var(--space-2); }
+.warning-summary { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--space-2); padding: var(--card-padding-block) var(--card-padding); border-radius: var(--radius-card); background: var(--surface); }
+.warning-summary p { flex: 1 1 12em; min-width: 0; }
 .outside-note { color: var(--label); }
 .done-row :deep(.row-text) { color: var(--label-2); text-decoration: line-through; }
 </style>

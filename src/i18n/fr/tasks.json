@@ -8,6 +8,8 @@
   "late": "Elle tombe après son échéance ({date}).",
   "latePartial": "Il n'y a de la place que pour {duration} avant son échéance ({date}).",
   "warnings": "Alertes de planification",
+  "moreWarnings": "Et {count} autre ne rentre pas dans les 7 prochains jours. | Et {count} autres ne rentrent pas dans les 7 prochains jours.",
+  "showAllWarnings": "Tout afficher",
   "unplaced": "Non planifiées",
   "unplacedHint": "Aucun créneau libre sur les 7 prochains jours.",
   "recentDone": "Terminées récemment",

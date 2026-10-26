@@ -30,10 +30,17 @@ export function addLocalDays(date: string, days: number): string {
   return value.toISOString().slice(0, 10)
 }
 
+// One formatter per zone in use: building one is the costly part of a zoned conversion, and a formatter never changes.
+const formatters = new Map<string, Intl.DateTimeFormat>()
 function formatter(timeZone: string): Intl.DateTimeFormat {
-  return new Intl.DateTimeFormat('en-CA-u-ca-iso8601-nu-latn', {
-    timeZone, year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit', hourCycle: 'h23',
-  })
+  let format = formatters.get(timeZone)
+  if (!format) {
+    format = new Intl.DateTimeFormat('en-CA-u-ca-iso8601-nu-latn', {
+      timeZone, year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit', hourCycle: 'h23',
+    })
+    formatters.set(timeZone, format)
+  }
+  return format
 }
 function wallTime(instant: number, format: Intl.DateTimeFormat): number {
   const parts = Object.fromEntries(format.formatToParts(instant).map((part) => [part.type, part.value]))

@@ -52,13 +52,15 @@ async function prepareAssistant(): Promise<void> {
   }
 }
 
-async function clickSetup(testId: string): Promise<void> {
+async function clickSetup(testId: string, nextScreen: string | null): Promise<void> {
   // The screen that is leaving (inert, aria-hidden) may still be in the DOM for a frame.
   const buttons = [...document.body.querySelectorAll<HTMLButtonElement>(`[data-testid=setup] [data-testid=${testId}]`)]
   buttons.find((button) => button.closest('[aria-hidden=true]') === null)!.click()
-  await mounted!.store.settled()
-  await nextTick()
-  await nextTick()
+  await vi.waitFor(() => {
+    const setup = document.body.querySelector('[data-testid=setup]')
+    if (nextScreen === null) expect(setup).toBeNull()
+    else expect(setup?.getAttribute('data-screen')).toBe(nextScreen)
+  })
 }
 
 // The check-in closes today: there is no date to pick, so a second save edits the same day's entry.
@@ -83,16 +85,15 @@ it.each([
   if (completion === 'close') {
     // Closing writes nothing: the first setup stays unfinished.
     document.body.querySelector<HTMLButtonElement>('[role=dialog] button[aria-label="Not now"]')!.click()
-    await mounted.store.settled()
-    await nextTick()
+    await vi.waitFor(() => expect(document.body.querySelector('[data-testid=setup]')).toBeNull())
     expect(mounted.store.document!.settings.onboardingDone).toBe(false)
   } else {
     // Skip every question, then start with an empty week.
-    for (const screen of ['sleep', 'workStudy', 'exercise', 'more']) {
+    for (const [screen, nextScreen] of [['sleep', 'workStudy'], ['workStudy', 'exercise'], ['exercise', 'more'], ['more', 'summary']] as const) {
       expect(document.body.querySelector('[data-testid=setup]')!.getAttribute('data-screen')).toBe(screen)
-      await clickSetup('setup-secondary')
+      await clickSetup('setup-secondary', nextScreen)
     }
-    await clickSetup('setup-primary')
+    await clickSetup('setup-primary', null)
     await vi.waitFor(() => expect(mounted!.store.document!.settings.onboardingDone).toBe(true))
   }
   expect(mounted.store.document!.checkIns).toEqual([])

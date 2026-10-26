@@ -955,7 +955,7 @@ test.describe('visual integrity guard: whole text in Week', () => {
     await page.setContent(column(`
       <button class="item" style="top: 0; left: 0; width: 150px; height: 60px"><span>Deep work</span><span>9:00 – 10:00</span></button>
       <button class="item" data-layered style="top: 38px; left: 0; width: 150px; height: 20px"><span>Report</span></button>
-      <button class="item" style="top: 60px; left: 0; width: 150px; height: 12px" aria-label="Stand-up"></button>
+      <button class="item" style="top: 60px; left: 0; width: 150px; height: 8px" aria-label="Stand-up"></button>
       <button class="item" style="top: 72px; left: 0; width: 150px; height: 20px"><span style="position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0)">Conflict</span><span>Vendor call</span></button>
       <div style="position: absolute; top: 30px; left: 0; right: 0; height: 2px; background: red; pointer-events: none"></div>
     `))
@@ -1141,6 +1141,43 @@ test.describe('visual integrity guard: whole text in Week', () => {
     const violations = await audit(page)
     expect(violations.some((violation) => violation.includes('"Vendor call" draws neither a word nor its warning glyph though the 12.0×12.0 px glyph fits its 19.8×13.0 px room'))).toBe(true)
     expect(violations.filter((violation) => violation.includes('Dentist') || violation.includes('Stand-up'))).toEqual([])
+  })
+
+  // P0 regression: a Week column drawn from a plan measured for another width or text size is reported (after the audit
+  // has given it frames to re-plan).
+  test('a column drawn from a plan for another size is reported', async ({ page }) => {
+    await page.setContent(column('<button class="item" style="top: 0; left: 0; width: 150px; height: 20px"><span>Deep work</span></button>'))
+    await page.locator('[data-whole-text]').evaluate((container) => container.setAttribute('data-planned-for', '120px 16px'))
+    expect(await audit(page)).toContain('<div.column> "Deep work" is drawn from a plan for 120px 16px, not its current 150px 16px')
+    await page.locator('[data-whole-text]').evaluate((container) => container.setAttribute('data-planned-for', '150px 16px'))
+    expect(await audit(page)).toEqual([])
+  })
+
+  // verify8: "Demo con el cliente" (74×48 at 1440) and "Sincronización semanal" (145×16 at 375) drew their titles
+  // with no ⚠. A conflict needs its ⚠ wherever it fits, words or not.
+  test('a conflict that draws its title but not its ⚠ where the ⚠ fits is reported', async ({ page }) => {
+    const warningProbe = '<span data-glyph-probe="warning" style="position: absolute; visibility: hidden; display: block; width: 12px; height: 12px"></span>'
+    await page.setContent(column(`${smallest}${glyphProbe}${warningProbe}
+      <button class="item" aria-label="Demo con el cliente" data-glyph-kind="warning" data-text-inset="1 3 1 3" style="top: 0; left: 0; width: 74px; height: 48px"><span>Demo con el cliente</span></button>
+      <button class="item" aria-label="Vendor call" data-glyph-kind="warning" data-text-inset="1 3 1 3" style="top: 60px; left: 0; width: 120px; height: 34px"><span data-glyph="warning" style="flex: none; width: 12px; height: 12px"></span><span>Vendor call</span></button>
+    `))
+    const violations = await audit(page)
+    expect(violations.some((violation) => violation.includes('"Demo con el cliente" draws words but not its warning glyph though the 12.0×12.0 px glyph fits its 68.0×46.0 px room'))).toBe(true)
+    expect(violations.filter((violation) => violation.includes('Vendor call'))).toEqual([])
+  })
+
+  // verify8 D3: a 15-minute item (12 px at a 48 px hour) has less room than the glyph's full size but more than its
+  // smallest, so it draws the glyph scaled down; a bare strip there is reported.
+  test('a box with room for the smallest glyph but not the full one that draws nothing is reported', async ({ page }) => {
+    const smallestGlyph = '<span data-glyph-probe="category-min" style="position: absolute; visibility: hidden; display: block; width: 10px; height: 10px"></span>'
+    await page.setContent(column(`${smallest}${glyphProbe}${smallestGlyph}
+      <button class="item" aria-label="Pausa activa" data-text-inset="1 3 1 3" style="top: 0; left: 0; width: 150px; height: 12px"></button>
+      <button class="item" aria-label="Meditación" data-text-inset="1 3 1 3" style="top: 20px; left: 0; width: 150px; height: 12px"><span data-glyph style="position: absolute; inset: 1px 3px"></span></button>
+      <button class="item" aria-label="Stand-up" data-text-inset="1 3 1 3" style="top: 40px; left: 0; width: 150px; height: 8px"></button>
+    `))
+    const violations = await audit(page)
+    expect(violations.some((violation) => violation.includes('"Pausa activa" draws neither a word nor its glyph though the 10.0×10.0 px glyph fits its 143.8×10.0 px room'))).toBe(true)
+    expect(violations.filter((violation) => violation.includes('Meditación') || violation.includes('Stand-up'))).toEqual([])
   })
 
   test('a container without its own glyph is held to the documented glyph size', async ({ page }) => {

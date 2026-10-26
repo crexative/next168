@@ -8,6 +8,8 @@
   "late": "This lands after its due date ({date}).",
   "latePartial": "Only {duration} fits before its due date ({date}).",
   "warnings": "Scheduling warnings",
+  "moreWarnings": "And {count} more doesn't fit in the next 7 days. | And {count} more don't fit in the next 7 days.",
+  "showAllWarnings": "Show all",
   "unplaced": "Not scheduled",
   "unplacedHint": "No free slot in the next 7 days.",
   "recentDone": "Recently done",
