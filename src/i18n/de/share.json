@@ -1,0 +1,31 @@
+{
+  "entry": "Meine typische Woche teilen",
+  "title": "Meine typische Woche teilen",
+  "label": "Meine typische Woche",
+  "headline": "{assigned} meiner 168 h sind verplant",
+  "cellHint": "Jedes Kästchen ist 1 Stunde deiner typischen Woche",
+  "overlapHint": "Deine Routinen ergeben {total} h, weil sich einige überschneiden; die Kästchen zeigen den Anteil",
+  "others": "{count} weitere",
+  "format": {
+    "label": "Format",
+    "story": "Story",
+    "square": "Quadrat"
+  },
+  "showNames": "Namen der Routinen zeigen",
+  "showNamesFootnote": "Deine Kategorien und Stunden sind immer zu sehen. Die Namen deiner Routinen nur, wenn du das einschaltest.",
+  "action": {
+    "share": "Bild teilen",
+    "download": "Bild herunterladen"
+  },
+  "copyText": "Text kopieren",
+  "copied": "Text kopiert",
+  "summaryLabel": "Text des Bildes",
+  "text": "Meine typische Woche in {app}: {assigned} von 168 h verplant. {categories}.",
+  "textOverlap": "Meine typische Woche in {app}: Meine Routinen ergeben {total} h, weil sich einige überschneiden; das Bild zeigt den Anteil. {categories}.",
+  "textNote": "Dieser Text gehört zum Bild, aber manche Apps verwerfen ihn beim Teilen.",
+  "footer": "Plane deine 168 h · {url}",
+  "footerNoUrl": "Plane deine 168 h mit {app}",
+  "fileStem": "meine-typische-woche",
+  "ready": "Bild fertig",
+  "failed": "Teilen hat nicht geklappt ({reason}). Du kannst das Bild herunterladen."
+}

@@ -1,0 +1,31 @@
+{
+  "entry": "Share my typical week",
+  "title": "Share my typical week",
+  "label": "My typical week",
+  "headline": "{assigned} of my 168 h are planned",
+  "cellHint": "Each square is 1 hour of your typical week",
+  "overlapHint": "Your routines add up to {total} h because some overlap; the squares show the proportion",
+  "others": "{count} others",
+  "format": {
+    "label": "Format",
+    "story": "Story",
+    "square": "Square"
+  },
+  "showNames": "Show routine names",
+  "showNamesFootnote": "Your categories and hours always show. Your routine names only if you turn this on.",
+  "action": {
+    "share": "Share image",
+    "download": "Download image"
+  },
+  "copyText": "Copy text",
+  "copied": "Text copied",
+  "summaryLabel": "Image text",
+  "text": "My typical week in {app}: {assigned} of 168 h planned. {categories}.",
+  "textOverlap": "My typical week in {app}: my routines add up to {total} h because some overlap; the image shows the proportion. {categories}.",
+  "textNote": "This text goes with the image, but some apps drop it when sharing.",
+  "footer": "Plan your 168 h · {url}",
+  "footerNoUrl": "Plan your 168 h with {app}",
+  "fileStem": "my-typical-week",
+  "ready": "Image ready",
+  "failed": "Couldn't share ({reason}). You can download the image."
+}

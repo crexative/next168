@@ -1,17 +1,25 @@
 import { fileURLToPath, URL } from 'node:url'
 
-import { defineConfig } from 'vite'
+import { defineConfig, loadEnv, type ConfigEnv, type UserConfig } from 'vite'
 import vue from '@vitejs/plugin-vue'
 import { VitePWA } from 'vite-plugin-pwa'
 import { readPreviewHttps } from './config/lanHttps'
+import { assertPublicUrl } from './config/publicUrl'
 
 // The installed window's bars match the page's grouped background, as the theme-color metas in index.html do
 // (src/ui/appearance.ts): the brand green lives in the icon and the controls, not in the system chrome.
 const GROUPED_BACKGROUND = '#F2F2F7'
 const MAX_PRECACHE_BYTES = 5 * 1024 * 1024
 
+// A configured public address must be a public HTTPS page; anything else (a LAN address, localhost, a token in the
+// query) fails the build instead of being printed on shared images.
+function checkPublicUrl(mode: string): void {
+  const raw = loadEnv(mode, process.cwd(), 'VITE_').VITE_PUBLIC_URL
+  if (raw) assertPublicUrl(raw)
+}
+
 // base './' lets the same build run at '/', at '/next168/' and inside the local companion.
-export default defineConfig(({ isPreview }) => ({
+const appConfig = ({ isPreview }: ConfigEnv): UserConfig => ({
   base: './',
   plugins: [
     vue(),
@@ -68,4 +76,9 @@ export default defineConfig(({ isPreview }) => ({
   preview: {
     https: isPreview ? readPreviewHttps(process.env) : undefined,
   },
-}))
+})
+
+export default defineConfig((env) => {
+  checkPublicUrl(env.mode)
+  return appConfig(env)
+})
