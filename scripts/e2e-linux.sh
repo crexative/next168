@@ -7,6 +7,7 @@
 # so no Docker file sharing is needed and the host's macOS node_modules and build are never touched.
 # node_modules (root and companion, as in CI) and dist live in Docker volumes (one pair per checkout path) to keep reruns fast.
 # Reports and traces come back to e2e/.results and e2e/.report.
+# A daemon-disk preflight requires NEXT168_E2E_LINUX_MIN_FREE_MB (default 1024) before building.
 #   NEXT168_E2E_LINUX_PLATFORM=linux/amd64 matches CI's CPU architecture (slow under emulation).
 set -euo pipefail
 
@@ -28,6 +29,28 @@ slot="$(printf '%s' "$root" | shasum | cut -c1-10)"
 if ! docker info >/dev/null 2>&1; then
   echo "Docker is not reachable. Start the VM first: colima start --cpu 4 --memory 6" >&2
   exit 1
+fi
+
+min_free_mb="${NEXT168_E2E_LINUX_MIN_FREE_MB:-1024}"
+if [[ ! "$min_free_mb" =~ ^[0-9]+$ ]]; then
+  echo "NEXT168_E2E_LINUX_MIN_FREE_MB must be a non-negative integer (MB)." >&2
+  exit 1
+fi
+# The container overlay uses the daemon's data disk, including inside Colima/Desktop VMs.
+if docker_root="$(docker info --format '{{.DockerRootDir}}' 2>/dev/null)" \
+  && [[ -n "$docker_root" ]] \
+  && free_kb="$(docker run --rm alpine df -Pk / 2>/dev/null | awk '$6 == "/" && $4 ~ /^[0-9]+$/ {print $4}')" \
+  && [[ "$free_kb" =~ ^[0-9]+$ ]]; then
+  free_mb=$((free_kb / 1024))
+  if (( free_mb < 10#$min_free_mb )); then
+    echo "Docker data disk ($docker_root) has ${free_mb} MB free; at least ${min_free_mb} MB is required for Linux E2E." >&2
+    echo "Find stale per-checkout volumes: docker volume ls --filter name=next168-e2e-linux" >&2
+    echo "Volumes use a checkout-path slot hash (this checkout: $slot). Remove only volumes belonging to checkouts that no longer exist." >&2
+    echo "Alternatively, increase the Docker VM's disk capacity or free space on its data disk." >&2
+    exit 1
+  fi
+else
+  echo "Warning: could not measure free space on Docker's data disk; continuing without the Linux E2E disk preflight." >&2
 fi
 
 platform_args=()
