@@ -187,7 +187,8 @@ for (const theme of THEMES) {
         await page.addInitScript(() => window.localStorage.setItem('next168-last-task-category', 'c-work'))
         await openOnSunday(page, theme, size, [])
         const field = page.getByPlaceholder('Añadir tarea… (o pega o dicta varias)')
-        await field.fill('Trotar')
+        // An hour, so the week places it (a task with no length is a to-do).
+        await field.fill('Trotar 1 h')
         const details = page.getByTestId('task-details')
         const suggestion = details.getByRole('button', { name: 'Durante Trabajo' })
         await expect(suggestion).toHaveAttribute('aria-pressed', 'false')

@@ -113,6 +113,8 @@ function open(task: Task): void {
   left: var(--card-padding);
   border-top: 1px solid var(--separator);
 }
+/* The last row of a rounded card: its ring follows the card's corners. */
+.add-button { border-radius: var(--radius-card); }
 .add-button:focus-visible { outline-offset: -2px; }
 .add-capture :deep(.add) { border-radius: 0; }
 </style>

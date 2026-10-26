@@ -194,8 +194,8 @@ for (const theme of THEMES) {
         // The plan changes after the copy: a task is added.
         await page.goto('./#/tasks')
         await expect(page.getByRole('heading', { level: 1, name: 'Tareas' })).toBeVisible()
-        await page.locator('form.add textarea').fill('Llamar al banco')
-        await page.locator('form.add textarea').press('Enter')
+        await page.getByTestId('capture-field').fill('Llamar al banco')
+        await page.getByTestId('capture-field').press('Enter')
         await expect.poll(async () => (await storedPlanner<{ revision: number }>(page)).revision).toBe(2)
 
         await openFromAssistant(page)
@@ -291,7 +291,7 @@ for (const size of Object.keys(SIZES) as (keyof typeof SIZES)[]) {
       await expect(page.getByTestId('review-cancel-note')).toHaveText('Si cancelas, estos cambios se descartan y tu plan queda como está.')
       await page.getByTestId('review-cancel').click()
       await expect(page.getByTestId('proposal-review')).toHaveCount(0)
-      await expect.poll(async () => (JSON.parse(await storedRecord(page, 'proposals') ?? '[]') as { status: string }[]).map((proposal) => proposal.status)).toEqual(['rejected'])
+      await expect.poll(async () => (JSON.parse(await storedRecord(page, 'proposals') ?? '{"records":[]}') as { records: { status: string }[] }).records.map((proposal) => proposal.status)).toEqual(['rejected'])
       await expect(page.getByTestId('proposal-badge')).toHaveCount(0)
       expect((await storedPlanner<{ categories: unknown[] }>(page)).categories).toHaveLength(0)
       await expect(box(page)).toHaveValue(reply)
@@ -311,8 +311,8 @@ for (const size of Object.keys(SIZES) as (keyof typeof SIZES)[]) {
       const other = await context.newPage()
       await other.goto('./#/tasks')
       await expect(other.getByRole('heading', { level: 1, name: 'Tareas' })).toBeVisible()
-      await other.locator('form.add textarea').fill('Llamar al banco')
-      await other.locator('form.add textarea').press('Enter')
+      await other.getByTestId('capture-field').fill('Llamar al banco')
+      await other.getByTestId('capture-field').press('Enter')
       await expect.poll(async () => (await storedPlanner<{ revision: number }>(other)).revision).toBe(binding.revision + 1)
 
       await page.getByTestId('review-approve').click()

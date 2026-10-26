@@ -62,7 +62,7 @@ export async function bundleHash(bundle: ExportBundle, hash: Hasher = sha256): P
   // Export timestamps are not persisted; read-back verifies the portable content only.
   return hash(canonicalJson({ document, calendarSourceTexts }))
 }
-// The portable content of a document and its calendar texts: revision, timestamp and calendar source ids are bookkeeping
+// The portable content of a document and its calendar texts: revision, generation, timestamp and calendar source ids are bookkeeping
 // of one store, so they are normalized (ids become positional), and the fingerprint matches across devices and after a
 // fresh-id remap. It validates nothing and depends on no schema version, so the pre-upgrade copy (a version-2 artifact,
 // see legacy/v2.ts) keeps the fingerprint recorded at capture whatever the current schema is.
@@ -72,7 +72,11 @@ export async function portableDigest(
   const sources = document.calendarSources
   const text = (id: string) => (Object.prototype.hasOwnProperty.call(calendarSourceTexts, id) ? calendarSourceTexts[id] : undefined)
   return hash(canonicalJson({
-    document: { ...document, revision: 0, updatedAt: '1970-01-01T00:00:00.000Z', calendarSources: sources.map((source, index) => ({ ...source, id: `s${index}` })) },
+    // A schema v3 document's generation counts replacements in one store, like its revision (absent in v2: unchanged).
+    document: {
+      ...document, revision: 0, updatedAt: '1970-01-01T00:00:00.000Z', ...('generation' in document ? { generation: 0 } : {}),
+      calendarSources: sources.map((source, index) => ({ ...source, id: `s${index}` })),
+    },
     calendarSourceTexts: Object.fromEntries(sources.map((source, index) => [`s${index}`, text(source.id)])),
   }))
 }

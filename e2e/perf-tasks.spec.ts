@@ -83,7 +83,9 @@ for (const { tasks, populatedBudgetMs } of CASES) {
     }
     const shown = attempts.filter((result) => result.populatedMs !== undefined)
     expect(shown.length, `no content within ${populatedBudgetMs * 2} ms in ${attempts.length} attempts`).toBeGreaterThan(0)
-    expect(Math.min(...shown.map((result) => result.populatedMs!))).toBeLessThanOrEqual(populatedBudgetMs)
-    expect(Math.min(...shown.map((result) => result.firstTapMs!))).toBeLessThanOrEqual(FIRST_TAP_BUDGET_MS)
+    // One attempt must meet both budgets (tasks design rev 4 §2.12): the fastest content and the fastest tap may not come
+    // from two different attempts.
+    const both = shown.filter((result) => result.populatedMs! <= populatedBudgetMs && result.firstTapMs! <= FIRST_TAP_BUDGET_MS)
+    expect(both.length, `no single attempt met both budgets: ${JSON.stringify(shown)}`).toBeGreaterThan(0)
   })
 }
