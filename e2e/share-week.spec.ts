@@ -285,47 +285,77 @@ test.describe('share my typical week', () => {
   })
 
   // Every width the app supports, both appearances, reduced motion: the sheet opens in place, keeps focus inside,
-  // clips nothing and keeps every control at 44 px or more.
-  test('the sheet at 320, 375, 768 and 1440 px, light and dark, with reduced motion', async ({ page, browserName }, testInfo) => {
-    onlyProject('desktop')({ browserName }, testInfo)
-    await start(page)
-    for (const theme of ['light', 'dark'] as const) {
-      await page.emulateMedia({ colorScheme: theme, reducedMotion: 'reduce' })
-      for (const width of [320, 375, 768, 1440]) {
-        await page.setViewportSize({ width, height: width < 768 ? 740 : 900 })
-        await openTab(page, 'insights')
-        await page.getByRole('button', { name: 'Share my typical week' }).click()
-        const dialog = page.getByRole('dialog', { name: 'Share my typical week' })
-        await expect(dialog).toBeVisible()
-        const state = `${theme} ${width}px`
-        // With reduced motion the panel is in place at once: no slide, no scale.
-        expect(await page.locator('.sheet-panel').evaluate((panel) => getComputedStyle(panel).transform), state).toMatch(/^(none|matrix\(1, 0, 0, 1, 0, 0\))$/)
-        await waitReady(page)
-        expect(await dialog.evaluate((panel) => panel.contains(document.activeElement)), `${state}: focus inside`).toBe(true)
-        const problems = await dialog.evaluate((panel) => {
-          const found: string[] = []
-          const limit = document.documentElement.clientWidth
-          if (document.documentElement.scrollWidth > limit + 1) found.push('page scrolls horizontally')
-          for (const element of [panel as HTMLElement, ...Array.from(panel.querySelectorAll<HTMLElement>('*'))]) {
-            if (element.getClientRects().length === 0) continue
-            const box = element.getBoundingClientRect()
-            const name = `${element.tagName.toLowerCase()}.${element.className} "${(element.textContent ?? '').trim().slice(0, 20)}"`
-            if (box.left < -0.5 || box.right > limit + 0.5) found.push(`${name} leaves the screen`)
-            if (getComputedStyle(element).overflowX !== 'visible' && element.scrollWidth > element.clientWidth + 1) found.push(`${name} clips its content`)
+  // clips nothing and keeps every control at 44 px or more. Where files can be shared there are two actions: one
+  // full-width row each on a phone, side by side on a wider sheet.
+  for (const sharing of [false, true]) {
+    test(`the sheet at 320, 375, 768 and 1440 px, light and dark, with reduced motion (${sharing ? 'share and download' : 'download only'})`, async ({ page, browserName }, testInfo) => {
+      onlyProject('desktop')({ browserName }, testInfo)
+      if (sharing) await captureShares(page)
+      else await withoutFileSharing(page)
+      await start(page)
+      for (const theme of ['light', 'dark'] as const) {
+        await page.emulateMedia({ colorScheme: theme, reducedMotion: 'reduce' })
+        for (const width of [320, 375, 768, 1440]) {
+          await page.setViewportSize({ width, height: width < 768 ? 740 : 900 })
+          await openTab(page, 'insights')
+          await page.getByRole('button', { name: 'Share my typical week' }).click()
+          const dialog = page.getByRole('dialog', { name: 'Share my typical week' })
+          await expect(dialog).toBeVisible()
+          const state = `${theme} ${width}px`
+          // With reduced motion the panel is in place at once: no slide, no scale.
+          expect(await page.locator('.sheet-panel').evaluate((panel) => getComputedStyle(panel).transform), state).toMatch(/^(none|matrix\(1, 0, 0, 1, 0, 0\))$/)
+          await waitReady(page)
+          expect(await dialog.evaluate((panel) => panel.contains(document.activeElement)), `${state}: focus inside`).toBe(true)
+          const problems = await dialog.evaluate((panel) => {
+            const found: string[] = []
+            const limit = document.documentElement.clientWidth
+            if (document.documentElement.scrollWidth > limit + 1) found.push('page scrolls horizontally')
+            for (const element of [panel as HTMLElement, ...Array.from(panel.querySelectorAll<HTMLElement>('*'))]) {
+              if (element.getClientRects().length === 0) continue
+              const box = element.getBoundingClientRect()
+              const name = `${element.tagName.toLowerCase()}.${element.className} "${(element.textContent ?? '').trim().slice(0, 20)}"`
+              if (box.left < -0.5 || box.right > limit + 0.5) found.push(`${name} leaves the screen`)
+              if (getComputedStyle(element).overflowX !== 'visible' && element.scrollWidth > element.clientWidth + 1) found.push(`${name} clips its content`)
+            }
+            const targets = [...Array.from(panel.querySelectorAll<HTMLElement>('button')), ...Array.from(panel.querySelectorAll<HTMLElement>('label'))]
+            for (const target of targets) {
+              const box = target.getBoundingClientRect()
+              if (box.height < 43.5 || box.width < 43.5) found.push(`"${(target.textContent ?? target.getAttribute('aria-label') ?? '').trim()}" is ${box.width.toFixed(0)}×${box.height.toFixed(0)} px`)
+            }
+            return found
+          })
+          expect(problems, state).toEqual([])
+          const actions = await dialog.evaluate((panel) => {
+            const box = (testId: string) => {
+              const element = panel.querySelector<HTMLElement>(`[data-testid="${testId}"]`)
+              if (!element) return null
+              const { left, right, top, bottom, width } = element.getBoundingClientRect()
+              return { left, right, top, bottom, width }
+            }
+            const row = panel.querySelector<HTMLElement>('.actions')!.getBoundingClientRect()
+            return { row: { left: row.left, width: row.width }, share: box('share-primary'), download: box('share-download') }
+          })
+          if (!sharing) {
+            expect(actions.download, `${state}: one action`).toBeNull()
+            expect(actions.share!.width, `${state}: the download spans the row`).toBeCloseTo(actions.row.width, 0)
+          } else if (width < 768) {
+            const [share, download] = [actions.share!, actions.download!]
+            expect(download.top, `${state}: download on its own row`).toBeGreaterThanOrEqual(share.bottom)
+            for (const action of [share, download]) {
+              expect(action.left, state).toBeCloseTo(actions.row.left, 0)
+              expect(action.width, `${state}: full width`).toBeCloseTo(actions.row.width, 0)
+            }
+          } else {
+            const [share, download] = [actions.share!, actions.download!]
+            expect(download.top, `${state}: side by side`).toBeCloseTo(share.top, 0)
+            expect(download.left, `${state}: download after share`).toBeGreaterThanOrEqual(share.right)
           }
-          const targets = [...Array.from(panel.querySelectorAll<HTMLElement>('button')), ...Array.from(panel.querySelectorAll<HTMLElement>('label'))]
-          for (const target of targets) {
-            const box = target.getBoundingClientRect()
-            if (box.height < 43.5 || box.width < 43.5) found.push(`"${(target.textContent ?? target.getAttribute('aria-label') ?? '').trim()}" is ${box.width.toFixed(0)}×${box.height.toFixed(0)} px`)
-          }
-          return found
-        })
-        expect(problems, state).toEqual([])
-        await page.keyboard.press('Escape')
-        await expect(dialog).toHaveCount(0)
+          await page.keyboard.press('Escape')
+          await expect(dialog).toHaveCount(0)
+        }
       }
-    }
-  })
+    })
+  }
 })
 
 // Mobile web: the same flows on an Android phone (Chromium, Pixel 7) and an iPhone (WebKit, iPhone 15), emulated.
