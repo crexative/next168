@@ -281,8 +281,9 @@ describe('adding after setup writes additions only (S2-8, S2-9)', () => {
     const draft = structuredClone(document)
     applyAddPlan(draft, plan)
     const result = validateDocument(draft)
-    expect(canonicalJson(result.categories.slice(0, 2))).toBe(canonicalJson(document.categories))
-    expect(canonicalJson(result.blocks.filter((item) => document.blocks.some((old) => old.id === item.id)))).toBe(canonicalJson(document.blocks))
+    // Exactly the stored records, unchanged and in order, followed by what the plan adds.
+    expect(canonicalJson(result.categories)).toBe(canonicalJson([...document.categories, ...plan.newCategories]))
+    expect(canonicalJson(result.blocks)).toBe(canonicalJson([...document.blocks, ...plan.newBlocks]))
     expect(result.tasks).toEqual(document.tasks)
     expect(result.settings).toEqual(document.settings)
   })

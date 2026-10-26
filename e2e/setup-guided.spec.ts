@@ -1184,8 +1184,8 @@ test.describe('"¿Algo más?" asked again (S1)', () => {
   test('S1-3: three things with their times, then "No, eso es todo" and one save with all three, in order', async ({ page }) => {
     await start(page, { document: firstRun() })
     await page.goto('./')
-    const before = (await stored(page)).revision
     await toMore(page)
+    const before = (await stored(page)).revision
     await tap(page, 'Familia')
     await tap(page, 'Enviar respuesta')
     await onScreen(page, 'more:1')

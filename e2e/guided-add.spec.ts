@@ -1,5 +1,5 @@
 import { expect, test, type Page } from '@playwright/test'
-import { storedPlanner } from './support/indexedDb'
+import { storedPlanner, storedRecord } from './support/indexedDb'
 import { bytes, live, onScreen, primary, setup, start, storedDoc, tap, writeStoredDocument } from './support/setupGuided'
 import { addFromMenu, openClassicRoutine } from './support/week'
 
@@ -28,6 +28,12 @@ const reply = (page: Page, name: string) => live(page).getByRole('button', { nam
 
 async function stored(page: Page): Promise<Doc> {
   return storedPlanner<Doc>(page)
+}
+
+// The seeded week is imported into IndexedDB by the app after the page loads: wait for it before reading "before".
+async function loaded(page: Page): Promise<void> {
+  await page.goto('./')
+  await expect.poll(() => storedRecord(page, 'document')).not.toBeNull()
 }
 
 async function openWeekAdd(page: Page): Promise<void> {
@@ -85,7 +91,7 @@ test.describe('where it opens (S2-1, S2-5)', () => {
 test.describe('adding only (S2-2, S2-3, S2-4, S2-11)', () => {
   test('S2-2: something of one\'s own with two times is one revision that adds one category and two blocks, and says so', async ({ page }) => {
     await start(page, { document: planned() })
-    await page.goto('./')
+    await loaded(page)
     const before = await stored(page)
     await openWeekAdd(page)
     await typeOwn(page, 'Práctica de guitarra')
@@ -108,7 +114,7 @@ test.describe('adding only (S2-2, S2-3, S2-4, S2-11)', () => {
 
   test('S2-3: "Va en" Trabajo adds a block to Trabajo and no category; switching back to "Por su cuenta" creates one', async ({ page }) => {
     await start(page, { document: planned() })
-    await page.goto('./')
+    await loaded(page)
     const before = await stored(page)
     await openWeekAdd(page)
     await typeOwn(page, 'Reunión de equipo', 'Trabajo')
@@ -162,7 +168,7 @@ test.describe('adding only (S2-2, S2-3, S2-4, S2-11)', () => {
 
   test('S2-4: picking stored Trabajo adds one block titled Trabajo to it and leaves its block as it was', async ({ page }) => {
     await start(page, { document: planned() })
-    await page.goto('./')
+    await loaded(page)
     const before = await stored(page)
     await openWeekAdd(page)
     await tap(page, 'Trabajo')
@@ -193,7 +199,7 @@ test.describe('adding only (S2-2, S2-3, S2-4, S2-11)', () => {
 test.describe('a category from Ajustes (S2-6, S2-7)', () => {
   test('S2-6: no stored category and no "Va en" are offered; Familia with no fixed time is one category in an unused colour', async ({ page }) => {
     await start(page, { document: planned() })
-    await page.goto('./')
+    await loaded(page)
     const before = await stored(page)
     await openCategoryAdd(page)
     await expect(reply(page, 'Trabajo')).toHaveCount(0)
@@ -251,7 +257,7 @@ test.describe('a category from Ajustes (S2-6, S2-7)', () => {
 test.describe('closing, leaving and conflicts (S2-10, S2-13)', () => {
   test('S2-10: Escape after one answer writes nothing, gives focus back to "+", and the next open starts fresh', async ({ page }) => {
     await start(page, { document: planned() })
-    await page.goto('./')
+    await loaded(page)
     const before = await bytes(page)
     await openWeekAdd(page)
     await tap(page, 'Familia')
@@ -297,7 +303,7 @@ test.describe('closing, leaving and conflicts (S2-10, S2-13)', () => {
 
   test('S2-10: a closed setup draft stays byte-identical while adds open, close, save and meet a conflict', async ({ page }) => {
     await start(page, { document: planned() })
-    await page.goto('./')
+    await loaded(page)
     await page.evaluate(() => sessionStorage.setItem('next168-setup-draft', '{"version":3,"seeded":true}'))
     const draft = () => page.evaluate(() => sessionStorage.getItem('next168-setup-draft'))
     const seeded = await draft()
@@ -342,7 +348,7 @@ test.describe('closing, leaving and conflicts (S2-10, S2-13)', () => {
 test.describe('what the summary says (S2-12, S2-14)', () => {
   test('S2-12: time added to Trabajo over its "at most" goal warns on both cards with the total, and still saves', async ({ page }) => {
     await start(page, { document: planned() })
-    await page.goto('./')
+    await loaded(page)
     const before = await stored(page)
     await openWeekAdd(page)
     await tap(page, 'Trabajo')
