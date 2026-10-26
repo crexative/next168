@@ -1,5 +1,5 @@
 {
-  "name": "Next168",
+  "name": "Weeklid",
   "tabs": {
     "today": "Hoje",
     "week": "Semana",
@@ -42,13 +42,13 @@
     "blocked": "Salve ou feche o formulário aberto antes de recarregar."
   },
   "storage": {
-    "readonlyNoLocks": "Este navegador não consegue coordenar várias abas com segurança, então o Next168 fica somente leitura aqui. Use uma versão atual do Chrome, Edge, Firefox ou Safari.",
-    "unsupported": "Estes dados foram salvos por uma versão mais nova do Next168 e ficam somente leitura até você atualizar.",
-    "legacyChanged": "Uma versão antiga do Next168 está aberta em outra aba. As alterações feitas lá não são aproveitadas.",
+    "readonlyNoLocks": "Este navegador não consegue coordenar várias abas com segurança, então o Weeklid fica somente leitura aqui. Use uma versão atual do Chrome, Edge, Firefox ou Safari.",
+    "unsupported": "Estes dados foram salvos por uma versão mais nova do Weeklid e ficam somente leitura até você atualizar.",
+    "legacyChanged": "Uma versão antiga do Weeklid está aberta em outra aba. As alterações feitas lá não são aproveitadas.",
     "conflict": "Outra aba alterou seus dados primeiro. A versão mais recente foi carregada — tente novamente.",
     "saveFailed": "Não foi possível salvar ({reason}). Seus dados anteriores não foram alterados.",
-    "unavailableTitle": "O Next168 não consegue usar o armazenamento deste navegador",
-    "unavailableBody": "O Next168 parou para que nada se perca. Seus dados neste dispositivo não foram alterados. Tente novamente em instantes.",
+    "unavailableTitle": "O Weeklid não consegue usar o armazenamento deste navegador",
+    "unavailableBody": "O Weeklid parou para que nada se perca. Seus dados neste dispositivo não foram alterados. Tente novamente em instantes.",
     "lastChangeNotSaved": "Sua última alteração não foi salva. Tudo o que veio antes está seguro.",
     "retry": "Tentar novamente",
     "exportCopy": "Exportar uma cópia",
@@ -58,7 +58,7 @@
   },
   "recovery": {
     "title": "Não foi possível ler seus dados salvos",
-    "description": "O Next168 parou para protegê-los e não alterou nada. Você pode baixar os dados brutos, restaurar o último backup ou começar com um planejador vazio.",
+    "description": "O Weeklid parou para protegê-los e não alterou nada. Você pode baixar os dados brutos, restaurar o último backup ou começar com um planejador vazio.",
     "reason": "Motivo: {reason}",
     "export": "Baixar dados brutos",
     "restoreBackup": "Restaurar o último backup",

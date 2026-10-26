@@ -71,7 +71,7 @@ test('Use with your AI in companion mode: a pasted reply becomes a companion pro
   // Pasting a reply goes through the one AI entry, Settings › Use with your AI.
   await page.goto(`${companion.url}/#/settings/ai`)
   const proposal = { contractVersion: '1.0', workspaceId: document.workspaceId, baseRevision: 1, summary: 'Add a focus hour', ops: [{ op: 'add_block', block: { categoryId: 'focus', title: 'Pasted focus', days: [2], start: 600, end: 660 } }] }
-  await page.getByTestId('any-ai-paste').fill(`Here you go!\n\n\`\`\`next168\n${JSON.stringify(proposal)}\n\`\`\`\n`)
+  await page.getByTestId('any-ai-paste').fill(`Here you go!\n\n\`\`\`weeklid\n${JSON.stringify(proposal)}\n\`\`\`\n`)
   await page.getByTestId('any-ai-review').click()
   await expect(page.getByTestId('proposal-review')).toContainText('Add a focus hour')
   expect((await companion.workspace.document()).blocks).toHaveLength(0)
@@ -107,7 +107,7 @@ test('companion mode never opens the browser planner database (A11)', async ({ p
   await page.goto(`${companion.url}/#/settings/advanced`)
   await expect(page.getByTestId('data-mode')).toContainText('companion', { ignoreCase: true })
   await page.goto(`${companion.url}/#/settings/data`)
-  await page.getByLabel('Choose a Next168 export file').setInputFiles(bundlePath)
+  await page.getByLabel('Choose a Weeklid export file').setInputFiles(bundlePath)
   await page.getByRole('button', { name: 'Replace my data' }).click()
   await expect(page.getByTestId('data-notice')).toContainText('Imported and verified')
   expect((await companion.workspace.document()).blocks.map((block) => block.title)).toEqual(['Imported block'])

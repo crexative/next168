@@ -1,7 +1,7 @@
 import { MAX_OPS_PER_PROPOSAL, proposalInputSchema, type PlannerDocument, type ProposalInput } from '@/core/model'
 
 // Finds the proposal in the whole reply of a chat AI. The reply is prose with, ideally, one fenced block labelled
-// `next168`. Copying from a chat window often loses the fences, a model sometimes labels the block `json`, and
+// `weeklid` (or `next168`, the label of prompts written before the rename, still in people's chats). Copying from a chat window often loses the fences, a model sometimes labels the block `json`, and
 // some answer with the bare object, so each of those is read too. Nothing here applies anything.
 
 export const MAX_REPLY_BYTES = 256 * 1024
@@ -11,6 +11,9 @@ export type ExtractFailure = 'empty' | 'tooLarge' | 'none' | 'malformed' | 'inva
 export type ExtractResult = { ok: true; input: ProposalInput } | { ok: false; reason: ExtractFailure; count?: number }
 
 interface Candidate { text: string; fenced: boolean }
+
+export const PROPOSAL_LABEL = 'weeklid'
+const PROPOSAL_LABELS = new Set([PROPOSAL_LABEL, 'next168'])
 
 const FENCE = /(?:^|\n)[ \t]*(`{3,}|~{3,})[ \t]*([A-Za-z0-9_-]*)[^\n]*\n([\s\S]*?)(?:\n[ \t]*\1[ \t]*(?=\n|$)|$)/g
 
@@ -45,7 +48,7 @@ function candidates(reply: string): Candidate[] {
   for (const match of reply.matchAll(FENCE)) {
     const label = match[2]!.toLowerCase()
     const candidate = { text: match[3]!, fenced: true }
-    if (label === 'next168') labelled.push(candidate)
+    if (PROPOSAL_LABELS.has(label)) labelled.push(candidate)
     else if (label === 'json') json.push(candidate)
     else if (label === '') plain.push(candidate)
     outside = outside.replace(match[0], '\n')

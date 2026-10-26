@@ -27,7 +27,7 @@ const GYM = { id: 'b-gym', categoryId: 'c-work', title: 'Gym', days: [2], start:
 const $ = <T extends HTMLElement>(id: string) => mounted!.host.querySelector<T>(`[data-testid=${id}]`)
 const click = async (id: string) => { $(id)!.click(); await vi.waitFor(() => undefined); await nextTick() }
 const type = async (text: string) => { const box = $<HTMLTextAreaElement>('any-ai-paste')!; box.value = text; box.dispatchEvent(new Event('input')); await nextTick() }
-const gymToThursday = (overrides: Record<string, unknown> = {}) => `Sure! I moved it.\n\n\`\`\`next168\n${JSON.stringify({
+const gymToThursday = (overrides: Record<string, unknown> = {}) => `Sure! I moved it.\n\n\`\`\`weeklid\n${JSON.stringify({
   contractVersion: '1.0', workspaceId: 'workspace-1', baseRevision: 1, summary: 'Move the gym to Thursday',
   ops: [{ op: 'update_block', id: 'b-gym', patch: { days: [4] } }], ...overrides,
 })}\n\`\`\`\nAnything else?`
@@ -95,7 +95,7 @@ it('says what to do for a reply without changes, keeps the text, and opens nothi
   await type('Sure, I would move the gym to Thursday.')
   await click('any-ai-review')
   await vi.waitFor(() => expect($('any-ai-error')).not.toBeNull())
-  expect($('any-ai-error')!.textContent).toContain('Your AI answered without changes for Next168: maybe it only talked, or it needs something from you first. Read its message. To change your plan, ask it: “give me the changes in the next168 block”.')
+  expect($('any-ai-error')!.textContent).toContain('Your AI answered without changes for Weeklid: maybe it only talked, or it needs something from you first. Read its message. To change your plan, ask it: “give me the changes in the weeklid block”.')
   expect($('any-ai-error')!.textContent).toContain('Its reply begins:')
   expect($('any-ai-reply-start')!.textContent).toBe('Sure, I would move the gym to Thursday.')
   expect($('any-ai-error')!.getAttribute('role')).toBe('alert')

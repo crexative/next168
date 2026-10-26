@@ -69,16 +69,19 @@ async function freshPage(browser: Browser): Promise<Page> {
   return context.newPage()
 }
 
-async function download(page: Page, button: string, path: string): Promise<string> {
+async function download(page: Page, button: string, path: string, name?: RegExp): Promise<string> {
   const pending = page.waitForEvent('download')
   await page.getByTestId('pre-upgrade-copy').getByRole('button', { name: button }).click()
-  await (await pending).saveAs(path)
+  const file = await pending
+  if (name) expect(file.suggestedFilename()).toMatch(name)
+  await file.saveAs(path)
   return path
 }
 
-// Imports a file through the build's own Settings › Your data, returning the notice it shows.
+// Imports a file through the build's own Settings › Your data, returning the notice it shows. Builds from before
+// the rename to Weeklid name the field after Next168.
 async function importFile(page: Page, file: string): Promise<string> {
-  await page.getByLabel('Choose a Next168 export file').setInputFiles(file)
+  await page.getByLabel(/^Choose a (?:Weeklid|Next168) export file$/).setInputFiles(file)
   const preview = page.getByTestId('import-preview')
   const notice = page.getByTestId('data-notice')
   await expect(preview.or(notice)).toBeVisible({ timeout: 60_000 })
@@ -207,8 +210,8 @@ test('F-05 (a): the pre-upgrade download keeps the original calendar bytes and i
   await expect(row).toContainText('It includes your calendars.')
   await expect(page.getByTestId('pre-upgrade-size')).toHaveText(/^\d+ MB$/)
   await expect(page.getByTestId('pre-upgrade-too-large')).toHaveCount(0)
-  const bundlePath = await download(page, 'Download copy', testInfo.outputPath('before-update.json'))
-  const rawPath = await download(page, 'Download raw data', testInfo.outputPath('before-update-raw.json'))
+  const bundlePath = await download(page, 'Download copy', testInfo.outputPath('before-update.json'), /^weeklid-before-update-\d{4}-\d\d-\d\d\.json$/)
+  const rawPath = await download(page, 'Download raw data', testInfo.outputPath('before-update-raw.json'), /^weeklid-before-update-raw-\d{4}-\d\d-\d\d\.json$/)
   expect(await portableHash(JSON.parse(readFileSync(bundlePath, 'utf8')))).toBe(expected)
   const raw = JSON.parse(readFileSync(rawPath, 'utf8'))
   expect(raw.raw).toMatchObject({ document: JSON.stringify(document), backup, proposals })

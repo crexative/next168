@@ -3,6 +3,7 @@ import { anySheetOpen } from '@/ui/sheetStack'
 import { computed, nextTick, onBeforeUnmount, onMounted, provide, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { PanelLeft } from 'lucide-vue-next'
+import BrandLockup from '@/ui/BrandLockup.vue'
 import Icon from '@/ui/Icon.vue'
 import { registerIcons } from '@/ui/icons'
 import LargeTitle from '@/ui/LargeTitle.vue'
@@ -112,7 +113,7 @@ function scrollToTop(): void { window.scrollTo({ top: 0, behavior: 'instant' }) 
 
 const pageTitle = computed(() => currentView.value ? t(currentView.value.titleKey) : '')
 
-// Every route has its own document title ("Week · Next168"), kept in the current language.
+// Every route has its own document title ("Week · Weeklid"), kept in the current language.
 watch(pageTitle, (title) => {
   window.document.title = title ? `${title} · ${t('app.name')}` : t('app.name')
 }, { immediate: true })
@@ -164,7 +165,7 @@ dismissUndoWhenChanged(() => planner.document?.workspaceId)
       :inert="!sidebarVisible"
       :aria-label="t('app.navigation.sidebar')"
     >
-      <p class="sidebar-brand t-title-2">{{ t('app.name') }}</p>
+      <p class="sidebar-brand" data-testid="sidebar-brand"><BrandLockup :height="28" /></p>
       <ul class="sidebar-list">
         <li v-for="tab in tabs" :key="tab.id">
           <a class="sidebar-item t-body" :href="viewHash(tab.id)" :aria-current="current === tab.id ? 'page' : undefined" @click="closeOverlay">

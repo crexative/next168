@@ -5,8 +5,8 @@
   "pairCode": "Código de vinculación",
   "pair": "Vincular navegador",
   "pairError": "El código no es válido, venció o ya fue usado. Solicita otro en la terminal.",
-  "transferHint": "Para mover tus datos, exporta una copia de Next168 desde el espacio anterior e impórtala aquí. Antes de añadir la app al inicio de tu iPhone, exporta e importa en la app instalada.",
-  "importWorkspace": "Importar copia de Next168 a este espacio vacío",
+  "transferHint": "Para mover tus datos, exporta una copia de Weeklid desde el espacio anterior e impórtala aquí. Antes de añadir la app al inicio de tu iPhone, exporta e importa en la app instalada.",
+  "importWorkspace": "Importar copia de Weeklid a este espacio vacío",
   "desktopInstructions": "Añade este servidor a claude_desktop_config.json. Reemplaza la ruta absoluta y reinicia Claude Desktop. Mantén el companion activo.",
   "customHome": "Si usas NEXT168_HOME o NEXT168_PORT personalizados, configura las mismas variables en el cliente MCP.",
   "rotateHint": "Para revocar el token MCP, ejecuta este comando y reconecta los clientes:",
@@ -23,7 +23,7 @@
     "subtitle": "Planifica tu semana conversando con la IA que ya usas, en cualquier dispositivo. Sin cuenta ni servidor.",
     "steps": {
       "copy": "Toca «Copiar para tu IA» y pégalo en un chat nuevo de ChatGPT, Claude, Gemini u otra.",
-      "chat": "Habla de tu semana. Cuando quieras cambios, pídele: «dame los cambios en el bloque next168».",
+      "chat": "Habla de tu semana. Cuando quieras cambios, pídele: «dame los cambios en el bloque weeklid».",
       "paste": "Copia su respuesta completa, pégala abajo y revisa los cambios antes de aprobarlos."
     },
     "copy": "Copiar para tu IA",
@@ -34,12 +34,12 @@
     "pasteLabel": "Pega la respuesta de tu IA",
     "pastePlaceholder": "Pega aquí la respuesta completa, con el texto que rodea los cambios.",
     "review": "Revisar cambios",
-    "safety": "Compartes tu plan con la IA que elijas. Nada cambia en Next168 hasta que lo apruebes.",
+    "safety": "Compartes tu plan con la IA que elijas. Nada cambia en Weeklid hasta que lo apruebes.",
     "errors": {
       "empty": "Primero pega la respuesta de tu IA.",
       "tooLarge": "Ese texto es demasiado largo. Pega solo la última respuesta de tu IA.",
-      "none": "Tu IA respondió sin cambios para Next168: quizá solo conversó o necesita algo de ti antes. Lee su mensaje. Para cambiar tu plan, pídele: «dame los cambios en el bloque next168».",
-      "malformed": "Los cambios de esa respuesta están cortados o dañados. Pídele a tu IA que los envíe otra vez en un solo bloque next168.",
+      "none": "Tu IA respondió sin cambios para Weeklid: quizá solo conversó o necesita algo de ti antes. Lee su mensaje. Para cambiar tu plan, pídele: «dame los cambios en el bloque weeklid».",
+      "malformed": "Los cambios de esa respuesta están cortados o dañados. Pídele a tu IA que los envíe otra vez en un solo bloque weeklid.",
       "invalid": "No entendí esos cambios. Copia de nuevo para que tu IA conozca el formato y pídele que lo intente otra vez.",
       "wrongWorkspace": "Estos cambios son de otro plan. Copia de nuevo y empieza un chat nuevo con tu IA.",
       "stale": "Tu plan cambió después de copiarlo para tu IA. Copia de nuevo y pídele que repita los cambios.",
@@ -54,6 +54,6 @@
   },
   "local": {
     "title": "Claude Desktop o Claude Code (en este equipo)",
-    "hint": "Para usuarios avanzados: se conecta directamente al companion de Next168 que corre en este equipo."
+    "hint": "Para usuarios avanzados: se conecta directamente al companion de Weeklid que corre en este equipo."
   }
 }

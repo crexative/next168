@@ -1,6 +1,6 @@
-# Next168 - Deployment Guide
+# Weeklid - Deployment Guide
 
-This guide covers deploying Next168 to various hosting platforms.
+This guide covers deploying Weeklid to various hosting platforms.
 
 ## Table of Contents
 
@@ -93,7 +93,7 @@ vercel --prod
 
 #### Environment Variables
 
-No environment variables required for Next168.
+No environment variables required for Weeklid.
 
 ### Netlify
 
@@ -246,7 +246,7 @@ All recommended platforms provide free SSL certificates:
 
 ## Environment Configuration
 
-Next168 is a fully client-side application with no backend dependencies.
+Weeklid is a fully client-side application with no backend dependencies.
 
 ### No Environment Variables Required
 
@@ -311,7 +311,7 @@ Before deploying to production:
 
 ### ✅ SEO & Meta
 
-- [ ] `index.html` has correct title: "Next168 - Master your next 168 hours"
+- [ ] `index.html` has correct title: "Weeklid"
 - [ ] Meta description is set
 - [ ] Favicon is present
 - [ ] Theme color is set (#1C2E4A)
@@ -360,7 +360,7 @@ npm run build
 
 ### Already Optimized
 
-Next168 is built with performance in mind:
+Weeklid is built with performance in mind:
 - ✅ Vite code splitting
 - ✅ CSS minification
 - ✅ Tree shaking
@@ -394,6 +394,6 @@ For deployment issues:
 
 ---
 
-**Next168** - Plan your next 168 hours, effortlessly.
+**Weeklid** - Plan your next 168 hours, effortlessly.
 
 🌐 [next168.app](https://next168.app)

@@ -1,5 +1,5 @@
 {
-  "name": "Next168",
+  "name": "Weeklid",
   "tabs": {
     "today": "Aujourd’hui",
     "week": "Semaine",
@@ -42,13 +42,13 @@
     "blocked": "Enregistre ou ferme le formulaire ouvert avant de recharger."
   },
   "storage": {
-    "readonlyNoLocks": "Ce navigateur ne peut pas coordonner plusieurs onglets en toute sécurité : Next168 est en lecture seule ici. Utilise une version récente de Chrome, Edge, Firefox ou Safari.",
-    "unsupported": "Ces données ont été enregistrées par une version plus récente de Next168 et restent en lecture seule jusqu’à la mise à jour.",
-    "legacyChanged": "Une ancienne version de Next168 est ouverte dans un autre onglet. Les modifications faites là-bas ne sont pas reprises.",
+    "readonlyNoLocks": "Ce navigateur ne peut pas coordonner plusieurs onglets en toute sécurité : Weeklid est en lecture seule ici. Utilise une version récente de Chrome, Edge, Firefox ou Safari.",
+    "unsupported": "Ces données ont été enregistrées par une version plus récente de Weeklid et restent en lecture seule jusqu’à la mise à jour.",
+    "legacyChanged": "Une ancienne version de Weeklid est ouverte dans un autre onglet. Les modifications faites là-bas ne sont pas reprises.",
     "conflict": "Un autre onglet a modifié tes données en premier. La dernière version a été chargée — réessaie.",
     "saveFailed": "Enregistrement impossible ({reason}). Tes données précédentes sont intactes.",
-    "unavailableTitle": "Next168 ne peut pas utiliser le stockage de ce navigateur",
-    "unavailableBody": "Next168 s’est arrêté pour que rien ne soit perdu. Tes données sur cet appareil n’ont pas été modifiées. Réessaie dans un instant.",
+    "unavailableTitle": "Weeklid ne peut pas utiliser le stockage de ce navigateur",
+    "unavailableBody": "Weeklid s’est arrêté pour que rien ne soit perdu. Tes données sur cet appareil n’ont pas été modifiées. Réessaie dans un instant.",
     "lastChangeNotSaved": "Ta dernière modification n’a pas été enregistrée. Tout ce qui précède est en sécurité.",
     "retry": "Réessayer",
     "exportCopy": "Exporter une copie",
@@ -58,7 +58,7 @@
   },
   "recovery": {
     "title": "Tes données enregistrées sont illisibles",
-    "description": "Next168 s’est arrêté pour les protéger et n’a rien modifié. Tu peux télécharger les données brutes, restaurer la dernière sauvegarde ou repartir d’un planificateur vide.",
+    "description": "Weeklid s’est arrêté pour les protéger et n’a rien modifié. Tu peux télécharger les données brutes, restaurer la dernière sauvegarde ou repartir d’un planificateur vide.",
     "reason": "Cause : {reason}",
     "export": "Télécharger les données brutes",
     "restoreBackup": "Restaurer la dernière sauvegarde",

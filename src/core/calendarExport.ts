@@ -23,7 +23,7 @@ function foldLine(line: string): string {
 
 export function calendarExport(events: PlannerEvent[], clock: Clock): string {
   const stamp = utcStamp(clock.now())
-  const lines = ['BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//Next168//Planner//EN', 'CALSCALE:GREGORIAN', 'METHOD:PUBLISH']
+  const lines = ['BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//Weeklid//Planner//EN', 'CALSCALE:GREGORIAN', 'METHOD:PUBLISH']
   for (const raw of events) {
     const event = validateEvent(raw)
     lines.push('BEGIN:VEVENT', `UID:${encodeURIComponent(event.id)}@next168.app`, `DTSTAMP:${stamp}`)

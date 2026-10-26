@@ -167,7 +167,7 @@ async function anyAiStates(page: Page, theme: string, label: string, includeSett
   await page.getByTestId('any-ai-copy').click()
   await expect(page.getByTestId('any-ai-manual')).toBeVisible()
   await check(page, `${theme}/${label}/use with your AI, text to copy by hand`)
-  const reply = (overrides: Record<string, unknown>) => `Listo:\n\`\`\`next168\n${JSON.stringify({ contractVersion: '1.0', workspaceId: 'workspace-visual', baseRevision: 1, summary: 'Mover', ops: [{ op: 'update_block', id: 'b-gym', patch: { days: [4] } }], ...overrides })}\n\`\`\``
+  const reply = (overrides: Record<string, unknown>) => `Listo:\n\`\`\`weeklid\n${JSON.stringify({ contractVersion: '1.0', workspaceId: 'workspace-visual', baseRevision: 1, summary: 'Mover', ops: [{ op: 'update_block', id: 'b-gym', patch: { days: [4] } }], ...overrides })}\n\`\`\``
   await page.getByTestId('any-ai-paste').fill('Sin cambios aquí, solo texto largo que ocupa varias líneas para comprobar que el campo y el mensaje no se cortan en ninguna pantalla.')
   await expect(page.getByTestId('any-ai-review')).toBeEnabled()
   await page.getByTestId('any-ai-review').click()
@@ -687,7 +687,7 @@ for (const theme of THEMES) {
 
       const v1Path = testInfo.outputPath('v1.json')
       await import('node:fs').then(({ writeFileSync }) => writeFileSync(v1Path, JSON.stringify(legacyData)))
-      await page.getByLabel('Choose a Next168 export file').setInputFiles(v1Path)
+      await page.getByLabel('Choose a Weeklid export file').setInputFiles(v1Path)
       await expect(page.getByTestId('import-preview')).toBeVisible()
       await audit(page, `${theme}/import preview`)
 
@@ -1790,7 +1790,7 @@ test.describe('visual integrity guard: floating action button', () => {
     <style>
       body { margin: 0; font: 16px sans-serif; }
       .tabbar { position: fixed; inset: auto 0 0; box-sizing: border-box; background: #eee; }
-      .fab { position: fixed; box-sizing: border-box; width: 56px; height: 56px; border: 0; border-radius: 50%; padding: 0; background: #5856d6; }
+      .fab { position: fixed; box-sizing: border-box; width: 56px; height: 56px; border: 0; border-radius: 50%; padding: 0; background: #147745; }
       .toast { position: fixed; inset-inline: 16px; bottom: 68px; height: 52px; background: #fff; }
       .menu { position: fixed; right: 16px; width: 200px; height: 150px; background: #fff; }
     </style>

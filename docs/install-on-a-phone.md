@@ -1,4 +1,4 @@
-# Install Next168 on a phone
+# Install Weeklid on a phone
 
 Use a production build on your own computer and a phone on the same trusted local
 network. No hosting, tunnel, account, or extra npm dependency is needed. HTTPS is
@@ -40,7 +40,8 @@ The ignored `.lan-https/` directory contains:
 | `server.crt` | Server certificate, valid for 365 days |
 | `server.key` | Private server key: keep on this computer |
 
-The root is labelled **Next168 local development CA**, valid for 3650 days. It is
+The root is labelled **Next168 local development CA** (its name predates the rename to Weeklid and stays, so
+phones that already trust it keep working), valid for 3650 days. It is
 not name-constrained: trusting it permits certificates signed by its private key
 for other sites too. Trust it only on your own test devices, keep both keys
 private, and **remove the CA and delete these files after testing**. They are never
@@ -74,7 +75,7 @@ the `npm run lan:cert` recovery command. Development and build do not read them.
 3. Reopen Chrome and enter the printed `https://<LAN-IP>:4443/` URL. There must be
    no certificate warning. If there is, check CA trust, the phone's clock, and
    whether the IP changed; do not bypass it. Managed devices may forbid user CAs.
-4. Let Next168 finish loading, then use Chrome's menu → **Add to Home screen →
+4. Let Weeklid finish loading, then use Chrome's menu → **Add to Home screen →
    Install** (or **Install app**, depending on Chrome). Open its new icon. If only
    a shortcut is offered, check the HTTPS trust and let the page finish loading,
    then reload and retry.
@@ -94,7 +95,7 @@ the `npm run lan:cert` recovery command. Development and build do not read them.
    warning. Wait for the page to finish loading.
 5. Choose **Share → Add to Home Screen → Add**. Depending on Safari's layout,
    Share is inside the page menu; enable **Open as Web App** if shown. Launch
-   Next168 using its Home Screen icon. See [Apple's web app installation
+   Weeklid using its Home Screen icon. See [Apple's web app installation
    guide](https://support.apple.com/en-gb/guide/iphone/iphea86e5236/ios).
 
 ## Check offline operation on either phone

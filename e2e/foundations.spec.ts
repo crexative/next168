@@ -381,12 +381,12 @@ test.describe('accessibility plumbing', () => {
   test('each route has its own title; navigating focuses the new heading and announces it', async ({ page }) => {
     await startWith(page)
     await openView(page, 'today')
-    await expect(page).toHaveTitle('Today · Next168')
+    await expect(page).toHaveTitle('Today · Weeklid')
     // The first load leaves focus alone.
     expect(await page.evaluate(() => document.activeElement?.tagName)).toBe('BODY')
 
     await goTo(page, 'Week')
-    await expect(page).toHaveTitle('Week · Next168')
+    await expect(page).toHaveTitle('Week · Weeklid')
     await expect(page.getByRole('heading', { level: 1, name: 'Week' })).toBeFocused()
     await expect(page.getByTestId('live-announcer')).toHaveText('Week')
 
@@ -395,7 +395,7 @@ test.describe('accessibility plumbing', () => {
     await goTo(page, 'Summary')
     await expect(page.getByRole('heading', { level: 1, name: 'Summary' })).toBeFocused()
     await expect(page.getByTestId('live-announcer')).toHaveText('Summary')
-    await expect(page).toHaveTitle('Summary · Next168')
+    await expect(page).toHaveTitle('Summary · Weeklid')
   })
 
   async function deleteGym(page: Page) {

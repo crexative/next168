@@ -5,7 +5,8 @@ import vue from '@vitejs/plugin-vue'
 import { VitePWA } from 'vite-plugin-pwa'
 import { readPreviewHttps } from './config/lanHttps'
 
-const BRAND_TINT = '#5856D6'
+// The installed window's bars match the page's grouped background, as the theme-color metas in index.html do
+// (src/ui/appearance.ts): the brand green lives in the icon and the controls, not in the system chrome.
 const GROUPED_BACKGROUND = '#F2F2F7'
 const MAX_PRECACHE_BYTES = 5 * 1024 * 1024
 
@@ -17,20 +18,22 @@ export default defineConfig(({ isPreview }) => ({
     VitePWA({
       registerType: 'prompt',
       injectRegister: false,
-      includeAssets: ['favicon.ico', 'apple-touch-icon-180x180.png'],
+      includeAssets: ['favicon.ico', 'favicon.svg', 'favicon-16x16.png', 'favicon-32x32.png', 'apple-touch-icon-180x180.png'],
       manifest: {
-        name: 'Next168',
-        short_name: 'Next168',
+        name: 'Weeklid',
+        short_name: 'Weeklid',
         description: 'Plan your 168 hours. Local-first weekly planner.',
         display: 'standalone',
         start_url: './',
         scope: './',
-        theme_color: BRAND_TINT,
+        theme_color: GROUPED_BACKGROUND,
         background_color: GROUPED_BACKGROUND,
         icons: [
+          { src: 'pwa-64x64.png', sizes: '64x64', type: 'image/png' },
           { src: 'pwa-192x192.png', sizes: '192x192', type: 'image/png' },
           { src: 'pwa-512x512.png', sizes: '512x512', type: 'image/png' },
           { src: 'maskable-icon-512x512.png', sizes: '512x512', type: 'image/png', purpose: 'maskable' },
+          { src: 'monochrome-icon-512x512.png', sizes: '512x512', type: 'image/png', purpose: 'monochrome' },
         ],
       },
       workbox: {

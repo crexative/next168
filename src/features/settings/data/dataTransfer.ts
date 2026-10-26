@@ -5,7 +5,7 @@ import type { CalendarSourceStore, Clock, ExportBundle, LoadResult, PlannerDocum
 export const MAX_IMPORT_BYTES = 25 * 1024 * 1024
 
 export function exportFileName(now: Date): string {
-  return `next168-export-${now.toISOString().slice(0, 10)}.json`
+  return `weeklid-export-${now.toISOString().slice(0, 10)}.json`
 }
 
 export async function sourceTextsFor(document: PlannerDocument, store: CalendarSourceStore | undefined): Promise<Record<string, string>> {

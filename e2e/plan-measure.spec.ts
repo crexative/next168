@@ -218,7 +218,7 @@ test.describe('plan and measure', () => {
     const downloadPromise = page.waitForEvent('download')
     await page.getByRole('button', { name: 'Export backup' }).click()
     const download = await downloadPromise
-    expect(download.suggestedFilename()).toBe('next168-export-2026-10-26.json')
+    expect(download.suggestedFilename()).toBe('weeklid-export-2026-10-26.json')
     const exportPath = testInfo.outputPath('export.json')
     await download.saveAs(exportPath)
     expect(JSON.parse(readFileSync(exportPath, 'utf8')).format).toBe('next168-export')
@@ -261,7 +261,7 @@ test.describe('plan and measure', () => {
     expect(await page.evaluate((keys) => keys.filter((key) => window.localStorage.getItem(key) !== null), LEGACY_KEYS)).toEqual([])
     await openSettingsPage(page, 'data')
 
-    await page.getByLabel('Choose a Next168 export file').setInputFiles(exportPath)
+    await page.getByLabel('Choose a Weeklid export file').setInputFiles(exportPath)
     await expect(page.getByTestId('import-preview')).toContainText('File schema version 2')
     await expect(page.getByTestId('count-tasks')).toHaveText('1 task')
     await page.getByRole('button', { name: 'Replace my data' }).click()
@@ -276,7 +276,7 @@ test.describe('plan and measure', () => {
     await openSettingsPage(page, 'data')
     const v1Path = testInfo.outputPath('v1.json')
     writeFileSync(v1Path, JSON.stringify(legacyData))
-    await page.getByLabel('Choose a Next168 export file').setInputFiles(v1Path)
+    await page.getByLabel('Choose a Weeklid export file').setInputFiles(v1Path)
 
     const preview = page.getByTestId('import-preview')
     await expect(page.getByTestId('import-version')).toContainText('migrated from version 1')
@@ -297,7 +297,7 @@ test.describe('plan and measure', () => {
     await openSettingsPage(page, 'data')
     const path = testInfo.outputPath('broken.json')
     writeFileSync(path, '{ not json')
-    await page.getByLabel('Choose a Next168 export file').setInputFiles(path)
+    await page.getByLabel('Choose a Weeklid export file').setInputFiles(path)
     await expect(page.getByTestId('data-notice')).toContainText('cannot be imported')
     await expect(page.getByTestId('import-preview')).toHaveCount(0)
     expect((await storedDocument(page)).workspaceId).toBe('ws-e2e')

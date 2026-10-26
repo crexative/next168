@@ -1,5 +1,5 @@
 {
-  "name": "Next168",
+  "name": "Weeklid",
   "tabs": {
     "today": "Hoy",
     "week": "Semana",
@@ -42,13 +42,13 @@
     "blocked": "Guarda o cierra el formulario abierto antes de recargar."
   },
   "storage": {
-    "readonlyNoLocks": "Este navegador no puede coordinar varias pestañas de forma segura, así que Next168 es de solo lectura aquí. Usa una versión actual de Chrome, Edge, Firefox o Safari.",
-    "unsupported": "Estos datos los guardó una versión más reciente de Next168 y son de solo lectura hasta que actualices.",
-    "legacyChanged": "Hay una versión anterior de Next168 abierta en otra pestaña. Los cambios hechos allí no se trasladan.",
+    "readonlyNoLocks": "Este navegador no puede coordinar varias pestañas de forma segura, así que Weeklid es de solo lectura aquí. Usa una versión actual de Chrome, Edge, Firefox o Safari.",
+    "unsupported": "Estos datos los guardó una versión más reciente de Weeklid y son de solo lectura hasta que actualices.",
+    "legacyChanged": "Hay una versión anterior de Weeklid abierta en otra pestaña. Los cambios hechos allí no se trasladan.",
     "conflict": "Otra pestaña cambió tus datos primero. Se cargó la última versión; inténtalo de nuevo.",
     "saveFailed": "No se pudo guardar ({reason}). Tus datos anteriores no han cambiado.",
-    "unavailableTitle": "Next168 no puede usar el almacenamiento de este navegador",
-    "unavailableBody": "Next168 se detuvo para que no se pierda nada. Tus datos en este dispositivo no cambiaron. Vuelve a intentarlo en un momento.",
+    "unavailableTitle": "Weeklid no puede usar el almacenamiento de este navegador",
+    "unavailableBody": "Weeklid se detuvo para que no se pierda nada. Tus datos en este dispositivo no cambiaron. Vuelve a intentarlo en un momento.",
     "lastChangeNotSaved": "Tu último cambio no se guardó. Todo lo anterior está a salvo.",
     "retry": "Reintentar",
     "exportCopy": "Exportar una copia",
@@ -58,7 +58,7 @@
   },
   "recovery": {
     "title": "No se pueden leer tus datos guardados",
-    "description": "Next168 se detuvo para protegerlos y no cambió nada. Puedes descargar los datos sin procesar, restaurar la última copia o empezar con un planificador vacío.",
+    "description": "Weeklid se detuvo para protegerlos y no cambió nada. Puedes descargar los datos sin procesar, restaurar la última copia o empezar con un planificador vacío.",
     "reason": "Motivo: {reason}",
     "export": "Descargar datos sin procesar",
     "restoreBackup": "Restaurar la última copia",

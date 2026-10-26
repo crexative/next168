@@ -16,7 +16,7 @@ let token: string
 const clients: Client[] = []
 beforeEach(async () => {
   home = await mkdtemp(join(tmpdir(), 'next168-http-'))
-  await writeFile(join(home, 'index.html'), '<html><head></head><body>Next168</body></html>')
+  await writeFile(join(home, 'index.html'), '<html><head></head><body>Weeklid</body></html>')
   running = await startCompanion({ home, dist: home, port: 0, now: () => time })
   token = (await readFile(join(home, 'mcp-token'), 'utf8')).trim()
   const response = await fetch(`${running.url}/api/pair`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ code: running.pairingCode }) })

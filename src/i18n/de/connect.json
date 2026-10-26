@@ -5,7 +5,7 @@
   "pairCode": "Kopplungscode",
   "pair": "Browser koppeln",
   "pairError": "Code ungültig, abgelaufen oder bereits verwendet. Fordere im Terminal einen neuen an.",
-  "transferHint": "Exportiere ein Next168-Backup aus dem alten Arbeitsbereich und importiere es hier. Vor dem Hinzufügen zum iPhone-Home-Bildschirm exportieren und danach in der installierten App importieren.",
+  "transferHint": "Exportiere ein Weeklid-Backup aus dem alten Arbeitsbereich und importiere es hier. Vor dem Hinzufügen zum iPhone-Home-Bildschirm exportieren und danach in der installierten App importieren.",
   "importWorkspace": "Backup in diesen leeren Arbeitsbereich importieren",
   "desktopInstructions": "Füge diesen Server in claude_desktop_config.json ein. Ersetze den absoluten Pfad und starte Claude Desktop neu. Lass den Companion laufen.",
   "customHome": "Verwende für eigene NEXT168_HOME- oder NEXT168_PORT-Werte dieselben Umgebungsvariablen im MCP-Client.",
@@ -23,7 +23,7 @@
     "subtitle": "Plane deine Woche im Chat mit der KI, die du schon nutzt, auf jedem Gerät. Ohne Konto, ohne Server.",
     "steps": {
       "copy": "Tippe auf „Für deine KI kopieren“ und füge den Text in einen neuen Chat bei ChatGPT, Claude, Gemini oder einer anderen KI ein.",
-      "chat": "Sprich über deine Woche. Wenn du Änderungen willst, bitte: „Gib mir die Änderungen im next168-Block“.",
+      "chat": "Sprich über deine Woche. Wenn du Änderungen willst, bitte: „Gib mir die Änderungen im weeklid-Block“.",
       "paste": "Kopiere die ganze Antwort, füge sie unten ein und prüfe die Änderungen, bevor du sie freigibst."
     },
     "copy": "Für deine KI kopieren",
@@ -34,12 +34,12 @@
     "pasteLabel": "Antwort deiner KI einfügen",
     "pastePlaceholder": "Füge hier die ganze Antwort ein, auch den Text um die Änderungen herum.",
     "review": "Änderungen prüfen",
-    "safety": "Du teilst deinen Plan mit der KI, die du wählst. In Next168 ändert sich nichts, bis du es freigibst.",
+    "safety": "Du teilst deinen Plan mit der KI, die du wählst. In Weeklid ändert sich nichts, bis du es freigibst.",
     "errors": {
       "empty": "Füge zuerst die Antwort deiner KI ein.",
       "tooLarge": "Dieser Text ist zu lang. Füge nur die letzte Antwort deiner KI ein.",
-      "none": "Deine KI hat ohne Änderungen für Next168 geantwortet: Vielleicht hat sie nur geplaudert oder braucht vorher etwas von dir. Lies ihre Nachricht. Um deinen Plan zu ändern, bitte sie: „Gib mir die Änderungen im next168-Block“.",
-      "malformed": "Die Änderungen in dieser Antwort sind abgeschnitten oder beschädigt. Bitte deine KI, sie noch einmal in einem einzigen next168-Block zu schicken.",
+      "none": "Deine KI hat ohne Änderungen für Weeklid geantwortet: Vielleicht hat sie nur geplaudert oder braucht vorher etwas von dir. Lies ihre Nachricht. Um deinen Plan zu ändern, bitte sie: „Gib mir die Änderungen im weeklid-Block“.",
+      "malformed": "Die Änderungen in dieser Antwort sind abgeschnitten oder beschädigt. Bitte deine KI, sie noch einmal in einem einzigen weeklid-Block zu schicken.",
       "invalid": "Ich habe diese Änderungen nicht verstanden. Kopiere erneut, damit deine KI das Format kennt, und bitte sie, es noch einmal zu versuchen.",
       "wrongWorkspace": "Diese Änderungen gehören zu einem anderen Plan. Kopiere erneut und starte einen neuen Chat mit deiner KI.",
       "stale": "Dein Plan hat sich geändert, nachdem du ihn für deine KI kopiert hast. Kopiere erneut und bitte sie, die Änderungen zu wiederholen.",
@@ -54,6 +54,6 @@
   },
   "local": {
     "title": "Claude Desktop oder Claude Code (auf diesem Computer)",
-    "hint": "Für Fortgeschrittene: verbindet sich direkt mit dem Next168-Companion auf diesem Computer."
+    "hint": "Für Fortgeschrittene: verbindet sich direkt mit dem Weeklid-Companion auf diesem Computer."
   }
 }

@@ -24,7 +24,7 @@ export interface BusySegment extends DayPart {
   start: string
   end: string
   calendar?: string
-  // A Next168 event's own place and notes.
+  // A Weeklid event's own place and notes.
   location?: string
   notes?: string
   // A calendar event marked free (transparent): shown, but it takes no time from the plan and conflicts with nothing.

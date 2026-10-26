@@ -1,4 +1,4 @@
-# Next168 visual design direction (#3)
+# Weeklid visual design direction (#3)
 
 Author: MIA coordinator (Claude Opus 5.5), 2026-10-24. Sources: `apple-fluid-design` skill (emilkowalski/skills@2d22863), Apple HIG via the `apple-design` skill, screenshots of `main`@05d781d.
 
@@ -32,6 +32,12 @@ Phone: translucent bottom tab bar (4 tabs, SF-style line icons, label under icon
 
 All colors as CSS custom properties on `:root`, redefined under `@media (prefers-color-scheme: dark)` and `[data-theme]`.
 
+Brand (2026-10-25): the product is **Weeklid**, identity **Lidera** (`docs/brand/README.md`): a single-stroke W whose
+last stroke rises into a check, in coffee-farm green with a maize tick; it replaced the indigo tint and the ring
+mark. The symbol (`src/ui/AppMark.vue`) is the voice of the guided setup; the horizontal lockup
+(`src/ui/BrandLockup.vue`) heads the sidebar. Branding defers to content: the phone layout shows no logo, the
+system bars keep the grouped background, and the green appears where the tint already did.
+
 | Token | Light | Dark |
 |---|---|---|
 | `--bg` (grouped background) | #F2F2F7 | #000000 |
@@ -41,7 +47,9 @@ All colors as CSS custom properties on `:root`, redefined under `@media (prefers
 | `--label-2` | rgba(60,60,67,.60) | rgba(235,235,245,.60) |
 | `--label-3` | rgba(60,60,67,.30) | rgba(235,235,245,.30) |
 | `--separator` | rgba(60,60,67,.29) | rgba(84,84,88,.65) |
-| `--tint` (brand) | #5856D6 (indigo) | #5E5CE6 |
+| `--tint` (brand: fills, selection, focus) | #147745 (coffee-farm green) | #18864F |
+| `--tint-label` (green text) | #126B3E | #5AD394 |
+| `--mark` / `--accent` (the Lidera symbol's W and maize tick; accent for the mark only) | #147745 / #C47A00 | #5AD394 / #FFC93C |
 | `--danger` | #FF3B30 | #FF453A |
 | `--success` | #34C759 | #30D158 |
 | `--warning` | #FF9500 | #FF9F0A |
@@ -117,7 +125,7 @@ Approximate heights at 100 % text (a 48 px hour): a routine needs 21 px (26 min)
 
 **Press targets.** Every pressable Week item can be pressed anywhere in a 44 × 44 px box centred on it, kept inside its column (`src/features/week/hitAreas.ts`), whatever it draws. A short or narrow item gets invisible press areas around its box, drawn above the items (z-index 3). A task inside a routine gets its areas over the routine, so a press just below an 18 px task opens the task; the routine keeps the rest of its box. Every item also takes the half of the lane gap beside it, so no press next to an item falls between lanes. Where two items' boxes would meet, the room between them is split at the midpoint, across for items side by side, else along; an area never covers another item's own box. Where three or more meet, the room is shared out in turn, shortest item first, so no press near an item is left to nobody. Where items crowd each other so that one cannot own a 44 × 44 px square touching its box (a task with exactly the time of its routine, drawn as an outline; a one-hour routine its 45-minute task fills), a shared 44 × 44 px target lies over it instead: a press there opens a chooser listing every item the target touches (title, kind and time; each row a 44 px target; one press opens that item; Escape or Close returns). Items that own their square keep their own presses, with no chooser. The keyboard reaches every item directly.
 
-**All-day and free events.** All-day events (holidays, birthdays, days off; from calendars or Next168) are drawn in a row under the day headings, and in the phone's day view above its first hour, when the week has any. Each is a 44 px target showing its title in whole words and "…" (two lines at most), and opens its details. A calendar event marked free (transparent) is drawn in the grid as an outline with no hatching: it takes no time from the plan and never conflicts.
+**All-day and free events.** All-day events (holidays, birthdays, days off; from calendars or Weeklid) are drawn in a row under the day headings, and in the phone's day view above its first hour, when the week has any. Each is a 44 px target showing its title in whole words and "…" (two lines at most), and opens its details. A calendar event marked free (transparent) is drawn in the grid as an outline with no hatching: it takes no time from the plan and never conflicts.
 
 **Week overview.** The seven-day overview draws shapes only. Text lives in the accessible names and the legend.
 

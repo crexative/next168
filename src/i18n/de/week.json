@@ -12,7 +12,7 @@
     "when": "Wann",
     "calendar": "Kalender",
     "conflictsWith": "Überschneidet sich mit {title}",
-    "ownEvent": "Next168-Termin",
+    "ownEvent": "Weeklid-Termin",
     "calendarFallback": "Kalender",
     "location": "Ort",
     "notes": "Notizen"

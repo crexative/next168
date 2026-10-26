@@ -1,14 +1,18 @@
-# Next168 - Master Your Next 168 Hours
+# Weeklid - Lead your week
+
+<img src="docs/brand/lockup-horizontal.svg" alt="Weeklid" height="48">
+
+Weeklid was formerly called Next168; the repository, the companion command and stored data keep the old technical names.
 
 > **A smart weekly planner that helps you visualize, structure, and balance your time with clarity and purpose.**
 
-Next168 is a powerful weekly time management application built with Vue 3, TypeScript, and modern web technologies. The app helps you plan and optimize your 168-hour week through intelligent categorization, visual scheduling, and comprehensive analytics.
+Weeklid is a powerful weekly time management application built with Vue 3, TypeScript, and modern web technologies. The app helps you plan and optimize your 168-hour week through intelligent categorization, visual scheduling, and comprehensive analytics.
 
 🌐 **Official Website**: [next168.app](https://next168.app)
 
-## ✨ What is Next168?
+## ✨ What is Weeklid?
 
-Next168 transforms how you approach your week by providing a complete system for planning and tracking your 168 hours. Every week has exactly 168 hours - the difference is in how you live them.
+Weeklid transforms how you approach your week by providing a complete system for planning and tracking your 168 hours. Every week has exactly 168 hours - the difference is in how you live them.
 
 ### Core Features
 
@@ -20,9 +24,9 @@ Next168 transforms how you approach your week by providing a complete system for
 - **📱 Responsive Design**: Optimized experience across desktop, tablet, and mobile devices
 - **🎯 Accessibility**: WCAG 2.1 Level AA compliant with proper contrast ratios and ARIA labels
 
-## 🎨 The Next168 Philosophy
+## 🎨 The Weeklid Philosophy
 
-Next168 doesn't just help you organize your days - it helps you **anticipate your week** with balance and clarity. The platform combines:
+Weeklid doesn't just help you organize your days - it helps you **anticipate your week** with balance and clarity. The platform combines:
 
 - **Visual time management** with color-coded categories and blocks
 - **Intelligent analytics** showing weekly utilization and category breakdown
@@ -150,7 +154,7 @@ npm run lint         # Run ESLint with auto-fix
 ```
 
 To install the PWA on a real Android phone or iPhone, follow
-[Install Next168 on a phone](docs/install-on-a-phone.md) for local HTTPS, CA trust,
+[Install Weeklid on a phone](docs/install-on-a-phone.md) for local HTTPS, CA trust,
 offline checks, and the Android USB alternative. No hosting account is needed.
 
 ### Testing
@@ -224,15 +228,11 @@ src/
 
 ## 🎨 Branding & Design
 
-### Next168 Brand Colors
+### Weeklid brand
 
-```css
---next168-blue-deep: #1C2E4A;    /* Trust and focus */
---next168-green-neon: #30E6A5;   /* Energy and progress */
---next168-green-dark: #0D9B6E;   /* Accessible contrast */
---next168-gray-light: #F4F5F7;   /* Clean balance */
---next168-black: #0D0D0D;        /* Visual strength */
-```
+The identity is **Lidera**: one stroke writes the W and its last stroke rises into a check, in coffee-farm green
+(#147745) with a maize tick. Marks, palette with measured contrast, clear space, minimum sizes and don'ts are in
+[docs/brand/](docs/brand/README.md); the app's colour tokens are in `src/assets/tokens.css`.
 
 ### Accessibility
 
@@ -346,7 +346,7 @@ MIT License - Free to use for personal or commercial purposes.
 
 ---
 
-**Next168** - Plan your next 168 hours, effortlessly.
+**Weeklid** - Plan your 168 hours, effortlessly.
 
 Built with ❤️ using Vue 3, TypeScript, and modern web technologies.
 

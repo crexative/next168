@@ -44,11 +44,11 @@ function chatGptReply(overrides: Record<string, unknown> = {}): string {
   }
   return `¡Claro! Mover el gimnasio al jueves deja libre tu martes por la tarde y el jueves a esa hora no tienes nada.
 
-\`\`\`next168
+\`\`\`weeklid
 ${JSON.stringify(proposal, null, 2)}
 \`\`\`
 
-Cuando lo apruebes en Next168, el gimnasio quedará el jueves de 18:00 a 19:00. ¿Quieres que revise también el fin de semana?`
+Cuando lo apruebes en Weeklid, el gimnasio quedará el jueves de 18:00 a 19:00. ¿Quieres que revise también el fin de semana?`
 }
 
 // The planner of a person who skipped the first-run setup ("Ahora no"): nothing in it yet.
@@ -108,7 +108,7 @@ for (const theme of THEMES) {
         await page.getByTestId('any-ai-copy').click()
         await expect(page.getByTestId('any-ai-copied')).toHaveText('Copiado. Ahora pégalo en tu chat.')
         const [text] = await copiedTexts(page)
-        expect(text).toContain('Next168 es un planificador semanal privado')
+        expect(text).toContain('Weeklid es un planificador semanal privado')
         expect(text).toContain(`workspaceId="${WORKSPACE}" revision=1`)
         expect(text).toContain('"Gimnasio" [category="c-exercise"]: mar 18:00-19:00 [id="b-gym"')
         expect(text).toContain('2026-10-22 14:00-15:00 "Revisión de diseño"')
@@ -172,13 +172,13 @@ for (const theme of THEMES) {
         await openFromAssistant(page)
         await box(page).fill('Claro, yo movería el gimnasio al jueves. ¿Algo más?')
         await page.getByTestId('any-ai-review').click()
-        await expect(page.getByTestId('any-ai-error')).toContainText('Tu IA respondió sin cambios para Next168: quizá solo conversó o necesita algo de ti antes. Lee su mensaje. Para cambiar tu plan, pídele: «dame los cambios en el bloque next168».')
+        await expect(page.getByTestId('any-ai-error')).toContainText('Tu IA respondió sin cambios para Weeklid: quizá solo conversó o necesita algo de ti antes. Lee su mensaje. Para cambiar tu plan, pídele: «dame los cambios en el bloque weeklid».')
         await expect(page.getByTestId('any-ai-reply-start')).toHaveText('Claro, yo movería el gimnasio al jueves. ¿Algo más?')
         await expect(page.getByRole('alert')).toBeVisible()
         await expect(page.getByTestId('proposal-review')).toHaveCount(0)
         await expect(box(page)).toHaveValue(/movería el gimnasio/)
         await noViolations(page, `${theme}/${size}/no proposal found`)
-        for (const garbage of ['{"ops": [', '```next168\n{"contractVersion": "9"}\n```']) {
+        for (const garbage of ['{"ops": [', '```weeklid\n{"contractVersion": "9"}\n```']) {
           await box(page).fill(garbage)
           await page.getByTestId('any-ai-review').click()
           await expect(page.getByTestId('any-ai-error')).toBeVisible()
@@ -227,7 +227,7 @@ for (const theme of THEMES) {
   }
 }
 
-// The whole week of another planner into an EMPTY Next168 in one round trip (#3). The reply is a recorded, realistic
+// The whole week of another planner into an EMPTY Weeklid in one round trip (#3). The reply is a recorded, realistic
 // chat answer built from a synthetic week of the owner's size (8 categories, 85 ranges, 3 tasks); the browser never
 // talks to an AI. Only the workspace and revision, which the AI copies from the prompt, are filled in from the copy.
 const promptBinding = (text: string) => {
