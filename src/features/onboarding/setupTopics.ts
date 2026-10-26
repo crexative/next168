@@ -40,6 +40,8 @@ export const TOPICS: Record<TopicId, Topic> = {
 export const TOPIC_IDS = Object.keys(TOPICS) as TopicId[]
 // The topics a person can pick on the "more" screen, in chip order.
 export const EXTRA_TOPICS: TopicId[] = ['family', 'friends', 'me', 'learning']
+// What adding to a week after setup can offer when the week has none of it yet (the trip is only derived from work).
+export const ADD_TOPICS: TopicId[] = ['sleep', 'work', 'study', 'exercise', ...EXTRA_TOPICS]
 
 // Studying next to a job is usually in the evening.
 export const STUDY_WITH_WORK: TopicRange = { days: [1, 2, 3, 4], start: at(19), end: at(21) }

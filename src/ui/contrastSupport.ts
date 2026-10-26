@@ -1,8 +1,9 @@
 import { readFileSync } from 'node:fs'
+import type { Rgb } from './contrast'
 
 const tokensCss = readFileSync('src/assets/tokens.css', 'utf8')
 
-export type Rgb = [number, number, number]
+export { contrast, rgb, type Rgb } from './contrast'
 
 export function declarations(selector: string): Record<string, string> {
   const escaped = selector.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
@@ -10,34 +11,6 @@ export function declarations(selector: string): Record<string, string> {
   if (!block) throw new Error(`Missing token block: ${selector}`)
   return Object.fromEntries([...block[1]!.matchAll(/(--[\w-]+):\s*([^;]+);/g)]
     .map(([, name, value]) => [name, value!.trim()]))
-}
-
-export function rgb(value: string): Rgb {
-  if (/^#[\da-f]{6}$/i.test(value)) {
-    return [1, 3, 5].map((offset) => parseInt(value.slice(offset, offset + 2), 16) / 255) as Rgb
-  }
-  const hsl = value.match(/^hsl\(([\d.]+)\s+([\d.]+)%\s+([\d.]+)%\)$/)
-  if (!hsl) throw new Error(`Unsupported token color: ${value}`)
-  const hue = Number(hsl[1]) / 30
-  const saturation = Number(hsl[2]) / 100
-  const lightness = Number(hsl[3]) / 100
-  const amplitude = saturation * Math.min(lightness, 1 - lightness)
-  return [0, 8, 4].map((offset) => {
-    const channel = (offset + hue) % 12
-    return lightness - amplitude * Math.max(-1, Math.min(channel - 3, 9 - channel, 1))
-  }) as Rgb
-}
-
-function luminance(color: Rgb): number {
-  const linear = color.map((channel) => channel <= 0.04045
-    ? channel / 12.92
-    : ((channel + 0.055) / 1.055) ** 2.4)
-  return linear[0]! * 0.2126 + linear[1]! * 0.7152 + linear[2]! * 0.0722
-}
-
-export function contrast(foreground: Rgb, background: Rgb): number {
-  const values = [luminance(foreground), luminance(background)]
-  return (Math.max(...values) + 0.05) / (Math.min(...values) + 0.05)
 }
 
 export const base = declarations(':root')

@@ -98,6 +98,13 @@
       "done": "Nein, das ist alles",
       "limit": "Das reicht fürs Erste."
     },
+    "add": {
+      "title": "Zu deiner Woche hinzufügen",
+      "question": "Wofür möchtest du dir Zeit nehmen?",
+      "hint": "Wähle eins, oder schreib etwas anderes.",
+      "goesIn": "Gehört zu",
+      "own": "Für sich"
+    },
     "extra": {
       "family": "Wann verbringst du Zeit mit der Familie?",
       "friends": "Wann triffst du deine Freunde?",
@@ -135,7 +142,8 @@
       "sameTime": "Beginn und Ende sind gleich. Ändere eins davon.",
       "overlap": "Überschneidet sich mit {name}: {when}.",
       "nameRequired": "Gib einen Namen ein.",
-      "nameDuplicate": "Diesen Namen gibt es schon."
+      "nameDuplicate": "Diesen Namen gibt es schon.",
+      "destinationGone": "Was du bei „Gehört zu“ gewählt hast, gibt es nicht mehr. Wähle etwas anderes."
     },
     "resumed": "Wir machen da weiter, wo du warst.",
     "startOver": "Neu beginnen",
@@ -171,6 +179,10 @@
     "changedElsewhere": "Deine Woche wurde in einem anderen Fenster geändert. Hier ist die aktuelle Version.",
     "understood": "Verstanden",
     "saveFailed": "Speichern hat nicht geklappt. Deine Antworten sind noch da.",
-    "tooLarge": "Deine Woche hat zu viele Zeiten zum Speichern. Entferne einige."
+    "tooLarge": "Deine Woche hat zu viele Zeiten zum Speichern. Entferne einige.",
+    "addSave": "Zu meiner Woche hinzufügen",
+    "added": "„{name}“ hinzugefügt | {count} Dinge hinzugefügt",
+    "into": "in {name}",
+    "addFailed": "Hinzufügen hat nicht geklappt. Versuch es noch einmal."
   }
 }

@@ -3,7 +3,7 @@ import { expect, test, type Locator, type Page } from '@playwright/test'
 import { V2_KEY, onlyProject, seedKey } from './fixtures'
 import { storedPlanner } from './support/indexedDb'
 import { cssColorAlpha } from './support/cssColor'
-import { addFromMenu } from './support/week'
+import { addFromMenu, openClassicRoutine } from './support/week'
 
 // Week UX slice (#3): tasks drawn in Week, block outcomes, week navigation, "+" with Tarea / Evento / Rutina,
 // stable task times and the phone's whole-week overview. Spanish (es-CO), 390x844 and 1440x900, both themes.
@@ -205,7 +205,12 @@ for (const theme of THEMES) {
         await expect(page.getByRole('menu')).toBeVisible()
         await page.getByRole('heading', { level: 1 }).click({ force: true })
         await expect(page.getByRole('menu')).toHaveCount(0)
+        // "Rutina" opens the guided add; an empty hour still opens the classic form.
         await addFromMenu(page, 'Rutina')
+        await expect(page.locator('[data-testid=setup][data-mode=add]')).toBeVisible()
+        await page.keyboard.press('Escape')
+        await expect(page.getByTestId('setup')).toHaveCount(0)
+        await openClassicRoutine(page)
         await expect(page.getByRole('dialog', { name: 'Nueva rutina' })).toBeVisible()
       })
 
@@ -543,11 +548,11 @@ test.describe('tasks in Week', () => {
 
   test('a sheet opened from the add menu closes on Escape and gives focus back to the menu button', async ({ page }) => {
     await openWeek(page, 'light', 'desktop')
-    await addFromMenu(page, 'Rutina')
-    const sheet = page.getByRole('dialog', { name: 'Nueva rutina' })
+    await addFromMenu(page, 'Evento')
+    const sheet = page.getByRole('dialog', { name: 'Nuevo evento' })
     await expect(sheet).toBeVisible()
     await page.waitForTimeout(400)
-    expect(await focusInside(page, 'Nueva rutina')).toBe(true)
+    expect(await focusInside(page, 'Nuevo evento')).toBe(true)
     await page.keyboard.press('Escape')
     await expect(sheet).toBeHidden()
     await expect(page.getByTestId('week-add')).toBeFocused()

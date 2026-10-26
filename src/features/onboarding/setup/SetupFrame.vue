@@ -77,7 +77,9 @@ watch(() => props.open, async (open, was) => {
     watchViewport()
   } else if (was) {
     await nextTick()
-    returnFocusTo?.focus?.()
+    // The control that opened it, or, when that is gone (a menu that closed, a view that changed), the page's heading.
+    const target = returnFocusTo?.isConnected ? returnFocusTo : document.querySelector<HTMLElement>('main h1')
+    target?.focus?.({ preventScroll: true })
     returnFocusTo = null
   }
 }, { immediate: true })
@@ -119,7 +121,7 @@ onBeforeUnmount(() => {
               <AppMark class="mark" :size="32" />
               <span class="visually-hidden">{{ title }}</span>
             </h2>
-            <p class="progress" data-testid="setup-progress">
+            <p v-if="total > 0" class="progress" data-testid="setup-progress">
               <span class="visually-hidden">{{ progressLabel }}</span>
               <span class="pills" aria-hidden="true"><span v-for="(state, index) in pills" :key="index" class="pill" :class="`is-${state}`" /></span>
               <span class="count t-subhead" aria-hidden="true">{{ countLabel }}</span>

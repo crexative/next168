@@ -14,9 +14,9 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  verify:
+  checks:
     runs-on: ubuntu-latest
-    timeout-minutes: 45
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
 
@@ -37,20 +37,77 @@ jobs:
       - name: Type-check and test companion
         run: npm --prefix companion test
 
-      - name: Install browsers
-        run: npx playwright install --with-deps chromium webkit
+  e2e:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    # The official image ships the browsers and their system libraries, so no browser apt install runs here.
+    # The tag must equal the locked @playwright/test version; the first step enforces it.
+    container:
+      image: mcr.microsoft.com/playwright:v1.63.0-noble
+      options: --init --ipc=host
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1, 2, 3, 4]
+    steps:
+      - uses: actions/checkout@v4
 
-      - name: End-to-end tests
-        run: npx playwright test
+      - name: Require the image tag to match the locked Playwright version
+        run: |
+          locked="$(node -p "require('./package-lock.json').packages['node_modules/@playwright/test'].version")"
+          image="$(grep -oE 'playwright:v[0-9]+\.[0-9]+\.[0-9]+-noble' .github/workflows/ci.yml | head -n 1 | sed -E 's/^playwright:v(.*)-noble$/\1/')"
+          if [ -z "$image" ] || [ "$image" != "$locked" ]; then
+            echo "::error::The e2e container image is Playwright '$image' but package-lock.json locks '$locked'. Update the image tag in .github/workflows/ci.yml."
+            exit 1
+          fi
+
+      - name: Trust the workspace for git
+        run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
+
+      # The image has no DejaVu; GitHub's ubuntu runners do, and the layout baseline expects it (as scripts/e2e-linux.sh).
+      - name: Install DejaVu fonts
+        timeout-minutes: 5
+        run: |
+          echo 'Acquire::http::Timeout "20"; Acquire::https::Timeout "20"; Acquire::Retries "5";' > /etc/apt/apt.conf.d/99-ci-timeouts
+          apt-get update && apt-get install -y --no-install-recommends fonts-dejavu-core
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+
+      - run: npm ci
+
+      - name: Install companion
+        run: npm --prefix companion ci
+
+      - name: End-to-end tests (shard ${{ matrix.shard }}/4)
+        run: npx playwright test --shard=${{ matrix.shard }}/4
 
       - name: Upload e2e artifacts
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: e2e-artifacts
+          name: e2e-artifacts-${{ matrix.shard }}
           path: |
             e2e/artifacts
             e2e/.report
             e2e/.results
           if-no-files-found: ignore
           retention-days: 14
+
+  # The single required check keeps its name: branch tooling looks for `verify`.
+  verify:
+    needs: [checks, e2e]
+    if: always()
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Require checks and every e2e shard to succeed
+        env:
+          CHECKS_RESULT: ${{ needs.checks.result }}
+          E2E_RESULT: ${{ needs.e2e.result }}
+        run: |
+          echo "checks: $CHECKS_RESULT"
+          echo "e2e: $E2E_RESULT"
+          [ "$CHECKS_RESULT" = "success" ] && [ "$E2E_RESULT" = "success" ]

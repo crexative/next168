@@ -26,6 +26,9 @@ test('two tabs committing from the same revision: exactly one wins, no lost upda
   // without it, a fast storage event could refresh one tab first and make the race sequential.
   const holder = await context.newPage()
   await holder.goto('./')
+  // The holder's own app takes the same lock while it loads (an empty planner's first load runs under it): it must
+  // have finished before the holder locks, or that load is a third waiter and the count below is never 2.
+  await holder.waitForFunction(() => window.__next168Test?.revision() === 0)
   await holder.evaluate(() => new Promise<void>((locked) => {
     void navigator.locks.request('next168-commit', () => new Promise<void>((release) => {
       ;(window as unknown as { releaseCommitLock: () => void }).releaseCommitLock = release

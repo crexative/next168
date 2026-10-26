@@ -12,7 +12,7 @@ import TodayView from '@/features/today/TodayView.vue'
 import WeekView from '@/features/week/WeekView.vue'
 import CategorySettings from '@/features/settings/categories/CategorySettings.vue'
 import { draftOf, saveDraft } from '../draftStorage'
-import { setupRequest } from '../reopen'
+import { openAdd, setupRequest } from '../reopen'
 import { addOwnCategory, clearRanges, createState, MAX_PICKS, pick } from '../setupModel'
 import { block, category, documentWith, env } from '../setupFixtures'
 import legacyDrafts from '../__fixtures__/legacyDraftsV2.json'
@@ -831,5 +831,75 @@ describe('admission: the frame opens only over a usable planner with nothing mod
     await settle()
     expect(setup()).toBeNull()
     expect(anyFullScreenOpen()).toBe(false)
+  })
+})
+
+describe('adding after setup (S2-10, S2-15, N3, N6, N9)', () => {
+  const planned = () => firstRun({ settings: { ...testDocument().settings, onboardingDone: true }, categories: [WORK], blocks: [WORK_BLOCK] })
+  const preventsUnload = () => {
+    const event = new Event('beforeunload', { cancelable: true })
+    window.dispatchEvent(event)
+    return event.defaultPrevented
+  }
+  async function typeName(name: string): Promise<void> {
+    await click('[data-testid=more-other]')
+    const field = live('[data-testid=more-other-name]') as unknown as HTMLTextAreaElement
+    field.value = name
+    field.dispatchEvent(new Event('input'))
+    await nextTick()
+  }
+
+  it('opens as an add session, never writes the setup draft, warns before unload only while dirty, and closing discards', async () => {
+    const { memory } = await mount(planned())
+    const before = memory.data.get('document')
+    sessionStorage.setItem(DRAFT_KEY, 'seeded')
+    openAdd('routine')
+    await waitForSetup()
+    expect(setup()!.dataset.mode).toBe('add')
+    expect(screen()).toBe('more')
+    expect(preventsUnload()).toBe(false)
+    expect(hasUnsavedInput.value).toBe(false)
+    await typeName('Guitar')
+    expect(preventsUnload()).toBe(true)
+    expect(hasUnsavedInput.value).toBe(true)
+    await click('[data-value="into:c-work"]')
+    expect(screen()).toBe('extra:into:c-work')
+    expect(sessionStorage.getItem(DRAFT_KEY)).toBe('seeded')
+    await vi.waitFor(() => expect(setup()!.contains(window.document.activeElement)).toBe(true))
+    window.document.activeElement!.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }))
+    await vi.waitFor(() => expect(setup()).toBeNull())
+    expect(preventsUnload()).toBe(false)
+    expect(sessionStorage.getItem(DRAFT_KEY)).toBe('seeded')
+    expect(memory.data.get('document')).toBe(before)
+    openAdd('routine')
+    await waitForSetup()
+    expect(screen()).toBe('more')
+    expect(setup()!.querySelectorAll('[data-answer]')).toHaveLength(0)
+  })
+
+  it('closes an add session on a storage failure, with nothing announced and nothing kept; it cannot reopen over the error', async () => {
+    const { store } = await mount(planned())
+    openAdd('routine')
+    await waitForSetup()
+    await typeName('Guitar')
+    store.reportStorageFailure('quota-exceeded')
+    await vi.waitFor(() => expect(setup()).toBeNull())
+    expect(anyFullScreenOpen()).toBe(false)
+    expect(preventsUnload()).toBe(false)
+    expect(sessionStorage.getItem(DRAFT_KEY)).toBeNull()
+    openAdd('category')
+    setupRequest.value += 1
+    await new Promise((resolve) => setTimeout(resolve, 20))
+    expect(setup()).toBeNull()
+  })
+
+  it('closes the setup on a storage failure, keeping its draft closed but not dismissed', async () => {
+    const { store } = await mount(firstRun())
+    await click('[data-testid=setup-primary]')
+    expect(screen()).toBe('workStudy')
+    store.reportStorageFailure('quota-exceeded')
+    await vi.waitFor(() => expect(setup()).toBeNull())
+    expect(JSON.parse(sessionStorage.getItem(DRAFT_KEY)!)).toMatchObject({ open: false, screen: 'workStudy' })
+    expect(localStorage.getItem('next168-setup-dismissed')).toBeNull()
   })
 })

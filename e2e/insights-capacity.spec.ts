@@ -182,21 +182,34 @@ test.describe('summary: your typical week and goals', () => {
 })
 
 test.describe('category colours', () => {
-  test('a new category preselects the first unused colour and a repeated colour only shows a hint', async ({ page }) => {
+  test('a new category gets the first unused colour, and a repeated colour chosen in Edit only shows a hint', async ({ page }) => {
     await start(page, { categories: [{ ...sleep, colorKey: 'blue' }, { ...work, colorKey: 'green' }], blocks: [] })
     await openTab(page, 'settings')
+    // "Add category" is the guided add: something of the person's own, with no fixed time.
     await page.getByRole('button', { name: 'Add category' }).click()
-    const dialog = page.getByRole('dialog', { name: 'New category' })
+    const setup = page.locator('[data-testid=setup][data-mode=add]')
+    await setup.getByTestId('more-other').click()
+    await setup.getByTestId('more-other-name').fill('Reading')
+    await setup.getByTestId('more-other-add').click()
+    await expect(setup).toHaveAttribute('data-screen', /^extra:custom:/)
+    await setup.getByRole('button', { name: 'No fixed time', exact: true }).click()
+    await expect(setup).toHaveAttribute('data-screen', 'more:1')
+    await setup.getByTestId('more-done').click()
+    await expect(setup).toHaveAttribute('data-screen', 'summary')
+    await setup.getByTestId('setup-primary').click()
+    await expect(page.getByTestId('setup')).toHaveCount(0)
+    let stored = await storedPlanner<{ categories: { name: string; colorKey: string }[] }>(page)
+    expect(stored.categories.at(-1)).toMatchObject({ name: 'Reading', colorKey: 'orange' })
+
+    await page.getByRole('button', { name: 'Edit Reading' }).click()
+    const dialog = page.getByRole('dialog', { name: 'Edit category' })
     await expect(dialog.getByRole('radio', { name: 'Orange' })).toBeChecked()
     await expect(dialog.getByTestId('color-in-use')).toHaveCount(0)
-
     await dialog.getByRole('radio', { name: 'Blue' }).check()
     await expect(dialog.getByTestId('color-in-use')).toContainText('Sleep already uses this colour')
-
-    await dialog.getByRole('textbox', { name: 'Name' }).fill('Reading')
     await dialog.getByRole('button', { name: 'Save' }).click()
     await expect(dialog).toBeHidden()
-    const stored = await storedPlanner<{ categories: { name: string; colorKey: string }[] }>(page)
+    stored = await storedPlanner<{ categories: { name: string; colorKey: string }[] }>(page)
     expect(stored.categories.at(-1)).toMatchObject({ name: 'Reading', colorKey: 'blue' })
   })
 })

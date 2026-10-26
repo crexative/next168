@@ -1,11 +1,11 @@
 <script setup lang="ts">
 import { computed, reactive, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { COLOR_KEYS, type Category, type ColorKey, type Goal, type PlannerDocument } from '@/core/model'
-import { categoryColor, categorySharingColor, firstUnusedColorKey } from '@/features/insights/categoryColor'
+import { COLOR_KEYS, type Category, type Goal, type PlannerDocument } from '@/core/model'
+import { categoryColor, categorySharingColor } from '@/features/insights/categoryColor'
 import { formatHours } from '@/ui/format'
 import { assertEntry, CHANGED_ELSEWHERE, snapshotOf } from '@/features/insights/entryGuard'
-import { openSetup } from '@/features/onboarding/reopen'
+import { openAdd, openSetup } from '@/features/onboarding/reopen'
 import { usePlannerStore } from '@/stores/plannerStore'
 import Button from '@/ui/Button.vue'
 import Icon from '@/ui/Icon.vue'
@@ -70,12 +70,13 @@ function goalSummary(goal: Goal): string {
   return t(`categories.goalSummary.${goal.type}`, { hours: formatHours(goal.hoursPerWeek) })
 }
 
-function openEditor(category?: Category): void {
-  Object.assign(form, category ? formFromCategory(category) : { name: '', colorKey: firstUnusedColorKey(categories.value.filter((candidate) => !candidate.customColor).map((candidate) => candidate.colorKey)) as ColorKey, goalType: 'none' as Goal['type'], hours: 1 })
+// The sheet edits a stored category; a new one is added through the guided add (Añadir categoría).
+function openEditor(category: Category): void {
+  Object.assign(form, formFromCategory(category))
   submitted.value = false
   changedElsewhere.value = false
   reassignTo.value = ''
-  editing.value = { id: category?.id ?? null, stored: snapshotOf(storedCategory(category?.id ?? null)) }
+  editing.value = { id: category.id, stored: snapshotOf(storedCategory(category.id)) }
 }
 
 // Inside the queued commit: the category must still be exactly what the editor was opened on.
@@ -175,7 +176,7 @@ async function remove(): Promise<void> {
       </li>
       <li v-if="categories.length === 0" class="t-subhead t-secondary empty">{{ t('categories.empty') }}</li>
     </ListGroup>
-    <Button class="add-category" variant="plain" :disabled="!planner.writable" @click="openEditor()">
+    <Button class="add-category" variant="plain" :disabled="!planner.writable" @click="openAdd('category')">
       <Icon name="plus" :size="20" /> {{ t('categories.add') }}
     </Button>
 

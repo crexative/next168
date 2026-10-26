@@ -1,7 +1,7 @@
 import { expect, test, type Page } from '@playwright/test'
 import { V2_KEY, seedKey } from './fixtures'
 import { visualIntegrityViolations } from './support/visualIntegrity'
-import { addFromMenu } from './support/week'
+import { addFromMenu, openClassicRoutine } from './support/week'
 
 // UX foundations (#3, slice A): shared materials, rows, buttons, category marks, measure, time format and the
 // accessibility plumbing. Geometry and accessibility assertions only; no screenshot baselines.
@@ -178,7 +178,7 @@ test.describe('buttons', () => {
     test.skip(testInfo.project.name !== 'phone')
     await startWith(page)
     await openView(page, 'week')
-    await addFromMenu(page, 'Routine')
+    await openClassicRoutine(page)
     const save = page.getByRole('dialog').getByRole('button', { name: 'Save', exact: true })
     await expect(save).toBeVisible()
     const [saveBox, bodyBox] = await Promise.all([save.boundingBox(), page.locator('.sheet-body').boundingBox()])
@@ -516,7 +516,7 @@ test.describe('sheets', () => {
     await page.setViewportSize({ width: 390, height: 844 })
     await startWith(page)
     await openView(page, 'week')
-    await addFromMenu(page, 'Routine')
+    await openClassicRoutine(page)
     const dialog = page.getByRole('dialog')
     await expect(dialog).toBeVisible()
     await page.waitForFunction(() => document.getAnimations().every((animation) => animation.playState !== 'running'))
@@ -528,7 +528,7 @@ test.describe('sheets', () => {
   async function openAddBlock(page: Page) {
     await startWith(page)
     await openView(page, 'week')
-    await addFromMenu(page, 'Routine')
+    await openClassicRoutine(page)
     const dialog = page.getByRole('dialog')
     await expect(dialog).toBeVisible()
     await page.waitForFunction(() => document.getAnimations().every((animation) => animation.playState !== 'running'))

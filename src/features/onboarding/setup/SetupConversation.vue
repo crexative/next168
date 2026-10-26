@@ -118,7 +118,7 @@ function onFocusIn(event: FocusEvent): void {
 
     <footer v-if="summary" class="dock">
       <div class="column actions">
-        <Button data-primary data-dock-primary data-testid="setup-primary" block :disabled="busy" @click="emit('submit')">{{ first ? t('onboarding.summary.start') : t('onboarding.summary.save') }}</Button>
+        <Button data-primary data-dock-primary data-testid="setup-primary" block :disabled="busy" @click="emit('submit')">{{ state.add ? t('onboarding.summary.addSave') : first ? t('onboarding.summary.start') : t('onboarding.summary.save') }}</Button>
       </div>
     </footer>
     <SetupAnswer v-else ref="dock" :key="screen" :state="state" :busy="busy" :group-label="now.question" :question-id="questionId" @advance="emit('advance')" @edited="emit('edited')" />

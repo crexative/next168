@@ -4,7 +4,7 @@ import { SUPPORTED_LOCALES, collectMessages, i18n } from './index'
 const files = import.meta.glob<{ default: Record<string, unknown> }>('./*/*.json', { eager: true })
 const messages = collectMessages(files)
 const featureSources = import.meta.glob<string>([
-  '../features/{settings,onboarding,tasks,assistant,proposals}/**/*.{vue,ts}',
+  '../features/{settings,onboarding,tasks,assistant,proposals,share}/**/*.{vue,ts}',
   '!../features/**/*.spec.ts',
   '!../features/**/*.test.ts',
 ], { eager: true, query: '?raw', import: 'default' })

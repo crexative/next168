@@ -98,6 +98,13 @@
       "done": "No, eso es todo",
       "limit": "Con esto basta por ahora."
     },
+    "add": {
+      "title": "Añadir a tu semana",
+      "question": "¿Para qué quieres hacer tiempo?",
+      "hint": "Elige una, o escribe otra cosa.",
+      "goesIn": "Va en",
+      "own": "Por su cuenta"
+    },
     "extra": {
       "family": "¿Cuándo pasas tiempo con tu familia?",
       "friends": "¿Cuándo ves a tus amigos?",
@@ -135,7 +142,8 @@
       "sameTime": "Empieza y termina a la misma hora. Cambia una.",
       "overlap": "Se cruza con {name}: {when}.",
       "nameRequired": "Escribe un nombre.",
-      "nameDuplicate": "Ese nombre ya está en tu lista."
+      "nameDuplicate": "Ese nombre ya está en tu lista.",
+      "destinationGone": "Lo que elegiste en «Va en» ya no está. Elige otro."
     },
     "resumed": "Seguimos donde lo dejaste.",
     "startOver": "Empezar de nuevo",
@@ -171,6 +179,10 @@
     "changedElsewhere": "Tu semana cambió en otra ventana. Te mostramos la versión actual.",
     "understood": "Entendido",
     "saveFailed": "No se pudo guardar. Tus respuestas siguen aquí.",
-    "tooLarge": "Tu semana tiene demasiados horarios para guardarla. Quita algunos."
+    "tooLarge": "Tu semana tiene demasiados horarios para guardarla. Quita algunos.",
+    "addSave": "Añadir a mi semana",
+    "added": "Añadido «{name}» | Añadidas {count} cosas",
+    "into": "en {name}",
+    "addFailed": "No se pudo añadir. Inténtalo de nuevo."
   }
 }

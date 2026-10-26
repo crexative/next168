@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import type { DayIndex } from '@/core/model'
 import { wholeHourParts } from '@/ui/format'
 import {
-  addOwnCategory, appendFromSummary, automaticGoal, blockToSleep, categoryOf, coveredMinutes, createState, deriveCommute, emptyState, ensureCategory,
+  addOwnCategory, addTyped, appendFromSummary, automaticGoal, createAddState, intoKey, rangeProblem, setPendingInto, setPendingName, blockToSleep, categoryOf, coveredMinutes, createState, deriveCommute, emptyState, ensureCategory,
   finishMore, MAX_PICKS, pick, placeSlot, roundOptions, setRemoved, sleepToBlock, slotMinutes, statusOf, suggestCommute, suggestRanges, touch,
   validate, weekTotals, type RangeDraft, type SetupState,
 } from './setupModel'
@@ -404,5 +404,60 @@ describe('"Anything else?": one pick per round (S1-4, S1-5, S1-6, S1-7, S1-9)', 
     expect(state.answers).toMatchObject({ more: [(added as { key: string }).key], moreDone: true })
     pick(state, 1, 'family', env)
     expect(state.answers.more).toEqual([(added as { key: string }).key, 'family'])
+  })
+})
+
+describe('adding after setup (S2-1, S2-3, S2-6, S2-14)', () => {
+  const document = () => documentWith(
+    [category('c-sleep', 'Sleep', { icon: '😴' }), category('c-work', 'Work', { icon: '💼' }), category('c-r1', 'Reading'), category('c-r2', 'reading ')],
+    [block('b-work', 'c-work', [1, 2, 3, 4, 5], at(9), at(17)), block('b-sat', 'c-r1', [6], at(6), at(22))],
+  )
+
+  it('offers stored categories first when adding a routine, then the topics the week lacks; Settings offers no stored one', () => {
+    expect(roundOptions(createAddState(document(), 'routine', env), 0)).toEqual(
+      ['into:c-sleep', 'into:c-work', 'into:c-r1', 'into:c-r2', 'study', 'exercise', 'family', 'friends', 'me', 'learning'])
+    expect(roundOptions(createAddState(document(), 'category', env), 0)).toEqual(['study', 'exercise', 'family', 'friends', 'me', 'learning'])
+  })
+
+  it('counts what is picked, whatever the setup answers would say, and holds no stored category', () => {
+    const state = createAddState(document(), 'routine', env)
+    pick(state, 0, 'exercise', env)
+    state.answers.exercise = 'no'
+    expect(statusOf(state, categoryOf(state, 'exercise')!)).toBe('active')
+    expect(state.categories.every((item) => item.categoryId === undefined)).toBe(true)
+    pick(state, 0, intoKey('c-work'), env)
+    expect(categoryOf(state, intoKey('c-work'))).toMatchObject({ into: 'c-work', name: 'Work' })
+    expect(statusOf(state, categoryOf(state, 'exercise')!)).toBe('inactive')
+  })
+
+  it('pre-selects "Goes in" only for exactly one stored category of that name, and only until the person chooses (N4)', () => {
+    const state = createAddState(document(), 'routine', env)
+    setPendingName(state, ' work')
+    expect(state.pending).toEqual({ name: ' work', into: 'c-work' })
+    setPendingName(state, 'Reading')
+    expect(state.pending).toEqual({ name: 'Reading' })
+    setPendingName(state, 'Work')
+    setPendingInto(state, undefined)
+    setPendingName(state, 'Work ')
+    expect(state.pending).toEqual({ name: 'Work ', intoTouched: true })
+    const own = addTyped(state, 'Work')
+    expect(own.into).toBeUndefined()
+    setPendingInto(state, 'c-sleep')
+    expect(addTyped(state, 'Nap').into).toBe('c-sleep')
+    const settings = createAddState(document(), 'category', env)
+    setPendingName(settings, 'Work')
+    expect(settings.pending).toEqual({ name: 'Work' })
+  })
+
+  it('places suggestions clear of stored blocks, and names the stored one a range clashes with', () => {
+    const state = createAddState(document(), 'routine', env)
+    pick(state, 0, 'family', env)
+    const family = categoryOf(state, 'family')!
+    suggestRanges(state, family)
+    expect(rangeProblem(state, family, family.ranges[0]!)).toMatchObject({ code: 'overlap', with: { categoryKey: 'c-r1', name: 'Reading' } })
+    pick(state, 1, 'exercise', env)
+    const exercise = categoryOf(state, 'exercise')!
+    suggestRanges(state, exercise)
+    expect(rangeProblem(state, exercise, exercise.ranges[0]!)).toBeUndefined()
   })
 })

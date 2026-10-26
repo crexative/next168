@@ -98,6 +98,13 @@
       "done": "Non, c'est tout",
       "limit": "C'est assez pour l'instant."
     },
+    "add": {
+      "title": "Ajouter à ta semaine",
+      "question": "Pour quoi veux-tu prendre du temps ?",
+      "hint": "Choisis-en une, ou écris autre chose.",
+      "goesIn": "Va dans",
+      "own": "À part"
+    },
     "extra": {
       "family": "Quand passes-tu du temps en famille ?",
       "friends": "Quand vois-tu tes amis ?",
@@ -135,7 +142,8 @@
       "sameTime": "Ça commence et finit à la même heure. Changes-en une.",
       "overlap": "Chevauche {name} : {when}.",
       "nameRequired": "Écris un nom.",
-      "nameDuplicate": "Ce nom est déjà dans ta liste."
+      "nameDuplicate": "Ce nom est déjà dans ta liste.",
+      "destinationGone": "Ce que tu as choisi dans « Va dans » n'existe plus. Choisis autre chose."
     },
     "resumed": "On reprend où tu t'étais arrêté.",
     "startOver": "Recommencer",
@@ -171,6 +179,10 @@
     "changedElsewhere": "Ta semaine a changé dans une autre fenêtre. Voici la version actuelle.",
     "understood": "Compris",
     "saveFailed": "Impossible d'enregistrer. Tes réponses sont toujours là.",
-    "tooLarge": "Ta semaine a trop d'horaires pour être enregistrée. Retires-en."
+    "tooLarge": "Ta semaine a trop d'horaires pour être enregistrée. Retires-en.",
+    "addSave": "Ajouter à ma semaine",
+    "added": "« {name} » ajouté | {count} choses ajoutées",
+    "into": "dans {name}",
+    "addFailed": "Impossible d'ajouter. Réessaie."
   }
 }

@@ -8,6 +8,7 @@ import { computeStats, planVsActual, sevenDayMeasures } from '@/core/stats'
 import EmptyState from '@/ui/EmptyState.vue'
 import { usePlannerStore } from '@/stores/plannerStore'
 import AssistantEntryButton from '@/features/assistant/AssistantEntryButton.vue'
+import ShareWeekButton from '@/features/share/ShareWeekButton.vue'
 import { freeHoursWhole } from '@/features/capacity/freeHours'
 import { useNow } from '@/features/week/useNow'
 import { EXERCISE_ICON } from './exercise'
@@ -85,6 +86,7 @@ function doneText(row: Row): string {
       <WeekBar :categories="document.categories" :planned-minutes="plannedMinutes">
         <p class="t-subhead live-line" data-testid="free-hours-live">{{ t('insights.bar.live', { hours: formatHours(freeHours), count: freeHours }) }}</p>
       </WeekBar>
+      <ShareWeekButton v-if="document.blocks.length > 0" />
 
       <section class="goals" :aria-label="t('insights.goals.title')">
         <h2 class="t-headline">{{ t('insights.goals.title') }}</h2>

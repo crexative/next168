@@ -3,7 +3,7 @@ import { expect, test, type Locator, type Page } from '@playwright/test'
 import { V2_KEY, openTab, seedKey } from './fixtures'
 import { storedPlanner } from './support/indexedDb'
 import { installTransformRecorder } from './support/transformRecorder'
-import { addFromMenu } from './support/week'
+import { openClassicRoutine } from './support/week'
 
 // Wednesday 2026-10-21 10:15 UTC; the browser and the document both use UTC.
 const NOW = new Date('2026-10-21T10:15:00.000Z')
@@ -195,7 +195,7 @@ test.describe('week', () => {
 
   test('an overlapping block shows an inline error and cannot be saved', async ({ page }) => {
     await openSeeded(page, 'week')
-    await addFromMenu(page, 'Routine')
+    await openClassicRoutine(page)
     const dialog = page.getByRole('dialog', { name: 'New routine' })
     await dialog.getByLabel('Name').fill('Standup')
     await dialog.getByLabel('Starts').fill('09:30')
@@ -214,7 +214,7 @@ test.describe('week', () => {
   test('an overnight end is shown as +1 day and a goal overrun only warns', async ({ page }, testInfo) => {
     test.skip(testInfo.project.name !== 'desktop')
     await openSeeded(page, 'week')
-    await addFromMenu(page, 'Routine')
+    await openClassicRoutine(page)
     const dialog = page.getByRole('dialog', { name: 'New routine' })
     await dialog.getByLabel('Name').fill('Long ride')
     await dialog.getByRole('radio', { name: 'Exercise' }).click()
