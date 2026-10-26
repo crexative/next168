@@ -4,13 +4,13 @@ import type { PlannerDocument } from '@/core/model'
 import Button from '@/ui/Button.vue'
 import { prefersReducedMotion } from '@/ui/useMediaQuery'
 import type { Issue, ScreenId, SetupState } from '../setupModel'
-import AppMark from './AppMark.vue'
+import AppMark from '@/ui/AppMark.vue'
 import { answer, hint, question, transcript, type Line } from './conversation'
 import SetupAnswer from './SetupAnswer.vue'
 import SetupSummary from './SetupSummary.vue'
 import { useSetupFormat } from './useSetupFormat'
 
-// The guided setup as a conversation: Next168's questions on the leading side, the person's answers on the trailing
+// The guided setup as a conversation: Weeklid's questions on the leading side, the person's answers on the trailing
 // side, every earlier answer still there and tappable to change it, and the answers for the current question docked
 // at the bottom. The last message is the week itself, editable in place.
 const props = defineProps<{
@@ -142,7 +142,7 @@ function onFocusIn(event: FocusEvent): void {
 .turn-question { color: var(--label-2); overflow-wrap: anywhere; }
 .turn-answer { font-size: 1.1875rem; line-height: 1.3; font-weight: 700; white-space: pre-line; overflow-wrap: anywhere; }
 .bubble { box-sizing: border-box; margin: 0; padding: var(--space-4) var(--space-5); overflow-wrap: anywhere; }
-/* Only the current question is a bubble, next to Next168's mark. */
+/* Only the current question is a bubble, next to Weeklid's mark. */
 .question { flex: 1 1 auto; min-width: 0; border-radius: 22px 22px 22px 6px; background: var(--surface-2); color: var(--label); }
 .ask, .hint { hyphens: manual; text-wrap: pretty; }
 .ask { margin: 0; font-size: 1.375rem; line-height: 1.27; font-weight: 700; letter-spacing: -0.01em; outline: none; }

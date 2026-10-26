@@ -35,6 +35,13 @@ describe('category palette', () => {
       }
     })
 
+    it(`${name}: the tint stays apart from the success, warning and destructive colours`, () => {
+      for (const status of ['--success', '--warning', '--danger']) {
+        const gap = distance(tokens['--tint']!, tokens[status]!)
+        expect(gap, `${name}: tint vs ${status} = ${gap.toFixed(3)}`).toBeGreaterThanOrEqual(MIN_DISTANCE)
+      }
+    })
+
     for (const surface of SURFACES) {
       it(`${name}: every category stroke reaches 3:1 on ${surface}`, () => {
         for (const key of COLOR_KEYS) {
