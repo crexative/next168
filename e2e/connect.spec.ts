@@ -3,6 +3,7 @@ import { mkdtemp, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join, resolve } from 'node:path'
 import { startCompanion } from '../companion/src/server'
+import { newPairCode } from '../companion/src/auth'
 import { readFile, writeFile } from 'node:fs/promises'
 import { Client, StreamableHTTPClientTransport } from '../companion/node_modules/@modelcontextprotocol/client/dist/index.mjs'
 
@@ -70,7 +71,7 @@ test('Use with your AI in companion mode: a pasted reply becomes a companion pro
   // Pasting a reply goes through the one AI entry, Settings › Use with your AI.
   await page.goto(`${companion.url}/#/settings/ai`)
   const proposal = { contractVersion: '1.0', workspaceId: document.workspaceId, baseRevision: 1, summary: 'Add a focus hour', ops: [{ op: 'add_block', block: { categoryId: 'focus', title: 'Pasted focus', days: [2], start: 600, end: 660 } }] }
-  await page.getByTestId('any-ai-paste').fill(`Here you go!\n\n\`\`\`next168\n${JSON.stringify(proposal)}\n\`\`\`\n`)
+  await page.getByTestId('any-ai-paste').fill(`Here you go!\n\n\`\`\`weeklid\n${JSON.stringify(proposal)}\n\`\`\`\n`)
   await page.getByTestId('any-ai-review').click()
   await expect(page.getByTestId('proposal-review')).toContainText('Add a focus hour')
   expect((await companion.workspace.document()).blocks).toHaveLength(0)
@@ -106,7 +107,7 @@ test('companion mode never opens the browser planner database (A11)', async ({ p
   await page.goto(`${companion.url}/#/settings/advanced`)
   await expect(page.getByTestId('data-mode')).toContainText('companion', { ignoreCase: true })
   await page.goto(`${companion.url}/#/settings/data`)
-  await page.getByLabel('Choose a Next168 export file').setInputFiles(bundlePath)
+  await page.getByLabel('Choose a Weeklid export file').setInputFiles(bundlePath)
   await page.getByRole('button', { name: 'Replace my data' }).click()
   await expect(page.getByTestId('data-notice')).toContainText('Imported and verified')
   expect((await companion.workspace.document()).blocks.map((block) => block.title)).toEqual(['Imported block'])
@@ -116,4 +117,33 @@ test('companion mode never opens the browser planner database (A11)', async ({ p
     return (await factory.databases()).map((database) => database.name)
   })
   expect(databases).not.toContain('next168')
+})
+test('companion mode keeps calendar text in the companion, so a newly paired browser shows the events', async ({ page, browser, companion }, testInfo) => {
+  test.skip(testInfo.project.name !== 'desktop', 'one browser pair is enough to prove where the text is kept')
+  const document = await companion.workspace.document()
+  document.settings.onboardingDone = true
+  document.settings.timeZone = 'UTC'
+  document.revision++
+  await companion.workspace.save(document, 0)
+  await page.clock.install({ time: new Date('2026-10-19T12:00:00Z') })
+  await page.goto(`${companion.url}/#pair=${companion.pairingCode}`)
+  await expect(page.getByRole('heading', { name: 'Pair this browser' })).toBeHidden()
+  await page.goto(`${companion.url}/#/settings/calendars`)
+  const ics = 'BEGIN:VCALENDAR\r\nVERSION:2.0\r\nBEGIN:VEVENT\r\nUID:shared\r\nDTSTART:20261020T140000Z\r\nDTEND:20261020T150000Z\r\nSUMMARY:Shared review\r\nEND:VEVENT\r\nEND:VCALENDAR\r\n'
+  await page.getByLabel('Import .ics file', { exact: true }).setInputFiles({ name: 'team.ics', mimeType: 'text/calendar', buffer: Buffer.from(ics) })
+  await expect(page.getByTestId('calendar-occurrence')).toContainText('Shared review')
+  const [source] = (await companion.workspace.document()).calendarSources
+  expect(await readFile(join(companion.workspace.home, 'calendars', `${encodeURIComponent(source!.id)}.ics`), 'utf8')).toBe(ics)
+
+  // A second browser profile has nothing of its own: the text must come from the companion.
+  const other = await browser.newContext({ locale: 'en-US', timezoneId: 'UTC' })
+  try {
+    const second = await other.newPage()
+    await second.clock.install({ time: new Date('2026-10-19T12:00:00Z') })
+    await second.goto(`${companion.url}/#pair=${await newPairCode(companion.workspace.home)}`)
+    await expect(second.getByRole('heading', { name: 'Pair this browser' })).toBeHidden()
+    await second.goto(`${companion.url}/#/settings/calendars`)
+    await expect(second.getByTestId('calendar-occurrence')).toContainText('Shared review')
+    await expect(second.getByRole('alert').filter({ hasText: 'is not saved here' })).toHaveCount(0)
+  } finally { await other.close() }
 })

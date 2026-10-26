@@ -1,0 +1,23 @@
+{
+  "schemaVersion": 2,
+  "workspaceId": "workspace-tap-budget",
+  "revision": 1,
+  "updatedAt": "2026-10-26T12:00:00.000Z",
+  "settings": { "locale": "es", "weekStartsOn": 1, "timeZone": "America/Bogota", "onboardingDone": true, "theme": "system" },
+  "categories": [
+    { "id": "work", "name": "Trabajo", "colorKey": "blue", "goal": { "type": "max", "hoursPerWeek": 40 } },
+    { "id": "sleep", "name": "Sueño", "icon": "😴", "colorKey": "purple", "goal": { "type": "min", "hoursPerWeek": 49 } },
+    { "id": "gym", "name": "Ejercicio", "colorKey": "green", "goal": { "type": "none", "hoursPerWeek": 0 } }
+  ],
+  "blocks": [
+    { "id": "deep", "categoryId": "work", "title": "Trabajo profundo", "days": [1, 2, 3, 4, 5], "start": 540, "end": 660 },
+    { "id": "sleep", "categoryId": "sleep", "title": "Dormir", "days": [0, 1, 2, 3, 4, 5, 6], "start": 1320, "end": 360 },
+    { "id": "gym", "categoryId": "gym", "title": "Gimnasio", "days": [1, 3, 5], "start": 1080, "end": 1140 }
+  ],
+  "tasks": [
+    { "id": "t-report", "title": "Informe", "categoryId": "work", "durationMin": 60, "priority": 1, "createdAt": "2026-10-24T12:00:00.000Z" },
+    { "id": "t-bank", "title": "Llamar al banco", "durationMin": 15, "priority": 2, "createdAt": "2026-10-24T12:05:00.000Z" },
+    { "id": "t-bill", "title": "Pagar la luz", "durationMin": 30, "priority": 2, "dueDate": "2026-10-25", "createdAt": "2026-10-24T12:10:00.000Z" }
+  ],
+  "checkIns": [], "actuals": [], "events": [], "calendarSources": [], "appliedProposalIds": []
+}

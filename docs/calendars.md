@@ -1,6 +1,6 @@
 # Calendars (S3)
 
-Architecture: `docs/architecture/deliverable-1.md` §7, including Revision 3. No OAuth, account access or calendar writes are performed by Next168. Provider compose links open the user's provider UI; downloading an ICS file is the portable export. Attendee prefill in Google/Outlook remains subject to vendor/account behavior. Importing into an actual account is an owner check.
+Architecture: `docs/architecture/deliverable-1.md` §7, including Revision 3. No OAuth, account access or calendar writes are performed by Weeklid. Provider compose links open the user's provider UI; downloading an ICS file is the portable export. Attendee prefill in Google/Outlook remains subject to vendor/account behavior. Importing into an actual account is an owner check.
 
 ## Integration contract
 
@@ -28,7 +28,7 @@ S2/S4 can obtain the actual `CalendarSourceStore` through `calendarServices().te
 
 ## Storage and refresh
 
-- Metadata lives in `document.calendarSources`; raw ICS lives in IndexedDB database `next168-calendars`, object store `sources`, keyed by source id.
+- Metadata lives in `document.calendarSources`. Raw ICS lives, keyed by source id, in IndexedDB database `next168-calendars`, object store `sources` (browser mode), or in the companion's `calendars/<sourceId>.ics` through `/api/calendars/:id` (companion mode), so every browser paired with the same companion shows the same calendars. When a source's text is not there, Settings › Calendars names the calendar and says what to do: import the file again, or refresh the subscription.
 - URL refresh occurs once per workspace per open page session when a calendar view mounts, and via the explicit Refresh button. A failed refresh retains the last good feed and sync time, stores a translated error code, and allows offline expansion from the cached text.
 - File import has no runtime network dependency. Later/future ranges are expanded from the original source rather than from a cached week.
 - Source changes and removals are serialized within the calendar store. Raw writes precede the document commit and are rolled back on document-save failure. Removal commits metadata first so a failed save cannot discard the source. Failed raw cleanup can leave an unreferenced source for recovery. This does not claim an atomic transaction spanning IndexedDB and the planner repository or coordination of simultaneous raw refreshes in separate tabs.
@@ -42,7 +42,7 @@ Resolution order is embedded VTIMEZONE, IANA through Intl, then an explicit Wind
 
 Limits are per source/per requested range: 5 MiB UTF-8 input, 5,000 output occurrences, and 50,000 expansion work units. The work budget includes outer candidates and recurrence frequency reads and weighted calendar-step intervals, including hidden candidate-search loops inside `ical.js` and VTIMEZONE expansion. This conservatively rejects some feeds before 50,000 visible candidates; it prevents a single impossible rule from hanging the main thread. Rules with SECONDLY/MINUTELY frequency are rejected. Large intervals exceeding the work budget are rejected. A regression with `FREQ=HOURLY;BYMONTH=2;BYMONTHDAY=30` timed out before the budget was added and now terminates with `calendars.iterations`. No dependency files or global prototypes are patched.
 
-Synthetic fixtures reproduce Google, Outlook and iCloud export shapes without personal data. They cover Bogotá RRULE/EXDATE, Windows zones, exclusive all-day ends, Madrid's 2026-10-25 DST transition, embedded-zone precedence and cancelled instances. The standalone export parse assertion uses **ical.js separately from Next168's importer**; Python `icalendar` was checked and is unavailable on this executor. A separate Python-parser verification remains available to the coordinator.
+Synthetic fixtures reproduce Google, Outlook and iCloud export shapes without personal data. They cover Bogotá RRULE/EXDATE, Windows zones, exclusive all-day ends, Madrid's 2026-10-25 DST transition, embedded-zone precedence and cancelled instances. The standalone export parse assertion uses **ical.js separately from Weeklid's importer**; Python `icalendar` was checked and is unavailable on this executor. A separate Python-parser verification remains available to the coordinator.
 
 The extra development dependency `fake-indexeddb` **6.2.5** (Apache-2.0, published 2025-11-07) enables realistic IndexedDB transaction/persistence tests in Vitest, whose DOM environment has no native IndexedDB. It is not bundled into the app. No other new libraries were added.
 
@@ -66,7 +66,7 @@ NEXT168_CALENDAR_PROVIDER_PROBE=1 npx playwright test e2e/calendars.spec.ts --gr
 
 ## Acceptance and handoff
 
-`e2e/calendars.spec.ts` contains deterministic file import + Week conflict, a real local HTTP server without CORS, a changing CORS-enabled subscription with manual/on-open refresh and offline re-expansion, and create/edit/download/re-import of a meeting plus separate parsing and provider-link assertions. The event sheet asks for a title, a day, all day and from–to, with location and notes under More; it does not ask for attendees or show the time zone. Attendees an event already carries (an import, an assistant proposal) are kept on edit and exported; `eventDraft.spec.ts` covers their ICS and provider-link round trip. The live-provider probe is explicit and opt-in so third-party availability is not a deterministic CI dependency.
+`e2e/calendars.spec.ts` contains deterministic file import + Week conflict, a real local HTTP server without CORS, a changing CORS-enabled subscription with manual/on-open refresh and offline re-expansion, and create/edit/download/re-import of a meeting plus separate parsing and provider-link assertions. The event sheet asks for a title, a day, all day and from–to, with guests, location and notes under More; it does not show the time zone. Guests are a list of email addresses (Enter, a comma or Add adds one; each has its own 44 px remove button; what is not an email address is refused with a message). They are stored in the event's `attendees` and carried exactly as an imported or proposed event's attendees are: `ATTENDEE:mailto:` lines in the `.ics`, Google `add=` and Outlook `to=`. Weeklid sends nothing to them. Attendee emails are other people's personal data and never reach an assistant: the any-AI prompt and the on-device model do not include them, and the MCP `list_events` tool leaves them out. `eventDraft.spec.ts` covers the ICS and provider-link round trip; the e2e meeting test creates an event with two guests and parses the download. The live-provider probe is explicit and opt-in so third-party availability is not a deterministic CI dependency.
 
 The Week assertion requires S1 integration; the S0-shell placeholder in this executor's base does not render the calendar overlay. Do not weaken it into a Settings-only assertion. No shared shell, S1 or model files were edited.
 

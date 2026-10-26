@@ -4,6 +4,8 @@ import { auditFloatingActionButtonInPage } from './fabPlacement'
 export type IntegrityOptions = {
   // Also focus every control the way a keyboard user would and check its focus ring.
   focusRings?: boolean
+  // Press up to this many of the Week's shared press targets and check that each chooser offers every item it lists.
+  choosers?: number
 }
 
 // Keep this function self-contained: Playwright serializes it into the page.
@@ -706,8 +708,10 @@ export function auditInPage(options: { focusRings: boolean }): string[] {
     const x = rect.left + rect.width / 2
     const y = rect.top + rect.height / 2
     if (x < shownArea.left || x > shownArea.right || y < shownArea.top || y > shownArea.bottom || x < 0 || y < 0 || x > viewportWidth || y > viewportHeight) continue
-    const hit = document.elementFromPoint(x, y)
+    const hit = pressedItem(document.elementFromPoint(x, y))
     if (!hit || control.contains(hit)) continue
+    // A shared press target over crowded Week items stands in for every item it lists.
+    if (hit.hasAttribute('data-shared-target') && (hit.getAttribute('data-shared-items') ?? '').split(' ').includes(control.getAttribute('data-hit-key') ?? '')) continue
     // Content of a scroller under something outside it (a docked footer, a bar) is scrolled there, not laid out there.
     const scroller = scrollerOf(control)
     if (scroller && !scroller.contains(hit)) continue
@@ -891,9 +895,12 @@ export function auditInPage(options: { focusRings: boolean }): string[] {
   // box): a blank box never appears where the glyph would fit. A box names the glyph it needs in `data-glyph-kind` (a
   // conflict needs its "warning", never the plain category glyph); the glyph's size is the container's element marked
   // `data-glyph-probe` with that kind.
+  // A glyph may be drawn scaled down to a short box: a box is held to the smallest size of its kind (the probe
+  // `data-glyph-probe="<kind>-min"`, else the probe of the kind). A box that names its kind in `data-glyph-kind` (a
+  // conflict's "warning") needs that glyph even when it draws words: a conflict always leads with its ⚠ where it fits.
   // A container marked `data-whole-text="shapes"` (the seven-day overview) draws no words by design. One without its
   // own smallest size or glyph is held to the documented ones (docs/design/visual-design.md › Week items: 11 px at
-  // 100 % text on a 1.2 line; a glyph 1.125 times that size, square).
+  // 100 % text on a 1.2 line; a glyph of 10 px, square).
   function checkBlankItems(container: HTMLElement, items: Element[]): void {
     if (container.getAttribute('data-whole-text') === 'shapes') return
     const fallbacks: HTMLElement[] = []
@@ -902,8 +909,10 @@ export function auditInPage(options: { focusRings: boolean }): string[] {
     const glyphOf = (kind: string) => {
       let size = glyphs.get(kind)
       if (!size) {
-        const probe = Array.from(container.querySelectorAll<HTMLElement>('[data-glyph-probe]')).find((candidate) => glyphKind(candidate.getAttribute('data-glyph-probe')) === kind)
-          ?? fallbackProbe(container, fallbacks, 'display: block; width: calc(0.6875rem * 1.125); height: calc(0.6875rem * 1.125)')
+        const probes = Array.from(container.querySelectorAll<HTMLElement>('[data-glyph-probe]'))
+        const probe = probes.find((candidate) => candidate.getAttribute('data-glyph-probe') === `${kind}-min`)
+          ?? probes.find((candidate) => glyphKind(candidate.getAttribute('data-glyph-probe')) === kind)
+          ?? fallbackProbe(container, fallbacks, 'display: block; width: 0.625rem; height: 0.625rem')
         const { width, height } = probe.getBoundingClientRect()
         size = { width, height }
         glyphs.set(kind, size)
@@ -955,6 +964,20 @@ export function auditInPage(options: { focusRings: boolean }): string[] {
     })
   }
 
+  // A box that names the glyph it needs (`data-glyph-kind`) and draws words still draws that glyph where it fits.
+  function checkRequiredGlyph(item: Element, glyphOf: (kind: string) => { width: number; height: number }, items: Element[]): void {
+    const kind = item.getAttribute('data-glyph-kind')
+    if (!kind) return
+    const [top = 0, right = 0, bottom = 0, left = 0] = (item.getAttribute('data-text-inset') ?? '').split(/\s+/).map(Number)
+    const rect = item.getBoundingClientRect()
+    const width = rect.width - left - right
+    const free = freeHeight(item, rect, items) - top - bottom
+    const glyph = glyphOf(kind)
+    if (width >= glyph.width - 0.01 && free >= glyph.height - 0.01 && !showsGlyph(item, kind)) {
+      violations.push(`${describe(item)} draws words but not its ${kind} glyph though the ${glyph.width.toFixed(1)}×${glyph.height.toFixed(1)} px glyph fits its ${width.toFixed(1)}×${free.toFixed(1)} px room`)
+    }
+  }
+
   function checkBlankItemsWith(reference: HTMLElement, glyphOf: (kind: string) => { width: number; height: number }, items: Element[]): void {
     // Measured with a copy of the reference itself, so the word has exactly its styles and context.
     const measure = (build: (probe: HTMLElement) => void) => {
@@ -971,7 +994,11 @@ export function auditInPage(options: { focusRings: boolean }): string[] {
     const font = getComputedStyle(reference)
     const line = Math.max(px(font.lineHeight) || px(font.fontSize) * 1.2, measure((probe) => { probe.textContent = 'Hg' }).glyphs)
     for (const item of items) {
-      if (getComputedStyle(item).pointerEvents === 'none' || drawnText(item) !== '') continue
+      if (getComputedStyle(item).pointerEvents === 'none') continue
+      if (drawnText(item) !== '') {
+        checkRequiredGlyph(item, glyphOf, items)
+        continue
+      }
       const title = (item.getAttribute('title') || item.getAttribute('aria-label') || '').replace(/\s+/g, ' ').trim()
       const words = title.split(' ').filter(Boolean)
       if (words.length === 0) continue
@@ -981,14 +1008,17 @@ export function auditInPage(options: { focusRings: boolean }): string[] {
       const width = rect.width - left - right - 0.25
       const height = rect.height - top - bottom
       if (width <= 0) continue
-      const room = `${width.toFixed(1)}×${height.toFixed(1)} px room`
+      // A box that draws its required glyph (a conflict's ⚠) holds its word beside it, 2 px apart, on one line.
+      const kindNeeded = item.getAttribute('data-glyph-kind')
+      const beside = kindNeeded && showsGlyph(item, kindNeeded) ? glyphOf(kindNeeded).width + 2 : 0
+      const room = `${(width - beside).toFixed(1)}×${height.toFixed(1)} px room${beside ? ' beside its glyph' : ''}`
       if (height >= line - 0.01) {
         // Measured as a cut title is drawn: the word, then "…" in an element of its own.
         const { width: needed } = measure((probe) => {
           probe.textContent = words[0]!
           if (words.length > 1) probe.append(Object.assign(document.createElement('span'), { textContent: '\u2026' }))
         })
-        if (needed <= width) {
+        if (needed <= width - beside) {
           violations.push(`${describe(item)} draws no text though "${text}" fits its ${room}`)
           continue
         }
@@ -1002,16 +1032,106 @@ export function auditInPage(options: { focusRings: boolean }): string[] {
     }
   }
 
+  // A press on a widened area (`data-hit-for="<key>"`) reaches the item marked `data-hit-key="<key>"` in its column.
+  function pressedItem(element: Element | null): Element | null {
+    const area = element?.closest('[data-hit-for]')
+    if (!area) return element
+    return area.parentElement?.querySelector(`[data-hit-key="${CSS.escape(area.getAttribute('data-hit-for')!)}"]`) ?? area
+  }
+
+  // Every pressable Week item can be pressed with a 44 × 44 px press: it owns some 44 × 44 px square touching its box
+  // (centred on it, or along its edges, kept inside its column), every press in which reaches it; or, where items crowd
+  // each other, a shared target of at least 44 × 44 px lists it (`data-shared-target`, `data-shared-items` naming the
+  // items' `data-hit-key`s), whose chooser offers it (checked by pressing, `visualIntegrityViolations` › choosers).
+  // Items are scrolled into view to be pressed; the page's scroll is restored after. A press that lands on a bar over
+  // the column (a sticky header) does not count against the item.
+  const HIT_TARGET_PX = 44
+  const PRESS_GRID = 5
+  function checkHitTargets(): void {
+    const scroller = document.scrollingElement ?? document.documentElement
+    const start = { x: scroller.scrollLeft, y: scroller.scrollTop }
+    try {
+      for (const container of Array.from(scope.querySelectorAll<HTMLElement>('[data-whole-text]')).filter(rendered)) {
+        if (container.getAttribute('data-whole-text') === 'shapes' || container.closest('[inert]')) continue
+        // Keyboard-only items (a task drawn as an outline, `pointer-events: none`) count too: a press must reach them.
+        const items = Array.from(container.children).filter((item): item is HTMLElement => item instanceof HTMLButtonElement && !item.disabled && rendered(item))
+        for (const item of items) checkHitTarget(container, item)
+      }
+    } finally {
+      scroller.scrollTo(start.x, start.y)
+    }
+  }
+
+  // The 44 × 44 px squares that touch a box, kept inside its column: centred on it, then along its edges
+  // (src/features/week/hitAreas.ts › candidateSquares).
+  function pressSquares(own: DOMRect, column: DOMRect): { top: number; bottom: number; left: number; right: number }[] {
+    const size = Math.min(HIT_TARGET_PX, column.width, column.height)
+    const clamp = (value: number, low: number, high: number) => Math.min(Math.max(low, value), high - size)
+    const xs = [(own.left + own.right) / 2 - size / 2, own.left, own.right - size].map((x) => clamp(x, column.left, column.right))
+    const ys = [(own.top + own.bottom) / 2 - size / 2, own.top, own.bottom - size].map((y) => clamp(y, column.top, column.bottom))
+    return ys.flatMap((top) => xs.map((left) => ({ top, bottom: top + size, left, right: left + size })))
+  }
+
+  function checkHitTarget(container: HTMLElement, item: HTMLElement): void {
+    let own = item.getBoundingClientRect()
+    if (own.top < 0 || own.bottom > window.innerHeight) {
+      // Whole pixels: a fractional scroll is snapped on screens of one device pixel per px (Linux CI) after the boxes
+      // were read.
+      window.scrollBy(0, Math.round(own.top + own.height / 2 - window.innerHeight / 2))
+      own = item.getBoundingClientRect()
+    }
+    const column = container.getBoundingClientRect()
+    const owns = pressSquares(own, column).some((square) => {
+      // A grid of presses 2 px in from the square's edges, so none is judged on a pixel row two boxes may share.
+      for (let row = 0; row < PRESS_GRID; row++) {
+        for (let col = 0; col < PRESS_GRID; col++) {
+          const x = square.left + 2 + ((square.right - square.left - 4) * col) / (PRESS_GRID - 1)
+          const y = square.top + 2 + ((square.bottom - square.top - 4) * row) / (PRESS_GRID - 1)
+          if (x < 0 || y < 0 || x > window.innerWidth || y > window.innerHeight) continue
+          const reached = pressedItem(document.elementFromPoint(x, y))
+          if (!reached || !container.contains(reached)) continue
+          // The column itself just inside the item's box is the box's rounded corner: the item's own.
+          if (reached === container && x >= own.left && x <= own.right && y >= own.top && y <= own.bottom) continue
+          if (!item.contains(reached)) return false
+        }
+      }
+      return true
+    })
+    if (owns) return
+    const key = item.getAttribute('data-hit-key')
+    const shared = Array.from(container.querySelectorAll<HTMLElement>(':scope > [data-shared-target]')).some((target) => {
+      const box = target.getBoundingClientRect()
+      return key !== null && (target.getAttribute('data-shared-items') ?? '').split(' ').includes(key) && box.width >= HIT_TARGET_PX - 0.5 && box.height >= HIT_TARGET_PX - 0.5
+    })
+    if (!shared) violations.push(`${describe(item)} has no ${HIT_TARGET_PX}×${HIT_TARGET_PX} px press: no such square around it is all its own, and no shared target lists it`)
+  }
+
   // Inside a `[data-whole-text]` container (a Week day column) text is whole words or not drawn (docs/design/visual-design.md ›
   // Week items). Each direct child is an item. A CSS ellipsis or line clamp is not allowed there (only the generated "…"
   // after whole words, or a "…" of the title itself, both checked by checkTitleWords), a line cut by any box or
   // lying outside its item is reported, and no item's text may cross another item's box or text. An item that takes
   // no pointer input (the now-line, a task outline) is see-through. A task marked `data-layered` lies inside its routine,
   // so the routine's box is not in the way of the task's own text.
+  // A container that says what size its plan was measured for (`data-planned-for`: its padding-box width and the root
+  // text size, "176.5px 32px") must be planned for the size it has now: a plan for another width or text size draws
+  // words measured for boxes that are no longer there.
+  function plannedSize(container: HTMLElement): string {
+    const style = getComputedStyle(container)
+    const width = container.getBoundingClientRect().width - px(style.borderLeftWidth) - px(style.borderRightWidth)
+    return `${Math.round(width * 10) / 10}px ${getComputedStyle(document.documentElement).fontSize}`
+  }
+
   function checkWholeText(): void {
     const containers = Array.from(scope.querySelectorAll<HTMLElement>('[data-whole-text]')).filter(rendered)
     for (const container of containers) {
-      const items = Array.from(container.children).filter((item) => rendered(item))
+      const planned = container.getAttribute('data-planned-for')
+      if (planned && planned !== plannedSize(container)) {
+        violations.push(`${describe(container)} is drawn from a plan for ${planned}, not its current ${plannedSize(container)}`)
+        continue
+      }
+      // An item's widened press area (`data-hit-for`, drawn over its neighbourhood) and a shared press target
+      // (`data-shared-target`) draw nothing and hold no text: they are not items.
+      const items = Array.from(container.children).filter((item) => rendered(item) && !item.hasAttribute('data-hit-for') && !item.hasAttribute('data-shared-target'))
       const lines: { item: Element; text: string; box: Box }[] = []
       const checkedTitles = new Set<Element>()
       const walker = document.createTreeWalker(container, NodeFilter.SHOW_TEXT, {
@@ -1072,8 +1192,23 @@ export function auditInPage(options: { focusRings: boolean }): string[] {
     }
   }
 
+  // While a modal dialog is open, focus is inside one: a keyboard or screen reader user is never left on the page
+  // behind it (verify12: a sheet closing after the next one opened took focus back to the page). A sheet on its way
+  // out (`.sheet-root` without `is-shown`) does not count as open.
+  function checkModalFocus(): void {
+    const open = Array.from(document.querySelectorAll<HTMLElement>('[role="dialog"][aria-modal="true"]'))
+      .filter((dialog) => rendered(dialog) && !dialog.closest('.sheet-root:not(.is-shown)'))
+    if (open.length === 0) return
+    const active = document.activeElement
+    if (!active || !open.some((dialog) => dialog.contains(active))) {
+      violations.push(`focus is on ${active ? describe(active) : 'nothing'}, outside the open dialog ${describe(open[open.length - 1]!)}`)
+    }
+  }
+
+  checkModalFocus()
   checkText()
   checkWholeText()
+  checkHitTargets()
   checkControlSpacing()
   checkDockPrimary()
   checkOneLineRows()
@@ -1105,9 +1240,66 @@ export function auditInPage(options: { focusRings: boolean }): string[] {
   return Array.from(new Set(violations))
 }
 
-export async function visualIntegrityViolations(page: Page, { focusRings = true }: IntegrityOptions = {}): Promise<string[]> {
+// True when every container that says what size its plan was measured for is planned for the size it has now.
+function plansMatchSizes(): boolean {
+  return Array.from(document.querySelectorAll<HTMLElement>('[data-planned-for]')).every((container) => {
+    const style = getComputedStyle(container)
+    const width = container.getBoundingClientRect().width - (Number.parseFloat(style.borderLeftWidth) || 0) - (Number.parseFloat(style.borderRightWidth) || 0)
+    return container.getAttribute('data-planned-for') === `${Math.round(width * 10) / 10}px ${getComputedStyle(document.documentElement).fontSize}`
+  })
+}
+
+// A resize or text size change reaches the page before its columns re-measure (a ResizeObserver runs with the next
+// frame), so the audit first gives them frames to re-plan; a plan still for another size after that is reported.
+export const REPLAN_TIMEOUT_MS = 2000
+
+// Waits until every column is planned for its current size; false when one still is not after REPLAN_TIMEOUT_MS.
+export async function columnsPlanned(page: Page): Promise<boolean> {
+  return page.waitForFunction(plansMatchSizes, undefined, { timeout: REPLAN_TIMEOUT_MS }).then(() => true, () => false)
+}
+
+// A shared press target (DayColumn.vue) opens a chooser of the items it lists: pressed with the mouse at its centre, the
+// chooser must offer exactly those items; Escape closes it.
+async function chooserViolations(page: Page, limit: number): Promise<string[]> {
+  const targets = await page.evaluate(() => Array.from(document.querySelectorAll<HTMLElement>('[data-whole-text] > [data-shared-target]'))
+    .filter((target) => !target.closest('[inert]') && target.getClientRects().length > 0)
+    .map((target, index) => { target.dataset.chooserCheck = String(index); return { index, keys: (target.dataset.sharedItems ?? '').split(' ').filter(Boolean).sort() } }))
+  const violations: string[] = []
+  let pressed = 0
+  for (const target of targets) {
+    if (pressed >= limit) break
+    // Scrolled into view where nothing (a sticky header, large at 200 % text) lies over its centre; skipped if none.
+    const centre = await page.evaluate((index) => {
+      const element = document.querySelector<HTMLElement>(`[data-chooser-check="${index}"]`)!
+      for (const block of ['center', 'end', 'start'] as const) {
+        element.scrollIntoView({ block, inline: 'nearest' })
+        const box = element.getBoundingClientRect()
+        const point = { x: box.left + box.width / 2, y: box.top + box.height / 2 }
+        if (document.elementFromPoint(point.x, point.y) === element) return point
+      }
+      return null
+    }, target.index)
+    if (!centre) continue
+    pressed++
+    await page.mouse.click(centre.x, centre.y)
+    const chooser = page.getByTestId('press-chooser')
+    if (!await chooser.waitFor({ state: 'visible', timeout: 3000 }).then(() => true, () => false)) {
+      violations.push(`the shared press target for ${target.keys.join(', ')} opens no chooser`)
+      continue
+    }
+    const offered = (await page.getByTestId('press-choice').evaluateAll((choices) => choices.map((choice) => (choice as HTMLElement).dataset.choiceKey ?? ''))).sort()
+    if (offered.join(' ') !== target.keys.join(' ')) violations.push(`the chooser of the shared press target for ${target.keys.join(', ')} offers ${offered.join(', ')}`)
+    await page.keyboard.press('Escape')
+    await chooser.waitFor({ state: 'hidden', timeout: 3000 }).catch(() => violations.push('a press chooser does not close on Escape'))
+  }
+  await page.evaluate(() => document.querySelectorAll<HTMLElement>('[data-chooser-check]').forEach((element) => { delete element.dataset.chooserCheck }))
+  return violations
+}
+
+export async function visualIntegrityViolations(page: Page, { focusRings = true, choosers = 0 }: IntegrityOptions = {}): Promise<string[]> {
+  await columnsPlanned(page)
   // Any key press puts Chromium in keyboard modality, so programmatic focus shows :focus-visible as Tab would.
   if (focusRings) await page.keyboard.press('Shift')
   const violations = await page.evaluate(auditInPage, { focusRings })
-  return [...violations, ...(await page.evaluate(auditFloatingActionButtonInPage))]
+  return [...violations, ...(await page.evaluate(auditFloatingActionButtonInPage)), ...(choosers > 0 ? await chooserViolations(page, choosers) : [])]
 }

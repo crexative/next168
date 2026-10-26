@@ -34,8 +34,9 @@ function close(restoreFocus = true): void {
   if (restoreFocus) trigger.value?.focus()
 }
 
+// The menu's button takes focus back before the sheet opens, so the sheet returns focus there when it closes.
 function choose(kind: AddKind): void {
-  close(false)
+  close()
   emit('choose', kind)
 }
 

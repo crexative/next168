@@ -34,6 +34,7 @@ e2e/.results/
 e2e/.report/
 e2e/artifacts/
 dev-dist/
+.pre-fence-source/
 
 # Local development CA, certificates and private keys
 .lan-https/

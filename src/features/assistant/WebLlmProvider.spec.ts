@@ -215,6 +215,33 @@ describe('WebLlmProvider prepare and ask', () => {
       .toBe('Work: 13 h planned this week.\n\nYou planned 13 h of work this week.')
   })
 
+  it('never gives the on-device model the attendee emails of an event', async () => {
+    const document = plannerWithBlocks()
+    document.events.push({ id: 'meeting', title: 'Budget review', start: '2026-10-24T15:00:00.000Z', end: '2026-10-24T16:00:00.000Z', allDay: false, attendees: ['ana@example.com'] })
+    const { provider, engine } = setup()
+    await provider.prepare(vi.fn(), signal())
+    await provider.ask('How many hours of work this week?', contextFor(document), signal())
+    await provider.ask('Add a gym block on Thursday at 18:00', contextFor(document), signal()).catch(() => undefined)
+    expect(engine.engine.create).toHaveBeenCalledTimes(2)
+    expect(JSON.stringify(engine.engine.create.mock.calls)).not.toContain('ana@example.com')
+  })
+
+  it('does not repeat the computed facts when the model only echoes them (round-10 finding)', async () => {
+    const echo = fakeEngine(() => '{"answer":"13 h planned this week."}')
+    const { provider } = setup({ engine: echo })
+    await provider.prepare(vi.fn(), signal())
+    expect((await provider.ask('How many hours of work this week?', context(), signal())).answer).toBe('Work: 13 h planned this week.')
+  })
+
+  it('keeps what the model adds after echoing the facts, and a figure that only looks like an echo', async () => {
+    const mixed = fakeEngine(() => '{"answer":"Work: 13 h planned this week. That leaves your evenings free."}')
+    const { provider } = setup({ engine: mixed })
+    await provider.prepare(vi.fn(), signal())
+    expect((await provider.ask('How many hours of work this week?', context(), signal())).answer)
+      .toBe('Work: 13 h planned this week.\n\nThat leaves your evenings free.')
+    expect(quoteFacts('3 h planned this week.', 'Work: 13 h planned this week.')).toBe('Work: 13 h planned this week.\n\n3 h planned this week.')
+  })
+
   it('does not let a wrong model figure that contains the right one hide the computed facts', async () => {
     const wrong = fakeEngine(() => '{"answer":"You planned 113 h of work this week."}')
     const { provider } = setup({ engine: wrong })

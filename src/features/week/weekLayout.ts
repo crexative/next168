@@ -24,10 +24,15 @@ export interface BusySegment extends DayPart {
   start: string
   end: string
   calendar?: string
-  // A Next168 event's own place and notes.
+  // A Weeklid event's own place and notes.
   location?: string
   notes?: string
+  // A calendar event marked free (transparent): shown, but it takes no time from the plan and conflicts with nothing.
+  free?: boolean
 }
+
+// An all-day event on one day of the week: a holiday, a birthday, a day off.
+export interface AllDayItem { key: string; title: string; kind: 'external' | 'event'; date: string; calendar?: string; location?: string; notes?: string }
 
 export interface LanePosition {
   lane: number
@@ -118,15 +123,33 @@ export const INSTANT_EVENT_MINUTES = 15
 export function busySegmentsByDate(external: ExternalOccurrence[], events: PlannerEvent[], dates: string[], timeZone: string, calendarNames: ReadonlyMap<string, string> = new Map()): Record<string, BusySegment[]> {
   const byDate: Record<string, BusySegment[]> = Object.fromEntries(dates.map((date) => [date, []]))
   const timed = [
-    ...external.filter((item) => item.busy && !item.allDay).map((item) => ({ key: `${item.sourceId}/${item.uid}/${item.recurrenceId ?? ''}`, title: item.title, start: item.start, end: item.end, kind: 'external' as const, calendar: calendarNames.get(item.sourceId), location: undefined, notes: undefined })),
-    ...events.filter((event) => !event.allDay).map((event) => ({ key: event.id, title: event.title, start: event.start, end: event.end, kind: 'event' as const, calendar: undefined, location: event.location, notes: event.notes })),
+    ...external.filter((item) => !item.allDay).map((item) => ({ key: `${item.sourceId}/${item.uid}/${item.recurrenceId ?? ''}`, title: item.title, start: item.start, end: item.end, kind: 'external' as const, calendar: calendarNames.get(item.sourceId), location: undefined, notes: undefined, free: !item.busy })),
+    ...events.filter((event) => !event.allDay).map((event) => ({ key: event.id, title: event.title, start: event.start, end: event.end, kind: 'event' as const, calendar: undefined, location: event.location, notes: event.notes, free: false })),
   ]
   for (const item of timed) {
     // An event with no duration (a reminder in an imported calendar) still takes a short visible span, as in Apple
     // Calendar; its details keep the real times.
     const shownEnd = Date.parse(item.end) > Date.parse(item.start) ? item.end : new Date(Date.parse(item.start) + INSTANT_EVENT_MINUTES * 60_000).toISOString()
     for (const part of splitByLocalDay(item.start, shownEnd, dates, timeZone)) {
-      byDate[part.date]?.push({ ...part, key: `${item.key}@${part.date}`, title: item.title, kind: item.kind, start: item.start, end: item.end, calendar: item.calendar, ...(item.location ? { location: item.location } : {}), ...(item.notes ? { notes: item.notes } : {}) })
+      byDate[part.date]?.push({ ...part, key: `${item.key}@${part.date}`, title: item.title, kind: item.kind, start: item.start, end: item.end, calendar: item.calendar, ...(item.location ? { location: item.location } : {}), ...(item.notes ? { notes: item.notes } : {}), ...(item.free ? { free: true } : {}) })
+    }
+  }
+  return byDate
+}
+
+// All-day events by the days of the week they cover (an all-day event's end date is exclusive), busy or free alike.
+export function allDayByDate(external: ExternalOccurrence[], events: PlannerEvent[], dates: string[], calendarNames: ReadonlyMap<string, string> = new Map()): Record<string, AllDayItem[]> {
+  const byDate: Record<string, AllDayItem[]> = Object.fromEntries(dates.map((date) => [date, []]))
+  const items = [
+    ...external.filter((item) => item.allDay).map((item) => ({ key: `${item.sourceId}/${item.uid}/${item.recurrenceId ?? ''}`, title: item.title, start: item.start.slice(0, 10), end: item.end.slice(0, 10), kind: 'external' as const, calendar: calendarNames.get(item.sourceId) })),
+    ...events.filter((event) => event.allDay).map((event) => ({ key: event.id, title: event.title, start: event.start.slice(0, 10), end: event.end.slice(0, 10), kind: 'event' as const, location: event.location, notes: event.notes })),
+  ]
+  for (const item of items) {
+    for (const date of dates) {
+      // A day that ends where it starts is still that one day.
+      if (item.start <= date && (date < item.end || (item.start === item.end && date === item.start))) {
+        byDate[date]!.push({ key: `${item.key}@${date}`, title: item.title, kind: item.kind, date, ...('calendar' in item && item.calendar ? { calendar: item.calendar } : {}), ...('location' in item && item.location ? { location: item.location } : {}), ...('notes' in item && item.notes ? { notes: item.notes } : {}) })
+      }
     }
   }
   return byDate
@@ -191,33 +214,3 @@ export function placeTasks(tasks: readonly { top: number; bottom: number }[], ho
 export const HOUR_HEIGHT_PX = 48
 export const COMPACT_HOUR_HEIGHT_PX = 16
 export const SLOT_MINUTES = 30
-
-// Short items are small to hit: a 30 minute block is 24 px tall. The pressable area of every item is at least 44 px,
-// centered on it, so a tap just above or below a short block still opens it.
-export const MIN_TARGET_PX = 44
-
-export interface HitTarget {
-  kind: 'block' | 'task'
-  id: string
-  startMinute: number
-  endMinute: number
-  // The lane the item occupies, in percent of the column's width.
-  left: number
-  width: number
-}
-
-// The item a press at `y` px (from the top of the column) and `xPercent` of the column's width is meant for: of the
-// items whose enlarged area holds the press, the one whose center is nearest.
-export function nearestHitTarget(targets: readonly HitTarget[], y: number, xPercent: number, hourHeight: number): HitTarget | undefined {
-  let best: { target: HitTarget; distance: number } | undefined
-  for (const target of targets) {
-    if (xPercent < target.left || xPercent > target.left + target.width) continue
-    const top = (target.startMinute / 60) * hourHeight
-    const bottom = (target.endMinute / 60) * hourHeight
-    const grow = Math.max(0, (MIN_TARGET_PX - (bottom - top)) / 2)
-    if (y < top - grow || y > bottom + grow) continue
-    const distance = Math.abs(y - (top + bottom) / 2)
-    if (!best || distance < best.distance) best = { target, distance }
-  }
-  return best?.target
-}

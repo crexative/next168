@@ -5,13 +5,14 @@ import type { CalendarSourceStore, Clock, ExportBundle, LoadResult, PlannerDocum
 export const MAX_IMPORT_BYTES = 25 * 1024 * 1024
 
 export function exportFileName(now: Date): string {
-  return `next168-export-${now.toISOString().slice(0, 10)}.json`
+  return `weeklid-export-${now.toISOString().slice(0, 10)}.json`
 }
 
 export async function sourceTextsFor(document: PlannerDocument, store: CalendarSourceStore | undefined): Promise<Record<string, string>> {
-  const texts: Record<string, string> = {}
-  for (const source of document.calendarSources) texts[source.id] = (await store?.get(source.id)) ?? ''
-  return texts
+  const entries: [string, string][] = []
+  for (const source of document.calendarSources) entries.push([source.id, (await store?.get(source.id)) ?? ''])
+  // Own keys for every id, `__proto__` included (an assignment would set the prototype instead).
+  return Object.fromEntries(entries)
 }
 
 export async function buildExportFile(document: PlannerDocument, store: CalendarSourceStore | undefined, clock: Clock): Promise<{ fileName: string; json: string }> {

@@ -6,6 +6,7 @@ import { prefersReducedMotion, useMediaQuery } from './useMediaQuery'
 import { registerUnsavedInput } from './unsavedGuard'
 import { releaseVelocity, rubberBand, shouldDismiss, springTo, type Sample } from './sheetMotion'
 import { isHover, watchPressEnd } from './pressEnd'
+import { closedSheet, closingSheet, droppedSheet, openSheet, reopenedSheet, type SheetEntry } from './sheetStack'
 
 // A phone sheet ends with a dismiss button within the thumb's reach (`dismissLabel`, default "Cancel");
 // `noDismiss` leaves it out for a sheet whose own actions already include one. A `footer` slot replaces it with the
@@ -35,7 +36,7 @@ const FOCUSABLE = 'a[href], button:not([disabled]), input:not([disabled]), selec
 
 let offset = 0
 let animation: { stop(): void } | undefined
-let returnFocusTo: HTMLElement | null = null
+let entry: SheetEntry | null = null
 let releaseUnsaved: (() => void) | undefined
 let pressStart: { pointerId: number; pointerY: number } | undefined
 let dragStart: { pointerY: number; offset: number } | undefined
@@ -54,15 +55,22 @@ function height(): number {
   return panel.value?.offsetHeight ?? 0
 }
 
+// Once unmounted a sheet does nothing more: a pending animation ends at once and every step after an await checks
+// `disposed` (a test or a page can end while a close is under way; the document may be gone by then).
+let disposed = false
+let pendingWait: { timer: ReturnType<typeof setTimeout>; resolve: () => void } | undefined
+
 function wait(ms: number): Promise<void> {
-  return new Promise((resolve) => setTimeout(resolve, ms))
+  return new Promise((resolve) => {
+    pendingWait = { timer: setTimeout(() => { pendingWait = undefined; resolve() }, ms), resolve }
+  })
 }
 
 async function animateIn(resumeFrom?: number): Promise<void> {
   const token = ++generation
   await nextTick()
   const element = panel.value
-  if (!element || token !== generation) return
+  if (disposed || !element || token !== generation) return
   shown.value = true
   if (isCentered.value || prefersReducedMotion()) {
     applyOffset(0)
@@ -85,7 +93,7 @@ async function animateOut(): Promise<boolean> {
     animation = run
     await run.finished
   }
-  if (token !== generation) return false
+  if (disposed || token !== generation) return false
   exitVelocity = 0
   rendered.value = false
   return true
@@ -214,23 +222,29 @@ function onGrabUp(event: PointerEvent): void {
   animation = springTo(offset, 0, applyOffset, { velocity, bounce: 0.15 })
 }
 
+// Focus and the page's `data-sheet-open` are shared by every sheet on screen (sheetStack.ts): a sheet that closes while
+// the next one opens never takes focus back from it.
 watch(() => props.open, async (open) => {
   if (open) {
     const interrupted = rendered.value
-    if (interrupted) animation?.stop()
-    else returnFocusTo = document.activeElement as HTMLElement | null
+    if (interrupted) {
+      animation?.stop()
+      if (entry) reopenedSheet(entry)
+    } else {
+      entry = openSheet({ panel: () => panel.value })
+    }
     rendered.value = true
-    document.documentElement.dataset.sheetOpen = ''
     await animateIn(interrupted ? offset : undefined)
+    if (disposed) return
     // The title, not the first control: opening a sheet must not light up a focus ring on its close button.
     ;(heading.value ?? panel.value)?.focus({ preventScroll: true })
   } else if (rendered.value) {
     endPress()
     dragStart = undefined
-    delete document.documentElement.dataset.sheetOpen
-    if (await animateOut()) {
-      returnFocusTo?.focus()
-      returnFocusTo = null
+    if (entry) closingSheet(entry)
+    if (await animateOut() && entry) {
+      closedSheet(entry)
+      entry = null
     }
   }
 }, { immediate: true })
@@ -240,12 +254,22 @@ watch(() => props.open && props.dirty, (unsaved) => {
   releaseUnsaved = unsaved ? registerUnsavedInput() : undefined
 }, { immediate: true })
 
+// Unmounted (its page went away, or a test ended), possibly mid-animation: it leaves the list of sheets now, while the
+// document still exists, and its pending close resolves without acting (animateOut sees `disposed`).
 onBeforeUnmount(() => {
+  disposed = true
+  ++generation
   stopViewport?.()
   endPress()
   animation?.stop()
+  if (pendingWait) {
+    clearTimeout(pendingWait.timer)
+    pendingWait.resolve()
+    pendingWait = undefined
+  }
   releaseUnsaved?.()
-  delete document.documentElement.dataset.sheetOpen
+  if (entry) droppedSheet(entry)
+  entry = null
 })
 </script>
 

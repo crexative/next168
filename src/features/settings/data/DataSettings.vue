@@ -15,6 +15,7 @@ import { resetSidebar } from '@/app/sidebar'
 import { calendarLifecycle, calendarSourceStore } from './calendarSourceHook'
 import { deviceStorages, removeDeviceData } from './deviceData'
 import { downloadBackup } from './exportBackup'
+import PreUpgradeCopy from './PreUpgradeCopy.vue'
 import {
   freshDocument, MAX_IMPORT_BYTES, matchesConfirmation, previewImport, replaceContent,
   replaceSourceTexts, verifyStored, type ImportPreview,
@@ -205,6 +206,8 @@ async function deleteEverything(): Promise<void> {
     </section>
 
     <p v-if="notice" class="notice t-subhead" :class="`is-${notice.tone}`" :role="notice.tone === 'error' ? 'alert' : 'status'" data-testid="data-notice">{{ notice.text }}</p>
+
+    <PreUpgradeCopy />
 
     <ListGroup :header="t('data.deleteAll.title')" :footer="t('data.deleteAll.footer')">
       <li class="note">

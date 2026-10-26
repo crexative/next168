@@ -8,6 +8,8 @@
   "late": "Cae después de su fecha límite ({date}).",
   "latePartial": "Solo hay hueco para {duration} antes de su fecha límite ({date}).",
   "warnings": "Avisos de planificación",
+  "moreWarnings": "Y {count} más no cabe en los próximos 7 días. | Y {count} más no caben en los próximos 7 días.",
+  "showAllWarnings": "Ver todas",
   "unplaced": "Sin programar",
   "unplacedHint": "No hay hueco libre en los próximos 7 días.",
   "recentDone": "Hechas recientemente",

@@ -167,7 +167,7 @@ async function anyAiStates(page: Page, theme: string, label: string, includeSett
   await page.getByTestId('any-ai-copy').click()
   await expect(page.getByTestId('any-ai-manual')).toBeVisible()
   await check(page, `${theme}/${label}/use with your AI, text to copy by hand`)
-  const reply = (overrides: Record<string, unknown>) => `Listo:\n\`\`\`next168\n${JSON.stringify({ contractVersion: '1.0', workspaceId: 'workspace-visual', baseRevision: 1, summary: 'Mover', ops: [{ op: 'update_block', id: 'b-gym', patch: { days: [4] } }], ...overrides })}\n\`\`\``
+  const reply = (overrides: Record<string, unknown>) => `Listo:\n\`\`\`weeklid\n${JSON.stringify({ contractVersion: '1.0', workspaceId: 'workspace-visual', baseRevision: 1, summary: 'Mover', ops: [{ op: 'update_block', id: 'b-gym', patch: { days: [4] } }], ...overrides })}\n\`\`\``
   await page.getByTestId('any-ai-paste').fill('Sin cambios aquí, solo texto largo que ocupa varias líneas para comprobar que el campo y el mensaje no se cortan en ninguna pantalla.')
   await expect(page.getByTestId('any-ai-review')).toBeEnabled()
   await page.getByTestId('any-ai-review').click()
@@ -242,9 +242,13 @@ for (const theme of THEMES) {
           await expect(times).toHaveCount(2)
           await widenInputFonts(page)
           await auditSheet(page, `${theme}/${locale}/${width}/wider fonts/new event`)
-          // No attendees, no time zone: location and notes are one level deeper.
-          await expect(page.getByRole('dialog').locator('input[inputmode="email"]')).toHaveCount(0)
+          // No time zone: guests, location and notes are one level deeper.
+          await expect(page.getByRole('dialog').locator('input[inputmode="email"]')).toBeHidden()
           await page.getByRole('dialog').getByRole('button', { name: EVENT_COPY[locale].more, exact: true }).click()
+          const guest = page.getByRole('dialog').locator('input[inputmode="email"]')
+          await guest.fill('a.very.long.guest.address.for.layout@example.org')
+          await guest.press('Enter')
+          await expect(page.getByTestId('event-guests').getByRole('listitem')).toHaveCount(1)
           await page.getByRole('dialog').locator('textarea').scrollIntoViewIfNeeded()
           await auditSheet(page, `${theme}/${locale}/${width}/wider fonts/new event with location and notes`)
         })
@@ -695,7 +699,7 @@ for (const theme of THEMES) {
 
       const v1Path = testInfo.outputPath('v1.json')
       await import('node:fs').then(({ writeFileSync }) => writeFileSync(v1Path, JSON.stringify(legacyData)))
-      await page.getByLabel('Choose a Next168 export file').setInputFiles(v1Path)
+      await page.getByLabel('Choose a Weeklid export file').setInputFiles(v1Path)
       await expect(page.getByTestId('import-preview')).toBeVisible()
       await audit(page, `${theme}/import preview`)
 
@@ -961,13 +965,15 @@ test.describe('visual integrity guard: whole text in Week', () => {
       ${extraStyle}
     </style>
     <div class="column" data-whole-text>${items}</div>`
-  const audit = (page: Page) => visualIntegrityViolations(page, { focusRings: false })
+  const pressTargets = (page: Page) => visualIntegrityViolations(page, { focusRings: false })
+  // The fixtures below are about text; their few boxes stand alone, so the 44 px press rule is checked on its own.
+  const audit = async (page: Page) => (await pressTargets(page)).filter((violation) => !violation.includes(' px press: '))
 
   test('whole titles, a mark with no text, a hidden word and a task inside its routine are accepted', async ({ page }) => {
     await page.setContent(column(`
       <button class="item" style="top: 0; left: 0; width: 150px; height: 60px"><span>Deep work</span><span>9:00 – 10:00</span></button>
       <button class="item" data-layered style="top: 38px; left: 0; width: 150px; height: 20px"><span>Report</span></button>
-      <button class="item" style="top: 60px; left: 0; width: 150px; height: 12px" aria-label="Stand-up"></button>
+      <button class="item" style="top: 60px; left: 0; width: 150px; height: 8px" aria-label="Stand-up"></button>
       <button class="item" style="top: 72px; left: 0; width: 150px; height: 20px"><span style="position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0)">Conflict</span><span>Vendor call</span></button>
       <div style="position: absolute; top: 30px; left: 0; right: 0; height: 2px; background: red; pointer-events: none"></div>
     `))
@@ -1153,6 +1159,80 @@ test.describe('visual integrity guard: whole text in Week', () => {
     const violations = await audit(page)
     expect(violations.some((violation) => violation.includes('"Vendor call" draws neither a word nor its warning glyph though the 12.0×12.0 px glyph fits its 19.8×13.0 px room'))).toBe(true)
     expect(violations.filter((violation) => violation.includes('Dentist') || violation.includes('Stand-up'))).toEqual([])
+  })
+
+  // P0 regression: a Week column drawn from a plan measured for another width or text size is reported (after the audit
+  // has given it frames to re-plan).
+  test('a column drawn from a plan for another size is reported', async ({ page }) => {
+    await page.setContent(column('<button class="item" style="top: 0; left: 0; width: 150px; height: 20px"><span>Deep work</span></button>'))
+    await page.locator('[data-whole-text]').evaluate((container) => container.setAttribute('data-planned-for', '120px 16px'))
+    expect(await audit(page)).toContain('<div.column> "Deep work" is drawn from a plan for 120px 16px, not its current 150px 16px')
+    await page.locator('[data-whole-text]').evaluate((container) => container.setAttribute('data-planned-for', '150px 16px'))
+    expect(await audit(page)).toEqual([])
+  })
+
+  // verify8: "Demo con el cliente" (74×48 at 1440) and "Sincronización semanal" (145×16 at 375) drew their titles
+  // with no ⚠. A conflict needs its ⚠ wherever it fits, words or not.
+  test('a conflict that draws its title but not its ⚠ where the ⚠ fits is reported', async ({ page }) => {
+    const warningProbe = '<span data-glyph-probe="warning" style="position: absolute; visibility: hidden; display: block; width: 12px; height: 12px"></span>'
+    await page.setContent(column(`${smallest}${glyphProbe}${warningProbe}
+      <button class="item" aria-label="Demo con el cliente" data-glyph-kind="warning" data-text-inset="1 3 1 3" style="top: 0; left: 0; width: 74px; height: 48px"><span>Demo con el cliente</span></button>
+      <button class="item" aria-label="Vendor call" data-glyph-kind="warning" data-text-inset="1 3 1 3" style="top: 60px; left: 0; width: 120px; height: 34px"><span data-glyph="warning" style="flex: none; width: 12px; height: 12px"></span><span>Vendor call</span></button>
+    `))
+    const violations = await audit(page)
+    expect(violations.some((violation) => violation.includes('"Demo con el cliente" draws words but not its warning glyph though the 12.0×12.0 px glyph fits its 68.0×46.0 px room'))).toBe(true)
+    expect(violations.filter((violation) => violation.includes('Vendor call'))).toEqual([])
+  })
+
+  // verify8 D3: a 15-minute item (12 px at a 48 px hour) has less room than the glyph's full size but more than its
+  // smallest, so it draws the glyph scaled down; a bare strip there is reported.
+  test('a box with room for the smallest glyph but not the full one that draws nothing is reported', async ({ page }) => {
+    const smallestGlyph = '<span data-glyph-probe="category-min" style="position: absolute; visibility: hidden; display: block; width: 10px; height: 10px"></span>'
+    await page.setContent(column(`${smallest}${glyphProbe}${smallestGlyph}
+      <button class="item" aria-label="Pausa activa" data-text-inset="1 3 1 3" style="top: 0; left: 0; width: 150px; height: 12px"></button>
+      <button class="item" aria-label="Meditación" data-text-inset="1 3 1 3" style="top: 20px; left: 0; width: 150px; height: 12px"><span data-glyph style="position: absolute; inset: 1px 3px"></span></button>
+      <button class="item" aria-label="Stand-up" data-text-inset="1 3 1 3" style="top: 40px; left: 0; width: 150px; height: 8px"></button>
+    `))
+    const violations = await audit(page)
+    expect(violations.some((violation) => violation.includes('"Pausa activa" draws neither a word nor its glyph though the 10.0×10.0 px glyph fits its 143.8×10.0 px room'))).toBe(true)
+    expect(violations.filter((violation) => violation.includes('Meditación') || violation.includes('Stand-up'))).toEqual([])
+  })
+
+  // verify10 C1: a tap 10.9 px below an 18 px task inside a routine opened the routine. Every pressable Week item can
+  // be pressed in a 44 × 44 px square that is all its own.
+  test('a task inside a routine with no 44 px square of its own is reported, and one with a press area over the routine is not', async ({ page }) => {
+    const routine = '<button class="item" aria-label="Deep work" data-hit-key="b" style="top: 0; left: 0; width: 150px; height: 120px"><span>Deep work</span></button>'
+    const task = '<button class="item" aria-label="Task: Report" data-layered data-hit-key="t" style="top: 40px; left: 4px; width: 142px; height: 18px; background: #fff"></button>'
+    await page.setContent(column(`${routine}${task}`))
+    expect(await pressTargets(page)).toContain('<button.item> "Task: Report" has no 44×44 px press: no such square around it is all its own, and no shared target lists it')
+    await page.setContent(column(`${routine}${task}<span data-hit-for="t" style="position: absolute; top: 27px; left: 4px; width: 142px; height: 44px; z-index: 3"></span>`))
+    expect((await pressTargets(page)).filter((violation) => violation.includes(' px press'))).toEqual([])
+  })
+
+  test('a short item with empty time around it and no press area is reported', async ({ page }) => {
+    await page.setContent(column(`
+      <button class="item" aria-label="Coffee" data-hit-key="c" style="top: 100px; left: 0; width: 150px; height: 12px"></button>
+      <button class="item" aria-label="Focus" data-hit-key="f" style="top: 112px; left: 0; width: 150px; height: 168px"><span>Focus</span></button>
+    `))
+    expect((await pressTargets(page)).filter((violation) => violation.includes(' px press'))).toEqual(['<button.item> "Coffee" has no 44×44 px press: no such square around it is all its own, and no shared target lists it'])
+  })
+
+  // verify11 C1: a task with exactly the time of its routine ("Finish course module 4" in "Reading") is an outline that
+  // takes no presses; where items crowd each other, a shared 44 px target that lists them all stands in.
+  test('crowded items need a shared target of at least 44 × 44 px that lists each of them', async ({ page }) => {
+    // Reading's own press areas above and below its 24 px box.
+    const reading = '<button class="item" aria-label="Reading" data-hit-key="r" style="top: 100px; left: 0; width: 150px; height: 24px"><span>Reading</span></button>'
+      + '<span data-hit-for="r" style="position: absolute; top: 90px; left: 0; width: 150px; height: 10px; z-index: 3"></span><span data-hit-for="r" style="position: absolute; top: 124px; left: 0; width: 150px; height: 10px; z-index: 3"></span>'
+    const course = '<button class="item" aria-label="Task: Finish course module 4" data-layered data-hit-key="c" style="top: 100px; left: 0; width: 150px; height: 24px; pointer-events: none; background: transparent"></button>'
+    const target = (items: string, height = 44) => `<span data-shared-target data-shared-items="${items}" style="position: absolute; top: 90px; left: 50px; width: 44px; height: ${height}px; z-index: 4"></span>`
+    await page.setContent(column(`${reading}${course}`))
+    expect((await pressTargets(page)).filter((violation) => violation.includes(' px press'))).toEqual(['<button.item> "Task: Finish course module 4" has no 44×44 px press: no such square around it is all its own, and no shared target lists it'])
+    await page.setContent(column(`${reading}${course}${target('r c')}`))
+    expect((await pressTargets(page)).filter((violation) => violation.includes(' px press'))).toEqual([])
+    await page.setContent(column(`${reading}${course}${target('r')}`))
+    expect((await pressTargets(page)).filter((violation) => violation.includes(' px press'))).toHaveLength(1)
+    await page.setContent(column(`${reading}${course}${target('r c', 30)}`))
+    expect((await pressTargets(page)).filter((violation) => violation.includes(' px press'))).toHaveLength(1)
   })
 
   test('a container without its own glyph is held to the documented glyph size', async ({ page }) => {
@@ -1722,7 +1802,7 @@ test.describe('visual integrity guard: floating action button', () => {
     <style>
       body { margin: 0; font: 16px sans-serif; }
       .tabbar { position: fixed; inset: auto 0 0; box-sizing: border-box; background: #eee; }
-      .fab { position: fixed; box-sizing: border-box; width: 56px; height: 56px; border: 0; border-radius: 50%; padding: 0; background: #5856d6; }
+      .fab { position: fixed; box-sizing: border-box; width: 56px; height: 56px; border: 0; border-radius: 50%; padding: 0; background: #147745; }
       .toast { position: fixed; inset-inline: 16px; bottom: 68px; height: 52px; background: #fff; }
       .menu { position: fixed; right: 16px; width: 200px; height: 150px; background: #fff; }
     </style>
@@ -1799,7 +1879,9 @@ test.describe('visual integrity guard: floating action button', () => {
   })
 
   test('a button set back under an open modal sheet is not audited', async ({ page }) => {
-    await page.setContent(`${fabStage({ fab: 'right: 32px; bottom: 132px' })}<div role="dialog" aria-modal="true" aria-label="Sheet" style="position: fixed; inset: 40px 0 0; background: #fff"></div>`)
+    await page.setContent(`${fabStage({ fab: 'right: 32px; bottom: 132px' })}<div role="dialog" aria-modal="true" aria-label="Sheet" tabindex="-1" style="position: fixed; inset: 40px 0 0; background: #fff"></div>`)
+    // Focus is in the open sheet, as the app keeps it (checkModalFocus).
+    await page.locator('[role="dialog"]').focus()
     expect(await audit(page)).toEqual([])
   })
 

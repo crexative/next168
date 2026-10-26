@@ -28,9 +28,9 @@
   },
   "import": {
     "action": "Import file…",
-    "fileLabel": "Choose a Next168 export file",
+    "fileLabel": "Choose a Weeklid export file",
     "tooLarge": "This file is too large to import.",
-    "unsupported": "This file was made by a newer version (schema {version}). Update Next168 first.",
+    "unsupported": "This file was made by a newer version (schema {version}). Update Weeklid first.",
     "invalid": "This file cannot be imported ({reason}). Nothing was changed.",
     "failed": "Import failed ({reason}). Your data is unchanged.",
     "verified": "Imported and verified against what was stored (fingerprint {hash}).",
@@ -59,11 +59,19 @@
     "action": "Delete all data…",
     "phrase": "DELETE",
     "confirmTitle": "Delete everything?",
-    "confirmBody": "This permanently erases all Next168 data on this device, including backups. Export a copy first if you may need it.",
+    "confirmBody": "This permanently erases all Weeklid data on this device, including backups. Export a copy first if you may need it.",
     "typeToConfirm": "Type {phrase} to confirm",
     "confirmAction": "Delete everything",
     "done": "All data was deleted.",
     "failed": "Could not delete ({reason}). Nothing was changed."
   },
-  "changedElsewhere": "Your data changed in the meantime, so nothing was replaced. Please try again."
+  "changedElsewhere": "Your data changed in the meantime, so nothing was replaced. Please try again.",
+  "preUpgrade": {
+    "title": "Copy from before the update ({date})",
+    "note": "It includes your calendars. It doesn't include what you changed after the update.",
+    "tooLarge": "It's {size}: more than the app can import ({limit}). Keep it anyway: it contains your whole plan.",
+    "size": "{size}",
+    "download": "Download copy",
+    "downloadRaw": "Download raw data"
+  }
 }

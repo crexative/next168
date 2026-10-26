@@ -2,12 +2,14 @@ import { afterEach, expect, it, vi } from 'vitest'
 import { createApp, nextTick, type App } from 'vue'
 import { createPinia, setActivePinia } from 'pinia'
 import { i18n } from '@/i18n'
+import { formatBytes } from '@/ui/format'
 import { createTestRepositories, fixedNow, newTestId } from '@/repositories/testSupport'
 import { configurePlannerStore, usePlannerStore } from '@/stores/plannerStore'
 import type { ExternalOccurrence } from '@/core/model'
 import { setExternalOccurrenceSource } from '@/features/week/externalOccurrences'
 import { AssistantError, type AssistantProvider } from './provider'
 import { RulesProvider } from './RulesProvider'
+import { WEBLLM_DOWNLOAD_BYTES } from './WebLlmProvider'
 import { createAssistant } from './useAssistant'
 import AssistantView from './AssistantView.vue'
 
@@ -15,7 +17,7 @@ let assistant: ReturnType<typeof createAssistant>
 vi.mock('./useAssistant', async (importOriginal) => ({ ...(await importOriginal<typeof import('./useAssistant')>()), useAssistant: () => assistant }))
 let app: App | undefined
 let host: HTMLElement | undefined
-afterEach(() => { app?.unmount(); host?.remove(); localStorage.clear(); setExternalOccurrenceSource(async () => []); vi.restoreAllMocks() })
+afterEach(() => { app?.unmount(); host?.remove(); localStorage.clear(); setExternalOccurrenceSource(async () => []); vi.restoreAllMocks(); i18n.global.locale.value = 'en' })
 
 it('offers a retry after a download failed online and succeeds on the second try', async () => {
   const prepare = vi.fn()
@@ -116,4 +118,24 @@ it('offers the download only after the person chose the on-device model in Setti
   expect(chosen.querySelector('[aria-labelledby=optin-title]')).not.toBeNull()
   // Not downloaded yet: still no box that could not act.
   expect(chosen.querySelector('[data-testid=composer]')).toBeNull()
+})
+
+it('keeps the 705 MB download size and localizes its unit when the language changes', async () => {
+  const view = await mountView({ availability: async () => 'downloadable' }, 'webllm')
+  expect(view.querySelector('[aria-labelledby=optin-title]')?.textContent).toContain('705 MB')
+  i18n.global.locale.value = 'fr'
+  await nextTick()
+  expect(view.querySelector('[aria-labelledby=optin-title]')?.textContent).toContain('705\u202fMo')
+  i18n.global.locale.value = 'en'
+})
+
+it('includes the model size in the storage-full failure and localizes it when the language changes', async () => {
+  const view = await mountView({ availability: async () => 'downloadable' }, 'webllm')
+  assistant.failure.value = 'storage-full'
+  await nextTick()
+  expect(view.querySelector('[data-testid=assistant-failure]')?.textContent).toContain('705 MB')
+
+  i18n.global.locale.value = 'fr'
+  await nextTick()
+  expect(view.querySelector('[data-testid=assistant-failure]')?.textContent).toContain(formatBytes(WEBLLM_DOWNLOAD_BYTES, 'fr'))
 })

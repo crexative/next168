@@ -28,9 +28,9 @@
   },
   "import": {
     "action": "Importar archivo…",
-    "fileLabel": "Elige un archivo de exportación de Next168",
+    "fileLabel": "Elige un archivo de exportación de Weeklid",
     "tooLarge": "El archivo es demasiado grande para importarlo.",
-    "unsupported": "Este archivo es de una versión más nueva (esquema {version}). Actualiza Next168 primero.",
+    "unsupported": "Este archivo es de una versión más nueva (esquema {version}). Actualiza Weeklid primero.",
     "invalid": "No se puede importar este archivo ({reason}). No se cambió nada.",
     "failed": "Falló la importación ({reason}). Tus datos no han cambiado.",
     "verified": "Importado y verificado con lo almacenado (huella {hash}).",
@@ -59,11 +59,19 @@
     "action": "Borrar todos los datos…",
     "phrase": "BORRAR",
     "confirmTitle": "¿Borrar todo?",
-    "confirmBody": "Esto elimina para siempre todos los datos de Next168 en este dispositivo, incluidas las copias. Exporta antes una copia si puedes necesitarla.",
+    "confirmBody": "Esto elimina para siempre todos los datos de Weeklid en este dispositivo, incluidas las copias. Exporta antes una copia si puedes necesitarla.",
     "typeToConfirm": "Escribe {phrase} para confirmar",
     "confirmAction": "Borrar todo",
     "done": "Se borraron todos los datos.",
     "failed": "No se pudo borrar ({reason}). No se cambió nada."
   },
-  "changedElsewhere": "Tus datos cambiaron mientras tanto, así que no se reemplazó nada. Inténtalo de nuevo."
+  "changedElsewhere": "Tus datos cambiaron mientras tanto, así que no se reemplazó nada. Inténtalo de nuevo.",
+  "preUpgrade": {
+    "title": "Copia de antes de la actualización ({date})",
+    "note": "Incluye tus calendarios. No incluye lo que cambiaste después de la actualización.",
+    "tooLarge": "Ocupa {size}: más de lo que la app puede importar ({limit}). Guárdala igualmente: contiene todo tu plan.",
+    "size": "{size}",
+    "download": "Descargar copia",
+    "downloadRaw": "Descargar datos sin procesar"
+  }
 }

@@ -69,7 +69,7 @@ async function run() {
     const dist = process.env.NEXT168_DIST ?? resolve(dirname(fileURLToPath(import.meta.url)), '../../dist')
     running = await startCompanion({ home, dist, port })
     const loaded = await running.workspace.load()
-    console.log(`Next168 companion: ${url}\nWorkspace: ${home}`)
+    console.log(`Weeklid companion: ${url}\nWorkspace: ${home}`)
     if (loaded.kind !== 'ok') console.error('Planner is unreadable; writes are blocked. Pair and use the recovery screen to restore a validated .bak. Original bytes are preserved.')
     const pairUrl = `${url}/#pair=${running.pairingCode}`
     console.log(`Pairing code (single use, 10 minutes): ${running.pairingCode}\nOpen ${pairUrl}`)

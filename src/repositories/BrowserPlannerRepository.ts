@@ -6,6 +6,7 @@ import { parseDocument, validateDocument } from './core'
 import { createEmptyDocument } from '@/core/documents'
 import type { ChangeChannel } from './changeChannel'
 import type { BrowserStore, Snapshot } from './indexedDbStore'
+import { SNAPSHOTS_STORE, type PreUpgradeCopy } from './storageVersion'
 import { LEGACY_KEYS, planLegacyImport } from './legacyImport'
 import {
   NO_WEB_LOCKS, currentUnsavedBaseline, failureReason, isValidDocumentText, purgeEpochOf, storedDocument, storedFingerprintOf, unsavedBaselineRecord,
@@ -45,6 +46,18 @@ type PurgeRecord = z.infer<typeof purgeSchema>
 
 export const STORED_DOCUMENT_MISSING = 'stored-document-missing'
 
+// `z.record` rebuilds the object and drops a `__proto__` key, so the records keyed by user data are checked in place.
+const isPlainRecord = (value: unknown): value is Record<string, unknown> =>
+  typeof value === 'object' && value !== null && !Array.isArray(value) && Object.getPrototypeOf(value) === Object.prototype
+const preUpgradeCopySchema = z.object({
+  capturedAt: z.string(),
+  fromVersion: z.number(),
+  raw: z.object({ document: z.unknown(), backup: z.unknown(), proposals: z.unknown(), meta: z.custom<Record<string, unknown>>(isPlainRecord) }),
+  calendarSourceTexts: z.custom<Record<string, string>>((value) => isPlainRecord(value) && Object.values(value).every((text) => typeof text === 'string')),
+  calendarsComplete: z.literal(true),
+  portableHash: z.string().nullable(),
+})
+
 function purgeRecord(value: unknown): PurgeRecord | undefined {
   if (value === undefined) return undefined
   const parsed = purgeSchema.safeParse(value)
@@ -72,6 +85,7 @@ export class BrowserPlannerRepository implements PlannerRepository {
 
   async load(): Promise<LoadResult> {
     const { store, runExclusive } = this.deps
+    await store.prepare?.()
     const snapshot = await store.read(['document', 'migration', 'purge', 'purgeEpoch', 'unsavedBaseline'])
     this.loadedPurgeEpoch = purgeEpochOf(snapshot)
     if (this.purgePending(snapshot)) await this.finishPurge().catch((error) => console.warn('next168: purge resumes on the next load', error))
@@ -189,8 +203,15 @@ export class BrowserPlannerRepository implements PlannerRepository {
     })
   }
 
+  // The complete copy the storage fence took before the first upgrade, if one exists.
+  async preUpgradeCopy(): Promise<PreUpgradeCopy | undefined> {
+    const parsed = preUpgradeCopySchema.safeParse((await this.deps.store.read(['preUpgradeCopy'])).preUpgradeCopy)
+    return parsed.success ? (parsed.data as PreUpgradeCopy) : undefined
+  }
+
   // Delete-all, in ONE hold of the commit lock: compare-and-swap, one transaction that replaces the document,
-  // drops backup and proposals, records the purge and moves the purge epoch; then the cleanup outside IndexedDB.
+  // drops backup, proposals and every snapshot (the pre-upgrade copy included), records the purge and moves the purge
+  // epoch; then the cleanup outside IndexedDB.
   async deleteAll(fresh: PlannerDocument, expectedRevision: number): Promise<SaveResult> {
     let checked: PlannerDocument
     try {
@@ -208,7 +229,7 @@ export class BrowserPlannerRepository implements PlannerRepository {
       const purgeEpoch = purgeEpochOf(snapshot) + 1
       await store.write({
         document: json, backup: null, proposals: null, unsavedBaseline: null,
-        purge: { legacyKeys: true, calendarSourceIds }, purgeEpoch,
+        purge: { legacyKeys: true, calendarSourceIds }, purgeEpoch, clearStores: [SNAPSHOTS_STORE],
       })
       this.identity = identityOf(json)
       this.loadedPurgeEpoch = purgeEpoch

@@ -1,12 +1,13 @@
 import { fileURLToPath, URL } from 'node:url'
 
-import { defineConfig, loadEnv } from 'vite'
+import { defineConfig, loadEnv, type ConfigEnv, type UserConfig } from 'vite'
 import vue from '@vitejs/plugin-vue'
 import { VitePWA } from 'vite-plugin-pwa'
 import { readPreviewHttps } from './config/lanHttps'
 import { assertPublicUrl } from './config/publicUrl'
 
-const BRAND_TINT = '#5856D6'
+// The installed window's bars match the page's grouped background, as the theme-color metas in index.html do
+// (src/ui/appearance.ts): the brand green lives in the icon and the controls, not in the system chrome.
 const GROUPED_BACKGROUND = '#F2F2F7'
 const MAX_PRECACHE_BYTES = 5 * 1024 * 1024
 
@@ -18,62 +19,66 @@ function checkPublicUrl(mode: string): void {
 }
 
 // base './' lets the same build run at '/', at '/next168/' and inside the local companion.
-export default defineConfig(({ isPreview, mode }) => {
-  checkPublicUrl(mode)
-  return {
-    base: './',
-    plugins: [
-      vue(),
-      VitePWA({
-        registerType: 'prompt',
-        injectRegister: false,
-        includeAssets: ['favicon.ico', 'apple-touch-icon-180x180.png'],
-        manifest: {
-          name: 'Next168',
-          short_name: 'Next168',
-          description: 'Plan your 168 hours. Local-first weekly planner.',
-          display: 'standalone',
-          start_url: './',
-          scope: './',
-          theme_color: BRAND_TINT,
-          background_color: GROUPED_BACKGROUND,
-          icons: [
-            { src: 'pwa-192x192.png', sizes: '192x192', type: 'image/png' },
-            { src: 'pwa-512x512.png', sizes: '512x512', type: 'image/png' },
-            { src: 'maskable-icon-512x512.png', sizes: '512x512', type: 'image/png', purpose: 'maskable' },
-          ],
-        },
-        workbox: {
-          globPatterns: ['**/*.{js,css,html,svg,png,ico,webmanifest}'],
-          globIgnores: ['**/webllm*.js'],
-          maximumFileSizeToCacheInBytes: MAX_PRECACHE_BYTES,
-          navigateFallback: 'index.html',
-          navigateFallbackDenylist: [/\/api\//],
-          clientsClaim: true,
-          runtimeCaching: [
-            { urlPattern: ({ url }) => url.pathname.includes('/api/'), handler: 'NetworkOnly' },
-            // The optional on-device assistant is about 12 MB of code: cached on first use, never precached.
-            { urlPattern: ({ url }) => /\/assets\/webllm[^/]*\.js$/.test(url.pathname), handler: 'CacheFirst', options: { cacheName: 'next168-assistant-code' } },
-          ],
-        },
-      }),
-    ],
-    build: {
-      rollupOptions: {
-        output: { manualChunks: (id) => (id.includes('/node_modules/@mlc-ai/web-llm/') ? 'webllm' : undefined) },
+const appConfig = ({ isPreview }: ConfigEnv): UserConfig => ({
+  base: './',
+  plugins: [
+    vue(),
+    VitePWA({
+      registerType: 'prompt',
+      injectRegister: false,
+      includeAssets: ['favicon.ico', 'favicon.svg', 'favicon-16x16.png', 'favicon-32x32.png', 'apple-touch-icon-180x180.png'],
+      manifest: {
+        name: 'Weeklid',
+        short_name: 'Weeklid',
+        description: 'Plan your 168 hours. Local-first weekly planner.',
+        display: 'standalone',
+        start_url: './',
+        scope: './',
+        theme_color: GROUPED_BACKGROUND,
+        background_color: GROUPED_BACKGROUND,
+        icons: [
+          { src: 'pwa-64x64.png', sizes: '64x64', type: 'image/png' },
+          { src: 'pwa-192x192.png', sizes: '192x192', type: 'image/png' },
+          { src: 'pwa-512x512.png', sizes: '512x512', type: 'image/png' },
+          { src: 'maskable-icon-512x512.png', sizes: '512x512', type: 'image/png', purpose: 'maskable' },
+          { src: 'monochrome-icon-512x512.png', sizes: '512x512', type: 'image/png', purpose: 'monochrome' },
+        ],
       },
-    },
-    resolve: {
-      alias: {
-        '@': fileURLToPath(new URL('./src', import.meta.url)),
+      workbox: {
+        globPatterns: ['**/*.{js,css,html,svg,png,ico,webmanifest}'],
+        globIgnores: ['**/webllm*.js'],
+        maximumFileSizeToCacheInBytes: MAX_PRECACHE_BYTES,
+        navigateFallback: 'index.html',
+        navigateFallbackDenylist: [/\/api\//],
+        clientsClaim: true,
+        runtimeCaching: [
+          { urlPattern: ({ url }) => url.pathname.includes('/api/'), handler: 'NetworkOnly' },
+          // The optional on-device assistant is about 12 MB of code: cached on first use, never precached.
+          { urlPattern: ({ url }) => /\/assets\/webllm[^/]*\.js$/.test(url.pathname), handler: 'CacheFirst', options: { cacheName: 'next168-assistant-code' } },
+        ],
       },
+    }),
+  ],
+  build: {
+    rollupOptions: {
+      output: { manualChunks: (id) => (id.includes('/node_modules/@mlc-ai/web-llm/') ? 'webllm' : undefined) },
     },
-    server: {
-      host: true,
-      port: 5173,
+  },
+  resolve: {
+    alias: {
+      '@': fileURLToPath(new URL('./src', import.meta.url)),
     },
-    preview: {
-      https: isPreview ? readPreviewHttps(process.env) : undefined,
-    },
-  }
+  },
+  server: {
+    host: true,
+    port: 5173,
+  },
+  preview: {
+    https: isPreview ? readPreviewHttps(process.env) : undefined,
+  },
+})
+
+export default defineConfig((env) => {
+  checkPublicUrl(env.mode)
+  return appConfig(env)
 })

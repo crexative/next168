@@ -16,7 +16,7 @@ function measureAt(width: number, scale = 1): ColumnMeasure {
     width: (text, role) => [...text].length * BASE[role].char * scale,
     lineHeight: (role) => BASE[role].line * scale,
   }
-  return { width, metrics, markLead: 16 * scale, iconLead: 18 * scale, glyph: { width: 11.25 * scale, height: 11.25 * scale } }
+  return { width, basis: `${width}px 16px`, metrics, markLead: 16 * scale, iconLead: 18 * scale, glyph: { width: 11.25 * scale, height: 11.25 * scale }, glyphMin: { width: 10 * scale, height: 10 * scale } }
 }
 
 const px = (minute: number) => (minute / 60) * HOUR_HEIGHT_PX
@@ -109,28 +109,54 @@ describe('events and routines share the column', () => {
     expect(result.busy[0]).toMatchObject({ left: 50, width: 50 })
   })
 
-  it('shows a conflict as icon and word, then icon, then the title alone, then the title in the small caption size, then the icon alone', () => {
+  // verify8: a conflict always leads with its ⚠ where the ⚠ fits; its title follows with whole words as space allows.
+  // At 973724c a box that held the whole title but not "⚠ title" drew the title alone, with no ⚠.
+  it('shows a conflict as ⚠ and word, then ⚠ and title, then ⚠ and whole words, then ⚠ and the small title, then the ⚠ alone', () => {
     const at = (width: number, minutes: number) => plan({ blocks: [block('b', 540, 600)], events: [event('Vendor call', 540, 540 + minutes)], measure: measureAt(width) }).busy[0]!.show
     expect(at(400, 60)).toEqual({ icon: true, word: true, title: true, text: 'Vendor call', cut: false })
     expect(at(200, 30)).toEqual({ icon: true, word: false, title: true, text: 'Vendor call', cut: false })
-    // 104 px column, two lanes: 48 px boxes, 42 px for text: "Vendor" / "call" on two lines, not with the icon.
-    expect(at(104, 60)).toEqual({ icon: false, word: false, title: true, text: 'Vendor call', cut: false })
-    // One line of 50 px: the first whole word and "…".
-    expect(at(120, 30)).toEqual({ icon: false, word: false, title: true, text: 'Vendor…', cut: true })
-    // 16 px tall: no caption line, but one line of the small caption size: "Vendor…", centred, no icon.
-    expect(at(104, 20)).toMatchObject({ icon: false, word: false, title: true, text: 'Vendor…', cut: true, small: true })
-    // 16 px tall but 20 px wide: not even "Vendor…" in the small size; the icon alone.
+    // 16 px tall, 74 px of room: no caption line, but the ⚠ and "Vendor…" in the small size beside it.
+    expect(at(150, 20)).toMatchObject({ icon: true, word: false, title: true, text: 'Vendor…', cut: true, small: true })
+    // 104 px column, two lanes: 42 px for text holds "Vendor" / "call" but no word after the ⚠: the ⚠ alone, never the
+    // title without it (it stays in the accessible name and on tap).
+    expect(at(104, 60)).toEqual({ icon: true, word: false, title: false })
+    expect(at(120, 30)).toEqual({ icon: true, word: false, title: false })
     expect(at(60, 20)).toEqual({ icon: true, word: false, title: false })
-    // 12 px tall: too short for any text or the icon.
-    expect(at(104, 15)).toEqual({ icon: false, word: false, title: false })
-    // Codex review of verify7: 14.4 px tall in a narrow lane, too short for the icon inside the caption insets but tall
-    // enough for a glyph. The conflict keeps its ⚠ (centred in the small insets), never the plain grey initial.
+    // Codex review of verify7: 14.4 px tall in a narrow lane: the ⚠ centred in the small insets, never the grey initial.
     expect(at(60, 18)).toEqual({ icon: true, word: false, title: false })
+    // 12 px tall: too short for the ⚠ (10 px of room) or any text; the red border and hatching mark the conflict.
+    expect(at(104, 15)).toEqual({ icon: false, word: false, title: false })
     expect(at(30, 5)).toEqual({ icon: false, word: false, title: false })
+  })
+
+  it('draws the ⚠ on a line of its own above a title that does not fit beside it', () => {
+    // 100 px column, two lanes: 40 px of text room, 56 px tall. "⚠ Vendor" (54 px) does not fit a line; under a 13 px ⚠
+    // line, "Vendor" / "call" does.
+    const show = plan({ blocks: [block('b', 540, 600)], events: [event('Vendor call', 540, 615)], measure: measureAt(100) }).busy[0]!.show
+    expect(show).toEqual({ icon: true, stacked: true, word: false, title: true, text: 'Vendor call', cut: false })
   })
 })
 
 describe('a box with no words', () => {
+  // verify8 D3: a 15-minute item (12 px at a 48 px hour) has 10 px of room inside an event's small insets, less than the
+  // glyph. At 973724c it was a bare strip; the glyph is now drawn scaled down to the room, never below its smallest size.
+  it('draws the glyph scaled down to a box shorter than it, down to its smallest size', () => {
+    const quarter = plan({ events: [event('Pausa', 540, 555)], measure: measureAt(300) }).busy[0]!.show
+    expect(quarter).toMatchObject({ title: false, glyph: true })
+    expect(quarter.glyphScale).toBeCloseTo(10 / 11.25, 5)
+    // 10 minutes (8 px, 6 px of room) is below the smallest glyph: a bare strip.
+    expect(plan({ events: [event('Pausa', 540, 550)], measure: measureAt(300) }).busy[0]!.show).toEqual({ icon: false, word: false, title: false })
+  })
+
+  it('keeps a 1 px gap between touching routines of one category, and none between different categories', () => {
+    const blocks = [block('work', 540, 600), block('standup', 600, 615), { ...block('lunch', 615, 660), categoryId: 'meals' }]
+    const result = plan({ blocks, measure: measureAt(300) }).blocks
+    const byKey = (id: string) => result.find((planned) => planned.occurrence.blockId === id)!
+    expect(byKey('work').bottom).toBe(px(600) - 1)
+    expect(byKey('standup').bottom).toBe(px(615))
+    expect(byKey('lunch').bottom).toBe(px(660))
+  })
+
   it('shows a plain event its initial where the glyph fits, but a conflict only its ⚠ or nothing', () => {
     const lone = (minutes: number) => plan({ events: [event('Vendor call', 540, 540 + minutes)], measure: measureAt(26) }).busy[0]!.show
     // 26 px column: 20 px of room inside the small insets; "Vendor…" does not fit in the small size.

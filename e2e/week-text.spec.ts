@@ -1,8 +1,8 @@
 import { expect, test, type Page } from '@playwright/test'
 import { V2_KEY, seedKey } from './fixtures'
-import { visualIntegrityViolations } from './support/visualIntegrity'
+import { columnsPlanned, visualIntegrityViolations } from './support/visualIntegrity'
 import { itemsMissingTitles, seededTitles, type SeededTitles } from './support/week'
-import { SEEDED_NOW, VERIFY6_NOW, VERIFY6_WEEK, weekFor } from './support/weekLayouts'
+import { SEEDED_NOW, VERIFY6_NOW, VERIFY6_WEEK, VERIFY8_CALENDAR, VERIFY8_WEEK, weekFor } from './support/weekLayouts'
 
 // Week text, property style (docs/design/visual-design.md › Week items): many seeded weeks of 5 to 15 minute routines,
 // back-to-back short tasks, events on a routine's title row, overnight items and 2 to 4 overlapping lanes, each audited
@@ -27,7 +27,8 @@ async function auditWeek(page: Page, state: string, columns: number, titles?: Se
     return found.length
   })
   expect(marked, `${state}: day columns on the page`).toBeGreaterThanOrEqual(columns)
-  const violations = await visualIntegrityViolations(page, { focusRings: false })
+  // One shared press target per state is pressed: its chooser must offer every item it lists.
+  const violations = await visualIntegrityViolations(page, { focusRings: false, choosers: 1 })
   if (violations.length) await page.screenshot({ path: test.info().outputPath(`${state.replace(/[^\w%-]+/g, '-')}.png`), fullPage: true })
   expect.soft(violations, state).toEqual([])
   // Whatever is drawn, every routine, event and task keeps its full seeded title in its accessible name.
@@ -142,6 +143,20 @@ test.describe('Week text is whole in the weeks verify4 and verify5 reported', ()
     await auditEverySize(page, 'verify6 f3 es', 375, 0, seededTitles(VERIFY6_WEEK))
   })
 
+  // verify8: conflicts with room for the ⚠ drew no ⚠ ("Demo con el cliente" at 1440, "Sincronización semanal" at
+  // 375), and 15-minute items were nameless strips. The guard requires the ⚠ wherever it fits and the glyph wherever
+  // its smallest size fits.
+  test('verify8 f4: short routines and imported conflicts at 10 to 60 minutes (Spanish)', async ({ page }) => {
+    test.setTimeout(120_000)
+    await page.setViewportSize({ width: 375, height: 720 })
+    await page.clock.install({ time: VERIFY6_NOW })
+    await page.addInitScript(() => window.localStorage.setItem('next168-language', 'es'))
+    await seedKey(page, V2_KEY, JSON.stringify(VERIFY8_WEEK))
+    await importCalendar(page, VERIFY8_CALENDAR)
+    await openWeek(page)
+    await auditEverySize(page, 'verify8 f4 es', 375, 0, await seededWeek(page))
+  })
+
   test('verify4/verify5 R1: "Vendor call" and "Team sync" beside "Deep work" (English)', async ({ page }) => {
     test.setTimeout(120_000)
     await page.setViewportSize({ width: 375, height: 720 })
@@ -195,6 +210,38 @@ test.describe('Week text is whole in every seeded layout', () => {
 
 // Re-planning must not leak: the columns re-measure on every resize and text-size change (probes, observers, caches).
 // Measured with the DevTools protocol (Chromium): DOM nodes and event listeners stay flat over hundreds of re-plans.
+// P0 regression (Linux, seeds 29 and 48 at 1920 px and 200 %): the audit ran after a resize reached the page's layout
+// but before the columns' ResizeObserver re-measured them, so it judged a plan made for 1440 px against 1920 px boxes.
+// Each column says the size its plan was measured for; a new width or text size is followed by a re-plan for it, and
+// the audit waits for that and reports a column still planned for another size.
+test('every Week column re-plans for a new width and text size and says the size it was planned for', async ({ page }, testInfo) => {
+  test.skip(testInfo.project.name !== 'desktop', 'one Chromium measurement is enough')
+  const { document: seeded } = weekFor(29)
+  await page.setViewportSize({ width: 1440, height: 900 })
+  await page.clock.install({ time: SEEDED_NOW })
+  await seedKey(page, V2_KEY, JSON.stringify(seeded))
+  await openWeek(page)
+  const plans = () => page.evaluate(() => Array.from(document.querySelectorAll<HTMLElement>('.day-column')).map((column) => {
+    const style = getComputedStyle(column)
+    const width = column.getBoundingClientRect().width - Number.parseFloat(style.borderLeftWidth) - Number.parseFloat(style.borderRightWidth)
+    return { planned: column.getAttribute('data-planned-for'), current: `${Math.round(width * 10) / 10}px ${getComputedStyle(document.documentElement).fontSize}` }
+  }))
+  await settled(page)
+  const at1440 = await plans()
+  expect(at1440).toHaveLength(7)
+  for (const { planned, current } of at1440) expect(planned).toBe(current)
+  // Text size and width change in one task, with no frame in between: the plans are for the old size until the columns
+  // re-measure, and the check sees that.
+  const stale = await page.evaluate(() => {
+    document.documentElement.style.fontSize = '200%'
+    document.querySelectorAll<HTMLElement>('.day-column').forEach((column) => { column.style.maxWidth = '120px' })
+    return Array.from(document.querySelectorAll<HTMLElement>('.day-column')).filter((column) => !column.getAttribute('data-planned-for')?.endsWith(' 32px')).length
+  })
+  expect(stale).toBe(7)
+  expect(await visualIntegrityViolations(page, { focusRings: false })).toEqual([])
+  for (const { planned, current } of await plans()) expect(planned).toBe(current)
+})
+
 test('re-planning Week across hundreds of widths and both text sizes keeps nodes and listeners flat', async ({ page }, testInfo) => {
   test.skip(testInfo.project.name !== 'desktop', 'one Chromium measurement is enough')
   test.setTimeout(120_000)
@@ -234,13 +281,29 @@ test('re-planning Week across hundreds of widths and both text sizes keeps nodes
     await setTextSize(page, 100)
     await page.setViewportSize({ width: 1440, height: 900 })
     await settled(page)
+    expect(await columnsPlanned(page), 'the columns re-plan for 1440 px at 100 %').toBe(true)
   }
+  // verify8: the same width and text size must give the same columns, the measuring probes included: every node of
+  // each day column (elements, text and comments) and its text. At 0c15701 the probes kept whatever was measured last,
+  // so the node count moved with the history of widths (+23 on Linux).
+  const columns = () => page.evaluate(() => Array.from(window.document.querySelectorAll('.day-column')).map((column) => {
+    let nodes = 0
+    const walker = window.document.createTreeWalker(column, NodeFilter.SHOW_ALL)
+    while (walker.nextNode()) nodes++
+    return `${column.getAttribute('data-planned-for')} ${nodes} ${column.textContent}`
+  }))
+  // The probes that measure text hold nothing at rest, so what was measured last never shows in the DOM.
+  const leftovers = () => page.evaluate(() => Array.from(window.document.querySelectorAll('.text-probes > [data-role]:not([data-lead]), .text-probes > [data-hyphen]'))
+    .filter((probe) => probe.childNodes.length > 0 || probe.hasAttribute('style')).map((probe) => probe.outerHTML.replace(/ data-v-[0-9a-f]+=""/g, '').slice(0, 200)))
   await replan(768)
+  expect(await leftovers(), 'measuring probes left with text or a width').toEqual([])
   const before = await counts()
+  const beforeColumns = await columns()
   expect(before.listeners, 'the app\'s listeners are counted').toBeGreaterThan(50)
   await replan(771)
   await replan(774)
   const after = await counts()
+  expect(await columns(), 'the day columns at the same width and text size').toEqual(beforeColumns)
   expect(after.listeners, 'the app\'s event listeners').toBe(before.listeners)
   expect(Math.abs(after.nodes - before.nodes), `DOM nodes ${before.nodes} → ${after.nodes}`).toBeLessThanOrEqual(20)
 })

@@ -42,7 +42,7 @@ try {
   const config = { mcpServers: { next168: { command: process.execPath, args: [join(root, 'companion/dist/cli.js'), 'mcp'], env: { NEXT168_HOME: home, NEXT168_PORT: String(port) } } } }
   const configFile = join(home, 'mcp-config.json')
   await writeFile(configFile, JSON.stringify(config, null, 2), { mode: 0o600 })
-  const prompt = 'Use only the Next168 MCP tools. First call get_week to read the workspace and revision. Then call propose_changes exactly once to propose one block titled "MCP smoke focus", in category "focus", on Monday (days [1]), from minute 540 to 600. Use the actual workspaceId and revision you just read and contractVersion "1.0". Do not approve or apply anything. Report the proposal id and say that it is pending user review.'
+  const prompt = 'Use only the Weeklid MCP tools (server next168). First call get_week to read the workspace and revision. Then call propose_changes exactly once to propose one block titled "MCP smoke focus", in category "focus", on Monday (days [1]), from minute 540 to 600. Use the actual workspaceId and revision you just read and contractVersion "1.0". Do not approve or apply anything. Report the proposal id and say that it is pending user review.'
   const args = ['-p', prompt, '--strict-mcp-config', '--mcp-config', configFile, '--allowedTools', 'mcp__next168__get_week,mcp__next168__propose_changes', '--output-format', 'stream-json', '--verbose']
   claude = spawn('claude', args, { env, cwd: home, stdio: ['ignore', 'pipe', 'pipe'] })
   let transcript = '', errors = ''

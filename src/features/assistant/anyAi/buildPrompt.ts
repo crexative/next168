@@ -3,6 +3,7 @@ import { addLocalDays, localDateOf, zonedInstant } from '@/core/time'
 import { weekEnd, weekSplit, weekSplitHours } from '@/features/capacity/freeHours'
 import { formatHours } from '@/ui/format'
 import { localMinuteOf, orderedDays, weekDates } from '@/features/week/localTime'
+import { PROPOSAL_LABEL } from './extractProposal'
 
 // The text a person pastes into ChatGPT, Claude, Gemini or any other chat AI. Instructions come from the
 // translation catalog; the plan is rendered as short data lines in which every user-written string is quoted.
@@ -49,7 +50,7 @@ function jsonLine(value: unknown): string {
 function exampleFor(document: PlannerDocument): string {
   const existing = document.categories[0]?.id
   const create = existing ? [] : [{ op: 'add_category', ref: 'new-example', category: { name: 'Example', goal: { type: 'min', hoursPerWeek: 1 } } }]
-  return `\`\`\`next168\n${jsonLine({
+  return `\`\`\`${PROPOSAL_LABEL}\n${jsonLine({
     contractVersion: '1.0', workspaceId: document.workspaceId, baseRevision: document.revision,
     summary: existing ? 'Add a one-hour block' : 'Add a category and a one-hour block',
     ops: [...create, { op: 'add_block', block: { categoryId: existing ?? 'new-example', title: 'Example', days: [4], start: 1080, end: 1140 } }],

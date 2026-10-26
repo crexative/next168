@@ -3,6 +3,8 @@
   "add": "Hinzufügen",
   "deleted": "„{title}“ gelöscht",
   "grid": {
+    "allDay": "Ganztägig",
+    "allDayItem": "{title}, ganztägig",
     "conflict": "Konflikt",
     "crossesMidnight": "{range} (über Nacht)"
   },
@@ -10,7 +12,7 @@
     "when": "Wann",
     "calendar": "Kalender",
     "conflictsWith": "Überschneidet sich mit {title}",
-    "ownEvent": "Next168-Termin",
+    "ownEvent": "Weeklid-Termin",
     "calendarFallback": "Kalender",
     "location": "Ort",
     "notes": "Notizen"
@@ -91,5 +93,13 @@
     "tomorrowMany": "{count} Aufgaben auf morgen verschoben",
     "later": "„{title}“ auf {day} verschoben",
     "laterMany": "{count} Aufgaben auf einen anderen Tag verschoben"
+  },
+  "chooser": {
+    "title": "Was möchtest du öffnen?",
+    "kind": {
+      "block": "Routine",
+      "task": "Aufgabe",
+      "event": "Termin"
+    }
   }
 }

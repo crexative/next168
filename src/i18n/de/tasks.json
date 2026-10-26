@@ -8,6 +8,8 @@
   "late": "Die Aufgabe liegt nach dem Fälligkeitsdatum ({date}).",
   "latePartial": "Vor dem Fälligkeitsdatum ({date}) ist nur Platz für {duration}.",
   "warnings": "Planungshinweise",
+  "moreWarnings": "Und {count} weitere passt nicht in die nächsten 7 Tage. | Und {count} weitere passen nicht in die nächsten 7 Tage.",
+  "showAllWarnings": "Alle anzeigen",
   "unplaced": "Nicht eingeplant",
   "unplacedHint": "In den nächsten 7 Tagen gibt es keinen freien Zeitraum.",
   "recentDone": "Zuletzt erledigt",

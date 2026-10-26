@@ -82,7 +82,7 @@ export const blockActualSchema = z.object({
 }).refine((a) => Math.round((Date.parse(a.plannedEndAt) - Date.parse(a.plannedStartAt)) / 60000) === a.plannedMinutes, { message: 'actual.plannedMinutesMismatch', path: ['plannedMinutes'] })
   .refine((a) => a.status !== 'partial' || (a.actualMinutes !== undefined && a.actualMinutes <= a.plannedMinutes), { message: 'actual.partialNeedsMinutes', path: ['actualMinutes'] })
 
-export const plannerEventSchema = z.object({
+export const plannerEventFields = z.object({
   id,
   title: text(120),
   start: isoDateTime,
@@ -91,7 +91,8 @@ export const plannerEventSchema = z.object({
   location: optionalText(200),
   notes: optionalText(2000),
   attendees: z.array(z.email()).max(50),
-}).refine((e) => Date.parse(e.end) > Date.parse(e.start), { message: 'event.endBeforeStart', path: ['end'] })
+})
+export const plannerEventSchema = plannerEventFields.refine((e) => Date.parse(e.end) > Date.parse(e.start), { message: 'event.endBeforeStart', path: ['end'] })
 
 export const calendarSourceSchema = z.object({
   id,

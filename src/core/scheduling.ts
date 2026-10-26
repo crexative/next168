@@ -1,9 +1,8 @@
-import type { PlacementChunk, PlannerDocument, ScheduleInput, Task, TaskPlacement } from './model'
-import { scheduleTasks } from './scheduler'
-import { taskWindows } from './schedulingWindows'
-import { addLocalDays, datedOccurrences, localDateOf, zonedInstant } from './time'
+import type { PlacementChunk, ScheduleInput, Task, TaskPlacement } from './model'
+import { subtract, taskWindows } from './schedulingWindows'
+import { addLocalDays, datedOccurrences, localDateOf, zonedInstant, type DatedOccurrence } from './time'
 
-// Stable task placement on top of scheduleTasks:
+// Stable task placement, with the same rules as scheduleTasks for each task:
 // - chunks start on a five-minute grid at block boundaries, after "now", and after busy intervals or tasks;
 // - a placement that was shown before is kept while it is still valid, so a task does not slide along with the clock.
 // - a task's category is a preference, not a wall, when its deadline is at stake: when the category's blocks cannot
@@ -15,6 +14,8 @@ export const PLACEMENT_STEP_MINUTES = 5
 export const PLACEMENT_SNAP_MINUTES = PLACEMENT_STEP_MINUTES
 
 const MINUTE_MS = 60_000
+// Shorter chunks are allowed only when they finish the task.
+const MIN_CHUNK_MINUTES = 10
 
 export interface StableScheduleInput extends ScheduleInput {
   snapMinutes?: number
@@ -29,6 +30,7 @@ export interface MovedTask { taskId: string; from: string; to: string }
 interface Interval { start: number; end: number }
 
 const ceilTo = (value: number, step: number) => Math.ceil(value / step) * step
+const hasWholeMinute = (window: Interval) => Math.floor((window.end - ceilTo(window.start, MINUTE_MS)) / MINUTE_MS) >= 1
 
 // Tasks are fitted from this instant on: now, rounded up to the next five minutes (exactly on a step stays put).
 export function placementClock(now: Date): Date {
@@ -44,8 +46,7 @@ function inside(chunk: Interval, windows: Interval[]): boolean {
   return windows.some((window) => window.start <= chunk.start && chunk.end <= window.end)
 }
 
-function mergedWindows(document: PlannerDocument, categoryId: string | undefined, fromDate: string, days: number, timeZone: string): Interval[] {
-  const occurrences = datedOccurrences(document, fromDate, days, timeZone)
+function mergedWindows(occurrences: readonly DatedOccurrence[], categoryId: string | undefined, fromDate: string, days: number, timeZone: string): Interval[] {
   if (categoryId === undefined) {
     // A task with no category fits anywhere in the horizon that no routine block covers.
     const range = { start: zonedInstant(fromDate, 0, timeZone).getTime(), end: zonedInstant(addLocalDays(fromDate, days), 0, timeZone).getTime() }
@@ -93,11 +94,14 @@ function withoutCategory(task: Task): Task {
 export function scheduleStable(input: StableScheduleInput): TaskPlacement[] {
   const { document, busy, now, timeZone, days = 7, previous, pinned } = input
   const snapMs = (input.snapMinutes ?? PLACEMENT_SNAP_MINUTES) * MINUTE_MS
-  const snappedDocument: PlannerDocument = { ...document, events: document.events.map((event) => ({ ...event, end: snapEnd(event.end, snapMs) })) }
+  const snappedEvents = document.events.map((event) => ({ ...event, end: snapEnd(event.end, snapMs) }))
   const snappedBusy = busy.map((item) => ({ ...item, end: snapEnd(item.end, snapMs) }))
   const fromDate = localDateOf(now, timeZone)
+  // The routine occurrences of the horizon, worked out once per call (never cached across calls: routines change).
+  const dated = datedOccurrences(document, fromDate, days, timeZone)
 
-  const occupied: Interval[] = [...snappedBusy, ...snappedDocument.events].map((item) => ({ start: Date.parse(item.start), end: Date.parse(item.end) }))
+  const staticBusy: Interval[] = [...snappedBusy, ...snappedEvents].map((item) => ({ start: Date.parse(item.start), end: Date.parse(item.end) }))
+  const occupied = [...staticBusy]
   const kept = new Map<string, TaskPlacement>()
   const open = document.tasks.filter((task) => !task.doneAt).sort((a, b) =>
     compare(a.dueDate ?? '9999-12-31', b.dueDate ?? '9999-12-31') || a.priority - b.priority
@@ -111,7 +115,7 @@ export function scheduleStable(input: StableScheduleInput): TaskPlacement[] {
     const minutes = chunks.reduce((sum, chunk) => sum + (chunk.end - chunk.start) / MINUTE_MS, 0)
     // A placement made in free time for a deadline stays valid in free time while the task keeps both.
     const outside = candidate.outsideCategory === true && task.categoryId !== undefined && task.dueDate !== undefined
-    const windows = mergedWindows(document, outside ? undefined : task.categoryId, fromDate, days, timeZone)
+    const windows = mergedWindows(dated, outside ? undefined : task.categoryId, fromDate, days, timeZone)
     const stillAhead = pin
       ? chunks.every((chunk) => localDateOf(new Date(chunk.start), timeZone) === fromDate)
       : chunks.every((chunk) => chunk.end > now.getTime())
@@ -127,33 +131,67 @@ export function scheduleStable(input: StableScheduleInput): TaskPlacement[] {
     occupied.push(...chunks)
   }
 
-  const rest: TaskPlacement[] = []
-  const schedulingBusy = [...snappedBusy, ...[...kept.values()].flatMap((placement) =>
-    placement.chunks.map((chunk) => ({ ...chunk, end: snapEnd(chunk.end, snapMs) })))]
-  const place = (task: Task): TaskPlacement | undefined => {
+  // Free time per category (or "any free time"), built the first time a task needs it from everything already busy,
+  // then carved by each placement. Removing busy time piece by piece leaves the same windows as removing it at once,
+  // so every task gets exactly the free time scheduleTasks would give it, without redoing the earlier placements.
+  const rangeStart = ceilTo(now.getTime(), MINUTE_MS)
+  const rangeEnd = zonedInstant(addLocalDays(fromDate, days), 0, timeZone).getTime()
+  const reserve = (placement: TaskPlacement) => placement.chunks.map((chunk) => ({ start: Date.parse(chunk.start), end: Date.parse(snapEnd(chunk.end, snapMs)) }))
+  const reserved = [...staticBusy, ...[...kept.values()].flatMap(reserve)]
+  const freeByKey = new Map<string | undefined, Interval[]>()
+  const freeTimeOf = (categoryId: string | undefined): Interval[] => {
+    const cached = freeByKey.get(categoryId)
+    if (cached) return cached
+    if (reserved.some((item) => !Number.isFinite(item.start) || !Number.isFinite(item.end) || item.end <= item.start)) throw new Error('scheduler.invalidBusy')
     // Exclude the lead-in to the next grid point without moving block ends or changing the local-day horizon.
-    const leadIns = mergedWindows(document, task.categoryId, fromDate, days, timeZone).flatMap((window) => {
+    const leadIns = mergedWindows(dated, categoryId, fromDate, days, timeZone).flatMap((window) => {
       const start = Math.max(window.start, now.getTime())
       const end = Math.min(window.end, ceilTo(start, snapMs))
-      return end > start ? [{ start: new Date(start).toISOString(), end: new Date(end).toISOString() }] : []
+      return end > start ? [{ start, end }] : []
     })
-    return scheduleTasks({
-      document: { ...snappedDocument, tasks: [task] },
-      busy: [...schedulingBusy, ...leadIns], now, timeZone, days,
-    })[0]
+    const busyTime = [...reserved, ...leadIns]
+    const free = taskWindows(dated, categoryId, { start: rangeStart, end: rangeEnd }).flatMap((window) => subtract(window, busyTime)).filter(hasWholeMinute)
+    freeByKey.set(categoryId, free)
+    return free
   }
+  // Keep even short windows: they can hold a whole remaining task, including its last piece.
+  // Chunks start on the minute, take at least min(10, remaining) minutes, and are late past the due date.
+  const place = (task: Task): TaskPlacement => {
+    const dueEnd = dueEndOf(task, timeZone)
+    let remaining = task.durationMin
+    let late = dueEnd <= now.getTime()
+    const chunks: PlacementChunk[] = []
+    for (const window of freeTimeOf(task.categoryId)) {
+      const chunkStart = ceilTo(window.start, MINUTE_MS)
+      const minutes = Math.min(remaining, Math.floor((window.end - chunkStart) / MINUTE_MS))
+      if (minutes < Math.min(MIN_CHUNK_MINUTES, remaining)) continue
+      const chunkEnd = chunkStart + minutes * MINUTE_MS
+      chunks.push({ start: new Date(chunkStart).toISOString(), end: new Date(chunkEnd).toISOString() })
+      remaining -= minutes
+      if (chunkEnd > dueEnd) late = true
+      if (!remaining) break
+    }
+    return { taskId: task.id, chunks, overflowMinutes: remaining, late }
+  }
+  // Reserve through the next grid point before placing another task; durations themselves stay exact.
+  const commit = (placement: TaskPlacement) => {
+    for (const interval of reserve(placement)) {
+      reserved.push(interval)
+      for (const [key, free] of freeByKey) freeByKey.set(key, free.flatMap((window) => subtract(window, [interval])).filter(hasWholeMinute))
+    }
+  }
+
+  const rest: TaskPlacement[] = []
   for (const task of open) {
     if (kept.has(task.id)) continue
     let placement = place(task)
-    if (!placement) continue
     if (task.categoryId !== undefined && task.dueDate !== undefined && missesDeadline(placement)) {
       const dueEnd = dueEndOf(task, timeZone)
       const free = place(withoutCategory(task))
-      if (free && minutesBeforeDue(free, dueEnd) > minutesBeforeDue(placement, dueEnd)) placement = { ...free, taskId: task.id, outsideCategory: true }
+      if (minutesBeforeDue(free, dueEnd) > minutesBeforeDue(placement, dueEnd)) placement = { ...free, taskId: task.id, outsideCategory: true }
     }
     rest.push(placement)
-    // Reserve through the next grid point before placing another task; durations themselves stay exact.
-    schedulingBusy.push(...placement.chunks.map((chunk) => ({ ...chunk, end: snapEnd(chunk.end, snapMs) })))
+    commit(placement)
   }
   const placed = new Map([...rest, ...kept.values()].map((placement) => [placement.taskId, placement]))
   return document.tasks.flatMap((task) => placed.get(task.id) ?? [])

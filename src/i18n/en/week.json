@@ -3,6 +3,8 @@
   "add": "Add",
   "deleted": "Deleted “{title}”",
   "grid": {
+    "allDay": "All day",
+    "allDayItem": "{title}, all day",
     "conflict": "Conflict",
     "crossesMidnight": "{range} (overnight)"
   },
@@ -10,7 +12,7 @@
     "when": "When",
     "calendar": "Calendar",
     "conflictsWith": "Conflicts with {title}",
-    "ownEvent": "Next168 event",
+    "ownEvent": "Weeklid event",
     "calendarFallback": "Calendar",
     "location": "Location",
     "notes": "Notes"
@@ -91,5 +93,13 @@
     "tomorrowMany": "{count} tasks moved to tomorrow",
     "later": "“{title}” moved to {day}",
     "laterMany": "{count} tasks moved to another day"
+  },
+  "chooser": {
+    "title": "Which one?",
+    "kind": {
+      "block": "Routine",
+      "task": "Task",
+      "event": "Event"
+    }
   }
 }

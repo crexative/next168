@@ -186,3 +186,51 @@ export const VERIFY6_WEEK = {
   ],
   calendarSources: [], appliedProposalIds: [],
 }
+
+// The week verify8 used (its fixture f4): 15 and 20 minute routines next to long ones of the same category, and an
+// imported calendar whose events cross routines (conflicts) at 10, 15, 20 and 60 minutes.
+export const VERIFY8_WEEK = {
+  schemaVersion: 2, workspaceId: 'workspace-v8', revision: 1, updatedAt: '2026-10-20T08:00:00.000Z',
+  settings: { locale: 'es', weekStartsOn: 1, timeZone: 'UTC', onboardingDone: true, theme: 'system' },
+  categories: [
+    { id: 'c-work', name: 'Trabajo', colorKey: 'blue', goal: { type: 'max', hoursPerWeek: 42 } },
+    { id: 'c-sleep', name: 'Sueño', colorKey: 'purple', goal: { type: 'min', hoursPerWeek: 49 } },
+    { id: 'c-pet', name: 'Mascota', colorKey: 'orange', goal: { type: 'min', hoursPerWeek: 3 } },
+    { id: 'c-fit', name: 'Ejercicio', colorKey: 'green', goal: { type: 'min', hoursPerWeek: 3 } },
+    { id: 'c-learn', name: 'Estudio', colorKey: 'teal', goal: { type: 'min', hoursPerWeek: 2 } },
+  ],
+  blocks: [
+    { id: 'b-sleep', categoryId: 'c-sleep', title: 'Dormir', days: [0, 1, 2, 3, 4, 5, 6], start: 1350, end: 360 },
+    { id: 'b-dog1', categoryId: 'c-pet', title: 'Paseo del perro', days: [0, 1, 2, 3, 4, 5, 6], start: 375, end: 395 },
+    { id: 'b-coffee', categoryId: 'c-work', title: 'Café y agenda', days: weekdays, start: 465, end: 480 },
+    { id: 'b-focus', categoryId: 'c-work', title: 'Bloque de foco', days: weekdays, start: 480, end: 690 },
+    { id: 'b-lunch', categoryId: 'c-pet', title: 'Almuerzo y perro', days: weekdays, start: 720, end: 780 },
+    { id: 'b-calls', categoryId: 'c-work', title: 'Llamadas con clientes', days: weekdays, start: 780, end: 960 },
+    { id: 'b-wrap', categoryId: 'c-work', title: 'Cierre del día', days: weekdays, start: 960, end: 975 },
+    { id: 'b-run', categoryId: 'c-fit', title: 'Trotar', days: [1, 3, 5], start: 1050, end: 1080 },
+    { id: 'b-read', categoryId: 'c-learn', title: 'Lectura', days: [0, 1, 2, 3, 4, 5, 6], start: 1290, end: 1310 },
+    { id: 'b-dog2', categoryId: 'c-pet', title: 'Paseo nocturno', days: [0, 1, 2, 3, 4, 5, 6], start: 1320, end: 1335 },
+  ],
+  tasks: [
+    task('u-1', 'Renovar la licencia de conducción', 20, { dueDate: '2026-10-23' }),
+    task('u-2', 'Enviar factura a Lucía', 15, { categoryId: 'c-work', priority: 1 }),
+    task('u-3', 'Comprar comida del perro', 15, { categoryId: 'c-pet' }),
+    task('u-4', 'Estirar', 20, { categoryId: 'c-fit' }),
+    task('u-5', 'Revisar contrato de arriendo', 20, { dueDate: '2026-10-22' }),
+    task('u-6', 'Pedir cita con el veterinario', 15, { categoryId: 'c-pet', dueDate: '2026-10-21' }),
+  ],
+  checkIns: [], actuals: [], events: [], calendarSources: [], appliedProposalIds: [],
+}
+
+const VERIFY8_EVENTS: [string, string, string][] = [
+  ['Demo con el cliente', '20261020T133000Z', '20261020T143000Z'],
+  ['Revisión de presupuesto', '20261021T074500Z', '20261021T080000Z'],
+  ['Llamada de RR. HH.', '20261022T090000Z', '20261022T091000Z'],
+  ['Firma digital', '20261022T180000Z', '20261022T181500Z'],
+  ['Sincronización semanal', '20261023T120000Z', '20261023T122000Z'],
+  ['Entrega del paquete', '20261024T150000Z', '20261024T152000Z'],
+  ['Llamada con mamá', '20261025T170000Z', '20261025T171500Z'],
+]
+export const VERIFY8_CALENDAR = ['BEGIN:VCALENDAR', 'VERSION:2.0', ...VERIFY8_EVENTS.flatMap(([title, start, end], index) => [
+  'BEGIN:VEVENT', `UID:v-${index + 1}@verify8.example.invalid`, 'DTSTAMP:20261019T000000Z', `DTSTART:${start}`, `DTEND:${end}`, `SUMMARY:${title}`, 'END:VEVENT',
+]), 'END:VCALENDAR', ''].join('\r\n')

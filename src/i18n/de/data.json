@@ -28,9 +28,9 @@
   },
   "import": {
     "action": "Datei importieren…",
-    "fileLabel": "Next168-Exportdatei auswählen",
+    "fileLabel": "Weeklid-Exportdatei auswählen",
     "tooLarge": "Die Datei ist zu groß für den Import.",
-    "unsupported": "Diese Datei stammt aus einer neueren Version (Schema {version}). Aktualisiere zuerst Next168.",
+    "unsupported": "Diese Datei stammt aus einer neueren Version (Schema {version}). Aktualisiere zuerst Weeklid.",
     "invalid": "Diese Datei kann nicht importiert werden ({reason}). Es wurde nichts geändert.",
     "failed": "Import fehlgeschlagen ({reason}). Deine Daten sind unverändert.",
     "verified": "Importiert und mit dem Gespeicherten abgeglichen (Fingerabdruck {hash}).",
@@ -59,11 +59,19 @@
     "action": "Alle Daten löschen…",
     "phrase": "LÖSCHEN",
     "confirmTitle": "Alles löschen?",
-    "confirmBody": "Dadurch werden alle Next168-Daten auf diesem Gerät endgültig gelöscht, auch Sicherungen. Exportiere vorher eine Kopie, falls du sie brauchen könntest.",
+    "confirmBody": "Dadurch werden alle Weeklid-Daten auf diesem Gerät endgültig gelöscht, auch Sicherungen. Exportiere vorher eine Kopie, falls du sie brauchen könntest.",
     "typeToConfirm": "Gib {phrase} zur Bestätigung ein",
     "confirmAction": "Alles löschen",
     "done": "Alle Daten wurden gelöscht.",
     "failed": "Löschen nicht möglich ({reason}). Es wurde nichts geändert."
   },
-  "changedElsewhere": "Deine Daten haben sich inzwischen geändert, daher wurde nichts ersetzt. Bitte versuche es erneut."
+  "changedElsewhere": "Deine Daten haben sich inzwischen geändert, daher wurde nichts ersetzt. Bitte versuche es erneut.",
+  "preUpgrade": {
+    "title": "Kopie von vor dem Update ({date})",
+    "note": "Enthält deine Kalender. Nicht enthalten ist, was du nach dem Update geändert hast.",
+    "tooLarge": "Die Datei ist {size} groß: mehr, als die App importieren kann ({limit}). Bewahre sie trotzdem auf: Darin ist dein ganzer Plan.",
+    "size": "{size}",
+    "download": "Kopie herunterladen",
+    "downloadRaw": "Rohdaten herunterladen"
+  }
 }

@@ -10,7 +10,7 @@
 //   A1_DEVICE_OPT_IN  must equal A1_SERIAL to run on a physical device; emulators need no opt-in
 //   A1_PACKAGE     the installed WebAPK package; launched directly instead of tapping a launcher icon
 //   A1_ORIGIN      origin of the installed app (default http://localhost:4610)
-//   A1_ICON_INDEX  which "Next168" home-screen icon is the app under test, counting from 0 in launcher order
+//   A1_ICON_INDEX  which "Weeklid" home-screen icon is the app under test, counting from 0 in launcher order
 //                  (an emulator can hold shortcuts from other origins; default 0)
 //   A1_CDP_PORT    local port forwarded to chrome_devtools_remote (default 4611)
 //   A1_OUT         directory for screenshots and the JSON log
@@ -78,7 +78,7 @@ async function connect(attempts = 30) {
 function launcherIcons() {
   adb('shell', 'uiautomator', 'dump', '/sdcard/a1-launcher.xml')
   const xml = adb('exec-out', 'cat', '/sdcard/a1-launcher.xml')
-  return [...xml.matchAll(/<node [^>]*content-desc="Next168"[^>]*bounds="\[(\d+),(\d+)\]\[(\d+),(\d+)\]"/g)]
+  return [...xml.matchAll(/<node [^>]*content-desc="Weeklid"[^>]*bounds="\[(\d+),(\d+)\]\[(\d+),(\d+)\]"/g)]
     .map(([, left, top, right, bottom]) => ({ x: (Number(left) + Number(right)) >> 1, y: (Number(top) + Number(bottom)) >> 1 }))
 }
 

@@ -14,7 +14,7 @@ function downloadRaw(): void {
   const url = URL.createObjectURL(new Blob([planner.corruptRaw ?? ''], { type: 'text/plain' }))
   const link = document.createElement('a')
   link.href = url
-  link.download = 'next168-unreadable-data.txt'
+  link.download = 'weeklid-unreadable-data.txt'
   link.click()
   URL.revokeObjectURL(url)
 }

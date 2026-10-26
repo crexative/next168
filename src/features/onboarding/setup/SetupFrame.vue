@@ -2,7 +2,7 @@
 import { computed, nextTick, onBeforeUnmount, ref, useId, watch } from 'vue'
 import Icon from '@/ui/Icon.vue'
 import { registerUnsavedInput } from '@/ui/unsavedGuard'
-import AppMark from './AppMark.vue'
+import AppMark from '@/ui/AppMark.vue'
 
 // The guided setup's full-screen frame: a top bar (‹ to leave, the app's mark, which part of five) over the
 // conversation. Going back is not a button here: the person taps an earlier answer to change it. Not a sheet: it covers the screen on a phone and centres a reading column on wider screens. It keeps

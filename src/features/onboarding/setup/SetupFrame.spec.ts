@@ -1,5 +1,5 @@
-import { afterEach, expect, it } from 'vitest'
-import { createApp, h, nextTick, reactive, type App } from 'vue'
+import { afterEach, expect, it, vi } from 'vitest'
+import { createApp, h, reactive, type App } from 'vue'
 import SetupFrame from './SetupFrame.vue'
 
 let app: App | undefined
@@ -23,17 +23,14 @@ it('keeps focus already inside the frame when it unlocks', async () => {
     ]),
   })
   app.mount(host)
-  await nextTick()
-  await nextTick()
   const question = document.querySelector('h3')!
-  expect(document.activeElement).toBe(question)
+  await vi.waitFor(() => expect(document.activeElement).toBe(question))
 
   const answer = document.querySelector<HTMLButtonElement>('#answer')!
   answer.focus()
   state.locked = true
-  await nextTick()
+  await vi.waitFor(() => expect(document.querySelector('.setup-close')?.hasAttribute('disabled')).toBe(true))
   state.locked = false
-  await nextTick()
-  await nextTick()
+  await vi.waitFor(() => expect(document.querySelector('.setup-close')?.hasAttribute('disabled')).toBe(false))
   expect(document.activeElement).toBe(answer)
 })

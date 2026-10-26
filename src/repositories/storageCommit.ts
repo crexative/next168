@@ -17,9 +17,19 @@ export type StoredDocument = LoadResult | { kind: 'absent' }
 
 export const NO_WEB_LOCKS = 'no-web-locks'
 
+// How many tasks of this page currently hold the commit lock (0 or 1: it is exclusive across the origin).
+let commitLockHolds = 0
+
+export function commitLockHeldInPage(): boolean {
+  return commitLockHolds > 0
+}
+
 export function webLockRunner(locks: LockManager | undefined): RunExclusive | undefined {
   if (!locks) return undefined
-  return <T>(task: () => Promise<T>) => locks.request(STORAGE_KEYS.lockName, { mode: 'exclusive' }, task) as Promise<T>
+  return <T>(task: () => Promise<T>) => locks.request(STORAGE_KEYS.lockName, { mode: 'exclusive' }, async () => {
+    commitLockHolds++
+    try { return await task() } finally { commitLockHolds-- }
+  }) as Promise<T>
 }
 
 export function storedDocument(raw: string | undefined): StoredDocument {

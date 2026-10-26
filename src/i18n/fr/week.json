@@ -3,6 +3,8 @@
   "add": "Ajouter",
   "deleted": "« {title} » supprimé",
   "grid": {
+    "allDay": "Toute la journée",
+    "allDayItem": "{title}, toute la journée",
     "conflict": "Conflit",
     "crossesMidnight": "{range} (de nuit)"
   },
@@ -10,7 +12,7 @@
     "when": "Quand",
     "calendar": "Agenda",
     "conflictsWith": "Chevauche {title}",
-    "ownEvent": "Événement Next168",
+    "ownEvent": "Événement Weeklid",
     "calendarFallback": "Agenda",
     "location": "Lieu",
     "notes": "Notes"
@@ -91,5 +93,13 @@
     "tomorrowMany": "{count} tâches reportées à demain",
     "later": "« {title} » reportée à {day}",
     "laterMany": "{count} tâches reportées à un autre jour"
+  },
+  "chooser": {
+    "title": "Lequel ouvrir ?",
+    "kind": {
+      "block": "Routine",
+      "task": "Tâche",
+      "event": "Événement"
+    }
   }
 }

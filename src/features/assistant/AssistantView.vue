@@ -3,6 +3,7 @@ import { computed, onMounted, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { usePlannerStore } from '@/stores/plannerStore'
 import { localDateOf } from '@/core/time'
+import { formatBytes } from '@/ui/format'
 import { useExternalOccurrences } from '@/features/week/externalOccurrences'
 import Button from '@/ui/Button.vue'
 import BackButton from '@/features/settings/BackButton.vue'
@@ -17,11 +18,11 @@ const assistant = useAssistant()
 const question = ref('')
 const external = useExternalOccurrences(() => planner.document ? { fromDate: localDateOf(new Date(), planner.document.settings.timeZone), days: 7, timeZone: planner.document.settings.timeZone } : null)
 
-const sizeLabel = `${Math.round(WEBLLM_DOWNLOAD_BYTES / 1_000_000)} MB`
+const sizeLabel = computed(() => formatBytes(WEBLLM_DOWNLOAD_BYTES, locale.value))
 const onCellular = computed(() => (navigator as Navigator & { connection?: { type?: string; saveData?: boolean } }).connection?.type === 'cellular')
 const percent = computed(() => Math.round((assistant.progress.value?.fraction ?? 0) * 100))
 const modelState = computed(() => assistant.availability.webllm)
-const failureMessage = computed(() => assistant.failure.value ? t(`assistant.failures.${assistant.failure.value}`) : null)
+const failureMessage = computed(() => assistant.failure.value ? t(`assistant.failures.${assistant.failure.value}`, { size: sizeLabel.value }) : null)
 
 // A download that failed (network error, offline, or no space left) can be tried again; the opt-in card is hidden while it runs.
 const RETRYABLE = new Set(['network', 'offline', 'storage-full'])

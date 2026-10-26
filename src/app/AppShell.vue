@@ -1,7 +1,9 @@
 <script setup lang="ts">
+import { anySheetOpen } from '@/ui/sheetStack'
 import { computed, nextTick, onBeforeUnmount, onMounted, provide, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { PanelLeft } from 'lucide-vue-next'
+import BrandLockup from '@/ui/BrandLockup.vue'
 import Icon from '@/ui/Icon.vue'
 import { registerIcons } from '@/ui/icons'
 import LargeTitle from '@/ui/LargeTitle.vue'
@@ -13,6 +15,8 @@ import { useMediaQuery } from '@/ui/useMediaQuery'
 import { usePlannerStore } from '@/stores/plannerStore'
 import RecoveryScreen from './RecoveryScreen.vue'
 import StorageErrorScreen from './StorageErrorScreen.vue'
+import StorageUpgradeWaiting from './StorageUpgradeWaiting.vue'
+import { UPGRADE_COPY_FAILED } from '@/repositories/storageVersion'
 import StatusBanners from './StatusBanners.vue'
 import { SHELL_TOOLBAR_ENTRIES } from './contracts'
 import { shell } from './registry'
@@ -109,7 +113,7 @@ function scrollToTop(): void { window.scrollTo({ top: 0, behavior: 'instant' }) 
 
 const pageTitle = computed(() => currentView.value ? t(currentView.value.titleKey) : '')
 
-// Every route has its own document title ("Week · Next168"), kept in the current language.
+// Every route has its own document title ("Week · Weeklid"), kept in the current language.
 watch(pageTitle, (title) => {
   window.document.title = title ? `${title} · ${t('app.name')}` : t('app.name')
 }, { immediate: true })
@@ -121,9 +125,11 @@ let navigated = false
 watch(current, () => { navigated = true })
 function onViewEntered(element: Element): void {
   if (!navigated || (element as HTMLElement).dataset.view !== currentView.value?.id) return
-  // A view that already placed focus on something more specific (Today's "Saved" card after the check-in) keeps it.
+  // A view that already placed focus on something more specific (Today's "Saved" card after the check-in) keeps it,
+  // and a sheet opened meanwhile keeps it too (verify12: the heading took focus out of a review sheet).
   const active = document.activeElement
   if (active && active !== element && element.contains(active)) return
+  if (anySheetOpen()) return
   element.querySelector<HTMLElement>('h1')?.focus({ preventScroll: true })
   announce(pageTitle.value)
 }
@@ -159,7 +165,7 @@ dismissUndoWhenChanged(() => planner.document?.workspaceId)
       :inert="!sidebarVisible"
       :aria-label="t('app.navigation.sidebar')"
     >
-      <p class="sidebar-brand t-title-2">{{ t('app.name') }}</p>
+      <p class="sidebar-brand" data-testid="sidebar-brand"><BrandLockup :height="28" /></p>
       <ul class="sidebar-list">
         <li v-for="tab in tabs" :key="tab.id">
           <a class="sidebar-item t-body" :href="viewHash(tab.id)" :aria-current="current === tab.id ? 'page' : undefined" @click="closeOverlay">
@@ -182,9 +188,10 @@ dismissUndoWhenChanged(() => planner.document?.workspaceId)
       <!-- Early in the tab order, before the page, so its Undo is a few keystrokes away from anywhere. -->
       <UndoToast />
       <StatusBanners />
+      <StorageUpgradeWaiting />
       <main id="main" class="main" tabindex="-1">
         <RecoveryScreen v-if="planner.status === 'corrupt'" />
-        <StorageErrorScreen v-else-if="planner.status === 'error'" />
+        <StorageErrorScreen v-else-if="planner.status === 'error' || planner.error === UPGRADE_COPY_FAILED" />
         <Transition v-else name="view" mode="out-in" @after-leave="scrollToTop" @after-enter="onViewEntered">
           <div v-if="currentView" :key="currentView.id" class="view" :data-view="currentView.id" :data-measure="FULL_WIDTH_VIEWS.has(currentView.id) ? 'full' : 'readable'">
             <LargeTitle :title="t(currentView.titleKey)">

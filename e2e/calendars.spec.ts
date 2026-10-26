@@ -117,6 +117,56 @@ test('import file → preview and Week show events with a conflict against the p
   await expect(page.getByText('Project review', { exact: true })).toBeVisible()
 })
 
+// verify10 C6: Week drew only busy timed events; holidays (all-day) and events marked free (transparent) showed only on
+// Today and in Settings.
+test('Week shows all-day events under its day headings and free events as outlines that never conflict', async ({ page }) => {
+  const ics = ['BEGIN:VCALENDAR', 'VERSION:2.0',
+    'BEGIN:VEVENT', 'UID:holiday@example.invalid', 'DTSTART;VALUE=DATE:20261019', 'DTEND;VALUE=DATE:20261020', 'SUMMARY:Founders Day', 'TRANSP:TRANSPARENT', 'END:VEVENT',
+    'BEGIN:VEVENT', 'UID:free@example.invalid', 'DTSTART:20261019T141500Z', 'DTEND:20261019T144500Z', 'SUMMARY:Optional coffee', 'TRANSP:TRANSPARENT', 'END:VEVENT',
+    'END:VCALENDAR', ''].join('\r\n')
+  await setup(page)
+  await page.getByLabel('Import .ics file', { exact: true }).setInputFiles({ name: 'holidays.ics', mimeType: 'text/calendar', buffer: Buffer.from(ics) })
+  await expect(page.getByTestId('calendar-occurrence').filter({ hasText: 'Optional coffee' })).toBeVisible()
+  await openTab(page, 'week')
+  const holiday = page.locator('[data-testid=all-day-cell][data-date="2026-10-19"] [data-testid=all-day-item]').filter({ visible: true })
+  await expect(holiday).toHaveCount(1)
+  await expect(holiday).toHaveAccessibleName('Founders Day, all day')
+  await expect(holiday).toContainText('Founders')
+  expect((await holiday.boundingBox())!.height).toBeGreaterThanOrEqual(44)
+  await holiday.click()
+  const details = page.getByTestId('busy-details')
+  await expect(details).toContainText('All day')
+  await page.keyboard.press('Escape')
+  await expect(details).toBeHidden()
+  // The free event overlaps Focus (9:00–10:00 in Bogotá) but takes no time from it: an outline, no conflict.
+  const free = page.locator('[data-testid=busy-overlay].is-free').filter({ visible: true })
+  await expect(free).toHaveCount(1)
+  await expect(free).toHaveAttribute('title', 'Optional coffee')
+  await expect(page.getByTestId('calendar-conflict')).toHaveCount(0)
+})
+
+// verify12: one sheet handing off to the next must leave focus in the newest one. The details of a conflicting event
+// open the routine it conflicts with; that editor closes on Escape and gives focus back to the event.
+test('the routine opened from a conflict\'s details keeps focus, closes on Escape and gives focus back to the event', async ({ page }) => {
+  await setup(page)
+  await page.getByLabel('Import .ics file', { exact: true }).setInputFiles(fixturePath)
+  await expect(page.getByTestId('calendar-conflict')).toHaveCount(1)
+  await openTab(page, 'week')
+  const conflict = page.locator('[data-testid=busy-overlay].is-conflict').filter({ visible: true }).first()
+  await conflict.scrollIntoViewIfNeeded()
+  await conflict.click()
+  const details = page.getByTestId('busy-details')
+  await expect(details).toBeVisible()
+  await details.getByRole('button', { name: /Conflicts with/ }).click()
+  const editor = page.getByRole('dialog', { name: 'Edit routine' })
+  await expect(editor).toBeVisible()
+  await page.waitForTimeout(400)
+  expect(await editor.evaluate((dialog) => dialog.contains(dialog.ownerDocument.activeElement))).toBe(true)
+  await page.keyboard.press('Escape')
+  await expect(editor).toBeHidden()
+  await expect(conflict).toBeFocused()
+})
+
 test('deleting a calendar source in another tab removes its events from the open Week without navigation', async ({ page, context }) => {
   await setup(page)
   await page.getByLabel('Import .ics file', { exact: true }).setInputFiles({ name: 'team.ics', mimeType: 'text/calendar', buffer: Buffer.from(feed('Removed team meeting')) })
@@ -146,7 +196,7 @@ test('delete all data leaves no calendar source, neither in the plan nor in the 
   await page.getByLabel('Import .ics file', { exact: true }).setInputFiles(fixturePath)
   await expect(page.getByTestId('calendar-source')).toHaveCount(1)
   const cachedKeys = () => page.evaluate(() => new Promise<string[]>((resolve, reject) => {
-    const open = indexedDB.open('next168-calendars', 1)
+    const open = indexedDB.open('next168-calendars')
     open.onerror = () => reject(open.error)
     open.onsuccess = () => {
       const request = open.result.transaction('sources').objectStore('sources').getAllKeys()
@@ -211,10 +261,26 @@ test('create and edit a meeting → portable ICS and encoded provider links', as
   await sheet.getByLabel('Day', { exact: true }).fill('2026-10-20')
   await sheet.getByLabel('From', { exact: true }).fill('09:30')
   await sheet.getByLabel('To', { exact: true }).fill('10:30')
-  // Location and notes are one level deeper; attendees and the time zone are not asked for at all.
+  // Guests, location and notes are one level deeper; the time zone is not asked for at all.
   await expect(sheet.getByLabel('Location', { exact: true })).toBeHidden()
-  await expect(sheet.getByText(/Attendees|Time zone/)).toHaveCount(0)
+  await expect(sheet.getByLabel('Guests', { exact: true })).toBeHidden()
+  await expect(sheet.getByText(/Time zone/)).toHaveCount(0)
   await sheet.getByRole('button', { name: 'More' }).click()
+  const guests = sheet.getByLabel('Guests', { exact: true })
+  await guests.fill('ana@example.com')
+  await guests.press('Enter')
+  await guests.fill('not-an-email')
+  await guests.press('Enter')
+  await expect(sheet.getByText('Enter an email address, like name@example.com.')).toBeVisible()
+  await guests.fill('luis@example.org')
+  await sheet.getByRole('button', { name: 'Add', exact: true }).click()
+  await expect(sheet.getByTestId('event-guests').getByRole('listitem')).toHaveText(['ana@example.com', 'luis@example.org'])
+  // Every guest control is a full 44 px target.
+  for (const control of [sheet.getByRole('button', { name: 'Remove ana@example.com' }), sheet.getByRole('button', { name: 'Add', exact: true }), guests]) {
+    const box = (await control.boundingBox())!
+    expect(box.height).toBeGreaterThanOrEqual(44)
+    expect(box.width).toBeGreaterThanOrEqual(44)
+  }
   await sheet.getByLabel('Location', { exact: true }).fill('Room 2')
   await sheet.getByLabel('Notes', { exact: true }).fill('Bring a draft')
   await sheet.getByRole('button', { name: 'Save event', exact: true }).click()
@@ -225,27 +291,31 @@ test('create and edit a meeting → portable ICS and encoded provider links', as
   const outlook = new URL((await meeting.getByRole('link', { name: 'Add to Outlook', exact: true }).getAttribute('href'))!)
   expect(google.searchParams.get('text')).toBe('Design & review, café')
   expect(google.searchParams.get('dates')).toBe('20261020T143000Z/20261020T153000Z')
-  expect(google.searchParams.get('add')).toBe('')
+  expect(google.searchParams.get('add')).toBe('ana@example.com,luis@example.org')
   expect(outlook.searchParams.get('subject')).toBe('Design & review, café')
   expect(outlook.searchParams.get('startdt')).toBe('2026-10-20T14:30:00.000Z')
-  expect(outlook.searchParams.get('to')).toBe('')
+  expect(outlook.searchParams.get('to')).toBe('ana@example.com;luis@example.org')
   const downloadPromise = page.waitForEvent('download')
   await meeting.getByRole('button', { name: 'Download .ics', exact: true }).click()
   const download = await downloadPromise, downloadedPath = await download.path()
   const raw = await readFile(downloadedPath!, 'utf8')
-  // Independent of Next168's import function: Python icalendar is absent on the executor.
+  // Independent of Weeklid's import function: Python icalendar is absent on the executor.
   const parsed = new ICAL.Event(new ICAL.Component(ICAL.parse(raw)).getFirstSubcomponent('vevent')!)
   expect(parsed.summary).toBe('Design & review, café')
   expect(parsed.startDate.toJSDate().toISOString()).toBe('2026-10-20T14:30:00.000Z')
   expect(parsed.endDate.toJSDate().toISOString()).toBe('2026-10-20T15:30:00.000Z')
-  expect(parsed.attendees).toEqual([])
+  expect(parsed.attendees.map((attendee) => attendee.getFirstValue())).toEqual(['mailto:ana@example.com', 'mailto:luis@example.org'])
+  expect(raw.split('\r\n').filter((line) => line.startsWith('ATTENDEE'))).toHaveLength(2)
   await page.getByLabel('Import .ics file', { exact: true }).setInputFiles({ name: 'meeting.ics', mimeType: 'text/calendar', buffer: Buffer.from(raw) })
   await expect(page.getByTestId('calendar-occurrence')).toContainText('Design & review, café')
   await meeting.getByRole('button', { name: 'Edit', exact: true }).click()
   await expect(sheet.getByLabel('Location', { exact: true })).toHaveValue('Room 2')
+  await expect(sheet.getByTestId('event-guests').getByRole('listitem')).toHaveText(['ana@example.com', 'luis@example.org'])
   await sheet.getByLabel('Title', { exact: true }).fill('Updated review')
   await sheet.getByRole('button', { name: 'Save event', exact: true }).click()
   await expect(meeting).toContainText('Updated review')
+  const edited = new URL((await meeting.getByRole('link', { name: 'Add to Google Calendar' }).getAttribute('href'))!)
+  expect(edited.searchParams.get('add')).toBe('ana@example.com,luis@example.org')
 })
 
 // An explicit browser probe, separate from deterministic local acceptance. Run it with

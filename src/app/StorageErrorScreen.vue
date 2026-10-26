@@ -7,6 +7,7 @@ import { buildExportFile } from '@/features/settings/data/dataTransfer'
 import Button from '@/ui/Button.vue'
 import EmptyState from '@/ui/EmptyState.vue'
 import { usePlannerStore } from '@/stores/plannerStore'
+import { UPGRADE_COPY_FAILED } from '@/repositories/storageVersion'
 
 const { t } = useI18n()
 const planner = usePlannerStore()
@@ -46,7 +47,11 @@ async function exportCopy(): Promise<void> {
 
 <template>
   <section class="storage-error" data-testid="storage-error" role="alert">
-    <EmptyState icon="triangle-alert" :title="t('app.storage.unavailableTitle')" :description="t('app.storage.unavailableBody')">
+    <EmptyState
+      icon="triangle-alert"
+      :title="t('app.storage.unavailableTitle')"
+      :description="planner.error === UPGRADE_COPY_FAILED ? t('app.storage.upgradeCopyFailed') : t('app.storage.unavailableBody')"
+    >
       <p v-if="planner.lastChangeLost" class="t-subhead" data-testid="last-change-not-saved">{{ t('app.storage.lastChangeNotSaved') }}</p>
       <p class="t-footnote t-secondary">{{ t('app.recovery.reason', { reason: planner.error }) }}</p>
       <p v-if="missingCalendars" class="t-footnote t-secondary">{{ t('app.storage.exportWithoutCalendars') }}</p>

@@ -29,7 +29,7 @@ it('closes with "Close" and shows the event\'s location and notes when it has th
   const mounted = await mountForTest(BusyDetailsSheet, {
     open: true,
     editable: true,
-    details: { title: 'Cita médica', date: '2026-10-22', range: '6:00 PM – 7:00 PM', calendar: 'Next168 event', location: 'Consultorio 3', notes: 'Llevar exámenes\nEn ayunas', conflictsWith: [] },
+    details: { title: 'Cita médica', date: '2026-10-22', range: '6:00 PM – 7:00 PM', calendar: 'Weeklid event', location: 'Consultorio 3', notes: 'Llevar exámenes\nEn ayunas', conflictsWith: [] },
   })
   unmount = () => { mounted.unmount(); window.matchMedia = media }
   const labels = Array.from(document.querySelectorAll('[role="dialog"] button')).map((button) => button.textContent?.trim())

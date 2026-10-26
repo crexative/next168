@@ -154,6 +154,19 @@ export function formatWholeNumber(value: number, locale: string = displayLocale.
   return new Intl.NumberFormat(locale, { maximumFractionDigits: 0 }).format(Math.round(value))
 }
 
+export function formatBytes(bytes: number, locale: string = displayLocale.value): string {
+  const kilobytes = Math.round(bytes / 1000)
+  const megabytes = bytes / 1_000_000
+  const format = new Intl.NumberFormat(locale, {
+    style: 'unit',
+    unit: kilobytes < 1000 ? 'kilobyte' : 'megabyte',
+    maximumFractionDigits: kilobytes >= 1000 && megabytes < 10 ? 1 : 0,
+  })
+  // Intl spells kilobytes "kB"; the app uses Apple's "KB" while retaining localized units such as "ko".
+  return format.formatToParts(kilobytes < 1000 ? Math.max(1, kilobytes) : megabytes)
+    .map(part => part.type === 'unit' && part.value === 'kB' ? 'KB' : part.value).join('')
+}
+
 // A whole number of hours in the duration format ("0 h", "36 h"), for parts made by wholeHourParts.
 export function formatWholeHours(hours: number, locale: string = displayLocale.value): string {
   const t = i18n.global.t as (key: string, named: Record<string, unknown>) => string

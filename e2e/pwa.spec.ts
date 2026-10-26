@@ -27,7 +27,7 @@ for (const base of BASES) {
       const href = await page.locator('link[rel=manifest]').getAttribute('href')
       const manifestUrl = new URL(href!, page.url()).toString()
       const manifest = await (await request.get(manifestUrl)).json()
-      expect(manifest).toMatchObject({ name: 'Next168', short_name: 'Next168', display: 'standalone', start_url: './', scope: './' })
+      expect(manifest).toMatchObject({ name: 'Weeklid', short_name: 'Weeklid', display: 'standalone', start_url: './', scope: './' })
       expect(manifest.theme_color).toBeTruthy()
       expect(manifest.background_color).toBeTruthy()
       const purposes = manifest.icons.map((icon: { sizes: string; purpose?: string }) => `${icon.sizes}:${icon.purpose ?? 'any'}`)

@@ -44,7 +44,7 @@ test('data from a newer schema opens read-only and is left untouched', async ({ 
   const newer = JSON.stringify({ schemaVersion: 3, anything: true })
   await seedKey(page, V2_KEY, newer)
   await page.goto('./')
-  await expect(page.getByText('saved by a newer version of Next168')).toBeVisible()
+  await expect(page.getByText('saved by a newer version of Weeklid')).toBeVisible()
   expect(await storedValue(page, V2_KEY)).toBe(newer)
 })
 
@@ -54,7 +54,7 @@ test('a write to the legacy key from an older tab raises a banner', async ({ pag
   const older = await context.newPage()
   await older.goto('./')
   await older.evaluate((key) => window.localStorage.setItem(key, '{"categories":[],"timeBlocks":[]}'), LEGACY_KEY)
-  await expect(page.getByText('An older version of Next168 is open in another tab')).toBeVisible()
+  await expect(page.getByText('An older version of Weeklid is open in another tab')).toBeVisible()
 })
 
 test('delete-all in another tab does not raise the older-version banner (A10)', async ({ page, context }) => {
@@ -71,5 +71,5 @@ test('delete-all in another tab does not raise the older-version banner (A10)', 
   // The purge removed the v1 key; that removal reaches the first tab as a storage event with no new value.
   expect(await page.evaluate((key) => window.localStorage.getItem(key), LEGACY_KEY)).toBeNull()
   await expect(page.getByTestId('block-count')).toHaveAttribute('data-count', '0')
-  await expect(page.getByText('An older version of Next168 is open in another tab')).toHaveCount(0)
+  await expect(page.getByText('An older version of Weeklid is open in another tab')).toHaveCount(0)
 })

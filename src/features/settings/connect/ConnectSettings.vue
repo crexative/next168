@@ -27,7 +27,7 @@ async function downloadSnapshot() {
   const blob = new Blob([snapshotAndPrompt(planner.document)], { type: 'text/plain' })
   const url = URL.createObjectURL(blob)
   const anchor = document.createElement('a')
-  anchor.href = url; anchor.download = 'next168-snapshot-and-prompt.txt'; anchor.click()
+  anchor.href = url; anchor.download = 'weeklid-snapshot-and-prompt.txt'; anchor.click()
   setTimeout(() => URL.revokeObjectURL(url), 1000)
 }
 async function importProposal() {

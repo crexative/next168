@@ -16,7 +16,7 @@ let token: string
 const clients: Client[] = []
 beforeEach(async () => {
   home = await mkdtemp(join(tmpdir(), 'next168-http-'))
-  await writeFile(join(home, 'index.html'), '<html><head></head><body>Next168</body></html>')
+  await writeFile(join(home, 'index.html'), '<html><head></head><body>Weeklid</body></html>')
   running = await startCompanion({ home, dist: home, port: 0, now: () => time })
   token = (await readFile(join(home, 'mcp-token'), 'utf8')).trim()
   const response = await fetch(`${running.url}/api/pair`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ code: running.pairingCode }) })
@@ -104,6 +104,21 @@ describe('companion HTTP and official MCP SDK client', () => {
     expect(after.tasks).toEqual([expect.objectContaining({ title: 'Renew passport' })])
     expect(after.tasks[0]).not.toHaveProperty('categoryId')
     expect(after.categories).toEqual([])
+  })
+  it('never gives an assistant the attendee emails of an event, through any read tool', async () => {
+    const sdk = await client()
+    const { document } = await payload(await api('/api/document'))
+    document.events = [{ id: 'meeting', title: 'Budget review', start: '2026-10-20T15:00:00Z', end: '2026-10-20T16:00:00Z', allDay: false, attendees: ['ana@example.com', 'luis@example.org'] }]
+    document.revision++
+    expect((await api('/api/document', 'PUT', { document }, { 'If-Match': '0' })).status).toBe(200)
+    const listed = await sdk.callTool({ name: 'list_events', arguments: {} })
+    expect(listed.isError).not.toBe(true)
+    expect((listed.structuredContent as { events: unknown[] }).events).toEqual([{ id: 'meeting', title: 'Budget review', start: '2026-10-20T15:00:00Z', end: '2026-10-20T16:00:00Z', allDay: false }])
+    for (const name of ['get_week', 'list_categories', 'list_blocks', 'list_tasks', 'list_events', 'get_stats']) {
+      const result = await sdk.callTool({ name, arguments: {} })
+      expect(JSON.stringify(result)).not.toMatch(/ana@example\.com|luis@example\.org/)
+    }
+    expect((await sdk.listTools()).tools.find(tool => tool.name === 'list_events')!.description).toContain('Attendee emails are excluded')
   })
   it('does not give document, calendar or approval authority to MCP tokens or anonymous requests', async () => {
     for (const path of ['/api/document', '/api/proposals/any/apply', '/api/proposals/any/reject', '/api/calendars/any']) {

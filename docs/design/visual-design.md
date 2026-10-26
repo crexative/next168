@@ -1,4 +1,4 @@
-# Next168 visual design direction (#3)
+# Weeklid visual design direction (#3)
 
 Author: MIA coordinator (Claude Opus 5.5), 2026-10-24. Sources: `apple-fluid-design` skill (emilkowalski/skills@2d22863), Apple HIG via the `apple-design` skill, screenshots of `main`@05d781d.
 
@@ -32,6 +32,12 @@ Phone: translucent bottom tab bar (4 tabs, SF-style line icons, label under icon
 
 All colors as CSS custom properties on `:root`, redefined under `@media (prefers-color-scheme: dark)` and `[data-theme]`.
 
+Brand (2026-10-25): the product is **Weeklid**, identity **Lidera** (`docs/brand/README.md`): a single-stroke W whose
+last stroke rises into a check, in coffee-farm green with a maize tick; it replaced the indigo tint and the ring
+mark. The symbol (`src/ui/AppMark.vue`) is the voice of the guided setup; the horizontal lockup
+(`src/ui/BrandLockup.vue`) heads the sidebar. Branding defers to content: the phone layout shows no logo, the
+system bars keep the grouped background, and the green appears where the tint already did.
+
 | Token | Light | Dark |
 |---|---|---|
 | `--bg` (grouped background) | #F2F2F7 | #000000 |
@@ -41,7 +47,9 @@ All colors as CSS custom properties on `:root`, redefined under `@media (prefers
 | `--label-2` | rgba(60,60,67,.60) | rgba(235,235,245,.60) |
 | `--label-3` | rgba(60,60,67,.30) | rgba(235,235,245,.30) |
 | `--separator` | rgba(60,60,67,.29) | rgba(84,84,88,.65) |
-| `--tint` (brand) | #5856D6 (indigo) | #5E5CE6 |
+| `--tint` (brand: fills, selection, focus) | #147745 (coffee-farm green) | #18864F |
+| `--tint-label` (green text) | #126B3E | #5AD394 |
+| `--mark` / `--accent` (the Lidera symbol's W and maize tick; accent for the mark only) | #147745 / #C47A00 | #5AD394 / #FFC93C |
 | `--danger` | #FF3B30 | #FF453A |
 | `--success` | #34C759 | #30D158 |
 | `--warning` | #FF9500 | #FF9F0A |
@@ -89,7 +97,9 @@ The owner's complaint (verify3 to verify5): titles in Week were cut to "Vendo…
 
 **Whole words, or a mark.** A title wraps only between words, on as many lines as its box holds. When the rest does not fit, it shows the whole words that do, followed by "…" ("Revisión de…", "Vendor…"). A word is never cut ("Reunió…", "Vendo…" and "D…" are defects), and no line is cut by its box or drawn under another item. Times, the category and the status are drawn whole or not at all, and a time such as "11:00 p. m." is one unit: the formatter joins it with no-break spaces, so a range breaks only around its dash ("9:15 a. m. –" / "1:00 p. m."). A box too short or too narrow for its own size tries the small caption size first (11 px at 100 % text, scaling with it, on a 1.2 line; whole words and "…", never hyphenated), centred in a box shorter than one line of its own size. Only when not even the first word and "…" fit at the small size does the item draw no words; it then shows its category glyph when the box holds it (below), so a box never stays blank where something fits. No CSS ellipsis or line clamp is used: the "…" is drawn by the plan after the last whole word, and the accessible name keeps the full title.
 
-**Lanes.** Items that overlap in time share the column side by side at every width: routines, calendar events and tasks in free time. Nothing is drawn over a routine, so a routine's title row is never covered. A task sits inside its routine, under the routine's text.
+**Lanes.** Items that overlap in time share the column side by side at every width: routines, calendar events and tasks in free time. Nothing is drawn over a routine, so a routine's title row is never covered. A task sits inside its routine, under the routine's text. Two routines of one category that touch are drawn 1 px apart, so a short one never reads as part of its neighbour.
+
+**Conflicts.** A calendar event that overlaps a routine always leads with its ⚠ wherever the ⚠ (12 px) fits, and its title follows as space allows: "⚠ Conflict Vendor call", then "⚠ Vendor call" (on the first line, or under a ⚠ line of its own in a narrow box), then the ⚠ and its first whole words with "…", then the ⚠ and the title in the small caption size beside it (2 px apart), then the ⚠ alone. A box too small for the ⚠ shows the title alone, or nothing; the red border and hatching still mark the conflict.
 
 **What a box shows.** One layout function (`src/features/week/dayColumnPlan.ts`) measures the box and the text in the page's font, language and text size, and picks the first option that fits. The components only draw what it picked.
 
@@ -100,22 +110,26 @@ The owner's complaint (verify3 to verify5): titles in Week were cut to "Vendo…
 | The whole title | Title only (for a routine, with its category mark when the first line still has room) |
 | Part of the title | Its first whole words and "…", on every line the box has (two or three short lines in a narrow box rather than nothing). Nothing follows a cut title. |
 | Not even one line of the title at its own size | The title in the small caption size, whole words and "…", centred (a 20-minute routine reads "Desayuno…"). |
-| Not even the first word and "…" in the small size, but room for the glyph | The category glyph (the circled initial or emoji of `CategoryMark`, at the small caption size, about 12 px at 100 % text) centred in the box: a routine's or task's category, an event's own initial in grey. A conflict shows only its ⚠ icon, never the plain glyph, which would hide the conflict; where even the ⚠ does not fit, its red border and hatching mark it. A routine with tasks shows it in the tallest span its tasks leave free. |
+| Not even the first word and "…" in the small size, but room for the glyph | The category glyph (the circled initial or emoji of `CategoryMark`, at the small caption size, about 12 px at 100 % text) centred in the box, scaled down to a shorter box but never below 10 px at 100 % text (a 15-minute item, 12 px at a 48 px hour, keeps it): a routine's or task's category, an event's own initial in grey. A conflict shows only its ⚠ icon, never the plain glyph, which would hide the conflict; where even the ⚠ does not fit, its red border and hatching mark it. A routine with tasks shows it in the tallest span its tasks leave free. |
 | Not even the glyph | A mark: the box's colour and leading bar, the dashed outline of a task, the hatching and red border of a conflict. |
 
 In every case the accessible name and a tap still give the full title, time and status.
 
 The title always comes before the time: a box short of room shows a title (whole or cut after whole words) and drops the time first. A time range is one unit on one line ("1:15 p. m. – 3:00 p. m."), or not drawn.
 
-Approximate heights at 100 % text (a 48 px hour): a routine needs 21 px (26 min) for a one-line title and 37 px (46 min) for title and time; an event needs 20 px (25 min) for one caption line; a task needs 19 px (24 min). The small caption size needs about 13 px of room (16 px boxes, 20 minutes, hold it); 10 and 15 minute items draw no words, and show their glyph only where the box holds it (about 12 px of room inside the box's insets). At 200 % text these double. Width decides how many lines a title needs. In a tall narrow box, whole words stacked on lines read better than syllables: a first word that fits a line keeps it and "…" takes the next line ("Preparar" / "…", not "Pre-" / "pa-" / "rar…"). Only a first word wider than a line is hyphenated, in the page's language, and only where the hyphenated lines were measured to fit.
+Approximate heights at 100 % text (a 48 px hour): a routine needs 21 px (26 min) for a one-line title and 37 px (46 min) for title and time; an event needs 20 px (25 min) for one caption line; a task needs 19 px (24 min). The small caption size needs about 13 px of room (16 px boxes, 20 minutes, hold it); 10 and 15 minute items draw no words: a 12 px box cannot hold an 11 px caption legibly, at any width, the phone's single day included. A 15-minute item shows its glyph scaled to its room (10 to 12 px); a 10-minute item (8 px) is a bare mark. At 200 % text these double. Width decides how many lines a title needs. In a tall narrow box, whole words stacked on lines read better than syllables: a first word that fits a line keeps it and "…" takes the next line ("Preparar" / "…", not "Pre-" / "pa-" / "rar…"). Only a first word wider than a line is hyphenated, in the page's language, and only where the hyphenated lines were measured to fit.
 
 **Tasks.** A routine keeps up to two lines for its title first (up to four when a hyphenated first word needs them, "Tra-" / "ba-" / "jo…"; a routine too short for a line of its own size keeps its small title, and its tasks become one outline). Its tasks are placed under that strip, in time order, none over another. Each task first gets two lines of its title (whole, or cut after whole words), then one line, then one line in the small caption size. If they cannot all have that, each gets at least 12 px. If even that does not fit, the tasks are drawn as one outline around the routine, with no text. A routine draws its time and category only in the part above its first task.
 
 **Day headers.** The weekday and date above the seven columns stop growing at large text sizes, like the phone's day strip, so neighbouring labels never run together ("MONTUEWED").
 
+**Press targets.** Every pressable Week item can be pressed anywhere in a 44 × 44 px box centred on it, kept inside its column (`src/features/week/hitAreas.ts`), whatever it draws. A short or narrow item gets invisible press areas around its box, drawn above the items (z-index 3). A task inside a routine gets its areas over the routine, so a press just below an 18 px task opens the task; the routine keeps the rest of its box. Every item also takes the half of the lane gap beside it, so no press next to an item falls between lanes. Where two items' boxes would meet, the room between them is split at the midpoint, across for items side by side, else along; an area never covers another item's own box. Where three or more meet, the room is shared out in turn, shortest item first, so no press near an item is left to nobody. Where items crowd each other so that one cannot own a 44 × 44 px square touching its box (a task with exactly the time of its routine, drawn as an outline; a one-hour routine its 45-minute task fills), a shared 44 × 44 px target lies over it instead: a press there opens a chooser listing every item the target touches (title, kind and time; each row a 44 px target; one press opens that item; Escape or Close returns). Items that own their square keep their own presses, with no chooser. The keyboard reaches every item directly.
+
+**All-day and free events.** All-day events (holidays, birthdays, days off; from calendars or Weeklid) are drawn in a row under the day headings, and in the phone's day view above its first hour, when the week has any. Each is a 44 px target showing its title in whole words and "…" (two lines at most), and opens its details. A calendar event marked free (transparent) is drawn in the grid as an outline with no hatching: it takes no time from the plan and never conflicts.
+
 **Week overview.** The seven-day overview draws shapes only. Text lives in the accessible names and the legend.
 
-**Guarded** by `e2e/support/visualIntegrity.ts`. Inside a `[data-whole-text]` container (every day column), the guard reports text that is cut by its box, truncated by a CSS ellipsis or line clamp, outside its item, or crossing another item or its text, a drawn "…" that does not follow whole words of the item's title (its `title`, else its accessible name), a box drawn with no words although the first word of its title and "…" fit on one line of the small size inside its `data-text-inset`, and a box with no words that draws no glyph of the kind it needs (an element marked `data-glyph` inside it, of the item's `data-glyph-kind`: `warning` for a conflict, the category glyph otherwise) although that glyph (the container's `data-glyph-probe` of that kind) fits the tallest span inside its insets that the `data-layered` items over it leave free. On every screen it reports text of two boxes on one line that are less than 2 px apart. `e2e/week-text.spec.ts` builds many seeded weeks (5 to 15 minute routines, back-to-back tasks, events on a routine's title row, overnight items, 2 to 4 lanes) and audits each one at 320, 375, 768, 1024, 1440 and 1920 px, in light and dark, at 100 % and 200 % text, in Spanish, English and German.
+**Guarded** by `e2e/support/visualIntegrity.ts`. Inside a `[data-whole-text]` container (every day column), the guard reports text that is cut by its box, truncated by a CSS ellipsis or line clamp, outside its item, or crossing another item or its text, a drawn "…" that does not follow whole words of the item's title (its `title`, else its accessible name), a box drawn with no words although the first word of its title and "…" fit on one line of the small size inside its `data-text-inset`, and a box with no words that draws no glyph of the kind it needs (an element marked `data-glyph` inside it, of the item's `data-glyph-kind`: `warning` for a conflict, the category glyph otherwise) although that glyph (the container's `data-glyph-probe` of that kind) fits the tallest span inside its insets that the `data-layered` items over it leave free. Each day column says the size its plan was measured for (`data-planned-for`: its width and the root text size); the audit waits for the columns to re-plan after a resize or text size change, and reports a column still drawn from a plan for another size. It reports every pressable item (keyboard-only outlines included) that owns no 44 × 44 px square touching its box (a 5 × 5 grid of presses in it must all reach the item) and that no shared target of at least 44 × 44 px lists; in Week audits it also presses a shared target and checks that its chooser offers exactly the items it lists. On every screen it reports text of two boxes on one line that are less than 2 px apart. `e2e/week-text.spec.ts` builds many seeded weeks (5 to 15 minute routines, back-to-back tasks, events on a routine's title row, overnight items, 2 to 4 lanes) and audits each one at 320, 375, 768, 1024, 1440 and 1920 px, in light and dark, at 100 % and 200 % text, in Spanish, English and German.
 
 ## Typography
 
@@ -137,6 +151,7 @@ Each screen opens with a large title ("Today", "Week") that collapses into the t
 
 - Toolbar, tab bar and sidebar: `background: color-mix(in srgb, var(--surface) 86%, transparent); backdrop-filter: blur(30px) saturate(120%)`; content scrolls underneath; a scroll-edge fade replaces the hard 1 px divider and appears only when content is under the bar.
 - Sheets: solid `--surface` with a dimming scrim (modal) and the page scaled to 0.96 behind on phone.
+- Sheet focus: an opened sheet focuses its title, and focus stays in the newest open sheet. When one sheet hands off to another (a press chooser opens an editor, an event's details open the routine it conflicts with), the first one finishes closing without taking focus back (`src/ui/sheetStack.ts`). Closing the last sheet returns focus to the control that opened the first one: the chosen Week item, the event, the "+" button. A page's heading never takes focus while a sheet is open. The visual integrity guard reports focus outside an open modal dialog.
 - Never glass on glass. `prefers-reduced-transparency: reduce` → solid surfaces; `prefers-contrast: more` → solid surfaces plus `--separator` borders at full opacity.
 
 ## Components
