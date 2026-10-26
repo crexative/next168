@@ -14,6 +14,8 @@ import { useMediaQuery } from '@/ui/useMediaQuery'
 import { usePlannerStore } from '@/stores/plannerStore'
 import RecoveryScreen from './RecoveryScreen.vue'
 import StorageErrorScreen from './StorageErrorScreen.vue'
+import StorageUpgradeWaiting from './StorageUpgradeWaiting.vue'
+import { UPGRADE_COPY_FAILED } from '@/repositories/storageVersion'
 import StatusBanners from './StatusBanners.vue'
 import { SHELL_TOOLBAR_ENTRIES } from './contracts'
 import { shell } from './registry'
@@ -183,9 +185,10 @@ dismissUndoWhenChanged(() => planner.document?.workspaceId)
       <!-- Early in the tab order, before the page, so its Undo is a few keystrokes away from anywhere. -->
       <UndoToast />
       <StatusBanners />
+      <StorageUpgradeWaiting />
       <main id="main" class="main" tabindex="-1">
         <RecoveryScreen v-if="planner.status === 'corrupt'" />
-        <StorageErrorScreen v-else-if="planner.status === 'error'" />
+        <StorageErrorScreen v-else-if="planner.status === 'error' || planner.error === UPGRADE_COPY_FAILED" />
         <Transition v-else name="view" mode="out-in" @after-leave="scrollToTop" @after-enter="onViewEntered">
           <div v-if="currentView" :key="currentView.id" class="view" :data-view="currentView.id" :data-measure="FULL_WIDTH_VIEWS.has(currentView.id) ? 'full' : 'readable'">
             <LargeTitle :title="t(currentView.titleKey)">

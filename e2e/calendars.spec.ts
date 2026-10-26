@@ -174,7 +174,7 @@ test('delete all data leaves no calendar source, neither in the plan nor in the 
   await page.getByLabel('Import .ics file', { exact: true }).setInputFiles(fixturePath)
   await expect(page.getByTestId('calendar-source')).toHaveCount(1)
   const cachedKeys = () => page.evaluate(() => new Promise<string[]>((resolve, reject) => {
-    const open = indexedDB.open('next168-calendars', 1)
+    const open = indexedDB.open('next168-calendars')
     open.onerror = () => reject(open.error)
     open.onsuccess = () => {
       const request = open.result.transaction('sources').objectStore('sources').getAllKeys()

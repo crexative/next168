@@ -65,5 +65,13 @@
     "done": "Todos os dados foram apagados.",
     "failed": "Não foi possível apagar ({reason}). Nada foi alterado."
   },
-  "changedElsewhere": "Os seus dados mudaram entretanto, por isso nada foi substituído. Tente novamente."
+  "changedElsewhere": "Os seus dados mudaram entretanto, por isso nada foi substituído. Tente novamente.",
+  "preUpgrade": {
+    "title": "Cópia de antes da atualização ({date})",
+    "note": "Inclui seus calendários. Não inclui o que você mudou depois da atualização.",
+    "tooLarge": "Ocupa {mb} MB: mais do que o app consegue importar (25 MB). Guarde-a mesmo assim: contém todo o seu plano.",
+    "size": "{mb} MB",
+    "download": "Baixar cópia",
+    "downloadRaw": "Baixar dados brutos"
+  }
 }

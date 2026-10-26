@@ -52,7 +52,9 @@
     "lastChangeNotSaved": "Deine letzte Änderung wurde nicht gespeichert. Alles davor ist sicher.",
     "retry": "Erneut versuchen",
     "exportCopy": "Kopie exportieren",
-    "exportWithoutCalendars": "Einige Kalendertexte konnten nicht gelesen werden und wurden leer exportiert."
+    "exportWithoutCalendars": "Einige Kalendertexte konnten nicht gelesen werden und wurden leer exportiert.",
+    "upgradeWaiting": "Die vorherige Version wird in anderen Tabs geschlossen…",
+    "upgradeCopyFailed": "Das Update konnte nicht sicher vorbereitet werden; deine Daten sind unverändert. Versuch es noch mal oder exportiere eine Kopie."
   },
   "recovery": {
     "title": "Deine gespeicherten Daten sind nicht lesbar",

@@ -1,8 +1,9 @@
 import { computed, ref, shallowRef } from 'vue'
 import { defineStore } from 'pinia'
 import type { PlannerDocument, PlannerRepository, SaveResult } from '@/core/model'
-import { createEmptyDocument, nextRevision } from '@/repositories/core'
+import { createEmptyDocument, nextRevision, parseDocument } from '@/repositories/core'
 import { failureReason, isStorageFailure } from '@/repositories/storageCommit'
+import { UPGRADE_COPY_FAILED, UpgradeCopyFailedError, type PreUpgradeCopy } from '@/repositories/storageVersion'
 
 export type PlannerStatus = 'loading' | 'ready' | 'readonly' | 'corrupt' | 'unsupported' | 'error'
 
@@ -23,6 +24,8 @@ export interface RepositoryExtras {
   saveGuarded?(document: PlannerDocument, expectedRevision: number, guard: { purgeEpoch?: number; storedFingerprint?: string }): Promise<SaveResult>
   // Browser only, synchronous: the purge epoch this tab last loaded.
   knownPurgeEpoch?(): number | undefined
+  // Browser only: the complete copy taken before the first storage upgrade, if any.
+  preUpgradeCopy?(): Promise<PreUpgradeCopy | undefined>
 }
 export type PlannerRepositoryWithExtras = PlannerRepository & RepositoryExtras
 
@@ -90,6 +93,14 @@ export const usePlannerStore = defineStore('planner', () => {
     try {
       result = await repository.load()
     } catch (failure) {
+      if (failure instanceof UpgradeCopyFailedError) {
+        // Nothing was upgraded: show the planner read at version 1, read-only, with Retry and Export.
+        const parsed = typeof failure.document === 'string' ? parseDocument(failure.document) : undefined
+        document.value = parsed?.kind === 'ok' ? parsed.document : null
+        status.value = 'readonly'
+        error.value = UPGRADE_COPY_FAILED
+        return
+      }
       // The document already shown (if any) stays in memory, so the error screen can still export it.
       status.value = 'error'
       error.value = failureReason(failure)

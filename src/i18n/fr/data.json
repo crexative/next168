@@ -65,5 +65,13 @@
     "done": "Toutes les données ont été supprimées.",
     "failed": "Suppression impossible ({reason}). Rien n'a été modifié."
   },
-  "changedElsewhere": "Tes données ont changé entre-temps, rien n’a donc été remplacé. Réessaie."
+  "changedElsewhere": "Tes données ont changé entre-temps, rien n’a donc été remplacé. Réessaie.",
+  "preUpgrade": {
+    "title": "Copie d'avant la mise à jour ({date})",
+    "note": "Elle contient tes calendriers. Elle ne contient pas ce que tu as modifié après la mise à jour.",
+    "tooLarge": "Elle fait {mb} Mo : plus que ce que l'app peut importer (25 Mo). Garde-la quand même : elle contient tout ton plan.",
+    "size": "{mb} Mo",
+    "download": "Télécharger la copie",
+    "downloadRaw": "Télécharger les données brutes"
+  }
 }

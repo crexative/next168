@@ -52,7 +52,9 @@
     "lastChangeNotSaved": "Your last change was not saved. Everything before it is safe.",
     "retry": "Try again",
     "exportCopy": "Export a copy",
-    "exportWithoutCalendars": "Some calendar texts could not be read, so they were exported empty."
+    "exportWithoutCalendars": "Some calendar texts could not be read, so they were exported empty.",
+    "upgradeWaiting": "Closing the previous version in other tabs…",
+    "upgradeCopyFailed": "The update couldn't be prepared safely; your data didn't change. Retry or export a copy."
   },
   "recovery": {
     "title": "Your saved data can't be read",

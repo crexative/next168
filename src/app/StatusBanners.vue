@@ -4,6 +4,7 @@ import { useI18n } from 'vue-i18n'
 import Button from '@/ui/Button.vue'
 import Icon from '@/ui/Icon.vue'
 import { usePlannerStore } from '@/stores/plannerStore'
+import { UPGRADE_COPY_FAILED } from '@/repositories/storageVersion'
 import { reloadBlocked, reloadWhenReady, updateDismissed, updateNoticeShown } from './updates'
 
 const { t } = useI18n()
@@ -12,7 +13,7 @@ const planner = usePlannerStore()
 const errorMessage = computed(() => {
   const code = planner.error
   // A storage failure has its own blocking screen.
-  if (!code || code === 'no-web-locks' || planner.status === 'error') return null
+  if (!code || code === 'no-web-locks' || code === UPGRADE_COPY_FAILED || planner.status === 'error') return null
   return code === 'conflict' ? t('app.storage.conflict') : t('app.storage.saveFailed', { reason: code })
 })
 

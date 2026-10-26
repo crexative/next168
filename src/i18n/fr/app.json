@@ -52,7 +52,9 @@
     "lastChangeNotSaved": "Ta dernière modification n’a pas été enregistrée. Tout ce qui précède est en sécurité.",
     "retry": "Réessayer",
     "exportCopy": "Exporter une copie",
-    "exportWithoutCalendars": "Certains textes de calendrier n’ont pas pu être lus et ont été exportés vides."
+    "exportWithoutCalendars": "Certains textes de calendrier n’ont pas pu être lus et ont été exportés vides.",
+    "upgradeWaiting": "Fermeture de la version précédente dans les autres onglets…",
+    "upgradeCopyFailed": "La mise à jour n'a pas pu être préparée sans risque ; tes données n'ont pas changé. Réessaie ou exporte une copie."
   },
   "recovery": {
     "title": "Tes données enregistrées sont illisibles",

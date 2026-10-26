@@ -19,12 +19,13 @@ export async function importCompanionBundle(text: string, repository = new Compa
   if (!response.ok) throw Error('import-save-failed')
   const loaded = await repository.load()
   if (loaded.kind !== 'ok') throw Error('import-readback-failed')
-  const texts: Record<string, string> = {}
+  const entries: [string, string][] = []
   for (const source of loaded.document.calendarSources) {
     const value = await sources.get(source.id)
     if (value === undefined) throw Error('missing-calendar-source')
-    texts[source.id] = value
+    entries.push([source.id, value])
   }
+  const texts = Object.fromEntries(entries)
   const expected = buildExportBundle(imported, parsed.bundle.calendarSourceTexts, { now: () => new Date() })
   const actual = buildExportBundle(loaded.document, texts, { now: () => new Date() })
   if (await bundleHash(expected) !== await bundleHash(actual)) throw Error('import-readback-hash-mismatch')

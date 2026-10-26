@@ -1,18 +1,16 @@
 import type { CalendarSourceStore } from '@/core/model'
 import { CalendarImportError, MAX_ICS_BYTES } from '@/core/icsImport'
+import { CALENDAR_DATABASE, fenceFor, type StorageFence } from '@/repositories/storageVersion'
 
 export class IndexedDbCalendarSourceStore implements CalendarSourceStore {
-  constructor(private readonly factory: IDBFactory | undefined = globalThis.indexedDB) {}
+  private readonly fence: StorageFence
+
+  constructor(factory: IDBFactory | undefined = globalThis.indexedDB, fence?: StorageFence) {
+    this.fence = fence ?? fenceFor(factory)
+  }
 
   private async transaction<T>(mode: IDBTransactionMode, operation: (store: IDBObjectStore) => IDBRequest<T>): Promise<T> {
-    if (!this.factory) throw new CalendarImportError('storage')
-    const db = await new Promise<IDBDatabase>((resolve, reject) => {
-      const request = this.factory!.open('next168-calendars', 1)
-      request.onupgradeneeded = () => { request.result.createObjectStore('sources') }
-      request.onsuccess = () => resolve(request.result)
-      request.onerror = () => reject(new CalendarImportError('storage'))
-      request.onblocked = () => reject(new CalendarImportError('storage'))
-    })
+    const db = await this.fence.open(CALENDAR_DATABASE).catch(() => { throw new CalendarImportError('storage') })
     try {
       return await new Promise<T>((resolve, reject) => {
         // A readwrite transaction asks for a flushed commit, like the planner store: a browser kill after

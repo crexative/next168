@@ -102,6 +102,7 @@ Auto-detects browser language with localStorage persistence.
 ### 💾 Data Persistence
 
 - Every change is saved to the browser's IndexedDB in one durable transaction (older localStorage data is imported once)
+- A storage upgrade first keeps a complete copy of what this device held (Settings → Your data → "Copy from before the update"), and older versions still open in other tabs can no longer write
 - Data persists across sessions
 - Sample data for new users
 - No backend required

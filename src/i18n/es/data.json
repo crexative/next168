@@ -65,5 +65,13 @@
     "done": "Se borraron todos los datos.",
     "failed": "No se pudo borrar ({reason}). No se cambió nada."
   },
-  "changedElsewhere": "Tus datos cambiaron mientras tanto, así que no se reemplazó nada. Inténtalo de nuevo."
+  "changedElsewhere": "Tus datos cambiaron mientras tanto, así que no se reemplazó nada. Inténtalo de nuevo.",
+  "preUpgrade": {
+    "title": "Copia de antes de la actualización ({date})",
+    "note": "Incluye tus calendarios. No incluye lo que cambiaste después de la actualización.",
+    "tooLarge": "Ocupa {mb} MB: más de lo que la app puede importar (25 MB). Guárdala igualmente: contiene todo tu plan.",
+    "size": "{mb} MB",
+    "download": "Descargar copia",
+    "downloadRaw": "Descargar datos sin procesar"
+  }
 }
