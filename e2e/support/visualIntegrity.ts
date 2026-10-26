@@ -706,7 +706,7 @@ export function auditInPage(options: { focusRings: boolean }): string[] {
     const x = rect.left + rect.width / 2
     const y = rect.top + rect.height / 2
     if (x < shownArea.left || x > shownArea.right || y < shownArea.top || y > shownArea.bottom || x < 0 || y < 0 || x > viewportWidth || y > viewportHeight) continue
-    const hit = document.elementFromPoint(x, y)
+    const hit = pressedItem(document.elementFromPoint(x, y))
     if (!hit || control.contains(hit)) continue
     // Content of a scroller under something outside it (a docked footer, a bar) is scrolled there, not laid out there.
     const scroller = scrollerOf(control)
@@ -1028,6 +1028,107 @@ export function auditInPage(options: { focusRings: boolean }): string[] {
     }
   }
 
+  // A press on a widened area (`data-hit-for="<key>"`) reaches the item marked `data-hit-key="<key>"` in its column.
+  function pressedItem(element: Element | null): Element | null {
+    const area = element?.closest('[data-hit-for]')
+    if (!area) return element
+    return area.parentElement?.querySelector(`[data-hit-key="${CSS.escape(area.getAttribute('data-hit-for')!)}"]`) ?? area
+  }
+
+  // Every pressable Week item can be pressed anywhere in a 44 × 44 px box centred on it (kept inside its column): a
+  // press at the middle of each edge of that box reaches the item, or a neighbour at least as near (two neighbours
+  // share the room between them at the midpoint). An item it is drawn inside (a task's routine) is never an excuse,
+  // nor empty space in the column. Items are scrolled into view to be pressed; the page's scroll is restored after.
+  const HIT_TARGET_PX = 44
+  function checkHitTargets(): void {
+    const scroller = document.scrollingElement ?? document.documentElement
+    const start = { x: scroller.scrollLeft, y: scroller.scrollTop }
+    try {
+      for (const container of Array.from(scope.querySelectorAll<HTMLElement>('[data-whole-text]')).filter(rendered)) {
+        if (container.getAttribute('data-whole-text') === 'shapes' || container.closest('[inert]')) continue
+        const items = Array.from(container.children).filter((item): item is HTMLElement => item instanceof HTMLButtonElement && !item.disabled && rendered(item) && getComputedStyle(item).pointerEvents !== 'none')
+        for (const item of items) checkHitTarget(container, item)
+      }
+    } finally {
+      scroller.scrollTo(start.x, start.y)
+    }
+  }
+
+  // Whether a press at x, y is on `other`'s side of the room between two boxes: past the midpoint across, for boxes
+  // side by side, else past the midpoint along, for one above the other.
+  function nearerTo(other: DOMRect, own: DOMRect, x: number, y: number): boolean {
+    if (other.left >= own.right - TOLERANCE) return x >= (own.right + other.left) / 2 - 0.5
+    if (other.right <= own.left + TOLERANCE) return x <= (other.right + own.left) / 2 + 0.5
+    if (other.top >= own.bottom - TOLERANCE) return y >= (own.bottom + other.top) / 2 - 0.5
+    if (other.bottom <= own.top + TOLERANCE) return y <= (other.bottom + own.top) / 2 + 0.5
+    return false
+  }
+
+  // The 44 × 44 px box centred on an item's box (or the box itself when larger), kept inside its column.
+  function targetBox(own: DOMRect, column: DOMRect): { top: number; bottom: number; left: number; right: number } {
+    const along = (start: number, end: number, low: number, high: number): [number, number] => {
+      const size = Math.max(end - start, Math.min(HIT_TARGET_PX, high - low))
+      const from = Math.min(Math.max(low, (start + end) / 2 - size / 2), high - size)
+      return [from, from + size]
+    }
+    const [top, bottom] = along(own.top, own.bottom, column.top, column.bottom)
+    const [left, right] = along(own.left, own.right, column.left, column.right)
+    return { top, bottom, left, right }
+  }
+
+  function checkHitTarget(container: HTMLElement, item: HTMLElement): void {
+    let own = item.getBoundingClientRect()
+    if (own.top < 0 || own.bottom > window.innerHeight) {
+      // Whole pixels: a fractional scroll is snapped on screens of one device pixel per px (Linux CI) after the boxes
+      // were read.
+      window.scrollBy(0, Math.round(own.top + own.height / 2 - window.innerHeight / 2))
+      own = item.getBoundingClientRect()
+    }
+    const column = container.getBoundingClientRect()
+    const { top, bottom, left, right } = targetBox(own, column)
+    // Pressed on the item's own middle lines, so a press on its edge never lands beside a rounded corner; a third of a
+    // pixel off them, so a press never lands on the exact seam between two boxes that meet there.
+    const middle = { x: (own.left + own.right) / 2 + 0.3, y: (own.top + own.bottom) / 2 + 0.3 }
+    // 2 px in from each edge of the box: a press is not judged on the pixel row a neighbour's box may share after
+    // rounding.
+    const presses: [string, number, number][] = [['above', middle.x, top + 2], ['below', middle.x, bottom - 2], ['before', left + 2, middle.y], ['after', right - 2, middle.y]]
+    for (const [side, x, y] of presses) {
+      if (x < 0 || y < 0 || x > window.innerWidth || y > window.innerHeight) continue
+      const reached = pressedItem(document.elementFromPoint(x, y))
+      // A bar or sheet over the column (a sticky header) is a different layer, not a target of the column.
+      if (!reached || !container.contains(reached)) continue
+      if (item.contains(reached)) continue
+      // A press on the column itself just inside another item's box is in that box's rounded corner: that item's room.
+      const other = Array.from(container.children).find((child) => child !== item && child.contains(reached))
+        ?? (reached === container ? Array.from(container.children).find((child) => {
+          const box = child.getBoundingClientRect()
+          return child !== item && child.matches('button') && x >= box.left && x <= box.right && y >= box.top && y <= box.bottom
+        }) : undefined)
+      if (other && !other.hasAttribute('data-hit-for')) {
+        const box = other.getBoundingClientRect()
+        const contains = (outer: DOMRect, inner: DOMRect) => outer.left <= inner.left + TOLERANCE && outer.right >= inner.right - TOLERANCE && outer.top <= inner.top + TOLERANCE && outer.bottom >= inner.bottom - TOLERANCE
+        // An item drawn inside this one (a routine's task) takes the presses around it, over this one, on purpose.
+        if (contains(own, box)) continue
+        // Another item's own box is its own: a 44 px box that reaches into any other item gives way there (a routine
+        // around this item excepted).
+        const inOther = Array.from(container.children).some((child) => {
+          if (child === item || child.hasAttribute('data-hit-for')) return false
+          const shape = child.getBoundingClientRect()
+          return !contains(shape, own) && x >= shape.left && x <= shape.right && y >= shape.top && y <= shape.bottom
+        })
+        // Where the boxes of three or more items meet, the room is shared among them by turns (hitAreas.ts); a press
+        // there may reach any of them that is not around this item.
+        const sharing = Array.from(container.children).filter((child) => {
+          if (child === item || !(child instanceof HTMLButtonElement) || child.disabled) return false
+          const target = targetBox(child.getBoundingClientRect(), column)
+          return x >= target.left && x <= target.right && y >= target.top && y <= target.bottom
+        }).length
+        if (!contains(box, own) && (inOther || nearerTo(box, own, x, y) || sharing >= 2)) continue
+      }
+      violations.push(`${describe(item)} has no ${HIT_TARGET_PX}×${HIT_TARGET_PX} px target: a press ${side} it, at ${(x - column.left).toFixed(1)}, ${(y - column.top).toFixed(1)} px in its column, reaches ${other ? describe(other) : describe(container)}`)
+    }
+  }
+
   // Inside a `[data-whole-text]` container (a Week day column) text is whole words or not drawn (docs/design/visual-design.md ›
   // Week items). Each direct child is an item. A CSS ellipsis or line clamp is not allowed there (only the generated "…"
   // after whole words, or a "…" of the title itself, both checked by checkTitleWords), a line cut by any box or
@@ -1051,7 +1152,8 @@ export function auditInPage(options: { focusRings: boolean }): string[] {
         violations.push(`${describe(container)} is drawn from a plan for ${planned}, not its current ${plannedSize(container)}`)
         continue
       }
-      const items = Array.from(container.children).filter((item) => rendered(item))
+      // An item's widened press area (`data-hit-for`, drawn over its neighbourhood) holds no text and is not an item.
+      const items = Array.from(container.children).filter((item) => rendered(item) && !item.hasAttribute('data-hit-for'))
       const lines: { item: Element; text: string; box: Box }[] = []
       const checkedTitles = new Set<Element>()
       const walker = document.createTreeWalker(container, NodeFilter.SHOW_TEXT, {
@@ -1114,6 +1216,7 @@ export function auditInPage(options: { focusRings: boolean }): string[] {
 
   checkText()
   checkWholeText()
+  checkHitTargets()
   checkControlSpacing()
   checkDockPrimary()
   checkOneLineRows()

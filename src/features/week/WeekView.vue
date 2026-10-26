@@ -29,7 +29,7 @@ import { dayIndexOf, formatDate, localMinuteOf, weekDates } from './localTime'
 import { scrollToNow } from './scrollToNow'
 import { keepWhereTheyWere, useTaskPlacements, type MovedNotice } from './taskPlacement'
 import { useNow } from './useNow'
-import { HOUR_HEIGHT_PX, blockSegmentsByDate, busySegmentsByDate, taskSegmentsByDate } from './weekLayout'
+import { HOUR_HEIGHT_PX, allDayByDate, blockSegmentsByDate, busySegmentsByDate, taskSegmentsByDate } from './weekLayout'
 import { pagerIndexFor, shiftWeek } from './weekNavigation'
 
 const DEFAULT_BLOCK_MINUTES = 60
@@ -73,10 +73,9 @@ const { placements, notice, recompute } = useTaskPlacements(() => document.value
 
 const segments = computed(() => document.value ? blockSegmentsByDate(document.value, dates.value, timeZone.value) : {})
 const taskSegments = computed(() => document.value ? taskSegmentsByDate(placements.value, document.value.tasks, dates.value, timeZone.value) : {})
-const busy = computed(() => busySegmentsByDate(
-  external.value, document.value?.events ?? [], dates.value, timeZone.value,
-  new Map((document.value?.calendarSources ?? []).map((source) => [source.id, source.name])),
-))
+const calendarNames = computed(() => new Map((document.value?.calendarSources ?? []).map((source) => [source.id, source.name])))
+const busy = computed(() => busySegmentsByDate(external.value, document.value?.events ?? [], dates.value, timeZone.value, calendarNames.value))
+const allDay = computed(() => allDayByDate(external.value, document.value?.events ?? [], dates.value, calendarNames.value))
 const blockCount = computed(() => document.value?.blocks.length ?? 0)
 const hasCategories = computed(() => (document.value?.categories.length ?? 0) > 0)
 // An event added from "+" has to show up even before the first block exists.
@@ -280,6 +279,7 @@ async function remove(blockId: string): Promise<void> {
         :today="today"
         :segments="segments"
         :busy="busy"
+        :all-day="allDay"
         :tasks="taskSegments"
         :actuals="document.actuals"
         :categories="document.categories"
@@ -311,6 +311,7 @@ async function remove(blockId: string): Promise<void> {
         :today="today"
         :segments="segments"
         :busy="busy"
+        :all-day="allDay"
         :tasks="taskSegments"
         :actuals="document.actuals"
         :categories="document.categories"

@@ -76,7 +76,6 @@ const column = (overrides: Record<string, unknown> = {}) => {
 const taskAt = (startMinute: number, endMinute: number, change: { categoryId?: string } = { categoryId: 'work' }) => ({
   key: `t@${startMinute}`, taskId: 't', title: 'Report', categoryId: change.categoryId, late: false, date: DATE, startMinute, endMinute, continuesBefore: false, continuesAfter: false,
 })
-const anyTime = {}
 const click = (root: HTMLElement, y: number, x = 100) => root.dispatchEvent(new MouseEvent('click', { bubbles: true, clientX: x, clientY: y }))
 
 // What a box shows is decided by dayColumnPlan.ts (unit tested there across sizes); before a page has measured the
@@ -112,25 +111,13 @@ it('draws a task as a button that opens it, and as a disabled one when nothing c
   expect(locked.root.querySelector<HTMLButtonElement>('[data-testid="week-task"]')!.disabled).toBe(true)
 })
 
-it('opens a short block from just outside it (44 px target) and creates a block anywhere farther away', () => {
-  // Gym is 12:00-12:30 at 48 px per hour: 24 px tall, drawn from y = 576 to 600; its target reaches 10 px each way.
+// The 44 px areas around short items need a measured column (hitAreas.spec.ts, e2e/week-ux.spec.ts and the visual
+// integrity guard's hit-target rule); without layout a press on empty time starts a block.
+it('creates a block from a press on empty time', () => {
   const { root, emitted } = column()
-  click(root, 600 + 9)
-  click(root, 576 - 9)
-  expect(emitted.select).toEqual(['gym-block', 'gym-block'])
-  expect(emitted.create).toEqual([])
   click(root, 600 + 14)
-  expect(emitted.select).toHaveLength(2)
   expect(emitted.create).toEqual([750])
 })
-
-it('opens a task from just outside it, ahead of the block it sits in', () => {
-  const { root, emitted } = column({ tasks: [taskAt(780, 795, anyTime)] })
-  // 13:00-13:15 is 12 px tall (y 624-636), in the open: a tap 15 px below it still means the task.
-  click(root, 636 + 15)
-  expect(emitted.taskSelect).toEqual(['t'])
-})
-
 
 it('draws back-to-back tasks under the routine title in disjoint boxes (#3 review)', () => {
   const { root } = column({ tasks: [taskAt(540, 560), { ...taskAt(560, 580), taskId: 't2' }] })

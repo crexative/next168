@@ -3,6 +3,8 @@
   "add": "Ajouter",
   "deleted": "« {title} » supprimé",
   "grid": {
+    "allDay": "Toute la journée",
+    "allDayItem": "{title}, toute la journée",
     "conflict": "Conflit",
     "crossesMidnight": "{range} (de nuit)"
   },

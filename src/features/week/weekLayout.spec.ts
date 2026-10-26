@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { INSTANT_EVENT_MINUTES, blockSegmentsByDate, busySegmentsByDate, layoutDaySegments, nearestHitTarget, placeTasks, splitByLocalDay } from './weekLayout'
+import { INSTANT_EVENT_MINUTES, allDayByDate, blockSegmentsByDate, busySegmentsByDate, layoutDaySegments, placeTasks, splitByLocalDay } from './weekLayout'
 import type { ExternalOccurrence, PlannerEvent, TimeBlock } from '@/core/model'
 import { weekDates } from './localTime'
 import { deepWork, plannerDocument, sleep } from './testDocument'
@@ -42,7 +42,8 @@ describe('week layout', () => {
     expect(layoutDaySegments(segments['2026-10-20']!, []).blocks.map((segment) => [segment.lane, segment.lanes])).toEqual([[0, 1]])
   })
 
-  it('turns busy calendar events and Next168 events into overlays, skipping free and all-day ones', () => {
+  // verify10 C6: free (transparent) events were dropped; they are drawn now, marked free, and all-day ones get a row.
+  it('turns timed calendar events (free ones marked) and Next168 events into overlays, and all-day ones into the all-day row', () => {
     const busy = busySegmentsByDate([
       { sourceId: 's', uid: 'a', title: 'Flight', start: '2026-10-21T23:00:00Z', end: '2026-10-22T01:00:00Z', allDay: false, busy: true },
       { sourceId: 's', uid: 'b', title: 'Free', start: '2026-10-21T12:00:00Z', end: '2026-10-21T13:00:00Z', allDay: false, busy: false },
@@ -50,10 +51,25 @@ describe('week layout', () => {
     ], [
       { id: 'e', title: 'Dentist', start: '2026-10-20T15:00:00Z', end: '2026-10-20T16:00:00Z', allDay: false, attendees: [] },
     ], week, 'UTC')
-    expect(Object.values(busy).flat().map((item) => [item.title, item.date, item.startMinute, item.endMinute, item.kind])).toEqual([
-      ['Dentist', '2026-10-20', 900, 960, 'event'],
-      ['Flight', '2026-10-21', 1380, 1440, 'external'],
-      ['Flight', '2026-10-22', 0, 60, 'external'],
+    expect(Object.values(busy).flat().map((item) => [item.title, item.date, item.startMinute, item.endMinute, item.kind, item.free ?? false])).toEqual([
+      ['Dentist', '2026-10-20', 900, 960, 'event', false],
+      ['Flight', '2026-10-21', 1380, 1440, 'external', false],
+      ['Free', '2026-10-21', 720, 780, 'external', true],
+      ['Flight', '2026-10-22', 0, 60, 'external', false],
+    ])
+  })
+
+  it('puts an all-day event on every day it covers (its end date is exclusive), from calendars and Next168 alike', () => {
+    const allDay = allDayByDate([
+      { sourceId: 's', uid: 'h', title: 'Holiday', start: '2026-10-23', end: '2026-10-24', allDay: true, busy: false },
+      { sourceId: 's', uid: 't', title: 'Trip', start: '2026-10-24', end: '2026-10-27', allDay: true, busy: true },
+      { sourceId: 's', uid: 'x', title: 'Timed', start: '2026-10-23T10:00:00Z', end: '2026-10-23T11:00:00Z', allDay: false, busy: true },
+    ], [
+      { id: 'b', title: 'Birthday', start: '2026-10-21T00:00:00.000Z', end: '2026-10-22T00:00:00.000Z', allDay: true, attendees: [] },
+    ], week, new Map([['s', 'Holidays']]))
+    expect(Object.entries(allDay).map(([date, items]) => [date, items.map((item) => `${item.title}/${item.kind}/${item.calendar ?? ''}`)])).toEqual([
+      ['2026-10-19', []], ['2026-10-20', []], ['2026-10-21', ['Birthday/event/']], ['2026-10-22', []],
+      ['2026-10-23', ['Holiday/external/Holidays']], ['2026-10-24', ['Trip/external/Holidays']], ['2026-10-25', ['Trip/external/Holidays']],
     ])
   })
 })
@@ -214,36 +230,3 @@ describe('daylight saving changes', () => {
   })
 })
 
-describe('nearestHitTarget', () => {
-  const HOUR = 48
-  const gym = { kind: 'block' as const, id: 'gym', startMinute: 720, endMinute: 750, left: 0, width: 100 }
-  const tall = { kind: 'block' as const, id: 'work', startMinute: 540, endMinute: 660, left: 0, width: 100 }
-
-  it('reaches 10 px past a 30-minute block on each side, so every target is at least 44 px', () => {
-    const top = 12 * HOUR
-    const bottom = top + 24
-    expect(nearestHitTarget([gym], top - 10, 50, HOUR)).toBe(gym)
-    expect(nearestHitTarget([gym], bottom + 10, 50, HOUR)).toBe(gym)
-    expect(nearestHitTarget([gym], top - 11, 50, HOUR)).toBeUndefined()
-    expect(nearestHitTarget([gym], bottom + 11, 50, HOUR)).toBeUndefined()
-  })
-
-  it('does not grow an item that is already 44 px tall or more', () => {
-    expect(nearestHitTarget([tall], 9 * HOUR - 1, 50, HOUR)).toBeUndefined()
-    expect(nearestHitTarget([tall], 11 * HOUR + 1, 50, HOUR)).toBeUndefined()
-    expect(nearestHitTarget([tall], 10 * HOUR, 50, HOUR)).toBe(tall)
-  })
-
-  it('stays inside the lane the item occupies', () => {
-    const lane = { ...gym, left: 50, width: 50 }
-    expect(nearestHitTarget([lane], 12 * HOUR + 30, 49, HOUR)).toBeUndefined()
-    expect(nearestHitTarget([lane], 12 * HOUR + 30, 75, HOUR)).toBe(lane)
-  })
-
-  it('picks the item whose center is nearest when two reach the same point', () => {
-    const above = { ...gym, id: 'above', startMinute: 690, endMinute: 720 }
-    const y = 12 * HOUR - 2 // 2 px above Gym, 2 px below the end of the item above
-    expect(nearestHitTarget([above, gym], y, 50, HOUR)?.id).toBe('above')
-    expect(nearestHitTarget([above, gym], y + 6, 50, HOUR)?.id).toBe('gym')
-  })
-})

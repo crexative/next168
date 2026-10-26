@@ -13,7 +13,8 @@ import { formatMinute, formatTime } from './localTime'
 import { useColumnMeasure } from './columnMeasure'
 import { ELLIPSIS } from './itemText'
 import { BLOCK_INSET, LANE_GAP_PX, SMALL_INSET, planDayColumn, type PlannedBlock, type PlannedBusy, type PlannedTask } from './dayColumnPlan'
-import { HOUR_HEIGHT_PX, SLOT_MINUTES, nearestHitTarget, type BlockSegment, type BusySegment, type HitTarget, type TaskSegment } from './weekLayout'
+import { hitAreas, type Box, type HitItem } from './hitAreas'
+import { HOUR_HEIGHT_PX, SLOT_MINUTES, type BlockSegment, type BusySegment, type TaskSegment } from './weekLayout'
 import type { BusyDetails } from './busyDetails'
 
 const props = withDefaults(defineProps<{
@@ -40,9 +41,9 @@ const root = ref<HTMLElement | null>(null)
 const probes = ref<HTMLElement | null>(null)
 const measure = useColumnMeasure(root, probes, () => !props.compact)
 
-// A calendar event conflicts when it overlaps a planned block of the same day.
+// A calendar event conflicts when it overlaps a planned block of the same day; one marked free never does.
 const conflicting = computed(() => new Set(props.busy
-  .filter((item) => item.kind === 'external' && props.segments.some((segment) => segment.startMinute < item.endMinute && item.startMinute < segment.endMinute))
+  .filter((item) => item.kind === 'external' && !item.free && props.segments.some((segment) => segment.startMinute < item.endMinute && item.startMinute < segment.endMinute))
   .map((item) => item.key)))
 
 const STATUS_ICON = { done: 'check', skipped: 'x', partial: 'minus' } as const
@@ -161,37 +162,46 @@ function inspect(item: BusySegment): void {
     calendar: item.kind === 'event' ? t('week.details.ownEvent') : item.calendar ?? t('week.details.calendarFallback'),
     ...(item.location ? { location: item.location } : {}),
     ...(item.notes ? { notes: item.notes } : {}),
-    conflictsWith: props.segments
+    conflictsWith: item.free ? [] : props.segments
       .filter((segment) => segment.startMinute < item.endMinute && item.startMinute < segment.endMinute)
       .map((segment) => ({ blockId: segment.occurrence.blockId, title: segment.occurrence.title })),
   })
 }
 
-// The pressable things of this column with the lane each one occupies, for the 44 px hit rule below.
-const hitTargets = computed<HitTarget[]>(() => [
-  ...plan.value.tasks.map(({ task, left, width }) => ({ kind: 'task' as const, id: task.taskId, startMinute: task.startMinute, endMinute: task.endMinute, left, width })),
-  ...plan.value.blocks.map((block) => ({ kind: 'block' as const, id: block.occurrence.blockId, startMinute: block.startMinute, endMinute: block.endMinute, left: block.left, width: block.width })),
-])
+// The pressable area of every item outside its own box (hitAreas.ts): a short or narrow one grown to 44 px, a task over
+// its routine, and every item over the lane gaps beside it, so no press near an item falls between lanes. Each part is
+// drawn as an invisible box above the items; none covers another item's box.
+interface HitArea { key: string; for: string; area: Box; activate: () => void }
+const hits = computed<HitArea[]>(() => {
+  const width = measure.value?.width
+  if (props.compact || !width) return []
+  const across = (lane: { left: number; width: number }) => ({ left: (width * lane.left) / 100 + LANE_GAP_PX, right: (width * (lane.left + lane.width)) / 100 - LANE_GAP_PX, gap: LANE_GAP_PX })
+  const items: (HitItem & { activate: () => void })[] = [
+    ...(props.editable ? plan.value.blocks : []).map((segment) => ({ key: `b:${segment.key}`, top: segment.top, bottom: segment.bottom, ...across(segment), activate: () => emit('select', segment.occurrence.blockId) })),
+    ...plan.value.busy.map((item) => ({ key: `e:${item.key}`, top: item.top, bottom: item.bottom, ...across(item), activate: () => inspect(item) })),
+    ...plan.value.tasks.filter((planned) => props.editable && !planned.outline).map((planned) => ({
+      key: `t:${planned.task.key}`, top: planned.top, bottom: planned.bottom, ...across(planned),
+      ...(planned.hostKey ? { hostKey: `b:${planned.hostKey}` } : {}),
+      activate: () => emit('select-task', planned.task.taskId),
+    })),
+  ]
+  const areas = hitAreas(items, { width, height: 24 * props.hourHeight })
+  return items.flatMap((item) => areas.get(item.key)!.map((area, index) => ({ key: `${item.key}#${index}`, for: item.key, area, activate: item.activate })))
+})
 
-// A press on empty time in the column: close to a short block or task (inside its 44 px target) it opens that one,
-// anywhere else it starts a new block.
+function hitStyle({ area }: HitArea) {
+  return { top: `${area.top}px`, left: `${area.left}px`, width: `${area.right - area.left}px`, height: `${area.bottom - area.top}px` }
+}
+
+// A press on empty time in the column starts a new block; a press on a routine opens it. Presses near a short item
+// land on its hit area above.
 function onColumnClick(event: MouseEvent, blockId?: string): void {
   if (!props.editable || (!blockId && event.target !== event.currentTarget)) return
-  // Native keyboard activation has no pointer coordinates and always opens the focused routine.
-  if (blockId && (event.detail === 0 || props.compact)) { emit('select', blockId); return }
+  if (blockId) { emit('select', blockId); return }
   const column = (event.currentTarget as HTMLElement).closest<HTMLElement>('.day-column')!
-  const bounds = column.getBoundingClientRect()
-  const y = event.clientY - bounds.top
-  const hit = props.compact ? undefined : nearestHitTarget(hitTargets.value, y, ((event.clientX - bounds.left) / bounds.width) * 100, props.hourHeight)
-  // A press on a routine's own area opens the routine; a task inside it opens only from the task's own box.
-  if (hit?.kind === 'task' && !blockId) emit('select-task', hit.id)
-  else if (hit?.kind === 'task') emit('select', blockId!)
-  else if (hit) emit('select', hit.id)
-  else if (blockId) emit('select', blockId)
-  else {
-    const minute = Math.floor((y / props.hourHeight) * 60 / SLOT_MINUTES) * SLOT_MINUTES
-    emit('create', props.date, Math.max(0, Math.min(1440 - SLOT_MINUTES, minute)))
-  }
+  const y = event.clientY - column.getBoundingClientRect().top
+  const minute = Math.floor((y / props.hourHeight) * 60 / SLOT_MINUTES) * SLOT_MINUTES
+  emit('create', props.date, Math.max(0, Math.min(1440 - SLOT_MINUTES, minute)))
 }
 </script>
 
@@ -221,12 +231,13 @@ function onColumnClick(event: MouseEvent, blockId?: string): void {
       type="button"
       class="busy t-caption"
       :data-text-inset="SMALL_INSETS.busy"
-      :class="[`is-${item.kind}`, { 'is-small': item.show.small }, { 'is-conflict': conflicting.has(item.key) }, { 'is-icon-only': item.show.icon && !item.show.title }, { 'is-stacked': item.show.stacked }]"
+      :class="[`is-${item.kind}`, { 'is-small': item.show.small }, { 'is-conflict': conflicting.has(item.key) }, { 'is-free': item.free }, { 'is-icon-only': item.show.icon && !item.show.title }, { 'is-stacked': item.show.stacked }]"
       :data-glyph-kind="conflicting.has(item.key) ? 'warning' : undefined"
       :style="busyStyle(item)"
       :title="item.title"
       data-testid="busy-overlay"
       :data-event-id="item.kind === 'event' ? item.key.slice(0, item.key.lastIndexOf('@')) : undefined"
+      :data-hit-key="`e:${item.key}`"
       @click.stop="inspect(item)"
     >
       <span v-if="conflicting.has(item.key)" class="conflict-mark" :class="{ 'visually-hidden': !item.show.icon }" :data-glyph="item.show.icon ? 'warning' : undefined" data-testid="calendar-conflict"><Icon name="triangle-alert" :size="12" /><span class="conflict-text" :class="{ 'visually-hidden': !item.show.word }">{{ t('week.grid.conflict') }}</span></span>{{ item.show.icon ? ' ' : '' }}<span class="busy-title" :class="{ 'visually-hidden': !item.show.title, 'is-hyphenated': item.show.hyphenate, 'is-small-text': item.show.small }" :aria-hidden="drawn(item.show, item.title).cut || undefined">{{ drawn(item.show, item.title).words }}<span v-if="drawn(item.show, item.title).cut" class="cut" data-cut>{{ ELLIPSIS }}</span></span><span v-if="drawn(item.show, item.title).cut" class="visually-hidden">{{ item.title }}</span>
@@ -241,6 +252,7 @@ function onColumnClick(event: MouseEvent, blockId?: string): void {
       :class="{ 'is-centered': segment.show.center, 'is-done': statuses.get(segment.key) === 'done', 'is-skipped': statuses.get(segment.key) === 'skipped', 'continues-before': segment.continuesBefore, 'continues-after': segment.continuesAfter }"
       :style="segmentStyle(segment)"
       :data-block-id="segment.occurrence.blockId"
+      :data-hit-key="`b:${segment.key}`"
       :data-start-minute="segment.startMinute"
       :data-end-minute="segment.endMinute"
       :data-status="statuses.get(segment.key)"
@@ -266,6 +278,7 @@ function onColumnClick(event: MouseEvent, blockId?: string): void {
       data-testid="week-task"
       :data-text-inset="SMALL_INSETS.task"
       :data-task-id="planned.task.taskId"
+      :data-hit-key="`t:${planned.task.key}`"
       :data-start-minute="planned.task.startMinute"
       :data-end-minute="planned.task.endMinute"
       :data-late="planned.task.late || undefined"
@@ -278,6 +291,8 @@ function onColumnClick(event: MouseEvent, blockId?: string): void {
       <span class="task-box task-text" :class="{ 'is-late': planned.task.late, 'is-outline': planned.outline, 'is-small': planned.show.small }"><Icon v-if="planned.show.icon" class="task-icon" name="triangle-alert" :size="12" />{{ planned.show.icon ? ' ' : '' }}<span v-if="planned.show.title" class="task-title" :class="{ 'is-hyphenated': planned.show.hyphenate, 'is-small-text': planned.show.small }">{{ drawn(planned.show, planned.task.title).words }}<span v-if="drawn(planned.show, planned.task.title).cut" class="cut" data-cut aria-hidden="true">{{ ELLIPSIS }}</span></span></span>
       <span v-if="planned.show.glyph" class="item-glyph" :style="{ ...glyphSlot(SMALL_INSET.task), ...glyphSize(planned.show) }" data-glyph="category"><CategoryMark :category="categoriesById.get(planned.task.categoryId ?? '')" /></span>
     </button>
+    <!-- Decorative for assistive technology: every item is reachable by its own button; these only widen presses. -->
+    <span v-for="hit in hits" :key="hit.key" class="hit-area" :data-hit-for="hit.for" aria-hidden="true" :style="hitStyle(hit)" @click.stop="hit.activate" />
     <div v-if="nowMinute !== null" class="now-line" :style="{ top: `${(nowMinute / 60) * hourHeight}px` }" data-testid="now-line" aria-hidden="true" />
   </div>
 </template>
@@ -369,6 +384,8 @@ function onColumnClick(event: MouseEvent, blockId?: string): void {
   text-align: start;
   cursor: pointer;
 }
+/* A calendar event marked free: drawn as an outline only, with no hatching; it takes no time from the plan. */
+.busy.is-free { border-style: solid; background: transparent; }
 .is-conflict {
   border-color: var(--danger);
   background: repeating-linear-gradient(135deg, color-mix(in srgb, var(--label-2) 10%, var(--surface)) 0 4px, var(--surface) 4px 8px);
@@ -385,6 +402,9 @@ function onColumnClick(event: MouseEvent, blockId?: string): void {
 
 /* A placed task: a dashed outline inside the lane of its block; tapping it opens the task. It has no z-index, so its
    words can be drawn above the now-line while the box stays under it. */
+/* Above every item's words (z-index 3, earlier in the column): an area covers its own item's neighbourhood and, for a
+   task, its routine; never another item's box (hitAreas.ts gives neighbours the room on their side of the midpoint). */
+.hit-area { position: absolute; z-index: 3; cursor: pointer; }
 .task-chunk { position: absolute; padding: 0; border: 0; background: transparent; color: inherit; text-align: start; cursor: pointer; }
 .task-chunk:disabled { cursor: default; }
 .task-box {

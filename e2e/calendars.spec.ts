@@ -117,6 +117,34 @@ test('import file → preview and Week show events with a conflict against the p
   await expect(page.getByText('Project review', { exact: true })).toBeVisible()
 })
 
+// verify10 C6: Week drew only busy timed events; holidays (all-day) and events marked free (transparent) showed only on
+// Today and in Settings.
+test('Week shows all-day events under its day headings and free events as outlines that never conflict', async ({ page }) => {
+  const ics = ['BEGIN:VCALENDAR', 'VERSION:2.0',
+    'BEGIN:VEVENT', 'UID:holiday@example.invalid', 'DTSTART;VALUE=DATE:20261019', 'DTEND;VALUE=DATE:20261020', 'SUMMARY:Founders Day', 'TRANSP:TRANSPARENT', 'END:VEVENT',
+    'BEGIN:VEVENT', 'UID:free@example.invalid', 'DTSTART:20261019T141500Z', 'DTEND:20261019T144500Z', 'SUMMARY:Optional coffee', 'TRANSP:TRANSPARENT', 'END:VEVENT',
+    'END:VCALENDAR', ''].join('\r\n')
+  await setup(page)
+  await page.getByLabel('Import .ics file', { exact: true }).setInputFiles({ name: 'holidays.ics', mimeType: 'text/calendar', buffer: Buffer.from(ics) })
+  await expect(page.getByTestId('calendar-occurrence').filter({ hasText: 'Optional coffee' })).toBeVisible()
+  await openTab(page, 'week')
+  const holiday = page.locator('[data-testid=all-day-cell][data-date="2026-10-19"] [data-testid=all-day-item]').filter({ visible: true })
+  await expect(holiday).toHaveCount(1)
+  await expect(holiday).toHaveAccessibleName('Founders Day, all day')
+  await expect(holiday).toContainText('Founders')
+  expect((await holiday.boundingBox())!.height).toBeGreaterThanOrEqual(44)
+  await holiday.click()
+  const details = page.getByTestId('busy-details')
+  await expect(details).toContainText('All day')
+  await page.keyboard.press('Escape')
+  await expect(details).toBeHidden()
+  // The free event overlaps Focus (9:00–10:00 in Bogotá) but takes no time from it: an outline, no conflict.
+  const free = page.locator('[data-testid=busy-overlay].is-free').filter({ visible: true })
+  await expect(free).toHaveCount(1)
+  await expect(free).toHaveAttribute('title', 'Optional coffee')
+  await expect(page.getByTestId('calendar-conflict')).toHaveCount(0)
+})
+
 test('deleting a calendar source in another tab removes its events from the open Week without navigation', async ({ page, context }) => {
   await setup(page)
   await page.getByLabel('Import .ics file', { exact: true }).setInputFiles({ name: 'team.ics', mimeType: 'text/calendar', buffer: Buffer.from(feed('Removed team meeting')) })

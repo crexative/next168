@@ -5,18 +5,20 @@ import type { BlockActual, Category } from '@/core/model'
 import { isHover, watchPressEnd } from '@/ui/pressEnd'
 import { springTo } from '@/ui/sheetMotion'
 import { prefersReducedMotion } from '@/ui/useMediaQuery'
+import AllDayCell from './AllDayCell.vue'
 import DayColumn from './DayColumn.vue'
 import TimeAxis from './TimeAxis.vue'
 import { dragOffset, horizontalVelocity, targetIndex, type PointerSample } from './dayPager'
 import { formatDate } from './localTime'
 import type { BusyDetails } from './busyDetails'
-import type { BlockSegment, BusySegment, TaskSegment } from './weekLayout'
+import type { AllDayItem, BlockSegment, BusySegment, TaskSegment } from './weekLayout'
 
 const props = defineProps<{
   dates: string[]
   today: string
   segments: Record<string, BlockSegment[]>
   busy: Record<string, BusySegment[]>
+  allDay: Record<string, AllDayItem[]>
   tasks: Record<string, TaskSegment[]>
   actuals: BlockActual[]
   categories: Category[]
@@ -159,21 +161,29 @@ onBeforeUnmount(() => {
 
 <template>
   <div class="pager" :data-active-date="dates[index]">
-    <div class="day-strip sticky-header" role="group" data-toolbar-extension :aria-label="t('week.pager.days')">
-      <button
-        v-for="(date, position) in dates"
-        :key="date"
-        type="button"
-        class="strip-day"
-        :class="{ 'is-today': date === today }"
-        :aria-pressed="position === index"
-        :aria-current="date === today ? 'date' : undefined"
-        :aria-label="dayLabel(date)"
-        @click="selectDay(position)"
-      >
-        <span class="t-caption strip-weekday">{{ formatDate(date, locale, { weekday: 'narrow' }) }}</span>{{ ' ' }}
-        <span class="strip-number">{{ formatDate(date, locale, { day: 'numeric' }) }}</span>
-      </button>
+    <!-- The day strip and the shown day's all-day events stay under the toolbar together, so a holiday shows wherever
+         the day is scrolled (it opens on the current hour). -->
+    <div class="pager-head sticky-header" data-toolbar-extension>
+      <div class="day-strip" role="group" :aria-label="t('week.pager.days')">
+        <button
+          v-for="(date, position) in dates"
+          :key="date"
+          type="button"
+          class="strip-day"
+          :class="{ 'is-today': date === today }"
+          :aria-pressed="position === index"
+          :aria-current="date === today ? 'date' : undefined"
+          :aria-label="dayLabel(date)"
+          @click="selectDay(position)"
+        >
+          <span class="t-caption strip-weekday">{{ formatDate(date, locale, { weekday: 'narrow' }) }}</span>{{ ' ' }}
+          <span class="strip-number">{{ formatDate(date, locale, { day: 'numeric' }) }}</span>
+        </button>
+      </div>
+      <div v-if="allDay[dates[index]!]?.length" class="all-day-strip" role="group" :aria-label="t('week.grid.allDay')" data-testid="all-day-row">
+        <span class="all-day-label t-caption" aria-hidden="true">{{ t('week.grid.allDay') }}</span>
+        <AllDayCell :date="dates[index]!" :items="allDay[dates[index]!]!" @inspect="(details) => emit('inspect', details)" />
+      </div>
     </div>
     <div
       ref="viewport"
@@ -217,10 +227,12 @@ onBeforeUnmount(() => {
 
 <style scoped src="./stickyHeader.css"></style>
 <style scoped>
-.day-strip {
+.pager-head {
   position: sticky;
   top: calc(var(--safe-top) + var(--toolbar-height) + var(--week-head-height, 0px));
   z-index: 5;
+}
+.day-strip {
   display: grid;
   grid-template-columns: repeat(7, minmax(0, 1fr));
   padding: var(--space-1) var(--space-2);
@@ -266,6 +278,8 @@ onBeforeUnmount(() => {
   grid-template-columns: 3.25rem minmax(0, 1fr);
   padding: 0 var(--page-gutter) var(--space-4) var(--space-2);
 }
+.all-day-strip { display: grid; grid-template-columns: 3.25rem minmax(0, 1fr); padding: 0 var(--page-gutter) var(--space-1) var(--space-2); border-top: 0.5px solid var(--separator); }
+.all-day-label { align-self: center; color: var(--label-2); text-align: end; padding-inline-end: var(--space-1); overflow-wrap: anywhere; }
 .pager-track.is-fading { animation: day-fade 0.15s ease-out; }
 @keyframes day-fade { from { opacity: 0.35; } }
 </style>

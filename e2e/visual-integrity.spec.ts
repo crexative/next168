@@ -949,7 +949,9 @@ test.describe('visual integrity guard: whole text in Week', () => {
       ${extraStyle}
     </style>
     <div class="column" data-whole-text>${items}</div>`
-  const audit = (page: Page) => visualIntegrityViolations(page, { focusRings: false })
+  const pressTargets = (page: Page) => visualIntegrityViolations(page, { focusRings: false })
+  // The fixtures below are about text; their few boxes stand alone, so the 44 px press rule is checked on its own.
+  const audit = async (page: Page) => (await pressTargets(page)).filter((violation) => !violation.includes(' px target: '))
 
   test('whole titles, a mark with no text, a hidden word and a task inside its routine are accepted', async ({ page }) => {
     await page.setContent(column(`
@@ -1178,6 +1180,29 @@ test.describe('visual integrity guard: whole text in Week', () => {
     const violations = await audit(page)
     expect(violations.some((violation) => violation.includes('"Pausa activa" draws neither a word nor its glyph though the 10.0×10.0 px glyph fits its 143.8×10.0 px room'))).toBe(true)
     expect(violations.filter((violation) => violation.includes('Meditación') || violation.includes('Stand-up'))).toEqual([])
+  })
+
+  // verify10 C1: a tap 10.9 px below an 18 px task inside a routine opened the routine. Every pressable Week item can
+  // be pressed anywhere in a 44 × 44 px box around it.
+  test('a task inside a routine whose 44 px box reaches the routine is reported, and one with a press area over it is not', async ({ page }) => {
+    const routine = '<button class="item" aria-label="Deep work" data-hit-key="b" style="top: 0; left: 0; width: 150px; height: 120px"><span>Deep work</span></button>'
+    await page.setContent(column(`${routine}<button class="item" aria-label="Task: Report" data-layered data-hit-key="t" style="top: 40px; left: 4px; width: 142px; height: 18px; background: #fff"></button>`))
+    const violations = await pressTargets(page)
+    expect(violations).toContain('<button.item> "Task: Report" has no 44×44 px target: a press above it, at 75.3, 29.0 px in its column, reaches <button.item> "Deep work"')
+    expect(violations).toContain('<button.item> "Task: Report" has no 44×44 px target: a press below it, at 75.3, 69.0 px in its column, reaches <button.item> "Deep work"')
+    await page.setContent(column(`${routine}<button class="item" aria-label="Task: Report" data-layered data-hit-key="t" style="top: 40px; left: 4px; width: 142px; height: 18px; background: #fff"></button>
+      <span data-hit-for="t" style="position: absolute; top: 27px; left: 4px; width: 142px; height: 44px; z-index: 3"></span>`))
+    expect((await pressTargets(page)).filter((violation) => violation.includes('px target'))).toEqual([])
+  })
+
+  test('a short item with empty time around it needs its own 44 px box; a nearer neighbour may take the room between', async ({ page }) => {
+    await page.setContent(column(`
+      <button class="item" aria-label="Coffee" data-hit-key="c" style="top: 100px; left: 0; width: 150px; height: 12px"></button>
+      <button class="item" aria-label="Focus" data-hit-key="f" style="top: 112px; left: 0; width: 150px; height: 168px"><span>Focus</span></button>
+    `))
+    const violations = (await pressTargets(page)).filter((violation) => violation.includes('px target'))
+    // Below Coffee is Focus, nearer to that press than Coffee: fine. Above it is empty time: reported.
+    expect(violations).toEqual(['<button.item> "Coffee" has no 44×44 px target: a press above it, at 75.3, 86.0 px in its column, reaches <div.column> "Focus"'])
   })
 
   test('a container without its own glyph is held to the documented glyph size', async ({ page }) => {

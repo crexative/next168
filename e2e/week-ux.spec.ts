@@ -428,6 +428,32 @@ test.describe('tasks in Week', () => {
     await expect(page.getByRole('dialog', { name: 'Nueva rutina' })).toBeVisible()
   })
 
+  // verify10 C1: a tap 10.9 px below an 18 px task drawn inside a routine opened the routine. A task has a 44 px target
+  // laid over its routine; the routine keeps the rest of its box.
+  test('a short task inside a routine opens from just outside it, over the routine', async ({ page }) => {
+    await openWeek(page, 'light', 'desktop')
+    const found = await page.evaluate(() => {
+      for (const task of Array.from(document.querySelectorAll<HTMLElement>('.day-column [data-testid="week-task"][data-layered]'))) {
+        const own = task.getBoundingClientRect()
+        const host = Array.from(task.parentElement!.querySelectorAll<HTMLElement>(':scope > .block')).find((block) => {
+          const box = block.getBoundingClientRect()
+          return box.top <= own.top && box.bottom >= own.bottom && box.left <= own.left && box.right >= own.right
+        })
+        if (!host || own.height >= 44) continue
+        const box = host.getBoundingClientRect()
+        if (box.bottom - own.bottom < (44 - own.height) / 2 + 1) continue
+        task.scrollIntoView({ block: 'center' })
+        const at = task.getBoundingClientRect()
+        // Inside its 44 px target, just above the target's lower edge (10.9 px below an 18 px task in the report).
+        return { x: at.left + at.width / 2, y: at.bottom + (44 - at.height) / 2 - 1 }
+      }
+      return null
+    })
+    expect(found, 'a task shorter than 44 px inside a routine, with room under it').not.toBeNull()
+    await page.mouse.click(found!.x, found!.y)
+    await expect(page.getByRole('dialog', { name: 'Editar tarea' })).toBeVisible()
+  })
+
   test('the sticky day header is a thick material that hides what scrolls under it, and labels are drawn above the now-line', async ({ page }) => {
     await openWeek(page, 'light', 'desktop')
     const header = await page.locator('.grid-header').evaluate((element) => getComputedStyle(element).backgroundColor)
