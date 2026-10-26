@@ -10,9 +10,10 @@ Use Node 20.19+ (or Node 22.12+) and a checkout containing deliverable 1. From t
 npm ci
 npm ci --prefix companion
 npm run build
-npm run companion:build
 npm run companion:start
 ```
+
+`npm ci --prefix companion` runs its `prepare` build, replacing `companion/dist/cli.js` with the current source. Run it after pulling updates before starting the companion or an MCP client. For source edits without reinstalling dependencies, run `npm run companion:build`. Keep development dependencies and lifecycle scripts enabled for this source checkout.
 
 The companion listens only on `127.0.0.1:1680` and opens its local page. Use `node companion/dist/cli.js serve --no-open` to open the page manually. `--port 1681` or `NEXT168_PORT=1681` changes the port; configure MCP clients with the same port. `NEXT168_HOME=/absolute/private/directory` changes the data directory from `~/.next168/`. Use the same directory in every companion command and client configuration. Never bind or forward this service to a LAN or the internet.
 
@@ -113,12 +114,11 @@ npm run type-check
 npx eslint .
 npx vitest run
 npm run build
-npm run companion:build
 npm --prefix companion test
 npx playwright test e2e/connect.spec.ts
 ```
 
-Root CI must install the separate companion package before running the Connect spec: `npm ci --prefix companion`. The companion test script builds the CLI before running its suite, so stdio tests cannot pass against an old bundle after a failed build. A build failure stops verification. The root package adds only the two authorized companion scripts; the smoke script belongs to the companion package:
+Root CI must install the separate companion package before running the Connect spec: `npm ci --prefix companion`. Installation builds the CLI through `prepare`, and the companion test script builds it again before running its suite, so stdio tests cannot pass against an old bundle after a failed build. A build failure stops verification. The root package adds only the two authorized companion scripts; the smoke script belongs to the companion package:
 
 ```sh
 npm --prefix companion run companion:smoke

@@ -42,7 +42,7 @@
     "cancelled": "Abgebrochen.",
     "offline": "Du bist offline und das Modell ist noch nicht heruntergeladen. Verbinde dich einmal, um es zu laden.",
     "network": "Das Modell konnte nicht heruntergeladen werden. Prüfe deine Verbindung und versuche es erneut.",
-    "storage-full": "Auf diesem Gerät ist nicht genug Speicher frei, um das Modell zu behalten (etwa 705 MB). Gib Speicher frei und versuche es erneut.",
+    "storage-full": "Auf diesem Gerät ist nicht genug Speicher frei, um das Modell zu behalten (etwa {size}). Gib Speicher frei und versuche es erneut.",
     "out-of-memory": "Diesem Gerät ging beim Laden des Modells der Speicher aus. Stattdessen werden schnelle Antworten genutzt.",
     "device-lost": "Das Grafikgerät ging verloren. Stattdessen werden schnelle Antworten genutzt; lade neu, um das Modell erneut zu versuchen.",
     "invalid-output": "Die Antwort des Modells war nicht nutzbar. Formuliere die Frage bitte anders.",

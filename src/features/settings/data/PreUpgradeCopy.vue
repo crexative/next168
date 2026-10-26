@@ -5,7 +5,8 @@ import { activePlannerRepository, usePlannerStore } from '@/stores/plannerStore'
 import Button from '@/ui/Button.vue'
 import Icon from '@/ui/Icon.vue'
 import ListGroup from '@/ui/ListGroup.vue'
-import { megabytes, preUpgradeFiles, saveFile, type PreUpgradeFiles } from './preUpgradeCopy'
+import { formatBytes } from '@/ui/format'
+import { preUpgradeFiles, saveFile, type PreUpgradeFiles } from './preUpgradeCopy'
 
 const { t, locale } = useI18n()
 const planner = usePlannerStore()
@@ -23,8 +24,8 @@ const date = computed(() => (files.value ? new Intl.DateTimeFormat(locale.value,
 <template>
   <ListGroup v-if="files" :header="t('data.preUpgrade.title', { date })" :footer="t('data.preUpgrade.note')" data-testid="pre-upgrade-copy">
     <li class="note">
-      <p v-if="files.bundle?.tooLarge" class="t-subhead" data-testid="pre-upgrade-too-large">{{ t('data.preUpgrade.tooLarge', { mb: megabytes(files.bundle.bytes) }) }}</p>
-      <p v-else-if="files.bundle" class="t-footnote t-secondary" data-testid="pre-upgrade-size">{{ t('data.preUpgrade.size', { mb: megabytes(files.bundle.bytes) }) }}</p>
+      <p v-if="files.bundle?.tooLarge" class="t-subhead" data-testid="pre-upgrade-too-large">{{ t('data.preUpgrade.tooLarge', { size: formatBytes(files.bundle.bytes, locale) }) }}</p>
+      <p v-else-if="files.bundle" class="t-footnote t-secondary" data-testid="pre-upgrade-size">{{ t('data.preUpgrade.size', { size: formatBytes(files.bundle.bytes, locale) }) }}</p>
       <div class="actions">
         <Button v-if="files.bundle" variant="tinted" @click="saveFile(files.bundle)"><Icon name="download" :size="20" /> {{ t('data.preUpgrade.download') }}</Button>
         <Button variant="plain" @click="saveFile(files.raw)">{{ t('data.preUpgrade.downloadRaw') }}</Button>

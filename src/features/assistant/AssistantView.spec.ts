@@ -117,3 +117,12 @@ it('offers the download only after the person chose the on-device model in Setti
   // Not downloaded yet: still no box that could not act.
   expect(chosen.querySelector('[data-testid=composer]')).toBeNull()
 })
+
+it('keeps the 705 MB download size and localizes its unit when the language changes', async () => {
+  const view = await mountView({ availability: async () => 'downloadable' }, 'webllm')
+  expect(view.querySelector('[aria-labelledby=optin-title]')?.textContent).toContain('705 MB')
+  i18n.global.locale.value = 'fr'
+  await nextTick()
+  expect(view.querySelector('[aria-labelledby=optin-title]')?.textContent).toContain('705\u202fMo')
+  i18n.global.locale.value = 'en'
+})

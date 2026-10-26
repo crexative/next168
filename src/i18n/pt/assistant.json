@@ -42,7 +42,7 @@
     "cancelled": "Cancelado.",
     "offline": "Você está offline e o modelo ainda não foi baixado. Conecte-se uma vez para baixá-lo.",
     "network": "Não foi possível baixar o modelo. Verifique sua conexão e tente de novo.",
-    "storage-full": "Este dispositivo não tem espaço livre suficiente para guardar o modelo (cerca de 705 MB). Libere espaço e tente de novo.",
+    "storage-full": "Este dispositivo não tem espaço livre suficiente para guardar o modelo (cerca de {size}). Libere espaço e tente de novo.",
     "out-of-memory": "Este dispositivo ficou sem memória ao carregar o modelo. As respostas rápidas serão usadas.",
     "device-lost": "O dispositivo gráfico foi perdido. As respostas rápidas serão usadas; recarregue para tentar o modelo de novo.",
     "invalid-output": "A resposta do modelo não pôde ser usada. Tente perguntar com outras palavras.",

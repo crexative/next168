@@ -12,6 +12,7 @@
   },
   "scripts": {
     "build": "tsc --noEmit && node build.mjs",
+    "prepare": "npm run build",
     "start": "node dist/cli.js serve",
     "test": "npm run build && vitest run --config vitest.config.ts",
     "companion:smoke": "node smoke.mjs"

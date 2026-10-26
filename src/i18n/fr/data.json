@@ -69,8 +69,8 @@
   "preUpgrade": {
     "title": "Copie d'avant la mise à jour ({date})",
     "note": "Elle contient tes calendriers. Elle ne contient pas ce que tu as modifié après la mise à jour.",
-    "tooLarge": "Elle fait {mb} Mo : plus que ce que l'app peut importer (25 Mo). Garde-la quand même : elle contient tout ton plan.",
-    "size": "{mb} Mo",
+    "tooLarge": "Elle fait {size} : plus que ce que l'app peut importer (25 Mo). Garde-la quand même : elle contient tout ton plan.",
+    "size": "{size}",
     "download": "Télécharger la copie",
     "downloadRaw": "Télécharger les données brutes"
   }
