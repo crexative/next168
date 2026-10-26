@@ -21,7 +21,7 @@ test('(a) IndexedDB cannot be opened: blocking screen, no export, nothing writte
   await seedLegacy(page, legacyBytes)
   await page.goto('./')
   await expect(page.getByTestId('storage-error')).toBeVisible()
-  await expect(page.getByText("Next168 can't use this browser's storage")).toBeVisible()
+  await expect(page.getByText("Weeklid can't use this browser's storage")).toBeVisible()
   await expect(page.getByRole('button', { name: 'Try again' })).toBeVisible()
   await expect(page.getByRole('button', { name: 'Export a copy' })).toHaveCount(0)
   expect(await page.evaluate(() => window.localStorage.getItem('next168-v2'))).toBeNull()

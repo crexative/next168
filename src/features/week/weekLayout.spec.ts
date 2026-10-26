@@ -43,7 +43,7 @@ describe('week layout', () => {
   })
 
   // verify10 C6: free (transparent) events were dropped; they are drawn now, marked free, and all-day ones get a row.
-  it('turns timed calendar events (free ones marked) and Next168 events into overlays, and all-day ones into the all-day row', () => {
+  it('turns timed calendar events (free ones marked) and Weeklid events into overlays, and all-day ones into the all-day row', () => {
     const busy = busySegmentsByDate([
       { sourceId: 's', uid: 'a', title: 'Flight', start: '2026-10-21T23:00:00Z', end: '2026-10-22T01:00:00Z', allDay: false, busy: true },
       { sourceId: 's', uid: 'b', title: 'Free', start: '2026-10-21T12:00:00Z', end: '2026-10-21T13:00:00Z', allDay: false, busy: false },
@@ -59,7 +59,7 @@ describe('week layout', () => {
     ])
   })
 
-  it('puts an all-day event on every day it covers (its end date is exclusive), from calendars and Next168 alike', () => {
+  it('puts an all-day event on every day it covers (its end date is exclusive), from calendars and Weeklid alike', () => {
     const allDay = allDayByDate([
       { sourceId: 's', uid: 'h', title: 'Holiday', start: '2026-10-23', end: '2026-10-24', allDay: true, busy: false },
       { sourceId: 's', uid: 't', title: 'Trip', start: '2026-10-24', end: '2026-10-27', allDay: true, busy: true },

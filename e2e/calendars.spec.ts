@@ -277,7 +277,7 @@ test('create and edit a meeting → portable ICS and encoded provider links', as
   await meeting.getByRole('button', { name: 'Download .ics', exact: true }).click()
   const download = await downloadPromise, downloadedPath = await download.path()
   const raw = await readFile(downloadedPath!, 'utf8')
-  // Independent of Next168's import function: Python icalendar is absent on the executor.
+  // Independent of Weeklid's import function: Python icalendar is absent on the executor.
   const parsed = new ICAL.Event(new ICAL.Component(ICAL.parse(raw)).getFirstSubcomponent('vevent')!)
   expect(parsed.summary).toBe('Design & review, café')
   expect(parsed.startDate.toJSDate().toISOString()).toBe('2026-10-20T14:30:00.000Z')
