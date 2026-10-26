@@ -4,15 +4,18 @@
 // The first upgrade from version 1 first reads everything both databases hold, under the commit lock, and stores that
 // complete pre-upgrade copy inside the planner database's versionchange transaction: all of it commits, or neither
 // database changes. If any read fails, nothing is upgraded and the planner opens read-only from version 1.
-import { buildExportBundle, portableHash } from '@/core/exportBundle'
-import type { ExportBundle } from '@/core/model'
-import { parseDocument } from './core'
+//
+// The copy is a version-2 artifact: capturing, hashing and downloading it use only the frozen v2 module and the
+// schema-independent `portableDigest`, never the current parser or schemas (an eslint rule keeps it that way).
+import { portableDigest } from '@/core/exportBundle'
+import { parseDocumentV2, validateBundleV2, type ExportBundleV2 } from '@/core/legacy/v2'
 import { commitLockHeldInPage, webLockRunner, type RunExclusive } from './storageCommit'
 
-// Increment it in every change that adds a storage invariant older writers cannot keep, so they are fenced out.
-export const STORAGE_VERSION = 2
-// Restore steps run only on a connection at least this new (slice 1A raises both constants together).
-export const RESTORE_MIN_STORAGE_VERSION = 2
+// Increment it in every change that adds a storage invariant older fenced writers cannot keep, so they are fenced
+// out. 3: tasks P1 (planner document schema v3, contract 1.1 proposal records, person-submission records).
+export const STORAGE_VERSION = 3
+// Restore steps run only on a connection at least this new (raised together with STORAGE_VERSION).
+export const RESTORE_MIN_STORAGE_VERSION = 3
 // Upgrading from below this version is the first upgrade: the only one that takes the pre-upgrade copy.
 const FIRST_FENCED_VERSION = 2
 
@@ -167,18 +170,23 @@ function ownText(texts: Record<string, string>, id: string): string | undefined 
   return Object.prototype.hasOwnProperty.call(texts, id) ? texts[id] : undefined
 }
 
-// The export bundle of a pre-upgrade copy: its document with the texts that document references (a missing text is
-// exported empty, as every export does). Null when the stored document does not parse.
-export function preUpgradeBundle(copy: PreUpgradeCopy): ExportBundle | null {
+// The version-2 export bundle of a pre-upgrade copy: its document with the texts that document references (a missing
+// text is exported empty, as every export does). Null when the stored document is not a valid version-2 document.
+export function preUpgradeBundle(copy: PreUpgradeCopy): ExportBundleV2 | null {
   if (typeof copy.raw.document !== 'string') return null
-  const parsed = parseDocument(copy.raw.document)
+  const parsed = parseDocumentV2(copy.raw.document)
   if (parsed.kind !== 'ok') return null
   const texts = Object.fromEntries(parsed.document.calendarSources.map((source) => [source.id, ownText(copy.calendarSourceTexts, source.id) ?? '']))
   try {
-    return buildExportBundle(parsed.document, texts, { now: () => new Date(copy.capturedAt) })
+    return validateBundleV2({ format: 'next168-export', bundleVersion: 1, exportedAt: copy.capturedAt, document: parsed.document, calendarSourceTexts: texts })
   } catch {
     return null
   }
+}
+
+// The fingerprint recorded at capture and compared before the download is offered.
+export function preUpgradeDigest(bundle: ExportBundleV2): Promise<string> {
+  return portableDigest(bundle.document, bundle.calendarSourceTexts)
 }
 
 // Reads both databases at their current versions. Undefined when there is nothing to keep.
@@ -202,7 +210,7 @@ async function capturePreUpgradeCopy(
       capturedAt: now().toISOString(), fromVersion: versions.planner, raw, calendarSourceTexts, calendarsComplete: true, portableHash: null,
     }
     const bundle = preUpgradeBundle(copy)
-    copy.portableHash = bundle ? await portableHash(bundle) : null
+    copy.portableHash = bundle ? await preUpgradeDigest(bundle) : null
     return copy
   } catch (error) {
     throw new UpgradeCopyFailedError(error, document)

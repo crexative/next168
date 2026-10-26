@@ -132,7 +132,7 @@ function categoryOf(task: Task): Category | undefined {
 }
 
 function describe(task: Task): string {
-  const parts = [categoryOf(task)?.name ?? '', formatDuration(task.durationMin)]
+  const parts = [categoryOf(task)?.name ?? '', task.durationMin === undefined ? '' : formatDuration(task.durationMin)]
   if (task.dueDate) parts.push(unbreakable(t('tasks.due', { date: dueLabel(task.dueDate) })))
   return joinInline(parts)
 }
@@ -176,7 +176,7 @@ function overflowHint(task: Task, minutes: number): string {
 function lateText(task: Task, placement: TaskPlacement): string {
   const date = task.dueDate ? dueLabel(task.dueDate) : ''
   const before = Math.floor(minutesBeforeDue(placement, dueEndOf(task, document.value!.settings.timeZone)))
-  return before > 0 && before < task.durationMin ? t('tasks.latePartial', { duration: formatDuration(before), date }) : t('tasks.late', { date })
+  return before > 0 && before < (task.durationMin ?? 0) ? t('tasks.latePartial', { duration: formatDuration(before), date }) : t('tasks.late', { date })
 }
 
 function outsideNote(entry: PlacedEntry): string {

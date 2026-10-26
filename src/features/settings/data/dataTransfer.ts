@@ -1,5 +1,5 @@
 import { bundleHash, buildExportBundle, parseExportBundle } from '@/core/exportBundle'
-import { createEmptyDocument } from '@/core/documents'
+import { createEmptyDocument, nextGeneration } from '@/core/documents'
 import type { CalendarSourceStore, Clock, ExportBundle, LoadResult, PlannerDocument } from '@/core/model'
 
 export const MAX_IMPORT_BYTES = 25 * 1024 * 1024
@@ -45,7 +45,7 @@ export function previewImport(text: string, current: PlannerDocument, now: Date)
     preview: {
       bundle: parsed.bundle,
       document,
-      sourceVersion: parsed.migratedFrom ?? document.schemaVersion,
+      sourceVersion: parsed.migratedFrom ?? parsed.sourceVersion ?? document.schemaVersion,
       ...(parsed.migratedFrom !== undefined ? { migratedFrom: parsed.migratedFrom } : {}),
       counts: {
         categories: document.categories.length, blocks: document.blocks.length, tasks: document.tasks.length,
@@ -56,9 +56,9 @@ export function previewImport(text: string, current: PlannerDocument, now: Date)
   }
 }
 
-// Revision and timestamp are bookkeeping of the target store; everything else must survive byte for byte.
+// Revision, generation and timestamp are bookkeeping of the target store; everything else must survive byte for byte.
 async function contentHash(document: PlannerDocument, texts: Record<string, string>, reference: PlannerDocument): Promise<string> {
-  const normalized = { ...document, revision: reference.revision, updatedAt: reference.updatedAt }
+  const normalized = { ...document, revision: reference.revision, generation: reference.generation, updatedAt: reference.updatedAt }
   const bundle = buildExportBundle(normalized, texts, { now: () => new Date(0) })
   return bundleHash(bundle)
 }
@@ -77,8 +77,12 @@ export async function verifyStored(
   return expectedHash === storedHash ? { ok: true, hash: storedHash } : { ok: false, reason: 'mismatch' }
 }
 
+// A replacement (import, delete-all) moves the generation past both planners, so an Undo offered for the replaced one
+// never applies to the new one, even when the content is identical.
 export function replaceContent(draft: PlannerDocument, imported: PlannerDocument): void {
+  const generation = nextGeneration(draft, imported)
   Object.assign(draft, structuredClone(imported))
+  draft.generation = generation
 }
 
 export async function replaceSourceTexts(store: CalendarSourceStore | undefined, texts: Record<string, string>): Promise<void> {

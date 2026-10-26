@@ -56,14 +56,14 @@ export const PERF_SCENARIOS: Record<PerfScenarioName, { blocks: TimeBlock[]; bus
 
 export function perfPlanner(blocks: TimeBlock[], tasks: Task[], timeZone: string = PERF_TIME_ZONE): PlannerDocument {
   return {
-    schemaVersion: 2, workspaceId: 'workspace-perf', revision: 0, updatedAt: '2026-10-20T00:00:00.000Z',
+    schemaVersion: 3, generation: 0, workspaceId: 'workspace-perf', revision: 0, updatedAt: '2026-10-20T00:00:00.000Z',
     settings: { locale: 'es', weekStartsOn: 1, timeZone, onboardingDone: true, theme: 'system' },
     categories: [
       { id: 'work', name: 'Work', colorKey: 'blue', goal: { type: 'max', hoursPerWeek: 40 } },
       { id: 'sleep', name: 'Sleep', colorKey: 'purple', goal: { type: 'none', hoursPerWeek: 0 } },
       { id: 'gym', name: 'Exercise', colorKey: 'green', goal: { type: 'max', hoursPerWeek: 2 } },
     ],
-    blocks, tasks, checkIns: [], actuals: [], events: [], calendarSources: [], appliedProposalIds: [],
+    blocks, tasks, checkIns: [], actuals: [], events: [], calendarSources: [], appliedProposalIds: [], appliedCaptureIds: [],
   }
 }
 

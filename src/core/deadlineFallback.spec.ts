@@ -15,7 +15,7 @@ function planner(task: Partial<Task>, blocks: PlannerDocument['blocks'] = [
   { id: 'b-sleep', categoryId: 'sleep', title: 'Dormir', days: EVERY_DAY, start: 1320, end: 360 },
 ]): PlannerDocument {
   return {
-    schemaVersion: 2, workspaceId: 'w', revision: 1, updatedAt: '2026-10-20T08:00:00.000Z',
+    schemaVersion: 3, generation: 0, workspaceId: 'w', revision: 1, updatedAt: '2026-10-20T08:00:00.000Z',
     settings: { locale: 'es', weekStartsOn: 1, timeZone: ZONE, onboardingDone: true, theme: 'system' },
     categories: [
       { id: 'work', name: 'Trabajo', colorKey: 'blue', goal: { type: 'none', hoursPerWeek: 0 } },
@@ -23,7 +23,7 @@ function planner(task: Partial<Task>, blocks: PlannerDocument['blocks'] = [
     ],
     blocks,
     tasks: [{ id: 'jog', title: 'Trotar', categoryId: 'work', durationMin: 60, priority: 2, createdAt: '2026-10-25T14:00:00.000Z', ...task }],
-    checkIns: [], actuals: [], events: [], calendarSources: [], appliedProposalIds: [],
+    checkIns: [], actuals: [], events: [], calendarSources: [], appliedProposalIds: [], appliedCaptureIds: [],
   }
 }
 

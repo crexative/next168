@@ -1,9 +1,10 @@
 import { z } from 'zod'
 
-// Contract for planner document schema v2 (docs/architecture/deliverable-1.md §3).
-// Slices implement behavior against these schemas; changing them is an architecture change.
+// Contract for planner document schema v3 (docs/architecture/deliverable-1.md §3; tasks design rev 2.1 §5 and
+// addendum 6.1). Slices implement behavior against these schemas; changing them is an architecture change.
+// A stored v2 document is widened in memory on every load (core/migrations.ts) and written as v3 on its first commit.
 
-export const SCHEMA_VERSION = 2 as const
+export const SCHEMA_VERSION = 3 as const
 export const MINUTES_PER_DAY = 1440
 export const MINUTES_PER_WEEK = 7 * MINUTES_PER_DAY
 export const TOTAL_WEEK_HOURS = 168
@@ -45,12 +46,22 @@ export const timeBlockSchema = z.object({
 }).refine((b) => b.start !== b.end, { message: 'block.zeroLength', path: ['end'] })
   .refine((b) => new Set(b.days).size === b.days.length, { message: 'block.duplicateDays', path: ['days'] })
 
+// Task lengths: a flexible task is total effort, placed in pieces of at most MAX_FLEX_MIN_PER_DAY per local date; a
+// task with a fixed start (`at`, on its `dueDate`) is one contiguous interval of at most MAX_FIXED_MIN elapsed minutes.
+// No duration is a to-do: it is never placed and never overflows.
+export const MIN_TASK_MIN = 5
+export const MAX_TASK_MIN = 1260
+export const MAX_FIXED_MIN = 720
+export const MAX_FLEX_MIN_PER_DAY = 180
+
 export const taskSchema = z.object({
   id,
   title: text(120),
   categoryId: id.optional(),
-  durationMin: z.number().int().min(15).max(180),
+  durationMin: z.number().int().min(MIN_TASK_MIN).max(MAX_TASK_MIN).optional(),
   dueDate: isoDate.optional(),
+  at: minuteSchema.optional(), // a one-off fixed start on dueDate (validateDocument: needs dueDate, at most MAX_FIXED_MIN)
+  notes: optionalText(2000), // never read by any AI (core/aiProjection.ts)
   priority: z.union([z.literal(1), z.literal(2), z.literal(3)]),
   doneAt: isoDateTime.optional(),
   createdAt: isoDateTime,
@@ -192,6 +203,9 @@ export const plannerDocumentSchema = z.object({
   schemaVersion: z.literal(SCHEMA_VERSION),
   workspaceId: id,                    // random per workspace; imports keep it, proposals bind to it
   revision: z.number().int().min(0),  // content revision: +1 on every committed content change
+  // +1 on every write that replaces the whole planner (delete-all, import, backup restore, recovery): an Undo receipt
+  // bound to an earlier generation never applies to identical content that came back by a replacement.
+  generation: z.number().int().min(0),
   updatedAt: isoDateTime,
   settings: settingsSchema,
   categories: z.array(categorySchema).max(100),
@@ -204,6 +218,9 @@ export const plannerDocumentSchema = z.object({
   // Idempotency record committed atomically with the content change it caused (last 200 kept).
   // Approving a proposal whose id is already here only repairs its status; it never re-applies.
   appliedProposalIds: z.array(id).max(200),
+  // The same for person submissions (a capture preview, a step append, an Undo): an attempt whose id is here was
+  // committed, so a retry after a lost response reads its result instead of applying it again.
+  appliedCaptureIds: z.array(id).max(200),
 })
 
 // Transfer bundle for export/import between origins, modes and devices (§7 #7, #10).

@@ -11,8 +11,10 @@ import { IDBFactory } from 'fake-indexeddb'
 import { parseExportBundle } from '@/core/exportBundle'
 import { preUpgradeFiles } from '@/features/settings/data/preUpgradeCopy'
 import { dumpDatabases, preFenceBuild } from '@/test/storageFence'
+import { BrowserPlannerRepository } from './BrowserPlannerRepository'
+import { IndexedDbStore } from './indexedDbStore'
 import { createStorageFence, PLANNER_DATABASE, PRE_UPGRADE_COPY_KEY, type PreUpgradeCopy } from './storageVersion'
-import { fixedNow, mutexRunner } from './testSupport'
+import { fixedNow, MemoryChannelBus, MemoryStorage, mutexRunner } from './testSupport'
 
 interface Vector {
   name: string
@@ -112,4 +114,36 @@ describe('pre-upgrade copy vectors', () => {
       }
     })
   }
+})
+
+describe('pre-upgrade copy after the first schema v3 commit (slice 0 F-05 re-run after migration)', () => {
+  it('every portable vector still downloads with its recorded hash and imports into the version-2 builds', async () => {
+    // Variable specifiers keep TypeScript from resolving the pinned trees, which exist only once Vitest set them up.
+    const bundleModule = (tree: string) => import(/* @vite-ignore */ `${tree}/core/exportBundle`) as Promise<typeof import('@/core/exportBundle')>
+    const { parseExportBundle: parsePreFence } = await bundleModule('@old')
+    const { parseExportBundle: parseFencedV2 } = await bundleModule('@fencedV2')
+    for (const vector of recorded().filter((item) => item.kind === 'portable')) {
+      const factory = new IDBFactory()
+      const lock = mutexRunner()
+      const old = await preFenceBuild(factory, lock)
+      for (const [id, text] of vector.calendars) await old.texts.put(id, text)
+      await old.store.write({ document: vector.document as string })
+      const fence = createStorageFence(factory, { lock, now: fixedNow })
+      const fresh = new BrowserPlannerRepository({
+        store: new IndexedDbStore(factory, fence), legacy: new MemoryStorage(), runExclusive: lock, channel: new MemoryChannelBus().channel(),
+        events: new EventTarget(), now: fixedNow, newId: () => 'id', locale: () => 'es', timeZone: () => 'UTC',
+      })
+      const loaded = await fresh.load()
+      if (loaded.kind !== 'ok') throw new Error(`${vector.name}: ${loaded.kind}`)
+      expect((await fresh.save({ ...loaded.document, revision: loaded.document.revision + 1 }, loaded.document.revision)).kind).toBe('ok')
+      const stored = JSON.parse(await dumpDatabases(factory, [PLANNER_DATABASE]))[PLANNER_DATABASE].stores.document[0][1]
+      expect(JSON.parse(stored).schemaVersion).toBe(3)
+      const files = await preUpgradeFiles((await fresh.preUpgradeCopy())!)
+      expect([vector.name, files.bundle !== undefined]).toEqual([vector.name, true])
+      expect([vector.name, (await fresh.preUpgradeCopy())!.portableHash]).toEqual([vector.name, vector.portableHash])
+      expect([vector.name, parseFencedV2(files.bundle!.json).kind]).toEqual([vector.name, 'ok'])
+      // The pre-fence build predates own-key calendar records (9852f2d): it cannot import a `__proto__` source id at all.
+      if (!vector.calendars.some(([id]) => id === '__proto__')) expect([vector.name, parsePreFence(files.bundle!.json).kind]).toEqual([vector.name, 'ok'])
+    }
+  })
 })

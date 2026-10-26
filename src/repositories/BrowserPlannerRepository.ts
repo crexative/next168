@@ -3,7 +3,7 @@ import {
   STORAGE_KEYS, type CalendarSourceStore, type LoadResult, type PlannerDocument, type PlannerRepository, type SaveResult,
 } from '@/core/model'
 import { parseDocument, validateDocument } from './core'
-import { createEmptyDocument } from '@/core/documents'
+import { createEmptyDocument, nextGeneration } from '@/core/documents'
 import type { ChangeChannel } from './changeChannel'
 import type { BrowserStore, Snapshot } from './indexedDbStore'
 import { SNAPSHOTS_STORE, type PreUpgradeCopy } from './storageVersion'
@@ -176,10 +176,12 @@ export class BrowserPlannerRepository implements PlannerRepository {
       const { document: raw, backup } = await this.deps.store.read(['document', 'backup'])
       const stored = storedDocument(raw)
       if (stored.kind === 'ok' || stored.kind === 'unsupported') return { kind: 'error', reason: 'data-is-not-corrupt' }
-      const json = JSON.stringify(document)
+      const previous = parseDocument(backup ?? null)
+      const replacement = validateDocument({ ...document, generation: nextGeneration(previous.kind === 'ok' ? previous.document : undefined, document) })
+      const json = JSON.stringify(replacement)
       await this.deps.store.write({ document: json, ...(raw !== undefined && !isValidDocumentText(backup) ? { backup: raw } : {}) })
       this.identity = identityOf(json)
-      return { kind: 'ok', revision: document.revision }
+      return { kind: 'ok', revision: replacement.revision }
     })
   }
 
@@ -197,8 +199,10 @@ export class BrowserPlannerRepository implements PlannerRepository {
       if (stored.kind === 'ok' || stored.kind === 'unsupported') return { kind: 'error', reason: 'data-is-not-corrupt' }
       const parsed = parseDocument(backup ?? null)
       if (backup === undefined || parsed.kind !== 'ok') return { kind: 'error', reason: 'no-valid-backup' }
-      await this.deps.store.write({ document: backup })
-      this.identity = identityOf(backup)
+      // The restored planner is a replacement: a later generation than the backup (the primary is unreadable).
+      const json = JSON.stringify(validateDocument({ ...parsed.document, generation: nextGeneration(undefined, parsed.document) }))
+      await this.deps.store.write({ document: json })
+      this.identity = identityOf(json)
       return { kind: 'ok', revision: parsed.document.revision }
     })
   }
@@ -222,10 +226,14 @@ export class BrowserPlannerRepository implements PlannerRepository {
     return this.exclusiveWrite(async () => {
       const { store, calendarTexts } = this.deps
       const snapshot = await store.read(['document', 'purgeEpoch'])
-      const refused = this.refuseStale(storedDocument(snapshot.document), expectedRevision)
+      const stored = storedDocument(snapshot.document)
+      const refused = this.refuseStale(stored, expectedRevision)
       if (refused) return refused
+      // A replacement moves the generation forward, so an Undo of the deleted planner never applies to the new one.
+      const replacement = stored.kind === 'ok' && checked.generation <= stored.document.generation
+        ? { ...checked, generation: stored.document.generation + 1 } : checked
       const calendarSourceIds = calendarTexts ? await calendarTexts.list() : []
-      const json = JSON.stringify(checked)
+      const json = JSON.stringify(replacement)
       const purgeEpoch = purgeEpochOf(snapshot) + 1
       await store.write({
         document: json, backup: null, proposals: null, unsavedBaseline: null,
@@ -235,7 +243,7 @@ export class BrowserPlannerRepository implements PlannerRepository {
       this.loadedPurgeEpoch = purgeEpoch
       // Still inside the same lock hold: requesting the lock again here would wait for itself forever.
       await this.purgeWhileLocked().catch((error) => console.warn('next168: purge resumes on the next load', error))
-      return { kind: 'ok', revision: checked.revision }
+      return { kind: 'ok', revision: replacement.revision }
     })
   }
 

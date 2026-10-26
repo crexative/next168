@@ -11,7 +11,7 @@ export function scheduleTasks({ document, busy, now, timeZone, days = 7 }: Sched
   const dated = datedOccurrences(document, fromDate, days, timeZone)
   const occupied = [...busy, ...document.events].map((item) => ({ start: Date.parse(item.start), end: Date.parse(item.end) }))
   if (occupied.some((item) => !Number.isFinite(item.start) || !Number.isFinite(item.end) || item.end <= item.start)) throw new Error('scheduler.invalidBusy')
-  const tasks = document.tasks.filter((task) => !task.doneAt).sort((a, b) =>
+  const tasks = document.tasks.filter((task): task is typeof task & { durationMin: number } => !task.doneAt && task.durationMin !== undefined).sort((a, b) =>
     compare(a.dueDate ?? '9999-12-31', b.dueDate ?? '9999-12-31') || a.priority - b.priority || (Date.parse(a.createdAt) - Date.parse(b.createdAt)) || compare(a.id, b.id))
   return tasks.map((task) => {
     const windows = taskWindows(dated, task.categoryId, { start, end: rangeEnd })

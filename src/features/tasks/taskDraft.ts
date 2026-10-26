@@ -55,7 +55,7 @@ export function newDraft(categoryId = ANY_FREE_TIME): TaskDraft {
 export function draftFromTask(task: Task): TaskDraft {
   return {
     title: task.title,
-    durationMin: task.durationMin,
+    durationMin: task.durationMin ?? DEFAULT_DURATION_MIN,
     categoryId: task.categoryId ?? ANY_FREE_TIME,
     dueDate: task.dueDate ?? '',
     dueToday: false,

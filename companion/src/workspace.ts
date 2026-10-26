@@ -5,7 +5,7 @@ import { z } from 'zod'
 import { changeProposalSchema, type ChangeProposal, type PlannerDocument, type ProposalDecision, type ProposalCreateOptions, type ProposalInput, type ProposalRepository, type SaveResult } from '../../src/core/model'
 import { buildExportBundle } from '../../src/core/exportBundle'
 import type { ExportBundle } from '../../src/core/model'
-import { createEmptyDocument, parseDocument, validateDocument } from '../../src/core/documents'
+import { createEmptyDocument, nextGeneration, parseDocument, validateDocument } from '../../src/core/documents'
 import { applyProposal, buildProposal, previewProposal } from '../../src/core/proposals'
 import { atomicWrite, Mutex, readOptional } from './files'
 
@@ -43,9 +43,11 @@ export class Workspace implements ProposalRepository {
       const { writeFile } = await import('node:fs/promises')
       const corrupt = await readOptional(this.documentFile)
       await writeFile(`${this.documentFile}.corrupt-${randomUUID()}`, corrupt ?? '', { mode: 0o600, flag: 'wx' })
-      const result = await atomicWrite(this.documentFile, JSON.stringify(backup), { preserveBackup: true })
+      // A replacement: a later generation than the backup, so an Undo bound to the planner before it is refused.
+      const restored = validateDocument({ ...backup, generation: nextGeneration(undefined, backup) })
+      const result = await atomicWrite(this.documentFile, JSON.stringify(restored), { preserveBackup: true })
       if (result.warning) this.warnings.add(result.warning)
-      return { kind: 'ok', revision: backup.revision }
+      return { kind: 'ok', revision: restored.revision }
     })
   }
   async document(): Promise<PlannerDocument> {
@@ -70,7 +72,7 @@ export class Workspace implements ProposalRepository {
       const current = await this.document()
       if (current.revision !== expectedRevision) return { kind: 'conflict', currentRevision: current.revision }
       if (['categories', 'blocks', 'tasks', 'events', 'calendarSources', 'checkIns', 'actuals'].some(key => (current[key as keyof PlannerDocument] as unknown[]).length)) throw Error('workspace-not-empty')
-      const imported = { ...checked.document, revision: current.revision + 1 }
+      const imported = { ...checked.document, revision: current.revision + 1, generation: nextGeneration(current, checked.document) }
       const directory = join(this.home, 'calendars')
       await mkdir(directory, { recursive: true, mode: 0o700 })
       for (const [id, text] of Object.entries(checked.calendarSourceTexts)) {

@@ -28,7 +28,8 @@ function referenceScheduleTasks({ document, busy, now, timeZone, days = 7 }: Sch
   return tasks.map((task) => {
     const windows = taskWindows(dated, task.categoryId, { start, end: rangeEnd })
     const free = windows.flatMap((window) => subtract(window, occupied))
-    let remaining = task.durationMin
+    // The oracle's fixtures hold timed tasks only (schema v2 had no untimed task).
+    let remaining = task.durationMin!
     const chunks: TaskPlacement['chunks'] = []
     const dueEnd = task.dueDate ? zonedInstant(addLocalDays(task.dueDate, 1), 0, timeZone).getTime() : Infinity
     let late = dueEnd <= now.getTime()

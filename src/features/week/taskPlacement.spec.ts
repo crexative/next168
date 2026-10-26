@@ -4,12 +4,12 @@ import type { PlannerDocument } from '@/core/model'
 import { keepWhereTheyWere, resetPlacementMemory, useTaskPlacements } from './taskPlacement'
 
 const document: PlannerDocument = {
-  schemaVersion: 2, workspaceId: 'w', revision: 1, updatedAt: '2026-10-20T08:00:00.000Z',
+  schemaVersion: 3, generation: 0, workspaceId: 'w', revision: 1, updatedAt: '2026-10-20T08:00:00.000Z',
   settings: { locale: 'en', weekStartsOn: 1, timeZone: 'UTC', onboardingDone: true, theme: 'system' },
   categories: [{ id: 'work', name: 'Work', colorKey: 'blue', goal: { type: 'none', hoursPerWeek: 0 } }],
   blocks: [{ id: 'b', categoryId: 'work', title: 'Deep work', days: [0, 1, 2, 3, 4, 5, 6], start: 540, end: 660 }],
   tasks: [{ id: 'report', title: 'Report', categoryId: 'work', durationMin: 60, priority: 1, createdAt: '2026-10-20T08:00:00.000Z' }],
-  checkIns: [], actuals: [], events: [], calendarSources: [], appliedProposalIds: [],
+  checkIns: [], actuals: [], events: [], calendarSources: [], appliedProposalIds: [], appliedCaptureIds: [],
 }
 const at = (time: string) => new Date(`2026-10-21T${time}:00Z`)
 

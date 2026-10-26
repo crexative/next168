@@ -80,7 +80,7 @@ describe('boundary regressions', () => {
     const doc = document(); doc.calendarSources = [{ id: 'calendar', name: 'Calendar', colorKey: 'blue', kind: 'file' }]
     expect(() => buildExportBundle(doc, { calendar: 'é'.repeat(3 * 1024 * 1024) }, clock)).toThrow('sourceTooLarge')
     const bundle = buildExportBundle(document(), {}, clock)
-    expect(parseExportBundle(JSON.stringify({ ...bundle, document: { ...bundle.document, schemaVersion: 3 } }))).toEqual({ kind: 'unsupported', schemaVersion: 3 })
+    expect(parseExportBundle(JSON.stringify({ ...bundle, document: { ...bundle.document, schemaVersion: 4 } }))).toEqual({ kind: 'unsupported', schemaVersion: 4 })
   })
   it('rejects partial actuals exceeding the immutable planned minutes', () => {
     const doc = document(); doc.actuals = [{ date: '2026-10-24', blockId: 'b', categoryId: 'work', plannedStartAt: '2026-10-24T00:00:00Z', plannedEndAt: '2026-10-24T01:00:00Z', plannedMinutes: 60, status: 'partial', actualMinutes: 61 }]

@@ -85,7 +85,7 @@ export function minutesBeforeDue(placement: TaskPlacement, dueEnd: number): numb
 
 const missesDeadline = (placement: TaskPlacement) => placement.late || placement.overflowMinutes > 0
 
-function withoutCategory(task: Task): Task {
+function withoutCategory<T extends Task>(task: T): T {
   const free = { ...task }
   delete free.categoryId
   return free
@@ -103,7 +103,8 @@ export function scheduleStable(input: StableScheduleInput): TaskPlacement[] {
   const staticBusy: Interval[] = [...snappedBusy, ...snappedEvents].map((item) => ({ start: Date.parse(item.start), end: Date.parse(item.end) }))
   const occupied = [...staticBusy]
   const kept = new Map<string, TaskPlacement>()
-  const open = document.tasks.filter((task) => !task.doneAt).sort((a, b) =>
+  // A task without a duration is a to-do: never placed, so it never overflows.
+  const open = document.tasks.filter((task): task is Task & { durationMin: number } => !task.doneAt && task.durationMin !== undefined).sort((a, b) =>
     compare(a.dueDate ?? '9999-12-31', b.dueDate ?? '9999-12-31') || a.priority - b.priority
     || (Date.parse(a.createdAt) - Date.parse(b.createdAt)) || compare(a.id, b.id))
 
@@ -156,7 +157,7 @@ export function scheduleStable(input: StableScheduleInput): TaskPlacement[] {
   }
   // Keep even short windows: they can hold a whole remaining task, including its last piece.
   // Chunks start on the minute, take at least min(10, remaining) minutes, and are late past the due date.
-  const place = (task: Task): TaskPlacement => {
+  const place = (task: Task & { durationMin: number }): TaskPlacement => {
     const dueEnd = dueEndOf(task, timeZone)
     let remaining = task.durationMin
     let late = dueEnd <= now.getTime()

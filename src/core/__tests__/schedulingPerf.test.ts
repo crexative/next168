@@ -20,8 +20,17 @@ const REFERENCE_MACHINE = process.env.NEXT168_PERF === 'reference'
 const SLOW = 600_000
 
 const sha256 = (value: unknown) => createHash('sha256').update(JSON.stringify(value)).digest('hex')
+// Inputs are hashed in the shape the goldens were recorded in (schema v2): the v3 bookkeeping fields
+// (schemaVersion, generation, appliedCaptureIds) are not read by the scheduler and are left out of the hash.
+function recordedShape(document: PlannerDocument): unknown {
+  const shape: Record<string, unknown> = { ...document, schemaVersion: 2 }
+  delete shape.generation
+  delete shape.appliedCaptureIds
+  return shape
+}
 const serializable = (input: StableScheduleInput) => ({
   ...input,
+  document: recordedShape(input.document),
   previous: input.previous ? [...input.previous.entries()] : undefined,
   pinned: input.pinned ? [...input.pinned.entries()] : undefined,
 })

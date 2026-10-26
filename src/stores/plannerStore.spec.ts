@@ -36,7 +36,7 @@ describe('loading', () => {
 
   it('opens newer schema versions as unsupported', async () => {
     const storage = new MemoryStore()
-    storage.data.set('document', JSON.stringify({ schemaVersion: 3 }))
+    storage.data.set('document', JSON.stringify({ schemaVersion: 4 }))
     const { store } = setup(storage)
     await store.load()
     expect(store.status).toBe('unsupported')

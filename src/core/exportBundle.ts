@@ -1,10 +1,12 @@
-import { exportBundleSchema, type Clock, type ExportBundle, type PlannerDocument } from './model'
+import { exportBundleSchema, SCHEMA_VERSION, type Clock, type ExportBundle, type PlannerDocument } from './model'
 import { validateDocument, type DocumentEnvironment } from './documents'
 import { migrateToCurrent } from './migrations'
+import { widenToCurrent } from './widening'
 import { canonicalJson, sha256, type Hasher } from './canonical'
 
 export type BundleLoadResult =
-  | { kind: 'ok'; bundle: ExportBundle; document: PlannerDocument; migratedFrom?: number }
+  // `sourceVersion`: the document schema version the file holds (an older one is widened to the current version).
+  | { kind: 'ok'; bundle: ExportBundle; document: PlannerDocument; migratedFrom?: number; sourceVersion?: number }
   | { kind: 'corrupt'; raw: string; reason: string }
   | { kind: 'unsupported'; schemaVersion: unknown }
 
@@ -18,8 +20,10 @@ function ownTexts(raw: unknown): Record<string, string> {
   }))
 }
 
+// A bundle of an older document schema version (bundleVersion stays 1) imports widened to the current one.
 function validateBundle(raw: unknown): ExportBundle {
-  const bundle = exportBundleSchema.parse(raw)
+  const document = widenToCurrent((raw as { document?: unknown }).document)
+  const bundle = exportBundleSchema.parse({ ...(raw as object), document })
   bundle.calendarSourceTexts = ownTexts(raw)
   bundle.document = validateDocument(bundle.document)
   const sources = new Set(bundle.document.calendarSources.map((source) => source.id))
@@ -40,9 +44,10 @@ export function parseExportBundle(json: string, env?: DocumentEnvironment): Bund
     const raw: unknown = JSON.parse(json)
     if (raw && typeof raw === 'object' && 'format' in raw && raw.format === 'next168-export') {
       if ('bundleVersion' in raw && typeof raw.bundleVersion === 'number' && raw.bundleVersion > 1) return { kind: 'unsupported', schemaVersion: raw.bundleVersion }
-      if ('document' in raw && raw.document && typeof raw.document === 'object' && 'schemaVersion' in raw.document && typeof raw.document.schemaVersion === 'number' && raw.document.schemaVersion > 2) return { kind: 'unsupported', schemaVersion: raw.document.schemaVersion }
+      if ('document' in raw && raw.document && typeof raw.document === 'object' && 'schemaVersion' in raw.document && typeof raw.document.schemaVersion === 'number' && raw.document.schemaVersion > SCHEMA_VERSION) return { kind: 'unsupported', schemaVersion: raw.document.schemaVersion }
       const bundle = validateBundle(raw)
-      return { kind: 'ok', bundle, document: bundle.document }
+      const sourceVersion = (raw as { document?: { schemaVersion?: unknown } }).document?.schemaVersion
+      return { kind: 'ok', bundle, document: bundle.document, ...(typeof sourceVersion === 'number' ? { sourceVersion } : {}) }
     }
     if (!env) throw new Error('bundle.migrationEnvironmentRequired')
     const result = migrateToCurrent(raw, env)
@@ -57,13 +62,22 @@ export async function bundleHash(bundle: ExportBundle, hash: Hasher = sha256): P
   // Export timestamps are not persisted; read-back verifies the portable content only.
   return hash(canonicalJson({ document, calendarSourceTexts }))
 }
-// The portable content of a bundle: revision, timestamp and calendar source ids are bookkeeping of one store, so they are
-// normalized (ids become positional), and the fingerprint matches across devices and after a fresh-id remap.
-export async function portableHash(bundle: ExportBundle, hash: Hasher = sha256): Promise<string> {
-  const { document, calendarSourceTexts } = validateBundle(bundle)
+// The portable content of a document and its calendar texts: revision, timestamp and calendar source ids are bookkeeping
+// of one store, so they are normalized (ids become positional), and the fingerprint matches across devices and after a
+// fresh-id remap. It validates nothing and depends on no schema version, so the pre-upgrade copy (a version-2 artifact,
+// see legacy/v2.ts) keeps the fingerprint recorded at capture whatever the current schema is.
+export async function portableDigest(
+  document: { calendarSources: readonly { id: string }[] }, calendarSourceTexts: Readonly<Record<string, string>>, hash: Hasher = sha256,
+): Promise<string> {
   const sources = document.calendarSources
+  const text = (id: string) => (Object.prototype.hasOwnProperty.call(calendarSourceTexts, id) ? calendarSourceTexts[id] : undefined)
   return hash(canonicalJson({
     document: { ...document, revision: 0, updatedAt: '1970-01-01T00:00:00.000Z', calendarSources: sources.map((source, index) => ({ ...source, id: `s${index}` })) },
-    calendarSourceTexts: Object.fromEntries(sources.map((source, index) => [`s${index}`, calendarSourceTexts[source.id]])),
+    calendarSourceTexts: Object.fromEntries(sources.map((source, index) => [`s${index}`, text(source.id)])),
   }))
+}
+
+export async function portableHash(bundle: ExportBundle, hash: Hasher = sha256): Promise<string> {
+  const { document, calendarSourceTexts } = validateBundle(bundle)
+  return portableDigest(document, calendarSourceTexts, hash)
 }
