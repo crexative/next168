@@ -5,6 +5,7 @@ import { setImmediate } from 'node:timers/promises'
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest'
 import type { BusyInterval, PlannerDocument, Task, TaskPlacement, TimeBlock } from '../model'
 import { fitTasks, type StableScheduleInput } from '../scheduling'
+import { datedOccurrences, localDateOf } from '../time'
 import { warningFixes } from '@/features/tasks/warningFixes'
 import { PERF_NOW, PERF_TIME_ZONE, perfBusy, perfCase, perfCases, perfPlanner, perfTasks, typicalBlocks, type PerfCase } from '../__fixtures__/schedulingPerf'
 import { referenceFitTasks } from './referenceScheduling'
@@ -34,6 +35,27 @@ const serializable = (input: StableScheduleInput) => ({
   previous: input.previous ? [...input.previous.entries()] : undefined,
   pinned: input.pinned ? [...input.pinned.entries()] : undefined,
 })
+// P1 adds a `key` to every placement it makes (what a shown placement is reused for); the frozen oracle predates it.
+function withoutKeys(placements: TaskPlacement[]): TaskPlacement[] {
+  return placements.map((placement) => {
+    const copy = { ...placement }
+    delete copy.key
+    return copy
+  })
+}
+// P1 places an undated task of a category with no routine block in the horizon in free time (design rev 4 §2.7); the
+// frozen oracle never places it. For the oracle, such a task is the same task with no category.
+function asOracleInput(input: StableScheduleInput): StableScheduleInput {
+  const { document, now, timeZone, days = 7 } = input
+  const withBlocks = new Set(datedOccurrences(document, localDateOf(now, timeZone), days, timeZone).map((item) => item.categoryId))
+  const tasks = document.tasks.map((task) => {
+    if (task.categoryId === undefined || task.dueDate !== undefined || withBlocks.has(task.categoryId)) return task
+    const free = { ...task }
+    delete free.categoryId
+    return free
+  })
+  return { ...input, document: { ...document, tasks } }
+}
 const byTask = (placements: TaskPlacement[]) => new Map(placements.map((placement) => [placement.taskId, placement]))
 const inputOf = (item: PerfCase): StableScheduleInput => ({ document: item.document, busy: item.busy, now: item.now, timeZone: item.timeZone })
 const minutesLater = (at: Date, minutes: number) => new Date(at.getTime() + minutes * 60_000)
@@ -114,7 +136,7 @@ describe('A1 golden equivalence', () => {
       await setImmediate()
       const corrected = referenceFitTasks(input)
       expect(sha256(corrected), `${name}: only the final-chunk rule changed`).toBe(correctedHashes[name])
-      expect(fitTasks(input), name).toEqual(corrected)
+      expect(withoutKeys(fitTasks(input)), name).toEqual(corrected)
       await setImmediate()
     }
   }, SLOW)
@@ -128,8 +150,8 @@ describe('A1 golden equivalence', () => {
   it('agrees with the per-task reference on 200 random planners (zones, DST, overnight routines, pins)', () => {
     for (let seed = 1; seed <= 200; seed++) {
       const input = randomPlanner(seed)
-      const expected = outcome(() => referenceFitTasks(input))
-      expect(outcome(() => fitTasks(input)), `seed ${seed}`).toEqual(expected)
+      const expected = outcome(() => referenceFitTasks(asOracleInput(input)))
+      expect(outcome(() => withoutKeys(fitTasks(input))), `seed ${seed}`).toEqual(expected)
     }
   }, SLOW)
 })

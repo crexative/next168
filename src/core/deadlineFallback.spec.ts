@@ -90,9 +90,9 @@ describe('a task whose category cannot hold it before its due date goes to free 
     expect(placement.late).toBe(true)
   })
 
-  it('does not move a task with no due date out of its category', () => {
-    const placement = fit(planner({}, []), bogota('2026-10-25', '10:00'))
-    expect(placement).toMatchObject({ chunks: [], overflowMinutes: 60 })
+  it('does not move a task with no due date out of a category that has blocks', () => {
+    const placement = fit(planner({}), bogota('2026-10-25', '10:00'))
+    expect(placement.chunks).toEqual([{ start: iso('2026-10-26', '08:00'), end: iso('2026-10-26', '09:00') }])
     expect(placement).not.toHaveProperty('outsideCategory')
   })
 

@@ -21,13 +21,15 @@ const warningFixes = vi.mocked(fixes.warningFixes)
 const SUNDAY_10_AM = new Date('2026-10-25T15:00:00.000Z') // Bogotá
 const FAMILY = { id: 'c-family', name: 'Familia', colorKey: 'pink', goal: { type: 'none', hoursPerWeek: 0 } } as const
 
-// 976 tasks filed under a category with no routine blocks (each one is a warning) and 24 that fit any free time.
+// 976 tasks filed under a category whose only routine block is too short to hold any of them (each one is a warning)
+// and 24 that fit any free time. (A category with no block at all is a list: its tasks fit free time.)
+const FAMILY_BLOCK = { id: 'b-family', categoryId: 'c-family', title: 'Familia', days: [3], start: 300, end: 305 }
 function planner(warnings: number, fitting: number): Partial<PlannerDocument> {
   const task = (i: number, extra: Partial<Task>): Task => ({ id: `t${String(i).padStart(4, '0')}`, title: `Tarea ${i}`, durationMin: 15, priority: 2, createdAt: new Date(Date.UTC(2026, 9, 1, 0, i)).toISOString(), ...extra })
   return {
     settings: { ...testDocument().settings, onboardingDone: true, timeZone: 'America/Bogota' },
     categories: [FAMILY],
-    blocks: [],
+    blocks: [FAMILY_BLOCK],
     tasks: [
       ...Array.from({ length: warnings }, (_, i) => task(i, { categoryId: FAMILY.id })),
       ...Array.from({ length: fitting }, (_, i) => task(warnings + i, {})),

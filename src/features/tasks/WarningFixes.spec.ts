@@ -103,18 +103,14 @@ it('"Cambiar categoría" opens the task with its "When?" choice in view', async 
   expect(dialog.querySelector<HTMLElement>('[data-testid=task-more-options]')!.style.display).not.toBe('none')
 })
 
-it('a task in a category with no blocks at all offers "Hacerla hoy", which puts it in today\'s free time', async () => {
+// Design rev 4 §2.7: a category with no routine block is a list, so its undated task fits free time with no warning.
+it('an undated task in a category with no blocks at all fits free time, with no warning card', async () => {
   const document = planner([jog({ categoryId: 'c-family', dueDate: undefined })])
   document.categories = [...document.categories!, { id: 'c-family', name: 'Familia', colorKey: 'pink', goal: { type: 'none', hoursPerWeek: 0 } }]
   mounted = await mountWithPlanner(TasksView, document, 'es')
-  const card = find('[data-testid=warning-jog]')!
-  expect(text(card.querySelector('[data-testid=overflow-text]'))).toBe('Faltan 1 h en Familia esta semana.')
-  card.querySelector<HTMLButtonElement>('[data-testid=fix-today]')!.click()
-  await mounted.store.settled()
-  await nextTick()
-  expect(mounted.store.document!.tasks[0]).toMatchObject({ categoryId: 'c-family', dueDate: '2026-10-25' })
   expect(find('[data-testid=task-warnings]')).toBeNull()
-  expect(text(find('[data-testid=outside-note]'))).toBe('Hoy no tienes bloque de Familia; la puse en tu tiempo libre.')
+  expect(find('[data-testid=placed-task]')).not.toBeNull()
+  expect(find('[data-testid=outside-note]')).toBeNull()
 })
 
 it('"Hacerla hoy" tapped after midnight on a card drawn the evening before makes the task due the new day', async () => {

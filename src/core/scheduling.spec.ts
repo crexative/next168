@@ -23,9 +23,12 @@ const at = (time: string) => new Date(`2026-10-21T${time}:00Z`)
 const byId = (placements: TaskPlacement[]) => new Map(placements.map((placement) => [placement.taskId, placement]))
 const start = (placements: TaskPlacement[]) => placements[0]!.chunks[0]!.start.slice(11, 16)
 
+// The placement key (what a shown placement is reused for) is the stable scheduler's own bookkeeping.
+const withoutKeys = (placements: TaskPlacement[]) => placements.map(({ key, ...placement }) => (void key, placement))
+
 describe.each([
   { name: 'scheduleTasks', schedule: scheduleTasks },
-  { name: 'scheduleStable', schedule: scheduleOnGrid },
+  { name: 'scheduleStable', schedule: (input: StableScheduleInput) => withoutKeys(scheduleOnGrid(input)) },
 ])('$name short final chunks', ({ schedule }) => {
   const place = (document: PlannerDocument) => schedule({ document, busy: [], now: at('08:00'), timeZone: 'UTC', days: 1 })
   const window = (id: string, start: number, minutes: number) => ({ ...morning[0]!, id, start, end: start + minutes })
