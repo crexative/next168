@@ -13,7 +13,8 @@ import { formatMinute, formatTime } from './localTime'
 import { useColumnMeasure } from './columnMeasure'
 import { ELLIPSIS } from './itemText'
 import { BLOCK_INSET, LANE_GAP_PX, SMALL_INSET, planDayColumn, type PlannedBlock, type PlannedBusy, type PlannedTask } from './dayColumnPlan'
-import { hitAreas, type Box, type HitItem } from './hitAreas'
+import { hitAreas, sharedTargets, type Box, type PressItem } from './hitAreas'
+import type { PressOption } from './pressOption'
 import { HOUR_HEIGHT_PX, SLOT_MINUTES, type BlockSegment, type BusySegment, type TaskSegment } from './weekLayout'
 import type { BusyDetails } from './busyDetails'
 
@@ -32,7 +33,7 @@ const props = withDefaults(defineProps<{
   // The whole-week overview: shapes only, the text lives in the accessible names and the legend.
   compact?: boolean
 }>(), { tasks: () => [], actuals: () => [], hourHeight: HOUR_HEIGHT_PX, compact: false })
-const emit = defineEmits<{ select: [blockId: string]; 'select-task': [taskId: string]; create: [date: string, minute: number]; inspect: [details: BusyDetails] }>()
+const emit = defineEmits<{ select: [blockId: string]; 'select-task': [taskId: string]; create: [date: string, minute: number]; inspect: [details: BusyDetails]; choose: [options: PressOption[]] }>()
 
 const { t } = useI18n()
 const categoriesById = computed(() => new Map(props.categories.map((category) => [category.id, category])))
@@ -154,11 +155,10 @@ function timeRange(segment: BlockSegment): string {
 }
 
 function inspect(item: BusySegment): void {
-  const range = rangeText(formatTime(item.start, displayLocale.value, props.timeZone), formatTime(item.end, displayLocale.value, props.timeZone))
   emit('inspect', {
     title: item.title,
     date: item.date,
-    range: item.continuesBefore || item.continuesAfter ? t('week.grid.crossesMidnight', { range }) : range,
+    range: busyRange(item),
     calendar: item.kind === 'event' ? t('week.details.ownEvent') : item.calendar ?? t('week.details.calendarFallback'),
     ...(item.location ? { location: item.location } : {}),
     ...(item.notes ? { notes: item.notes } : {}),
@@ -172,25 +172,44 @@ function inspect(item: BusySegment): void {
 // its routine, and every item over the lane gaps beside it, so no press near an item falls between lanes. Each part is
 // drawn as an invisible box above the items; none covers another item's box.
 interface HitArea { key: string; for: string; area: Box; activate: () => void }
-const hits = computed<HitArea[]>(() => {
+interface Presses { hits: HitArea[]; shared: { key: string; box: Box; keys: string[]; options: PressOption[] }[] }
+const presses = computed<Presses>(() => {
   const width = measure.value?.width
-  if (props.compact || !width) return []
+  if (props.compact || !width) return { hits: [], shared: [] }
   const across = (lane: { left: number; width: number }) => ({ left: (width * lane.left) / 100 + LANE_GAP_PX, right: (width * (lane.left + lane.width)) / 100 - LANE_GAP_PX, gap: LANE_GAP_PX })
-  const items: (HitItem & { activate: () => void })[] = [
-    ...(props.editable ? plan.value.blocks : []).map((segment) => ({ key: `b:${segment.key}`, top: segment.top, bottom: segment.bottom, ...across(segment), activate: () => emit('select', segment.occurrence.blockId) })),
-    ...plan.value.busy.map((item) => ({ key: `e:${item.key}`, top: item.top, bottom: item.bottom, ...across(item), activate: () => inspect(item) })),
-    ...plan.value.tasks.filter((planned) => props.editable && !planned.outline).map((planned) => ({
+  const items: (PressItem & { option: PressOption })[] = [
+    ...(props.editable ? plan.value.blocks : []).map((segment) => ({
+      key: `b:${segment.key}`, top: segment.top, bottom: segment.bottom, ...across(segment),
+      option: { key: `b:${segment.key}`, kind: 'block' as const, title: segment.occurrence.title, range: timeRange(segment), activate: () => emit('select', segment.occurrence.blockId) },
+    })),
+    ...plan.value.busy.map((item) => ({
+      key: `e:${item.key}`, top: item.top, bottom: item.bottom, ...across(item),
+      option: { key: `e:${item.key}`, kind: 'event' as const, title: item.title, range: busyRange(item), activate: () => inspect(item) },
+    })),
+    ...plan.value.tasks.filter(() => props.editable).map((planned) => ({
       key: `t:${planned.task.key}`, top: planned.top, bottom: planned.bottom, ...across(planned),
       ...(planned.hostKey ? { hostKey: `b:${planned.hostKey}` } : {}),
-      activate: () => emit('select-task', planned.task.taskId),
+      ...(planned.outline ? { outline: true } : {}),
+      option: { key: `t:${planned.task.key}`, kind: 'task' as const, title: planned.task.title, range: taskRange(planned.task), activate: () => emit('select-task', planned.task.taskId) },
     })),
   ]
-  const areas = hitAreas(items, { width, height: 24 * props.hourHeight })
-  return items.flatMap((item) => areas.get(item.key)!.map((area, index) => ({ key: `${item.key}#${index}`, for: item.key, area, activate: item.activate })))
+  const bounds = { width, height: 24 * props.hourHeight }
+  const pressable = items.filter((item) => !item.outline)
+  const areas = hitAreas(pressable, bounds)
+  const options = new Map(items.map((item) => [item.key, item.option]))
+  return {
+    hits: pressable.flatMap((item) => areas.get(item.key)!.map((area, index) => ({ key: `${item.key}#${index}`, for: item.key, area, activate: item.option.activate }))),
+    shared: sharedTargets(items, areas, bounds).map((target, index) => ({ key: `shared#${index}`, box: target.box, keys: target.keys, options: target.keys.map((key) => options.get(key)!) })),
+  }
 })
 
-function hitStyle({ area }: HitArea) {
+function boxStyle(area: Box) {
   return { top: `${area.top}px`, left: `${area.left}px`, width: `${area.right - area.left}px`, height: `${area.bottom - area.top}px` }
+}
+
+function busyRange(item: BusySegment): string {
+  const range = rangeText(formatTime(item.start, displayLocale.value, props.timeZone), formatTime(item.end, displayLocale.value, props.timeZone))
+  return item.continuesBefore || item.continuesAfter ? t('week.grid.crossesMidnight', { range }) : range
 }
 
 // A press on empty time in the column starts a new block; a press on a routine opens it. Presses near a short item
@@ -292,7 +311,9 @@ function onColumnClick(event: MouseEvent, blockId?: string): void {
       <span v-if="planned.show.glyph" class="item-glyph" :style="{ ...glyphSlot(SMALL_INSET.task), ...glyphSize(planned.show) }" data-glyph="category"><CategoryMark :category="categoriesById.get(planned.task.categoryId ?? '')" /></span>
     </button>
     <!-- Decorative for assistive technology: every item is reachable by its own button; these only widen presses. -->
-    <span v-for="hit in hits" :key="hit.key" class="hit-area" :data-hit-for="hit.for" aria-hidden="true" :style="hitStyle(hit)" @click.stop="hit.activate" />
+    <span v-for="hit in presses.hits" :key="hit.key" class="hit-area" :data-hit-for="hit.for" aria-hidden="true" :style="boxStyle(hit.area)" @click.stop="hit.activate" />
+    <!-- Where items crowd each other: one 44 px target that asks which of them to open (keyboard reaches each item). -->
+    <span v-for="target in presses.shared" :key="target.key" class="shared-target" data-shared-target :data-shared-items="target.keys.join(' ')" aria-hidden="true" :style="boxStyle(target.box)" @click.stop="emit('choose', target.options)" />
     <div v-if="nowMinute !== null" class="now-line" :style="{ top: `${(nowMinute / 60) * hourHeight}px` }" data-testid="now-line" aria-hidden="true" />
   </div>
 </template>
@@ -405,6 +426,8 @@ function onColumnClick(event: MouseEvent, blockId?: string): void {
 /* Above every item's words (z-index 3, earlier in the column): an area covers its own item's neighbourhood and, for a
    task, its routine; never another item's box (hitAreas.ts gives neighbours the room on their side of the midpoint). */
 .hit-area { position: absolute; z-index: 3; cursor: pointer; }
+/* Above the items and their own areas: a press there asks which of the crowded items to open. */
+.shared-target { position: absolute; z-index: 4; cursor: pointer; }
 .task-chunk { position: absolute; padding: 0; border: 0; background: transparent; color: inherit; text-align: start; cursor: pointer; }
 .task-chunk:disabled { cursor: default; }
 .task-box {

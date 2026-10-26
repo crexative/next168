@@ -4,6 +4,8 @@ import { auditFloatingActionButtonInPage } from './fabPlacement'
 export type IntegrityOptions = {
   // Also focus every control the way a keyboard user would and check its focus ring.
   focusRings?: boolean
+  // Press up to this many of the Week's shared press targets and check that each chooser offers every item it lists.
+  choosers?: number
 }
 
 // Keep this function self-contained: Playwright serializes it into the page.
@@ -708,6 +710,8 @@ export function auditInPage(options: { focusRings: boolean }): string[] {
     if (x < shownArea.left || x > shownArea.right || y < shownArea.top || y > shownArea.bottom || x < 0 || y < 0 || x > viewportWidth || y > viewportHeight) continue
     const hit = pressedItem(document.elementFromPoint(x, y))
     if (!hit || control.contains(hit)) continue
+    // A shared press target over crowded Week items stands in for every item it lists.
+    if (hit.hasAttribute('data-shared-target') && (hit.getAttribute('data-shared-items') ?? '').split(' ').includes(control.getAttribute('data-hit-key') ?? '')) continue
     // Content of a scroller under something outside it (a docked footer, a bar) is scrolled there, not laid out there.
     const scroller = scrollerOf(control)
     if (scroller && !scroller.contains(hit)) continue
@@ -1035,18 +1039,22 @@ export function auditInPage(options: { focusRings: boolean }): string[] {
     return area.parentElement?.querySelector(`[data-hit-key="${CSS.escape(area.getAttribute('data-hit-for')!)}"]`) ?? area
   }
 
-  // Every pressable Week item can be pressed anywhere in a 44 × 44 px box centred on it (kept inside its column): a
-  // press at the middle of each edge of that box reaches the item, or a neighbour at least as near (two neighbours
-  // share the room between them at the midpoint). An item it is drawn inside (a task's routine) is never an excuse,
-  // nor empty space in the column. Items are scrolled into view to be pressed; the page's scroll is restored after.
+  // Every pressable Week item can be pressed with a 44 × 44 px press: it owns some 44 × 44 px square touching its box
+  // (centred on it, or along its edges, kept inside its column), every press in which reaches it; or, where items crowd
+  // each other, a shared target of at least 44 × 44 px lists it (`data-shared-target`, `data-shared-items` naming the
+  // items' `data-hit-key`s), whose chooser offers it (checked by pressing, `visualIntegrityViolations` › choosers).
+  // Items are scrolled into view to be pressed; the page's scroll is restored after. A press that lands on a bar over
+  // the column (a sticky header) does not count against the item.
   const HIT_TARGET_PX = 44
+  const PRESS_GRID = 5
   function checkHitTargets(): void {
     const scroller = document.scrollingElement ?? document.documentElement
     const start = { x: scroller.scrollLeft, y: scroller.scrollTop }
     try {
       for (const container of Array.from(scope.querySelectorAll<HTMLElement>('[data-whole-text]')).filter(rendered)) {
         if (container.getAttribute('data-whole-text') === 'shapes' || container.closest('[inert]')) continue
-        const items = Array.from(container.children).filter((item): item is HTMLElement => item instanceof HTMLButtonElement && !item.disabled && rendered(item) && getComputedStyle(item).pointerEvents !== 'none')
+        // Keyboard-only items (a task drawn as an outline, `pointer-events: none`) count too: a press must reach them.
+        const items = Array.from(container.children).filter((item): item is HTMLElement => item instanceof HTMLButtonElement && !item.disabled && rendered(item))
         for (const item of items) checkHitTarget(container, item)
       }
     } finally {
@@ -1054,26 +1062,14 @@ export function auditInPage(options: { focusRings: boolean }): string[] {
     }
   }
 
-  // Whether a press at x, y is on `other`'s side of the room between two boxes: past the midpoint across, for boxes
-  // side by side, else past the midpoint along, for one above the other.
-  function nearerTo(other: DOMRect, own: DOMRect, x: number, y: number): boolean {
-    if (other.left >= own.right - TOLERANCE) return x >= (own.right + other.left) / 2 - 0.5
-    if (other.right <= own.left + TOLERANCE) return x <= (other.right + own.left) / 2 + 0.5
-    if (other.top >= own.bottom - TOLERANCE) return y >= (own.bottom + other.top) / 2 - 0.5
-    if (other.bottom <= own.top + TOLERANCE) return y <= (other.bottom + own.top) / 2 + 0.5
-    return false
-  }
-
-  // The 44 × 44 px box centred on an item's box (or the box itself when larger), kept inside its column.
-  function targetBox(own: DOMRect, column: DOMRect): { top: number; bottom: number; left: number; right: number } {
-    const along = (start: number, end: number, low: number, high: number): [number, number] => {
-      const size = Math.max(end - start, Math.min(HIT_TARGET_PX, high - low))
-      const from = Math.min(Math.max(low, (start + end) / 2 - size / 2), high - size)
-      return [from, from + size]
-    }
-    const [top, bottom] = along(own.top, own.bottom, column.top, column.bottom)
-    const [left, right] = along(own.left, own.right, column.left, column.right)
-    return { top, bottom, left, right }
+  // The 44 × 44 px squares that touch a box, kept inside its column: centred on it, then along its edges
+  // (src/features/week/hitAreas.ts › candidateSquares).
+  function pressSquares(own: DOMRect, column: DOMRect): { top: number; bottom: number; left: number; right: number }[] {
+    const size = Math.min(HIT_TARGET_PX, column.width, column.height)
+    const clamp = (value: number, low: number, high: number) => Math.min(Math.max(low, value), high - size)
+    const xs = [(own.left + own.right) / 2 - size / 2, own.left, own.right - size].map((x) => clamp(x, column.left, column.right))
+    const ys = [(own.top + own.bottom) / 2 - size / 2, own.top, own.bottom - size].map((y) => clamp(y, column.top, column.bottom))
+    return ys.flatMap((top) => xs.map((left) => ({ top, bottom: top + size, left, right: left + size })))
   }
 
   function checkHitTarget(container: HTMLElement, item: HTMLElement): void {
@@ -1085,48 +1081,29 @@ export function auditInPage(options: { focusRings: boolean }): string[] {
       own = item.getBoundingClientRect()
     }
     const column = container.getBoundingClientRect()
-    const { top, bottom, left, right } = targetBox(own, column)
-    // Pressed on the item's own middle lines, so a press on its edge never lands beside a rounded corner; a third of a
-    // pixel off them, so a press never lands on the exact seam between two boxes that meet there.
-    const middle = { x: (own.left + own.right) / 2 + 0.3, y: (own.top + own.bottom) / 2 + 0.3 }
-    // 2 px in from each edge of the box: a press is not judged on the pixel row a neighbour's box may share after
-    // rounding.
-    const presses: [string, number, number][] = [['above', middle.x, top + 2], ['below', middle.x, bottom - 2], ['before', left + 2, middle.y], ['after', right - 2, middle.y]]
-    for (const [side, x, y] of presses) {
-      if (x < 0 || y < 0 || x > window.innerWidth || y > window.innerHeight) continue
-      const reached = pressedItem(document.elementFromPoint(x, y))
-      // A bar or sheet over the column (a sticky header) is a different layer, not a target of the column.
-      if (!reached || !container.contains(reached)) continue
-      if (item.contains(reached)) continue
-      // A press on the column itself just inside another item's box is in that box's rounded corner: that item's room.
-      const other = Array.from(container.children).find((child) => child !== item && child.contains(reached))
-        ?? (reached === container ? Array.from(container.children).find((child) => {
-          const box = child.getBoundingClientRect()
-          return child !== item && child.matches('button') && x >= box.left && x <= box.right && y >= box.top && y <= box.bottom
-        }) : undefined)
-      if (other && !other.hasAttribute('data-hit-for')) {
-        const box = other.getBoundingClientRect()
-        const contains = (outer: DOMRect, inner: DOMRect) => outer.left <= inner.left + TOLERANCE && outer.right >= inner.right - TOLERANCE && outer.top <= inner.top + TOLERANCE && outer.bottom >= inner.bottom - TOLERANCE
-        // An item drawn inside this one (a routine's task) takes the presses around it, over this one, on purpose.
-        if (contains(own, box)) continue
-        // Another item's own box is its own: a 44 px box that reaches into any other item gives way there (a routine
-        // around this item excepted).
-        const inOther = Array.from(container.children).some((child) => {
-          if (child === item || child.hasAttribute('data-hit-for')) return false
-          const shape = child.getBoundingClientRect()
-          return !contains(shape, own) && x >= shape.left && x <= shape.right && y >= shape.top && y <= shape.bottom
-        })
-        // Where the boxes of three or more items meet, the room is shared among them by turns (hitAreas.ts); a press
-        // there may reach any of them that is not around this item.
-        const sharing = Array.from(container.children).filter((child) => {
-          if (child === item || !(child instanceof HTMLButtonElement) || child.disabled) return false
-          const target = targetBox(child.getBoundingClientRect(), column)
-          return x >= target.left && x <= target.right && y >= target.top && y <= target.bottom
-        }).length
-        if (!contains(box, own) && (inOther || nearerTo(box, own, x, y) || sharing >= 2)) continue
+    const owns = pressSquares(own, column).some((square) => {
+      // A grid of presses 2 px in from the square's edges, so none is judged on a pixel row two boxes may share.
+      for (let row = 0; row < PRESS_GRID; row++) {
+        for (let col = 0; col < PRESS_GRID; col++) {
+          const x = square.left + 2 + ((square.right - square.left - 4) * col) / (PRESS_GRID - 1)
+          const y = square.top + 2 + ((square.bottom - square.top - 4) * row) / (PRESS_GRID - 1)
+          if (x < 0 || y < 0 || x > window.innerWidth || y > window.innerHeight) continue
+          const reached = pressedItem(document.elementFromPoint(x, y))
+          if (!reached || !container.contains(reached)) continue
+          // The column itself just inside the item's box is the box's rounded corner: the item's own.
+          if (reached === container && x >= own.left && x <= own.right && y >= own.top && y <= own.bottom) continue
+          if (!item.contains(reached)) return false
+        }
       }
-      violations.push(`${describe(item)} has no ${HIT_TARGET_PX}×${HIT_TARGET_PX} px target: a press ${side} it, at ${(x - column.left).toFixed(1)}, ${(y - column.top).toFixed(1)} px in its column, reaches ${other ? describe(other) : describe(container)}`)
-    }
+      return true
+    })
+    if (owns) return
+    const key = item.getAttribute('data-hit-key')
+    const shared = Array.from(container.querySelectorAll<HTMLElement>(':scope > [data-shared-target]')).some((target) => {
+      const box = target.getBoundingClientRect()
+      return key !== null && (target.getAttribute('data-shared-items') ?? '').split(' ').includes(key) && box.width >= HIT_TARGET_PX - 0.5 && box.height >= HIT_TARGET_PX - 0.5
+    })
+    if (!shared) violations.push(`${describe(item)} has no ${HIT_TARGET_PX}×${HIT_TARGET_PX} px press: no such square around it is all its own, and no shared target lists it`)
   }
 
   // Inside a `[data-whole-text]` container (a Week day column) text is whole words or not drawn (docs/design/visual-design.md ›
@@ -1152,8 +1129,9 @@ export function auditInPage(options: { focusRings: boolean }): string[] {
         violations.push(`${describe(container)} is drawn from a plan for ${planned}, not its current ${plannedSize(container)}`)
         continue
       }
-      // An item's widened press area (`data-hit-for`, drawn over its neighbourhood) holds no text and is not an item.
-      const items = Array.from(container.children).filter((item) => rendered(item) && !item.hasAttribute('data-hit-for'))
+      // An item's widened press area (`data-hit-for`, drawn over its neighbourhood) and a shared press target
+      // (`data-shared-target`) draw nothing and hold no text: they are not items.
+      const items = Array.from(container.children).filter((item) => rendered(item) && !item.hasAttribute('data-hit-for') && !item.hasAttribute('data-shared-target'))
       const lines: { item: Element; text: string; box: Box }[] = []
       const checkedTitles = new Set<Element>()
       const walker = document.createTreeWalker(container, NodeFilter.SHOW_TEXT, {
@@ -1266,10 +1244,48 @@ export async function columnsPlanned(page: Page): Promise<boolean> {
   return page.waitForFunction(plansMatchSizes, undefined, { timeout: REPLAN_TIMEOUT_MS }).then(() => true, () => false)
 }
 
-export async function visualIntegrityViolations(page: Page, { focusRings = true }: IntegrityOptions = {}): Promise<string[]> {
+// A shared press target (DayColumn.vue) opens a chooser of the items it lists: pressed with the mouse at its centre, the
+// chooser must offer exactly those items; Escape closes it.
+async function chooserViolations(page: Page, limit: number): Promise<string[]> {
+  const targets = await page.evaluate(() => Array.from(document.querySelectorAll<HTMLElement>('[data-whole-text] > [data-shared-target]'))
+    .filter((target) => !target.closest('[inert]') && target.getClientRects().length > 0)
+    .map((target, index) => { target.dataset.chooserCheck = String(index); return { index, keys: (target.dataset.sharedItems ?? '').split(' ').filter(Boolean).sort() } }))
+  const violations: string[] = []
+  let pressed = 0
+  for (const target of targets) {
+    if (pressed >= limit) break
+    // Scrolled into view where nothing (a sticky header, large at 200 % text) lies over its centre; skipped if none.
+    const centre = await page.evaluate((index) => {
+      const element = document.querySelector<HTMLElement>(`[data-chooser-check="${index}"]`)!
+      for (const block of ['center', 'end', 'start'] as const) {
+        element.scrollIntoView({ block, inline: 'nearest' })
+        const box = element.getBoundingClientRect()
+        const point = { x: box.left + box.width / 2, y: box.top + box.height / 2 }
+        if (document.elementFromPoint(point.x, point.y) === element) return point
+      }
+      return null
+    }, target.index)
+    if (!centre) continue
+    pressed++
+    await page.mouse.click(centre.x, centre.y)
+    const chooser = page.getByTestId('press-chooser')
+    if (!await chooser.waitFor({ state: 'visible', timeout: 3000 }).then(() => true, () => false)) {
+      violations.push(`the shared press target for ${target.keys.join(', ')} opens no chooser`)
+      continue
+    }
+    const offered = (await page.getByTestId('press-choice').evaluateAll((choices) => choices.map((choice) => (choice as HTMLElement).dataset.choiceKey ?? ''))).sort()
+    if (offered.join(' ') !== target.keys.join(' ')) violations.push(`the chooser of the shared press target for ${target.keys.join(', ')} offers ${offered.join(', ')}`)
+    await page.keyboard.press('Escape')
+    await chooser.waitFor({ state: 'hidden', timeout: 3000 }).catch(() => violations.push('a press chooser does not close on Escape'))
+  }
+  await page.evaluate(() => document.querySelectorAll<HTMLElement>('[data-chooser-check]').forEach((element) => { delete element.dataset.chooserCheck }))
+  return violations
+}
+
+export async function visualIntegrityViolations(page: Page, { focusRings = true, choosers = 0 }: IntegrityOptions = {}): Promise<string[]> {
   await columnsPlanned(page)
   // Any key press puts Chromium in keyboard modality, so programmatic focus shows :focus-visible as Tab would.
   if (focusRings) await page.keyboard.press('Shift')
   const violations = await page.evaluate(auditInPage, { focusRings })
-  return [...violations, ...(await page.evaluate(auditFloatingActionButtonInPage))]
+  return [...violations, ...(await page.evaluate(auditFloatingActionButtonInPage)), ...(choosers > 0 ? await chooserViolations(page, choosers) : [])]
 }

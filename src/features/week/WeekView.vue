@@ -18,6 +18,8 @@ import type { AddKind } from './addKind'
 import AddMenu from './AddMenu.vue'
 import BlockEditorSheet from './BlockEditorSheet.vue'
 import BusyDetailsSheet from './BusyDetailsSheet.vue'
+import PressChooserSheet from './PressChooserSheet.vue'
+import type { PressOption } from './pressOption'
 import DayPager from './DayPager.vue'
 import WeekGrid from './WeekGrid.vue'
 import WeekNav from './WeekNav.vue'
@@ -125,6 +127,14 @@ watch(notice, (moved) => {
     onUndo: () => { keepWhereTheyWere(moved); recompute() },
   })
 }, { immediate: true })
+
+// A press where Week items crowd each other asks which one to open.
+const chooserOpen = ref(false)
+const chooserOptions = ref<PressOption[]>([])
+function choose(options: PressOption[]): void {
+  chooserOptions.value = options
+  chooserOpen.value = true
+}
 
 // Open on the current hour once the grid is first shown; later changes keep the reader's position.
 const root = ref<HTMLElement | null>(null)
@@ -290,6 +300,7 @@ async function remove(blockId: string): Promise<void> {
         @select-task="openTask"
         @create="openNew"
         @inspect="inspect"
+        @choose="choose"
       />
       <WeekOverview
         v-else-if="viewMode === 'week'"
@@ -322,6 +333,7 @@ async function remove(blockId: string): Promise<void> {
         @select-task="openTask"
         @create="openNew"
         @inspect="inspect"
+        @choose="choose"
       />
     </template>
 
@@ -330,6 +342,7 @@ async function remove(blockId: string): Promise<void> {
       <AddMenu variant="fab" placement="above" @choose="addFromMenu" />
     </div>
 
+    <PressChooserSheet v-model:open="chooserOpen" :options="chooserOptions" />
     <BusyDetailsSheet v-if="details" v-model:open="detailsOpen" :details="details" :editable="planner.writable" @select="openConflict" />
     <BlockEditorSheet
       v-model:open="editorOpen"

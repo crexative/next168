@@ -11,7 +11,7 @@ export const MIN_TARGET_PX = 44
 export interface Box { top: number; bottom: number; left: number; right: number }
 export interface HitItem extends Box { key: string; hostKey?: string; gap?: number }
 
-function grown(drawn: HitItem, bounds: { width: number; height: number }): Box {
+export function grown(drawn: HitItem, bounds: { width: number; height: number }): Box {
   const item = { ...drawn, left: drawn.left - (drawn.gap ?? 0), right: drawn.right + (drawn.gap ?? 0) }
   const along = (start: number, end: number, limit: number): [number, number] => {
     const size = Math.max(end - start, Math.min(MIN_TARGET_PX, limit))
@@ -77,4 +77,64 @@ export function hitAreas(items: readonly HitItem[], bounds: { width: number; hei
     result.set(item.key, parts)
   })
   return result
+}
+
+// Where items overlap or crowd each other (a task with the same time as its routine, a 45-minute task in a one-hour
+// routine), not every one can own a 44 × 44 px area. Each such item gets a shared target instead: a 44 × 44 px square
+// over it that opens a chooser of every item it touches. An item owns its press when some 44 × 44 px square touching
+// its box is all its own: its box (less the items drawn inside it and their areas), its own areas, and no shared target.
+// `outline` marks an item drawn without presses of its own (a task drawn as an outline around its routine).
+export interface PressItem extends HitItem { outline?: boolean }
+export interface SharedTarget { box: Box; keys: string[] }
+
+const COVERED = 0.5
+const covered = (square: Box, region: Box[]): boolean =>
+  region.reduce<Box[]>((left, box) => left.flatMap((part) => subtract(part, box)), [square])
+    .every((part) => part.bottom - part.top < COVERED || part.right - part.left < COVERED)
+
+const intersects = (a: Box, b: Box) => Math.min(a.bottom, b.bottom) - Math.max(a.top, b.top) > COVERED && Math.min(a.right, b.right) - Math.max(a.left, b.left) > COVERED
+
+// The 44 × 44 px squares that touch an item's box, kept inside the column: centred on it, then along its edges.
+export function candidateSquares(item: Box, bounds: { width: number; height: number }): Box[] {
+  const size = Math.min(MIN_TARGET_PX, bounds.width, bounds.height)
+  const clamp = (value: number, limit: number) => Math.min(Math.max(0, value), limit - size)
+  const xs = [(item.left + item.right) / 2 - size / 2, item.left, item.right - size].map((x) => clamp(x, bounds.width))
+  const ys = [(item.top + item.bottom) / 2 - size / 2, item.top, item.bottom - size].map((y) => clamp(y, bounds.height))
+  return ys.flatMap((top) => xs.map((left) => ({ top, bottom: top + size, left, right: left + size })))
+}
+
+export function sharedTargets(items: readonly PressItem[], areas: ReadonlyMap<string, Box[]>, bounds: { width: number; height: number }): SharedTarget[] {
+  const region = (item: PressItem): Box[] => {
+    if (item.outline) return []
+    const inside = items.filter((other) => other.hostKey === item.key && !other.outline)
+    const own = inside.reduce<Box[]>((parts, other) => [other, ...(areas.get(other.key) ?? [])].reduce((rest, cut) => rest.flatMap((part) => subtract(part, cut)), parts), [item])
+    return [...own, ...(areas.get(item.key) ?? [])]
+  }
+  const regions = new Map(items.map((item) => [item.key, region(item)]))
+  let shared: Box[] = []
+  for (let round = 0; round < items.length + 1; round++) {
+    const member = (item: Box) => shared.some((box) => intersects(box, item))
+    const without = (parts: Box[]) => shared.reduce((rest, box) => rest.flatMap((part) => subtract(part, box)), parts)
+    const crowded = items.filter((item) => !member(item) && !candidateSquares(item, bounds).some((square) => covered(square, without(regions.get(item.key)!))))
+    if (crowded.length === 0) break
+    for (const item of crowded) {
+      if (member(item)) continue
+      // The square over as much of the room the item still has as possible (where its presses are), then of its box.
+      const area = (a: Box, b: Box) => Math.max(0, Math.min(a.bottom, b.bottom) - Math.max(a.top, b.top)) * Math.max(0, Math.min(a.right, b.right) - Math.max(a.left, b.left))
+      const score = (square: Box) => without(regions.get(item.key)!).reduce((sum, part) => sum + area(square, part), 0) * 4 + area(square, item)
+      let box = candidateSquares(item, bounds).reduce((best, square) => score(square) > score(best) ? square : best)
+      // Shared targets that meet become one.
+      for (let joined = true; joined;) {
+        joined = false
+        shared = shared.filter((other) => {
+          if (!intersects(other, box)) return true
+          box = { top: Math.min(box.top, other.top), bottom: Math.max(box.bottom, other.bottom), left: Math.min(box.left, other.left), right: Math.max(box.right, other.right) }
+          joined = true
+          return false
+        })
+      }
+      shared.push(box)
+    }
+  }
+  return shared.map((box) => ({ box, keys: items.filter((item) => intersects(box, item)).map((item) => item.key) }))
 }

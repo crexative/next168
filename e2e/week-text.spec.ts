@@ -27,7 +27,8 @@ async function auditWeek(page: Page, state: string, columns: number, titles?: Se
     return found.length
   })
   expect(marked, `${state}: day columns on the page`).toBeGreaterThanOrEqual(columns)
-  const violations = await visualIntegrityViolations(page, { focusRings: false })
+  // One shared press target per state is pressed: its chooser must offer every item it lists.
+  const violations = await visualIntegrityViolations(page, { focusRings: false, choosers: 1 })
   if (violations.length) await page.screenshot({ path: test.info().outputPath(`${state.replace(/[^\w%-]+/g, '-')}.png`), fullPage: true })
   expect.soft(violations, state).toEqual([])
   // Whatever is drawn, every routine, event and task keeps its full seeded title in its accessible name.

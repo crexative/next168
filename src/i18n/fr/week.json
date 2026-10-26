@@ -93,5 +93,13 @@
     "tomorrowMany": "{count} tâches reportées à demain",
     "later": "« {title} » reportée à {day}",
     "laterMany": "{count} tâches reportées à un autre jour"
+  },
+  "chooser": {
+    "title": "Lequel ouvrir ?",
+    "kind": {
+      "block": "Routine",
+      "task": "Tâche",
+      "event": "Événement"
+    }
   }
 }

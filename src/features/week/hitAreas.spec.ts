@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest'
-import { MIN_TARGET_PX, hitAreas, subtract, type Box, type HitItem } from './hitAreas'
+import { MIN_TARGET_PX, hitAreas, sharedTargets, subtract, type Box, type PressItem } from './hitAreas'
 
 const column = { width: 300, height: 1152 }
-const box = (key: string, top: number, bottom: number, extra: Partial<HitItem> = {}): HitItem => ({ key, top, bottom, left: 2, right: 298, ...extra })
+const box = (key: string, top: number, bottom: number, extra: Partial<PressItem> = {}): PressItem => ({ key, top, bottom, left: 2, right: 298, ...extra })
 // The rows of an item's area: [top, bottom, left, right] of each part, sorted.
 const rows = (parts: Box[] | undefined) => (parts ?? []).map((part) => [part.top, part.bottom, part.left, part.right]).sort((a, b) => a[0]! - b[0]! || a[2]! - b[2]!)
 
@@ -52,5 +52,39 @@ describe('hit areas', () => {
   it('subtracts one box from another in at most four parts', () => {
     expect(subtract({ top: 0, bottom: 10, left: 0, right: 10 }, { top: 2, bottom: 8, left: 2, right: 8 })).toHaveLength(4)
     expect(subtract({ top: 0, bottom: 10, left: 0, right: 10 }, { top: 20, bottom: 30, left: 0, right: 10 })).toEqual([{ top: 0, bottom: 10, left: 0, right: 10 }])
+  })
+})
+
+describe('shared targets', () => {
+  const shared = (items: PressItem[]) => sharedTargets(items, hitAreas(items.filter((item) => !item.outline), column), column)
+
+  it('leaves items that own a 44 px square alone: no chooser where every item has room', () => {
+    expect(shared([box('tall', 300, 400), box('short', 100, 112), box('routine', 500, 600), box('task', 510, 528, { hostKey: 'routine' })])).toEqual([])
+  })
+
+  // verify11 C1: "Family dinner" kept 22 px around "Order groceries" in its middle.
+  it('gives a routine whose task leaves it no 44 px band a shared target where it still has room', () => {
+    const targets = shared([box('dinner', 500, 572), box('groceries', 520, 538, { left: 6, right: 296, hostKey: 'dinner' })])
+    expect(targets).toHaveLength(1)
+    expect(targets[0]!.keys.sort()).toEqual(['dinner', 'groceries'])
+  })
+
+  // verify11 C1: "Finish course module 4" had exactly the time of "Reading" (21:00–21:30): drawn as an outline, 0 px of
+  // its own, every tap opened Reading.
+  it('gives a task with the same time as its routine a shared target with the routine', () => {
+    const targets = shared([box('reading', 1008, 1032), box('course', 1008, 1032, { hostKey: 'reading', outline: true })])
+    expect(targets).toHaveLength(1)
+    expect(targets[0]!.keys.sort()).toEqual(['course', 'reading'])
+    expect(targets[0]!.box.bottom - targets[0]!.box.top).toBeGreaterThanOrEqual(MIN_TARGET_PX)
+    expect(targets[0]!.box.right - targets[0]!.box.left).toBeGreaterThanOrEqual(MIN_TARGET_PX)
+  })
+
+  // verify11 C1: "Gym" (one hour, 48 px) kept 5–6 px once its 45-minute task took the rest.
+  it('gives a routine that its task leaves less than 44 px a shared target with that task', () => {
+    const gym = box('gym', 864, 912, { left: 151, right: 298 })
+    const run = box('run', 876, 912, { left: 155, right: 296, hostKey: 'gym' })
+    const targets = shared([gym, run])
+    expect(targets).toHaveLength(1)
+    expect(targets[0]!.keys.sort()).toEqual(['gym', 'run'])
   })
 })

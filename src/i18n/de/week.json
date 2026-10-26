@@ -93,5 +93,13 @@
     "tomorrowMany": "{count} Aufgaben auf morgen verschoben",
     "later": "„{title}“ auf {day} verschoben",
     "laterMany": "{count} Aufgaben auf einen anderen Tag verschoben"
+  },
+  "chooser": {
+    "title": "Was möchtest du öffnen?",
+    "kind": {
+      "block": "Routine",
+      "task": "Aufgabe",
+      "event": "Termin"
+    }
   }
 }

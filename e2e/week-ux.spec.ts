@@ -445,13 +445,71 @@ test.describe('tasks in Week', () => {
         task.scrollIntoView({ block: 'center' })
         const at = task.getBoundingClientRect()
         // Inside its 44 px target, just above the target's lower edge (10.9 px below an 18 px task in the report).
-        return { x: at.left + at.width / 2, y: at.bottom + (44 - at.height) / 2 - 1 }
+        return { x: at.left + at.width / 2, y: at.bottom + (44 - at.height) / 2 - 1, title: task.getAttribute('title') ?? '' }
       }
       return null
     })
     expect(found, 'a task shorter than 44 px inside a routine, with room under it').not.toBeNull()
     await page.mouse.click(found!.x, found!.y)
+    // Where the task crowds its routine the press asks which to open (verify11); either way it reaches the task.
+    const chooser = page.getByRole('dialog', { name: '¿Cuál quieres abrir?' })
+    if (await chooser.isVisible()) await chooser.getByRole('button', { name: new RegExp(found!.title) }).click()
     await expect(page.getByRole('dialog', { name: 'Editar tarea' })).toBeVisible()
+  })
+
+  // verify11 C1: where items crowd each other no item may be left without a 44 px press. A task with exactly the time
+  // of its routine is drawn as an outline that takes no presses, and a 45-minute task leaves its one-hour routine 5 px:
+  // one shared 44 px target asks which of them to open.
+  async function pressSharedTarget(page: Page, hitKey: string) {
+    const centre = await page.evaluate((key) => {
+      const target = Array.from(document.querySelectorAll<HTMLElement>('[data-shared-target]')).find((element) => (element.dataset.sharedItems ?? '').split(' ').includes(key))
+      if (!target) return null
+      target.scrollIntoView({ block: 'center' })
+      const box = target.getBoundingClientRect()
+      return { x: box.left + box.width / 2, y: box.top + box.height / 2, width: box.width, height: box.height }
+    }, hitKey)
+    expect(centre, `a shared press target lists ${hitKey}`).not.toBeNull()
+    expect(centre!.width).toBeGreaterThanOrEqual(44)
+    expect(centre!.height).toBeGreaterThanOrEqual(44)
+    await page.mouse.click(centre!.x, centre!.y)
+    const chooser = page.getByRole('dialog', { name: '¿Cuál quieres abrir?' })
+    await expect(chooser).toBeVisible()
+    for (const row of await chooser.getByTestId('press-choice').all()) expect((await row.boundingBox())!.height).toBeGreaterThanOrEqual(44)
+    return chooser
+  }
+
+  test('a task with the same time as its routine opens from a shared 44 px target that asks which one', async ({ page }) => {
+    const document = plannerDocument({
+      categories: [...plannerDocument().categories, { id: 'c-learn', name: 'Estudio', colorKey: 'teal', goal: { type: 'none', hoursPerWeek: 0 } }],
+      blocks: [...plannerDocument().blocks, { id: 'b-reading', categoryId: 'c-learn', title: 'Lectura', days: [3], start: 1260, end: 1290 }],
+      tasks: [{ id: 't-course', title: 'Terminar el módulo 4', categoryId: 'c-learn', durationMin: 30, priority: 1, createdAt: '2026-10-20T08:00:00.000Z' }],
+      actuals: [],
+    })
+    await openWeek(page, 'light', 'desktop', document)
+    const task = column(page, WEDNESDAY).locator('[data-task-id="t-course"]')
+    await expect(task).toHaveAttribute('data-start-minute', '1260')
+    const key = await task.getAttribute('data-hit-key')
+    const chooser = await pressSharedTarget(page, key!)
+    await expect(chooser.getByTestId('press-choice')).toHaveText([/Lectura/, /Terminar el módulo 4/])
+    await chooser.getByRole('button', { name: /Terminar el módulo 4/ }).click()
+    await expect(page.getByRole('dialog', { name: 'Editar tarea' })).toBeVisible()
+  })
+
+  test('a one-hour routine its 45-minute task fills opens from a shared 44 px target, and Escape closes the chooser', async ({ page }) => {
+    const document = plannerDocument({
+      tasks: [{ id: 't-route', title: 'Planear la ruta', categoryId: 'c-exercise', durationMin: 45, priority: 1, createdAt: '2026-10-20T08:00:00.000Z' }],
+      actuals: [],
+    })
+    await openWeek(page, 'light', 'desktop', document)
+    const gym = column(page, WEDNESDAY).locator('[data-block-id="b-gym"]')
+    await expect(column(page, WEDNESDAY).locator('[data-task-id="t-route"]')).toBeVisible()
+    const chooser = await pressSharedTarget(page, (await gym.getAttribute('data-hit-key'))!)
+    await expect(chooser.getByTestId('press-choice')).toHaveText([/Gimnasio/, /Planear la ruta/])
+    await page.keyboard.press('Escape')
+    await expect(chooser).toBeHidden()
+    await pressSharedTarget(page, (await gym.getAttribute('data-hit-key'))!)
+    await page.getByRole('dialog', { name: '¿Cuál quieres abrir?' }).getByRole('button', { name: /Gimnasio/ }).click()
+    await expect(page.getByRole('dialog', { name: 'Editar rutina' })).toBeVisible()
   })
 
   test('the sticky day header is a thick material that hides what scrolls under it, and labels are drawn above the now-line', async ({ page }) => {

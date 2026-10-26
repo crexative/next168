@@ -93,5 +93,13 @@
     "tomorrowMany": "{count} tasks moved to tomorrow",
     "later": "“{title}” moved to {day}",
     "laterMany": "{count} tasks moved to another day"
+  },
+  "chooser": {
+    "title": "Which one?",
+    "kind": {
+      "block": "Routine",
+      "task": "Task",
+      "event": "Event"
+    }
   }
 }

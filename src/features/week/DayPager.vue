@@ -11,6 +11,7 @@ import TimeAxis from './TimeAxis.vue'
 import { dragOffset, horizontalVelocity, targetIndex, type PointerSample } from './dayPager'
 import { formatDate } from './localTime'
 import type { BusyDetails } from './busyDetails'
+import type { PressOption } from './pressOption'
 import type { AllDayItem, BlockSegment, BusySegment, TaskSegment } from './weekLayout'
 
 const props = defineProps<{
@@ -26,7 +27,7 @@ const props = defineProps<{
   nowMinute: number
   editable: boolean
 }>()
-const emit = defineEmits<{ select: [blockId: string]; 'select-task': [taskId: string]; create: [date: string, minute: number]; inspect: [details: BusyDetails] }>()
+const emit = defineEmits<{ select: [blockId: string]; 'select-task': [taskId: string]; create: [date: string, minute: number]; inspect: [details: BusyDetails]; choose: [options: PressOption[]] }>()
 const index = defineModel<number>('index', { required: true })
 
 const { t, locale } = useI18n()
@@ -218,6 +219,7 @@ onBeforeUnmount(() => {
             @select-task="(id) => emit('select-task', id)"
             @create="(day, minute) => emit('create', day, minute)"
             @inspect="(details) => emit('inspect', details)"
+            @choose="(options) => emit('choose', options)"
           />
         </div>
       </div>
