@@ -74,8 +74,8 @@ test.describe('where it opens (S2-1, S2-5)', () => {
     await expect(live(page).getByRole('heading', { level: 3 })).toHaveText('¿Para qué quieres hacer tiempo?')
     await expect(page.locator('[data-testid=setup] input[type=time]')).toHaveCount(0)
     await expect(page.getByTestId('setup-progress')).toHaveCount(0)
-    // Adding a routine offers the stored categories first, then what the week does not have yet.
-    await expect(live(page).locator('.reply')).toHaveText(['Sueño', 'Trabajo', 'Estudio', 'Ejercicio', 'Familia', 'Amigos', 'Tiempo para ti', 'Aprender'])
+    // Adding a routine offers what the week does not have yet, then (under "Ya en tu semana") its stored categories.
+    await expect(live(page).locator('.reply')).toHaveText(['Estudio', 'Ejercicio', 'Familia', 'Amigos', 'Tiempo para ti', 'Aprender', 'Sueño', 'Trabajo'])
   })
 
   test('S2-5: the empty week\'s "Añadir una rutina" opens the same question', async ({ page }) => {
@@ -88,6 +88,24 @@ test.describe('where it opens (S2-1, S2-5)', () => {
   })
 })
 
+// On a wide screen the answers sit right under their question, not at the bottom of the window.
+async function questionToRepliesGap(page: Page): Promise<number> {
+  return page.evaluate(() => {
+    const bubble = document.querySelector('[data-testid=setup] section.screen:not([aria-hidden=true]) .exchange.is-current .bubble')!.getBoundingClientRect()
+    const reply = document.querySelector('[data-testid=setup] section.screen:not([aria-hidden=true]) .reply')!.getBoundingClientRect()
+    return reply.top - bubble.bottom
+  })
+}
+
+test('polish 2: at 1440x900 the first question\'s replies sit right under it, with new ideas before "Ya en tu semana"', async ({ page }) => {
+  await start(page, { document: planned(), size: { width: 1440, height: 900 } })
+  await openWeekAdd(page)
+  await page.waitForFunction(() => document.getAnimations().every((animation) => animation.playState !== 'running'))
+  expect(await questionToRepliesGap(page)).toBeLessThan(96)
+  await expect(live(page).locator('.reply').first()).toHaveText('Estudio')
+  await expect(live(page).getByRole('group', { name: 'Ya en tu semana' }).locator('.reply')).toHaveText(['Sueño', 'Trabajo'])
+})
+
 test.describe('adding only (S2-2, S2-3, S2-4, S2-11)', () => {
   test('S2-2: something of one\'s own with two times is one revision that adds one category and two blocks, and says so', async ({ page }) => {
     await start(page, { document: planned() })
@@ -97,6 +115,9 @@ test.describe('adding only (S2-2, S2-3, S2-4, S2-11)', () => {
     await typeOwn(page, 'Práctica de guitarra')
     await live(page).getByTestId('range-add').click()
     await sendAndFinish(page)
+    // The summary says what is added (polish 1).
+    await expect(live(page).getByRole('heading', { level: 3 })).toHaveText('Esto se añade a tu semana. Toca algo para cambiarlo.')
+    await expect(live(page).locator('.week-title')).toHaveText('Lo que añades')
     await primary(page).click()
     await expect(page.getByTestId('setup')).toHaveCount(0)
     await expect(page.getByTestId('live-announcer')).toContainText('Añadido «Práctica de guitarra»')

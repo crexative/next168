@@ -24,7 +24,8 @@ const ROUND_CONTROLS = [
   'onboarding.guided.more.add', 'onboarding.guided.more.duplicate', 'onboarding.guided.again.limit',
   // Adding after setup: the frame, "Goes in", the summary's line and button, and what a save says.
   'onboarding.guided.add.title', 'onboarding.guided.add.goesIn', 'onboarding.guided.add.own', 'onboarding.guided.errors.destinationGone',
-  'onboarding.summary.addSave', 'onboarding.summary.added', 'onboarding.summary.into', 'onboarding.summary.addFailed',
+  'onboarding.summary.addSave', 'onboarding.summary.added', 'onboarding.summary.into', 'onboarding.summary.addFailed', 'onboarding.summary.addTitle',
+  'onboarding.guided.add.yours',
   'week.editor.warnings.goalOver', 'week.editor.hours',
 ]
 
@@ -80,6 +81,10 @@ function states(): SetupState[] {
       pick(state, keys.length, addTyped(state, 'Standup').key, env)
       finishMore(state, keys.length + 1)
       result.push(state)
+      // Nothing picked at all: the summary has nothing to add.
+      const nothing = createAddState(document, entry, env)
+      finishMore(nothing, 0)
+      result.push(nothing)
     }
   }
   const removed = emptyState()
@@ -94,7 +99,7 @@ describe('every key the setup and the guided add compute exists in every languag
 
   it('reaches the rounds of "Anything else?", their options and their way out', () => {
     for (const key of ['onboarding.guided.more.question', 'onboarding.guided.again.question', 'onboarding.guided.again.hint', 'onboarding.guided.again.done',
-      'onboarding.guided.nothingElse', 'onboarding.guided.more.family', 'onboarding.guided.more.learning', 'onboarding.guided.extra.custom', 'onboarding.guided.skip',
+      'onboarding.guided.again.yes', 'onboarding.summary.addBubble', 'onboarding.summary.addEmpty', 'onboarding.guided.more.family', 'onboarding.guided.more.learning', 'onboarding.guided.extra.custom', 'onboarding.guided.skip',
       'onboarding.guided.add.question', 'onboarding.guided.add.hint', 'onboarding.guided.work.question', 'onboarding.guided.exerciseRanges.question',
       'onboarding.templates.sleep', 'onboarding.templates.study']) {
       expect(recorded.has(key), key).toBe(true)

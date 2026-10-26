@@ -96,14 +96,16 @@
       "question": "¿Algo más?",
       "hint": "Elige otra, o dime que eso es todo.",
       "done": "No, eso es todo",
-      "limit": "Con esto basta por ahora."
+      "limit": "Con esto basta por ahora.",
+      "yes": "Sí, {name}"
     },
     "add": {
       "title": "Añadir a tu semana",
       "question": "¿Para qué quieres hacer tiempo?",
       "hint": "Elige una, o escribe otra cosa.",
       "goesIn": "Va en",
-      "own": "Por su cuenta"
+      "own": "Por su cuenta",
+      "yours": "Ya en tu semana"
     },
     "extra": {
       "family": "¿Cuándo pasas tiempo con tu familia?",
@@ -148,7 +150,6 @@
     "resumed": "Seguimos donde lo dejaste.",
     "startOver": "Empezar de nuevo",
     "draftUnavailable": "Este navegador no guarda borradores. No recargues hasta terminar.",
-    "nothingElse": "Nada más",
     "change": "Cambiar: {question} {answer}",
     "conversation": "Conversación",
     "send": "Enviar respuesta",
@@ -183,6 +184,9 @@
     "addSave": "Añadir a mi semana",
     "added": "Añadido «{name}» | Añadidas {count} cosas",
     "into": "en {name}",
-    "addFailed": "No se pudo añadir. Inténtalo de nuevo."
+    "addFailed": "No se pudo añadir. Inténtalo de nuevo.",
+    "addBubble": "Esto se añade a tu semana. Toca algo para cambiarlo.",
+    "addEmpty": "Aún no hay nada que añadir.",
+    "addTitle": "Lo que añades"
   }
 }

@@ -96,14 +96,16 @@
       "question": "Sonst noch etwas?",
       "hint": "Wähle noch eins, oder sag mir, dass das alles ist.",
       "done": "Nein, das ist alles",
-      "limit": "Das reicht fürs Erste."
+      "limit": "Das reicht fürs Erste.",
+      "yes": "Ja, {name}"
     },
     "add": {
       "title": "Zu deiner Woche hinzufügen",
       "question": "Wofür möchtest du dir Zeit nehmen?",
       "hint": "Wähle eins, oder schreib etwas anderes.",
       "goesIn": "Gehört zu",
-      "own": "Für sich"
+      "own": "Für sich",
+      "yours": "Schon in deiner Woche"
     },
     "extra": {
       "family": "Wann verbringst du Zeit mit der Familie?",
@@ -148,7 +150,6 @@
     "resumed": "Wir machen da weiter, wo du warst.",
     "startOver": "Neu beginnen",
     "draftUnavailable": "Dieser Browser speichert keinen Entwurf. Lade nicht neu, bis du fertig bist.",
-    "nothingElse": "Nichts weiter",
     "change": "Ändern: {question} {answer}",
     "conversation": "Unterhaltung",
     "send": "Antwort senden",
@@ -183,6 +184,9 @@
     "addSave": "Zu meiner Woche hinzufügen",
     "added": "„{name}“ hinzugefügt | {count} Dinge hinzugefügt",
     "into": "in {name}",
-    "addFailed": "Hinzufügen hat nicht geklappt. Versuch es noch einmal."
+    "addFailed": "Hinzufügen hat nicht geklappt. Versuch es noch einmal.",
+    "addBubble": "Das kommt zu deiner Woche dazu. Tippe etwas an, um es zu ändern.",
+    "addEmpty": "Noch nichts zum Hinzufügen.",
+    "addTitle": "Was du hinzufügst"
   }
 }

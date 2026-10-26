@@ -413,9 +413,9 @@ describe('adding after setup (S2-1, S2-3, S2-6, S2-14)', () => {
     [block('b-work', 'c-work', [1, 2, 3, 4, 5], at(9), at(17)), block('b-sat', 'c-r1', [6], at(6), at(22))],
   )
 
-  it('offers stored categories first when adding a routine, then the topics the week lacks; Settings offers no stored one', () => {
+  it('offers the topics the week lacks, then its stored categories when adding a routine; Settings offers no stored one', () => {
     expect(roundOptions(createAddState(document(), 'routine', env), 0)).toEqual(
-      ['into:c-sleep', 'into:c-work', 'into:c-r1', 'into:c-r2', 'study', 'exercise', 'family', 'friends', 'me', 'learning'])
+      ['study', 'exercise', 'family', 'friends', 'me', 'learning', 'into:c-sleep', 'into:c-work', 'into:c-r1', 'into:c-r2'])
     expect(roundOptions(createAddState(document(), 'category', env), 0)).toEqual(['study', 'exercise', 'family', 'friends', 'me', 'learning'])
   })
 
