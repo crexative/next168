@@ -68,11 +68,19 @@ const SESSION_ENDING = new Set<AssistantFailureCode>(['out-of-memory', 'device-l
 export const MIN_ANSWER_CHARS = 24
 const ANSWER_SCHEMA = { type: 'object', properties: { answer: { type: 'string', minLength: MIN_ANSWER_CHARS, maxLength: 600 } }, required: ['answer'], additionalProperties: false }
 
+const words = (text: string) => ` ${(text.toLowerCase().match(/[\p{L}\p{N}]+/gu) ?? []).join(' ')} `
+const SENTENCE_END = /(?<=[.!?。])\s+/u
+
 // The model explains; the numbers are the app's. The computed facts always come first, as their own block,
-// whatever the model wrote: the model's prose follows on a separate paragraph and is never matched against them.
+// whatever the model wrote: the model's prose follows on a separate paragraph. The model is told to quote the facts,
+// so a sentence that only repeats them word for word is dropped; any other sentence, a wrong figure included, stays.
 export function quoteFacts(modelAnswer: string, facts: string | undefined): string {
   if (!facts) return modelAnswer
-  return modelAnswer.trim() ? `${facts}\n\n${modelAnswer}` : facts
+  const factWords = words(facts)
+  const sentences = modelAnswer.trim().split(SENTENCE_END)
+  const added = sentences.filter(sentence => words(sentence).trim() && !factWords.includes(words(sentence)))
+  if (!added.length) return facts
+  return `${facts}\n\n${added.length === sentences.length ? modelAnswer : added.join(' ')}`
 }
 
 export class WebLlmProvider implements AssistantProvider {

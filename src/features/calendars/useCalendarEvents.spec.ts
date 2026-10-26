@@ -25,7 +25,7 @@ it('re-expands offline raw sources after navigation and exposes missing-data fai
     const id = planner.document!.calendarSources[0]!.id
     await texts.delete(id)
     range.value = { start: '2027-02-08', end: '2027-02-15' }
-    await vi.waitFor(() => expect(calendar.errors.value[id]).toBe('calendars.missing'))
+    await vi.waitFor(() => expect(calendar.errors.value[id]).toBe('calendars.missingFile'))
     expect(calendar.events.value).toEqual([])
   } finally { scope.stop() }
 })

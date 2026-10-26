@@ -55,3 +55,24 @@ it.each(['en', 'es', 'fr', 'pt', 'de'])('compiles every %s calendar message with
   }
   expect(errors).not.toHaveBeenCalled()
 })
+
+it('names a calendar whose text is not stored here and says how to get it back, per kind', async () => {
+  const pinia = createPinia()
+  setActivePinia(pinia)
+  const repositories = createTestRepositories({ timeZone: () => 'UTC' })
+  configurePlannerStore({ repository: repositories.planner, now: fixedNow, newId: newTestId, locale: () => 'en', timeZone: () => 'UTC' })
+  configureCalendarServices({ texts: new IndexedDbCalendarSourceStore(new IDBFactory()), fetcher: { fetch: async () => { throw new Error('offline') } } })
+  const planner = usePlannerStore()
+  await planner.load()
+  await planner.commit(draft => {
+    draft.calendarSources.push({ id: 'file-1', name: 'Team file', kind: 'file', colorKey: 'blue' }, { id: 'url-1', name: 'Holidays', kind: 'url', url: 'https://example.invalid/holidays.ics', colorKey: 'purple' })
+  })
+  const i18n = createI18n({ legacy: false, locale: 'en', messages: { en: { common, calendars: catalogs['../../i18n/en/calendars.json']!.default } } })
+  host = document.createElement('div'); document.body.append(host)
+  app = createApp(CalendarsSection).use(pinia).use(i18n)
+  app.mount(host)
+  await vi.waitFor(() => expect([...host!.querySelectorAll('.calendar-overlay [role=alert]')].map(node => node.textContent)).toEqual([
+    '“Team file” is not saved here, so its events cannot be shown. Remove it and import its .ics file again.',
+    '“Holidays” has not been downloaded here yet. Choose Refresh under it to download it again.',
+  ]))
+})

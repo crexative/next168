@@ -10,6 +10,7 @@ import Icon from '@/ui/Icon.vue'
 import './registerIcons'
 import { useCalendarStore, type CalendarIntent } from './calendarStore'
 import { buildEvent, draftFromEvent, minutesOf, type EventDraft } from './eventDraft'
+import AttendeesField from './AttendeesField.vue'
 const { t: eventText } = useI18n({ useScope: 'local', messages: { en: { through: 'Through' }, es: { through: 'Hasta el' }, fr: { through: 'Jusqu’au' }, pt: { through: 'Até o dia' }, de: { through: 'Bis einschließlich' } } })
 const props = defineProps<{ open: boolean; event?: PlannerEvent }>()
 const emit = defineEmits<{ 'update:open': [boolean] }>()
@@ -19,6 +20,7 @@ let intent: CalendarIntent | undefined
 const moreId = useId()
 const draft = reactive<EventDraft>({ title: '', date: '', time: '09:00', allDay: false, duration: 60, location: '', notes: '', attendees: '' })
 const initial = ref(''), saving = ref(false), error = ref(''), attempted = ref(false), moreOpen = ref(false)
+const attendeesField = ref<InstanceType<typeof AttendeesField>>()
 const zone = computed(() => planner.document?.settings.timeZone ?? 'UTC')
 const startInstant = computed(() => {
   try { return zonedInstant(draft.date, minutesOf(draft.time), zone.value) } catch { return undefined }
@@ -47,11 +49,13 @@ watch(() => props.open, open => {
   intent = calendars.captureIntent()
   Object.assign(draft, props.event ? draftFromEvent(props.event, zone.value) : { title: '', date: localDateOf(new Date(), zone.value), time: '09:00', allDay: false, duration: 60, location: '', notes: '', attendees: '' })
   initial.value = JSON.stringify(draft); error.value = ''; attempted.value = false
-  // Location and notes stay one level deeper unless the event already has them.
-  moreOpen.value = Boolean(draft.location || draft.notes)
+  // Guests, location and notes stay one level deeper unless the event already has them.
+  moreOpen.value = Boolean(draft.attendees || draft.location || draft.notes)
 }, { immediate: true })
 async function save(): Promise<void> {
   attempted.value = true
+  // An address still in the guest field is added first; one that is not an email address stops the save there.
+  if (attendeesField.value && !attendeesField.value.commit()) { moreOpen.value = true; return }
   if (!valid.value || saving.value) return
   saving.value = true
   let event: PlannerEvent
@@ -87,6 +91,7 @@ async function save(): Promise<void> {
         <Icon :name="moreOpen ? 'chevron-up' : 'chevron-down'" :size="16" />
       </button>
       <div v-show="moreOpen" :id="moreId" class="more-fields">
+        <AttendeesField ref="attendeesField" v-model="draft.attendees" />
         <label>{{ t('calendars.location') }}<input v-model="draft.location" maxlength="200"></label>
         <label>{{ t('calendars.notes') }}<textarea v-model="draft.notes" maxlength="2000" rows="3" /></label>
       </div>

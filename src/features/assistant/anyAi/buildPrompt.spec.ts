@@ -185,6 +185,16 @@ describe('size', () => {
   })
 })
 
+describe('personal data of other people', () => {
+  it('never puts attendee emails in the prompt, while the event itself is listed', () => {
+    const week = realisticWeek()
+    week.events = week.events.map((event) => event.id === 'e-review' ? { ...event, attendees: ['ana@example.com', 'luis@example.org'] } : event)
+    const text = prompt(week)
+    expect(text).toContain('2026-10-22 14:00-15:00 "Design review"')
+    expect(text).not.toMatch(/ana@example\.com|luis@example\.org/)
+  })
+})
+
 describe('time boundaries', () => {
   const eventsOf = (events: PlannerDocument['events'], extra: Parameters<typeof prompt>[2] = {}, overrides: Partial<PlannerDocument> = {}) => {
     const text = prompt(realisticWeek({ events, ...overrides }), 'en', extra)
