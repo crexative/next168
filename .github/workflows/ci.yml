@@ -54,6 +54,9 @@ jobs:
 
       - run: npm ci
 
+      - name: Install companion
+        run: npm --prefix companion ci
+
       - name: Read locked Playwright version
         id: playwright
         run: echo "version=$(node -p "require('./package-lock.json').packages['node_modules/@playwright/test'].version")" >> "$GITHUB_OUTPUT"
@@ -67,13 +70,13 @@ jobs:
 
       - name: Install browsers
         if: steps.browsers.outputs.cache-hit != 'true'
-        timeout-minutes: 10
-        run: npx playwright install --with-deps chromium webkit
+        timeout-minutes: 15
+        run: npx playwright install --with-deps chromium webkit || npx playwright install --with-deps chromium webkit
 
       - name: Install browser system dependencies
         if: steps.browsers.outputs.cache-hit == 'true'
-        timeout-minutes: 10
-        run: npx playwright install-deps chromium webkit
+        timeout-minutes: 15
+        run: npx playwright install-deps chromium webkit || npx playwright install-deps chromium webkit
 
       - name: End-to-end tests (shard ${{ matrix.shard }}/4)
         run: npx playwright test --shard=${{ matrix.shard }}/4
