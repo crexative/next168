@@ -1,7 +1,7 @@
 import AxeBuilder from '@axe-core/playwright'
 import { readFileSync } from 'node:fs'
-import { expect, test, type Page } from '@playwright/test'
-import { openTab, seedKey, V2_KEY } from './fixtures'
+import { devices, expect, test, type Page } from '@playwright/test'
+import { onlyProject, openTab, seedKey, V2_KEY } from './fixtures'
 import { onboardedDocument } from './support/seed'
 import { CARD_FONT, paletteFor } from '../src/features/share/palette'
 
@@ -11,16 +11,28 @@ const NOW = new Date('2026-10-21T10:15:00.000Z')
 const everyDay = [0, 1, 2, 3, 4, 5, 6]
 const english = JSON.parse(readFileSync('src/i18n/en/share.json', 'utf8')) as { footerNoUrl: string }
 
+// A realistic template week: 113 planned hours in six categories, one with an emoji icon.
 const categories = [
   { id: 'c-sleep', name: 'Sleep', colorKey: 'purple', icon: '😴', goal: { type: 'min', hoursPerWeek: 49 } },
   { id: 'c-work', name: 'Work', colorKey: 'blue', goal: { type: 'max', hoursPerWeek: 40 } },
   { id: 'c-gym', name: 'Exercise', colorKey: 'green', goal: { type: 'none', hoursPerWeek: 0 } },
+  { id: 'c-study', name: 'Study', colorKey: 'orange', goal: { type: 'none', hoursPerWeek: 0 } },
+  { id: 'c-cook', name: 'Cooking', colorKey: 'pink', goal: { type: 'none', hoursPerWeek: 0 } },
+  { id: 'c-family', name: 'Family', colorKey: 'teal', goal: { type: 'none', hoursPerWeek: 0 } },
 ]
 const blocks = [
   { id: 'b-sleep', categoryId: 'c-sleep', title: 'Night sleep', days: everyDay, start: 1380, end: 420 },
   { id: 'b-work', categoryId: 'c-work', title: 'Deep work', days: [1, 2, 3, 4, 5], start: 540, end: 1020 },
   { id: 'b-gym', categoryId: 'c-gym', title: 'Morning run', days: [1, 3, 5], start: 420, end: 480 },
+  { id: 'b-study', categoryId: 'c-study', title: 'Evening course', days: [2, 4], start: 1140, end: 1260 },
+  { id: 'b-cook', categoryId: 'c-cook', title: 'Batch cooking', days: [0], start: 600, end: 780 },
+  { id: 'b-family', categoryId: 'c-family', title: 'Dinner together', days: everyDay, start: 1080, end: 1140 },
 ]
+const ROUTINE_TITLES = /Night sleep|Deep work|Morning run|Evening course|Batch cooking|Dinner together/
+const SUMMARY_TEXT = 'My typical week in Weeklid: 113 h of 168 h planned. Sleep 56 h, Work 40 h, Family 7 h, Study 4 h, Cooking 3 h, Exercise 3 h.'
+const FILE_NAME = 'weeklid-my-typical-week.png'
+// Cells per colour token: one cell per planned hour, the rest free.
+const EXPECTED_CELLS = { purple: 56, blue: 40, teal: 7, orange: 4, pink: 3, green: 3, free: 55 }
 
 async function start(page: Page, overrides: Record<string, unknown> = {}, theme: 'light' | 'dark' = 'light'): Promise<void> {
   await page.emulateMedia({ colorScheme: theme })
@@ -34,13 +46,23 @@ async function captureShares(page: Page): Promise<void> {
     const shared: File[] = []
     Object.assign(window, { __shared: shared })
     Object.defineProperty(navigator, 'canShare', { configurable: true, value: () => true })
-    Object.defineProperty(navigator, 'share', { configurable: true, value: async (data: ShareData) => { shared.push(...(data.files ?? [])); Object.assign(window, { __shareText: data.text }) } })
+    Object.defineProperty(navigator, 'share', { configurable: true, value: async (data: ShareData) => { shared.push(...(data.files ?? [])); Object.assign(window, { __shareText: data.text, __shareTitle: data.title }) } })
   })
 }
 
-async function openSheet(page: Page): Promise<void> {
+// Files cannot be shared here (desktop browsers, older phones): the sheet offers the download only.
+async function withoutFileSharing(page: Page): Promise<void> {
+  await page.addInitScript(() => {
+    Object.defineProperty(navigator, 'canShare', { configurable: true, value: () => false })
+    Object.defineProperty(navigator, 'share', { configurable: true, value: undefined })
+  })
+}
+
+async function openSheet(page: Page, tap = false): Promise<void> {
   await openTab(page, 'insights')
-  await page.getByRole('button', { name: 'Share my typical week' }).click()
+  const entry = page.getByRole('button', { name: 'Share my typical week' })
+  if (tap) await entry.tap()
+  else await entry.click()
   await expect(page.getByRole('dialog', { name: 'Share my typical week' })).toBeVisible()
   await waitReady(page)
 }
@@ -53,25 +75,61 @@ async function previewSize(page: Page): Promise<[number, number]> {
   return page.getByTestId('share-preview').evaluate((image: HTMLImageElement) => [image.naturalWidth, image.naturalHeight])
 }
 
-// The colour of the first mosaic cell: down the column 4 px inside the mosaic's left edge (24 pt × 3), the first
-// saturated pixel, then 3 px further in. Text above it is black, white or grey; the cell glyph sits in its centre.
-async function firstCellColor(page: Page): Promise<string> {
-  return page.getByTestId('share-preview').evaluate(async (image: HTMLImageElement) => {
+type CardSource = { preview: true } | { shared: number }
+interface CardReading { width: number; height: number; background: string; cells: string[] }
+
+// Decodes the PNG (the preview's bytes, or a File handed to navigator.share) and reads the colour of each of its 168
+// mosaic cells. The geometry is the layout's (24 pt margin, 2.5 pt gaps, 21 or 28 columns, drawn at 3x); the mosaic's
+// top is the first pixel row where every column's cell is drawn and every gap between them is background.
+async function readCard(page: Page, source: CardSource): Promise<CardReading> {
+  return page.evaluate(async (from) => {
+    const blob = 'preview' in from
+      ? await (await fetch(document.querySelector<HTMLImageElement>('[data-testid="share-preview"]')!.src)).blob()
+      : (window as unknown as { __shared: File[] }).__shared[from.shared]!
+    const bitmap = await createImageBitmap(blob)
     const canvas = document.createElement('canvas')
-    canvas.width = image.naturalWidth
-    canvas.height = image.naturalHeight
+    canvas.width = bitmap.width
+    canvas.height = bitmap.height
     const context = canvas.getContext('2d')!
-    context.drawImage(image, 0, 0)
-    const x = 72 + 4
-    for (let y = 0; y < canvas.height - 4; y += 1) {
-      const [r, g, b] = context.getImageData(x, y, 1, 1).data
-      if (Math.max(r!, g!, b!) - Math.min(r!, g!, b!) > 60) {
-        const [cr, cg, cb] = context.getImageData(x, y + 3, 1, 1).data
-        return `#${[cr!, cg!, cb!].map((value) => value.toString(16).padStart(2, '0')).join('')}`
-      }
+    context.drawImage(bitmap, 0, 0)
+    const { data } = context.getImageData(0, 0, bitmap.width, bitmap.height)
+    const hex = (x: number, y: number) => {
+      const index = (Math.round(y) * bitmap.width + Math.round(x)) * 4
+      return `#${[data[index]!, data[index + 1]!, data[index + 2]!].map((value) => value.toString(16).padStart(2, '0')).join('')}`
     }
-    return 'none'
-  })
+    const columns = bitmap.width === bitmap.height ? 28 : 21
+    const scale = 3, margin = 24, gap = 2.5
+    const cell = (312 - gap * (columns - 1)) / columns
+    const cellX = (column: number) => (margin + column * (cell + gap) + cell * 0.2) * scale
+    const gapX = (column: number) => (margin + column * (cell + gap) + cell + gap / 2) * scale
+    const background = hex(4, 4)
+    let top = -1
+    for (let y = 0; y < bitmap.height && top < 0; y += 1) {
+      const cellsDrawn = Array.from({ length: columns }, (_, column) => hex(cellX(column), y) !== background).every(Boolean)
+      const gapsEmpty = Array.from({ length: columns - 1 }, (_, column) => hex(gapX(column), y) === background).every(Boolean)
+      if (cellsDrawn && gapsEmpty) top = y
+    }
+    // Four points 15 % inside each corner, the most frequent colour: a group's first cell carries its glyph in the
+    // middle, which covers at most two of them.
+    const cells = Array.from({ length: 168 }, (_, index) => {
+      const left = margin + (index % columns) * (cell + gap)
+      const rowTop = top / scale + Math.floor(index / columns) * (cell + gap)
+      const samples = [[0.15, 0.15], [0.85, 0.15], [0.15, 0.85], [0.85, 0.85]].map(([dx, dy]) => hex((left + dx! * cell) * scale, (rowTop + dy! * cell) * scale))
+      return samples.sort((a, b) => samples.filter((value) => value === b).length - samples.filter((value) => value === a).length)[0]!
+    })
+    return { width: bitmap.width, height: bitmap.height, background, cells }
+  }, source)
+}
+
+function tally(cells: string[], theme: 'light' | 'dark'): Record<string, number> {
+  const palette = paletteFor(theme)
+  const names = new Map<string, string>([[palette.free, 'free'], ...Object.entries(palette.category).map(([key, value]) => [value, key] as [string, string])])
+  const counts: Record<string, number> = {}
+  for (const cell of cells) {
+    const name = names.get(cell) ?? `unknown ${cell}`
+    counts[name] = (counts[name] ?? 0) + 1
+  }
+  return counts
 }
 
 test.describe('share my typical week', () => {
@@ -79,21 +137,26 @@ test.describe('share my typical week', () => {
     await start(page)
     await openSheet(page)
     expect(await previewSize(page)).toEqual([1080, 1920])
-    expect(await firstCellColor(page)).toBe(paletteFor('light').category.purple)
+    const story = await readCard(page, { preview: true })
+    expect(story).toMatchObject({ width: 1080, height: 1920, background: paletteFor('light').background })
+    expect(story.cells[0]).toBe(paletteFor('light').category.purple)
+    expect(tally(story.cells, 'light')).toEqual(EXPECTED_CELLS)
     const text = await page.getByTestId('share-summary-text').textContent()
-    expect(text).toBe('My typical week in Weeklid: 99 h of 168 h planned. Sleep 56 h, Work 40 h, Exercise 3 h.')
+    expect(text).toBe(SUMMARY_TEXT)
     await expect(page.getByTestId('share-preview')).toHaveAttribute('alt', text!)
 
     await page.getByRole('radio', { name: 'Square' }).click()
     await waitReady(page)
     expect(await previewSize(page)).toEqual([1080, 1080])
-    expect(await firstCellColor(page)).toBe(paletteFor('light').category.purple)
+    expect(tally((await readCard(page, { preview: true })).cells, 'light')).toEqual(EXPECTED_CELLS)
   })
 
   test('the dark appearance draws the dark tokens', async ({ page }) => {
     await start(page, {}, 'dark')
     await openSheet(page)
-    expect(await firstCellColor(page)).toBe(paletteFor('dark').category.purple)
+    const card = await readCard(page, { preview: true })
+    expect(card.background).toBe(paletteFor('dark').background)
+    expect(tally(card.cells, 'dark')).toEqual(EXPECTED_CELLS)
   })
 
   // E-1B-02: switching names off and tapping at once never sends the names-on image.
@@ -142,7 +205,7 @@ test.describe('share my typical week', () => {
     expect(verdict.namesOnDiffers).toBe(true)
     expect(verdict.equalsFresh.every(Boolean)).toBe(true)
     expect(verdict.equalsNamesOn.some(Boolean)).toBe(false)
-    expect(await page.evaluate(() => (window as unknown as { __shareText: string }).__shareText)).not.toMatch(/Night sleep|Deep work|Morning run/)
+    expect(await page.evaluate(() => (window as unknown as { __shareText: string }).__shareText)).not.toMatch(ROUTINE_TITLES)
   })
 
   // E-1B-03
@@ -220,4 +283,107 @@ test.describe('share my typical week', () => {
     await page.keyboard.press('Escape')
     await expect(dialog).toHaveCount(0)
   })
+
+  // Every width the app supports, both appearances, reduced motion: the sheet opens in place, keeps focus inside,
+  // clips nothing and keeps every control at 44 px or more.
+  test('the sheet at 320, 375, 768 and 1440 px, light and dark, with reduced motion', async ({ page, browserName }, testInfo) => {
+    onlyProject('desktop')({ browserName }, testInfo)
+    await start(page)
+    for (const theme of ['light', 'dark'] as const) {
+      await page.emulateMedia({ colorScheme: theme, reducedMotion: 'reduce' })
+      for (const width of [320, 375, 768, 1440]) {
+        await page.setViewportSize({ width, height: width < 768 ? 740 : 900 })
+        await openTab(page, 'insights')
+        await page.getByRole('button', { name: 'Share my typical week' }).click()
+        const dialog = page.getByRole('dialog', { name: 'Share my typical week' })
+        await expect(dialog).toBeVisible()
+        const state = `${theme} ${width}px`
+        // With reduced motion the panel is in place at once: no slide, no scale.
+        expect(await page.locator('.sheet-panel').evaluate((panel) => getComputedStyle(panel).transform), state).toMatch(/^(none|matrix\(1, 0, 0, 1, 0, 0\))$/)
+        await waitReady(page)
+        expect(await dialog.evaluate((panel) => panel.contains(document.activeElement)), `${state}: focus inside`).toBe(true)
+        const problems = await dialog.evaluate((panel) => {
+          const found: string[] = []
+          const limit = document.documentElement.clientWidth
+          if (document.documentElement.scrollWidth > limit + 1) found.push('page scrolls horizontally')
+          for (const element of [panel as HTMLElement, ...Array.from(panel.querySelectorAll<HTMLElement>('*'))]) {
+            if (element.getClientRects().length === 0) continue
+            const box = element.getBoundingClientRect()
+            const name = `${element.tagName.toLowerCase()}.${element.className} "${(element.textContent ?? '').trim().slice(0, 20)}"`
+            if (box.left < -0.5 || box.right > limit + 0.5) found.push(`${name} leaves the screen`)
+            if (getComputedStyle(element).overflowX !== 'visible' && element.scrollWidth > element.clientWidth + 1) found.push(`${name} clips its content`)
+          }
+          const targets = [...Array.from(panel.querySelectorAll<HTMLElement>('button')), ...Array.from(panel.querySelectorAll<HTMLElement>('label'))]
+          for (const target of targets) {
+            const box = target.getBoundingClientRect()
+            if (box.height < 43.5 || box.width < 43.5) found.push(`"${(target.textContent ?? target.getAttribute('aria-label') ?? '').trim()}" is ${box.width.toFixed(0)}×${box.height.toFixed(0)} px`)
+          }
+          return found
+        })
+        expect(problems, state).toEqual([])
+        await page.keyboard.press('Escape')
+        await expect(dialog).toHaveCount(0)
+      }
+    }
+  })
 })
+
+// Mobile web: the same flows on an Android phone (Chromium, Pixel 7) and an iPhone (WebKit, iPhone 15), emulated.
+// Each runs in the existing phone projects only, so CI adds no browser project.
+for (const { label, device, project } of [
+  { label: 'Android, Pixel 7', device: devices['Pixel 7'], project: 'phone' },
+  { label: 'iPhone 15', device: devices['iPhone 15'], project: 'webkit-phone' },
+]) {
+  test.describe(`share my typical week on mobile web (${label})`, () => {
+    // The device's screen, pixel ratio, touch and user agent; the browser comes from the project.
+    const { viewport, userAgent, deviceScaleFactor, isMobile, hasTouch } = device
+    test.use({ viewport, userAgent, deviceScaleFactor, isMobile, hasTouch })
+    test.beforeEach(({ browserName }, testInfo) => onlyProject(project)({ browserName }, testInfo))
+
+    test('the Web Share sheet receives the PNG of the week @smoke', async ({ page }) => {
+      await captureShares(page)
+      await start(page)
+      await openSheet(page, true)
+      const dialog = page.getByRole('dialog', { name: 'Share my typical week' })
+      expect(await dialog.evaluate((panel) => panel.contains(document.activeElement))).toBe(true)
+      await expect(page.getByTestId('share-primary')).toHaveText(/Share image/)
+      await page.getByTestId('share-primary').tap()
+      await expect.poll(() => page.evaluate(() => (window as unknown as { __shared: File[] }).__shared.length)).toBe(1)
+      const file = await page.evaluate(() => {
+        const [shared] = (window as unknown as { __shared: File[] }).__shared
+        const sent = window as unknown as { __shareText: string; __shareTitle: string }
+        return { name: shared!.name, type: shared!.type, size: shared!.size, text: sent.__shareText, title: sent.__shareTitle }
+      })
+      expect(file).toMatchObject({ name: FILE_NAME, type: 'image/png', text: SUMMARY_TEXT, title: 'Share my typical week' })
+      expect(file.size).toBeGreaterThan(10_000)
+      expect(file.text).not.toMatch(ROUTINE_TITLES)
+      const card = await readCard(page, { shared: 0 })
+      expect([card.width, card.height]).toEqual([1080, 1920])
+      expect(tally(card.cells, 'light')).toEqual(EXPECTED_CELLS)
+      await page.keyboard.press('Escape')
+      await expect(dialog).toHaveCount(0)
+    })
+
+    test('without file sharing the image downloads as a Weeklid PNG @smoke', async ({ page }, testInfo) => {
+      await withoutFileSharing(page)
+      await start(page, {}, 'dark')
+      await openSheet(page, true)
+      await expect(page.getByTestId('share-primary')).toHaveText(/Download image/)
+      await expect(page.getByTestId('share-download')).toHaveCount(0)
+      const [download] = await Promise.all([page.waitForEvent('download'), page.getByTestId('share-primary').tap()])
+      expect(download.suggestedFilename()).toBe(FILE_NAME)
+      const path = testInfo.outputPath(FILE_NAME)
+      await download.saveAs(path)
+      const bytes = readFileSync(path)
+      expect(bytes.subarray(0, 8).toString('hex')).toBe('89504e470d0a1a0a')
+      expect([bytes.readUInt32BE(16), bytes.readUInt32BE(20)]).toEqual([1080, 1920])
+    })
+
+    test('an empty week offers no image @smoke', async ({ page }) => {
+      await start(page, { blocks: [] })
+      await openTab(page, 'insights')
+      await expect(page.getByTestId('capacity-available')).toBeVisible()
+      await expect(page.getByRole('button', { name: 'Share my typical week' })).toHaveCount(0)
+    })
+  })
+}
