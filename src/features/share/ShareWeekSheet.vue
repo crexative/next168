@@ -224,7 +224,8 @@ const formatOptions = computed(() => [
 .names .note { padding: 0 var(--card-padding); }
 .list-card { margin: 0; padding: 0; list-style: none; background: var(--surface-2); border-radius: var(--radius-card); overflow: hidden; }
 .actions { display: flex; flex-wrap: wrap; gap: var(--space-2); }
-.actions > * { flex: 1 1 10rem; min-height: 48px; }
+/* Side by side when both labels fit on one line; on a phone each action takes its own full-width row. */
+.actions > * { flex: 1 1 12rem; min-height: 48px; }
 .notice { margin: 0; padding: var(--space-3) var(--card-padding); border-radius: var(--radius-card); overflow-wrap: break-word; }
 .notice.is-ok { background: color-mix(in srgb, var(--success) 14%, transparent); }
 .notice.is-error { background: color-mix(in srgb, var(--danger) 12%, transparent); color: var(--danger-label); }
