@@ -69,7 +69,7 @@
   "preUpgrade": {
     "title": "Kopie von vor dem Update ({date})",
     "note": "Enthält deine Kalender. Nicht enthalten ist, was du nach dem Update geändert hast.",
-    "tooLarge": "Die Datei ist {size} groß: mehr, als die App importieren kann (25 MB). Bewahre sie trotzdem auf: Darin ist dein ganzer Plan.",
+    "tooLarge": "Die Datei ist {size} groß: mehr, als die App importieren kann ({limit}). Bewahre sie trotzdem auf: Darin ist dein ganzer Plan.",
     "size": "{size}",
     "download": "Kopie herunterladen",
     "downloadRaw": "Rohdaten herunterladen"

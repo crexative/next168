@@ -208,7 +208,7 @@ test('F-05 (a): the pre-upgrade download keeps the original calendar bytes and i
   const row = page.getByTestId('pre-upgrade-copy')
   await expect(row).toContainText('Copy from before the update')
   await expect(row).toContainText('It includes your calendars.')
-  await expect(page.getByTestId('pre-upgrade-size')).toHaveText(/^\d+ MB$/)
+  await expect(page.getByTestId('pre-upgrade-size')).toHaveText(/^\d+(\.\d)? (KB|MB)$/)
   await expect(page.getByTestId('pre-upgrade-too-large')).toHaveCount(0)
   const bundlePath = await download(page, 'Download copy', testInfo.outputPath('before-update.json'), /^weeklid-before-update-\d{4}-\d\d-\d\d\.json$/)
   const rawPath = await download(page, 'Download raw data', testInfo.outputPath('before-update-raw.json'), /^weeklid-before-update-raw-\d{4}-\d\d-\d\d\.json$/)

@@ -155,14 +155,15 @@ export function formatWholeNumber(value: number, locale: string = displayLocale.
 }
 
 export function formatBytes(bytes: number, locale: string = displayLocale.value): string {
+  const kilobytes = Math.round(bytes / 1000)
   const megabytes = bytes / 1_000_000
   const format = new Intl.NumberFormat(locale, {
     style: 'unit',
-    unit: megabytes < 1 ? 'kilobyte' : 'megabyte',
-    maximumFractionDigits: megabytes >= 1 && megabytes < 10 ? 1 : 0,
+    unit: kilobytes < 1000 ? 'kilobyte' : 'megabyte',
+    maximumFractionDigits: kilobytes >= 1000 && megabytes < 10 ? 1 : 0,
   })
   // Intl spells kilobytes "kB"; the app uses Apple's "KB" while retaining localized units such as "ko".
-  return format.formatToParts(megabytes < 1 ? Math.max(1, bytes / 1000) : megabytes)
+  return format.formatToParts(kilobytes < 1000 ? Math.max(1, kilobytes) : megabytes)
     .map(part => part.type === 'unit' && part.value === 'kB' ? 'KB' : part.value).join('')
 }
 
