@@ -145,6 +145,28 @@ test('Week shows all-day events under its day headings and free events as outlin
   await expect(page.getByTestId('calendar-conflict')).toHaveCount(0)
 })
 
+// verify12: one sheet handing off to the next must leave focus in the newest one. The details of a conflicting event
+// open the routine it conflicts with; that editor closes on Escape and gives focus back to the event.
+test('the routine opened from a conflict\'s details keeps focus, closes on Escape and gives focus back to the event', async ({ page }) => {
+  await setup(page)
+  await page.getByLabel('Import .ics file', { exact: true }).setInputFiles(fixturePath)
+  await expect(page.getByTestId('calendar-conflict')).toHaveCount(1)
+  await openTab(page, 'week')
+  const conflict = page.locator('[data-testid=busy-overlay].is-conflict').filter({ visible: true }).first()
+  await conflict.scrollIntoViewIfNeeded()
+  await conflict.click()
+  const details = page.getByTestId('busy-details')
+  await expect(details).toBeVisible()
+  await details.getByRole('button', { name: /Conflicts with/ }).click()
+  const editor = page.getByRole('dialog', { name: 'Edit routine' })
+  await expect(editor).toBeVisible()
+  await page.waitForTimeout(400)
+  expect(await editor.evaluate((dialog) => dialog.contains(dialog.ownerDocument.activeElement))).toBe(true)
+  await page.keyboard.press('Escape')
+  await expect(editor).toBeHidden()
+  await expect(conflict).toBeFocused()
+})
+
 test('deleting a calendar source in another tab removes its events from the open Week without navigation', async ({ page, context }) => {
   await setup(page)
   await page.getByLabel('Import .ics file', { exact: true }).setInputFiles({ name: 'team.ics', mimeType: 'text/calendar', buffer: Buffer.from(feed('Removed team meeting')) })

@@ -212,10 +212,10 @@ function openExisting(blockId: string): void {
   editorOpen.value = true
 }
 
+// The details sheet hands off to the routine's editor; focus stays in the editor (ui/sheetStack.ts) and comes back to
+// the event when the editor closes.
 function openConflict(blockId: string): void {
   detailsOpen.value = false
-  // Remove the old modal before opening the editor so its focus restoration cannot steal editor focus.
-  details.value = null
   openExisting(blockId)
 }
 

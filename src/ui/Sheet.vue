@@ -6,6 +6,7 @@ import { prefersReducedMotion, useMediaQuery } from './useMediaQuery'
 import { registerUnsavedInput } from './unsavedGuard'
 import { releaseVelocity, rubberBand, shouldDismiss, springTo, type Sample } from './sheetMotion'
 import { isHover, watchPressEnd } from './pressEnd'
+import { closedSheet, closingSheet, droppedSheet, openSheet, reopenedSheet, type SheetEntry } from './sheetStack'
 
 // A phone sheet ends with a dismiss button within the thumb's reach (`dismissLabel`, default "Cancel");
 // `noDismiss` leaves it out for a sheet whose own actions already include one. A `footer` slot replaces it with the
@@ -35,7 +36,7 @@ const FOCUSABLE = 'a[href], button:not([disabled]), input:not([disabled]), selec
 
 let offset = 0
 let animation: { stop(): void } | undefined
-let returnFocusTo: HTMLElement | null = null
+let entry: SheetEntry | null = null
 let releaseUnsaved: (() => void) | undefined
 let pressStart: { pointerId: number; pointerY: number } | undefined
 let dragStart: { pointerY: number; offset: number } | undefined
@@ -214,23 +215,28 @@ function onGrabUp(event: PointerEvent): void {
   animation = springTo(offset, 0, applyOffset, { velocity, bounce: 0.15 })
 }
 
+// Focus and the page's `data-sheet-open` are shared by every sheet on screen (sheetStack.ts): a sheet that closes while
+// the next one opens never takes focus back from it.
 watch(() => props.open, async (open) => {
   if (open) {
     const interrupted = rendered.value
-    if (interrupted) animation?.stop()
-    else returnFocusTo = document.activeElement as HTMLElement | null
+    if (interrupted) {
+      animation?.stop()
+      if (entry) reopenedSheet(entry)
+    } else {
+      entry = openSheet({ panel: () => panel.value })
+    }
     rendered.value = true
-    document.documentElement.dataset.sheetOpen = ''
     await animateIn(interrupted ? offset : undefined)
     // The title, not the first control: opening a sheet must not light up a focus ring on its close button.
     ;(heading.value ?? panel.value)?.focus({ preventScroll: true })
   } else if (rendered.value) {
     endPress()
     dragStart = undefined
-    delete document.documentElement.dataset.sheetOpen
-    if (await animateOut()) {
-      returnFocusTo?.focus()
-      returnFocusTo = null
+    if (entry) closingSheet(entry)
+    if (await animateOut() && entry) {
+      closedSheet(entry)
+      entry = null
     }
   }
 }, { immediate: true })
@@ -245,7 +251,7 @@ onBeforeUnmount(() => {
   endPress()
   animation?.stop()
   releaseUnsaved?.()
-  delete document.documentElement.dataset.sheetOpen
+  if (entry) droppedSheet(entry)
 })
 </script>
 

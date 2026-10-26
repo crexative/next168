@@ -5,4 +5,6 @@ export interface PressOption {
   title: string
   range: string
   activate: () => void
+  // The item's own control: focus goes there before the item opens, so it comes back there when the item closes.
+  anchor: () => HTMLElement | null
 }

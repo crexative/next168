@@ -106,7 +106,11 @@ function addOther(): void {
   const { duplicate: already } = addOwnToMore(props.state, name)
   duplicate.value = already
   otherName.value = ''
-  if (!already) otherOpen.value = false
+  if (!already) {
+    otherOpen.value = false
+    // The field leaves with its focus: focus moves to the button that adds another, so it stays in the dialog.
+    void nextTick(() => root.value?.querySelector<HTMLElement>('[data-testid="more-other"]')?.focus({ preventScroll: true }))
+  }
   emit('edited')
 }
 

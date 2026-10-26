@@ -180,17 +180,17 @@ const presses = computed<Presses>(() => {
   const items: (PressItem & { option: PressOption })[] = [
     ...(props.editable ? plan.value.blocks : []).map((segment) => ({
       key: `b:${segment.key}`, top: segment.top, bottom: segment.bottom, ...across(segment),
-      option: { key: `b:${segment.key}`, kind: 'block' as const, title: segment.occurrence.title, range: timeRange(segment), activate: () => emit('select', segment.occurrence.blockId) },
+      option: { key: `b:${segment.key}`, kind: 'block' as const, title: segment.occurrence.title, range: timeRange(segment), activate: () => emit('select', segment.occurrence.blockId), anchor: () => itemControl(`b:${segment.key}`) },
     })),
     ...plan.value.busy.map((item) => ({
       key: `e:${item.key}`, top: item.top, bottom: item.bottom, ...across(item),
-      option: { key: `e:${item.key}`, kind: 'event' as const, title: item.title, range: busyRange(item), activate: () => inspect(item) },
+      option: { key: `e:${item.key}`, kind: 'event' as const, title: item.title, range: busyRange(item), activate: () => inspect(item), anchor: () => itemControl(`e:${item.key}`) },
     })),
     ...plan.value.tasks.filter(() => props.editable).map((planned) => ({
       key: `t:${planned.task.key}`, top: planned.top, bottom: planned.bottom, ...across(planned),
       ...(planned.hostKey ? { hostKey: `b:${planned.hostKey}` } : {}),
       ...(planned.outline ? { outline: true } : {}),
-      option: { key: `t:${planned.task.key}`, kind: 'task' as const, title: planned.task.title, range: taskRange(planned.task), activate: () => emit('select-task', planned.task.taskId) },
+      option: { key: `t:${planned.task.key}`, kind: 'task' as const, title: planned.task.title, range: taskRange(planned.task), activate: () => emit('select-task', planned.task.taskId), anchor: () => itemControl(`t:${planned.task.key}`) },
     })),
   ]
   const bounds = { width, height: 24 * props.hourHeight }
@@ -202,6 +202,10 @@ const presses = computed<Presses>(() => {
     shared: sharedTargets(items, areas, bounds).map((target, index) => ({ key: `shared#${index}`, box: target.box, keys: target.keys, options: target.keys.map((key) => options.get(key)!) })),
   }
 })
+
+function itemControl(key: string): HTMLElement | null {
+  return root.value?.querySelector<HTMLElement>(`[data-hit-key="${CSS.escape(key)}"]`) ?? null
+}
 
 function boxStyle(area: Box) {
   return { top: `${area.top}px`, left: `${area.left}px`, width: `${area.right - area.left}px`, height: `${area.bottom - area.top}px` }

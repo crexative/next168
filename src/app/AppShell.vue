@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { anySheetOpen } from '@/ui/sheetStack'
 import { computed, nextTick, onBeforeUnmount, onMounted, provide, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { PanelLeft } from 'lucide-vue-next'
@@ -123,9 +124,11 @@ let navigated = false
 watch(current, () => { navigated = true })
 function onViewEntered(element: Element): void {
   if (!navigated || (element as HTMLElement).dataset.view !== currentView.value?.id) return
-  // A view that already placed focus on something more specific (Today's "Saved" card after the check-in) keeps it.
+  // A view that already placed focus on something more specific (Today's "Saved" card after the check-in) keeps it,
+  // and a sheet opened meanwhile keeps it too (verify12: the heading took focus out of a review sheet).
   const active = document.activeElement
   if (active && active !== element && element.contains(active)) return
+  if (anySheetOpen()) return
   element.querySelector<HTMLElement>('h1')?.focus({ preventScroll: true })
   announce(pageTitle.value)
 }

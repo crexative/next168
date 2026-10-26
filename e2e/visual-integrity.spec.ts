@@ -1867,7 +1867,9 @@ test.describe('visual integrity guard: floating action button', () => {
   })
 
   test('a button set back under an open modal sheet is not audited', async ({ page }) => {
-    await page.setContent(`${fabStage({ fab: 'right: 32px; bottom: 132px' })}<div role="dialog" aria-modal="true" aria-label="Sheet" style="position: fixed; inset: 40px 0 0; background: #fff"></div>`)
+    await page.setContent(`${fabStage({ fab: 'right: 32px; bottom: 132px' })}<div role="dialog" aria-modal="true" aria-label="Sheet" tabindex="-1" style="position: fixed; inset: 40px 0 0; background: #fff"></div>`)
+    // Focus is in the open sheet, as the app keeps it (checkModalFocus).
+    await page.locator('[role="dialog"]').focus()
     expect(await audit(page)).toEqual([])
   })
 

@@ -143,6 +143,7 @@ Each screen opens with a large title ("Today", "Week") that collapses into the t
 
 - Toolbar, tab bar and sidebar: `background: color-mix(in srgb, var(--surface) 86%, transparent); backdrop-filter: blur(30px) saturate(120%)`; content scrolls underneath; a scroll-edge fade replaces the hard 1 px divider and appears only when content is under the bar.
 - Sheets: solid `--surface` with a dimming scrim (modal) and the page scaled to 0.96 behind on phone.
+- Sheet focus: an opened sheet focuses its title, and focus stays in the newest open sheet. When one sheet hands off to another (a press chooser opens an editor, an event's details open the routine it conflicts with), the first one finishes closing without taking focus back (`src/ui/sheetStack.ts`). Closing the last sheet returns focus to the control that opened the first one: the chosen Week item, the event, the "+" button. A page's heading never takes focus while a sheet is open. The visual integrity guard reports focus outside an open modal dialog.
 - Never glass on glass. `prefers-reduced-transparency: reduce` → solid surfaces; `prefers-contrast: more` → solid surfaces plus `--separator` borders at full opacity.
 
 ## Components
