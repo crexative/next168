@@ -55,15 +55,22 @@ function height(): number {
   return panel.value?.offsetHeight ?? 0
 }
 
+// Once unmounted a sheet does nothing more: a pending animation ends at once and every step after an await checks
+// `disposed` (a test or a page can end while a close is under way; the document may be gone by then).
+let disposed = false
+let pendingWait: { timer: ReturnType<typeof setTimeout>; resolve: () => void } | undefined
+
 function wait(ms: number): Promise<void> {
-  return new Promise((resolve) => setTimeout(resolve, ms))
+  return new Promise((resolve) => {
+    pendingWait = { timer: setTimeout(() => { pendingWait = undefined; resolve() }, ms), resolve }
+  })
 }
 
 async function animateIn(resumeFrom?: number): Promise<void> {
   const token = ++generation
   await nextTick()
   const element = panel.value
-  if (!element || token !== generation) return
+  if (disposed || !element || token !== generation) return
   shown.value = true
   if (isCentered.value || prefersReducedMotion()) {
     applyOffset(0)
@@ -86,7 +93,7 @@ async function animateOut(): Promise<boolean> {
     animation = run
     await run.finished
   }
-  if (token !== generation) return false
+  if (disposed || token !== generation) return false
   exitVelocity = 0
   rendered.value = false
   return true
@@ -228,6 +235,7 @@ watch(() => props.open, async (open) => {
     }
     rendered.value = true
     await animateIn(interrupted ? offset : undefined)
+    if (disposed) return
     // The title, not the first control: opening a sheet must not light up a focus ring on its close button.
     ;(heading.value ?? panel.value)?.focus({ preventScroll: true })
   } else if (rendered.value) {
@@ -246,12 +254,22 @@ watch(() => props.open && props.dirty, (unsaved) => {
   releaseUnsaved = unsaved ? registerUnsavedInput() : undefined
 }, { immediate: true })
 
+// Unmounted (its page went away, or a test ended), possibly mid-animation: it leaves the list of sheets now, while the
+// document still exists, and its pending close resolves without acting (animateOut sees `disposed`).
 onBeforeUnmount(() => {
+  disposed = true
+  ++generation
   stopViewport?.()
   endPress()
   animation?.stop()
+  if (pendingWait) {
+    clearTimeout(pendingWait.timer)
+    pendingWait.resolve()
+    pendingWait = undefined
+  }
   releaseUnsaved?.()
   if (entry) droppedSheet(entry)
+  entry = null
 })
 </script>
 
