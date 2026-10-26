@@ -281,7 +281,7 @@ test('F-05 (c): an over-limit plan keeps a complete download that both builds re
 
   await onDataPage(page, `${builds.origin()}/#/settings/data`)
   const tooLarge = page.getByTestId('pre-upgrade-too-large')
-  await expect(tooLarge).toContainText(/It's \d+ MB: more than the app can import \(25 MB\)/, { timeout: 60_000 })
+  await expect(tooLarge).toContainText(/It's \d+ MB: more than the app can import \(26 MB\)/, { timeout: 60_000 })
   const bundlePath = await download(page, 'Download copy', testInfo.outputPath('over-limit.json'))
   const bytes = readFileSync(bundlePath)
   expect(bytes.length).toBeGreaterThan(30 * MiB)
