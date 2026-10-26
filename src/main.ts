@@ -1,4 +1,5 @@
 import './assets/base.css'
+import './zodWithoutEval'
 
 import { createApp } from 'vue'
 import { createPinia } from 'pinia'

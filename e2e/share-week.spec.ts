@@ -83,10 +83,11 @@ interface CardReading { width: number; height: number; background: string; cells
 // top is the first pixel row where every column's cell is drawn and every gap between them is background.
 async function readCard(page: Page, source: CardSource): Promise<CardReading> {
   return page.evaluate(async (from) => {
-    const blob = 'preview' in from
-      ? await (await fetch(document.querySelector<HTMLImageElement>('[data-testid="share-preview"]')!.src)).blob()
+    // The page's policy has no blob: in connect-src, so the preview is read from its <img>, not fetched.
+    const image = 'preview' in from
+      ? document.querySelector<HTMLImageElement>('[data-testid="share-preview"]')!
       : (window as unknown as { __shared: File[] }).__shared[from.shared]!
-    const bitmap = await createImageBitmap(blob)
+    const bitmap = await createImageBitmap(image)
     const canvas = document.createElement('canvas')
     canvas.width = bitmap.width
     canvas.height = bitmap.height
@@ -184,7 +185,7 @@ test.describe('share my typical week', () => {
     // Every image sent after the switch went off equals a fresh names-off render, pixel for pixel; none is the
     // names-on image.
     const verdict = await page.evaluate(async () => {
-      const pixels = async (source: Blob) => {
+      const pixels = async (source: Blob | HTMLImageElement) => {
         const bitmap = await createImageBitmap(source)
         const canvas = new OffscreenCanvas(bitmap.width, bitmap.height)
         const context = canvas.getContext('2d')!
@@ -194,7 +195,7 @@ test.describe('share my typical week', () => {
       const same = (a: Uint8ClampedArray, b: Uint8ClampedArray) => a.length === b.length && a.every((value, index) => value === b[index])
       const shared = (window as unknown as { __shared: File[] }).__shared
       const preview = document.querySelector<HTMLImageElement>('[data-testid="share-preview"]')!
-      const fresh = await pixels(await (await fetch(preview.src)).blob())
+      const fresh = await pixels(preview)
       const withNames = await pixels(shared[0]!)
       const afterOff = await Promise.all(shared.slice(1).map(pixels))
       return { equalsFresh: afterOff.map((image) => same(image, fresh)), equalsNamesOn: afterOff.map((image) => same(image, withNames)), namesOnDiffers: !same(withNames, fresh) }
