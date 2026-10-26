@@ -68,6 +68,10 @@ jobs:
           path: ~/.cache/ms-playwright
           key: playwright-${{ runner.os }}-${{ steps.playwright.outputs.version }}
 
+      # A stalled apt mirror connection otherwise hangs the browser dependency install until the step limit.
+      - name: Bound apt network waits
+        run: echo 'Acquire::http::Timeout "20"; Acquire::https::Timeout "20"; Acquire::Retries "5";' | sudo tee /etc/apt/apt.conf.d/99-ci-timeouts
+
       - name: Install browsers
         if: steps.browsers.outputs.cache-hit != 'true'
         timeout-minutes: 15
