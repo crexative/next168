@@ -12,17 +12,17 @@ const attendeeEmail = z.email()
 export function attendeeList(text: string): string[] {
   return [...new Set(text.split(/[\s,;]+/).filter(Boolean))]
 }
-// Adds what was typed or pasted (one or several addresses) to the list; what is not an email address is handed back.
-export function addAttendees(current: string[], typed: string): { attendees: string[]; rejected: string[]; full: boolean } {
-  const attendees = [...current], rejected: string[] = []
-  let full = false
+// Adds what was typed or pasted (one or several addresses) to the list. What is not an email address (rejected)
+// and what no longer fits (overflow) is handed back, never dropped; an address already listed adds nothing.
+export function addAttendees(current: string[], typed: string): { attendees: string[]; rejected: string[]; overflow: string[] } {
+  const attendees = [...current], rejected: string[] = [], overflow: string[] = []
   for (const candidate of attendeeList(typed)) {
     if (!attendeeEmail.safeParse(candidate).success) rejected.push(candidate)
     else if (attendees.some(email => email.toLowerCase() === candidate.toLowerCase())) continue
-    else if (attendees.length >= MAX_ATTENDEES) full = true
+    else if (attendees.length >= MAX_ATTENDEES) overflow.push(candidate)
     else attendees.push(candidate)
   }
-  return { attendees, rejected, full }
+  return { attendees, rejected, overflow }
 }
 // "09:30" <-> minutes since midnight, for the form's time-of-day fields.
 export function minutesOf(time: string): number {

@@ -2,7 +2,7 @@
 import { computed, nextTick, ref, useId } from 'vue'
 import { useI18n } from 'vue-i18n'
 import Icon from '@/ui/Icon.vue'
-import { addAttendees, attendeeList } from './eventDraft'
+import { MAX_ATTENDEES, addAttendees, attendeeList } from './eventDraft'
 
 // The event's guests, kept in the draft as the same comma-separated text buildEvent reads.
 const model = defineModel<string>({ required: true })
@@ -10,15 +10,17 @@ const { t } = useI18n()
 const inputId = useId(), hintId = useId(), errorId = useId()
 const typed = ref(''), error = ref(''), input = ref<HTMLInputElement>()
 const guests = computed(() => attendeeList(model.value))
+const full = computed(() => guests.value.length >= MAX_ATTENDEES)
 
-// Adds what was typed; false (with the reason shown) when part of it is not an email address.
+// Adds what was typed. Whatever cannot be added (not an email address, or past the limit) stays in the field with
+// the reason shown, and the result is false so a save stops there instead of losing it.
 function commit(): boolean {
   if (!typed.value.trim()) { typed.value = ''; error.value = ''; return true }
   const result = addAttendees(guests.value, typed.value)
   model.value = result.attendees.join(', ')
-  typed.value = result.rejected.join(' ')
-  error.value = result.rejected.length ? 'calendars.guestInvalid' : result.full ? 'calendars.guestLimit' : ''
-  return result.rejected.length === 0
+  typed.value = [...result.rejected, ...result.overflow].join(' ')
+  error.value = result.rejected.length ? 'calendars.guestInvalid' : result.overflow.length ? 'calendars.guestLimit' : ''
+  return typed.value === ''
 }
 function onKeydown(event: KeyboardEvent): void {
   // Enter, a comma or a semicolon adds the address; Enter on an empty field still submits the form.
@@ -48,11 +50,12 @@ defineExpose({ commit })
       <input
         :id="inputId" ref="input" v-model="typed" type="text" inputmode="email" autocomplete="off" autocapitalize="off" spellcheck="false" enterkeyhint="done"
         :placeholder="t('calendars.guestPlaceholder')" :aria-invalid="error === 'calendars.guestInvalid' || undefined"
-        :aria-describedby="error ? `${errorId} ${hintId}` : hintId" data-testid="event-guest-input" @keydown="onKeydown" @blur="commit"
+        :aria-describedby="error || full ? `${errorId} ${hintId}` : hintId" data-testid="event-guest-input" @keydown="onKeydown" @blur="commit"
       >
-      <button type="button" class="guest-add-button t-subhead" data-testid="event-guest-add" @click="commit">{{ t('calendars.addGuest') }}</button>
+      <button type="button" class="guest-add-button t-subhead" data-testid="event-guest-add" :disabled="full" @click="commit">{{ t('calendars.addGuest') }}</button>
     </div>
     <p v-if="error" :id="errorId" role="status" class="calendar-error">{{ t(error) }}</p>
+    <p v-else-if="full" :id="errorId" role="status" class="t-footnote t-secondary" data-testid="event-guest-limit">{{ t('calendars.guestLimit') }}</p>
     <p :id="hintId" class="t-footnote t-secondary">{{ t('calendars.guestsHint') }}</p>
   </div>
 </template>
@@ -67,5 +70,6 @@ defineExpose({ commit })
 /* The field keeps room for its placeholder: on a narrow screen with large text, Add moves under it. */
 .guest-add { display: flex; flex-wrap: wrap; gap: var(--space-2); align-items: center; }
 .guest-add input { flex: 1 1 13em; }
+.guest-add-button:disabled { color: var(--label-3); }
 .guest-add-button { min-height: var(--tap-target); min-width: var(--tap-target); padding: 0 var(--space-2); border: 0; background: transparent; color: var(--tint-label); font-weight: 600; }
 </style>
