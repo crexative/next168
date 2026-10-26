@@ -158,8 +158,9 @@ describe('adding a task from the sheet', () => {
     expect(save().disabled).toBe(false)
     save().click()
     await store.settled()
-    expect(store.document!.tasks).toMatchObject([{ title: 'Call the bank', durationMin: 60, priority: 2 }])
+    expect(store.document!.tasks).toMatchObject([{ title: 'Call the bank', priority: 2 }])
     expect(store.document!.tasks[0]).not.toHaveProperty('categoryId')
+    expect(store.document!.tasks[0]).not.toHaveProperty('durationMin')
     // A task for any free slot keeps the suggestion for the next one.
     expect(localStorage.getItem(LAST_TASK_CATEGORY_KEY)).toBe('c-work')
   })

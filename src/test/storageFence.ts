@@ -8,8 +8,9 @@ import type * as ProposalModule from '@/repositories/BrowserProposalRepository'
 import type * as StoreModule from '@/repositories/indexedDbStore'
 import type * as CalendarStoreModule from '@/features/calendars/calendarSourceStore'
 import type * as SupportModule from '@/repositories/testSupport'
+import type * as FenceModule from '@/repositories/storageVersion'
 import type { RunExclusive } from '@/repositories/storageCommit'
-import { fixedNow, mutexRunner, testDocument } from '@/repositories/testSupport'
+import { fixedNow, mutexRunner } from '@/repositories/testSupport'
 
 // A variable specifier keeps TypeScript from resolving the pre-fence tree, which exists only once Vitest set it up.
 async function preFence<T>(path: string): Promise<T> {
@@ -42,10 +43,41 @@ export async function preFenceBuild(factory: IDBFactory, lock: RunExclusive) {
     calendarTexts: texts, now: fixedNow, newId, locale: () => 'en', timeZone: () => 'UTC',
   })
   const proposals = new BrowserProposalRepository({ store, runExclusive: lock, channel: bus.channel(), now: fixedNow, newId })
-  return { store, texts, planner, proposals }
+  // Documents in the pre-fence build's own schema (version 2).
+  return { store, texts, planner, proposals, testDocument: support.testDocument }
 }
 
 export type PreFenceBuild = Awaited<ReturnType<typeof preFenceBuild>>
+
+// The last build fenced at storage version 2 (d325df4, `@fencedV2/*`): its repositories on `factory`, behind its own
+// fence, taking the shared commit `lock` like a second tab would.
+export async function fencedV2Build(factory: IDBFactory, lock: RunExclusive) {
+  const load = <T>(path: string) => import(/* @vite-ignore */ `@fencedV2/${path}`) as Promise<T>
+  const [{ IndexedDbStore }, { IndexedDbCalendarSourceStore }, { BrowserPlannerRepository }, { BrowserProposalRepository }, fencing, support] = await Promise.all([
+    load<typeof StoreModule>('repositories/indexedDbStore'),
+    load<typeof CalendarStoreModule>('features/calendars/calendarSourceStore'),
+    load<typeof PlannerModule>('repositories/BrowserPlannerRepository'),
+    load<typeof ProposalModule>('repositories/BrowserProposalRepository'),
+    load<typeof FenceModule>('repositories/storageVersion'),
+    load<typeof SupportModule>('repositories/testSupport'),
+  ])
+  const fence = fencing.createStorageFence(factory, { lock, now: fixedNow })
+  const store = new IndexedDbStore(factory, fence)
+  const texts = new IndexedDbCalendarSourceStore(factory, fence)
+  const bus = new support.MemoryChannelBus()
+  const newId = () => `v2-${++oldIds}`
+  const planner = new BrowserPlannerRepository({
+    store, legacy: new support.MemoryStorage(), runExclusive: lock, channel: bus.channel(), events: new EventTarget(),
+    calendarTexts: texts, now: fixedNow, newId, locale: () => 'en', timeZone: () => 'UTC',
+  })
+  const proposals = new BrowserProposalRepository({ store, runExclusive: lock, channel: bus.channel(), now: fixedNow, newId })
+  return { fence, store, texts, planner, proposals, testDocument: support.testDocument, storageVersion: fencing.STORAGE_VERSION }
+}
+
+export async function fencedV2Source(path: string): Promise<string> {
+  const specifier = `@fencedV2/${path}?raw`
+  return ((await import(/* @vite-ignore */ specifier)) as { default: string }).default
+}
 
 export function ics(title: string, padding = ''): string {
   const head = `BEGIN:VCALENDAR\r\nVERSION:2.0\r\nPRODID:-//next168//fence//EN\r\nBEGIN:VEVENT\r\nUID:${title.replace(/\W/g, '')}@fence\r\n`
@@ -76,14 +108,15 @@ export const CATEGORY = { id: 'c-sentinel', name: 'SENTINEL-category', colorKey:
 // The pre-fence build seeds a plan with calendar sources, an orphan text, a backup and a pending proposal.
 export async function seedWithPreFenceBuild(old: PreFenceBuild, texts: Record<string, string> = SEED_TEXTS, sources: CalendarSource[] = SOURCES) {
   for (const [id, text] of Object.entries(texts)) await old.texts.put(id, text)
-  const first = testDocument({ revision: 1, categories: [CATEGORY], calendarSources: sources })
+  const first = old.testDocument({ revision: 1, categories: [CATEGORY], calendarSources: sources })
   expectOk(await old.planner.save(first, 0))
   const second = { ...first, revision: 2, blocks: [{ id: 'b-sentinel', categoryId: CATEGORY.id, title: 'SENTINEL-block', days: [1], start: 540, end: 600 }] }
   expectOk(await old.planner.save(second as typeof first, 1))
-  const input: ProposalInput = {
+  // A contract 1.0 input: the old builds' own contract (the types here are the current build's).
+  const input = {
     contractVersion: '1.0', workspaceId: first.workspaceId, baseRevision: 2, summary: 'SENTINEL-proposal',
     ops: [{ op: 'add_block', block: { categoryId: CATEGORY.id, title: 'Focus', days: [2], start: 540, end: 600 } }],
-  }
+  } as unknown as ProposalInput
   const proposal = await old.proposals.create(input, 'mcp')
   return { document: second, proposal }
 }

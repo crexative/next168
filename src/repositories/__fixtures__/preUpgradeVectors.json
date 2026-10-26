@@ -1,0 +1,192 @@
+[
+  {
+    "name": "no sources",
+    "kind": "portable",
+    "document": "{\"schemaVersion\":2,\"workspaceId\":\"ws-vectors\",\"revision\":0,\"updatedAt\":\"2026-10-20T08:00:00.000Z\",\"settings\":{\"locale\":\"es\",\"weekStartsOn\":1,\"timeZone\":\"America/Bogota\",\"onboardingDone\":true,\"theme\":\"system\"},\"categories\":[{\"id\":\"c-work\",\"name\":\"Trabajo\",\"colorKey\":\"blue\",\"goal\":{\"type\":\"max\",\"hoursPerWeek\":40}}],\"blocks\":[{\"id\":\"b-work\",\"categoryId\":\"c-work\",\"title\":\"Trabajo\",\"days\":[1,2,3,4,5],\"start\":540,\"end\":1020}],\"tasks\":[{\"id\":\"t-1\",\"title\":\"Informe trimestral\",\"categoryId\":\"c-work\",\"durationMin\":120,\"dueDate\":\"2026-10-30\",\"priority\":1,\"createdAt\":\"2026-10-20T08:00:00.000Z\"}],\"checkIns\":[],\"actuals\":[],\"events\":[],\"calendarSources\":[],\"appliedProposalIds\":[]}",
+    "calendars": [],
+    "portableHash": "a7e5e9f3909ab853cb7434847622cc34e95cbc89b68e63431c163c939a25a44b"
+  },
+  {
+    "name": "one source, non-zero revision",
+    "kind": "portable",
+    "document": "{\"schemaVersion\":2,\"workspaceId\":\"ws-vectors\",\"revision\":7,\"updatedAt\":\"2026-10-20T08:00:00.000Z\",\"settings\":{\"locale\":\"es\",\"weekStartsOn\":1,\"timeZone\":\"America/Bogota\",\"onboardingDone\":true,\"theme\":\"system\"},\"categories\":[{\"id\":\"c-work\",\"name\":\"Trabajo\",\"colorKey\":\"blue\",\"goal\":{\"type\":\"max\",\"hoursPerWeek\":40}}],\"blocks\":[{\"id\":\"b-work\",\"categoryId\":\"c-work\",\"title\":\"Trabajo\",\"days\":[1,2,3,4,5],\"start\":540,\"end\":1020}],\"tasks\":[{\"id\":\"t-1\",\"title\":\"Informe trimestral\",\"categoryId\":\"c-work\",\"durationMin\":120,\"dueDate\":\"2026-10-30\",\"priority\":1,\"createdAt\":\"2026-10-20T08:00:00.000Z\"}],\"checkIns\":[],\"actuals\":[],\"events\":[],\"calendarSources\":[{\"id\":\"cal-a\",\"name\":\"Equipo\",\"kind\":\"file\",\"colorKey\":\"blue\"}],\"appliedProposalIds\":[]}",
+    "calendars": [
+      [
+        "cal-a",
+        "BEGIN:VCALENDAR\r\nVERSION:2.0\r\nPRODID:-//weeklid//vectors//EN\r\nBEGIN:VEVENT\r\nUID:Equipo@vectors\r\nDTSTART:20261019T090000Z\r\nDTEND:20261019T100000Z\r\nSUMMARY:Equipo\r\nEND:VEVENT\r\nEND:VCALENDAR"
+      ]
+    ],
+    "portableHash": "b4ec9e64a28affac9b2131a3887ac81064810748c93275ff264a3eb474bc4c22"
+  },
+  {
+    "name": "three sources with non-ASCII text and an orphan text",
+    "kind": "portable",
+    "document": "{\"schemaVersion\":2,\"workspaceId\":\"ws-vectors\",\"revision\":3,\"updatedAt\":\"2026-10-20T08:00:00.000Z\",\"settings\":{\"locale\":\"es\",\"weekStartsOn\":1,\"timeZone\":\"America/Bogota\",\"onboardingDone\":true,\"theme\":\"system\"},\"categories\":[{\"id\":\"c-work\",\"name\":\"Trabajo\",\"colorKey\":\"blue\",\"goal\":{\"type\":\"max\",\"hoursPerWeek\":40}}],\"blocks\":[{\"id\":\"b-work\",\"categoryId\":\"c-work\",\"title\":\"Trabajo\",\"days\":[1,2,3,4,5],\"start\":540,\"end\":1020}],\"tasks\":[{\"id\":\"t-1\",\"title\":\"Informe trimestral\",\"categoryId\":\"c-work\",\"durationMin\":120,\"dueDate\":\"2026-10-30\",\"priority\":1,\"createdAt\":\"2026-10-20T08:00:00.000Z\"}],\"checkIns\":[],\"actuals\":[],\"events\":[],\"calendarSources\":[{\"id\":\"cal-a\",\"name\":\"Equipo\",\"kind\":\"file\",\"colorKey\":\"blue\"},{\"id\":\"cal-b\",\"name\":\"Festivos\",\"kind\":\"file\",\"colorKey\":\"blue\"},{\"id\":\"cal-c\",\"name\":\"Café 日本\",\"kind\":\"file\",\"colorKey\":\"blue\"}],\"appliedProposalIds\":[]}",
+    "calendars": [
+      [
+        "cal-a",
+        "BEGIN:VCALENDAR\r\nVERSION:2.0\r\nPRODID:-//weeklid//vectors//EN\r\nBEGIN:VEVENT\r\nUID:Equipo@vectors\r\nDTSTART:20261019T090000Z\r\nDTEND:20261019T100000Z\r\nSUMMARY:Equipo\r\nEND:VEVENT\r\nEND:VCALENDAR"
+      ],
+      [
+        "cal-b",
+        "BEGIN:VCALENDAR\r\nVERSION:2.0\r\nPRODID:-//weeklid//vectors//EN\r\nBEGIN:VEVENT\r\nUID:Festivos@vectors\r\nDTSTART:20261019T090000Z\r\nDTEND:20261019T100000Z\r\nSUMMARY:Festivos\r\nEND:VEVENT\r\nEND:VCALENDAR"
+      ],
+      [
+        "cal-c",
+        "BEGIN:VCALENDAR\r\nVERSION:2.0\r\nPRODID:-//weeklid//vectors//EN\r\nBEGIN:VEVENT\r\nUID:Reunincafand@vectors\r\nDTSTART:20261019T090000Z\r\nDTEND:20261019T100000Z\r\nSUMMARY:Reunión café ☕ 日本語 ñandú\r\nEND:VEVENT\r\nEND:VCALENDAR"
+      ],
+      [
+        "cal-orphan",
+        "BEGIN:VCALENDAR\r\nVERSION:2.0\r\nPRODID:-//weeklid//vectors//EN\r\nBEGIN:VEVENT\r\nUID:Hurfano@vectors\r\nDTSTART:20261019T090000Z\r\nDTEND:20261019T100000Z\r\nSUMMARY:Huérfano\r\nEND:VEVENT\r\nEND:VCALENDAR"
+      ]
+    ],
+    "portableHash": "8b6277a3296abdc2eb26ca8f54d07eee089e359b7d56e39fdee7aeb49bc192f5"
+  },
+  {
+    "name": "the same three sources in another order",
+    "kind": "portable",
+    "document": "{\"schemaVersion\":2,\"workspaceId\":\"ws-vectors\",\"revision\":3,\"updatedAt\":\"2026-10-20T08:00:00.000Z\",\"settings\":{\"locale\":\"es\",\"weekStartsOn\":1,\"timeZone\":\"America/Bogota\",\"onboardingDone\":true,\"theme\":\"system\"},\"categories\":[{\"id\":\"c-work\",\"name\":\"Trabajo\",\"colorKey\":\"blue\",\"goal\":{\"type\":\"max\",\"hoursPerWeek\":40}}],\"blocks\":[{\"id\":\"b-work\",\"categoryId\":\"c-work\",\"title\":\"Trabajo\",\"days\":[1,2,3,4,5],\"start\":540,\"end\":1020}],\"tasks\":[{\"id\":\"t-1\",\"title\":\"Informe trimestral\",\"categoryId\":\"c-work\",\"durationMin\":120,\"dueDate\":\"2026-10-30\",\"priority\":1,\"createdAt\":\"2026-10-20T08:00:00.000Z\"}],\"checkIns\":[],\"actuals\":[],\"events\":[],\"calendarSources\":[{\"id\":\"cal-c\",\"name\":\"Café 日本\",\"kind\":\"file\",\"colorKey\":\"blue\"},{\"id\":\"cal-a\",\"name\":\"Equipo\",\"kind\":\"file\",\"colorKey\":\"blue\"},{\"id\":\"cal-b\",\"name\":\"Festivos\",\"kind\":\"file\",\"colorKey\":\"blue\"}],\"appliedProposalIds\":[]}",
+    "calendars": [
+      [
+        "cal-a",
+        "BEGIN:VCALENDAR\r\nVERSION:2.0\r\nPRODID:-//weeklid//vectors//EN\r\nBEGIN:VEVENT\r\nUID:Equipo@vectors\r\nDTSTART:20261019T090000Z\r\nDTEND:20261019T100000Z\r\nSUMMARY:Equipo\r\nEND:VEVENT\r\nEND:VCALENDAR"
+      ],
+      [
+        "cal-b",
+        "BEGIN:VCALENDAR\r\nVERSION:2.0\r\nPRODID:-//weeklid//vectors//EN\r\nBEGIN:VEVENT\r\nUID:Festivos@vectors\r\nDTSTART:20261019T090000Z\r\nDTEND:20261019T100000Z\r\nSUMMARY:Festivos\r\nEND:VEVENT\r\nEND:VCALENDAR"
+      ],
+      [
+        "cal-c",
+        "BEGIN:VCALENDAR\r\nVERSION:2.0\r\nPRODID:-//weeklid//vectors//EN\r\nBEGIN:VEVENT\r\nUID:Reunincafand@vectors\r\nDTSTART:20261019T090000Z\r\nDTEND:20261019T100000Z\r\nSUMMARY:Reunión café ☕ 日本語 ñandú\r\nEND:VEVENT\r\nEND:VCALENDAR"
+      ],
+      [
+        "cal-orphan",
+        "BEGIN:VCALENDAR\r\nVERSION:2.0\r\nPRODID:-//weeklid//vectors//EN\r\nBEGIN:VEVENT\r\nUID:Hurfano@vectors\r\nDTSTART:20261019T090000Z\r\nDTEND:20261019T100000Z\r\nSUMMARY:Huérfano\r\nEND:VEVENT\r\nEND:VCALENDAR"
+      ]
+    ],
+    "portableHash": "b014606565b097c6d55add34f7fdf1da2d74e168341f60bd1d77563a79e16c44"
+  },
+  {
+    "name": "a missing source text",
+    "kind": "portable",
+    "document": "{\"schemaVersion\":2,\"workspaceId\":\"ws-vectors\",\"revision\":0,\"updatedAt\":\"2026-10-20T08:00:00.000Z\",\"settings\":{\"locale\":\"es\",\"weekStartsOn\":1,\"timeZone\":\"America/Bogota\",\"onboardingDone\":true,\"theme\":\"system\"},\"categories\":[{\"id\":\"c-work\",\"name\":\"Trabajo\",\"colorKey\":\"blue\",\"goal\":{\"type\":\"max\",\"hoursPerWeek\":40}}],\"blocks\":[{\"id\":\"b-work\",\"categoryId\":\"c-work\",\"title\":\"Trabajo\",\"days\":[1,2,3,4,5],\"start\":540,\"end\":1020}],\"tasks\":[{\"id\":\"t-1\",\"title\":\"Informe trimestral\",\"categoryId\":\"c-work\",\"durationMin\":120,\"dueDate\":\"2026-10-30\",\"priority\":1,\"createdAt\":\"2026-10-20T08:00:00.000Z\"}],\"checkIns\":[],\"actuals\":[],\"events\":[],\"calendarSources\":[{\"id\":\"cal-a\",\"name\":\"Equipo\",\"kind\":\"file\",\"colorKey\":\"blue\"},{\"id\":\"cal-gone\",\"name\":\"Perdido\",\"kind\":\"file\",\"colorKey\":\"blue\"}],\"appliedProposalIds\":[]}",
+    "calendars": [
+      [
+        "cal-a",
+        "BEGIN:VCALENDAR\r\nVERSION:2.0\r\nPRODID:-//weeklid//vectors//EN\r\nBEGIN:VEVENT\r\nUID:Equipo@vectors\r\nDTSTART:20261019T090000Z\r\nDTEND:20261019T100000Z\r\nSUMMARY:Equipo\r\nEND:VEVENT\r\nEND:VCALENDAR"
+      ]
+    ],
+    "portableHash": "b8e32f2b1777df1202d3fd7c769917f7752e8372d62244c4486f710dd9034a10"
+  },
+  {
+    "name": "a source id named __proto__",
+    "kind": "portable",
+    "document": "{\"schemaVersion\":2,\"workspaceId\":\"ws-vectors\",\"revision\":0,\"updatedAt\":\"2026-10-20T08:00:00.000Z\",\"settings\":{\"locale\":\"es\",\"weekStartsOn\":1,\"timeZone\":\"America/Bogota\",\"onboardingDone\":true,\"theme\":\"system\"},\"categories\":[{\"id\":\"c-work\",\"name\":\"Trabajo\",\"colorKey\":\"blue\",\"goal\":{\"type\":\"max\",\"hoursPerWeek\":40}}],\"blocks\":[{\"id\":\"b-work\",\"categoryId\":\"c-work\",\"title\":\"Trabajo\",\"days\":[1,2,3,4,5],\"start\":540,\"end\":1020}],\"tasks\":[{\"id\":\"t-1\",\"title\":\"Informe trimestral\",\"categoryId\":\"c-work\",\"durationMin\":120,\"dueDate\":\"2026-10-30\",\"priority\":1,\"createdAt\":\"2026-10-20T08:00:00.000Z\"}],\"checkIns\":[],\"actuals\":[],\"events\":[],\"calendarSources\":[{\"id\":\"__proto__\",\"name\":\"Proto\",\"kind\":\"file\",\"colorKey\":\"blue\"}],\"appliedProposalIds\":[]}",
+    "calendars": [
+      [
+        "__proto__",
+        "BEGIN:VCALENDAR\r\nVERSION:2.0\r\nPRODID:-//weeklid//vectors//EN\r\nBEGIN:VEVENT\r\nUID:Proto@vectors\r\nDTSTART:20261019T090000Z\r\nDTEND:20261019T100000Z\r\nSUMMARY:Proto\r\nEND:VEVENT\r\nEND:VCALENDAR"
+      ]
+    ],
+    "portableHash": "5a93a6b5e21ccb2756549530f35d2ca992796ff79c6b3a5211b016f3eb87f863"
+  },
+  {
+    "name": "absent document",
+    "kind": "raw",
+    "calendars": [
+      [
+        "cal-a",
+        "BEGIN:VCALENDAR\r\nVERSION:2.0\r\nPRODID:-//weeklid//vectors//EN\r\nBEGIN:VEVENT\r\nUID:Equipo@vectors\r\nDTSTART:20261019T090000Z\r\nDTEND:20261019T100000Z\r\nSUMMARY:Equipo\r\nEND:VEVENT\r\nEND:VCALENDAR"
+      ]
+    ],
+    "portableHash": null
+  },
+  {
+    "name": "non-string document",
+    "kind": "raw",
+    "document": {
+      "schemaVersion": 2,
+      "workspaceId": "ws-vectors",
+      "revision": 0,
+      "updatedAt": "2026-10-20T08:00:00.000Z",
+      "settings": {
+        "locale": "es",
+        "weekStartsOn": 1,
+        "timeZone": "America/Bogota",
+        "onboardingDone": true,
+        "theme": "system"
+      },
+      "categories": [
+        {
+          "id": "c-work",
+          "name": "Trabajo",
+          "colorKey": "blue",
+          "goal": {
+            "type": "max",
+            "hoursPerWeek": 40
+          }
+        }
+      ],
+      "blocks": [
+        {
+          "id": "b-work",
+          "categoryId": "c-work",
+          "title": "Trabajo",
+          "days": [
+            1,
+            2,
+            3,
+            4,
+            5
+          ],
+          "start": 540,
+          "end": 1020
+        }
+      ],
+      "tasks": [
+        {
+          "id": "t-1",
+          "title": "Informe trimestral",
+          "categoryId": "c-work",
+          "durationMin": 120,
+          "dueDate": "2026-10-30",
+          "priority": 1,
+          "createdAt": "2026-10-20T08:00:00.000Z"
+        }
+      ],
+      "checkIns": [],
+      "actuals": [],
+      "events": [],
+      "calendarSources": [],
+      "appliedProposalIds": []
+    },
+    "calendars": [],
+    "portableHash": null
+  },
+  {
+    "name": "corrupt document",
+    "kind": "raw",
+    "document": "{\"schemaVersion\":2,\"workspaceId\":",
+    "calendars": [],
+    "portableHash": null
+  },
+  {
+    "name": "unsupported document",
+    "kind": "raw",
+    "document": "{\"schemaVersion\":9,\"workspaceId\":\"ws-vectors\",\"revision\":0,\"updatedAt\":\"2026-10-20T08:00:00.000Z\",\"settings\":{\"locale\":\"es\",\"weekStartsOn\":1,\"timeZone\":\"America/Bogota\",\"onboardingDone\":true,\"theme\":\"system\"},\"categories\":[{\"id\":\"c-work\",\"name\":\"Trabajo\",\"colorKey\":\"blue\",\"goal\":{\"type\":\"max\",\"hoursPerWeek\":40}}],\"blocks\":[{\"id\":\"b-work\",\"categoryId\":\"c-work\",\"title\":\"Trabajo\",\"days\":[1,2,3,4,5],\"start\":540,\"end\":1020}],\"tasks\":[{\"id\":\"t-1\",\"title\":\"Informe trimestral\",\"categoryId\":\"c-work\",\"durationMin\":120,\"dueDate\":\"2026-10-30\",\"priority\":1,\"createdAt\":\"2026-10-20T08:00:00.000Z\"}],\"checkIns\":[],\"actuals\":[],\"events\":[],\"calendarSources\":[],\"appliedProposalIds\":[]}",
+    "calendars": [],
+    "portableHash": null
+  },
+  {
+    "name": "duplicate source id",
+    "kind": "raw",
+    "document": "{\"schemaVersion\":2,\"workspaceId\":\"ws-vectors\",\"revision\":0,\"updatedAt\":\"2026-10-20T08:00:00.000Z\",\"settings\":{\"locale\":\"es\",\"weekStartsOn\":1,\"timeZone\":\"America/Bogota\",\"onboardingDone\":true,\"theme\":\"system\"},\"categories\":[{\"id\":\"c-work\",\"name\":\"Trabajo\",\"colorKey\":\"blue\",\"goal\":{\"type\":\"max\",\"hoursPerWeek\":40}}],\"blocks\":[{\"id\":\"b-work\",\"categoryId\":\"c-work\",\"title\":\"Trabajo\",\"days\":[1,2,3,4,5],\"start\":540,\"end\":1020}],\"tasks\":[{\"id\":\"t-1\",\"title\":\"Informe trimestral\",\"categoryId\":\"c-work\",\"durationMin\":120,\"dueDate\":\"2026-10-30\",\"priority\":1,\"createdAt\":\"2026-10-20T08:00:00.000Z\"}],\"checkIns\":[],\"actuals\":[],\"events\":[],\"calendarSources\":[{\"id\":\"cal-a\",\"name\":\"Uno\",\"kind\":\"file\",\"colorKey\":\"blue\"},{\"id\":\"cal-a\",\"name\":\"Dos\",\"kind\":\"file\",\"colorKey\":\"blue\"}],\"appliedProposalIds\":[]}",
+    "calendars": [
+      [
+        "cal-a",
+        "BEGIN:VCALENDAR\r\nVERSION:2.0\r\nPRODID:-//weeklid//vectors//EN\r\nBEGIN:VEVENT\r\nUID:Equipo@vectors\r\nDTSTART:20261019T090000Z\r\nDTEND:20261019T100000Z\r\nSUMMARY:Equipo\r\nEND:VEVENT\r\nEND:VCALENDAR"
+      ]
+    ],
+    "portableHash": null
+  }
+]

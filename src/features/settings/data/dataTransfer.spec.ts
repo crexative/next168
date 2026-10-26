@@ -28,7 +28,7 @@ describe('export and import', () => {
     expect(result.preview.document).toEqual(document)
     expect(result.preview.counts).toMatchObject({ categories: 1, blocks: 1, tasks: 1, checkIns: 1 })
     expect(result.preview.migratedFrom).toBeUndefined()
-    expect(result.preview.sourceVersion).toBe(2)
+    expect(result.preview.sourceVersion).toBe(3)
   })
 
   it('migrates a v1 file and reports it', () => {

@@ -5,6 +5,7 @@ import { readFileSync, writeFileSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import { expect, test, type Browser, type Page } from '@playwright/test'
 import { ensurePreFenceBuild } from '../config/preFence'
+import { validateBundleV2 } from '../src/core/legacy/v2'
 import { buildExportBundle, portableHash } from '../src/core/exportBundle'
 import type { PlannerDocument } from '../src/core/model'
 import { onlyProject } from './fixtures'
@@ -129,7 +130,7 @@ test('F-04: after the new build upgrades, old tabs on the same origin are fenced
   await expect(page.getByRole('button', { name: 'Refresh', exact: true })).toBeEnabled()
   feed = ics('SENTINEL refreshed by an old tab')
   const upgraded = await dumpOrigin(page)
-  expect(upgraded.versions).toEqual({ next168: 2, 'next168-calendars': 2 })
+  expect(upgraded.versions).toEqual({ next168: 3, 'next168-calendars': 3 })
 
   // 3–4. The old tabs' next edit, calendar refresh and delete-all each fail visibly and change nothing.
   await edit.getByRole('textbox', { name: 'Rename Team feed' }).fill('SENTINEL renamed by the old tab')
@@ -239,7 +240,8 @@ test('F-05 (a): the pre-upgrade download keeps the original calendar bytes and i
 function bundleOfBytes(bytes: number): string {
   const sources = Array.from({ length: 5 }, (_, index) => ({ id: `cal-${index}`, name: `Calendar ${index}`, kind: 'file' as const, colorKey: 'blue' as const }))
   const document = planWith(sources)
-  const serialize = (texts: Record<string, string>) => JSON.stringify(buildExportBundle(document, texts, { now: () => new Date('2026-10-25T00:00:00.000Z') }), null, 2)
+  // A version-2 file, as both builds read it (the current build widens it to v3 on import).
+  const serialize = (texts: Record<string, string>) => JSON.stringify(validateBundleV2({ format: 'next168-export', bundleVersion: 1, exportedAt: '2026-10-25T00:00:00.000Z', document, calendarSourceTexts: texts }), null, 2)
   const minimal = Object.fromEntries(sources.map((source) => [source.id, ics(source.id, 'x')]))
   let remaining = bytes - Buffer.byteLength(serialize(minimal))
   const texts = Object.fromEntries(sources.map((source) => {

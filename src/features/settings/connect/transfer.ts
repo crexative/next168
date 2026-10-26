@@ -1,5 +1,6 @@
 import type { CalendarSourceStore, PlannerDocument } from '@/core/model'
 import { assistantContext, proposalJsonSchema } from '@/core/assistantContext'
+import { nextGeneration } from '@/core/documents'
 import { buildExportBundle, bundleHash, parseExportBundle } from '@/core/exportBundle'
 import { CompanionCalendarSourceStore, CompanionRepository, companionRequest } from '@/repositories/CompanionRepository'
 
@@ -13,8 +14,10 @@ export async function importCompanionBundle(text: string, repository = new Compa
   if (current.kind !== 'ok') throw Error('workspace-unreadable')
   const document = current.document
   if (document.categories.length || document.blocks.length || document.tasks.length || document.events.length || document.calendarSources.length || document.checkIns.length || document.actuals.length) throw Error('workspace-not-empty')
+  // What the companion stores (companion/src/workspace.ts importBundle): the next revision, and a replacement's generation.
   const imported = structuredClone(parsed.document)
   imported.revision = document.revision + 1
+  imported.generation = nextGeneration(document, parsed.document)
   const response = await companionRequest('/import', { method: 'POST', body: JSON.stringify({ bundle: parsed.bundle, expectedRevision: document.revision }) })
   if (!response.ok) throw Error('import-save-failed')
   const loaded = await repository.load()

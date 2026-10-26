@@ -21,7 +21,7 @@ async function setup() {
   document.categories.push({ id: 'focus', name: 'Focus', colorKey: 'blue', goal: { type: 'none', hoursPerWeek: 0 } })
   document.revision++
   await workspace.save(document, 0)
-  const input = { contractVersion: '1.0' as const, workspaceId: document.workspaceId, baseRevision: 1, summary: 'Focus time', ops: [{ op: 'add_block' as const, block: { categoryId: 'focus', title: 'Deep focus', days: [1], start: 540, end: 600 } }] }
+  const input = { contractVersion: '1.1' as const, workspaceId: document.workspaceId, baseRevision: 1, summary: 'Focus time', ops: [{ op: 'add_block' as const, block: { categoryId: 'focus', title: 'Deep focus', days: [1], start: 540, end: 600 } }] }
   return { home, workspace, document, input }
 }
 describe('serialized workspace commits', () => {
@@ -31,7 +31,7 @@ describe('serialized workspace commits', () => {
     await workspace.initialize()
     const document = await workspace.document()
     if (path === 'proposal') {
-      const proposal = await workspace.create({ contractVersion: '1.0', workspaceId: document.workspaceId, baseRevision: 0, summary: 'Read', ops: [{ op: 'add_task', task: { title: 'Read', durationMin: 15, priority: 1 } }] }, 'mcp')
+      const proposal = await workspace.create({ contractVersion: '1.1', workspaceId: document.workspaceId, baseRevision: 0, summary: 'Read', ops: [{ op: 'add_task', task: { title: 'Read', durationMin: 15, priority: 1 } }] }, 'mcp')
       await workspace.approve(proposal.id, proposal.contentHash, 0)
     }
     expect((await workspace.document()).settings.locale).toBe('und')
@@ -47,9 +47,9 @@ describe('serialized workspace commits', () => {
   it('recovers after document commit but before proposal status commit', async () => {
     const { home, workspace, input } = await setup()
     const proposal = await workspace.create(input, 'mcp')
-    const pending = await readFile(join(home, 'proposals.json'), 'utf8')
+    const pending = await readFile(join(home, 'proposals.v3.json'), 'utf8')
     await workspace.approve(proposal.id, proposal.contentHash, 1)
-    await writeFile(join(home, 'proposals.json'), pending)
+    await writeFile(join(home, 'proposals.v3.json'), pending)
     const restarted = new Workspace(home)
     expect(await restarted.approve(proposal.id, proposal.contentHash, 1)).toEqual({ kind: 'applied', revision: 2 })
     const loaded = await restarted.load()
@@ -86,11 +86,11 @@ describe('serialized workspace commits', () => {
   it('repairs the original applied revision even after an intervening content save', async () => {
     const { home, workspace, input } = await setup()
     const proposal = await workspace.create(input, 'mcp')
-    const pending = await readFile(join(home, 'proposals.json'), 'utf8')
+    const pending = await readFile(join(home, 'proposals.v3.json'), 'utf8')
     await workspace.approve(proposal.id, proposal.contentHash, 1)
     const document = await workspace.document()
     await workspace.save({ ...document, revision: 3 }, 2)
-    await writeFile(join(home, 'proposals.json'), pending)
+    await writeFile(join(home, 'proposals.v3.json'), pending)
     expect(await workspace.approve(proposal.id, proposal.contentHash, 1)).toEqual({ kind: 'applied', revision: 2 })
     expect((await workspace.document()).revision).toBe(3)
     expect((await workspace.document()).blocks).toHaveLength(1)
@@ -138,9 +138,9 @@ describe('serialized workspace commits', () => {
   it('repairs pending status when rejection finds an already committed proposal', async () => {
     const { home, workspace, input } = await setup()
     const proposal = await workspace.create(input, 'mcp')
-    const pending = await readFile(join(home, 'proposals.json'), 'utf8')
+    const pending = await readFile(join(home, 'proposals.v3.json'), 'utf8')
     await workspace.approve(proposal.id, proposal.contentHash, 1)
-    await writeFile(join(home, 'proposals.json'), pending)
+    await writeFile(join(home, 'proposals.v3.json'), pending)
     expect(await workspace.reject(proposal.id)).toEqual({ kind: 'applied', revision: 2 })
     expect(await workspace.list('pending')).toHaveLength(0)
     expect((await workspace.document()).blocks).toHaveLength(1)

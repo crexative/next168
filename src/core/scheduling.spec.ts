@@ -10,12 +10,12 @@ const scheduleStable = (input: StableScheduleInput) => scheduleOnGrid({ snapMinu
 
 function planner(blocks: PlannerDocument['blocks'], durationMin = 60): PlannerDocument {
   return {
-    schemaVersion: 2, workspaceId: 'w', revision: 1, updatedAt: '2026-10-20T08:00:00.000Z',
+    schemaVersion: 3, generation: 0, workspaceId: 'w', revision: 1, updatedAt: '2026-10-20T08:00:00.000Z',
     settings: { locale: 'en', weekStartsOn: 1, timeZone: 'UTC', onboardingDone: true, theme: 'system' },
     categories: [{ id: 'work', name: 'Work', colorKey: 'blue', goal: { type: 'none', hoursPerWeek: 0 } }],
     blocks,
     tasks: [{ id: 'report', title: 'Report', categoryId: 'work', durationMin, priority: 1, createdAt: '2026-10-20T08:00:00.000Z' }],
-    checkIns: [], actuals: [], events: [], calendarSources: [], appliedProposalIds: [],
+    checkIns: [], actuals: [], events: [], calendarSources: [], appliedProposalIds: [], appliedCaptureIds: [],
   }
 }
 const morning = [{ id: 'b', categoryId: 'work', title: 'Deep work', days: [...EVERY_DAY], start: 540, end: 780 }]
@@ -23,9 +23,12 @@ const at = (time: string) => new Date(`2026-10-21T${time}:00Z`)
 const byId = (placements: TaskPlacement[]) => new Map(placements.map((placement) => [placement.taskId, placement]))
 const start = (placements: TaskPlacement[]) => placements[0]!.chunks[0]!.start.slice(11, 16)
 
+// The placement key (what a shown placement is reused for) is the stable scheduler's own bookkeeping.
+const withoutKeys = (placements: TaskPlacement[]) => placements.map(({ key, ...placement }) => (void key, placement))
+
 describe.each([
   { name: 'scheduleTasks', schedule: scheduleTasks },
-  { name: 'scheduleStable', schedule: scheduleOnGrid },
+  { name: 'scheduleStable', schedule: (input: StableScheduleInput) => withoutKeys(scheduleOnGrid(input)) },
 ])('$name short final chunks', ({ schedule }) => {
   const place = (document: PlannerDocument) => schedule({ document, busy: [], now: at('08:00'), timeZone: 'UTC', days: 1 })
   const window = (id: string, start: number, minutes: number) => ({ ...morning[0]!, id, start, end: start + minutes })

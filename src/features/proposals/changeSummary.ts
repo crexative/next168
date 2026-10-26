@@ -52,7 +52,13 @@ export function summarizeEntity(value: unknown, context: SummaryContext): Summar
       : rangeText(dateTime(entity.start, context), dateTime(entity.end, context))
     rows.push(row('when', when))
   }
+  // A task always shows its length and its fixed start, also when it has none: a change that adds, moves or removes
+  // a fixed time (or makes the task a to-do) is visible side by side.
+  const isTask = typeof entity.priority === 'number' && typeof entity.createdAt === 'string'
   if (typeof entity.durationMin === 'number') rows.push(row('duration', t('proposals.minutes', { minutes: entity.durationMin })))
+  else if (isTask) rows.push(row('duration', t('tasks.add.untimed')))
+  if (typeof entity.at === 'number') rows.push(row('at', formatMinute(entity.at, locale)))
+  else if (isTask) rows.push(row('at', t('proposals.noFixedTime')))
   if (typeof entity.priority === 'number') rows.push(row('priority', t(`tasks.priority.${entity.priority}`)))
   if (typeof entity.dueDate === 'string') rows.push(row('due', formatDate(entity.dueDate, locale, { dateStyle: 'medium' })))
   if (typeof entity.doneAt === 'string') rows.push(row('status', t('proposals.completed')))

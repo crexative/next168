@@ -36,7 +36,7 @@ describe('loading', () => {
 
   it('opens newer schema versions as unsupported', async () => {
     const storage = new MemoryStore()
-    storage.data.set('document', JSON.stringify({ schemaVersion: 3 }))
+    storage.data.set('document', JSON.stringify({ schemaVersion: 4 }))
     const { store } = setup(storage)
     await store.load()
     expect(store.status).toBe('unsupported')
@@ -70,7 +70,7 @@ describe('a planner that was never stored', () => {
     const storage = new MemoryStore()
     const { store, proposals } = setup(storage)
     const basis = testDocument({ workspaceId: 'from-other-tab' })
-    await proposals.create({ contractVersion: '1.0', workspaceId: 'from-other-tab', baseRevision: 0, summary: 'S', ops: [{ op: 'add_category', ref: 'new-a', category: { name: 'A' } }] }, 'import', { basis })
+    await proposals.create({ contractVersion: '1.1', workspaceId: 'from-other-tab', baseRevision: 0, summary: 'S', ops: [{ op: 'add_category', ref: 'new-a', category: { name: 'A' } }] }, 'import', { basis })
     await store.load()
     expect(store.document?.workspaceId).toBe('from-other-tab')
     expect(store.stored).toBe(false)
@@ -290,5 +290,17 @@ describe('a commit with expect', () => {
     const save = vi.spyOn(planner, 'save')
     expect(await store.commit((draft) => { draft.settings.onboardingDone = true }, { expect: { storedFingerprint: 'absent' } })).toEqual({ ok: true })
     expect(save).toHaveBeenCalledTimes(1)
+  })
+})
+
+describe('a commit bound to the revision a preview was built on', () => {
+  it('is refused before its mutator runs once the planner in memory moved on', async () => {
+    const { store } = setup()
+    await store.load()
+    expect((await store.commit((draft) => { draft.settings.weekStartsOn = 0 })).ok).toBe(true)
+    const mutator = vi.fn()
+    expect(await store.commit(mutator, { expectRevision: 0 })).toEqual({ ok: false, reason: 'changed-elsewhere' })
+    expect(mutator).not.toHaveBeenCalled()
+    expect((await store.commit((draft) => { draft.settings.weekStartsOn = 1 }, { expectRevision: 1 })).ok).toBe(true)
   })
 })

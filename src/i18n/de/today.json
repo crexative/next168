@@ -56,5 +56,9 @@
   },
   "header": {
     "subtitle": "{date} · {hours} frei diese Woche"
+  },
+  "todo": {
+    "title": "Heute zu tun",
+    "add": "Für heute hinzufügen"
   }
 }

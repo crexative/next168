@@ -64,7 +64,10 @@ test('(b) a write that hits the quota blocks editing and exports the last commit
   await page.getByRole('button', { name: 'Export a copy' }).click()
   const bundle = JSON.parse(readFileSync(await (await download).path(), 'utf8'))
   expect(bundle.format).toBe('next168-export')
-  expect(bundle.document).toEqual(committed)
+  // The stored planner is still the version-2 bytes it was seeded as (nothing was committed since); the export is it,
+  // widened to schema v3 as every load reads it.
+  const widened = (committed as { schemaVersion: number }).schemaVersion === 2 ? { ...committed, schemaVersion: 3, generation: 0, appliedCaptureIds: [] } : committed
+  expect(bundle.document).toEqual(widened)
   expect(JSON.stringify(bundle.document)).not.toContain('Unsaved block')
 })
 

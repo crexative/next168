@@ -54,7 +54,8 @@
     "location": "Location",
     "attendees": "Attendees",
     "notes": "Notes",
-    "goal": "Goal"
+    "goal": "Goal",
+    "at": "Fixed time"
   },
   "goal": {
     "max": "At most {hours} h per week",
@@ -81,5 +82,19 @@
   "discardOnCancel": "If you cancel, these changes are discarded and your plan stays as it is.",
   "keepOnCancel": "If you cancel, the proposal stays pending in Proposals.",
   "duplicateCategory": "You already have a category called “{name}”. Ask for a proposal that uses it.",
-  "emptyCategory": "“{name}” will be empty; you can delete it in Settings."
+  "emptyCategory": "“{name}” will be empty; you can delete it in Settings.",
+  "history": {
+    "earlier": "From an earlier version",
+    "earlierFooter": "This proposal is from an earlier version; ask for a new one.",
+    "unreadable": "Unreadable proposal",
+    "unreadableFooter": "Weeklid cannot read this data and never applies it. You can save it as it is.",
+    "exportRaw": "Export raw data",
+    "statuses": {
+      "stale": "Can no longer be applied",
+      "applied": "Applied",
+      "rejected": "Rejected",
+      "pending": "Pending"
+    }
+  },
+  "noFixedTime": "None"
 }

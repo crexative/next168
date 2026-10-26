@@ -28,7 +28,7 @@ it('after a failed approval the sheet closes, the planner blocks editing, and re
   store.data.set('document', JSON.stringify(document))
   const repositories = createTestRepositories({ store })
   repository = repositories.proposals
-  const proposal = await repository.create({ contractVersion: '1.0', workspaceId: document.workspaceId, baseRevision: 0, summary: 'A focused hour', ops: [
+  const proposal = await repository.create({ contractVersion: '1.1', workspaceId: document.workspaceId, baseRevision: 0, summary: 'A focused hour', ops: [
     { op: 'add_block', block: { categoryId: 'focus', title: 'Focused planning', days: [1], start: 540, end: 600 } },
   ] }, 'assistant')
   const pinia = createPinia(); setActivePinia(pinia)

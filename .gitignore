@@ -36,6 +36,7 @@ e2e/artifacts/
 dev-dist/
 .pre-fence-source/
 .production-v1/
+.production-v1-source/
 
 # Local development CA, certificates and private keys
 .lan-https/

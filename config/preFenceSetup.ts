@@ -1,7 +1,9 @@
 import { fileURLToPath } from 'node:url'
-import { ensurePreFenceSource } from './preFence'
+import { ensureFencedV2Source, ensurePreFenceSource } from './preFence'
 
-// Vitest global setup: the `@old/*` modules must exist before any spec imports them.
+// Vitest global setup: the `@old/*` and `@fencedV2/*` modules must exist before any spec imports them.
 export default function setup(): void {
-  ensurePreFenceSource(fileURLToPath(new URL('..', import.meta.url)))
+  const root = fileURLToPath(new URL('..', import.meta.url))
+  ensurePreFenceSource(root)
+  ensureFencedV2Source(root)
 }

@@ -128,6 +128,7 @@
       "tasksHeader": "Tareas pendientes:",
       "eventsHeader": "Eventos del calendario esta semana (reloj de 24 horas, hora local):",
       "none": "(ninguno)",
+      "noTime": "sin tiempo",
       "more": "(+{count} más sin mostrar)",
       "answerHeader": "CÓMO RESPONDER CON CAMBIOS",
       "answerIntro": "Dentro del bloque weeklid pon un objeto JSON con esta forma (ops son los cambios):",

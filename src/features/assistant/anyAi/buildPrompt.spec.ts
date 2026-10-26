@@ -52,7 +52,7 @@ describe('what the prompt tells the AI', () => {
     for (const op of ['add_category', 'add_block', 'update_block', 'delete_block', 'add_task', 'update_task', 'complete_task', 'add_event', 'update_category_goal']) expect(text).toContain(`"op":"${op}"`)
     const example = /```weeklid\n([\s\S]*?)\n```/.exec(text)
     expect(example).not.toBeNull()
-    expect(JSON.parse(example![1]!)).toMatchObject({ contractVersion: '1.0', workspaceId: 'ws-realistic', baseRevision: 7 })
+    expect(JSON.parse(example![1]!)).toMatchObject({ contractVersion: '1.1', workspaceId: 'ws-realistic', baseRevision: 7 })
     expect(text).toContain('09:00 = 540')
   })
 

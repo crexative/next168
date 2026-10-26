@@ -1,9 +1,15 @@
-import { changeProposalSchema, proposalInputSchema, type Category, type ChangeProposal, type Clock, type PlannerDocument, type ProposalOp } from './model'
+import {
+  changeProposalSchema, CONTRACT_VERSION, proposalInputSchema,
+  type Category, type ChangeProposal, type Clock, type PlannerDocument, type ProposalOp,
+} from './model'
 import { canonicalJson, sha256, type Hasher } from './canonical'
 import { firstUnusedColorKey } from './colorKeys'
 import { nextRevision, validateDocument } from './documents'
 import { computeStats } from './stats'
-import { overlaps } from './time'
+import { localDateOf, overlaps } from './time'
+
+// Contract 1.0 is retired: a 1.0 input is refused with this reason before anything else is read from it.
+export const CONTRACT_RETIRED = 'proposal.contractRetired'
 
 export type IdGenerator = () => string
 export type ProposalApplication =
@@ -21,21 +27,37 @@ export function categoryNameKey(name: string): string {
   return name.normalize('NFC').trim().replace(/\s+/g, ' ').toLocaleLowerCase()
 }
 
-export async function canonicalContentHash(ops: ProposalOp[], hash: Hasher = sha256): Promise<string> {
-  return hash(canonicalJson(ops))
+// The 1.1 content hash binds the contract version, the effective date and the ops (in order).
+export async function canonicalContentHash(content: { effectiveDate: string; ops: ProposalOp[] }, hash: Hasher = sha256): Promise<string> {
+  return hash(canonicalJson({ contractVersion: CONTRACT_VERSION, effectiveDate: content.effectiveDate, ops: content.ops }))
 }
+
+// A contract 1.0 input (or a record of one) carries no version or the version '1.0'.
+export function isRetiredContract(input: unknown): boolean {
+  if (typeof input !== 'object' || input === null) return false
+  const version = (input as { contractVersion?: unknown }).contractVersion
+  return version === '1.0'
+}
+
 export async function buildProposal(input: unknown, document: PlannerDocument, source: ChangeProposal['source'], clock: Clock, idGen: IdGenerator, hash: Hasher = sha256): Promise<ChangeProposal> {
+  if (isRetiredContract(input)) throw new Error(CONTRACT_RETIRED)
   const parsed = proposalInputSchema.parse(input)
   if (parsed.workspaceId !== document.workspaceId) throw new Error('proposal.wrongWorkspace')
   if (parsed.baseRevision !== document.revision) throw new Error('proposal.staleRevision')
-  return changeProposalSchema.parse({ ...parsed, id: idGen(), source, status: 'pending', createdAt: clock.now().toISOString(), contentHash: await canonicalContentHash(parsed.ops, hash) })
+  const createdAt = clock.now().toISOString()
+  const effectiveDate = localDateOf(createdAt, document.settings.timeZone)
+  return changeProposalSchema.parse({
+    ...parsed, id: idGen(), source, status: 'pending', createdAt, effectiveDate, contentHash: await canonicalContentHash({ effectiveDate, ops: parsed.ops }, hash),
+  })
 }
+// Preview and approval both re-validate the stored record with the strict 1.1 schema: a tampered store cannot widen it.
 async function verifyProposal(document: PlannerDocument, raw: ChangeProposal, hash: Hasher): Promise<ChangeProposal> {
+  if (isRetiredContract(raw) || (raw as { contractVersion?: unknown }).contractVersion === undefined) throw new Error(CONTRACT_RETIRED)
   const proposal = changeProposalSchema.parse(raw)
   if (proposal.workspaceId !== document.workspaceId) throw new Error('proposal.wrongWorkspace')
   if (proposal.baseRevision !== document.revision) throw new Error('proposal.staleRevision')
   if (proposal.status !== 'pending') throw new Error('proposal.notPending')
-  if (proposal.contentHash !== await canonicalContentHash(proposal.ops, hash)) throw new Error('proposal.invalidHash')
+  if (proposal.contentHash !== await canonicalContentHash(proposal, hash)) throw new Error('proposal.invalidHash')
   return proposal
 }
 function required<T extends { id: string }>(items: T[], id: string): T {
@@ -46,8 +68,21 @@ function required<T extends { id: string }>(items: T[], id: string): T {
 // Reasons carry a detail after the first colon, as warnings do ("proposal.duplicateCategory:Sueño").
 function fail(code: string, detail?: string): never { throw new Error(detail === undefined ? code : `${code}:${detail}`) }
 
-function stage(document: PlannerDocument, ops: ProposalOp[], idGen: IdGenerator, clock: Clock) {
+// State rules (rev 4 §2.2): only an open task can be updated or completed, and a proposal names a task in at most one of
+// those ops (rev 2.1 §11.2), which settles every mixed sequence.
+function openTask(document: PlannerDocument, id: string, touched: Set<string>) {
+  const task = required(document.tasks, id)
+  if (task.doneAt !== undefined) fail('proposal.targetDone', id)
+  if (touched.has(id)) fail('proposal.taskTouchedTwice', id)
+  touched.add(id)
+  return task
+}
+
+// Applies ops to `document` in order and validates the result. It writes nothing: the callers are the proposal commit
+// (an AI's ops, after the person approves) and the person's own submissions (features/tasks/personActions.ts).
+export function stageOps(document: PlannerDocument, ops: ProposalOp[], idGen: IdGenerator, clock: Clock) {
   const changes: ProposalChange[] = []
+  const touched = new Set<string>()
   // Temporary refs of the categories this proposal creates, to their real ids; any other id passes through unchanged.
   const refs = new Map<string, string>()
   const categoryId = (value: string) => refs.get(value) ?? value
@@ -78,11 +113,13 @@ function stage(document: PlannerDocument, ops: ProposalOp[], idGen: IdGenerator,
         const task = { ...withCategory(op.task), id: idGen(), createdAt: clock.now().toISOString() }; document.tasks.push(task); after = task; break
       }
       case 'update_task': {
-        const task = required(document.tasks, op.id); before = structuredClone(task)
-        Object.assign(task, withCategory(op.patch)); after = task; break
+        const task = openTask(document, op.id, touched); before = structuredClone(task)
+        Object.assign(task, withCategory(op.patch))
+        for (const key of op.unset ?? []) delete task[key]
+        after = task; break
       }
       case 'complete_task': {
-        const task = required(document.tasks, op.id); before = structuredClone(task)
+        const task = openTask(document, op.id, touched); before = structuredClone(task)
         task.doneAt = clock.now().toISOString(); after = task; break
       }
       case 'add_event': {
@@ -106,7 +143,7 @@ export async function previewProposal(document: PlannerDocument, proposal: Chang
     let sequence = 0
     const ids = new Set([...snapshot.categories, ...snapshot.blocks, ...snapshot.tasks, ...snapshot.events].map((item) => item.id))
     const previewId = () => { let id: string; do { id = `preview-${++sequence}` } while (ids.has(id)); return id }
-    const result = stage(snapshot, verified.ops, previewId, { now: () => new Date(verified.createdAt) })
+    const result = stageOps(snapshot, verified.ops, previewId, { now: () => new Date(verified.createdAt) })
     const warnings: string[] = []
     if (result.document.blocks.some((a, index, blocks) => blocks.slice(index + 1).some((b) => overlaps(a, b)))) warnings.push('block.overlap')
     for (const category of computeStats(result.document).categories) {
@@ -117,12 +154,13 @@ export async function previewProposal(document: PlannerDocument, proposal: Chang
     return { valid: true, changes: result.changes, warnings, categories: result.document.categories, emptyCategories }
   } catch (error) { return { valid: false, changes: [], warnings: [], categories: document.categories, emptyCategories: [], reason: reason(error) } }
 }
-export async function applyProposal(document: PlannerDocument, proposal: ChangeProposal, idGen: IdGenerator, clock: Clock, hash: Hasher = sha256): Promise<ProposalApplication> {
+// The only way an AI's ops reach the planner: called by the proposal repositories once the person approves.
+export async function commitProposal(document: PlannerDocument, proposal: ChangeProposal, idGen: IdGenerator, clock: Clock, hash: Hasher = sha256): Promise<ProposalApplication> {
   if (document.appliedProposalIds.includes(proposal.id)) return { kind: 'already-applied', document }
   try {
     const snapshot = validateDocument(document)
     const verified = await verifyProposal(snapshot, proposal, hash)
-    const candidate = stage(snapshot, verified.ops, idGen, clock).document
+    const candidate = stageOps(snapshot, verified.ops, idGen, clock).document
     candidate.appliedProposalIds = [...candidate.appliedProposalIds, verified.id].slice(-200)
     const updated = nextRevision(candidate, clock)
     return { kind: 'applied', document: updated, proposal: { ...verified, status: 'applied', appliedRevision: updated.revision, decidedAt: updated.updatedAt } }

@@ -1,0 +1,43 @@
+{
+  "placeholder": "Ajouter une tâche… (ou en coller ou dicter plusieurs)",
+  "dictationHint": "Écris, colle ou dicte avec le micro du clavier.",
+  "field": {
+    "date": "Date",
+    "time": "Heure",
+    "duration": "Durée"
+  },
+  "chip": {
+    "group": "Ce que j’ai compris",
+    "edit": "Modifier {field} : {value}",
+    "remove": "Retirer « {text} » et le garder dans le titre",
+    "removed": "« {text} » revient dans le titre",
+    "tomorrow": "Demain",
+    "dayAndTime": "{day}, {time}"
+  },
+  "preview": {
+    "label": "Plusieurs tâches",
+    "title": "{count} tâche | {count} tâches",
+    "addAll": "Ajouter comme {count} tâche | Ajouter comme {count} tâches",
+    "keepOne": "Garder comme une seule tâche",
+    "keepOneTooLong": "Trop long pour une seule tâche (max. {max} caractères).",
+    "lineTooLong": "Cette ligne est trop longue (max. {max} caractères).",
+    "rowName": "Tâche {number} : {title}",
+    "rowTitle": "Titre de la tâche {number}",
+    "tooMany": "Cela fait {count} lignes et ici il en tient {max}. Ton IA peut les trier pour toi.",
+    "useAi": "Utiliser avec ton IA",
+    "discard": "Abandonner",
+    "shown": "{count} lignes : tu peux les ajouter comme tâches.",
+    "count": "{count} sélectionnées"
+  },
+  "added": "{count} tâche ajoutée | {count} tâches ajoutées",
+  "addedOne": "« {title} » ajoutée",
+  "undoRefused": "Impossible d’annuler : certaines tâches ont changé.",
+  "status": {
+    "checking": "Vérification de l’enregistrement…",
+    "unverified": "Impossible de vérifier l’enregistrement.",
+    "retry": "Réessayer",
+    "notSaved": "Rien n’a été enregistré. Touche « Ajouter » pour réessayer.",
+    "changed": "Ton plan a changé pendant que tu écrivais. Vérifie la liste et ajoute à nouveau.",
+    "invalid": "Vérifie cette tâche : quelque chose n’est pas valide."
+  }
+}

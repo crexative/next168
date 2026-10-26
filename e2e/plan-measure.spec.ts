@@ -42,10 +42,12 @@ async function storedDocument(page: Page) {
   return storedPlanner(page)
 }
 
+// Revision, generation and timestamp are one store's bookkeeping; a stored version-2 planner reads widened to v3.
 function withoutBookkeeping(document: Record<string, unknown>) {
-  const content = { ...document }
+  const content: Record<string, unknown> = document.schemaVersion === 2 ? { ...document, schemaVersion: 3, appliedCaptureIds: [] } : { ...document }
   delete content.revision
   delete content.updatedAt
+  delete content.generation
   return content
 }
 
@@ -115,7 +117,7 @@ test.describe('plan and measure', () => {
     await page.getByLabel('Task', { exact: true }).fill('Write report')
     await page.getByRole('radio', { name: '2 h' }).click()
     await page.getByRole('button', { name: 'More options' }).click()
-    await page.getByLabel('When?').selectOption('c-study')
+    await page.getByLabel('Category').selectOption('c-study')
     await page.getByRole('button', { name: 'Add task' }).click()
 
     const warning = page.getByTestId('overflow-text')
@@ -262,7 +264,7 @@ test.describe('plan and measure', () => {
     await openSettingsPage(page, 'data')
 
     await page.getByLabel('Choose a Weeklid export file').setInputFiles(exportPath)
-    await expect(page.getByTestId('import-preview')).toContainText('File schema version 2')
+    await expect(page.getByTestId('import-preview')).toContainText('File schema version 3')
     await expect(page.getByTestId('count-tasks')).toHaveText('1 task')
     await page.getByRole('button', { name: 'Replace my data' }).click()
     await expect(page.getByTestId('data-notice')).toContainText('Imported and verified')
@@ -287,7 +289,7 @@ test.describe('plan and measure', () => {
     await expect(page.getByTestId('data-notice')).toContainText('Imported and verified')
 
     const migrated = await storedDocument(page)
-    expect(migrated.schemaVersion).toBe(2)
+    expect(migrated.schemaVersion).toBe(3)
     expect(migrated.categories.map((category: { name: string }) => category.name)).toEqual(['Sleep', 'Work'])
     expect(migrated.blocks.find((block: { title: string }) => block.title === 'Deep work').days.sort()).toEqual([1, 2, 3])
   })

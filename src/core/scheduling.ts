@@ -1,4 +1,4 @@
-import type { PlacementChunk, ScheduleInput, Task, TaskPlacement } from './model'
+import { MAX_FLEX_MIN_PER_DAY, type PlacementChunk, type ScheduleInput, type Task, type TaskPlacement } from './model'
 import { subtract, taskWindows } from './schedulingWindows'
 import { addLocalDays, datedOccurrences, localDateOf, zonedInstant, type DatedOccurrence } from './time'
 
@@ -7,6 +7,8 @@ import { addLocalDays, datedOccurrences, localDateOf, zonedInstant, type DatedOc
 // - a placement that was shown before is kept while it is still valid, so a task does not slide along with the clock.
 // - a task's category is a preference, not a wall, when its deadline is at stake: when the category's blocks cannot
 //   hold it before its due date, it goes to free time (no routine block) if that does more of it before the deadline.
+// - a task with no duration is a to-do and is never placed; a fixed start (`at`) is one contiguous interval at its time,
+//   busy for every other task; a flexible task gets at most MAX_FLEX_MIN_PER_DAY minutes per local date.
 // fitTasks is the one way Today, Week, Tasks and the assistant fit tasks into free time, so a task shows the same
 // start everywhere ("12:35", never the minute the plan happened to be recalculated).
 
@@ -85,11 +87,15 @@ export function minutesBeforeDue(placement: TaskPlacement, dueEnd: number): numb
 
 const missesDeadline = (placement: TaskPlacement) => placement.late || placement.overflowMinutes > 0
 
-function withoutCategory(task: Task): Task {
-  const free = { ...task }
-  delete free.categoryId
-  return free
+// What a placement was made for: a shown placement is reused only while all of these are unchanged, so a new zone, length,
+// date, fixed start or category always fits the task again.
+export function placementKey(task: Pick<Task, 'durationMin' | 'dueDate' | 'at' | 'categoryId'>, timeZone: string): string {
+  return JSON.stringify([timeZone, task.durationMin ?? null, task.dueDate ?? null, task.at ?? null, task.categoryId ?? null])
 }
+
+type TimedTask = Task & { durationMin: number }
+const isFixed = (task: Task): task is Task & { at: number; dueDate: string } => task.at !== undefined && task.dueDate !== undefined
+
 
 export function scheduleStable(input: StableScheduleInput): TaskPlacement[] {
   const { document, busy, now, timeZone, days = 7, previous, pinned } = input
@@ -100,22 +106,59 @@ export function scheduleStable(input: StableScheduleInput): TaskPlacement[] {
   // The routine occurrences of the horizon, worked out once per call (never cached across calls: routines change).
   const dated = datedOccurrences(document, fromDate, days, timeZone)
 
-  const staticBusy: Interval[] = [...snappedBusy, ...snappedEvents].map((item) => ({ start: Date.parse(item.start), end: Date.parse(item.end) }))
+  // Local midnights of the horizon, worked out once: a flexible task's minutes are counted per local date against them.
+  const midnights = Array.from({ length: days + 1 }, (_, day) => zonedInstant(addLocalDays(fromDate, day), 0, timeZone).getTime())
+  const dayOf = (instant: number) => {
+    let day = 0
+    while (day + 1 < days && midnights[day + 1]! <= instant) day++
+    return day
+  }
+  // Minutes of these chunks on each local date of the horizon.
+  const perDate = (chunks: Interval[]) => midnights.slice(0, -1).map((midnight, day) => chunks.reduce((sum, chunk) =>
+    sum + Math.max(0, Math.min(chunk.end, midnights[day + 1]!) - Math.max(chunk.start, midnight)) / MINUTE_MS, 0))
+
+  const tasks = document.tasks.filter((task) => !task.doneAt)
+  // Fixed starts first: each is one contiguous interval at its time, outside any routine, and busy for every other task.
+  const fixed = new Map<string, TaskPlacement>()
+  for (const task of tasks) {
+    if (!isFixed(task)) continue
+    const start = zonedInstant(task.dueDate, task.at, timeZone)
+    const late = dueEndOf(task, timeZone) <= now.getTime()
+    const key = placementKey(task, timeZone)
+    if (task.durationMin === undefined) {
+      fixed.set(task.id, { taskId: task.id, chunks: [], overflowMinutes: 0, late, at: start.toISOString(), key })
+      continue
+    }
+    const end = new Date(start.getTime() + task.durationMin * MINUTE_MS)
+    fixed.set(task.id, { taskId: task.id, chunks: [{ start: start.toISOString(), end: end.toISOString() }], overflowMinutes: 0, late, fixed: true, key })
+  }
+  const fixedBusy = [...fixed.values()].flatMap((placement) => placement.chunks.map((chunk) => ({ start: Date.parse(chunk.start), end: Date.parse(snapEnd(chunk.end, snapMs)) })))
+
+  const staticBusy: Interval[] = [...[...snappedBusy, ...snappedEvents].map((item) => ({ start: Date.parse(item.start), end: Date.parse(item.end) })), ...fixedBusy]
   const occupied = [...staticBusy]
   const kept = new Map<string, TaskPlacement>()
-  const open = document.tasks.filter((task) => !task.doneAt).sort((a, b) =>
+  // A task without a duration is a to-do: never placed, so it never overflows.
+  const open = tasks.filter((task): task is TimedTask => task.durationMin !== undefined && !isFixed(task)).sort((a, b) =>
     compare(a.dueDate ?? '9999-12-31', b.dueDate ?? '9999-12-31') || a.priority - b.priority
     || (Date.parse(a.createdAt) - Date.parse(b.createdAt)) || compare(a.id, b.id))
+  // A category with no routine block in the horizon is a list: its undated tasks go to any free time (a dated task
+  // keeps the deadline fallback below).
+  const categoriesWithBlocks = new Set(dated.map((item) => item.categoryId))
+  const windowCategory = (task: Task) => (task.categoryId !== undefined && task.dueDate === undefined && !categoriesWithBlocks.has(task.categoryId) ? undefined : task.categoryId)
 
   for (const task of open) {
     const pin = pinned?.get(task.id)
     const candidate = pin ?? previous?.get(task.id)
     if (!candidate || candidate.overflowMinutes !== 0 || !candidate.chunks.length) continue
+    // A placement made for another zone, length, date or category is fitted again (placements without a key predate it).
+    const key = placementKey(task, timeZone)
+    if (candidate.key !== undefined && candidate.key !== key) continue
     const chunks = candidate.chunks.map((chunk) => ({ start: Date.parse(chunk.start), end: Date.parse(chunk.end) }))
     const minutes = chunks.reduce((sum, chunk) => sum + (chunk.end - chunk.start) / MINUTE_MS, 0)
+    if (perDate(chunks).some((total) => total > MAX_FLEX_MIN_PER_DAY)) continue
     // A placement made in free time for a deadline stays valid in free time while the task keeps both.
     const outside = candidate.outsideCategory === true && task.categoryId !== undefined && task.dueDate !== undefined
-    const windows = mergedWindows(dated, outside ? undefined : task.categoryId, fromDate, days, timeZone)
+    const windows = mergedWindows(dated, outside ? undefined : windowCategory(task), fromDate, days, timeZone)
     const stillAhead = pin
       ? chunks.every((chunk) => localDateOf(new Date(chunk.start), timeZone) === fromDate)
       : chunks.every((chunk) => chunk.end > now.getTime())
@@ -126,7 +169,7 @@ export function scheduleStable(input: StableScheduleInput): TaskPlacement[] {
     const late = dueEnd <= now.getTime() || chunks.some((chunk) => chunk.end > dueEnd)
     // A placement that misses a deadline still ahead is fitted again: the deadline may have just moved.
     if (late && dueEnd > now.getTime()) continue
-    const shown: TaskPlacement = { taskId: candidate.taskId, chunks: candidate.chunks, overflowMinutes: candidate.overflowMinutes, late }
+    const shown: TaskPlacement = { taskId: candidate.taskId, chunks: candidate.chunks, overflowMinutes: candidate.overflowMinutes, late, key }
     kept.set(task.id, outside ? { ...shown, outsideCategory: true } : shown)
     occupied.push(...chunks)
   }
@@ -155,23 +198,48 @@ export function scheduleStable(input: StableScheduleInput): TaskPlacement[] {
     return free
   }
   // Keep even short windows: they can hold a whole remaining task, including its last piece.
-  // Chunks start on the minute, take at least min(10, remaining) minutes, and are late past the due date.
-  const place = (task: Task): TaskPlacement => {
+  // Chunks start on the minute, take at least min(10, remaining) minutes, and are late past the due date. A task gets at
+  // most MAX_FLEX_MIN_PER_DAY minutes per local date: a chunk is shortened where its date's allowance ends (it runs on
+  // past midnight only while the next date has allowance too), and a date whose allowance cannot hold min(10, remaining)
+  // is skipped, so no short piece is made that is not the last one. Earliest first, never searching for a better packing.
+  const place = (task: TimedTask, categoryId: string | undefined): TaskPlacement => {
     const dueEnd = dueEndOf(task, timeZone)
     let remaining = task.durationMin
     let late = dueEnd <= now.getTime()
     const chunks: PlacementChunk[] = []
-    for (const window of freeTimeOf(task.categoryId)) {
-      const chunkStart = ceilTo(window.start, MINUTE_MS)
-      const minutes = Math.min(remaining, Math.floor((window.end - chunkStart) / MINUTE_MS))
-      if (minutes < Math.min(MIN_CHUNK_MINUTES, remaining)) continue
-      const chunkEnd = chunkStart + minutes * MINUTE_MS
-      chunks.push({ start: new Date(chunkStart).toISOString(), end: new Date(chunkEnd).toISOString() })
-      remaining -= minutes
-      if (chunkEnd > dueEnd) late = true
+    const used = midnights.slice(0, -1).map(() => 0)
+    for (const window of freeTimeOf(categoryId)) {
+      let cursor = ceilTo(window.start, MINUTE_MS)
+      while (remaining > 0 && cursor < window.end) {
+        const least = Math.min(MIN_CHUNK_MINUTES, remaining)
+        const first = dayOf(cursor)
+        if (MAX_FLEX_MIN_PER_DAY - used[first]! < least) {
+          cursor = midnights[first + 1]!
+          continue
+        }
+        const portions: [day: number, minutes: number][] = []
+        let end = cursor
+        let minutes = 0
+        for (let day = first; ; day++) {
+          const limit = Math.min(window.end, midnights[day + 1]!)
+          const take = Math.min(remaining - minutes, MAX_FLEX_MIN_PER_DAY - used[day]!, Math.floor((limit - end) / MINUTE_MS))
+          if (take > 0) {
+            portions.push([day, take])
+            minutes += take
+            end += take * MINUTE_MS
+          }
+          if (minutes === remaining || end !== midnights[day + 1] || end >= window.end || day + 1 >= days) break
+        }
+        if (minutes < least) break
+        for (const [day, taken] of portions) used[day]! += taken
+        chunks.push({ start: new Date(cursor).toISOString(), end: new Date(end).toISOString() })
+        remaining -= minutes
+        if (end > dueEnd) late = true
+        cursor = end
+      }
       if (!remaining) break
     }
-    return { taskId: task.id, chunks, overflowMinutes: remaining, late }
+    return { taskId: task.id, chunks, overflowMinutes: remaining, late, key: placementKey(task, timeZone) }
   }
   // Reserve through the next grid point before placing another task; durations themselves stay exact.
   const commit = (placement: TaskPlacement) => {
@@ -184,16 +252,16 @@ export function scheduleStable(input: StableScheduleInput): TaskPlacement[] {
   const rest: TaskPlacement[] = []
   for (const task of open) {
     if (kept.has(task.id)) continue
-    let placement = place(task)
+    let placement = place(task, windowCategory(task))
     if (task.categoryId !== undefined && task.dueDate !== undefined && missesDeadline(placement)) {
       const dueEnd = dueEndOf(task, timeZone)
-      const free = place(withoutCategory(task))
+      const free = place(task, undefined)
       if (minutesBeforeDue(free, dueEnd) > minutesBeforeDue(placement, dueEnd)) placement = { ...free, taskId: task.id, outsideCategory: true }
     }
     rest.push(placement)
     commit(placement)
   }
-  const placed = new Map([...rest, ...kept.values()].map((placement) => [placement.taskId, placement]))
+  const placed = new Map([...rest, ...kept.values(), ...fixed.values()].map((placement) => [placement.taskId, placement]))
   return document.tasks.flatMap((task) => placed.get(task.id) ?? [])
 }
 

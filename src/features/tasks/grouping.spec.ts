@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { createEmptyDocument } from '@/core/documents'
 import { scheduleTasks } from '@/core/scheduler'
+import { fitTasks } from '@/core/scheduling'
 import type { PlannerDocument, Task } from '@/core/model'
 import { planTasks, recentDone } from './grouping'
 
@@ -54,5 +55,35 @@ describe('planTasks', () => {
     const recent = recentDone([...done, task('open', 15)])
     expect(recent).toHaveLength(8)
     expect(recent[0]!.id).toBe('t9')
+  })
+})
+
+describe('planTasks sections (Vencidas · days · Más adelante · Sin fecha)', () => {
+  const todo = (id: string, extra: Partial<Task> = {}): Task => ({ id, title: id, priority: 2, createdAt: '2026-10-25T10:00:00Z', ...extra })
+
+  it('files every open task in exactly one section, so a new task is never hidden', () => {
+    const document = documentWith([
+      todo('old-bill', { dueDate: '2026-10-20' }),
+      todo('call-mum'),
+      todo('newest', { createdAt: '2026-10-26T07:00:00Z' }),
+      todo('today-todo', { dueDate: '2026-10-26' }),
+      todo('friday', { dueDate: '2026-10-30' }),
+      todo('next-month', { dueDate: '2026-11-20' }),
+      todo('dentist', { dueDate: '2026-10-27', at: 540 }),
+      task('essay', 60, { categoryId: undefined }),
+    ])
+    document.blocks = []
+    const plan = planTasks(document, fitTasks({ document, busy: [], now: NOW, timeZone: 'UTC' }), '2026-10-26')
+    expect(plan.overdue.map((item) => item.id)).toEqual(['old-bill'])
+    expect(plan.undated.map((item) => item.id)).toEqual(['newest', 'call-mum'])
+    expect(plan.later.map((item) => item.id)).toEqual(['next-month'])
+    expect(plan.days.map((day) => [day.date, day.entries.map((entry) => entry.task.id)])).toEqual([
+      ['2026-10-26', ['essay', 'today-todo']],
+      ['2026-10-27', ['dentist']],
+      ['2026-10-30', ['friday']],
+    ])
+    expect(plan.days[1]!.entries[0]!.at).toBe('2026-10-27T09:00:00.000Z')
+    const filed = [...plan.overdue, ...plan.undated, ...plan.later, ...plan.unplaced, ...plan.days.flatMap((day) => day.entries.map((entry) => entry.task))]
+    expect(filed.map((item) => item.id).sort()).toEqual(document.tasks.map((item) => item.id).sort())
   })
 })

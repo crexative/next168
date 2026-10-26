@@ -18,10 +18,10 @@ const placement: TaskPlacement = {
   ],
 }
 const document = {
-  schemaVersion: 2, workspaceId: 'w', revision: 1, updatedAt: '2026-10-20T08:00:00.000Z',
+  schemaVersion: 3, generation: 0, workspaceId: 'w', revision: 1, updatedAt: '2026-10-20T08:00:00.000Z',
   settings: { locale: 'es', weekStartsOn: 1, timeZone: ZONE, onboardingDone: true, theme: 'system' },
   categories: [{ id: 'work', name: 'Trabajo', colorKey: 'blue', goal: { type: 'none', hoursPerWeek: 0 } }],
-  blocks: [], tasks: [task], checkIns: [], actuals: [], events: [], calendarSources: [], appliedProposalIds: [],
+  blocks: [], tasks: [task], checkIns: [], actuals: [], events: [], calendarSources: [], appliedProposalIds: [], appliedCaptureIds: [],
 } satisfies PlannerDocument
 
 describe('a piece of a task is late only when it ends after the due date', () => {

@@ -45,6 +45,7 @@
       "stale": "Dein Plan hat sich geändert, nachdem du ihn für deine KI kopiert hast. Kopiere erneut und bitte sie, die Änderungen zu wiederholen.",
       "unusable": "Manche Änderungen passen nicht zu deinem aktuellen Plan, zum Beispiel ein Block, den es nicht mehr gibt. Kopiere erneut und bitte deine KI, es noch einmal zu versuchen.",
       "saveFailed": "Die Änderungen konnten nicht gespeichert werden. Versuche es noch einmal.",
+      "retired": "Diese Antwort stammt aus einer früheren Version. Bitte deine KI um einen neuen Vorschlag (kopiere den Text noch einmal).",
       "tooManyOps": "Deine KI hat {count} Änderungen geschickt, ein Vorschlag fasst höchstens {max}. Bitte sie, Tage mit derselben Routine in einer Änderung zusammenzufassen oder den Rest zu schicken, nachdem du diesen Teil freigegeben hast.",
       "duplicateCategory": "Deine KI will die Kategorie „{name}“ anlegen, aber du hast sie schon. Bitte sie, die vorhandene zu nutzen und die Änderungen erneut zu schicken."
     },

@@ -56,7 +56,7 @@ if (import.meta.env.VITE_E2E) {
     answerWithProposal: (summary: string, ops: ProposalInput['ops']) => {
       useAssistant().providers.rules.ask = async () => ({
         answer: summary,
-        proposal: { contractVersion: '1.0', workspaceId: planner.document!.workspaceId, baseRevision: planner.document!.revision, summary, ops },
+        proposal: { contractVersion: '1.1', workspaceId: planner.document!.workspaceId, baseRevision: planner.document!.revision, summary, ops },
       })
     },
   }

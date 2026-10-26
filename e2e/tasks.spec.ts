@@ -50,10 +50,12 @@ for (const theme of THEMES) {
     test.describe(`tasks (${size}, ${theme})`, () => {
       test.beforeEach(onlyProject(size))
 
+      // With a length (typed here, read by the L0 grammar) a task is placed; without one it is a to-do (O-1).
       test('Enter adds a task that fits any free slot, never inside work hours', async ({ page }) => {
         await openTasks(page, theme, size)
-        const field = page.getByPlaceholder('Añadir tarea…')
-        await field.fill('Comprar regalo para mamá')
+        const field = page.getByPlaceholder('Añadir tarea… (o pega o dicta varias)')
+        await field.fill('Comprar regalo para mamá 1 h')
+        await expect(page.getByTestId('capture-chip')).toHaveCount(1)
         await field.press('Enter')
         await expect(field).toHaveValue('')
         await expect.poll(async () => (await storedPlanner<{ tasks: { title: string; categoryId?: string }[] }>(page)).tasks.map((task) => task.title)).toContain('Comprar regalo para mamá')
@@ -65,15 +67,15 @@ for (const theme of THEMES) {
         await expect(row).not.toContainText('Trabajo')
       })
 
-      test('"¿Cuándo?" offers any free slot and the categories, never Sueño or Desplazamientos', async ({ page }) => {
+      test('"Categoría" offers any free slot and the categories, never Sueño or Desplazamientos', async ({ page }) => {
         await openTasks(page, theme, size)
-        await page.getByPlaceholder('Añadir tarea…').fill('Leer 30 páginas')
+        await page.getByPlaceholder('Añadir tarea… (o pega o dicta varias)').fill('Leer 30 páginas')
         const details = page.getByTestId('task-details')
         await details.getByRole('button', { name: 'Más opciones' }).click()
-        await expect(details.getByLabel('¿Cuándo?').locator('option')).toHaveText(['En cualquier hueco libre', 'Durante Trabajo', 'Durante Familia'])
-        await expect(details.getByLabel('¿Cuándo?')).toHaveValue('')
+        await expect(details.getByLabel('Categoría').locator('option')).toHaveText(['En cualquier hueco libre', 'Trabajo', 'Familia'])
+        await expect(details.getByLabel('Categoría')).toHaveValue('')
         await details.getByRole('radio', { name: '30 min' }).click()
-        await details.getByLabel('¿Cuándo?').selectOption('c-family')
+        await details.getByLabel('Categoría').selectOption('c-family')
         await page.getByRole('button', { name: 'Añadir tarea', exact: true }).click()
         await expect.poll(async () => (await storedPlanner<{ tasks: { title: string; categoryId?: string; durationMin: number }[] }>(page)).tasks.find((task) => task.title === 'Leer 30 páginas')).toMatchObject({ categoryId: 'c-family', durationMin: 30 })
       })
@@ -117,7 +119,7 @@ for (const theme of THEMES) {
       test('nothing is clipped with the form and its more options open', async ({ page }) => {
         await openTasks(page, theme, size)
         expect(await visualIntegrityViolations(page)).toEqual([])
-        await page.getByPlaceholder('Añadir tarea…').fill('Responder el hilo de correos')
+        await page.getByPlaceholder('Añadir tarea… (o pega o dicta varias)').fill('Responder el hilo de correos')
         await page.getByTestId('task-more').click()
         await page.waitForFunction(() => document.getAnimations().length === 0)
         expect(await visualIntegrityViolations(page)).toEqual([])
@@ -184,8 +186,9 @@ for (const theme of THEMES) {
       test('"Hoy" in the quick add puts a new task today, and the last category is only a suggestion', async ({ page }) => {
         await page.addInitScript(() => window.localStorage.setItem('next168-last-task-category', 'c-work'))
         await openOnSunday(page, theme, size, [])
-        const field = page.getByPlaceholder('Añadir tarea…')
-        await field.fill('Trotar')
+        const field = page.getByPlaceholder('Añadir tarea… (o pega o dicta varias)')
+        // An hour, so the week places it (a task with no length is a to-do).
+        await field.fill('Trotar 1 h')
         const details = page.getByTestId('task-details')
         const suggestion = details.getByRole('button', { name: 'Durante Trabajo' })
         await expect(suggestion).toHaveAttribute('aria-pressed', 'false')
@@ -220,7 +223,7 @@ for (const theme of THEMES) {
         await expect.poll(async () => (await storedPlanner<{ tasks: { dueDate?: string }[] }>(page)).tasks[0]!.dueDate).toBe('2026-10-24')
         await expect(page.getByTestId('warning-jog')).toBeVisible()
         await page.getByTestId('warning-jog').getByRole('button', { name: 'Cambiar categoría' }).click()
-        await expect(page.getByRole('dialog', { name: 'Editar tarea' }).getByLabel('¿Cuándo?')).toHaveValue('c-work')
+        await expect(page.getByRole('dialog', { name: 'Editar tarea' }).getByLabel('Categoría')).toHaveValue('c-work')
       })
     })
   }
@@ -304,7 +307,7 @@ for (const theme of THEMES) {
         await seedKey(page, V2_KEY, JSON.stringify(sundayPlanner([])))
         await page.goto('./#/tasks')
         await page.waitForFunction(() => document.getAnimations().length === 0)
-        const field = page.getByPlaceholder('Añadir tarea…')
+        const field = page.getByPlaceholder('Añadir tarea… (o pega o dicta varias)')
         await field.fill('Trotar')
         const today = page.getByTestId('task-details').getByRole('button', { name: 'Hoy', exact: true })
         await today.click()

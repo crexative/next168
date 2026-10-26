@@ -5,6 +5,7 @@ import { createMcpHandler } from '@modelcontextprotocol/server'
 import { toNodeHandler } from '@modelcontextprotocol/node'
 import { z } from 'zod'
 import { changeProposalSchema, proposalInputSchema, type PlannerDocument } from '../../src/core/model'
+import { CONTRACT_RETIRED, isRetiredContract } from '../../src/core/proposals'
 import { parseExportBundle } from '../../src/core/exportBundle'
 import { Workspace } from './workspace'
 import { atomicWrite, readOptional } from './files'
@@ -110,7 +111,9 @@ export async function startCompanion(options: Options) {
         if (typeof expected !== 'string' || !/^\d+$/.test(expected)) throw new HttpError(400, 'if-match-required')
         const payload = await jsonBody(request, 16 * 1024 * 1024)
         boundDocumentCollections(payload.document)
-        const saved = await workspace.save(payload.document as PlannerDocument, Number(expected))
+        const header = (name: string) => (typeof request.headers[name] === 'string' ? request.headers[name] as string : undefined)
+        const guard = { storedFingerprint: header('x-weeklid-fingerprint'), workspaceId: header('x-weeklid-workspace') }
+        const saved = await workspace.save(payload.document as PlannerDocument, Number(expected), guard)
         json(response, saved.kind === 'conflict' ? 409 : 200, { ...saved, warnings: [...workspace.warnings] }); return
       }
       if (url.pathname === '/api/backup' && method === 'GET') { json(response, 200, { document: await workspace.backup() ?? null }); return }
@@ -120,10 +123,12 @@ export async function startCompanion(options: Options) {
         const parsed = status ? changeProposalSchema.shape.status.parse(status) : undefined
         json(response, 200, { proposals: await workspace.list(parsed) }); return
       }
+      if (url.pathname === '/api/proposals/history' && method === 'GET') { json(response, 200, await workspace.history()); return }
       if (url.pathname === '/api/proposals' && method === 'POST') {
         const payload = await jsonBody(request)
         if (payload.input && typeof payload.input === 'object' && 'ops' in payload.input && Array.isArray(payload.input.ops) && payload.input.ops.length > 50) throw new HttpError(413, 'ops-too-large')
         const source = z.enum(['assistant', 'import']).parse(payload.source)
+        if (isRetiredContract(payload.input)) throw new HttpError(422, CONTRACT_RETIRED)
         const proposal = await workspace.create(proposalInputSchema.parse(payload.input), source)
         json(response, 201, { proposal }); return
       }

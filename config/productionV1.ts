@@ -18,8 +18,9 @@ export function productionV1Dir(root: string): string {
 }
 
 // Builds it once with its own locked dependencies (they differ from the new app's). Returns its dist.
+// NEXT168_PRODUCTION_V1_SOURCE names a copied tree for checkouts without Git (scripts/e2e-linux.sh).
 export function ensureProductionV1Build(root: string): string {
-  const dir = stageCommitTree(root, PRODUCTION_V1_COMMIT, productionV1Dir(root), 'Production v1')
+  const dir = stageCommitTree(root, PRODUCTION_V1_COMMIT, productionV1Dir(root), 'Production v1', process.env.NEXT168_PRODUCTION_V1_SOURCE)
   const dist = join(dir, 'dist')
   if (existsSync(join(dist, '.complete'))) return dist
   if (!existsSync(join(dir, 'node_modules', '.package-lock.json'))) {

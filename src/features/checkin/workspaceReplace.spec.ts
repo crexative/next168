@@ -93,16 +93,24 @@ describe('other forms after the workspace is replaced', () => {
   it('does not let a task typed in the old workspace be added to the new one', async () => {
     const category = { id: 'c-old', name: 'Old', colorKey: 'blue' as const, goal: { type: 'none' as const, hoursPerWeek: 0 } }
     const { store } = await setup(TasksView, { ...workspace('ws-a'), revision: 1, categories: [category] })
-    const title = host.querySelector<HTMLInputElement>('input[type=text], input:not([type])')!
+    const title = host.querySelector<HTMLTextAreaElement>('form.add textarea')!
     title.value = 'Stale task'
     title.dispatchEvent(new Event('input'))
     await nextTick()
     store.document = { ...workspace('ws-b'), revision: 1, categories: [{ ...category, name: 'Replaced' }] }
     host.querySelector('form')!.dispatchEvent(new Event('submit', { cancelable: true }))
-    await store.settled()
+    await flush(store)
     expect(store.document?.tasks).toEqual([])
   })
 })
+
+// The capture box binds the planner (an async fingerprint) before it commits: a few turns of the event loop pass first.
+async function flush(store: { settled(): Promise<void> }): Promise<void> {
+  for (let turn = 0; turn < 10; turn++) {
+    await new Promise((resolve) => setTimeout(resolve, 0))
+    await store.settled()
+  }
+}
 
 describe('content replaced under the same workspace id (restored backup)', () => {
   it('reloads the check-in form with the restored entry', async () => {
@@ -128,7 +136,7 @@ describe('content replaced under the same workspace id (restored backup)', () =>
   it('does not let a queued task be added to a different document with the same id and revision', async () => {
     const category = { id: 'c-old', name: 'Old', colorKey: 'blue' as const, goal: { type: 'none' as const, hoursPerWeek: 0 } }
     const { store } = await setup(TasksView, { ...workspace('ws-a'), revision: 1, categories: [category] })
-    const title = host.querySelector<HTMLInputElement>('input[type=text], input:not([type])')!
+    const title = host.querySelector<HTMLTextAreaElement>('form.add textarea')!
     title.value = 'Stale task'
     title.dispatchEvent(new Event('input'))
     await nextTick()
@@ -139,7 +147,7 @@ describe('content replaced under the same workspace id (restored backup)', () =>
     await nextTick()
     store.document = { ...workspace('ws-a'), revision: 1, updatedAt: '2026-01-01T00:00:00.000Z', categories: [{ ...category, name: 'Replaced' }] }
     host.querySelector('form')!.dispatchEvent(new Event('submit', { cancelable: true }))
-    await store.settled()
+    await flush(store)
     expect(store.document?.tasks).toEqual([])
   })
 
@@ -206,7 +214,7 @@ describe('forms bind to their own entry, confirmations to the content hash', () 
 
   it('keeps an unsaved quick-add draft when another task is completed', async () => {
     const { store } = await setup(TasksView, { ...workspace('ws-a'), revision: 1, categories: [category], tasks: [task] })
-    const title = host.querySelector<HTMLInputElement>('input[type=text], input:not([type])')!
+    const title = host.querySelector<HTMLTextAreaElement>('form.add textarea')!
     title.value = 'Unsaved draft'
     title.dispatchEvent(new Event('input'))
     await nextTick()
@@ -216,7 +224,7 @@ describe('forms bind to their own entry, confirmations to the content hash', () 
     expect(store.document?.tasks[0]?.doneAt).toBeDefined()
     expect(title.value).toBe('Unsaved draft')
     host.querySelector('form')!.dispatchEvent(new Event('submit', { cancelable: true }))
-    await store.settled()
+    await flush(store)
     expect(store.document?.tasks.map((candidate) => candidate.title)).toContain('Unsaved draft')
   })
 

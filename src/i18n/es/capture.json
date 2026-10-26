@@ -1,0 +1,43 @@
+{
+  "placeholder": "Añadir tarea… (o pega o dicta varias)",
+  "dictationHint": "Escribe, pega o dicta con el micrófono del teclado.",
+  "field": {
+    "date": "Fecha",
+    "time": "Hora",
+    "duration": "Duración"
+  },
+  "chip": {
+    "group": "Lo que entendí",
+    "edit": "Cambiar {field}: {value}",
+    "remove": "Quitar «{text}» y dejarlo en el título",
+    "removed": "«{text}» vuelve al título",
+    "tomorrow": "Mañana",
+    "dayAndTime": "{day}, {time}"
+  },
+  "preview": {
+    "label": "Varias tareas",
+    "title": "{count} tarea | {count} tareas",
+    "addAll": "Añadir como {count} tarea | Añadir como {count} tareas",
+    "keepOne": "Dejar como una tarea",
+    "keepOneTooLong": "Demasiado largo para una sola tarea (máx. {max} caracteres).",
+    "lineTooLong": "Esta línea es demasiado larga (máx. {max} caracteres).",
+    "rowName": "Tarea {number}: {title}",
+    "rowTitle": "Título de la tarea {number}",
+    "tooMany": "Son {count} líneas y aquí caben {max}. Tu IA puede ordenarlas por ti.",
+    "useAi": "Usar con tu IA",
+    "discard": "Descartar",
+    "shown": "{count} líneas: puedes añadirlas como tareas.",
+    "count": "{count} seleccionadas"
+  },
+  "added": "Añadida {count} tarea | Añadidas {count} tareas",
+  "addedOne": "Añadida «{title}»",
+  "undoRefused": "No se pudo deshacer: algunas tareas cambiaron.",
+  "status": {
+    "checking": "Comprobando si se guardó…",
+    "unverified": "No se pudo comprobar si se guardó.",
+    "retry": "Reintentar",
+    "notSaved": "No se guardó. Toca «Añadir» para intentarlo otra vez.",
+    "changed": "Tu plan cambió mientras escribías. Revisa la lista y vuelve a añadir.",
+    "invalid": "Revisa esta tarea: algo no es válido."
+  }
+}

@@ -13,14 +13,21 @@ set -euo pipefail
 
 root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$root"
-pre_fence_commit="$(sed -nE "s/^export const PRE_FENCE_COMMIT = '([0-9a-f]{40})'$/\1/p" config/preFence.ts)"
-if [[ ! "$pre_fence_commit" =~ ^[0-9a-f]{40}$ ]]; then
-  echo "Cannot read PRE_FENCE_COMMIT (expected one 40-hex constant) from config/preFence.ts" >&2
-  exit 1
-fi
-if ! git cat-file -e "${pre_fence_commit}^{commit}" 2>/dev/null; then
-  git fetch --quiet --depth=1 origin "$pre_fence_commit"
-fi
+# The container has no Git: the pinned trees the e2e builds (pre-fence, production v1) are copied in as sources.
+pinned_commit() { # <file> <constant>: prints the pinned commit, fetched when a shallow clone lacks it
+  local commit
+  commit="$(sed -nE "s/^export const $2 = '([0-9a-f]{40})'$/\1/p" "$1")"
+  if [[ ! "$commit" =~ ^[0-9a-f]{40}$ ]]; then
+    echo "Cannot read $2 (expected one 40-hex constant) from $1" >&2
+    return 1
+  fi
+  if ! git cat-file -e "${commit}^{commit}" 2>/dev/null; then
+    git fetch --quiet --depth=1 origin "$commit"
+  fi
+  printf '%s' "$commit"
+}
+pre_fence_commit="$(pinned_commit config/preFence.ts PRE_FENCE_COMMIT)"
+production_v1_commit="$(pinned_commit config/productionV1.ts PRODUCTION_V1_COMMIT)"
 version="$(node -p "require('./package-lock.json').packages['node_modules/@playwright/test'].version")"
 base_image="mcr.microsoft.com/playwright:v${version}-noble"
 image="next168-e2e-linux:v${version}"
@@ -66,6 +73,7 @@ DOCKERFILE
 container="$(docker create --init --ipc=host "${platform_args[@]}" \
   -e CI=true \
   -e NEXT168_PRE_FENCE_SOURCE=/work/.pre-fence-source \
+  -e NEXT168_PRODUCTION_V1_SOURCE=/work/.production-v1-source \
   -v "next168-e2e-linux-node-modules-$slot:/work/node_modules" \
   -v "next168-e2e-linux-companion-node-modules-$slot:/work/companion/node_modules" \
   -v "next168-e2e-linux-dist-$slot:/work/dist" \
@@ -85,10 +93,10 @@ container="$(docker create --init --ipc=host "${platform_args[@]}" \
     install companion
     npx playwright test "$@"
   ' -- "$@")"
-pre_fence_marker=''
+commit_marker=''
 trap '
   docker rm -f -v "$container" >/dev/null 2>&1 || true
-  if [[ -n "$pre_fence_marker" ]]; then rm -f "$pre_fence_marker"; fi
+  if [[ -n "$commit_marker" ]]; then rm -f "$commit_marker"; fi
 ' EXIT
 
 # Files deleted in the working tree but still tracked are skipped.
@@ -97,11 +105,14 @@ git ls-files -z --cached --others --exclude-standard --deduplicate \
   | COPYFILE_DISABLE=1 tar --no-xattrs --null -T - -cf - \
   | docker cp - "$container:/work"
 
-git archive --format=tar --prefix=.pre-fence-source/ "$pre_fence_commit" \
-  | docker cp - "$container:/work"
-pre_fence_marker="$(mktemp)"
-printf '%s\n' "$pre_fence_commit" > "$pre_fence_marker"
-docker cp "$pre_fence_marker" "$container:/work/.pre-fence-source/.commit"
+commit_marker="$(mktemp)"
+copy_pinned() { # <commit> <directory>: the tree and its .commit marker
+  git archive --format=tar --prefix="$2/" "$1" | docker cp - "$container:/work"
+  printf '%s\n' "$1" > "$commit_marker"
+  docker cp "$commit_marker" "$container:/work/$2/.commit"
+}
+copy_pinned "$pre_fence_commit" .pre-fence-source
+copy_pinned "$production_v1_commit" .production-v1-source
 
 status=0
 docker start -a "$container" || status=$?

@@ -25,7 +25,7 @@ it('shows the exact proposal without applying it, then commits only on the expli
   const plannerRepository = repositories.planner
   repository = repositories.proposals
   const event = { title: 'Holiday', allDay: true, start: '2026-10-24T00:00:00+14:00', end: '2026-10-25T00:00:00+14:00', attendees: [] }
-  const proposal = await repository.create({ contractVersion: '1.0', workspaceId: document.workspaceId, baseRevision: 0, summary: 'A focused hour', ops: [
+  const proposal = await repository.create({ contractVersion: '1.1', workspaceId: document.workspaceId, baseRevision: 0, summary: 'A focused hour', ops: [
     { op: 'add_block', block: { categoryId: 'focus', title: 'Focused planning', days: [1], start: 540, end: 600 } },
     { op: 'add_event', event },
   ] }, 'import')

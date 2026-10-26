@@ -4,8 +4,9 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import { IDBFactory, IDBObjectStore } from 'fake-indexeddb'
 import { createApp, nextTick } from 'vue'
 import { createPinia, setActivePinia } from 'pinia'
-import { buildExportBundle, parseExportBundle, portableHash } from '@/core/exportBundle'
-import type { PlannerDocument } from '@/core/model'
+import { parseExportBundle, portableDigest } from '@/core/exportBundle'
+import { validateBundleV2 } from '@/core/legacy/v2'
+import type { PlannerDocument, ProposalInput } from '@/core/model'
 import { configureCalendarServices, useCalendarStore } from '@/features/calendars/calendarStore'
 import { IndexedDbCalendarSourceStore } from '@/features/calendars/calendarSourceStore'
 import { provideCalendarSourceStore } from '@/features/settings/data/calendarSourceHook'
@@ -55,10 +56,24 @@ async function seeded(texts?: Record<string, string>) {
   return { factory, lock, old, ...seed }
 }
 
-// What the person had before the upgrade, as a portable fingerprint (texts the document references).
-async function portableBefore(document: PlannerDocument, texts: Record<string, string>): Promise<string> {
+// What the person had before the upgrade (a version-2 document), as a portable fingerprint (texts the document references).
+async function portableBefore(document: { calendarSources: { id: string }[] }, texts: Record<string, string>): Promise<string> {
   const referenced = Object.fromEntries(document.calendarSources.map((source) => [source.id, texts[source.id]!]))
-  return portableHash(buildExportBundle(document, referenced, { now: fixedNow }))
+  return portableDigest(document, referenced)
+}
+
+// The fingerprint of a downloaded pre-upgrade bundle, read as the version-2 file it is.
+async function downloadedDigest(json: string): Promise<string> {
+  const bundle = validateBundleV2(JSON.parse(json))
+  return portableDigest(bundle.document, bundle.calendarSourceTexts)
+}
+
+// A version-2 document, as the pre-fence build stored it.
+function v2Document(document: PlannerDocument): Record<string, unknown> {
+  const shape: Record<string, unknown> = { ...document, schemaVersion: 2 }
+  delete shape.generation
+  delete shape.appliedCaptureIds
+  return shape
 }
 
 async function readCopy(factory: IDBFactory): Promise<PreUpgradeCopy | undefined> {
@@ -98,9 +113,10 @@ describe('F-01: two real builds on one IndexedDB factory', () => {
       save: () => old.planner.save(next, 2),
       saveAtEpoch: () => old.planner.saveAtEpoch(next, 2, 0),
       saveGuarded: () => old.planner.saveGuarded(next, 2, {}),
-      deleteAll: () => old.planner.deleteAll(createEmptyDocument({ now: fixedNow(), locale: 'en', timeZone: 'UTC', idGen: () => 'ws-fresh' }), 2),
+      deleteAll: () => old.planner.deleteAll(old.testDocument({ workspaceId: 'ws-fresh' }), 2),
       restoreBackup: () => old.planner.restoreBackup(),
-      proposalCreate: () => old.proposals.create({ contractVersion: '1.0', workspaceId: document.workspaceId, baseRevision: 2, summary: 'x', ops: [{ op: 'delete_block', id: 'b-sentinel' }] }, 'mcp'),
+      // Contract 1.0: the pre-fence build's own contract (the types here are the current build's).
+      proposalCreate: () => old.proposals.create({ contractVersion: '1.0', workspaceId: document.workspaceId, baseRevision: 2, summary: 'x', ops: [{ op: 'delete_block', id: 'b-sentinel' }] } as unknown as ProposalInput, 'mcp'),
       proposalApprove: () => old.proposals.approve(proposal.id, proposal.contentHash, 2),
       proposalReject: () => old.proposals.reject(proposal.id),
       calendarPut: () => old.texts.put('cal-file', ics('SENTINEL-overwrite')),
@@ -236,7 +252,7 @@ describe('F-05: the complete pre-upgrade copy (slice 0: refresh, deletion and co
     expect(copy).toBeDefined()
     const files = await preUpgradeFiles(copy!)
     expect(files.bundle).toBeDefined()
-    expect(await portableHash(JSON.parse(files.bundle!.json))).toBe(expected)
+    expect(await downloadedDigest(files.bundle!.json)).toBe(expected)
     expect(copy!.portableHash).toBe(expected)
     expect(files.bundle!.tooLarge).toBe(false)
     // The raw download is the version-1 bytes of the document, the backup and the proposals, plus every text.
@@ -261,17 +277,17 @@ describe('F-05: the complete pre-upgrade copy (slice 0: refresh, deletion and co
     const files = await preUpgradeFiles((await fresh.planner.preUpgradeCopy())!)
     expect(files.bundle!.bytes).toBeGreaterThan(31_000_000)
     expect(files.bundle!.tooLarge).toBe(true)
-    expect(await portableHash(JSON.parse(files.bundle!.json))).toBe(expected)
+    expect(await downloadedDigest(files.bundle!.json)).toBe(expected)
   }, 60_000)
 
   it('flags the download as too large exactly above 25 MiB of serialized bytes', async () => {
     const sources = Array.from({ length: 5 }, (_, index) => ({ id: `cal-${index}`, name: `C${index}`, kind: 'file' as const, colorKey: 'blue' as const }))
-    const document = { ...createEmptyDocument({ now: fixedNow(), locale: 'en', timeZone: 'UTC', idGen: () => 'ws' }), calendarSources: sources }
+    const document = v2Document({ ...createEmptyDocument({ now: fixedNow(), locale: 'en', timeZone: 'UTC', idGen: () => 'ws' }), calendarSources: sources })
     async function filesOfBytes(extra: number) {
       const texts = (lengths: number[]) => Object.fromEntries(sources.map((source, index) => [source.id, 'x'.repeat(lengths[index]!)]))
       const copyOf = async (calendarSourceTexts: Record<string, string>) => {
         const copy: PreUpgradeCopy = { capturedAt: fixedNow().toISOString(), fromVersion: 1, raw: { document: JSON.stringify(document), meta: {} }, calendarSourceTexts, calendarsComplete: true, portableHash: null }
-        copy.portableHash = await portableHash(buildExportBundle(document, calendarSourceTexts, { now: () => new Date(copy.capturedAt) }))
+        copy.portableHash = await portableDigest({ calendarSources: sources, ...document }, calendarSourceTexts)
         return preUpgradeFiles(copy)
       }
       const overhead = (await copyOf(texts([0, 0, 0, 0, 0]))).bundle!.bytes
@@ -318,7 +334,7 @@ describe('F-05: calendar ids named like Object.prototype members', () => {
     if (parsed.kind !== 'ok') return
     const referenced = Object.fromEntries(ids.map((id) => [id, texts[id]!]))
     expect(entries(parsed.bundle.calendarSourceTexts)).toEqual(entries(referenced))
-    expect(await portableHash(parsed.bundle)).toBe(await portableBefore(document, texts))
+    expect(await downloadedDigest(files.bundle!.json)).toBe(await portableBefore(document, texts))
 
     // Re-import into the new build on another device: the same bytes under the same ids, verified on read-back.
     const target = newBuild(new IDBFactory(), mutexRunner())

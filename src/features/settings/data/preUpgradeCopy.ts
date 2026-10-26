@@ -1,5 +1,4 @@
-import { portableHash } from '@/core/exportBundle'
-import { preUpgradeBundle, type PreUpgradeCopy } from '@/repositories/storageVersion'
+import { preUpgradeBundle, preUpgradeDigest, type PreUpgradeCopy } from '@/repositories/storageVersion'
 import { MAX_IMPORT_BYTES } from './dataTransfer'
 
 export interface DownloadFile { fileName: string; json: string; bytes: number }
@@ -20,7 +19,7 @@ export async function preUpgradeFiles(copy: PreUpgradeCopy): Promise<PreUpgradeF
   const day = copy.capturedAt.slice(0, 10)
   const raw = file(`weeklid-before-update-raw-${day}.json`, JSON.stringify(copy, null, 2))
   const bundle = preUpgradeBundle(copy)
-  const verified = bundle !== null && copy.portableHash !== null && (await portableHash(bundle)) === copy.portableHash
+  const verified = bundle !== null && copy.portableHash !== null && (await preUpgradeDigest(bundle)) === copy.portableHash
   if (!verified) return { capturedAt: copy.capturedAt, raw }
   // The same serialization as every export, so its size is the size the import gate measures.
   const exported = file(`weeklid-before-update-${day}.json`, JSON.stringify(bundle, null, 2))

@@ -16,9 +16,10 @@ export function sentinelDocument(): PlannerDocument {
     id: `SENTINEL-BLOCK-ID-${id}`, categoryId, title, notes: `SENTINEL-BLOCK-NOTE-${id}`, days, start, end,
   })
   return {
-    schemaVersion: 2,
+    schemaVersion: 3,
     workspaceId: 'SENTINEL-WORKSPACE',
     revision: 7,
+    generation: 0,
     updatedAt: '2026-10-21T10:15:00.000Z',
     settings: { locale: 'en', weekStartsOn: 1, timeZone: 'UTC', onboardingDone: true, theme: 'system' },
     categories: [
@@ -43,11 +44,12 @@ export function sentinelDocument(): PlannerDocument {
     }],
     calendarSources: [{ id: 'SENTINEL-SOURCE-ID', name: 'SENTINEL-SOURCE-NAME', kind: 'url', url: 'https://sentinel.example.invalid/cal.ics', colorKey: 'teal' }],
     appliedProposalIds: ['SENTINEL-PROPOSAL'],
+    appliedCaptureIds: [],
   }
 }
 
 export function plannedDocument(categories: Category[], blocks: TimeBlock[]): PlannerDocument {
-  return { ...sentinelDocument(), categories, blocks, tasks: [], checkIns: [], actuals: [], events: [], calendarSources: [], appliedProposalIds: [] }
+  return { ...sentinelDocument(), categories, blocks, tasks: [], checkIns: [], actuals: [], events: [], calendarSources: [], appliedProposalIds: [], appliedCaptureIds: [] }
 }
 
 const plainCategory = (id: string, name: string, colorKey: Category['colorKey'] = 'blue', extra: Partial<Category> = {}): Category => ({

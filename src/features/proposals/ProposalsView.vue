@@ -1,7 +1,9 @@
 <script setup lang="ts">
 import { onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
-import type { ChangeProposal } from '@/core/model'
+import type { ChangeProposal, ProposalHistory } from '@/core/model'
+import Button from '@/ui/Button.vue'
+import { saveFile } from '@/features/settings/data/preUpgradeCopy'
 import { usePlannerStore } from '@/stores/plannerStore'
 import { companionWarnings } from '@/repositories/CompanionRepository'
 import BackButton from '@/features/settings/BackButton.vue'
@@ -16,12 +18,31 @@ const { t } = useI18n()
 const planner = usePlannerStore()
 const repository = getProposalRepository()
 const proposals = ref<ChangeProposal[]>([])
+// Contract 1.0 history and quarantined records: shown, never executed (quarantined ones only as escaped text).
+const earlier = ref<ProposalHistory['legacy']>([])
+const unreadable = ref<string[]>([])
 const message = ref('')
+const RAW_PREVIEW = 160
 let timer: ReturnType<typeof setInterval> | undefined
 async function refresh() {
   if (document.visibilityState === 'hidden') return
-  try { proposals.value = await repository.list('pending'); pendingCount.value = proposals.value.length }
-  catch { message.value = t('proposals.loadError') }
+  try {
+    const history = await repository.history()
+    proposals.value = history.proposals.filter((proposal) => proposal.status === 'pending')
+    pendingCount.value = proposals.value.length
+    earlier.value = history.legacy
+    unreadable.value = history.quarantine
+  } catch { message.value = t('proposals.loadError') }
+}
+
+// The quarantined records exactly as stored, only on this explicit request.
+function exportRaw(): void {
+  const json = JSON.stringify({ format: 'weeklid-unreadable-proposals', records: unreadable.value }, null, 2)
+  saveFile({ fileName: `weeklid-unreadable-proposals-${new Date().toISOString().slice(0, 10)}.json`, json, bytes: new Blob([json]).size })
+}
+
+function rawPreview(raw: string): string {
+  return raw.length > RAW_PREVIEW ? `${raw.slice(0, RAW_PREVIEW - 1)}…` : raw
 }
 watch(lastDecision, (decision) => {
   if (!decision) return
@@ -42,6 +63,13 @@ onBeforeUnmount(() => clearInterval(timer))
       <ListRow v-for="proposal in proposals" :key="proposal.id" :title="proposal.summary || t('proposals.untitled')" :subtitle="t('proposals.from', { source: proposal.clientName || t(`proposals.sources.${proposal.source}`) })" interactive @click="openProposalReview(proposal)" />
       <ListRow v-if="proposals.length === 0" :title="t('proposals.empty')" />
     </ListGroup>
+    <ListGroup v-if="earlier.length" :header="t('proposals.history.earlier')" :footer="t('proposals.history.earlierFooter')" data-testid="earlier-proposals">
+      <ListRow v-for="proposal in earlier" :key="proposal.id" :title="proposal.summary || t('proposals.untitled')" :subtitle="t(`proposals.history.statuses.${proposal.status}`)" />
+    </ListGroup>
+    <ListGroup v-if="unreadable.length" :header="t('proposals.history.unreadable')" :footer="t('proposals.history.unreadableFooter')" data-testid="unreadable-proposals">
+      <ListRow v-for="(raw, index) in unreadable" :key="index" :title="t('proposals.history.unreadable')" :subtitle="rawPreview(raw)" />
+    </ListGroup>
+    <Button v-if="unreadable.length" variant="tinted" data-testid="export-unreadable" @click="exportRaw">{{ t('proposals.history.exportRaw') }}</Button>
     <ListGroup v-if="planner.document?.blocks.length" :header="t('proposals.currentBlocks')" data-testid="applied-blocks">
       <ListRow v-for="block in planner.document.blocks" :key="block.id" :title="block.title" />
     </ListGroup>

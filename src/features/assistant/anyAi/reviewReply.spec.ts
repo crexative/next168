@@ -5,7 +5,7 @@ import { realisticWeek } from './fixtures'
 import { reviewReply } from './reviewReply'
 
 const proposal = (overrides: Record<string, unknown> = {}) => ({
-  contractVersion: '1.0', workspaceId: 'ws-realistic', baseRevision: 7, summary: 'Move the gym to Thursday',
+  contractVersion: '1.1', workspaceId: 'ws-realistic', baseRevision: 7, summary: 'Move the gym to Thursday',
   ops: [{ op: 'update_block', id: 'b-gym', patch: { days: [4] } }], ...overrides,
 })
 const reply = (value: unknown) => `Here you go.\n\n\`\`\`next168\n${JSON.stringify(value)}\n\`\`\`\n`

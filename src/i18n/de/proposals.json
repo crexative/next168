@@ -54,7 +54,8 @@
     "location": "Ort",
     "attendees": "Teilnehmende",
     "notes": "Notizen",
-    "goal": "Ziel"
+    "goal": "Ziel",
+    "at": "Feste Uhrzeit"
   },
   "goal": {
     "max": "Höchstens {hours} Std. pro Woche",
@@ -81,5 +82,19 @@
   "discardOnCancel": "Wenn du abbrichst, werden diese Änderungen verworfen und dein Plan bleibt, wie er ist.",
   "keepOnCancel": "Wenn du abbrichst, bleibt der Vorschlag unter Vorschläge offen.",
   "duplicateCategory": "Du hast schon eine Kategorie namens „{name}“. Fordere einen Vorschlag an, der sie nutzt.",
-  "emptyCategory": "„{name}“ bleibt leer; du kannst sie in den Einstellungen löschen."
+  "emptyCategory": "„{name}“ bleibt leer; du kannst sie in den Einstellungen löschen.",
+  "history": {
+    "earlier": "Aus einer früheren Version",
+    "earlierFooter": "Dieser Vorschlag stammt aus einer früheren Version; bitte um einen neuen.",
+    "unreadable": "Unlesbarer Vorschlag",
+    "unreadableFooter": "Weeklid kann diese Daten nicht lesen und wendet sie nie an. Du kannst sie unverändert sichern.",
+    "exportRaw": "Rohdaten exportieren",
+    "statuses": {
+      "stale": "Nicht mehr anwendbar",
+      "applied": "Angewendet",
+      "rejected": "Abgelehnt",
+      "pending": "Offen"
+    }
+  },
+  "noFixedTime": "Keine"
 }

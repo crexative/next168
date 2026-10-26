@@ -54,7 +54,8 @@
     "location": "Lieu",
     "attendees": "Participants",
     "notes": "Notes",
-    "goal": "Objectif"
+    "goal": "Objectif",
+    "at": "Heure fixe"
   },
   "goal": {
     "max": "Au plus {hours} h par semaine",
@@ -81,5 +82,19 @@
   "discardOnCancel": "Si tu annules, ces changements sont abandonnés et ton plan reste tel quel.",
   "keepOnCancel": "Si tu annules, la proposition reste en attente dans Propositions.",
   "duplicateCategory": "Tu as déjà une catégorie appelée « {name} ». Demande une proposition qui l’utilise.",
-  "emptyCategory": "« {name} » restera vide ; tu peux la supprimer dans Réglages."
+  "emptyCategory": "« {name} » restera vide ; tu peux la supprimer dans Réglages.",
+  "history": {
+    "earlier": "D’une version précédente",
+    "earlierFooter": "Cette proposition vient d’une version précédente ; demandes-en une nouvelle.",
+    "unreadable": "Proposition illisible",
+    "unreadableFooter": "Weeklid ne peut pas lire ces données et ne les applique jamais. Tu peux les enregistrer telles quelles.",
+    "exportRaw": "Exporter les données brutes",
+    "statuses": {
+      "stale": "Ne peut plus être appliquée",
+      "applied": "Appliquée",
+      "rejected": "Refusée",
+      "pending": "En attente"
+    }
+  },
+  "noFixedTime": "Aucune"
 }

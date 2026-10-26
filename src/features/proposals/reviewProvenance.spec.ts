@@ -53,7 +53,7 @@ afterEach(async () => {
 })
 
 const input = (summary: string): ProposalInput => ({
-  contractVersion: '1.0', workspaceId: planner.document!.workspaceId, baseRevision: planner.document!.revision, summary,
+  contractVersion: '1.1', workspaceId: planner.document!.workspaceId, baseRevision: planner.document!.revision, summary,
   ops: [{ op: 'add_block', block: { categoryId: 'focus', title: 'Focus', days: [1], start: 540, end: 600 } }],
 })
 

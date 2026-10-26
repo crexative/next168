@@ -1,11 +1,11 @@
 // @vitest-environment node
 import { describe, expect, it } from 'vitest'
 import { createHash } from 'node:crypto'
-import { applyProposal, buildProposal, canonicalContentHash, previewProposal } from '../proposals'
+import { commitProposal, buildProposal, canonicalContentHash, previewProposal } from '../proposals'
 import type { ProposalInput, ProposalOp } from '../model'
 import { clock, document } from './fixtures'
 const hash = (text: string) => createHash('sha256').update(text).digest('hex')
-const input = (ops: ProposalOp[]): ProposalInput => ({ contractVersion: '1.0', workspaceId: 'workspace', baseRevision: 0, summary: 'Adjust plan', ops })
+const input = (ops: ProposalOp[]): ProposalInput => ({ contractVersion: '1.1', workspaceId: 'workspace', baseRevision: 0, summary: 'Adjust plan', ops })
 const add: ProposalOp = { op: 'add_block', block: { categoryId: 'work', title: 'Focus', days: [1], start: 540, end: 600 } }
 const idGen = () => { let i = 0; return () => `id-${++i}` }
 
@@ -13,15 +13,16 @@ describe('proposal hashes and binding', () => {
   it('hashes canonical keys independently of insertion order using SHA-256', async () => {
     const ops = [{ op: 'delete_block', id: 'x' }] as ProposalOp[]
     const reversed = [{ id: 'x', op: 'delete_block' }] as ProposalOp[]
-    expect(await canonicalContentHash(ops, hash)).toBe(hash('[{"id":"x","op":"delete_block"}]'))
-    expect(await canonicalContentHash(ops)).toBe(await canonicalContentHash(reversed, hash))
-    expect(await canonicalContentHash([{ op: 'delete_block', id: 'y' }])).not.toBe(await canonicalContentHash(ops))
+    const effectiveDate = '2026-10-24'
+    expect(await canonicalContentHash({ effectiveDate, ops }, hash)).toBe(hash('{"contractVersion":"1.1","effectiveDate":"2026-10-24","ops":[{"id":"x","op":"delete_block"}]}'))
+    expect(await canonicalContentHash({ effectiveDate, ops })).toBe(await canonicalContentHash({ effectiveDate, ops: reversed }, hash))
+    expect(await canonicalContentHash({ effectiveDate, ops: [{ op: 'delete_block', id: 'y' }] })).not.toBe(await canonicalContentHash({ effectiveDate, ops }))
   })
   it('validates model input, workspace and revision before building', async () => {
     const doc = document()
     const request = input([add])
     const proposal = await buildProposal(request, doc, 'mcp', clock, () => 'proposal', hash)
-    expect(proposal).toMatchObject({ id: 'proposal', workspaceId: doc.workspaceId, baseRevision: 0, source: 'mcp', createdAt: clock.now().toISOString(), contentHash: await canonicalContentHash(request.ops, hash), status: 'pending' })
+    expect(proposal).toMatchObject({ id: 'proposal', workspaceId: doc.workspaceId, baseRevision: 0, source: 'mcp', createdAt: clock.now().toISOString(), effectiveDate: clock.now().toISOString().slice(0, 10), contentHash: await canonicalContentHash({ effectiveDate: proposal.effectiveDate, ops: request.ops }, hash), status: 'pending' })
     request.ops[0] = { op: 'delete_block', id: 'bad' }
     expect(proposal.ops).toEqual([add])
     await expect(buildProposal({ ...request, workspaceId: 'other' }, doc, 'mcp', clock, () => 'p', hash)).rejects.toThrow('Workspace')
@@ -34,7 +35,7 @@ describe('atomic proposal application', () => {
     const doc = document(); doc.appliedProposalIds = Array.from({ length: 200 }, (_, i) => `old-${i}`)
     const proposal = await buildProposal(input([add]), doc, 'assistant', clock, () => 'proposal', hash)
     expect(await previewProposal(doc, proposal, hash)).toMatchObject({ valid: true, changes: [{ before: null, after: { title: 'Focus' } }] })
-    const result = await applyProposal(doc, proposal, idGen(), clock, hash)
+    const result = await commitProposal(doc, proposal, idGen(), clock, hash)
     expect(result.kind).toBe('applied')
     if (result.kind !== 'applied') throw Error('apply')
     expect(result.document).toMatchObject({ revision: 1, blocks: [{ id: 'id-1', title: 'Focus' }] })
@@ -42,25 +43,28 @@ describe('atomic proposal application', () => {
     expect(result.document.appliedProposalIds[0]).toBe('old-1')
     expect(result.document.appliedProposalIds.at(-1)).toBe('proposal')
     expect(doc.blocks).toEqual([])
-    expect(await applyProposal(result.document, proposal, idGen(), clock, hash)).toEqual({ kind: 'already-applied', document: result.document })
+    expect(await commitProposal(result.document, proposal, idGen(), clock, hash)).toEqual({ kind: 'already-applied', document: result.document })
   })
   it('rejects an all-day event that does not span a whole date, so the document always exports', async () => {
     const sameDay: ProposalOp = { op: 'add_event', event: { title: 'Holiday', start: '2026-10-24T00:00:00Z', end: '2026-10-24T12:00:00Z', allDay: true, attendees: [] } }
     const doc = document()
     const proposal = await buildProposal(input([sameDay]), doc, 'assistant', clock, () => 'p-all-day', hash)
-    expect((await applyProposal(doc, proposal, idGen(), clock, hash)).kind).toBe('rejected')
+    expect((await commitProposal(doc, proposal, idGen(), clock, hash)).kind).toBe('rejected')
     const nextDay: ProposalOp = { op: 'add_event', event: { ...sameDay.event, end: '2026-10-25T00:00:00Z' } }
     const ok = await buildProposal(input([nextDay]), doc, 'assistant', clock, () => 'p-all-day-ok', hash)
-    expect((await applyProposal(doc, ok, idGen(), clock, hash)).kind).toBe('applied')
+    expect((await commitProposal(doc, ok, idGen(), clock, hash)).kind).toBe('applied')
   })
   it('supports every op with exact before/after and snapshot-safe deletion', async () => {
     const doc = document()
     doc.blocks = [{ id: 'existing', ...add.block }]
-    doc.tasks = [{ id: 'task', title: 'Old', categoryId: 'work', durationMin: 30, priority: 2, createdAt: clock.now().toISOString() }]
+    doc.tasks = [
+      { id: 'task', title: 'Old', categoryId: 'work', durationMin: 30, priority: 2, createdAt: clock.now().toISOString() },
+      { id: 'other', title: 'Other', priority: 2, createdAt: clock.now().toISOString() },
+    ]
     const ops: ProposalOp[] = [
       { op: 'update_block', id: 'existing', patch: { title: 'New' } },
       { op: 'update_task', id: 'task', patch: { title: 'Updated' } },
-      { op: 'complete_task', id: 'task' },
+      { op: 'complete_task', id: 'other' },
       { op: 'add_task', task: { title: 'Added', categoryId: 'work', durationMin: 15, priority: 1 } },
       { op: 'add_event', event: { title: 'Meeting', start: '2026-10-24T15:00:00Z', end: '2026-10-24T16:00:00Z', allDay: false, attendees: [] } },
       { op: 'update_category_goal', id: 'work', goal: { type: 'min', hoursPerWeek: 45 } },
@@ -70,11 +74,12 @@ describe('atomic proposal application', () => {
     const preview = await previewProposal(doc, proposal)
     expect(preview.changes[0]).toMatchObject({ before: { title: 'Focus' }, after: { title: 'New' } })
     expect(preview.changes.at(-1)?.after).toBeNull()
-    const result = await applyProposal(doc, proposal, idGen(), clock)
+    const result = await commitProposal(doc, proposal, idGen(), clock)
     if (result.kind !== 'applied') throw Error(JSON.stringify(result))
     expect(result.document.blocks).toEqual([])
-    expect(result.document.tasks[0]).toMatchObject({ title: 'Updated', doneAt: clock.now().toISOString() })
-    expect(result.document.tasks[1]).toMatchObject({ title: 'Added', createdAt: clock.now().toISOString() })
+    expect(result.document.tasks[0]).toMatchObject({ title: 'Updated' })
+    expect(result.document.tasks[1]).toMatchObject({ title: 'Other', doneAt: clock.now().toISOString() })
+    expect(result.document.tasks[2]).toMatchObject({ title: 'Added', createdAt: clock.now().toISOString() })
     expect(result.document.events[0]?.title).toBe('Meeting')
     expect(result.document.categories[0]?.goal).toEqual({ type: 'min', hoursPerWeek: 45 })
   })
@@ -86,7 +91,7 @@ describe('atomic proposal application', () => {
   ])('rejects %s with no changes', async (reason, patch) => {
     const doc = document(); const before = JSON.stringify(doc)
     const proposal = await buildProposal(input([add]), doc, 'mcp', clock, () => 'p', hash)
-    expect(await applyProposal(doc, { ...proposal, ...patch }, idGen(), clock, hash)).toEqual({ kind: 'rejected', reason: `proposal.${reason}` })
+    expect(await commitProposal(doc, { ...proposal, ...patch }, idGen(), clock, hash)).toEqual({ kind: 'rejected', reason: `proposal.${reason}` })
     expect(JSON.stringify(doc)).toBe(before)
   })
   it.each<ProposalOp>([
@@ -99,7 +104,7 @@ describe('atomic proposal application', () => {
     { op: 'add_block', block: { ...add.block, end: 540 } },
   ])('rejects the whole proposal when an op is invalid: $op', async (bad) => {
     const doc = document(); const proposal = await buildProposal(input([add, bad]), doc, 'mcp', clock, () => 'p', hash)
-    expect(await applyProposal(doc, proposal, idGen(), clock, hash)).toMatchObject({ kind: 'rejected' })
+    expect(await commitProposal(doc, proposal, idGen(), clock, hash)).toMatchObject({ kind: 'rejected' })
     expect(await previewProposal(doc, proposal, hash)).toMatchObject({ valid: false, changes: [] })
     expect(doc.blocks).toEqual([])
   })

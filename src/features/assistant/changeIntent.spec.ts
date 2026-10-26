@@ -45,7 +45,7 @@ describe('add_block', () => {
   it('binds the proposal to the document and describes it in the summary', () => {
     const outcome = map({ intent: 'add_block', title: 'Work', day: 'thursday', start: '18:00', durationMinutes: 60 })
     if (outcome.kind !== 'proposal') throw new Error('expected a proposal')
-    expect(outcome.proposal).toMatchObject({ contractVersion: '1.0', workspaceId: document.workspaceId, baseRevision: document.revision })
+    expect(outcome.proposal).toMatchObject({ contractVersion: '1.1', workspaceId: document.workspaceId, baseRevision: document.revision })
     expect(outcome.summary).toBe('Add "Work" on Thursday, 18:00\u2060–\u206019:00')
   })
 

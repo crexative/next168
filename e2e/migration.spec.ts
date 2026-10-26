@@ -12,7 +12,7 @@ test('v1 data is migrated, shown as a count, and the legacy bytes stay untouched
   expect(await storedValue(page, LEGACY_KEY)).toBe(legacyBytes)
 
   const migrated = await storedPlanner(page)
-  expect(migrated.schemaVersion).toBe(2)
+  expect(migrated.schemaVersion).toBe(3)
   expect(migrated.blocks).toHaveLength(LEGACY_BLOCK_COUNT)
   const deepWork = migrated.blocks.find((block: { id: string }) => block.id === 'b-1')
   expect(deepWork).toMatchObject({ days: [1, 2, 3], start: 540, end: 780, notes: 'No meetings' })
@@ -41,7 +41,7 @@ test('corrupt v2 data shows the recovery screen and is never overwritten', async
 })
 
 test('data from a newer schema opens read-only and is left untouched', async ({ page }) => {
-  const newer = JSON.stringify({ schemaVersion: 3, anything: true })
+  const newer = JSON.stringify({ schemaVersion: 4, anything: true })
   await seedKey(page, V2_KEY, newer)
   await page.goto('./')
   await expect(page.getByText('saved by a newer version of Weeklid')).toBeVisible()

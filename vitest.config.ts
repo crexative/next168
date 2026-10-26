@@ -2,28 +2,33 @@ import { fileURLToPath, URL } from 'node:url'
 import { join } from 'node:path'
 import { defineConfig, type Plugin } from 'vitest/config'
 import vue from '@vitejs/plugin-vue'
-import { preFenceDir } from './config/preFence'
+import { fencedV2Dir, preFenceDir } from './config/preFence'
 
 const root = fileURLToPath(new URL('./', import.meta.url))
 const src = join(root, 'src')
-const oldSrc = join(preFenceDir(root), 'src')
+const pinned = [
+  { prefix: '@old/', src: join(preFenceDir(root), 'src') },
+  { prefix: '@fencedV2/', src: join(fencedV2Dir(root), 'src') },
+]
 
-// `@old/*` is the pre-fence build's source; inside it, `@/` (already expanded to this checkout's src) points back
-// to the pre-fence source, so old modules never mix with new ones.
-function preFenceAlias(): Plugin {
+// `@old/*` is the pre-fence build's source and `@fencedV2/*` the last build fenced at storage version 2; inside each,
+// `@/` (already expanded to this checkout's src) points back to that tree, so old modules never mix with new ones.
+function pinnedTreeAlias(): Plugin {
   return {
-    name: 'next168-pre-fence-alias',
+    name: 'next168-pinned-tree-alias',
     enforce: 'pre',
     resolveId(source, importer) {
-      if (source.startsWith('@old/')) return this.resolve(join(oldSrc, source.slice('@old/'.length)), importer, { skipSelf: true })
-      if (importer?.startsWith(oldSrc) && source.startsWith(src + '/')) return this.resolve(join(oldSrc, source.slice(src.length + 1)), importer, { skipSelf: true })
+      for (const tree of pinned) {
+        if (source.startsWith(tree.prefix)) return this.resolve(join(tree.src, source.slice(tree.prefix.length)), importer, { skipSelf: true })
+        if (importer?.startsWith(tree.src + '/') && source.startsWith(src + '/')) return this.resolve(join(tree.src, source.slice(src.length + 1)), importer, { skipSelf: true })
+      }
       return null
     },
   }
 }
 
 export default defineConfig({
-  plugins: [vue(), preFenceAlias()],
+  plugins: [vue(), pinnedTreeAlias()],
   resolve: {
     alias: { '@': fileURLToPath(new URL('./src', import.meta.url)) },
   },

@@ -3,7 +3,7 @@ import { extractProposal, matchesPlan, MAX_REPLY_BYTES } from './extractProposal
 import { realisticWeek } from './fixtures'
 
 const proposal = (summary = 'Move the gym to Thursday', overrides: Record<string, unknown> = {}) => ({
-  contractVersion: '1.0', workspaceId: 'ws-realistic', baseRevision: 7, summary,
+  contractVersion: '1.1', workspaceId: 'ws-realistic', baseRevision: 7, summary,
   ops: [{ op: 'update_block', id: 'b-gym', patch: { days: [4] } }], ...overrides,
 })
 const json = (value: unknown) => JSON.stringify(value, null, 2)
@@ -83,7 +83,7 @@ describe('extractProposal', () => {
 
     it('cut-off JSON is damaged, also without fences', () => {
       expect(extractProposal(`\`\`\`weeklid\n${json(proposal()).slice(0, 60)}`)).toEqual({ ok: false, reason: 'malformed' })
-      expect(extractProposal(`Here: {"contractVersion":"1.0","ops":[{"op":"delete_block"`)).toEqual({ ok: false, reason: 'malformed' })
+      expect(extractProposal(`Here: {"contractVersion":"1.1","ops":[{"op":"delete_block"`)).toEqual({ ok: false, reason: 'malformed' })
     })
 
     it('schema violations are invalid: wrong version, unknown operation, no changes, out of range', () => {
@@ -119,7 +119,7 @@ describe('extractProposal', () => {
   })
 
   it('calls an object that starts like a proposal but has no changes invalid, not "none"', () => {
-    expect(extractProposal('The format is {"contractVersion":"1.0"} followed by ops.')).toEqual({ ok: false, reason: 'invalid' })
+    expect(extractProposal('The format is {"contractVersion":"1.1"} followed by ops.')).toEqual({ ok: false, reason: 'invalid' })
   })
 })
 

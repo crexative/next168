@@ -17,7 +17,7 @@
   "complete": "Completar {title}",
   "empty": {
     "title": "Nada pendiente",
-    "description": "Añade una tarea arriba y encontrará un hueco libre por sí sola."
+    "description": "Añade lo que tengas pendiente. Si le pones tiempo, le busco un hueco."
   },
   "add": {
     "title": "Añadir tarea",
@@ -33,7 +33,14 @@
     "when": "¿Cuándo?",
     "anyFreeTime": "En cualquier hueco libre",
     "during": "Durante {category}",
-    "today": "Hoy"
+    "today": "Hoy",
+    "untimed": "Sin tiempo",
+    "at": "Hora fija",
+    "otherDuration": "Otra duración (min)",
+    "minutesPlaceholder": "Minutos",
+    "notes": "Notas",
+    "fixedTooLong": "Una tarea a hora fija dura como máximo {hours} h.",
+    "links": "Enlaces de las notas"
   },
   "priority": {
     "1": "Alta",
@@ -61,5 +68,12 @@
     "edit": "Editar tarea",
     "doneToday": "«{title}» queda para hoy",
     "dueMoved": "«{title}» vence ahora el {date}"
-  }
+  },
+  "sections": {
+    "overdue": "Vencidas",
+    "later": "Más adelante",
+    "undated": "Sin fecha",
+    "showAll": "Ver todas ({count})"
+  },
+  "overdueSince": "venció el {date}"
 }

@@ -128,6 +128,7 @@
       "tasksHeader": "Pending tasks:",
       "eventsHeader": "Calendar events this week (24-hour clock, local time):",
       "none": "(none)",
+      "noTime": "no time",
       "more": "(+{count} more not shown)",
       "answerHeader": "HOW TO ANSWER WITH CHANGES",
       "answerIntro": "Inside the weeklid block put one JSON object in this shape (ops are the changes):",

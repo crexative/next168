@@ -39,7 +39,7 @@ function plannerDocument() {
 // What ChatGPT typically answers: friendly prose around one fenced block.
 function chatGptReply(overrides: Record<string, unknown> = {}): string {
   const proposal = {
-    contractVersion: '1.0', workspaceId: WORKSPACE, baseRevision: 1, summary: 'Mover el gimnasio del martes al jueves',
+    contractVersion: '1.1', workspaceId: WORKSPACE, baseRevision: 1, summary: 'Mover el gimnasio del martes al jueves',
     ops: [{ op: 'update_block', id: 'b-gym', patch: { days: [4] } }], ...overrides,
   }
   return `¡Claro! Mover el gimnasio al jueves deja libre tu martes por la tarde y el jueves a esa hora no tienes nada.
@@ -194,8 +194,8 @@ for (const theme of THEMES) {
         // The plan changes after the copy: a task is added.
         await page.goto('./#/tasks')
         await expect(page.getByRole('heading', { level: 1, name: 'Tareas' })).toBeVisible()
-        await page.locator('form.add input[type=text]').fill('Llamar al banco')
-        await page.locator('form.add input[type=text]').press('Enter')
+        await page.getByTestId('capture-field').fill('Llamar al banco')
+        await page.getByTestId('capture-field').press('Enter')
         await expect.poll(async () => (await storedPlanner<{ revision: number }>(page)).revision).toBe(2)
 
         await openFromAssistant(page)
@@ -291,7 +291,7 @@ for (const size of Object.keys(SIZES) as (keyof typeof SIZES)[]) {
       await expect(page.getByTestId('review-cancel-note')).toHaveText('Si cancelas, estos cambios se descartan y tu plan queda como está.')
       await page.getByTestId('review-cancel').click()
       await expect(page.getByTestId('proposal-review')).toHaveCount(0)
-      await expect.poll(async () => (JSON.parse(await storedRecord(page, 'proposals') ?? '[]') as { status: string }[]).map((proposal) => proposal.status)).toEqual(['rejected'])
+      await expect.poll(async () => (JSON.parse(await storedRecord(page, 'proposals') ?? '{"records":[]}') as { records: { status: string }[] }).records.map((proposal) => proposal.status)).toEqual(['rejected'])
       await expect(page.getByTestId('proposal-badge')).toHaveCount(0)
       expect((await storedPlanner<{ categories: unknown[] }>(page)).categories).toHaveLength(0)
       await expect(box(page)).toHaveValue(reply)
@@ -311,8 +311,8 @@ for (const size of Object.keys(SIZES) as (keyof typeof SIZES)[]) {
       const other = await context.newPage()
       await other.goto('./#/tasks')
       await expect(other.getByRole('heading', { level: 1, name: 'Tareas' })).toBeVisible()
-      await other.locator('form.add input[type=text]').fill('Llamar al banco')
-      await other.locator('form.add input[type=text]').press('Enter')
+      await other.getByTestId('capture-field').fill('Llamar al banco')
+      await other.getByTestId('capture-field').press('Enter')
       await expect.poll(async () => (await storedPlanner<{ revision: number }>(other)).revision).toBe(binding.revision + 1)
 
       await page.getByTestId('review-approve').click()
@@ -333,7 +333,10 @@ for (const size of Object.keys(SIZES) as (keyof typeof SIZES)[]) {
 test.describe('a truly empty profile', () => {
   test.beforeEach(({}, testInfo) => { test.skip(testInfo.project.name !== 'desktop', 'one project is enough') })
 
-  const recordedReply = (workspaceId: string) => readFileSync(new URL('./recorded/claude-reply-empty-profile.txt', import.meta.url), 'utf8').replace('{{workspaceId}}', workspaceId)
+  // The recording answered a contract 1.0 prompt. Pasted as recorded it is refused (1.0 is retired); with only its
+  // version relabelled to 1.1, the same ops are what a 1.1 prompt gets back.
+  const recorded = (workspaceId: string) => readFileSync(new URL('./recorded/claude-reply-empty-profile.txt', import.meta.url), 'utf8').replace('{{workspaceId}}', workspaceId)
+  const recordedReply = (workspaceId: string) => recorded(workspaceId).replace('"contractVersion":"1.0"', '"contractVersion":"1.1"')
 
   test('"Ahora no", copy, paste a real reply, reload, review and approve: the plan is created', async ({ page }) => {
     await page.setViewportSize(SIZES.phone)
@@ -352,6 +355,9 @@ test.describe('a truly empty profile', () => {
     await page.getByTestId('any-ai-copy').click()
     const binding = promptBinding((await copiedTexts(page))[0]!)
     expect(binding.revision).toBe(0)
+    await box(page).fill(recorded(binding.workspaceId))
+    await page.getByTestId('any-ai-review').click()
+    await expect(page.getByText('Esta respuesta es de una versión anterior. Pide a tu IA una propuesta nueva (copia el texto otra vez).')).toBeVisible()
     await box(page).fill(recordedReply(binding.workspaceId))
     await page.getByTestId('any-ai-review').click()
     await expect(page.getByTestId('review-overview')).toHaveText('9 categorías nuevas · 17 rutinas · 2 tareas')

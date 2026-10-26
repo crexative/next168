@@ -78,7 +78,10 @@ watch(reviewing, async (proposal, previous) => {
   preview.value = undefined; message.value = ''; rawOpen.value = new Set(); expanded.value = new Set(); open.value = true
   await planner.load()
   if (!planner.document || planner.status !== 'ready' || reviewing.value !== proposal) return
-  const result = await previewProposal(planner.document, proposal)
+  // The stored record only: how this opening came about is not part of it, and the strict schema refuses extra keys.
+  const record: ProposalReview = { ...proposal }
+  delete record.pastedReply
+  const result = await previewProposal(planner.document, record)
   if (reviewing.value !== proposal) return
   preview.value = result
   expanded.value = result.changes.length <= EXPANDED_UP_TO ? new Set(groupChanges(result.changes).map((group) => group.key)) : new Set()

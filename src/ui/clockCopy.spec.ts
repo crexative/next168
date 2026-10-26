@@ -24,6 +24,7 @@ const MACHINE_CLOCKS: Record<string, string> = {
   'features/calendars/eventDraft.ts': 'the value of an <input type="time">',
   'features/week/localTime.ts': 'the value of an <input type="time">',
   'features/checkin/checkInForm.ts': 'the value of an <input type="time">',
+  'features/tasks/taskDraft.ts': 'the value of an <input type="time"> (a fixed start)',
 }
 
 describe('every clock time a person reads follows the 12/24 h setting', () => {

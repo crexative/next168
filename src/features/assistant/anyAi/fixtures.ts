@@ -6,7 +6,7 @@ export const NOW = new Date('2026-10-21T10:15:00Z')
 
 export function realisticWeek(overrides: Partial<PlannerDocument> = {}): PlannerDocument {
   return {
-    schemaVersion: 2, workspaceId: 'ws-realistic', revision: 7, updatedAt: '2026-10-20T08:00:00.000Z',
+    schemaVersion: 3, generation: 0, workspaceId: 'ws-realistic', revision: 7, updatedAt: '2026-10-20T08:00:00.000Z',
     settings: { locale: 'en', weekStartsOn: 1, timeZone: 'UTC', onboardingDone: true, theme: 'system' },
     categories: [
       { id: 'c-work', name: 'Work', colorKey: 'blue', goal: { type: 'max', hoursPerWeek: 40 } },
@@ -40,7 +40,7 @@ export function realisticWeek(overrides: Partial<PlannerDocument> = {}): Planner
       { id: 'e-last-week', title: 'Last week’s party', start: '2026-10-17T20:00:00.000Z', end: '2026-10-18T22:00:00.000Z', allDay: false, attendees: [] },
       { id: 'e-next-week', title: 'Next week’s offsite', start: '2026-10-27T09:00:00.000Z', end: '2026-10-27T17:00:00.000Z', allDay: false, attendees: [] },
     ],
-    calendarSources: [], appliedProposalIds: [],
+    calendarSources: [], appliedProposalIds: [], appliedCaptureIds: [],
     ...overrides,
   }
 }

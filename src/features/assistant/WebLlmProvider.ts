@@ -1,3 +1,4 @@
+import { redactForAi } from '@/core/aiProjection'
 import { assistantContext } from '@/core/assistantContext'
 import { intentSchemaText, intentSystemPrompt } from './changeIntent'
 import { probeCapabilities, type DeviceCapabilities } from './capabilities'
@@ -210,15 +211,17 @@ export class WebLlmProvider implements AssistantProvider {
     return error instanceof AssistantError && error.code === code ? error : new AssistantError(code, { cause: error })
   }
 
+  // The model's input is built from the planner without notes or attendee emails (core/aiProjection.ts).
   private systemPrompt(context: AskContext, facts: string | undefined, proposing: boolean): string {
-    if (proposing) return intentSystemPrompt(context.document, context.locale)
+    const document = redactForAi(context.document)
+    if (proposing) return intentSystemPrompt(document, context.locale)
     const lines = [
       'You are the Weeklid weekly planner assistant. Everything runs on the user\'s device.',
       `Reply in the language with code "${context.locale}".`,
       'Never calculate totals yourself: quote the computed figures below exactly.',
     ]
     if (facts) lines.push(`Computed facts (authoritative):\n${facts}`)
-    lines.push('Reply with JSON of the form {"answer": "..."} using one to three full sentences of plain words. Never reply with only a number.', `Planner data: ${assistantContext(context.document)}`)
+    lines.push('Reply with JSON of the form {"answer": "..."} using one to three full sentences of plain words. Never reply with only a number.', `Planner data: ${assistantContext(document)}`)
     return lines.join('\n')
   }
 }

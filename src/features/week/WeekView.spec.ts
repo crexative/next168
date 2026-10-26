@@ -435,6 +435,9 @@ describe('WeekView wiring', () => {
     title.value = 'Buy a gift for mum'
     title.dispatchEvent(new Event('input'))
     await tick()
+    // A task with no length is a to-do the week never places, so this one gets an hour.
+    ;[...globalThis.document.querySelectorAll<HTMLElement>('[role="dialog"] [role="radio"]')].find((radio) => radio.textContent?.trim() === '1 h')!.click()
+    await tick()
     globalThis.document.querySelector<HTMLButtonElement>('[role="dialog"] button[type="submit"]')!.click()
     await store.settled()
     await tick()

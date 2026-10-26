@@ -27,7 +27,7 @@ test('MCP proposal appears, user approves, block is visible and revision increme
   try {
     const token = (await readFile(join(companion.workspace.home, 'mcp-token'), 'utf8')).trim()
     await sdk.connect(new StreamableHTTPClientTransport(new URL(`${companion.url}/mcp`), { requestInit: { headers: { Authorization: `Bearer ${token}` } } }))
-    const result = await sdk.callTool({ name: 'propose_changes', arguments: { contractVersion: '1.0', workspaceId: document.workspaceId, baseRevision: 1, summary: 'Add a focus hour', ops: [{ op: 'add_block', block: { categoryId: 'focus', title: 'Focused planning', days: [1], start: 540, end: 600 } }] } })
+    const result = await sdk.callTool({ name: 'propose_changes', arguments: { contractVersion: '1.1', workspaceId: document.workspaceId, baseRevision: 1, summary: 'Add a focus hour', ops: [{ op: 'add_block', block: { categoryId: 'focus', title: 'Focused planning', days: [1], start: 540, end: 600 } }] } })
     expect(result.isError).not.toBe(true)
     await expect(page.getByTestId('proposal-badge')).toHaveText('1 pending proposal', { timeout: 10_000 })
     expect((await companion.workspace.document()).blocks).toHaveLength(0)
@@ -45,7 +45,7 @@ test('MCP proposal appears, user approves, block is visible and revision increme
 test('a stale proposal cannot be approved', async ({ page, companion }) => {
   const document = await companion.workspace.document()
   document.settings.onboardingDone = true
-  const proposal = await companion.workspace.create({ contractVersion: '1.0', workspaceId: document.workspaceId, baseRevision: 0, summary: 'A stale meeting', ops: [{ op: 'add_event', event: { title: 'Stale meeting', start: '2026-10-26T10:00:00Z', end: '2026-10-26T11:00:00Z', allDay: false, attendees: [] } }] }, 'mcp')
+  const proposal = await companion.workspace.create({ contractVersion: '1.1', workspaceId: document.workspaceId, baseRevision: 0, summary: 'A stale meeting', ops: [{ op: 'add_event', event: { title: 'Stale meeting', start: '2026-10-26T10:00:00Z', end: '2026-10-26T11:00:00Z', allDay: false, attendees: [] } }] }, 'mcp')
   document.revision++
   await companion.workspace.save(document, 0)
   await page.goto(`${companion.url}/#pair=${companion.pairingCode}`)
@@ -70,7 +70,7 @@ test('Use with your AI in companion mode: a pasted reply becomes a companion pro
   await expect(page.getByRole('heading', { name: 'Claude Desktop or Claude Code (on this computer)' })).toBeVisible()
   // Pasting a reply goes through the one AI entry, Settings › Use with your AI.
   await page.goto(`${companion.url}/#/settings/ai`)
-  const proposal = { contractVersion: '1.0', workspaceId: document.workspaceId, baseRevision: 1, summary: 'Add a focus hour', ops: [{ op: 'add_block', block: { categoryId: 'focus', title: 'Pasted focus', days: [2], start: 600, end: 660 } }] }
+  const proposal = { contractVersion: '1.1', workspaceId: document.workspaceId, baseRevision: 1, summary: 'Add a focus hour', ops: [{ op: 'add_block', block: { categoryId: 'focus', title: 'Pasted focus', days: [2], start: 600, end: 660 } }] }
   await page.getByTestId('any-ai-paste').fill(`Here you go!\n\n\`\`\`weeklid\n${JSON.stringify(proposal)}\n\`\`\`\n`)
   await page.getByTestId('any-ai-review').click()
   await expect(page.getByTestId('proposal-review')).toContainText('Add a focus hour')
