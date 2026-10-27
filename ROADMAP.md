@@ -61,7 +61,7 @@
 **Funcionalidades:**
 
 **IMPORTAR:**
-- Conectar cuenta de Google (OAuth 2.0 via Supabase Auth)
+- Conectar cuenta de Google: **lectura** del calendario principal desde el navegador con Google Identity Services (OAuth 2.0, modelo de token, `calendar.events.readonly`), sin servidor y sin Supabase Auth. Aprobado por el dueño el 2026-10-26; Slice 1 en `docs/calendars.md` § Google Calendar. La escritura y la sincronización en segundo plano siguen pendientes.
 - Importar eventos existentes a Next168
 - Mapear eventos de Google Calendar a categorías Next168
 - Sincronización automática (cada X minutos via Supabase Edge Functions)

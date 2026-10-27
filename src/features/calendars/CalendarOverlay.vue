@@ -5,13 +5,14 @@ import { useI18n } from 'vue-i18n'
 import type { CalendarRange } from '@/core/icsImport'
 import { usePlannerStore } from '@/stores/plannerStore'
 import { occurrenceKey } from './calendarOverlay'
+import { calendarLabel } from './calendarLabel'
 import { useCalendarEvents } from './useCalendarEvents'
 import { displayLocale, formatDateTime, rangeText } from '@/ui/format'
 const props = defineProps<{ range: CalendarRange }>()
 const { t } = useI18n(), planner = usePlannerStore()
 const { events, conflicts, errors, loading } = useCalendarEvents(() => props.range)
 const conflictKeys = computed(() => new Set(conflicts.value.map(occurrenceKey)))
-const sourceOf = (id: string) => planner.document?.calendarSources.find(source => source.id === id)
+const sourceOf = (id: string) => calendarLabel(planner.document, id)
 function sourceColor(id: string): string { return `var(--cat-${sourceOf(id)?.colorKey ?? 'blue'})` }
 function displayTime(start: string, end: string, allDay: boolean): string {
   if (allDay) return joinInline([start, t('calendars.allDay')])

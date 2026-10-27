@@ -14,6 +14,7 @@ import { setHourCycle } from '@/ui/format'
 import { resetSidebar } from '@/app/sidebar'
 import { calendarLifecycle, calendarSourceStore } from './calendarSourceHook'
 import { deviceStorages, removeDeviceData } from './deviceData'
+import { refreshGoogleAvailability } from '@/features/calendars/googleCalendar'
 import { downloadBackup } from './exportBackup'
 import PreUpgradeCopy from './PreUpgradeCopy.vue'
 import {
@@ -131,6 +132,8 @@ function removeDeviceLeftovers(): void {
   setAppearance('auto')
   setHourCycle('auto')
   resetSidebar()
+  // The Google Calendar labs flag went with the other keys.
+  refreshGoogleAvailability()
 }
 
 // Companion mode: the legacy keys go under the commit lock, as the browser repository does in its own delete-all.

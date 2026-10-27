@@ -11,6 +11,7 @@ import Button from '@/ui/Button.vue'
 import { useUndoToast } from '@/ui/undoToast'
 import EventSheet from '@/features/calendars/EventSheet.vue'
 import CalendarOverlay from '@/features/calendars/CalendarOverlay.vue'
+import { GoogleCalendarSection, googleAvailable } from '@/features/calendars/googleCalendar'
 import { calendarErrorCode, calendarServices, useCalendarStore } from '@/features/calendars/calendarStore'
 import { downloadCalendar } from '@/features/calendars/downloadCalendar'
 import { displayLocale, formatDateTime } from '@/ui/format'
@@ -79,7 +80,8 @@ function syncTime(iso: string): string { return formatDateTime(iso, displayLocal
 </script>
 <template>
   <div class="calendar-section">
-    <!-- The page around it (Settings › Calendars) names the section. -->
+    <!-- The page around it (Settings › Calendars) names the section. Google Calendar (labs) comes first. -->
+    <component :is="GoogleCalendarSection" v-if="GoogleCalendarSection && googleAvailable" />
     <p class="calendar-note">{{ t('calendars.intro') }}</p>
     <p v-if="error" role="alert" class="calendar-error">{{ t(error) }}</p>
     <label class="calendar-file">{{ t('calendars.importFile') }}<input type="file" accept=".ics,text/calendar" :disabled="!planner.writable || calendars.pending > 0" @change="importFile"></label>

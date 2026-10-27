@@ -5,17 +5,33 @@ import vue from '@vitejs/plugin-vue'
 import { VitePWA } from 'vite-plugin-pwa'
 import { readPreviewHttps } from './config/lanHttps'
 import { assertPublicUrl } from './config/publicUrl'
+import { assertGoogleClientId } from './config/googleClientId'
 
 // The installed window's bars match the page's grouped background, as the theme-color metas in index.html do
 // (src/ui/appearance.ts): the brand green lives in the icon and the controls, not in the system chrome.
 const GROUPED_BACKGROUND = '#F2F2F7'
 const MAX_PRECACHE_BYTES = 5 * 1024 * 1024
 
+type RuntimeRule = { urlPattern: (input: { url: URL }) => boolean; handler: 'NetworkOnly' | 'CacheFirst'; options?: { cacheName: string } }
+export const RUNTIME_CACHING: RuntimeRule[] = [
+  { urlPattern: ({ url }) => url.pathname.includes('/api/'), handler: 'NetworkOnly' },
+  // Google sign-in and Calendar responses carry a person's events and tokens: never cached by the worker.
+  { urlPattern: ({ url }) => /(^|\.)google(apis)?\.com$/.test(url.hostname), handler: 'NetworkOnly' },
+  // The optional on-device assistant is about 12 MB of code: cached on first use, never precached.
+  { urlPattern: ({ url }) => /\/assets\/webllm[^/]*\.js$/.test(url.pathname), handler: 'CacheFirst', options: { cacheName: 'next168-assistant-code' } },
+]
+
 // A configured public address must be a public HTTPS page; anything else (a LAN address, localhost, a token in the
 // query) fails the build instead of being printed on shared images.
 function checkPublicUrl(mode: string): void {
   const raw = loadEnv(mode, process.cwd(), 'VITE_').VITE_PUBLIC_URL
   if (raw) assertPublicUrl(raw)
+}
+
+// Google Calendar ships only in a build that has a well-formed client ID; a malformed one fails the build.
+function checkGoogleClientId(mode: string): void {
+  const raw = loadEnv(mode, process.cwd(), 'VITE_').VITE_GOOGLE_CLIENT_ID
+  if (raw) assertGoogleClientId(raw)
 }
 
 // base './' lets the same build run at '/', at '/next168/' and inside the local companion.
@@ -54,11 +70,7 @@ const appConfig = ({ isPreview }: ConfigEnv): UserConfig => ({
         navigateFallback: 'index.html',
         navigateFallbackDenylist: [/\/api\//],
         clientsClaim: true,
-        runtimeCaching: [
-          { urlPattern: ({ url }) => url.pathname.includes('/api/'), handler: 'NetworkOnly' },
-          // The optional on-device assistant is about 12 MB of code: cached on first use, never precached.
-          { urlPattern: ({ url }) => /\/assets\/webllm[^/]*\.js$/.test(url.pathname), handler: 'CacheFirst', options: { cacheName: 'next168-assistant-code' } },
-        ],
+        runtimeCaching: RUNTIME_CACHING,
       },
     }),
   ],
@@ -83,5 +95,6 @@ const appConfig = ({ isPreview }: ConfigEnv): UserConfig => ({
 
 export default defineConfig((env) => {
   checkPublicUrl(env.mode)
+  checkGoogleClientId(env.mode)
   return appConfig(env)
 })

@@ -1,4 +1,4 @@
-import type { ChangeProposal, CheckIn, PlannerDocument, PlannerEvent, ProposalOp, Task, TimeBlock } from './model'
+import type { ChangeProposal, CheckIn, ExternalOccurrence, PlannerDocument, PlannerEvent, ProposalOp, Task, TimeBlock } from './model'
 
 // The only view of the planner any AI gets (tasks design rev 2.1 §11.1, rev 4 §2.3): MCP tools, the on-device model's
 // context and the "Use with your AI" prompt all read it. Free-text notes never leave the app (task, routine and event
@@ -35,6 +35,12 @@ export function redactForAi(document: PlannerDocument): PlannerDocument {
     events: document.events.map((event) => ({ ...withoutKeys(event, ['notes'], false), attendees: [] })),
     checkIns: document.checkIns.map((checkIn) => withoutKeys(checkIn, ['note'], false)),
   }
+}
+
+// Meetings read from a connected Google account reach an AI only as busy time: the title is replaced by `busyLabel`
+// ("Busy" in the reader's language), because those titles can name other people. Imported ICS calendars are unchanged.
+export function externalForAi(list: readonly ExternalOccurrence[], busyLabel: string): ExternalOccurrence[] {
+  return list.map((item) => (item.sourceId.startsWith('google:') ? { ...item, title: busyLabel } : item))
 }
 
 export function aiProjection(document: PlannerDocument): AiProjection {
