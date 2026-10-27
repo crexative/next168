@@ -8,8 +8,16 @@ export const MAX_TITLE_LENGTH = 200
 
 // RFC 3339 with an explicit offset. A time without one would be read in the browser's zone, which may be neither the
 // calendar's nor the planner's: such an event fails the refresh instead of landing at a guessed hour.
-const OFFSET_DATE_TIME = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{1,9})?(?:Z|[+-]\d{2}:\d{2})$/
+const OFFSET_DATE_TIME = /^(\d{4}-\d{2}-\d{2})T(\d{2}):(\d{2}):(\d{2})(?:\.\d{1,9})?(?:Z|[+-](\d{2}):(\d{2}))$/
 const CIVIL_DATE = /^\d{4}-\d{2}-\d{2}$/
+
+// A date that exists on the calendar: Date.parse would quietly turn 2026-02-30 into 2 March.
+function realDate(value: string): boolean {
+  if (!CIVIL_DATE.test(value)) return false
+  const [year, month, day] = value.split('-').map(Number) as [number, number, number]
+  const date = new Date(Date.UTC(year, month - 1, day))
+  return date.getUTCFullYear() === year && date.getUTCMonth() === month - 1 && date.getUTCDate() === day
+}
 
 export type NormalizeResult = { ok: true; occurrences: ExternalOccurrence[] } | { ok: false; code: 'format' }
 
@@ -29,14 +37,17 @@ interface GoogleEvent {
 class FormatError extends Error {}
 
 function instant(value: unknown): string {
-  if (typeof value !== 'string' || !OFFSET_DATE_TIME.test(value)) throw new FormatError()
-  const time = Date.parse(value)
+  const parts = typeof value === 'string' ? OFFSET_DATE_TIME.exec(value) : null
+  if (!parts || !realDate(parts[1]!)) throw new FormatError()
+  const [hour, minute, second, offsetHours = 0, offsetMinutes = 0] = parts.slice(2).map((part) => Number(part ?? 0))
+  if (hour! > 23 || minute! > 59 || second! > 59 || offsetHours > 23 || offsetMinutes > 59) throw new FormatError()
+  const time = Date.parse(value as string)
   if (!Number.isFinite(time)) throw new FormatError()
   return new Date(time).toISOString()
 }
 
 function civilDate(value: unknown): string {
-  if (typeof value !== 'string' || !CIVIL_DATE.test(value) || !Number.isFinite(Date.parse(`${value}T00:00:00Z`))) throw new FormatError()
+  if (typeof value !== 'string' || !realDate(value)) throw new FormatError()
   return value
 }
 

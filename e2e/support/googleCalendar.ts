@@ -37,6 +37,7 @@ function fakeGis(): void {
   const plan = () => (w.__gisPlan ?? {}) as { response?: Record<string, unknown>; error?: string; hold?: boolean; revoke?: string }
   w.__gisRecord = record
   w.__gisRelease = () => { for (const respond of record.held.splice(0)) respond() }
+  w.__gisReleaseFirst = () => { record.held.shift()?.() }
   w.google = {
     accounts: {
       oauth2: {
@@ -151,8 +152,12 @@ export async function gisRecord(page: Page): Promise<GisRecord> {
   })
 }
 
-export async function releaseToken(page: Page): Promise<void> {
-  await page.evaluate(() => (window as unknown as { __gisRelease: () => void }).__gisRelease())
+export async function releaseToken(page: Page, which: 'all' | 'first' = 'all'): Promise<void> {
+  await page.evaluate((only) => {
+    const fake = window as unknown as { __gisRelease: () => void; __gisReleaseFirst: () => void }
+    if (only === 'first') fake.__gisReleaseFirst()
+    else fake.__gisRelease()
+  }, which)
 }
 
 // Every place the app could write to on this origin, serialised: key-value storage, every IndexedDB database's

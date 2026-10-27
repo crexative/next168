@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
+import { usePlannerStore } from '@/stores/plannerStore'
 import { addLocalDays } from '@/core/time'
 import Button from '@/ui/Button.vue'
 import Icon from '@/ui/Icon.vue'
@@ -14,6 +15,7 @@ import { useGoogleConnection } from './useGoogleConnection'
 const props = defineProps<{ ranges: DateWindow[] }>()
 const { t } = useI18n()
 const google = useGoogleConnection()
+const planner = usePlannerStore()
 const sheetOpen = ref(false)
 const k = (key: string) => `calendars.googleConnection.${key}`
 
@@ -21,7 +23,8 @@ const state = computed<'notLoaded' | 'expired' | 'partial' | null>(() => {
   if (google.session === 'disconnected') return null
   if (!google.coverage) return 'notLoaded'
   if (google.expired) return 'expired'
-  return props.ranges.every((range) => coverageIncludes(google.coverage, range)) ? null : 'partial'
+  const timeZone = planner.document?.settings.timeZone ?? 'UTC'
+  return props.ranges.every((range) => coverageIncludes(google.coverage, range, timeZone)) ? null : 'partial'
 })
 const text = computed(() => {
   if (state.value === 'partial' && google.coverage) {

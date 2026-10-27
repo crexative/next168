@@ -12,7 +12,8 @@ export const GOOGLE_CALENDAR_NAME = 'Google Calendar'
 
 // Civil dates in the planner's zone, end exclusive.
 export interface DateWindow { start: string; end: string }
-export interface GoogleCoverage extends DateWindow { fetchedAt: string }
+// The window read, in the planner zone it was read in.
+export interface GoogleCoverage extends DateWindow { timeZone: string; fetchedAt: string }
 
 export interface GoogleSnapshot {
   occurrences: readonly ExternalOccurrence[]
@@ -56,8 +57,9 @@ export function googleOccurrencesIn(window: DateWindow, timeZone: string): Exter
   return occurrencesWithin(snapshot.value.occurrences, window, timeZone)
 }
 
-export function coverageIncludes(coverage: DateWindow | undefined, window: DateWindow): boolean {
-  return coverage !== undefined && coverage.start <= window.start && window.end <= coverage.end
+// Civil dates read in another zone cover nothing: the same dates are other instants there.
+export function coverageIncludes(coverage: (DateWindow & { timeZone: string }) | undefined, window: DateWindow, timeZone: string): boolean {
+  return coverage !== undefined && coverage.timeZone === timeZone && coverage.start <= window.start && window.end <= coverage.end
 }
 
 // The Google UI, loaded on first render. `null` in a build without a client ID: the import below is then dead code

@@ -22,10 +22,12 @@ const event = (id: string, summary: string, hour: number) => ({
 const json = (body: unknown, status = 200) => new Response(JSON.stringify(body), { status })
 
 let tokenConfig: GisTokenClientConfig | undefined
+// The client configuration behind each token request, in order: a request's answer goes to its own callback.
+let requested: GisTokenClientConfig[] = []
 let revoked: string[] = []
 let respond: (url: string) => Response
 const fakeGis: GisOAuth2 = {
-  initTokenClient: (config) => { tokenConfig = config; return { requestAccessToken: () => undefined } },
+  initTokenClient: (config) => { tokenConfig = config; return { requestAccessToken: () => { requested.push(config) } } },
   hasGrantedAllScopes: (response, ...scopes) => scopes.every((scope) => (response.scope ?? '').split(' ').includes(scope)),
   revoke: (token, done) => { revoked.push(token); done?.({ successful: true }) },
 }
@@ -37,6 +39,7 @@ let consoleSpies: MockInstance[] = []
 
 beforeEach(async () => {
   tokenConfig = undefined
+  requested = []
   revoked = []
   fetchMock.mockClear()
   respond = () => json({ items: [event('evt-id-7f3a', 'Board meeting with Ana', 9)] })
@@ -76,6 +79,7 @@ describe('useGoogleConnection', () => {
     const google = useGoogleConnection()
     google.prepare()
     await settle()
+    google.update()
     expect(tokenConfig).toMatchObject({ scope: EVENTS_READONLY, include_granted_scopes: false, prompt: '' })
     expect(tokenConfig).not.toHaveProperty('login_hint')
   })
@@ -130,6 +134,59 @@ describe('useGoogleConnection', () => {
     await settle()
     expect(revoked).toEqual(['tok-late'])
     expect(fetchMock).not.toHaveBeenCalled()
+  })
+
+  // Review finding 1: a late answer to a request made before Disconnect or a planner replacement must not take the
+  // place of a newer request, whichever arrives first.
+  const lateBeforeNew = [
+    ['Disconnect', async () => { await useGoogleConnection().disconnect() }],
+    ['a planner replacement', async () => { await usePlannerStore().commit((draft) => { draft.generation += 1 }) }],
+  ] as const
+  for (const [what, invalidate] of lateBeforeNew) {
+    for (const order of ['old answer first', 'new answer first'] as const) {
+      it(`after ${what}, a reconnect keeps its own answer and the older one is given back (${order})`, async () => {
+        const google = useGoogleConnection()
+        google.prepare()
+        await settle()
+        google.update()
+        await invalidate()
+        await settle()
+        expect(google.update()).toBe(true)
+        expect(requested).toHaveLength(2)
+        const [old, current] = requested as [GisTokenClientConfig, GisTokenClientConfig]
+        const answer = (config: GisTokenClientConfig, token: string) => config.callback({ access_token: token, expires_in: 3599, scope: EVENTS_READONLY })
+        if (order === 'old answer first') { answer(old, 'tok-OLD'); await settle(); answer(current, 'tok-NEW') } else { answer(current, 'tok-NEW'); await settle(); answer(old, 'tok-OLD') }
+        await vi.waitFor(() => expect(google.phase).toBe('idle'))
+        await settle()
+        expect(revoked).toEqual(['tok-OLD'])
+        expect(fetchMock).toHaveBeenCalledTimes(1)
+        expect((fetchMock.mock.calls[0] as unknown as [string, RequestInit])[1].headers).toEqual({ Authorization: 'Bearer tok-NEW' })
+        expect(googleSnapshot().occurrences.map((item) => item.uid)).toEqual(['evt-id-7f3a'])
+      })
+    }
+  }
+
+  // Review finding 3: coverage belongs to the zone it was read in.
+  it('a planner time-zone change drops the events and their coverage, and a read for the old zone is not published', async () => {
+    const google = await connect()
+    expect(googleSnapshot().coverage).toMatchObject({ timeZone: 'UTC' })
+    const planner = usePlannerStore()
+    await planner.commit((draft) => { draft.settings.timeZone = 'America/Los_Angeles' })
+    expect(googleSnapshot().coverage).toBeUndefined()
+    expect(googleSnapshot().occurrences).toEqual([])
+    let release!: () => void
+    respond = () => json({ items: [event('evt-id-9c1b', 'Quarterly review', 10)] })
+    fetchMock.mockImplementationOnce(async (url: string) => { await new Promise<void>((resolve) => { release = resolve }); return respond(url) })
+    google.update()
+    await vi.waitFor(() => expect(release).toBeTypeOf('function'))
+    await planner.commit((draft) => { draft.settings.timeZone = 'Asia/Tokyo' })
+    release()
+    await vi.waitFor(() => expect(google.phase).toBe('idle'))
+    await settle()
+    expect(googleSnapshot().coverage).toBeUndefined()
+    expect(googleSnapshot().occurrences).toEqual([])
+    google.update()
+    await vi.waitFor(() => expect(googleSnapshot().coverage).toMatchObject({ timeZone: 'Asia/Tokyo' }))
   })
 
   it('does not keep a token without the events scope', async () => {

@@ -48,7 +48,7 @@ it('opens the event details with the full title, range, calendar and the block i
   // Beside the routine, never over its title (docs/design/visual-design.md › Week items).
   expect([overlay.style.insetInlineStart, overlay.style.width]).toEqual(['calc(50% + 2px)', 'calc(50% - 4px)'])
   overlay.click()
-  expect(inspected).toEqual([{ title: 'Team sync with the vendor', date, range: '9:30\u00a0AM\u00a0–\u00a010:30\u00a0AM', calendar: 'Work calendar', conflictsWith: [{ blockId: deepWork.id, title: deepWork.title }] }])
+  expect(inspected).toEqual([{ key: `s/e/@${date}`, title: 'Team sync with the vendor', date, range: '9:30\u00a0AM\u00a0–\u00a010:30\u00a0AM', calendar: 'Work calendar', conflictsWith: [{ blockId: deepWork.id, title: deepWork.title }] }])
 })
 
 const DATE = '2026-10-21'

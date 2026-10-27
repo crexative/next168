@@ -4,7 +4,7 @@ import type { ExternalOccurrence } from '@/core/model'
 import { addLocalDays, localDateOf, zonedInstant } from '@/core/time'
 import { usePlannerStore } from '@/stores/plannerStore'
 import { publishGoogleSnapshot, type DateWindow, type GoogleCoverage } from '../googleCalendar'
-import { EVENTS_READONLY, type GisErrorResponse, type GisOAuth2, type GisTokenClient, type GisTokenResponse } from './gis'
+import { EVENTS_READONLY, type GisErrorResponse, type GisOAuth2, type GisTokenResponse } from './gis'
 import { loadGis } from './gisLoader'
 import { fetchPrimaryEvents, type GoogleFailure } from './googleApi'
 import { normalizeGoogleEvents } from './googleNormalize'
@@ -106,8 +106,6 @@ export const useGoogleConnection = defineStore('googleConnection', () => {
   // Never reactive, never exposed: the access token.
   let token: { value: string; expiresAt: number } | undefined
   let oauth2: GisOAuth2 | undefined
-  let client: GisTokenClient | undefined
-  let pending: Ticket | undefined
   const inflight = new Set<AbortController>()
 
   const hasLiveToken = () => token !== undefined && token.expiresAt > services.now().getTime()
@@ -143,7 +141,6 @@ export const useGoogleConnection = defineStore('googleConnection', () => {
     inflight.clear()
     token = undefined
     tokenExpiresAt.value = undefined
-    pending = undefined
     expired.value = false
     occurrences.value = []
     coverage.value = undefined
@@ -157,6 +154,16 @@ export const useGoogleConnection = defineStore('googleConnection', () => {
     if (next !== previous) forget()
   }, { flush: 'sync' })
 
+  // Civil dates mean something only in the zone they were read in: a new planner zone drops the events and their
+  // coverage (and any read still on its way), keeps the token, and Week and Today offer Update again.
+  watch(() => planner.document?.settings.timeZone, (next, previous) => {
+    if (previous === undefined || next === previous) return
+    for (const controller of inflight) controller.abort()
+    occurrences.value = []
+    coverage.value = undefined
+    publish()
+  }, { flush: 'sync' })
+
   const channel = services.channel()
   channel?.addEventListener('message', (event: MessageEvent) => {
     if ((event.data as { type?: unknown } | null)?.type !== 'forget') return
@@ -165,9 +172,9 @@ export const useGoogleConnection = defineStore('googleConnection', () => {
     message.value = null
   })
 
-  function onToken(response: GisTokenResponse): void {
-    const ticket = pending
-    pending = undefined
+  // Each request has its own callback bound to the ticket of its own tap: a late answer to an older request can never
+  // take the place of a newer one.
+  function onToken(response: GisTokenResponse, ticket: Ticket): void {
     if (response.error) {
       record('token', safeCode(response.error))
       if (isCurrent(ticket)) {
@@ -200,9 +207,7 @@ export const useGoogleConnection = defineStore('googleConnection', () => {
     void refresh(ticket)
   }
 
-  function onTokenError(error: GisErrorResponse): void {
-    const ticket = pending
-    pending = undefined
+  function onTokenError(error: GisErrorResponse, ticket: Ticket): void {
     record('token', safeCode(error?.type))
     if (!isCurrent(ticket)) return
     phase.value = 'idle'
@@ -216,14 +221,6 @@ export const useGoogleConnection = defineStore('googleConnection', () => {
     if (message.value?.key === 'gisLoad') message.value = null
     services.loadGis().then((api) => {
       oauth2 = api
-      client = api.initTokenClient({
-        client_id: services.clientId,
-        scope: EVENTS_READONLY,
-        include_granted_scopes: false,
-        prompt: '',
-        callback: onToken,
-        error_callback: onTokenError,
-      })
       gis.value = 'ready'
     }, () => {
       gis.value = 'failed'
@@ -234,8 +231,16 @@ export const useGoogleConnection = defineStore('googleConnection', () => {
 
   // Must run synchronously inside the click: Google opens its window only from a user gesture.
   function requestToken(): boolean {
-    if (!client || phase.value !== 'idle') return false
-    pending = capture()
+    if (!oauth2 || phase.value !== 'idle') return false
+    const ticket = capture()
+    const client = oauth2.initTokenClient({
+      client_id: services.clientId,
+      scope: EVENTS_READONLY,
+      include_granted_scopes: false,
+      prompt: '',
+      callback: (response) => onToken(response, ticket),
+      error_callback: (error) => onTokenError(error, ticket),
+    })
     phase.value = 'authorizing'
     message.value = null
     client.requestAccessToken()
@@ -248,13 +253,14 @@ export const useGoogleConnection = defineStore('googleConnection', () => {
     if (!current || !document || !isCurrent(ticket)) return
     const timeZone = document.settings.timeZone
     const window = fetchWindow(services.now(), timeZone)
+    const sameZone = () => planner.document?.settings.timeZone === timeZone
     const controller = new AbortController()
     inflight.add(controller)
     phase.value = 'fetching'
     message.value = null
     try {
       const result = await fetchPrimaryEvents({ token: current.value, timeMin: window.timeMin, timeMax: window.timeMax, signal: controller.signal, request: services.fetch })
-      if (!isCurrent(ticket)) return
+      if (!isCurrent(ticket) || !sameZone()) return
       if (!result.ok) {
         record('events', result.status ?? result.failure.code)
         if (result.failure.code === 'expired') {
@@ -274,7 +280,7 @@ export const useGoogleConnection = defineStore('googleConnection', () => {
       record('events', result.status)
       // Published only now, after every page arrived and every event was read: never part of the calendar.
       occurrences.value = normalized.occurrences
-      coverage.value = { start: window.start, end: window.end, fetchedAt: services.now().toISOString() }
+      coverage.value = { start: window.start, end: window.end, timeZone, fetchedAt: services.now().toISOString() }
       publish()
     } finally {
       inflight.delete(controller)

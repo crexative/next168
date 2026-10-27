@@ -205,6 +205,23 @@ function inspect(next: BusyDetails): void {
   detailsOpen.value = true
 }
 
+// A sheet keeps only what the grid still shows: when Google Calendar is disconnected (here or in another tab) or a
+// calendar drops an event, its details and any chooser offering it close instead of keeping its title on screen.
+const shownItemKeys = computed(() => new Set([
+  ...Object.values(busy.value).flat().map((item) => item.key),
+  ...Object.values(allDay.value).flat().map((item) => item.key),
+]))
+watch(shownItemKeys, (shown) => {
+  if (details.value?.key !== undefined && !shown.has(details.value.key)) {
+    detailsOpen.value = false
+    details.value = null
+  }
+  if (chooserOptions.value.some((option) => option.kind === 'event' && !shown.has(option.key.slice('e:'.length)))) {
+    chooserOpen.value = false
+    chooserOptions.value = []
+  }
+})
+
 function openExisting(blockId: string): void {
   const block = document.value?.blocks.find((item) => item.id === blockId)
   if (!block || !planner.writable) return
@@ -255,6 +272,8 @@ async function remove(blockId: string): Promise<void> {
       <AddMenu variant="toolbar" placement="below" @choose="addFromMenu" />
     </Teleport>
 
+    <!-- Without the grid (no categories, or nothing to show after a reload) the Google line still says what is missing. -->
+    <component :is="GoogleCoverageNotice" v-if="GoogleCoverageNotice && googleAvailable && !hasGrid" :ranges="googleRanges" />
     <EmptyState v-if="!hasCategories" icon="calendar-days" :title="t('week.empty.noCategoriesTitle')" :description="t('week.empty.noCategoriesDescription')">
       <!-- Without categories the setup wizard creates them; when it cannot be offered, Settings remains. -->
       <SetupWeekPrompt v-if="setupOffered" />

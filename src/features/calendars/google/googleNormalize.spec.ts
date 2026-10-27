@@ -77,7 +77,12 @@ describe('normalizeGoogleEvents', () => {
 
   it.each([
     ['an offset-free dateTime', { id: 'floating', start: { dateTime: '2026-10-20T09:00:00', timeZone: 'America/Bogota' }, end: { dateTime: '2026-10-20T10:00:00', timeZone: 'America/Bogota' } }],
-    ['an impossible date', { id: 'bad-date', start: { date: '2026-02-30x' }, end: { date: '2026-03-01' } }],
+    ['an impossible date', { id: 'bad-date', start: { date: '2026-02-30' }, end: { date: '2026-03-01' } }],
+    ['a 31st of November', { id: 'bad-november', start: { date: '2026-11-31' }, end: { date: '2026-12-01' } }],
+    ['an impossible date with a time', { id: 'bad-timed', start: { dateTime: '2026-02-30T10:00:00Z' }, end: { dateTime: '2026-02-30T11:00:00Z' } }],
+    ['an impossible hour', { id: 'bad-hour', start: { dateTime: '2026-10-20T24:30:00Z' }, end: { dateTime: '2026-10-20T25:00:00Z' } }],
+    ['an impossible offset', { id: 'bad-offset', start: { dateTime: '2026-10-20T10:00:00+24:00' }, end: { dateTime: '2026-10-20T11:00:00+24:00' } }],
+    ['an impossible original date', { id: 'bad-original', originalStartTime: { date: '2026-04-31' }, start: { date: '2026-10-20' }, end: { date: '2026-10-21' } }],
     ['a timed start with an all-day end', { id: 'mixed', start: { dateTime: '2026-10-20T09:00:00Z' }, end: { date: '2026-10-21' } }],
     ['an end before the start', { id: 'backwards', start: { dateTime: '2026-10-20T10:00:00Z' }, end: { dateTime: '2026-10-20T09:00:00Z' } }],
     ['no id', { start: { dateTime: '2026-10-20T10:00:00Z' }, end: { dateTime: '2026-10-20T11:00:00Z' } }],

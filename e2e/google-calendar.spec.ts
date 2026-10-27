@@ -158,6 +158,12 @@ test.describe('A7 Week and scheduling', () => {
     await week(page)
     await expect(standupOverlay(page)).toBeVisible()
     await expect(page.getByTestId('google-notice')).toHaveCount(0)
+    // Review finding 5: after a reload the week is empty again, and it must still say why and offer Update.
+    await page.reload()
+    await expect(page.getByRole('heading', { level: 1, name: 'Week' })).toBeVisible()
+    await expect(page.getByTestId('google-notice')).toContainText("Google Calendar isn't loaded")
+    await expect(page.getByTestId('google-notice')).toBeInViewport()
+    await expect(page.getByTestId('google-notice-update')).toBeEnabled()
   })
 
   test('the event marks its conflict with a block, and a task is fitted around it', async ({ context, page }) => {
@@ -281,6 +287,72 @@ test.describe('A9 late answers lose to Disconnect, Delete all data and import', 
     await expect(page.getByTestId('google-status')).not.toContainText('1 event')
     await expectNothingAfter(page, 2)
     await expect(page.getByText('Late Standup')).toHaveCount(0)
+  })
+
+  // Review finding 1: an answer to a request made before Disconnect must not take the place of a newer request.
+  test('(vi) after Disconnect and a new request, the older answer is given back and the newer one is used', async ({ context, page }) => {
+    await open(context, page, WITH_BLOCK)
+    await connect(page)
+    await connected(page)
+    await page.clock.runFor(61 * 60_000)
+    await setGisPlan(page, { hold: true, response: { access_token: 'tok-OLD', expires_in: 3599, scope: EVENTS_READONLY } })
+    await page.getByTestId('google-update').click()
+    await expect.poll(async () => (await gisRecord(page)).held).toBe(1)
+    await page.getByTestId('google-disconnect').click()
+    await page.getByTestId('google-disconnect-confirm').click()
+    await expect(page.getByTestId('google-message')).toBeVisible()
+    await setGisPlan(page, { hold: true, response: { access_token: 'tok-NEW', expires_in: 3599, scope: EVENTS_READONLY } })
+    await connect(page)
+    await expect.poll(async () => (await gisRecord(page)).held).toBe(2)
+    const requests = google.apiRequests.length
+    await releaseToken(page, 'first')
+    await expect.poll(async () => (await gisRecord(page)).revokes).toEqual(['tok-OLD'])
+    await page.waitForTimeout(300)
+    expect(google.apiRequests).toHaveLength(requests)
+    await releaseToken(page, 'first')
+    await connected(page)
+    expect((await gisRecord(page)).revokes).toEqual(['tok-OLD'])
+    expect(google.apiRequests).toHaveLength(requests + 1)
+  })
+
+  // Review finding 2: what Disconnect forgets must also leave sheets that show it.
+  test('(vii) Disconnect in another tab closes the details of a Google event that were open', async ({ context, page }) => {
+    await open(context, page, WITH_BLOCK)
+    const other = await open(context, await context.newPage(), WITH_BLOCK)
+    for (const tab of [page, other]) {
+      await connect(tab)
+      await connected(tab)
+    }
+    await week(other)
+    await standupOverlay(other).click()
+    const details = other.getByRole('dialog').filter({ hasText: 'Standup GCal' })
+    await expect(details).toBeVisible()
+    await page.getByTestId('google-disconnect').click()
+    await page.getByTestId('google-disconnect-confirm').click()
+    await expect(details).toHaveCount(0)
+    await expect(other.getByText('Standup GCal')).toHaveCount(0)
+  })
+
+  test('(viii) Disconnect in another tab closes a chooser that offers a Google event', async ({ context, page }) => {
+    await open(context, page, WITH_BLOCK)
+    const other = await open(context, await context.newPage(), WITH_BLOCK)
+    // Three short meetings over a block crowd the column, so a press there asks which item to open.
+    const short = (id: string, start: string, end: string): CalendarEvent => ({ id, summary: `Crowded ${id}`, start: { dateTime: `${TUESDAY}T${start}:00Z` }, end: { dateTime: `${TUESDAY}T${end}:00Z` } })
+    google.events = [short('a', '09:30', '09:45'), short('b', '09:30', '09:45'), short('c', '09:35', '09:50')]
+    for (const tab of [page, other]) {
+      await connect(tab)
+      await connected(tab, 3)
+    }
+    await week(other)
+    const shared = other.locator(`.day-column[data-date="${TUESDAY}"] [data-shared-target][data-shared-items*="e:google:primary"]`).first()
+    await expect(shared).toBeAttached()
+    await shared.dispatchEvent('click')
+    const chooser = other.getByRole('dialog').filter({ hasText: 'Crowded a' })
+    await expect(chooser).toBeVisible()
+    await page.getByTestId('google-disconnect').click()
+    await page.getByTestId('google-disconnect-confirm').click()
+    await expect(chooser).toHaveCount(0)
+    await expect(other.getByText('Crowded a')).toHaveCount(0)
   })
 
   test('(v) Disconnect in one tab clears the events of another', async ({ context, page }) => {
