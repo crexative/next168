@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html lang="en">
   <head>
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'wasm-unsafe-eval' https://accounts.google.com/gsi/client; style-src 'self' 'unsafe-inline' https://accounts.google.com/gsi/style; img-src 'self' data: blob:; font-src 'self'; connect-src 'self' https: http:; frame-src https://accounts.google.com/gsi/; worker-src 'self' blob:; object-src 'none'; base-uri 'self'; form-action 'none'">
     <meta charset="UTF-8">
     <link rel="icon" href="/favicon.ico" sizes="32x32">
     <link rel="icon" href="/favicon.svg" type="image/svg+xml">
@@ -11,27 +12,7 @@
     <meta name="description" content="Weeklid - a local-first weekly planner for your 168 hours.">
     <meta name="theme-color" content="#F2F2F7" media="(prefers-color-scheme: light)">
     <meta name="theme-color" content="#000000" media="(prefers-color-scheme: dark)">
-    <script>
-      // The device's light/dark choice, before the first paint (src/ui/appearance.ts owns this key and these colours).
-      try {
-        var appearance = localStorage.getItem('next168-appearance')
-        if (appearance === 'light' || appearance === 'dark') {
-          document.documentElement.dataset.theme = appearance
-          document.querySelectorAll('meta[name="theme-color"]').forEach(function (meta) { meta.content = appearance === 'dark' ? '#000000' : '#F2F2F7' })
-        }
-      } catch (error) {}
-    </script>
-    <script>
-      // The page's language before the first paint (src/i18n/index.ts owns this key and the same detection), so the
-      // browser never offers to translate a page that is already in the person's language.
-      (function () {
-        var supported = ['en', 'es', 'fr', 'pt', 'de']
-        var saved = null
-        try { saved = localStorage.getItem('next168-language') } catch (error) {}
-        var browser = (navigator.language || '').split('-')[0]
-        document.documentElement.lang = supported.indexOf(saved) >= 0 ? saved : supported.indexOf(browser) >= 0 ? browser : 'en'
-      })()
-    </script>
+    <script src="/prepaint.js"></script>
     <title>Weeklid</title>
   </head>
   <body>

@@ -359,3 +359,7 @@ For deployment issues:
 **Weeklid** - Plan your next 168 hours, effortlessly.
 
 🌐 [next168.app](https://next168.app)
+
+## Content Security Policy
+
+`index.html` carries the policy as a `<meta http-equiv="Content-Security-Policy">` first in `<head>`, so it holds on Cloudflare Pages, GitHub Pages, `vite preview` and the companion alike (the companion also sends its own header; the two combine, the stricter wins). Scripts must be external files: the pre-paint theme and language script is `public/prepaint.js`. Nothing may need `unsafe-eval`: vue-i18n runs in JIT mode (`vite.config.ts`) and zod is jitless (`src/zodWithoutEval.ts`). `connect-src` stays `https: http:` because calendar subscriptions fetch arbitrary feed URLs, so the policy blocks injected scripts but does not limit where data can be sent. `e2e/csp.spec.ts` walks the app and fails on any `securitypolicyviolation`.

@@ -21,6 +21,9 @@ function checkPublicUrl(mode: string): void {
 // base './' lets the same build run at '/', at '/next168/' and inside the local companion.
 const appConfig = ({ isPreview }: ConfigEnv): UserConfig => ({
   base: './',
+  // vue-i18n compiles each message with `new Function` unless JIT is on, which the page's Content Security Policy
+  // (index.html, no 'unsafe-eval') would block; the JIT build interprets the message tree instead.
+  define: { __INTLIFY_JIT_COMPILATION__: true },
   plugins: [
     vue(),
     VitePWA({
