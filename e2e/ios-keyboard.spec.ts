@@ -5,7 +5,7 @@ import { addFromMenu } from './support/week'
 
 // P0 findings of the iPhone UX review: iOS shrinks and pans only the visual viewport when the keyboard opens. The fake
 // below gives the app that behaviour (a real keyboard cannot be driven here): __keyboard(height, offsetTop).
-test.use({ locale: 'es-CO', timezoneId: 'America/Bogota', launchOptions: { args: ['--disable-features=WebGPU'] } })
+test.use({ locale: 'es-CO', timezoneId: 'America/Bogota' })
 test.beforeEach(({}, testInfo) => { test.skip(!['phone', 'webkit-phone'].includes(testInfo.project.name), 'a phone-sized check') })
 
 const SIZE = { width: 375, height: 812 }
