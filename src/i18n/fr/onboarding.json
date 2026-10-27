@@ -105,7 +105,10 @@
       "hint": "Choisis-en une, ou écris autre chose.",
       "goesIn": "Va dans",
       "own": "À part",
-      "yours": "Déjà dans ta semaine"
+      "yours": "Déjà dans ta semaine",
+      "sameName": "Tu as déjà « {name} ». Ce sera ajouté comme un autre horaire.",
+      "addTime": "Ajouter un horaire",
+      "createAnother": "Créer une autre activité"
     },
     "extra": {
       "family": "Quand passes-tu du temps en famille ?",

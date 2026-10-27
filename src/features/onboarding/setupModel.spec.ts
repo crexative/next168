@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import type { DayIndex } from '@/core/model'
 import { wholeHourParts } from '@/ui/format'
 import {
-  addOwnCategory, addTyped, appendFromSummary, automaticGoal, createAddState, intoKey, rangeProblem, setPendingInto, setPendingName, blockToSleep, categoryOf, coveredMinutes, createState, deriveCommute, emptyState, ensureCategory,
+  addOwnCategory, addToStored, addTyped, keepSeparate, nameKey, appendFromSummary, automaticGoal, createAddState, intoKey, rangeProblem, setPendingInto, setPendingName, blockToSleep, categoryOf, coveredMinutes, createState, deriveCommute, emptyState, ensureCategory,
   finishMore, MAX_PICKS, pick, placeSlot, roundOptions, setRemoved, sleepToBlock, slotMinutes, statusOf, suggestCommute, suggestRanges, touch,
   validate, weekTotals, type RangeDraft, type SetupState,
 } from './setupModel'
@@ -446,7 +446,26 @@ describe('adding after setup (S2-1, S2-3, S2-6, S2-14)', () => {
     expect(addTyped(state, 'Nap').into).toBe('c-sleep')
     const settings = createAddState(document(), 'category', env)
     setPendingName(settings, 'Work')
-    expect(settings.pending).toEqual({ name: 'Work' })
+    expect(settings.pending).toEqual({ name: 'Work', into: 'c-work' })
+  })
+
+  it('never duplicates a stored activity silently, whatever the case, accents or spaces (P0-4)', () => {
+    const accented = documentWith([category('c-work', 'Work'), category('c-edu', 'Educación')])
+    expect(nameKey(' EDUCACION  ')).toBe(nameKey('Educación'))
+    const state = createAddState(accented, 'category', env)
+    setPendingName(state, 'educacion ')
+    expect(state.pending).toMatchObject({ into: 'c-edu' })
+    expect(addTyped(state, 'educacion ')).toMatchObject({ into: 'c-edu' })
+    // The summary path: a free-standing draft with a stored name blocks the save until the person decides.
+    const free = createAddState(accented, 'category', env)
+    const draft = ensureCategory(free, 'custom:9', undefined, 'EDUCACIÓN')
+    free.answers.more = ['custom:9']
+    expect(validate(free, new Map()).map((issue) => issue.code)).toContain('nameDuplicate')
+    keepSeparate(draft)
+    expect(validate(free, new Map()).map((issue) => issue.code)).not.toContain('nameDuplicate')
+    addToStored(draft, 'c-edu')
+    expect(draft).toMatchObject({ into: 'c-edu' })
+    expect(validate(free, new Map()).map((issue) => issue.code)).not.toContain('nameDuplicate')
   })
 
   it('places suggestions clear of stored blocks, and names the stored one a range clashes with', () => {

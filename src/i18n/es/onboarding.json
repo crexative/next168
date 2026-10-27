@@ -105,7 +105,10 @@
       "hint": "Elige una, o escribe otra cosa.",
       "goesIn": "Va en",
       "own": "Por su cuenta",
-      "yours": "Ya en tu semana"
+      "yours": "Ya en tu semana",
+      "sameName": "Ya tienes «{name}». Se añadirá como otro horario.",
+      "addTime": "Añadir horario",
+      "createAnother": "Crear otra actividad"
     },
     "extra": {
       "family": "¿Cuándo pasas tiempo con tu familia?",

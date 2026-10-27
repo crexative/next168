@@ -23,6 +23,8 @@ import { categoryFor } from './conversation'
 import { TOPICS } from '../setupTopics'
 import SetupConversation from './SetupConversation.vue'
 import SetupFrame from './SetupFrame.vue'
+import { keepInView } from '@/ui/keepInView'
+import { afterViewportPin } from '@/ui/visualViewportPin'
 
 // The guided setup's lifecycle: when it opens, what it is bound to, the draft that survives a reload, the single guarded
 // commit at the end, and what happens when storage is no longer what the flow opened on. Closing never writes.
@@ -431,14 +433,14 @@ onBeforeUnmount(() => window.removeEventListener('beforeunload', warnBeforeUnloa
 
 // ---------- A field in view when the keyboard opens ----------
 
-function scrollFocusedIntoView(): void {
+function keepFocusedInView(): void {
   const active = document.activeElement as HTMLElement | null
-  if (active?.closest('[data-testid=setup]') && active.matches('input, textarea')) active.scrollIntoView({ block: 'center' })
+  const frame = active?.closest<HTMLElement>('.setup-frame')
+  if (active && frame && active.closest('[data-testid=setup]') && active.matches('input, textarea')) keepInView(active, frame)
 }
 
-const viewport = typeof window === 'undefined' ? undefined : window.visualViewport
-viewport?.addEventListener('resize', scrollFocusedIntoView)
-onBeforeUnmount(() => viewport?.removeEventListener('resize', scrollFocusedIntoView))
+const stopKeepingInView = afterViewportPin(keepFocusedInView)
+onBeforeUnmount(stopKeepingInView)
 </script>
 
 <template>

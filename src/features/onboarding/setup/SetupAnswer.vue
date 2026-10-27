@@ -1,8 +1,8 @@
 <script setup lang="ts">
-import { computed, nextTick, ref, useId } from 'vue'
+import { computed, nextTick, ref, useId, watch } from 'vue'
 import Icon from '@/ui/Icon.vue'
 import {
-  acceptRanges, addTyped, clearPending, clearRanges, finishMore, pick, rangeProblem, roundIndex, setAnswer, setPendingInto, setPendingName, setSleepSplit,
+  acceptRanges, addTyped, clearPending, nameKey, clearRanges, finishMore, pick, rangeProblem, roundIndex, setAnswer, setPendingInto, setPendingName, setSleepSplit,
   type ScreenId, type SetupState, type Tri, type WorkStudy,
 } from '../setupModel'
 import { TOPICS, type TopicId } from '../setupTopics'
@@ -11,6 +11,7 @@ import { categoryFor, extraReply, isRangeScreen, roundReplies } from './conversa
 import OtherThingField from './OtherThingField.vue'
 import QuickReplies from './QuickReplies.vue'
 import RangeList from './RangeList.vue'
+import { keepInView } from '@/ui/keepInView'
 import { useSetupFormat } from './useSetupFormat'
 
 // The docked answer area of one question, like a keyboard that fits the question: quick replies that answer at once,
@@ -108,11 +109,18 @@ const into = computed({
   get: () => props.state.pending?.into ?? '',
   set: (id: string) => setPendingInto(props.state, id === '' ? undefined : id),
 })
+// A typed name that is already a stored activity: the default is more time for it; a separate activity is explicit.
+const sameStored = computed(() => {
+  const into = props.state.pending?.into
+  const found = into === undefined ? undefined : props.state.add?.stored.find((stored) => stored.id === into)
+  return found && nameKey(found.name) === nameKey(otherName.value) ? found : undefined
+})
 const intoId = useId()
 const storedId = useId()
 // The first question of an add session has no "nothing else": leaving is the frame's ‹.
 const showDone = computed(() => !(props.state.add && round.value === 0))
 const duplicate = ref(false)
+const otherForm = ref<HTMLFormElement | null>(null)
 const otherField = ref<InstanceType<typeof OtherThingField> | null>(null)
 
 function choose(value: string): void {
@@ -139,6 +147,19 @@ function closeOther(): void {
   duplicate.value = false
   otherOpen.value = false
   void nextTick(() => root.value?.querySelector<HTMLElement>('[data-testid="more-other"]')?.focus({ preventScroll: true }))
+}
+
+// The note and the second button make the form taller: they must not end up under the keyboard.
+watch(sameStored, async () => {
+  await nextTick()
+  const form = otherForm.value
+  const frame = form?.closest<HTMLElement>('.setup-frame')
+  if (form && frame && form.contains(document.activeElement)) keepInView(form, frame)
+})
+
+function createAnother(): void {
+  setPendingInto(props.state, undefined)
+  addOther()
 }
 
 function addOther(): void {
@@ -189,7 +210,7 @@ const labels = computed(() => ({
           </div>
           <div class="round-more">
             <button v-if="!otherOpen" class="other t-body" type="button" data-testid="more-other" :disabled="busy" @click="openOther">{{ t('onboarding.guided.more.other') }}</button>
-            <form v-else class="other-form" @submit.prevent="addOther" @keydown.esc.stop.prevent="closeOther">
+            <form v-else ref="otherForm" class="other-form" data-keep-together @submit.prevent="addOther" @keydown.esc.stop.prevent="closeOther">
               <OtherThingField ref="otherField" v-model="otherName" :label="t('onboarding.guided.more.otherLabel')" :placeholder="t('onboarding.guided.more.otherPlaceholder')" test-id="more-other-name" @enter="addOther" />
               <div v-if="destinations.length > 0" class="goes-in">
                 <label class="t-body" :for="intoId">{{ t('onboarding.guided.add.goesIn') }}</label>
@@ -198,7 +219,11 @@ const labels = computed(() => ({
                   <option v-for="destination in destinations" :key="destination.id" :value="destination.id">{{ destination.name }}</option>
                 </select>
               </div>
-              <button class="add t-body" type="submit" data-testid="more-other-add" :disabled="busy || otherName.trim() === ''">{{ t('onboarding.guided.more.add') }}</button>
+              <button class="add t-body" type="submit" data-testid="more-other-add" :disabled="busy || otherName.trim() === ''">{{ sameStored ? t('onboarding.guided.add.addTime') : t('onboarding.guided.more.add') }}</button>
+              <template v-if="sameStored">
+                <p class="t-body note" role="status" data-testid="same-name-note">{{ t('onboarding.guided.add.sameName', { name: sameStored.name }) }}</p>
+                <button class="other t-body" type="button" data-testid="more-other-new" :disabled="busy" @click="createAnother">{{ t('onboarding.guided.add.createAnother') }}</button>
+              </template>
               <p v-if="duplicate" class="t-body note" role="status">{{ t('onboarding.guided.more.duplicate') }}</p>
             </form>
             <button
@@ -234,7 +259,7 @@ const labels = computed(() => ({
 /* Docked like a keyboard: the answer area scrolls on its own when it is taller than its share of the screen, and the
    actions under it never move. */
 .dock {
-  flex: 0 1 auto; display: flex; flex-direction: column; min-height: 0; max-height: calc(min(var(--vvh, 100dvh), 100dvh) * 0.62);
+  flex: 0 1 auto; display: flex; flex-direction: column; min-height: 0; max-height: calc(min(var(--vv-height, 100dvh), 100dvh) * 0.62);
   border-top: 0.5px solid var(--separator); background: var(--surface);
 }
 .dock-answer { flex: 0 1 auto; min-height: 0; overflow-y: auto; overscroll-behavior: contain; }

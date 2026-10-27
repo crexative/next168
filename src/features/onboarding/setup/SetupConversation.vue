@@ -9,6 +9,7 @@ import { answer, hint, question, transcript, type Line } from './conversation'
 import SetupAnswer from './SetupAnswer.vue'
 import SetupSummary from './SetupSummary.vue'
 import { useSetupFormat } from './useSetupFormat'
+import { keepInView } from '@/ui/keepInView'
 
 // The guided setup as a conversation: Weeklid's questions on the leading side, the person's answers on the trailing
 // side, every earlier answer still there and tappable to change it, and the answers for the current question docked
@@ -74,7 +75,7 @@ function onFocusIn(event: FocusEvent): void {
   const target = event.target as HTMLElement
   if (!target.matches('input, textarea')) return
   requestAnimationFrame(() => {
-    target.scrollIntoView({ block: 'center' })
+    keepInView(target, target.closest<HTMLElement>('.setup-frame') ?? document.body)
     if (target.closest('.dock')) scroller.value?.scrollTo({ top: scroller.value.scrollHeight, behavior: prefersReducedMotion() ? 'auto' : 'smooth' })
   })
 }

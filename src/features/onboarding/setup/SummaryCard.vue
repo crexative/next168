@@ -3,7 +3,7 @@ import { computed } from 'vue'
 import Button from '@/ui/Button.vue'
 import Icon from '@/ui/Icon.vue'
 import { formatWholeHours } from '@/ui/format'
-import { categoryMinutes, renameDraft, type CategoryDraft, type Issue, type SetupState } from '../setupModel'
+import { addToStored, categoryMinutes, keepSeparate, renameDraft, sameNameAsStored, type CategoryDraft, type Issue, type SetupState } from '../setupModel'
 import OtherThingField from './OtherThingField.vue'
 import RangeList from './RangeList.vue'
 import { useSetupFormat } from './useSetupFormat'
@@ -20,6 +20,9 @@ const minutes = computed(() => categoryMinutes(props.state, props.category))
 // Whole hours from ten hours up, "h min" below: a figure a child can read.
 const amount = computed(() => (minutes.value >= 600 ? formatWholeHours(Math.round(minutes.value / 60)) : duration(minutes.value)))
 const nameIssue = computed(() => props.issues.find((issue) => issue.categoryKey === props.category.key && (issue.code === 'nameRequired' || issue.code === 'nameDuplicate')))
+
+// Add mode: a new activity named like a stored one is never a silent copy; the person picks what happens.
+const sameStored = computed(() => sameNameAsStored(props.state, props.category))
 
 function onName(name: string): void {
   renameDraft(props.category, name)
@@ -42,7 +45,12 @@ function onName(name: string): void {
     </button>
     <div v-if="expanded" class="body">
       <OtherThingField :model-value="category.name" :label="t('onboarding.summary.name')" :invalid="!!nameIssue" test-id="card-name" @update:model-value="onName" />
-      <p v-if="nameIssue" class="error t-body" role="alert">{{ t(`onboarding.guided.errors.${nameIssue.code}`) }}</p>
+      <div v-if="sameStored" class="same-name" data-testid="same-name">
+        <p class="note t-body" role="status">{{ t('onboarding.guided.add.sameName', { name: sameStored.name }) }}</p>
+        <Button variant="tinted" data-testid="same-name-add-time" @click="addToStored(category, sameStored.id); emit('edited')">{{ t('onboarding.guided.add.addTime') }}</Button>
+        <Button variant="plain" data-testid="same-name-new" @click="keepSeparate(category); emit('edited')">{{ t('onboarding.guided.add.createAnother') }}</Button>
+      </div>
+      <p v-else-if="nameIssue" class="error t-body" role="alert">{{ t(`onboarding.guided.errors.${nameIssue.code}`) }}</p>
       <RangeList :state="state" :category="category" :labels="{ there: t('onboarding.guided.commuteRanges.there'), back: t('onboarding.guided.commuteRanges.back'), bed: t('onboarding.guided.sleep.bed'), wake: t('onboarding.guided.sleep.wake'), weeknights: t('onboarding.guided.sleep.weeknights'), weekend: t('onboarding.guided.sleep.weekend') }" :sleep="category.topic === 'sleep'" />
       <p v-if="hasTasks" class="note t-body" data-testid="has-tasks">{{ t('onboarding.summary.hasTasks', { place }) }}</p>
       <Button v-else variant="plain" destructive data-testid="card-remove" @click="emit('remove')">{{ t('onboarding.summary.remove', { name: category.name }) }}</Button>
@@ -67,5 +75,6 @@ function onName(name: string): void {
 .body > :deep(.ui-button) { align-self: flex-start; }
 .error { margin: 0; color: var(--danger-label); }
 .line.warn { color: var(--label); }
+.same-name { display: flex; flex-direction: column; gap: var(--space-2); align-items: flex-start; }
 .note { margin: 0; color: var(--label-2); }
 </style>
