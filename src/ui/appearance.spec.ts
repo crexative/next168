@@ -70,14 +70,14 @@ describe('appearance preference', () => {
   })
 })
 
-describe('the pre-paint script in index.html', () => {
+describe('the pre-paint script (public/prepaint.js)', () => {
   it('uses the same key and bar colours as the preference', () => {
+    const script = readFileSync('public/prepaint.js', 'utf8')
     const html = readFileSync('index.html', 'utf8')
-    const script = /<script>([\s\S]*?)<\/script>/.exec(html)?.[1] ?? ''
     expect(script).toContain(`localStorage.getItem('${APPEARANCE_KEY}')`)
     expect(script).toContain(`'${THEME_COLORS.dark}'`)
     expect(script).toContain(`'${THEME_COLORS.light}'`)
     // It runs before the app's module script.
-    expect(html.indexOf('<script>')).toBeLessThan(html.indexOf('<script type="module"'))
+    expect(html.indexOf('<script src="/prepaint.js">')).toBeLessThan(html.indexOf('<script type="module"'))
   })
 })

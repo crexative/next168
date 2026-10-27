@@ -4,8 +4,8 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import { SUPPORTED_LOCALES, detectLocale, setLocale } from './index'
 
 // verify4 defect 5: the served page said lang="en", so Chrome offered to translate a Spanish UI.
-const html = readFileSync(join(__dirname, '..', '..', 'index.html'), 'utf8')
-const inline = [...html.matchAll(/<script>([\s\S]*?)<\/script>/g)].map((match) => match[1]!).find((script) => script.includes('documentElement.lang'))!
+// The script is an external file (public/prepaint.js) because the page's Content Security Policy allows no inline script.
+const inline = readFileSync(join(__dirname, '..', '..', 'public', 'prepaint.js'), 'utf8')
 
 function languageBeforePaint(saved: string | null, browser: string): string {
   const root = { lang: 'unset' }
