@@ -69,14 +69,30 @@ export function anySheetOpen(): boolean {
 // which scales the page behind a sheet.
 const fullScreenOwners = ref(0)
 
+// While any owner is open the page behind cannot scroll; its position comes back when the last owner releases.
+const LOCK_CLASS = 'page-locked'
+let lockedScrollY = 0
+
+function lockPage(): void {
+  lockedScrollY = window.scrollY
+  document.documentElement.classList.add(LOCK_CLASS)
+}
+
+function unlockPage(): void {
+  document.documentElement.classList.remove(LOCK_CLASS)
+  if (window.scrollY !== lockedScrollY) window.scrollTo(0, lockedScrollY)
+}
+
 // Registers an owner; the returned release may be called any number of times.
 export function openFullScreen(): () => void {
+  if (fullScreenOwners.value === 0) lockPage()
   fullScreenOwners.value += 1
   let released = false
   return () => {
     if (released) return
     released = true
     fullScreenOwners.value -= 1
+    if (fullScreenOwners.value === 0) unlockPage()
   }
 }
 

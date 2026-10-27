@@ -105,7 +105,10 @@
       "hint": "Wähle eins, oder schreib etwas anderes.",
       "goesIn": "Gehört zu",
       "own": "Für sich",
-      "yours": "Schon in deiner Woche"
+      "yours": "Schon in deiner Woche",
+      "sameName": "Du hast „{name}“ schon. Es kommt als weitere Zeit dazu.",
+      "addTime": "Zeit hinzufügen",
+      "createAnother": "Weitere Aktivität anlegen"
     },
     "extra": {
       "family": "Wann verbringst du Zeit mit der Familie?",

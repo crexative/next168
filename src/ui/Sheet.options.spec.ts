@@ -50,22 +50,31 @@ describe('Sheet options for a guided flow', () => {
     expect(document.querySelector('.sheet-close')!.getAttribute('aria-label')).toBe('Not now')
   })
 
-  it('fullHeight marks the panel, and a visual viewport that shrinks sets --vvh on it', async () => {
-    const listeners = new Set<() => void>()
-    const viewport = { height: 700, addEventListener: (_: string, fn: () => void) => listeners.add(fn), removeEventListener: (_: string, fn: () => void) => listeners.delete(fn) }
+  it('fullHeight marks the panel and pins the sheet to the visual viewport, which pans as well as shrinks', async () => {
+    const listeners = new Map<string, Set<() => void>>()
+    const viewport = {
+      height: 700, offsetTop: 0,
+      addEventListener: (type: string, fn: () => void) => listeners.set(type, (listeners.get(type) ?? new Set()).add(fn)),
+      removeEventListener: (type: string, fn: () => void) => listeners.get(type)?.delete(fn),
+    }
     Object.defineProperty(window, 'visualViewport', { value: viewport, configurable: true })
     props.fullHeight = true
     await show()
     const panel = document.querySelector<HTMLElement>('.sheet-panel')!
+    const rootStyle = document.documentElement.style
     expect(panel.classList.contains('is-full')).toBe(true)
-    expect(panel.style.getPropertyValue('--vvh')).toBe('700px')
+    expect(document.querySelector('.sheet-root')!.classList.contains('is-pinned')).toBe(true)
+    expect(rootStyle.getPropertyValue('--vv-height')).toBe('700px')
     viewport.height = 360
-    listeners.forEach((listener) => listener())
-    await nextTick()
-    expect(panel.style.getPropertyValue('--vvh')).toBe('360px')
+    viewport.offsetTop = 120
+    listeners.get('scroll')!.forEach((listener) => listener())
+    await vi.advanceTimersByTimeAsync(50)
+    expect(rootStyle.getPropertyValue('--vv-height')).toBe('360px')
+    expect(rootStyle.getPropertyValue('--vv-top')).toBe('120px')
     props.open = false
     await nextTick()
-    expect(listeners.size).toBe(0)
+    expect([...listeners.values()].every((set) => set.size === 0)).toBe(true)
+    expect(rootStyle.getPropertyValue('--vv-height')).toBe('')
     Reflect.deleteProperty(window, 'visualViewport')
   })
 })

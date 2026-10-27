@@ -102,6 +102,8 @@ input[type='file']::file-selector-button {
 }
 
 html[data-sheet-open] body { overflow: hidden; }
+/* A full-screen flow owns the screen: the page behind it cannot scroll or rubber-band (sheetStack.ts remembers and restores its position). */
+html.page-locked, html.page-locked body { overflow: hidden; overscroll-behavior: none; }
 
 /* A bar that extends the toolbar (Week's day strip) owns the bottom edge, so toolbar and strip read as one material. */
 .view:has([data-toolbar-extension]) .toolbar[data-collapsed] { box-shadow: none; }

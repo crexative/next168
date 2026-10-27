@@ -49,6 +49,8 @@ export interface CategoryDraft {
   keepOverride: boolean
   // Add mode only: the stored category this draft's blocks go into (it creates no category of its own).
   into?: string
+  // Add mode only: the person chose to create this as an activity of its own although a stored one has the same name.
+  separate?: boolean
 }
 
 // Add mode: what the week already holds, read-only context for overlaps, placement and the "Goes in" choice.
@@ -75,6 +77,11 @@ export interface SetupEnv {
 }
 
 export const MAX_NAME_LENGTH = 60
+
+// Names compare without case, accents or stray spaces: "Educación" is "educacion ".
+export function nameKey(name: string): string {
+  return name.normalize('NFD').replace(/\p{M}/gu, '').replace(/\s+/g, ' ').trim().toLowerCase()
+}
 // How many rounds of "Anything else?" a conversation offers; a bound on the talk, not on the data.
 export const MAX_PICKS = 20
 const SLEEP_NIGHT_CUTOFF = 6 * 60
@@ -358,15 +365,34 @@ export function rangeProblem(state: SetupState, category: CategoryDraft, range: 
   return stored ? { code: 'overlap', categoryKey: category.key, rangeKey: range.key, with: { categoryKey: stored.categoryId, slot: stored, name: stored.name } } : undefined
 }
 
+// Add mode: the stored category a new, free-standing draft would silently duplicate, until the person decides.
+export function sameNameAsStored(state: SetupState, category: CategoryDraft): StoredRef | undefined {
+  if (!state.add || category.categoryId !== undefined || category.into !== undefined || category.separate) return undefined
+  const key = nameKey(category.name)
+  return key === '' ? undefined : state.add.stored.find((stored) => nameKey(stored.name) === key)
+}
+
+// "Add time to the existing one": the draft's blocks go into the stored category.
+export function addToStored(category: CategoryDraft, storedId: string): void {
+  category.into = storedId
+  delete category.separate
+}
+
+// "Create another activity": explicit, so it is not a silent duplicate.
+export function keepSeparate(category: CategoryDraft): void {
+  delete category.into
+  category.separate = true
+}
+
 // Blocking issues apply only to what this session adds or edits. Stored content that was never touched is left alone.
 export function validate(state: SetupState, storedNames: ReadonlyMap<string, string>): Issue[] {
   const issues: Issue[] = []
-  const names = activeCategories(state).map((category) => ({ key: category.key, name: category.name.trim().toLowerCase() }))
+  const names = activeCategories(state).map((category) => ({ key: category.key, name: nameKey(category.name) }))
   for (const category of activeCategories(state)) {
     const renamed = category.categoryId === undefined || category.name.trim() !== (storedNames.get(category.categoryId) ?? category.name.trim())
     if (renamed) {
       if (category.name.trim() === '') issues.push({ code: 'nameRequired', categoryKey: category.key })
-      else if (names.some((other) => other.key !== category.key && other.name === category.name.trim().toLowerCase())) {
+      else if (names.some((other) => other.key !== category.key && other.name === nameKey(category.name)) || sameNameAsStored(state, category) !== undefined) {
         issues.push({ code: 'nameDuplicate', categoryKey: category.key })
       }
     }
@@ -460,7 +486,7 @@ export function acceptRanges(category: CategoryDraft): void {
 
 export function addOwnCategory(state: SetupState, name: string): { category: CategoryDraft; duplicate: boolean } {
   const trimmed = name.trim()
-  const same = trimmed === '' ? undefined : state.categories.find((category) => category.name.trim().toLowerCase() === trimmed.toLowerCase() && statusOf(state, category) !== 'removed')
+  const same = trimmed === '' ? undefined : state.categories.find((category) => nameKey(category.name) === nameKey(trimmed) && statusOf(state, category) !== 'removed')
   if (same) return { category: same, duplicate: true }
   const category = ensureCategory(state, nextKey(state, 'custom:'), undefined, trimmed)
   return { category, duplicate: false }
@@ -579,8 +605,8 @@ export function setPendingName(state: SetupState, name: string): void {
   if (name === '' && !touched) { delete state.pending; return }
   const pending: NonNullable<SetupState['pending']> = { name }
   if (touched) Object.assign(pending, { into: state.pending?.into, intoTouched: true })
-  else if (state.add?.entry === 'routine') {
-    const same = state.add.stored.filter((category) => category.name.trim().toLowerCase() === name.trim().toLowerCase())
+  else if (state.add) {
+    const same = state.add.stored.filter((category) => nameKey(category.name) === nameKey(name) && nameKey(name) !== '')
     if (same.length === 1) pending.into = same[0]!.id
   }
   if (pending.into === undefined) delete pending.into
@@ -599,15 +625,19 @@ export function setPendingInto(state: SetupState, into: string | undefined): voi
 // "Add" in the name form. Adding a routine with a destination: time for that stored category under the typed title.
 // Otherwise the person's own item (an existing one of that name when there is one).
 export function addTyped(state: SetupState, name: string): CategoryDraft {
-  const into = state.add?.entry === 'routine' ? state.pending?.into : undefined
+  const into = state.add ? state.pending?.into : undefined
   if (into !== undefined && state.add!.stored.some((category) => category.id === into)) {
     const draft = ensureCategory(state, nextKey(state, 'custom:'), undefined, name.trim())
     draft.into = into
     return draft
   }
-  const trimmed = name.trim().toLowerCase()
-  const same = state.categories.find((category) => category.into === undefined && category.name.trim().toLowerCase() === trimmed && statusOf(state, category) !== 'removed')
-  return same ?? ensureCategory(state, nextKey(state, 'custom:'), undefined, name.trim())
+  const trimmed = nameKey(name)
+  const same = state.categories.find((category) => category.into === undefined && nameKey(category.name) === trimmed && statusOf(state, category) !== 'removed')
+  if (same) return same
+  const created = ensureCategory(state, nextKey(state, 'custom:'), undefined, name.trim())
+  // Chosen "On its own" (or "Create another activity") while a stored activity has this name: explicit, not a silent copy.
+  if (state.add && state.pending?.intoTouched) created.separate = true
+  return created
 }
 
 export const canAppend = (state: SetupState): boolean => picksOf(state).length < MAX_PICKS

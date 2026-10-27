@@ -105,7 +105,10 @@
       "hint": "Pick one, or type something else.",
       "goesIn": "Goes in",
       "own": "On its own",
-      "yours": "Already in your week"
+      "yours": "Already in your week",
+      "sameName": "You already have “{name}”. It will be added as another time.",
+      "addTime": "Add a time",
+      "createAnother": "Create another activity"
     },
     "extra": {
       "family": "When do you spend time with family?",

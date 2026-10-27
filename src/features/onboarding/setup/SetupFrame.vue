@@ -3,6 +3,7 @@ import { computed, nextTick, onBeforeUnmount, ref, useId, watch } from 'vue'
 import Icon from '@/ui/Icon.vue'
 import { registerUnsavedInput } from '@/ui/unsavedGuard'
 import AppMark from '@/ui/AppMark.vue'
+import { pinToVisualViewport } from '@/ui/visualViewportPin'
 
 // The guided setup's full-screen frame: a top bar (‹ to leave, the app's mark, which part of five) over the
 // conversation. Going back is not a button here: the person taps an earlier answer to change it. Not a sheet: it covers the screen on a phone and centres a reading column on wider screens. It keeps
@@ -55,27 +56,17 @@ function onKeydown(event: KeyboardEvent): void {
   }
 }
 
-// The visible part of the page (smaller while the on-screen keyboard is up) is the frame's height.
-const viewportHeight = ref<number | null>(null)
-let stopViewport: (() => void) | undefined
-
-function watchViewport(): void {
-  const viewport = typeof window === 'undefined' ? undefined : window.visualViewport
-  if (!viewport) return
-  const sync = () => { viewportHeight.value = Math.round(viewport.height) }
-  sync()
-  viewport.addEventListener('resize', sync)
-  stopViewport = () => viewport.removeEventListener('resize', sync)
-}
+// While the frame is open it is pinned to the part of the page the person can see (smaller, and panned, while the
+// on-screen keyboard is up).
+let releasePin: (() => void) | undefined
 
 watch(() => props.open, async (open, was) => {
-  stopViewport?.()
-  stopViewport = undefined
-  viewportHeight.value = null
+  if (open && !releasePin) releasePin = pinToVisualViewport()
   if (open) {
     if (!was) returnFocusTo = document.activeElement as HTMLElement | null
-    watchViewport()
   } else if (was) {
+    releasePin?.()
+    releasePin = undefined
     await nextTick()
     // The control that opened it, or, when that is gone (a menu that closed, a view that changed), the page's heading.
     const target = returnFocusTo?.isConnected ? returnFocusTo : document.querySelector<HTMLElement>('main h1')
@@ -100,7 +91,7 @@ watch(() => props.open && props.dirty, (unsaved) => {
 }, { immediate: true })
 
 onBeforeUnmount(() => {
-  stopViewport?.()
+  releasePin?.()
   releaseUnsaved?.()
 })
 </script>
@@ -110,7 +101,7 @@ onBeforeUnmount(() => {
     <Transition name="setup-frame">
       <div
         v-if="open" ref="root" class="setup-frame" role="dialog" aria-modal="true" :aria-labelledby="titleId" :aria-busy="locked || undefined"
-        :style="viewportHeight !== null ? { '--vvh': `${viewportHeight}px` } : undefined" @keydown="onKeydown"
+        @keydown="onKeydown"
       >
         <header class="bar">
           <div class="bar-inner">
@@ -138,8 +129,8 @@ onBeforeUnmount(() => {
 .setup-frame {
   --tap-target: 48px;
   --column: 40rem;
-  position: fixed; inset: 0 0 auto; z-index: 100; display: flex; flex-direction: column;
-  height: min(var(--vvh, 100dvh), 100dvh);
+  position: fixed; inset: var(--vv-top, 0px) 0 auto; z-index: 100; display: flex; flex-direction: column;
+  height: min(var(--vv-height, 100dvh), 100dvh);
   background: var(--surface); color: var(--label); outline: none;
 }
 .bar { flex: none; padding: var(--safe-top) max(var(--space-2), var(--safe-right)) 0 max(var(--space-2), var(--safe-left)); border-bottom: 0.5px solid var(--separator); }

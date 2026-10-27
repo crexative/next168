@@ -6,6 +6,7 @@ import { prefersReducedMotion, useMediaQuery } from './useMediaQuery'
 import { registerUnsavedInput } from './unsavedGuard'
 import { releaseVelocity, rubberBand, shouldDismiss, springTo, type Sample } from './sheetMotion'
 import { isHover, watchPressEnd } from './pressEnd'
+import { pinToVisualViewport } from './visualViewportPin'
 import { anyFullScreenOpen, closedSheet, closingSheet, droppedSheet, openSheet, reopenedSheet, type SheetEntry } from './sheetStack'
 
 // A phone sheet ends with a dismiss button within the thumb's reach (`dismissLabel`, default "Cancel");
@@ -133,24 +134,12 @@ function requestClose(): void {
   emit('update:open', false)
 }
 
-// While a full-height panel is open, the visible part of the page (smaller when the on-screen keyboard is up) sizes it.
-let stopViewport: (() => void) | undefined
-const viewportHeight = ref<number | null>(null)
-
-function watchViewport(): void {
-  const viewport = typeof window === 'undefined' ? undefined : window.visualViewport
-  if (!viewport) return
-  const sync = () => { viewportHeight.value = Math.round(viewport.height) }
-  sync()
-  viewport.addEventListener('resize', sync)
-  stopViewport = () => viewport.removeEventListener('resize', sync)
-}
+// While a full-height panel is open it is pinned to the part of the page the person can see (keyboard up).
+let releasePin: (() => void) | undefined
 
 watch(() => props.open && props.fullHeight, (active) => {
-  stopViewport?.()
-  stopViewport = undefined
-  viewportHeight.value = null
-  if (active) watchViewport()
+  releasePin?.()
+  releasePin = active ? pinToVisualViewport() : undefined
 }, { immediate: true })
 
 // A press on a control (the close button) is never a drag; elsewhere in the header it becomes one only after
@@ -260,7 +249,7 @@ watch(() => props.open && props.dirty, (unsaved) => {
 onBeforeUnmount(() => {
   disposed = true
   ++generation
-  stopViewport?.()
+  releasePin?.()
   endPress()
   animation?.stop()
   if (pendingWait) {
@@ -276,13 +265,12 @@ onBeforeUnmount(() => {
 
 <template>
   <Teleport to="body">
-    <div v-if="rendered" class="sheet-root" :class="{ 'is-shown': shown, 'is-centered': isCentered }">
+    <div v-if="rendered" class="sheet-root" :class="{ 'is-shown': shown, 'is-centered': isCentered, 'is-pinned': fullHeight }">
       <div class="sheet-scrim" @click="requestClose" />
       <div
         ref="panel"
         class="sheet-panel"
         :class="{ 'is-full': fullHeight, 'is-large': largeTargets }"
-        :style="viewportHeight !== null ? { '--vvh': `${viewportHeight}px` } : undefined"
         :aria-busy="locked || undefined"
         role="dialog"
         aria-modal="true"
@@ -319,6 +307,7 @@ onBeforeUnmount(() => {
 
 <style scoped>
 .sheet-root { position: fixed; inset: 0; z-index: 100; display: flex; align-items: flex-end; justify-content: center; }
+.sheet-root.is-pinned { inset: var(--vv-top, 0px) 0 auto; height: min(var(--vv-height, 100dvh), 100dvh); }
 .sheet-scrim { position: absolute; inset: 0; background: var(--scrim); opacity: 0; transition: opacity 0.2s; }
 .is-shown .sheet-scrim { opacity: 1; }
 .sheet-panel {
@@ -335,9 +324,9 @@ onBeforeUnmount(() => {
   /* Clips scrolled content to the rounded corners. */
   overflow: hidden;
 }
-/* A guided flow: a tall panel, a body that scrolls, 48 px controls. --vvh follows the visible viewport (keyboard up). */
+/* A guided flow: a tall panel, a body that scrolls, 48 px controls. --vv-height follows the visible viewport (keyboard up). */
 .sheet-panel.is-large { --tap-target: 48px; }
-.sheet-panel.is-full { height: calc(min(var(--vvh, 100dvh), 100dvh) - var(--safe-top) - var(--space-6)); }
+.sheet-panel.is-full { height: calc(min(var(--vv-height, 100dvh), 100dvh) - var(--safe-top) - var(--space-6)); }
 .sheet-close:disabled { opacity: 0.4; }
 .sheet-grab { touch-action: none; padding-top: var(--space-2); cursor: grab; }
 .sheet-title:focus { outline: none; }
