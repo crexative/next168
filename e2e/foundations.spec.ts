@@ -41,6 +41,7 @@ const richDocument = {
 }
 
 async function startWith(page: Page, document: unknown = richDocument, locale = 'en'): Promise<void> {
+  if (process.env.THROTTLE) { const c = await page.context().newCDPSession(page); await c.send('Emulation.setCPUThrottlingRate', { rate: Number(process.env.THROTTLE) }) }
   await page.clock.install({ time: NOW })
   await page.addInitScript(([key, value]) => window.localStorage.setItem(key!, value!), [LANGUAGE_KEY, locale])
   await seedKey(page, V2_KEY, JSON.stringify(document))
@@ -399,10 +400,14 @@ test.describe('accessibility plumbing', () => {
   })
 
   async function deleteGym(page: Page) {
+    await page.clock.resume()
     await openView(page, 'week')
     await page.locator('[data-date="2026-10-21"] [data-block-id="b-gym"]').first().click()
     await page.getByRole('dialog').getByRole('button', { name: 'Delete routine' }).click()
     await expect(page.locator('.toast')).toBeVisible()
+    // The toast's 15 s run on the page clock, which also ticks in real time: stop it here, so only `runFor` spends the
+    // toast's time and a slow machine cannot expire it between steps.
+    await page.clock.pauseAt(await page.evaluate(() => Date.now() + 1_000))
     // The closing sheet keeps focus trapped until it is gone.
     await expect(page.getByRole('dialog')).toHaveCount(0)
   }
@@ -411,7 +416,8 @@ test.describe('accessibility plumbing', () => {
     await startWith(page)
     await deleteGym(page)
     const toast = page.locator('.toast')
-    await page.clock.runFor(10_000)
+    // Up to a second of the toast's time went before the clock stopped, so 8 s here leaves two seconds of margin against the 15 s.
+    await page.clock.runFor(8_000)
     await expect(toast).toBeVisible()
     await toast.hover()
     await page.clock.runFor(30_000)
@@ -420,6 +426,8 @@ test.describe('accessibility plumbing', () => {
     await page.clock.runFor(4_000)
     await expect(toast).toBeVisible()
     await page.keyboard.press('ControlOrMeta+z')
+    // The stopped clock also holds the fade-out; let it finish.
+    await page.clock.runFor(500)
     await expect(toast).toHaveCount(0)
     await expect(page.locator('[data-date="2026-10-21"] [data-block-id="b-gym"]')).not.toHaveCount(0)
 
@@ -433,8 +441,14 @@ test.describe('accessibility plumbing', () => {
   test('the toast\'s Undo is among the first stops of the tab order', async ({ page }) => {
     await startWith(page)
     await deleteGym(page)
-    await page.evaluate(() => (document.activeElement as HTMLElement | null)?.blur())
-    await page.locator('body').focus()
+    // Tab continues from where the deleted routine's button was (the browser remembers that spot), or from the page's
+    // start if focus was reset meanwhile, depending on timing: start from the page's start, which is what the test means.
+    await page.evaluate(() => {
+      (document.activeElement as HTMLElement | null)?.blur()
+      document.body.tabIndex = -1
+      document.body.focus()
+      document.body.removeAttribute('tabindex')
+    })
     let reached = false
     for (let press = 0; press < 8 && !reached; press += 1) {
       await page.keyboard.press('Tab')
