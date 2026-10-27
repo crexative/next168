@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, nextTick, ref, useId } from 'vue'
+import { computed, nextTick, ref, useId, watch } from 'vue'
 import Icon from '@/ui/Icon.vue'
 import {
   acceptRanges, addTyped, clearPending, nameKey, clearRanges, finishMore, pick, rangeProblem, roundIndex, setAnswer, setPendingInto, setPendingName, setSleepSplit,
@@ -11,6 +11,7 @@ import { categoryFor, extraReply, isRangeScreen, roundReplies } from './conversa
 import OtherThingField from './OtherThingField.vue'
 import QuickReplies from './QuickReplies.vue'
 import RangeList from './RangeList.vue'
+import { keepInView } from '@/ui/keepInView'
 import { useSetupFormat } from './useSetupFormat'
 
 // The docked answer area of one question, like a keyboard that fits the question: quick replies that answer at once,
@@ -119,6 +120,7 @@ const storedId = useId()
 // The first question of an add session has no "nothing else": leaving is the frame's ‹.
 const showDone = computed(() => !(props.state.add && round.value === 0))
 const duplicate = ref(false)
+const otherForm = ref<HTMLFormElement | null>(null)
 const otherField = ref<InstanceType<typeof OtherThingField> | null>(null)
 
 function choose(value: string): void {
@@ -146,6 +148,14 @@ function closeOther(): void {
   otherOpen.value = false
   void nextTick(() => root.value?.querySelector<HTMLElement>('[data-testid="more-other"]')?.focus({ preventScroll: true }))
 }
+
+// The note and the second button make the form taller: they must not end up under the keyboard.
+watch(sameStored, async () => {
+  await nextTick()
+  const form = otherForm.value
+  const frame = form?.closest<HTMLElement>('.setup-frame')
+  if (form && frame && form.contains(document.activeElement)) keepInView(form, frame)
+})
 
 function createAnother(): void {
   setPendingInto(props.state, undefined)
@@ -200,7 +210,7 @@ const labels = computed(() => ({
           </div>
           <div class="round-more">
             <button v-if="!otherOpen" class="other t-body" type="button" data-testid="more-other" :disabled="busy" @click="openOther">{{ t('onboarding.guided.more.other') }}</button>
-            <form v-else class="other-form" @submit.prevent="addOther" @keydown.esc.stop.prevent="closeOther">
+            <form v-else ref="otherForm" class="other-form" data-keep-together @submit.prevent="addOther" @keydown.esc.stop.prevent="closeOther">
               <OtherThingField ref="otherField" v-model="otherName" :label="t('onboarding.guided.more.otherLabel')" :placeholder="t('onboarding.guided.more.otherPlaceholder')" test-id="more-other-name" @enter="addOther" />
               <div v-if="destinations.length > 0" class="goes-in">
                 <label class="t-body" :for="intoId">{{ t('onboarding.guided.add.goesIn') }}</label>

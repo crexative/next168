@@ -117,6 +117,28 @@ test('P0-2 @smoke: the page behind the open frame does not scroll, and keeps its
   expect(await page.evaluate(() => document.documentElement.classList.contains('page-locked'))).toBe(false)
 })
 
+test('P0-3b @smoke: the field and its Añadir button are fully inside the visible band, whatever the pan', async ({ page }) => {
+  await startOnPhone(page)
+  await openCategoryAdd(page)
+  await openOtherField(page)
+  for (const offsetTop of [152, 0]) {
+    await keyboard(page, 476, offsetTop)
+    const band = await page.evaluate((top) => {
+      const rect = (selector: string) => { const box = document.querySelector(selector)!.getBoundingClientRect(); return { top: box.top, bottom: box.bottom } }
+      return { field: rect('[data-testid=more-other-name]'), add: rect('[data-testid=more-other-add]'), barBottom: document.querySelector('.setup-frame .bar')!.getBoundingClientRect().bottom, visibleBottom: top + 476 }
+    }, offsetTop)
+    expect(band.field.top).toBeGreaterThanOrEqual(band.barBottom - 1)
+    expect(band.add.top).toBeGreaterThanOrEqual(band.barBottom - 1)
+    expect(band.add.bottom).toBeLessThanOrEqual(band.visibleBottom + 1)
+  }
+  // With the same-name note the form is taller: its buttons still fit.
+  await live(page).getByTestId('more-other-name').fill('ejercicio')
+  await page.evaluate(() => new Promise<void>((done) => requestAnimationFrame(() => requestAnimationFrame(() => done()))))
+  const created = await page.evaluate(() => document.querySelector('[data-testid=more-other-new]')!.getBoundingClientRect().bottom)
+  expect(created).toBeLessThanOrEqual(628 + 1)
+  expect(created).toBeGreaterThan(0)
+})
+
 test('P0-3 @smoke: focusing a field never scrolls the viewport, and the field stays above the keyboard', async ({ page }) => {
   await startOnPhone(page)
   await openCategoryAdd(page)
