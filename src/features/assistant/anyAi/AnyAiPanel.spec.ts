@@ -15,7 +15,7 @@ const create = vi.fn(async (input: ProposalInput, source: ChangeProposal['source
   return { id: `p-${create.mock.calls.length}`, source, summary: input.summary, status: 'pending' } as ChangeProposal
 })
 const expand = vi.fn(async (): Promise<ExternalOccurrence[]> => [])
-vi.mock('@/features/calendars/occurrenceSource', () => ({ expandCalendarSources: () => expand() }))
+vi.mock('@/features/calendars/occurrenceSource', async (importOriginal) => ({ ...(await importOriginal<typeof import('@/features/calendars/occurrenceSource')>()), expandCalendarSources: () => expand() }))
 vi.mock('@/features/proposals', () => ({ openProposalReview: (...args: unknown[]) => opened(...args) }))
 vi.mock('@/features/proposals/repository', () => ({ getProposalRepository: () => ({ create: (...args: Parameters<typeof create>) => create(...args), list: async () => [] }) }))
 

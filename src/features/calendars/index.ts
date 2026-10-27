@@ -4,6 +4,8 @@ import { setExternalOccurrenceSource } from '@/features/week/externalOccurrences
 import { provideCalendarLifecycle, provideCalendarSourceStore } from '@/features/settings/data/calendarSourceHook'
 import { calendarServices, calendarTextRevision, cancelCalendarRefreshes, capturePurgeEpoch, writeIfUnpurged } from './calendarStore'
 import { calendarSourceRevision, expandCalendarSources } from './occurrenceSource'
+import { refreshGoogleAvailability } from './googleCalendar'
+import { captureLabsFlag } from './googleGate'
 
 export { useCalendarEvents } from './useCalendarEvents'
 export { configureCalendarServices } from './calendarStore'
@@ -28,6 +30,8 @@ const currentTexts: CalendarSourceStore = {
 // eslint-disable-next-line @typescript-eslint/no-unused-vars -- the registry contract stays; this slice adds no view or section of its own
 export default function registerCalendars(_registry: ShellRegistry): void {
   setExternalOccurrenceSource(expandCalendarSources, calendarSourceRevision)
+  if (import.meta.env.VITE_GOOGLE_CLIENT_ID) captureLabsFlag()
+  refreshGoogleAvailability()
   provideCalendarSourceStore(currentTexts)
   provideCalendarLifecycle({ cancelRefreshes: cancelCalendarRefreshes, textsChanged: () => { calendarTextRevision.value++ }, capturePurgeEpoch, writeIfUnpurged })
 }

@@ -156,6 +156,7 @@ function timeRange(segment: BlockSegment): string {
 
 function inspect(item: BusySegment): void {
   emit('inspect', {
+    key: item.key,
     title: item.title,
     date: item.date,
     range: busyRange(item),

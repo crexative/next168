@@ -31,6 +31,14 @@ jobs:
       - run: npx vitest run
       - run: npm run build
 
+      # Built without VITE_GOOGLE_CLIENT_ID, as forks, previews and GitHub Pages are: no Google sign-in code may ship.
+      - name: Require a build without a Google client ID to carry no Google code
+        run: |
+          if grep -rl "gsi/client" dist/assets; then
+            echo "::error::dist/assets references gsi/client although VITE_GOOGLE_CLIENT_ID is unset: the Google module must stay behind its dynamic import."
+            exit 1
+          fi
+
       - name: Install companion
         run: npm --prefix companion ci
 

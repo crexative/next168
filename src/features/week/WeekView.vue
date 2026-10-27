@@ -9,6 +9,8 @@ import EmptyState from '@/ui/EmptyState.vue'
 import { useUndoToast } from '@/ui/undoToast'
 import { useMediaQuery } from '@/ui/useMediaQuery'
 import EventSheet from '@/features/calendars/EventSheet.vue'
+import { calendarNames as calendarNamesOf } from '@/features/calendars/calendarLabel'
+import { GoogleCoverageNotice, googleAvailable } from '@/features/calendars/googleCalendar'
 import FreeHoursBadge from '@/features/capacity/FreeHoursBadge.vue'
 import SetupWeekPrompt from '@/features/onboarding/SetupWeekPrompt.vue'
 import { openAdd, setupWeekOffered } from '@/features/onboarding/reopen'
@@ -75,13 +77,18 @@ const { placements, notice, recompute } = useTaskPlacements(() => document.value
 
 const segments = computed(() => document.value ? blockSegmentsByDate(document.value, dates.value, timeZone.value) : {})
 const taskSegments = computed(() => document.value ? taskSegmentsByDate(placements.value, document.value.tasks, dates.value, timeZone.value) : {})
-const calendarNames = computed(() => new Map((document.value?.calendarSources ?? []).map((source) => [source.id, source.name])))
+const calendarNames = computed(() => calendarNamesOf(document.value))
 const busy = computed(() => busySegmentsByDate(external.value, document.value?.events ?? [], dates.value, timeZone.value, calendarNames.value))
 const allDay = computed(() => allDayByDate(external.value, document.value?.events ?? [], dates.value, calendarNames.value))
 const blockCount = computed(() => document.value?.blocks.length ?? 0)
 const hasCategories = computed(() => (document.value?.categories.length ?? 0) > 0)
-// An event added from "+" has to show up even before the first block exists.
-const hasContent = computed(() => blockCount.value > 0 || (document.value?.events.length ?? 0) > 0)
+// An event added from "+", or a meeting from a connected calendar, has to show up even before the first block exists.
+const hasContent = computed(() => blockCount.value > 0 || (document.value?.events.length ?? 0) > 0 || external.value.length > 0)
+// The week on screen and the days tasks are fitted over: where Google Calendar does not cover them, Week says so.
+const googleRanges = computed(() => [
+  { start: dates.value[0]!, end: addLocalDays(dates.value[6]!, 1) },
+  { start: today.value, end: addLocalDays(today.value, horizonDays.value) },
+])
 
 const pagerIndex = ref(pagerIndexFor(dates.value, today.value, 0))
 watch(() => currentWeek.value[0], () => {
@@ -198,6 +205,23 @@ function inspect(next: BusyDetails): void {
   detailsOpen.value = true
 }
 
+// A sheet keeps only what the grid still shows: when Google Calendar is disconnected (here or in another tab) or a
+// calendar drops an event, its details and any chooser offering it close instead of keeping its title on screen.
+const shownItemKeys = computed(() => new Set([
+  ...Object.values(busy.value).flat().map((item) => item.key),
+  ...Object.values(allDay.value).flat().map((item) => item.key),
+]))
+watch(shownItemKeys, (shown) => {
+  if (details.value?.key !== undefined && !shown.has(details.value.key)) {
+    detailsOpen.value = false
+    details.value = null
+  }
+  if (chooserOptions.value.some((option) => option.kind === 'event' && !shown.has(option.key.slice('e:'.length)))) {
+    chooserOpen.value = false
+    chooserOptions.value = []
+  }
+})
+
 function openExisting(blockId: string): void {
   const block = document.value?.blocks.find((item) => item.id === blockId)
   if (!block || !planner.writable) return
@@ -248,6 +272,8 @@ async function remove(blockId: string): Promise<void> {
       <AddMenu variant="toolbar" placement="below" @choose="addFromMenu" />
     </Teleport>
 
+    <!-- Without the grid (no categories, or nothing to show after a reload) the Google line still says what is missing. -->
+    <component :is="GoogleCoverageNotice" v-if="GoogleCoverageNotice && googleAvailable && !hasGrid" :ranges="googleRanges" />
     <EmptyState v-if="!hasCategories" icon="calendar-days" :title="t('week.empty.noCategoriesTitle')" :description="t('week.empty.noCategoriesDescription')">
       <!-- Without categories the setup wizard creates them; when it cannot be offered, Settings remains. -->
       <SetupWeekPrompt v-if="setupOffered" />
@@ -276,6 +302,8 @@ async function remove(blockId: string): Promise<void> {
           <!-- Free hours count from now, so they belong to the current week only. -->
           <template v-if="isCurrentWeek" #free-hours><FreeHoursBadge :document="document" :now="now" :framed="false" /></template>
         </WeekNav>
+        <!-- In the sticky head: Week opens scrolled to the current hour, and the line must stay in view. -->
+        <component :is="GoogleCoverageNotice" v-if="GoogleCoverageNotice && googleAvailable" :ranges="googleRanges" />
       </div>
       <WeekGrid
         v-if="isWide"

@@ -3,6 +3,7 @@ import { computed, onMounted, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { usePlannerStore } from '@/stores/plannerStore'
 import { localDateOf } from '@/core/time'
+import { externalForAi } from '@/core/aiProjection'
 import { formatBytes } from '@/ui/format'
 import { useExternalOccurrences } from '@/features/week/externalOccurrences'
 import Button from '@/ui/Button.vue'
@@ -49,7 +50,7 @@ function translate(key: string, params?: Record<string, unknown>): string {
 async function ask(text: string): Promise<void> {
   const document = planner.document
   if (!document || !text.trim()) return
-  await assistant.ask(text, { document, now: new Date(), locale: locale.value, timeZone: document.settings.timeZone, translate, external: external.value })
+  await assistant.ask(text, { document, now: new Date(), locale: locale.value, timeZone: document.settings.timeZone, translate, external: externalForAi(external.value, t('calendars.googleConnection.busyForAi')) })
 }
 
 async function submit(): Promise<void> {

@@ -12,6 +12,7 @@ const { t } = useI18n()
 
 function inspect(item: AllDayItem): void {
   emit('inspect', {
+    key: item.key,
     title: item.title,
     date: props.date,
     range: t('week.grid.allDay'),

@@ -1,0 +1,33 @@
+import { describe, expect, it } from 'vitest'
+import { SUPPORTED_LOCALES, i18n } from '@/i18n'
+
+// The connection's copy (Slice 1 spec §4 "Copy", acceptance A14). Parity and informal voice across the five locales
+// are enforced for every key by src/i18n/messages.spec.ts and src/i18n/informalCopy.spec.ts.
+const t = (key: string, locale: string) => i18n.global.t(key, {}, { locale })
+
+describe('Google Calendar copy', () => {
+  it('keeps the existing "Add to Google Calendar" link text a plain string beside the new namespace', () => {
+    expect(t('calendars.google', 'en')).toBe('Add to Google Calendar')
+    for (const locale of SUPPORTED_LOCALES) {
+      const calendars = (i18n.global.getLocaleMessage(locale) as Record<string, Record<string, unknown>>).calendars!
+      expect(typeof calendars.google, locale).toBe('string')
+      expect(typeof calendars.googleConnection, locale).toBe('object')
+    }
+  })
+
+  it('says in Spanish, before connecting, that Weeklid only reads and that AI gets meetings as busy time', () => {
+    const sheet = ['readOnly', 'memoryOnly', 'refreshHint', 'aiBusy', 'testing'].map((key) => t(`calendars.googleConnection.${key}`, 'es')).join(' ')
+    expect(sheet).toContain('solo leerá')
+    expect(sheet).toContain('Ocupado')
+    expect(sheet).toContain('Nunca crea, cambia ni borra eventos')
+    expect(t('calendars.googleConnection.busyForAi', 'es')).toBe('Ocupado')
+    expect(t('calendars.googleConnection.aiNote', 'es')).toBe('Reuniones de Google: solo como «Ocupado».')
+  })
+
+  it.each(SUPPORTED_LOCALES)('has every connection message in %s', (locale) => {
+    for (const key of ['revokeConfirmed', 'revokeUnconfirmed', 'popupBlocked', 'accessDenied', 'missingScope', 'busy', 'denied', 'network', 'timeout', 'tooMany', 'format', 'gisLoad']) {
+      const text = t(`calendars.googleConnection.messages.${key}`, locale)
+      expect(text, key).not.toBe(`calendars.googleConnection.messages.${key}`)
+    }
+  })
+})
