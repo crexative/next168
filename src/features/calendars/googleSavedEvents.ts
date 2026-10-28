@@ -7,7 +7,7 @@ import { GOOGLE_SOURCE_ID, fitsGoogleTitle, type GoogleCoverage } from './google
 // were read for. Never the token, the granted scopes, an address or anything else Google sent.
 //
 // Deletion wins over a write that started before it, in any tab: every deletion stores a new random epoch, and a
-// write lands only while the stored epoch is still the one this tab last knew. A tab learns a newer epoch only when
+// write lands only while the stored epoch is still the one this tab last knew (a database without one takes none). A tab learns a newer epoch only when
 // it already forgot what it had read under the older one (Disconnect broadcasts it; a planner or zone change re-reads
 // it), so a late write can never bring deleted events back.
 
@@ -42,7 +42,8 @@ export interface SavedGoogleEventsPort {
   discard(): string
   // Another tab deleted the copy and said so: its epoch is now the one this tab knows.
   adopt(epoch: unknown): void
-  // Delete all data: the whole database goes (nothing is created where there was none), in any build.
+  // Delete all data, in any build: the copy goes and a new random marker fences off every write still pending in
+  // another tab; where there is no database, none is created.
   erase(): Promise<void>
   // Resolves when every queued operation of this tab has finished.
   settled(): Promise<void>
@@ -125,8 +126,12 @@ export class IndexedDbSavedGoogleEvents implements SavedGoogleEventsPort {
         learn(next)
         return undefined
       }
+      // A database without a marker (new, or emptied by the browser) gets one: no write ever expects "none", so a write
+      // from a tab that read an older marker can never land in a database that was deleted and created again.
+      const known = typeof epoch === 'string' ? epoch : newEpoch()
+      if (known !== epoch) store.put(known, EPOCH_KEY)
       await done
-      learn(typeof epoch === 'string' ? epoch : '')
+      learn(known)
       return copy as SavedGoogleEvents | undefined
     }))
   }
@@ -139,7 +144,7 @@ export class IndexedDbSavedGoogleEvents implements SavedGoogleEventsPort {
       const expected = this.localChanges === changes ? this.known : undefined
       if (expected === undefined || !validSavedCopy(copy)) return 'refused' as const
       const stored = await request(store.get(EPOCH_KEY))
-      if ((typeof stored === 'string' ? stored : '') !== expected) return 'refused' as const
+      if (typeof stored !== 'string' || stored !== expected) return 'refused' as const
       store.put(copy, COPY_KEY)
       await done
       return 'saved' as const
@@ -159,9 +164,18 @@ export class IndexedDbSavedGoogleEvents implements SavedGoogleEventsPort {
   }
 
   erase(): Promise<void> {
-    this.known = ''
     this.localChanges += 1
-    return this.enqueue(() => this.deleteDatabase()).catch(() => undefined)
+    this.known = undefined
+    return this.enqueue(async () => {
+      if (!(await this.exists())) return
+      const next = newEpoch()
+      await this.transaction(async (store, done) => {
+        store.delete(COPY_KEY)
+        store.put(next, EPOCH_KEY)
+        await done
+      })
+      this.known = next
+    }).catch(() => this.enqueue(() => this.deleteDatabase())).catch(() => undefined)
   }
 
   adopt(epoch: unknown): void {
@@ -197,7 +211,21 @@ export class IndexedDbSavedGoogleEvents implements SavedGoogleEventsPort {
     }
   }
 
-  // The last resort when a deletion could not run as a transaction: the whole database goes.
+  // Whether the database is there, without creating it; true where the browser cannot tell (then only a marker is
+  // written into a new one).
+  private async exists(): Promise<boolean> {
+    const factory = this.factory
+    if (!factory) return false
+    if (typeof factory.databases !== 'function') return true
+    try {
+      return (await factory.databases()).some((info) => info.name === SAVED_GOOGLE_DATABASE)
+    } catch {
+      return true
+    }
+  }
+
+  // The last resort when a deletion could not run as a transaction: the whole database goes. A database created
+  // again afterwards has no marker, so no write that was pending lands in it.
   private deleteDatabase(): Promise<void> {
     return new Promise((resolve, reject) => {
       if (!this.factory) return reject(new DOMException('indexedDB missing', 'UnknownError'))

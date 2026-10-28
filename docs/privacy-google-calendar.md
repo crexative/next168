@@ -44,7 +44,7 @@ Weeklid does not sell, rent or share your Google data, does not use it for adver
 ## 8. Keeping and deleting
 
 - **Disconnect** (Settings › Calendars › Google Calendar) forgets the events in every open Weeklid tab, deletes the copy on this device, and asks Google to withdraw Weeklid's access. Weeklid tells you whether Google confirmed it; the copy is deleted either way.
-- **Delete all data** (Settings › Your data), importing or restoring a backup, and changing the plan's time zone also delete the copy, and so does Google telling Weeklid that the permission is gone.
+- **Delete all data** (Settings › Your data) deletes the copy, leaving only a random marker with no data about you or your events. Importing or restoring a backup and changing the plan's time zone also delete the copy, and so does Google telling Weeklid that the permission is gone.
 - You can always remove Weeklid's access yourself at [myaccount.google.com/connections](https://myaccount.google.com/connections). Clearing this site's data in your browser also deletes the copy.
 - Closing or reloading the tab drops the token; the copy stays until one of the above.
 

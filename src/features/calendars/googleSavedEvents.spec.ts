@@ -63,18 +63,58 @@ describe('the saved Google Calendar copy', () => {
     expect(await tab.save(copy([{ ...STANDUP, title: `${title}x` }]))).toBe('refused')
   })
 
-  // Review finding (Codex, 460bb3f): Delete all data must remove the database even in a build without Google.
-  it('erase removes the whole database, creates none where there was none, and the tab can save again', async () => {
+  // Review findings (Codex, 460bb3f and c850e83): Delete all data must remove the copy in any build, and leave a
+  // fence behind so that a write still pending in another tab cannot bring the events back.
+  it('erase leaves only a new random marker, and creates no database where there was none', async () => {
     const factory = new IDBFactory()
     const names = async () => (await factory.databases()).map((info) => info.name)
     await new IndexedDbSavedGoogleEvents(factory).erase()
     expect(await names()).not.toContain(SAVED_GOOGLE_DATABASE)
     const tab = new IndexedDbSavedGoogleEvents(factory)
     await tab.loadMatching(BINDING)
-    await tab.save(copy())
-    await tab.erase()
-    expect(await names()).not.toContain(SAVED_GOOGLE_DATABASE)
     expect(await tab.save(copy())).toBe('saved')
+    const before = (await raw(factory)).epoch
+    await tab.erase()
+    const after = await raw(factory)
+    expect(Object.keys(after)).toEqual(['epoch'])
+    expect(after.epoch).toMatch(/^[A-Za-z0-9-]{1,64}$/)
+    expect(after.epoch).not.toBe(before)
+    expect(await tab.save(copy())).toBe('saved')
+  })
+
+  it('a write pending in another tab when Delete all data runs is refused, and no Google data is left', async () => {
+    for (const order of ['erase first', 'write asked first'] as const) {
+      const factory = new IDBFactory()
+      const other = new IndexedDbSavedGoogleEvents(factory)
+      const here = new IndexedDbSavedGoogleEvents(factory)
+      await other.loadMatching(BINDING)
+      await here.loadMatching(BINDING)
+      let late: Promise<'saved' | 'refused'>
+      if (order === 'erase first') {
+        await here.erase()
+        late = other.save(copy())
+      } else {
+        late = other.save(copy())
+        await here.erase()
+      }
+      const result = await late
+      await other.settled()
+      const left = await raw(factory)
+      expect(left, order).not.toHaveProperty('primary')
+      if (order === 'erase first') expect(result).toBe('refused')
+    }
+  })
+
+  it('a tab that has not read the marker since the database was emptied writes nothing', async () => {
+    const factory = new IDBFactory()
+    const stale = new IndexedDbSavedGoogleEvents(factory)
+    await stale.loadMatching(BINDING)
+    await put(factory, 'epoch', undefined)
+    const db = await new Promise<IDBDatabase>((resolve) => { const open = factory.open(SAVED_GOOGLE_DATABASE); open.onsuccess = () => resolve(open.result) })
+    await new Promise<void>((resolve) => { const transaction = db.transaction('saved', 'readwrite'); transaction.objectStore('saved').clear(); transaction.oncomplete = () => resolve() })
+    db.close()
+    expect(await stale.save(copy())).toBe('refused')
+    expect(await raw(factory)).not.toHaveProperty('primary')
   })
 
   it('keeps only the fields the overlay draws, never anything else that rides along', () => {

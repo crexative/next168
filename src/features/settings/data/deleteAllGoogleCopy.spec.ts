@@ -30,8 +30,7 @@ it('Delete all data erases the saved Google Calendar copy in a build without the
   await earlierBuild.loadMatching(binding)
   const coverage = { start: '2026-10-12', end: '2026-11-30', timeZone: 'UTC', fetchedAt: NOW.toISOString() }
   expect(await earlierBuild.save(savedCopyOf(binding, coverage, [{ sourceId: 'google:primary', uid: 'evt-1', title: 'Standup', start: '2026-10-20T09:00:00.000Z', end: '2026-10-20T09:30:00.000Z', allDay: false, busy: true }]))).toBe('saved')
-  const names = async () => (await device.databases()).map((info) => info.name)
-  expect(await names()).toContain(SAVED_GOOGLE_DATABASE)
+  expect((await device.databases()).map((info) => info.name)).toContain(SAVED_GOOGLE_DATABASE)
 
   const repositories = createTestRepositories()
   await repositories.planner.save({ ...createEmptyDocument({ now: NOW, locale: 'en', timeZone: 'UTC', idGen: () => 'workspace-1' }), revision: 1 }, 0)
@@ -51,5 +50,39 @@ it('Delete all data erases the saved Google Calendar copy in a build without the
   await nextTick()
   window.document.querySelector<HTMLFormElement>('form.confirm')!.requestSubmit()
   await vi.waitFor(() => expect(usePlannerStore().document?.workspaceId).not.toBe('workspace-1'))
-  await vi.waitFor(async () => expect(await names()).not.toContain(SAVED_GOOGLE_DATABASE))
+  // Only a random marker is left, which fences off a write still pending in another tab.
+  const left = async () => {
+    const db = await new Promise<IDBDatabase>((resolve) => { const open = device.open(SAVED_GOOGLE_DATABASE); open.onsuccess = () => resolve(open.result) })
+    try {
+      const store = db.transaction('saved', 'readonly').objectStore('saved')
+      return await new Promise<Record<string, unknown>>((resolve) => {
+        const keys = store.getAllKeys(), values = store.getAll()
+        values.onsuccess = () => resolve(Object.fromEntries(keys.result.map((key, index) => [String(key), values.result[index]])))
+      })
+    } finally { db.close() }
+  }
+  await vi.waitFor(async () => expect(Object.keys(await left())).toEqual(['epoch']))
+  expect(JSON.stringify(await left())).not.toMatch(/Standup|evt-1|google:primary/u)
+})
+
+it('Delete all data creates no Google database on a device that never had one', async () => {
+  const repositories = createTestRepositories()
+  await repositories.planner.save({ ...createEmptyDocument({ now: NOW, locale: 'en', timeZone: 'UTC', idGen: () => 'workspace-1' }), revision: 1 }, 0)
+  configurePlannerStore({ repository: repositories.planner, now: () => NOW, newId: () => crypto.randomUUID(), locale: () => 'en', timeZone: () => 'UTC' })
+  await usePlannerStore().load()
+  host = window.document.createElement('div')
+  window.document.body.append(host)
+  app = createApp(DataSettings).use(getActivePinia()!).use(i18n)
+  app.mount(host)
+  await nextTick()
+  ;[...window.document.querySelectorAll('button')].find((item) => item.textContent?.trim() === 'Delete all data…')!.click()
+  await vi.waitFor(() => expect(window.document.querySelector('form.confirm input')).not.toBeNull())
+  const input = window.document.querySelector<HTMLInputElement>('form.confirm input')!
+  input.value = 'DELETE'
+  input.dispatchEvent(new Event('input'))
+  await nextTick()
+  window.document.querySelector<HTMLFormElement>('form.confirm')!.requestSubmit()
+  await vi.waitFor(() => expect(usePlannerStore().document?.workspaceId).not.toBe('workspace-1'))
+  await new Promise((resolve) => setTimeout(resolve, 50))
+  expect((await device.databases()).map((info) => info.name)).not.toContain(SAVED_GOOGLE_DATABASE)
 })
