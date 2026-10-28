@@ -4,7 +4,9 @@
     "config/**/*.ts",
     "vite.config.*",
     "vitest.config.*",
-    "eslint.config.*"
+    "eslint.config.*",
+    "server/**/*.spec.ts",
+    "server/**/testing/**/*.ts"
   ],
   "compilerOptions": {
     "noEmit": true,
