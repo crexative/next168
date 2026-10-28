@@ -17,6 +17,7 @@
     "type-check": "vue-tsc --build",
     "lint": "eslint . --fix",
     "test": "vitest",
+    "test:spike": "node --test scripts/spikes/google-oauth-spike.test.mjs",
     "perf": "NEXT168_PERF=reference vitest run src/core/__tests__/schedulingPerf.test.ts -t \"wall time\"",
     "e2e": "playwright test",
     "companion:build": "npm --prefix companion run build",
