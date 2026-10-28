@@ -166,6 +166,29 @@ test.describe('A7 Week and scheduling', () => {
     await expect(page.getByTestId('google-notice-update')).toBeEnabled()
   })
 
+  test('a 15-minute free Google event shows its title in one line instead of an initial', async ({ context, page }) => {
+    const short: CalendarEvent = { id: 'evt-short', summary: 'Publish the update', transparency: 'transparent', start: { dateTime: `${TUESDAY}T19:00:00Z` }, end: { dateTime: `${TUESDAY}T19:15:00Z` } }
+    google = await fakeGoogle(context, { events: [short] })
+    await page.setViewportSize({ width: 1440, height: 900 })
+    await open(context, page, GOOGLE_ONLY)
+    await connect(page)
+    await connected(page)
+    await week(page)
+    const item = page.locator(`.day-column[data-date="${TUESDAY}"] [data-testid=busy-overlay].is-free`).filter({ hasText: 'Publish the update' })
+    await item.scrollIntoViewIfNeeded()
+    await expect(item.locator('.busy-title')).toHaveText('Publish the update')
+    await expect(item.locator('.busy-title')).not.toHaveClass(/visually-hidden/)
+    await expect(item.locator('.item-glyph')).toHaveCount(0)
+    const fits = await item.evaluate((node) => {
+      const range = document.createRange()
+      range.selectNodeContents(node.querySelector('.busy-title')!)
+      const words = range.getBoundingClientRect()
+      const box = node.getBoundingClientRect()
+      return words.top >= box.top - 0.5 && words.bottom <= box.bottom + 0.5 && words.right <= box.right + 0.5
+    })
+    expect(fits, 'the title is inside its box').toBe(true)
+  })
+
   test('the event marks its conflict with a block, and a task is fitted around it', async ({ context, page }) => {
     await open(context, page, WITH_BLOCK)
     await week(page)

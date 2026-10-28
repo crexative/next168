@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { TimeBlock } from '@/core/model'
-import { BLOCK_INSET, BUSY_INSET, LANE_GAP_PX, MIN_TASK_PX, PIECE_GAP_PX, TASK_INSET, planDayColumn, type ColumnMeasure, type DayColumnPlan } from './dayColumnPlan'
+import { BLOCK_INSET, BUSY_INSET, LANE_GAP_PX, MIN_TASK_PX, PIECE_GAP_PX, SMALL_INSET, TASK_INSET, planDayColumn, type ColumnMeasure, type DayColumnPlan } from './dayColumnPlan'
 import { ELLIPSIS, fittedHeight, lineCount, type TextMetrics, type TextPiece, type TextRole } from './itemText'
 import { blockSegmentsByDate, busySegmentsByDate, HOUR_HEIGHT_PX, type BusySegment, type TaskSegment } from './weekLayout'
 import { plannerDocument } from './testDocument'
@@ -140,12 +140,44 @@ describe('events and routines share the column', () => {
 describe('a box with no words', () => {
   // verify8 D3: a 15-minute item (12 px at a 48 px hour) has 10 px of room inside an event's small insets, less than the
   // glyph. At 973724c it was a bare strip; the glyph is now drawn scaled down to the room, never below its smallest size.
-  it('draws the glyph scaled down to a box shorter than it, down to its smallest size', () => {
-    const quarter = plan({ events: [event('Pausa', 540, 555)], measure: measureAt(300) }).busy[0]!.show
-    expect(quarter).toMatchObject({ title: false, glyph: true })
-    expect(quarter.glyphScale).toBeCloseTo(10 / 11.25, 5)
+  // An event with another one right after it cannot grow, so it keeps its glyph (or nothing).
+  it('draws the glyph scaled down to a box shorter than it, down to its smallest size, where the event cannot grow', () => {
+    const quarter = plan({ events: [event('Pausa', 540, 555), event('Reunion', 555, 600)], measure: measureAt(300) }).busy.find((item) => item.title === 'Pausa')!
+    expect(quarter.show).toMatchObject({ title: false, glyph: true })
+    expect(quarter.show.glyphScale).toBeCloseTo(10 / 11.25, 5)
     // 10 minutes (8 px, 6 px of room) is below the smallest glyph: a bare strip.
-    expect(plan({ events: [event('Pausa', 540, 550)], measure: measureAt(300) }).busy[0]!.show).toEqual({ icon: false, word: false, title: false })
+    expect(plan({ events: [event('Pausa', 540, 550), event('Reunion', 550, 600)], measure: measureAt(300) }).busy.find((item) => item.title === 'Pausa')!.show).toEqual({ icon: false, word: false, title: false })
+  })
+
+  // A short event is drawn at least one small line tall (as far as free time below it in its lane allows) so its title
+  // is read instead of one initial.
+  describe('a short event shows its title in one small line', () => {
+    const lineBox = 12.9 + 2
+    it.each([10, 15])('grows a %i-minute event down to one small line and draws its title', (minutes) => {
+      const [item] = plan({ events: [event('Short title', 540, 540 + minutes)], measure: measureAt(300) }).busy
+      expect(item!.show).toMatchObject({ title: true, small: true, cut: false, text: 'Short title' })
+      expect(item!.bottom - item!.top).toBeCloseTo(lineBox, 5)
+      expect(item!.top).toBe(px(540))
+    })
+    it('ellipsizes a long title on that one line', () => {
+      const [item] = plan({ events: [event('A very long title that cannot fit in a narrow column at all', 540, 555)], measure: measureAt(120) }).busy
+      expect(item!.show).toMatchObject({ title: true, small: true, cut: true })
+    })
+    it('stops growing at the next item in its lane and keeps the glyph there', () => {
+      const [item] = plan({ events: [event('Short title', 540, 555), event('Next', 555, 600)], measure: measureAt(300) }).busy
+      expect(item!.show.title).toBe(false)
+      expect(item!.bottom).toBe(px(555))
+    })
+    it('grows only as far as the free stretch below allows', () => {
+      // 16 minutes (12.8 px) of free room below the event's end hold the 14.9 px line, which needs 2.9 px more.
+      const [item] = plan({ events: [event('Short title', 540, 555), event('Next', 555 + 16, 600)], measure: measureAt(300) }).busy
+      expect(item!.show).toMatchObject({ title: true, small: true })
+      expect(item!.bottom).toBeLessThanOrEqual(px(571))
+    })
+    it('leaves an event that already holds its title alone', () => {
+      const [item] = plan({ events: [event('Hour', 540, 600)], measure: measureAt(300) }).busy
+      expect(item!.bottom).toBe(px(600))
+    })
   })
 
   it('keeps a 1 px gap between touching routines of one category, and none between different categories', () => {
@@ -292,12 +324,16 @@ describe('the plan never draws a cut or covered word', () => {
       for (const item of result.busy) expect(wholeWords(item.show, item.title)).toBe(true)
       for (const item of result.busy) {
         if (!item.show.title) continue
-        expect(px(item.endMinute) - px(item.startMinute) - BUSY_INSET.top - BUSY_INSET.bottom).toBeGreaterThanOrEqual(measure.metrics.lineHeight('caption') - 0.01)
+        const drawn = item.bottom - item.top
+        // A short event is drawn tall enough for one small line, never shorter than its time.
+        expect(drawn).toBeGreaterThanOrEqual(px(item.endMinute) - px(item.startMinute) - 0.01)
+        if (item.show.small) expect(drawn - SMALL_INSET.busy.top - SMALL_INSET.busy.bottom).toBeGreaterThanOrEqual(measure.metrics.lineHeight('compact') - 0.01)
+        else expect(drawn - BUSY_INSET.top - BUSY_INSET.bottom).toBeGreaterThanOrEqual(measure.metrics.lineHeight('caption') - 0.01)
       }
       // Boxes of different items never overlap, except a task inside its own routine.
       const boxes = [
         ...result.blocks.map((item) => ({ key: item.key, host: undefined as string | undefined, left: item.left, right: item.left + item.width, top: px(item.startMinute), bottom: px(item.endMinute) })),
-        ...result.busy.map((item) => ({ key: item.key, host: undefined as string | undefined, left: item.left, right: item.left + item.width, top: px(item.startMinute), bottom: px(item.endMinute) })),
+        ...result.busy.map((item) => ({ key: item.key, host: undefined as string | undefined, left: item.left, right: item.left + item.width, top: item.top, bottom: item.bottom })),
         ...result.tasks.filter((item) => !item.outline).map((item) => ({ key: item.task.key, host: item.hostKey, left: item.left, right: item.left + item.width, top: item.top, bottom: item.bottom })),
       ]
       for (const [index, a] of boxes.entries()) {
