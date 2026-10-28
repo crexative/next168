@@ -82,6 +82,60 @@ async function openWeek(page: Page): Promise<void> {
   await expect(page.locator('.view-enter-active, .view-leave-active')).toHaveCount(0)
 }
 
+// Short free events (10 to 15 minutes): the title is read on one line, not an initial. Synthetic titles only.
+async function expectShortTitleLegible(page: Page, title: string): Promise<void> {
+  const item = page.locator('[data-testid=busy-overlay].is-free').filter({ hasText: title, visible: true })
+  await expect(item).toHaveCount(1)
+  await item.scrollIntoViewIfNeeded()
+  const drawn = item.locator('.busy-title')
+  await expect(drawn).toBeVisible()
+  await expect(drawn).not.toHaveClass(/visually-hidden/)
+  // Whole, or deliberately ellipsized after its first whole words in a narrow lane; the full title stays in the name.
+  const shown = (await drawn.textContent())!.trim()
+  expect(shown === title || shown.endsWith('…') && title.startsWith(shown.slice(0, -1).trim()), `"${shown}" is the title or its first words`).toBe(true)
+  expect(shown.length, 'more than one initial').toBeGreaterThan(2)
+  await expect(item).toHaveAttribute('title', title)
+  const measured = await item.evaluate((node) => {
+    const text = node.querySelector<HTMLElement>('.busy-title')!
+    const range = document.createRange()
+    range.selectNodeContents(text)
+    const words = range.getBoundingClientRect()
+    const box = node.getBoundingClientRect()
+    return { glyph: Boolean(node.querySelector('.item-glyph')), words: { top: words.top, bottom: words.bottom, left: words.left, right: words.right }, box: { top: box.top, bottom: box.bottom, left: box.left, right: box.right }, lines: Math.round(text.getClientRects().length), scroll: node.scrollHeight - node.clientHeight }
+  })
+  expect(measured.glyph, 'a title, not a lone initial').toBe(false)
+  expect(measured.lines, 'one line').toBe(1)
+  expect(measured.words.top).toBeGreaterThanOrEqual(measured.box.top - 0.5)
+  expect(measured.words.bottom).toBeLessThanOrEqual(measured.box.bottom + 0.5)
+  expect(measured.words.left).toBeGreaterThanOrEqual(measured.box.left - 0.5)
+  expect(measured.words.right).toBeLessThanOrEqual(measured.box.right + 0.5)
+  expect(measured.scroll, 'nothing clipped').toBeLessThanOrEqual(0)
+}
+
+test('a 15-minute free calendar event shows its title in one line at 1440 px (ICS)', async ({ page }, testInfo) => {
+  test.skip(testInfo.project.name !== 'desktop', 'this week sets its own width and runs once')
+  await page.setViewportSize({ width: 1440, height: 900 })
+  await page.clock.install({ time: VERIFY6_NOW })
+  const ics = ['BEGIN:VCALENDAR', 'VERSION:2.0',
+    'BEGIN:VEVENT', 'UID:short-a@example.invalid', 'DTSTART:20261021T140000Z', 'DTEND:20261021T141500Z', 'SUMMARY:Publish the update', 'TRANSP:TRANSPARENT', 'END:VEVENT',
+    'BEGIN:VEVENT', 'UID:short-b@example.invalid', 'DTSTART:20261021T160000Z', 'DTEND:20261021T161000Z', 'SUMMARY:Close the screens', 'TRANSP:TRANSPARENT', 'END:VEVENT',
+    'END:VCALENDAR', ''].join('\r\n')
+  const quiet = {
+    schemaVersion: 2, workspaceId: 'short-events', revision: 0, updatedAt: '2026-10-21T00:00:00.000Z',
+    settings: { locale: 'en', weekStartsOn: 1, timeZone: 'UTC', onboardingDone: true, theme: 'system' },
+    categories: [{ id: 'work', name: 'Work', colorKey: 'blue', goal: { type: 'none', hoursPerWeek: 0 } }],
+    blocks: [{ id: 'focus', title: 'Focus', categoryId: 'work', days: [3], start: 540, end: 660 }],
+    tasks: [], checkIns: [], actuals: [], events: [], calendarSources: [], appliedProposalIds: [],
+  }
+  await seedKey(page, V2_KEY, JSON.stringify(quiet))
+  await importCalendar(page, ics)
+  await openWeek(page)
+  await settled(page)
+  await expectShortTitleLegible(page, 'Publish the update')
+  await expectShortTitleLegible(page, 'Close the screens')
+  await auditWeek(page, 'short free events 1440 px', 7, await seededWeek(page))
+})
+
 // The weeks verify4 and verify5 reported (R1, defect 11a, N1, N2): a 15-minute stand-up right above "Trabajo profundo",
 // "Revisión de diseño de producto" on its title row, back-to-back short tasks, and "Vendor call" / "Team sync" beside
 // "Deep work".

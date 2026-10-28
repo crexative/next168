@@ -339,22 +339,39 @@ export function planDayColumn(input: DayColumnInput): DayColumnPlan {
     return { ...block, top, bottom: endOf(block), show }
   })
 
+  // The first start below an item, in px, of anything sharing a lane with it: how far its box may grow without covering
+  // another.
+  const roomBelow = (item: LanePosition & { endMinute: number }): number => {
+    const sharesLane = (other: LanePosition) => item.left < other.left + other.width - 1e-9 && other.left < item.left + item.width - 1e-9
+    const starts = [...lanes.blocks, ...lanes.busy, ...lanes.loose]
+      .filter((other) => other !== item && other.startMinute >= item.endMinute && sharesLane(other))
+      .map((other) => other.startMinute)
+    return px(Math.min(1440, ...starts))
+  }
+
   const busy = lanes.busy.map((item): PlannedBusy => {
     const drawn = { top: px(item.startMinute), bottom: px(item.endMinute) }
     if (!measure) return { ...item, ...drawn, show: EVERYTHING.busy }
-    const box = {
+    const showFor = (bottom: number) => busyShow(words.busy(item), {
       width: boxWidth(item) - BUSY_INSET.start - BUSY_INSET.end,
-      height: px(item.endMinute) - px(item.startMinute) - BUSY_INSET.top - BUSY_INSET.bottom,
-    }
-    const smallBox = {
+      height: bottom - drawn.top - BUSY_INSET.top - BUSY_INSET.bottom,
+    }, {
       width: boxWidth(item) - SMALL_INSET.busy.start - SMALL_INSET.busy.end,
-      height: px(item.endMinute) - px(item.startMinute) - SMALL_INSET.busy.top - SMALL_INSET.busy.bottom,
+      height: bottom - drawn.top - SMALL_INSET.busy.top - SMALL_INSET.busy.bottom,
+    }, measure)
+    let bottom = drawn.bottom
+    let show = { ...showFor(bottom) }
+    // A short event (10 to 15 minutes) is drawn one small line tall, as far as the free stretch below it in its lane
+    // allows, so its title is read instead of one initial; its hit area follows the drawn box.
+    const oneLine = drawn.top + measure.metrics.lineHeight('compact') + SMALL_INSET.busy.top + SMALL_INSET.busy.bottom
+    if (!show.title && oneLine > bottom && oneLine <= roomBelow(item) + 0.01) {
+      const grown = { ...showFor(oneLine) }
+      if (grown.title) { bottom = oneLine; show = grown }
     }
-    const show = { ...busyShow(words.busy(item), box, smallBox, measure) }
     const conflict = Boolean(words.busy(item).conflict)
-    const scale = !show.title && !show.icon && !conflict ? glyphScale(boxWidth(item), drawn.bottom - drawn.top, SMALL_INSET.busy, measure) : 0
+    const scale = !show.title && !show.icon && !conflict ? glyphScale(boxWidth(item), bottom - drawn.top, SMALL_INSET.busy, measure) : 0
     if (scale) Object.assign(show, { glyph: true, glyphScale: scale })
-    return { ...item, ...drawn, show }
+    return { ...item, top: drawn.top, bottom, show }
   })
 
   return { blocks, busy, tasks }
