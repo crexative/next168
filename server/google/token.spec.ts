@@ -190,6 +190,18 @@ describe('S-7 token', () => {
     }
   })
 
+  it('(e) 200 headers whose body times out → 502 googleUnavailable with the timeout class, row kept', async () => {
+    const s = server()
+    const browser = await connected(s)
+    const rows = s.db.rows('google_credentials')
+    s.google.script('refresh', 'hangAfterHeaders')
+    const reply = await browser.mint()
+    expect(reply.status).toBe(502)
+    expect(reply.body).toEqual({ code: 'googleUnavailable' })
+    expect(JSON.parse(s.logs.at(-1)!)).toMatchObject({ r: 'token', o: 'googleUnavailable', e: 'TimeoutError' })
+    expect(s.db.rows('google_credentials')).toEqual(rows)
+  })
+
   it('(e) the secret absent → 503 notConfigured, zero fetch (canary mode)', async () => {
     const s = server()
     const browser = await connected(s)

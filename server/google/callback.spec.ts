@@ -230,8 +230,8 @@ describe('S-6 callback degraded and cancelled: zero revoke calls in every case',
     expect(await server().browser().consent({ scope: `openid ${CALENDAR_SCOPE} email` })).toBe('connected')
   })
 
-  it('exchange 500 or a hang → exchange; the pending row is kept until it expires', async () => {
-    for (const scripted of [{ status: 500, body: { error: 'internal' } }, 'hang' as const, { status: 400, body: { error: 'invalid_grant' } }]) {
+  it('exchange 500, a hang, or 200 headers whose body times out → exchange; the pending row is kept until it expires', async () => {
+    for (const scripted of [{ status: 500, body: { error: 'internal' } }, 'hang' as const, 'hangAfterHeaders' as const, { status: 400, body: { error: 'invalid_grant' } }]) {
       const s = server()
       const browser = s.browser()
       const { state } = await browser.connect()

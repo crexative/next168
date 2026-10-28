@@ -12,7 +12,8 @@ export const FAKE = {
 } as const
 
 export type GoogleCall = 'exchange' | 'refresh' | 'revoke'
-export type Scripted = { status: number; body?: unknown } | 'hang'
+/** `hangAfterHeaders`: Google answers 200 headers, then the body never arrives (until the caller's deadline). */
+export type Scripted = { status: number; body?: unknown } | 'hang' | 'hangAfterHeaders'
 
 export interface RecordedCall {
   kind: GoogleCall
@@ -93,6 +94,14 @@ export class FakeGoogle {
     }
     const scripted = this.scripted.get(kind)?.shift()
     if (scripted === 'hang') return untilAborted(signal)
+    if (scripted === 'hangAfterHeaders') {
+      const body = new ReadableStream<Uint8Array>({
+        start(controller) {
+          untilAborted(signal).catch((reason: unknown) => controller.error(reason))
+        },
+      })
+      return new Response(body, { status: 200, headers: { 'content-type': 'application/json' } })
+    }
     const reply = scripted ?? await this.answer(kind, form)
     return new Response(reply.body === undefined ? null : JSON.stringify(reply.body), {
       status: reply.status,

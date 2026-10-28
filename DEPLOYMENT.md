@@ -227,7 +227,9 @@ npx wrangler pages dev dist --local-protocol=https --d1 DB --persist-to .wrangle
 
 `GOOGLE_OAUTH_TEST_ORIGIN` (a fake OAuth origin) and `GOOGLE_TEST_FAULT` exist for the test harness and are ignored
 unless the origin is `https://<name>.test:<port>`. The unit suite is `npx vitest run server`; it runs the exact SQL on
-an in-memory SQLite (`node:sqlite`, Node ≥ 22.13) and never contacts Google.
+an in-memory SQLite (`node:sqlite`) and never contacts Google. The repository needs Node 22.13 or later (`package.json`
+engines): Wrangler requires Node 22 and `node:sqlite` is available without a flag from 22.13. CI uses Node 22 and
+Cloudflare builds with `NODE_VERSION=22.16.0`.
 
 ## Custom Domain Setup
 

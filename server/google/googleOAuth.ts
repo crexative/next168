@@ -58,9 +58,12 @@ async function postForm(fetcher: Fetch, url: string, form: Record<string, string
     body: new URLSearchParams(form).toString(),
     signal: AbortSignal.timeout(deadlineMs),
   })
+  // A body that fails to arrive (deadline, abort, network) rejects here and is a transport failure for the caller;
+  // only a body that arrived but is not a JSON object counts as an empty answer.
+  const text = await response.text()
   let body: Record<string, unknown> | null = null
   try {
-    const parsed: unknown = await response.json()
+    const parsed: unknown = JSON.parse(text)
     if (parsed && typeof parsed === 'object') body = parsed as Record<string, unknown>
   } catch {
     body = null
