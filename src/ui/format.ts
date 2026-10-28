@@ -199,3 +199,14 @@ export function formatDuration(totalMinutes: number, locale: string = displayLoc
   if (rounded % 60 === 0) return t('common.duration.hours', { hours })
   return t('common.duration.both', { hours, minutes })
 }
+
+// How long ago an instant was, by elapsed time ("hace 3 h", "3 hr. ago", "vor 2 Tagen"); null under a minute, where
+// the sentence around it says "just now" in its own words.
+export function formatElapsed(since: string | number | Date, now: Date, locale: string = displayLocale.value): string | null {
+  const minutes = Math.floor((now.getTime() - new Date(since).getTime()) / 60_000)
+  if (!Number.isFinite(minutes) || minutes < 1) return null
+  const format = new Intl.RelativeTimeFormat(locale, { numeric: 'always', style: 'short' })
+  if (minutes < 60) return format.format(-minutes, 'minute')
+  const hours = Math.floor(minutes / 60)
+  return hours < 24 ? format.format(-hours, 'hour') : format.format(-Math.floor(hours / 24), 'day')
+}

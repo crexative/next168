@@ -4,13 +4,16 @@ import type { ExternalOccurrence } from '@/core/model'
 import { addLocalDays, localDateOf, zonedInstant } from '@/core/time'
 import { usePlannerStore } from '@/stores/plannerStore'
 import { publishGoogleSnapshot, type DateWindow, type GoogleCoverage } from '../googleCalendar'
+import { savedCopyOf, savedGoogleEvents, type SavedBinding, type SavedGoogleEventsPort } from '../googleSavedEvents'
 import { EVENTS_READONLY, type GisErrorResponse, type GisOAuth2, type GisTokenResponse } from './gis'
 import { loadGis } from './gisLoader'
 import { fetchPrimaryEvents, type GoogleFailure } from './googleApi'
 import { normalizeGoogleEvents } from './googleNormalize'
 
-// The Google Calendar connection of this tab. The token and the events live in memory only: nothing here is written
-// to localStorage, IndexedDB, Cache Storage or the console, and a reload starts from nothing.
+// The Google Calendar connection of this tab. The token lives in memory only and is never written anywhere. The last
+// complete read is also kept on this device (googleSavedEvents.ts), bound to the planner and zone it was read for, so a
+// reload shows it at once; Disconnect, Delete all data, an import or restore, a new workspace or zone, and Google
+// withdrawing the permission delete it. Nothing here reaches localStorage, Cache Storage or the console.
 
 export const REVOKE_DEADLINE_MS = 10_000
 // A token is treated as expired a minute early, so a request never starts with one about to lapse.
@@ -20,6 +23,12 @@ const FUTURE_DAYS = 42
 const DAY_MS = 86_400_000
 export const FORGET_CHANNEL = 'next168-google'
 export const PERMISSIONS_URL = 'https://myaccount.google.com/connections'
+// A saved copy older than this says its events may be out of date.
+export const SAVED_STALE_AFTER_MS = 86_400_000
+
+export function savedCopyIsStale(fetchedAt: string, now: Date): boolean {
+  return now.getTime() - Date.parse(fetchedAt) > SAVED_STALE_AFTER_MS
+}
 const ERROR_CODE = /^[A-Za-z_]{1,40}$/
 
 export interface GoogleServices {
@@ -28,6 +37,7 @@ export interface GoogleServices {
   fetch: typeof fetch
   now(): Date
   channel(): Pick<BroadcastChannel, 'postMessage' | 'addEventListener'> | undefined
+  saved(): SavedGoogleEventsPort
 }
 
 function defaultServices(): GoogleServices {
@@ -37,6 +47,7 @@ function defaultServices(): GoogleServices {
     fetch: (...args) => globalThis.fetch(...args),
     now: () => new Date(),
     channel: () => (typeof BroadcastChannel === 'function' ? new BroadcastChannel(FORGET_CHANNEL) : undefined),
+    saved: savedGoogleEvents,
   }
 }
 
@@ -96,6 +107,8 @@ export const useGoogleConnection = defineStore('googleConnection', () => {
   const session = ref<'new' | 'connected' | 'disconnected'>('new')
   // A 401 dropped the token while events are still shown: the next tap asks Google again.
   const expired = ref(false)
+  // The events shown are the copy saved on this device, not yet read again in this tab.
+  const fromDevice = ref(false)
   const generation = ref(0)
   const occurrences = shallowRef<ExternalOccurrence[]>([])
   const coverage = ref<GoogleCoverage | undefined>()
@@ -103,6 +116,8 @@ export const useGoogleConnection = defineStore('googleConnection', () => {
   const tokenExpiresAt = ref<number | undefined>()
   const diagnostics = reactive<{ scopeGranted?: boolean; last: Partial<Record<DiagnosticKind, DiagnosticEntry>> }>({ last: {} })
 
+  const saved = services.saved()
+  const channel = services.channel()
   // Never reactive, never exposed: the access token.
   let token: { value: string; expiresAt: number } | undefined
   let oauth2: GisOAuth2 | undefined
@@ -110,6 +125,10 @@ export const useGoogleConnection = defineStore('googleConnection', () => {
 
   const hasLiveToken = () => token !== undefined && token.expiresAt > services.now().getTime()
   const busy = computed(() => phase.value !== 'idle')
+
+  function bindingOf(document = planner.document): SavedBinding | undefined {
+    return document ? { workspaceId: document.workspaceId, plannerGeneration: document.generation, timeZone: document.settings.timeZone } : undefined
+  }
 
   function capture(): Ticket {
     return { generation: generation.value, workspaceId: planner.document?.workspaceId, plannerGeneration: planner.document?.generation }
@@ -144,33 +163,67 @@ export const useGoogleConnection = defineStore('googleConnection', () => {
     expired.value = false
     occurrences.value = []
     coverage.value = undefined
+    fromDevice.value = false
     phase.value = 'idle'
     publish()
   }
 
+  // Shows the copy saved on this device when it belongs to this planner and zone and nothing newer is shown; a copy
+  // for anything else is deleted. Runs when the planner first loads and whenever it or its zone changes.
+  async function keepMatchingCopy(): Promise<void> {
+    const binding = bindingOf()
+    if (!binding) return
+    const ticket = capture()
+    const copy = await saved.loadMatching(binding).catch(() => undefined)
+    if (!copy || !isCurrent(ticket) || coverage.value || planner.document?.settings.timeZone !== binding.timeZone) return
+    occurrences.value = copy.occurrences
+    coverage.value = copy.coverage
+    fromDevice.value = true
+    session.value = 'connected'
+    publish()
+  }
+
+  // The copy on this device goes too, here and in every other tab.
+  function forgetEverywhere(): void {
+    forget()
+    const epoch = saved.discard()
+    channel?.postMessage({ type: 'forget', epoch })
+  }
+
   // A replaced planner (Delete all data, an import or a restore, here or in another tab) is a new owner: what was
-  // read for the old one goes.
-  watch(() => `${planner.document?.workspaceId}\u0000${planner.document?.generation}`, (next, previous) => {
-    if (next !== previous) forget()
-  }, { flush: 'sync' })
+  // read for the old one goes, from memory and from the device. The planner's first load shows the saved copy.
+  watch(() => (planner.document ? `${planner.document.workspaceId}\u0000${planner.document.generation}` : undefined), (next, previous) => {
+    if (next === previous) return
+    if (previous !== undefined) forget()
+    if (next !== undefined) void keepMatchingCopy()
+  }, { flush: 'sync', immediate: true })
 
   // Civil dates mean something only in the zone they were read in: a new planner zone drops the events and their
-  // coverage (and any read still on its way), keeps the token, and Week and Today offer Update again.
+  // coverage (and any read still on its way, and the saved copy), keeps the token, and Week and Today offer Update.
   watch(() => planner.document?.settings.timeZone, (next, previous) => {
     if (previous === undefined || next === previous) return
     for (const controller of inflight) controller.abort()
     occurrences.value = []
     coverage.value = undefined
+    fromDevice.value = false
     publish()
+    void keepMatchingCopy()
   }, { flush: 'sync' })
 
-  const channel = services.channel()
   channel?.addEventListener('message', (event: MessageEvent) => {
-    if ((event.data as { type?: unknown } | null)?.type !== 'forget') return
+    const data = event.data as { type?: unknown; epoch?: unknown } | null
+    if (data?.type !== 'forget') return
     forget()
+    saved.adopt(data.epoch)
     session.value = 'disconnected'
     message.value = null
   })
+
+  // Google says this connection may no longer read the calendar: what was read under it goes everywhere.
+  function grantGone(): void {
+    forgetEverywhere()
+    session.value = 'new'
+  }
 
   // Each request has its own callback bound to the ticket of its own tap: a late answer to an older request can never
   // take the place of a newer one.
@@ -179,6 +232,7 @@ export const useGoogleConnection = defineStore('googleConnection', () => {
       record('token', safeCode(response.error))
       if (isCurrent(ticket)) {
         phase.value = 'idle'
+        if (response.error === 'access_denied') grantGone()
         message.value = response.error === 'access_denied' ? { key: 'accessDenied', tone: 'info' } : { key: 'authFailed', tone: 'error', params: { code: safeCode(response.error) } }
       }
       return
@@ -194,6 +248,7 @@ export const useGoogleConnection = defineStore('googleConnection', () => {
       diagnostics.scopeGranted = false
       record('token', 'missingScope')
       revokeQuietly(response.access_token)
+      grantGone()
       message.value = { key: 'missingScope', tone: 'error' }
       return
     }
@@ -204,7 +259,7 @@ export const useGoogleConnection = defineStore('googleConnection', () => {
     record('token', 'granted')
     session.value = 'connected'
     expired.value = false
-    void refresh(ticket)
+    void refresh(ticket, true)
   }
 
   function onTokenError(error: GisErrorResponse, ticket: Ticket): void {
@@ -247,7 +302,8 @@ export const useGoogleConnection = defineStore('googleConnection', () => {
     return true
   }
 
-  async function refresh(ticket: Ticket): Promise<void> {
+  // `fresh`: the token was granted in this same tap, so a 401 means Google withdrew the permission, not that it lapsed.
+  async function refresh(ticket: Ticket, fresh = false): Promise<void> {
     const current = token
     const document = planner.document
     if (!current || !document || !isCurrent(ticket)) return
@@ -266,7 +322,8 @@ export const useGoogleConnection = defineStore('googleConnection', () => {
         if (result.failure.code === 'expired') {
           token = undefined
           tokenExpiresAt.value = undefined
-          expired.value = true
+          if (fresh) grantGone()
+          else expired.value = true
         }
         message.value = failureMessage(result.failure)
         return
@@ -281,7 +338,9 @@ export const useGoogleConnection = defineStore('googleConnection', () => {
       // Published only now, after every page arrived and every event was read: never part of the calendar.
       occurrences.value = normalized.occurrences
       coverage.value = { start: window.start, end: window.end, timeZone, fetchedAt: services.now().toISOString() }
+      fromDevice.value = false
       publish()
+      void saved.save(savedCopyOf({ workspaceId: document.workspaceId, plannerGeneration: document.generation, timeZone }, coverage.value, normalized.occurrences)).catch(() => undefined)
     } finally {
       inflight.delete(controller)
       if (isCurrent(ticket)) phase.value = 'idle'
@@ -318,9 +377,8 @@ export const useGoogleConnection = defineStore('googleConnection', () => {
   // confirmation is reported as a confirmed revocation.
   async function disconnect(): Promise<void> {
     const live = hasLiveToken() ? token!.value : undefined
-    forget()
+    forgetEverywhere()
     session.value = 'disconnected'
-    channel?.postMessage({ type: 'forget' })
     if (!live || !oauth2) {
       record('revoke', 'noToken')
       message.value = { key: 'revokeUnconfirmed', tone: 'info', permissionsLink: true }
@@ -342,7 +400,7 @@ export const useGoogleConnection = defineStore('googleConnection', () => {
   }
 
   return {
-    gis, phase, session, expired, generation, occurrences, coverage, message, diagnostics, busy,
+    gis, phase, session, expired, fromDevice, generation, occurrences, coverage, message, diagnostics, busy,
     prepare, update, disconnect, forget, remainingMinutes, hasLiveToken,
   }
 })
