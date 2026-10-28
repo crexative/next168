@@ -4,7 +4,7 @@ import { computed, nextTick, onMounted, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { currentAndNext } from '@/core/now'
 import { fitTasks, placementClock } from '@/core/scheduling'
-import { localDateOf, type DatedOccurrence } from '@/core/time'
+import { addLocalDays, localDateOf, type DatedOccurrence } from '@/core/time'
 import { usePlannerStore } from '@/stores/plannerStore'
 import Button from '@/ui/Button.vue'
 import EmptyState from '@/ui/EmptyState.vue'
@@ -17,6 +17,7 @@ import { consumeSavedFlag } from '@/features/checkin/checkinFlash'
 import SetupWeekPrompt from '@/features/onboarding/SetupWeekPrompt.vue'
 import { setupOpen, setupWeekOffered } from '@/features/onboarding/reopen'
 import { useExternalOccurrences } from '@/features/week/externalOccurrences'
+import { GoogleCoverageNotice, googleAvailable } from '@/features/calendars/googleCalendar'
 import { formatDate } from '@/ui/format'
 import { useNow } from '@/features/week/useNow'
 import NowCard from './NowCard.vue'
@@ -38,6 +39,7 @@ const timeZone = computed(() => document.value?.settings.timeZone ?? 'UTC')
 const today = computed(() => localDateOf(now.value, timeZone.value))
 const dateLabel = computed(() => formatDate(today.value, locale.value, { weekday: 'long', day: 'numeric', month: 'long' }))
 const external = useExternalOccurrences(() => document.value ? { fromDate: today.value, days: 7, timeZone: timeZone.value } : null)
+const googleRanges = computed(() => [{ start: today.value, end: addLocalDays(today.value, 7) }])
 
 const nowAndNext = computed(() => document.value ? currentAndNext(document.value, now.value, timeZone.value) : { current: null, next: null })
 // Free hours from now to the end of the week, in whole hours: the one figure Today keeps from the old header card.
@@ -109,6 +111,7 @@ function clear(occurrence: DatedOccurrence): void {
   <div v-if="document" class="today-view">
     <p class="today-subtitle t-subhead t-secondary" data-testid="today-subtitle">{{ subtitle }}</p>
     <AssistantEntryButton />
+    <component :is="GoogleCoverageNotice" v-if="GoogleCoverageNotice && googleAvailable" :ranges="googleRanges" />
     <EmptyState v-if="!hasContent" icon="sun" :title="t('today.empty.title')" :description="t('today.empty.description')">
       <!-- The setup wizard is the quick way in; when it cannot be offered, the link to Week remains. -->
       <SetupWeekPrompt v-if="setupWeekOffered(planner)" />

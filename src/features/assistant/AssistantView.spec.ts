@@ -95,6 +95,22 @@ it('passes loaded external calendar occurrences to assistant.ask for the next su
   ))
 })
 
+// Google Calendar meetings reach the on-device assistant only as busy time (Slice 1 spec §4 "AI", acceptance A12).
+it('passes Google Calendar meetings to the assistant as Busy, without their titles; imported calendars keep theirs', async () => {
+  const google: ExternalOccurrence = { sourceId: 'google:primary', uid: 'g1', title: 'Board meeting with Ana', start: '2026-10-21T09:00:00Z', end: '2026-10-21T10:00:00Z', busy: true, allDay: false }
+  const ics: ExternalOccurrence = { sourceId: 'calendar', uid: 'meeting', title: 'Client call', start: '2026-10-21T10:05:00Z', end: '2026-10-21T11:00:00Z', busy: true, allDay: false }
+  setExternalOccurrenceSource(async () => [google, ics])
+  const view = await mountView()
+  const ask = vi.spyOn(assistant, 'ask')
+
+  view.querySelectorAll<HTMLButtonElement>('[data-testid=suggestions] button')[1]!.click()
+
+  await vi.waitFor(() => expect(ask).toHaveBeenCalled())
+  const external = (ask.mock.calls[0]![1] as { external: ExternalOccurrence[] }).external
+  expect(external).toEqual([{ ...google, title: 'Busy' }, ics])
+  expect(JSON.stringify(ask.mock.calls)).not.toContain('Board meeting')
+})
+
 it('with the model in use puts the question box at the bottom, under the conversation', async () => {
   const view = await mountView({ availability: async () => 'available' }, 'webllm')
   expect(order(view)).toEqual(['back-button', 'suggestions', 'composer', 'notes'])

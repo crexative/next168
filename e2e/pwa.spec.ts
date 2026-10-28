@@ -1,6 +1,8 @@
 import { expect, test, type Page } from '@playwright/test'
-import { LEGACY_BLOCK_COUNT, onlyProject, seedLegacy } from './fixtures'
+import { LEGACY_BLOCK_COUNT, onlyProject, seedKey, seedLegacy, V2_KEY } from './fixtures'
+import { cachedUrls, expectNoStrayGoogleTraffic, fakeGoogle } from './support/googleCalendar'
 import { previewPorts } from './support/ports'
+import { onboardedDocument } from './support/seed'
 
 const ports = previewPorts()
 
@@ -79,3 +81,32 @@ for (const base of BASES) {
     })
   })
 }
+
+// Google Calendar under the controlling worker (Slice 1 spec §4 "Fetch", acceptance A13): the worker leaves every
+// Google request to the network, so an Update is really fetched and nothing of Google lands in Cache Storage.
+test.describe('Google Calendar under the service worker', () => {
+  test.beforeEach(onlyProject('desktop'))
+
+  test('an Update under the controlling worker reaches the network, renders the event and caches nothing from Google', async ({ page, context }) => {
+    const google = await fakeGoogle(context, {
+      events: [{ id: 'evt-sw', summary: 'Standup GCal', start: { dateTime: '2026-10-20T09:30:00Z' }, end: { dateTime: '2026-10-20T10:00:00Z' } }],
+    })
+    await page.clock.install({ time: new Date('2026-10-19T12:00:00.000Z') })
+    await seedKey(page, V2_KEY, JSON.stringify(onboardedDocument({ categories: [{ id: 'c-work', name: 'Work', colorKey: 'blue', goal: { type: 'none', hoursPerWeek: 0 } }] })))
+    await page.goto(`${BASES[0]!.url}?labs=google-calendar#/settings/calendars`)
+    await waitForActiveServiceWorker(page)
+    await page.reload()
+    expect(await page.evaluate(() => !!navigator.serviceWorker.controller)).toBe(true)
+    await page.getByTestId('google-connect').click()
+    await expect(page.getByTestId('google-continue')).toBeEnabled()
+    await page.getByTestId('google-continue').click()
+    await expect(page.getByTestId('google-status')).toContainText('1 event')
+    await page.getByTestId('google-update').click()
+    await expect(page.getByTestId('google-status')).toContainText('1 event')
+    expect(google.gisLoads).toBe(1)
+    expect(google.apiRequests.length).toBeGreaterThanOrEqual(2)
+    await expect(page.getByTestId('calendar-occurrence').filter({ hasText: 'Standup GCal' })).toBeVisible()
+    expect((await cachedUrls(page)).filter((url) => /(^|\.)google(apis)?\.com$/.test(new URL(url).hostname))).toEqual([])
+    expectNoStrayGoogleTraffic(google)
+  })
+})

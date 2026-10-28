@@ -1,6 +1,6 @@
 # Calendars (S3)
 
-Architecture: `docs/architecture/deliverable-1.md` §7, including Revision 3. No OAuth, account access or calendar writes are performed by Weeklid. Provider compose links open the user's provider UI; downloading an ICS file is the portable export. Attendee prefill in Google/Outlook remains subject to vendor/account behavior. Importing into an actual account is an owner check.
+Architecture: `docs/architecture/deliverable-1.md` §7, including Revision 3. ICS calendars need no OAuth and no account access. The one exception is the read-only Google Calendar connection below (owner approval 2026-10-26); Weeklid performs no calendar writes. Provider compose links open the user's provider UI; downloading an ICS file is the portable export. Attendee prefill in Google/Outlook remains subject to vendor/account behavior. Importing into an actual account is an owner check.
 
 ## Integration contract
 
@@ -95,3 +95,23 @@ Verified 2026-10-24 at 06:03 UTC on uncommitted S3 work over `ea5adfbc3fa9388778
 The full test run emits Node's experimental localStorage warning; build emits two upstream Zod annotation warnings. Neither command fails. No browser/E2E or exact-head CI success is claimed.
 
 Remote readback at 2026-10-24 06:01:16 UTC: integration `abcf42ca7840ff13df7750301a267d735eeb7ac2`; S0-shell `d9db484184959f154979b052bd332baeba234cf7` (advanced from this worktree's base). The coordinator must integrate current foundations before publication. No commits, pushes or PR were created. Worktree retained for its uncommitted handoff. Provider token/cost telemetry is unavailable in this executor, so usage and cost are UNKNOWN rather than zero.
+
+## Google Calendar (Slice 1, labs)
+
+Owner approval 2026-10-26: read the **primary** Google calendar from the browser, read-only, with no Weeklid server. Design, red team and spec live with the coordinator (Slice 1 spec, 2026-10-26); the code is `src/features/calendars/googleCalendar.ts` (what the rest of the app sees), `googleGate.ts` (the gate) and `google/` (the chunk that talks to Google).
+
+- **Gate.** The feature exists only when the build has `VITE_GOOGLE_CLIENT_ID` (validated by `vite.config.ts`; a malformed ID fails the build), the app is not in companion mode, the context is secure, and the device opted in by opening the app once with `?labs=google-calendar` (`localStorage` `next168-labs-google=1`, removed by Delete all data). A build without the ID contains no Google code: the UI is imported dynamically behind `import.meta.env.VITE_GOOGLE_CLIENT_ID`, and CI fails if `dist/assets` mentions `gsi/client`. The ID is set only in the Cloudflare Pages **Production** variables; GitHub Pages (`crexative.github.io`, not an authorised origin) never gets it.
+- **Auth.** Google Identity Services, token model: `initTokenClient({ scope: calendar.events.readonly, include_granted_scopes: false, prompt: '' })`, no `login_hint`. The script `https://accounts.google.com/gsi/client` loads only when the Connect sheet opens; `requestAccessToken()` runs synchronously in the tap. A token without the events scope is revoked and nothing is read.
+- **Memory only.** The token and the events live in the tab's memory: nothing is written to `localStorage`, IndexedDB, Cache Storage or the console. After a reload, Week and Today say "Google Calendar isn't loaded: your tasks might land on top of meetings." with an Update button. There is no timer and no refresh on focus: only Update.
+- **Read.** `GET calendars/primary/events` with `singleEvents=true`, `orderBy=startTime`, `maxResults=250`, a window from today − 7 to today + 42 civil days padded by one day each side, and `fields=nextPageToken,items(id,status,summary,start,end,transparency,eventType,attendees(self,responseStatus),recurringEventId,originalStartTime)`; `cache: 'no-store'`, `credentials: 'omit'`, `referrerPolicy: 'no-referrer'`, 15 s per request, at most 8 pages. A refresh replaces the events only when every page arrived and every event was read (a time without an offset fails it); otherwise the previous events stay and the error is shown. The service worker leaves Google hosts to the network.
+- **Lifecycle.** Every request carries the connection generation and the planner's workspace id and generation from the tap. Disconnect, Delete all data and an import or restore invalidate it: requests in flight are aborted, a late token is revoked unused, and other tabs forget too (`BroadcastChannel('next168-google')`). Disconnect reports "Google confirmed it withdrew access" only on Google's own confirmation; otherwise it links to `https://myaccount.google.com/connections`.
+- **AI.** The any-AI prompt and the on-device assistant get Google meetings as "Busy" without titles (`externalForAi`); the any-AI panel says so.
+- **Diagnostics.** A collapsed "Details" in the section shows, from memory only, whether the scope was granted, the token's remaining minutes, the last token/events/revoke result as a code with its UTC time, the number of events and the coverage dates. Never an address, id, title, token or Google's own text.
+
+### Spike evidence (owner, production, real account)
+
+Record dates in UTC and codes, counts and yes/no only: never addresses, ids, titles or screenshots of events.
+
+| UTC date | Spike / check | Platform | Browser version | Observed |
+| --- | --- | --- | --- | --- |
+| | | | | |

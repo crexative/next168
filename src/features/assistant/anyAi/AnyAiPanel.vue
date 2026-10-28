@@ -2,7 +2,9 @@
 import { computed, nextTick, ref, useId, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { usePlannerStore } from '@/stores/plannerStore'
-import { expandCalendarSources } from '@/features/calendars/occurrenceSource'
+import { expandCalendarSources, hasExternalCalendars } from '@/features/calendars/occurrenceSource'
+import { googleRevision, googleSnapshot } from '@/features/calendars/googleCalendar'
+import { externalForAi } from '@/core/aiProjection'
 import { openProposalReview } from '@/features/proposals'
 import { getProposalRepository } from '@/features/proposals/repository'
 import { refreshPending } from '@/features/proposals/pending'
@@ -43,13 +45,13 @@ const external = ref<ExternalOccurrence[]>([])
 const planKey = (document: { workspaceId: string; revision: number } | null) => (document ? `${document.workspaceId}@${document.revision}` : null)
 const calendarsReadFor = ref<string | null>(null)
 let generation = 0
-watch(() => [planner.document?.workspaceId, planner.document?.revision, planner.document?.calendarSources] as const, async () => {
+watch(() => [planner.document?.workspaceId, planner.document?.revision, planner.document?.calendarSources, googleRevision()] as const, async () => {
   const current = ++generation
   const document = planner.document
   calendarsReadFor.value = null
   if (!document) { external.value = []; return }
   const key = planKey(document)
-  if (document.calendarSources.length === 0) { external.value = []; calendarsReadFor.value = key; return }
+  if (!hasExternalCalendars()) { external.value = []; calendarsReadFor.value = key; return }
   const timeZone = document.settings.timeZone
   const fromDate = weekDates(localDateOf(new Date(), timeZone), document.settings.weekStartsOn)[0]!
   const expanded = await expandCalendarSources({ fromDate, days: 7, timeZone }).catch(() => [])
@@ -58,6 +60,8 @@ watch(() => [planner.document?.workspaceId, planner.document?.revision, planner.
   calendarsReadFor.value = key
 }, { immediate: true })
 
+// Google meetings go into the prompt as busy time only; the panel says so whenever some are loaded.
+const googleLoaded = computed(() => googleSnapshot().coverage !== undefined)
 const calendarsReady = computed(() => !!planner.document && calendarsReadFor.value === planKey(planner.document))
 const canCopy = computed(() => calendarsReady.value)
 const canReview = computed(() => !!planner.document && planner.writable && !!reply.value.trim() && !busy.value)
@@ -78,7 +82,7 @@ async function copy(): Promise<void> {
   const document = planner.document
   if (!document || !calendarsReady.value) return
   const text = buildAiPrompt({
-    document, now: new Date(), locale: locale.value, external: external.value,
+    document, now: new Date(), locale: locale.value, external: externalForAi(external.value, t('calendars.googleConnection.busyForAi')),
     translate: (key, params) => t(key, params ?? {}),
   })
   failure.value = null
@@ -127,6 +131,7 @@ watch(lastDecision, (decision) => {
 
       <div class="group">
         <Button :disabled="!canCopy" data-testid="any-ai-copy" @click="copy">{{ t('connect.anyAi.copy') }}</Button>
+        <p v-if="googleLoaded" class="t-footnote t-secondary" data-testid="any-ai-google-note">{{ t('calendars.googleConnection.aiNote') }}</p>
         <p v-if="planner.document && !calendarsReady" class="t-footnote t-secondary" role="status" data-testid="any-ai-calendars-loading">{{ t('connect.anyAi.loadingCalendars') }}</p>
         <p v-if="copied === 'copied'" class="t-footnote t-secondary" role="status" data-testid="any-ai-copied">{{ t('connect.anyAi.copied') }}</p>
         <template v-if="copied === 'manual'">
