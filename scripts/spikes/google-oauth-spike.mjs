@@ -12,7 +12,9 @@ const randomValue = () => randomBytes(32).toString('base64url')
 const testMode = () => Object.hasOwn(process.env, testOriginKey)
 
 export function assertRuntime(version = process.versions.node) {
-  if (Number(version.split('.')[0]) < 20) throw new Error('nodeVersion')
+  const [major, minor] = version.split('.').map(Number)
+  const supportedVersion = (major === 20 && minor >= 19) || (major === 22 && minor >= 12) || major >= 23
+  if (!supportedVersion || typeof AbortSignal.any !== 'function') throw new Error('nodeVersion')
 }
 
 export function parseClientId(args) {

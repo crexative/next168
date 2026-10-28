@@ -470,10 +470,21 @@ test('unit consent binds both loopbacks, keeps the registered URI and has a five
   for (const key of ['state', 'code_challenge']) assert.equal(new Set(authorizationUrls.map(url => url.searchParams.get(key))).size, authorizationUrls.length)
 })
 
-test('unit runtime preconditions refuse old Node versions', async () => {
+test('unit runtime preconditions enforce engines and AbortSignal.any availability', async () => {
   const { assertRuntime } = await unitModule()
-  for (const version of ['18.20.0', '19.9.0']) assert.throws(() => assertRuntime(version))
-  for (const version of ['20.0.0', '22.12.0', '26.0.0']) assert.doesNotThrow(() => assertRuntime(version))
+  for (const version of ['18.20.0', '19.9.0', '20.0.0', '20.2.0', '20.18.9', '21.7.0', '22.11.0']) {
+    assert.throws(() => assertRuntime(version), /nodeVersion/, version)
+  }
+  for (const version of ['20.19.0', '20.20.0', '22.12.0', '22.13.0', '23.0.0', '26.0.0']) {
+    assert.doesNotThrow(() => assertRuntime(version), version)
+  }
+  const originalAny = AbortSignal.any
+  try {
+    for (const unavailable of [undefined, null, {}]) {
+      AbortSignal.any = unavailable
+      assert.throws(() => assertRuntime('26.0.0'), /nodeVersion/)
+    }
+  } finally { AbortSignal.any = originalAny }
 })
 
 test('consent timeout exits 2 with a partial table and final reminder', async () => {
