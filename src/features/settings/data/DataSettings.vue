@@ -15,6 +15,7 @@ import { resetSidebar } from '@/app/sidebar'
 import { calendarLifecycle, calendarSourceStore } from './calendarSourceHook'
 import { deviceStorages, removeDeviceData } from './deviceData'
 import { refreshGoogleAvailability } from '@/features/calendars/googleCalendar'
+import { savedGoogleEvents } from '@/features/calendars/googleSavedEvents'
 import { downloadBackup } from './exportBackup'
 import PreUpgradeCopy from './PreUpgradeCopy.vue'
 import {
@@ -132,8 +133,11 @@ function removeDeviceLeftovers(): void {
   setAppearance('auto')
   setHourCycle('auto')
   resetSidebar()
-  // The Google Calendar labs flag went with the other keys.
+  // The Google Calendar labs flag went with the other keys, and the copy of its events goes with them.
   refreshGoogleAvailability()
+  // Whatever this build is: a build without the Google client ID (or with the feature off) still erases a copy that
+  // an earlier build saved on this device.
+  void savedGoogleEvents().erase()
 }
 
 // Companion mode: the legacy keys go under the commit lock, as the browser repository does in its own delete-all.

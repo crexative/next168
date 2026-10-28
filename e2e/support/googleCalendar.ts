@@ -160,10 +160,13 @@ export async function releaseToken(page: Page, which: 'all' | 'first' = 'all'): 
   }, which)
 }
 
+// The database that holds the copy of the last Google Calendar read (src/features/calendars/googleSavedEvents.ts).
+export const SAVED_GOOGLE_DATABASE = 'next168-google'
+
 // Every place the app could write to on this origin, serialised: key-value storage, every IndexedDB database's
-// records and keys, and every Cache Storage entry (address and body).
-export async function everythingStored(page: Page): Promise<string> {
-  return page.evaluate(async () => {
+// records and keys (except `skipDatabase`), and every Cache Storage entry (address and body).
+export async function everythingStored(page: Page, skipDatabase?: string): Promise<string> {
+  return page.evaluate(async (skip) => {
     const parts: string[] = []
     for (const storage of [localStorage, sessionStorage]) {
       for (let index = 0; index < storage.length; index += 1) {
@@ -172,7 +175,7 @@ export async function everythingStored(page: Page): Promise<string> {
       }
     }
     for (const info of await indexedDB.databases()) {
-      if (!info.name) continue
+      if (!info.name || info.name === skip) continue
       const db = await new Promise<IDBDatabase>((resolve, reject) => {
         const open = indexedDB.open(info.name!)
         open.onsuccess = () => resolve(open.result)
@@ -197,7 +200,26 @@ export async function everythingStored(page: Page): Promise<string> {
       }
     }
     return parts.join('\n')
-  })
+  }, skipDatabase)
+}
+
+// The saved copy's records, serialised; '' when its database does not exist (reading never creates it).
+export async function savedGoogleCopy(page: Page): Promise<string> {
+  return page.evaluate(async (name) => {
+    if (!(await indexedDB.databases()).some((info) => info.name === name)) return ''
+    const db = await new Promise<IDBDatabase>((resolve, reject) => {
+      const open = indexedDB.open(name)
+      open.onsuccess = () => resolve(open.result)
+      open.onerror = () => reject(open.error)
+    })
+    try {
+      if (!db.objectStoreNames.contains('saved')) return ''
+      const store = db.transaction('saved', 'readonly').objectStore('saved')
+      return await new Promise<string>((resolve) => { const read = store.getAll(); read.onsuccess = () => resolve(JSON.stringify(read.result)) })
+    } finally {
+      db.close()
+    }
+  }, SAVED_GOOGLE_DATABASE)
 }
 
 export async function cachedUrls(page: Page): Promise<string[]> {

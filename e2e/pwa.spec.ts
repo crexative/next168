@@ -1,6 +1,6 @@
 import { expect, test, type Page } from '@playwright/test'
 import { LEGACY_BLOCK_COUNT, onlyProject, seedKey, seedLegacy, V2_KEY } from './fixtures'
-import { cachedUrls, expectNoStrayGoogleTraffic, fakeGoogle } from './support/googleCalendar'
+import { SAVED_GOOGLE_DATABASE, cachedUrls, everythingStored, expectNoStrayGoogleTraffic, fakeGoogle } from './support/googleCalendar'
 import { previewPorts } from './support/ports'
 import { onboardedDocument } from './support/seed'
 
@@ -107,6 +107,16 @@ test.describe('Google Calendar under the service worker', () => {
     expect(google.apiRequests.length).toBeGreaterThanOrEqual(2)
     await expect(page.getByTestId('calendar-occurrence').filter({ hasText: 'Standup GCal' })).toBeVisible()
     expect((await cachedUrls(page)).filter((url) => /(^|\.)google(apis)?\.com$/.test(new URL(url).hostname))).toEqual([])
+    // The copy saved on this device, under the worker too: a reload shows it without asking Google, and the only place
+    // it lives is its own IndexedDB store, never Cache Storage.
+    const requests = google.apiRequests.length
+    await page.reload()
+    await expect(page.getByTestId('google-status')).toContainText('1 event')
+    await expect(page.getByTestId('calendar-occurrence').filter({ hasText: 'Standup GCal' })).toBeVisible()
+    expect(google.apiRequests).toHaveLength(requests)
+    expect(google.gisLoads).toBe(1)
+    expect((await cachedUrls(page)).filter((url) => /(^|\.)google(apis)?\.com$/.test(new URL(url).hostname))).toEqual([])
+    expect(await everythingStored(page, SAVED_GOOGLE_DATABASE)).not.toContain('Standup GCal')
     expectNoStrayGoogleTraffic(google)
   })
 })

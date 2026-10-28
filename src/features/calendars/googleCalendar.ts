@@ -10,6 +10,18 @@ import { googleConnectionEnabled } from './googleGate'
 export const GOOGLE_SOURCE_ID = 'google:primary'
 export const GOOGLE_CALENDAR_NAME = 'Google Calendar'
 
+// One length rule for a Google event title, when it is read and when its saved copy is checked: at most this many
+// characters counted as code points, so an emoji or 𝔸 counts once and never makes a read title too long to keep.
+export const MAX_GOOGLE_TITLE_LENGTH = 200
+
+export function googleTitle(summary: unknown): string {
+  return typeof summary === 'string' ? [...summary].slice(0, MAX_GOOGLE_TITLE_LENGTH).join('') : ''
+}
+
+export function fitsGoogleTitle(title: unknown): title is string {
+  return typeof title === 'string' && [...title].length <= MAX_GOOGLE_TITLE_LENGTH
+}
+
 // Civil dates in the planner's zone, end exclusive.
 export interface DateWindow { start: string; end: string }
 // The window read, in the planner zone it was read in.
