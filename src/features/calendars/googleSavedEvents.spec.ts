@@ -50,6 +50,33 @@ describe('the saved Google Calendar copy', () => {
     expect(await new IndexedDbSavedGoogleEvents(factory).loadMatching(BINDING)).toEqual(copy())
   })
 
+  // Review finding (Codex, 460bb3f): titles are cut to 200 characters as code points when read, so the saved copy must
+  // accept exactly that; a title with emoji or 𝔸 counted in UTF-16 units would make the whole copy unsavable.
+  it('saves and returns titles of 200 characters made of emoji and other supplementary characters', async () => {
+    const factory = new IDBFactory()
+    const tab = new IndexedDbSavedGoogleEvents(factory)
+    await tab.loadMatching(BINDING)
+    const title = `🌅${'𝔸'.repeat(199)}`
+    expect([...title]).toHaveLength(200)
+    expect(await tab.save(copy([{ ...STANDUP, title }]))).toBe('saved')
+    expect((await new IndexedDbSavedGoogleEvents(factory).loadMatching(BINDING))?.occurrences[0]?.title).toBe(title)
+    expect(await tab.save(copy([{ ...STANDUP, title: `${title}x` }]))).toBe('refused')
+  })
+
+  // Review finding (Codex, 460bb3f): Delete all data must remove the database even in a build without Google.
+  it('erase removes the whole database, creates none where there was none, and the tab can save again', async () => {
+    const factory = new IDBFactory()
+    const names = async () => (await factory.databases()).map((info) => info.name)
+    await new IndexedDbSavedGoogleEvents(factory).erase()
+    expect(await names()).not.toContain(SAVED_GOOGLE_DATABASE)
+    const tab = new IndexedDbSavedGoogleEvents(factory)
+    await tab.loadMatching(BINDING)
+    await tab.save(copy())
+    await tab.erase()
+    expect(await names()).not.toContain(SAVED_GOOGLE_DATABASE)
+    expect(await tab.save(copy())).toBe('saved')
+  })
+
   it('keeps only the fields the overlay draws, never anything else that rides along', () => {
     const extra = { ...STANDUP, attendees: [{ email: 'ana@example.com' }], description: 'Agenda', token: 'tok-SECRET' } as unknown as ExternalOccurrence
     const saved = savedCopyOf(BINDING, { ...COVERAGE, account: 'ana@example.com' } as typeof COVERAGE, [extra])

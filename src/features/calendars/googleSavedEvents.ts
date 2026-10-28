@@ -1,5 +1,5 @@
 import type { ExternalOccurrence } from '@/core/model'
-import { GOOGLE_SOURCE_ID, type GoogleCoverage } from './googleCalendar'
+import { GOOGLE_SOURCE_ID, fitsGoogleTitle, type GoogleCoverage } from './googleCalendar'
 
 // The on-device copy of the last complete Google Calendar read, so reopening Weeklid shows those events at once.
 // It is its own IndexedDB database, outside the planner document: exports, backups, the pre-upgrade copy and the
@@ -18,7 +18,6 @@ const EPOCH_KEY = 'epoch'
 const FORMAT = 1
 // What one complete read can hold: at most 8 pages of 250 events.
 export const MAX_SAVED_OCCURRENCES = 2000
-const MAX_TITLE = 200
 const MAX_TEXT = 1024
 const EPOCH = /^[A-Za-z0-9-]{1,64}$/
 
@@ -43,6 +42,8 @@ export interface SavedGoogleEventsPort {
   discard(): string
   // Another tab deleted the copy and said so: its epoch is now the one this tab knows.
   adopt(epoch: unknown): void
+  // Delete all data: the whole database goes (nothing is created where there was none), in any build.
+  erase(): Promise<void>
   // Resolves when every queued operation of this tab has finished.
   settled(): Promise<void>
 }
@@ -59,7 +60,7 @@ function validOccurrence(item: unknown): item is ExternalOccurrence {
   const value = item as Record<string, unknown>
   return hasOnly(value, ['sourceId', 'uid', 'recurrenceId', 'title', 'start', 'end', 'allDay', 'busy'])
     && value.sourceId === GOOGLE_SOURCE_ID && isText(value.uid) && (value.recurrenceId === undefined || isText(value.recurrenceId))
-    && isText(value.title, MAX_TITLE) && isText(value.start, 64) && isText(value.end, 64)
+    && fitsGoogleTitle(value.title) && isText(value.start, 64) && isText(value.end, 64)
     && typeof value.allDay === 'boolean' && typeof value.busy === 'boolean'
 }
 
@@ -155,6 +156,12 @@ export class IndexedDbSavedGoogleEvents implements SavedGoogleEventsPort {
       await done
     }).catch(() => this.deleteDatabase())).catch(() => undefined)
     return next
+  }
+
+  erase(): Promise<void> {
+    this.known = ''
+    this.localChanges += 1
+    return this.enqueue(() => this.deleteDatabase()).catch(() => undefined)
   }
 
   adopt(epoch: unknown): void {

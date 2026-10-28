@@ -302,6 +302,18 @@ describe('the copy saved on this device', () => {
     expect(fetchMock).not.toHaveBeenCalled()
   })
 
+  // Review finding (Codex, 460bb3f): a long title of emoji or 𝔸 must not keep the whole read from being saved.
+  it('a read whose titles are cut to 200 emoji or supplementary characters is saved and comes back', async () => {
+    const long = `🌅 ${'𝔸'.repeat(300)}`
+    respond = () => json({ items: [event('evt-id-7f3a', long, 9)] })
+    await openTab()
+    await connect()
+    await vi.waitFor(async () => expect(await saved()).toBe(true))
+    const { google } = await openTab()
+    await vi.waitFor(() => expect(google.fromDevice).toBe(true))
+    expect(google.occurrences[0]!.title).toBe([...long].slice(0, 200).join(''))
+  })
+
   it('a refresh that fails saves nothing over the last complete read', async () => {
     await openTab()
     const google = await connect()

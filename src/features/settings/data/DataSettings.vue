@@ -135,7 +135,9 @@ function removeDeviceLeftovers(): void {
   resetSidebar()
   // The Google Calendar labs flag went with the other keys, and the copy of its events goes with them.
   refreshGoogleAvailability()
-  if (import.meta.env.VITE_GOOGLE_CLIENT_ID) savedGoogleEvents().discard()
+  // Whatever this build is: a build without the Google client ID (or with the feature off) still erases a copy that
+  // an earlier build saved on this device.
+  void savedGoogleEvents().erase()
 }
 
 // Companion mode: the legacy keys go under the commit lock, as the browser repository does in its own delete-all.
