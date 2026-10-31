@@ -4,7 +4,7 @@ Weeklid works without an account or companion. Browser mode keeps data in that b
 
 ## Install and run
 
-Use Node 20.19+ (or Node 22.12+) and a checkout containing deliverable 1. From the repository root:
+Use Node 22.13+ and a checkout containing deliverable 1. From the repository root:
 
 ```sh
 npm ci
