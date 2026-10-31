@@ -38,6 +38,11 @@ function deviceIdFrom(request: Request): string | null {
   return value && DEVICE_ID.test(value) ? value : null
 }
 
+async function presentedDevice(request: Request): Promise<{ id: string; hash: string } | null> {
+  const id = deviceIdFrom(request)
+  return id ? { id, hash: await sha256b64url(id) } : null
+}
+
 export const formatGeneration = (gen: Generation): string => `${gen.connectionId ?? '-'}.${gen.pendingId ?? '-'}`
 
 function parseGeneration(raw: string): Generation | null {
@@ -61,8 +66,15 @@ export function handleConnect(request: Request, deps: Deps): Promise<Response> {
     if (!body || !hasExactKeys(body, ['from', 'epoch']) || (from !== 'app' && from !== 'canary') || typeof body.epoch !== 'string' || !ID22.test(body.epoch)) {
       return failure(400, 'badRequest')
     }
-    const deviceId = deviceIdFrom(request) ?? randomId(deps.random, 32)
-    const deviceHash = await sha256b64url(deviceId)
+    // A presented id is adopted only when it already holds a credential: a planted id never becomes a bearer.
+    let device = await presentedDevice(request)
+    try {
+      if (device && (await store.status(device.hash, pendingCutoff(deps))).connectionId === null) device = null
+    } catch (error) {
+      return failure(503, 'storage', errorClass(error))
+    }
+    const deviceId = device?.id ?? randomId(deps.random, 32)
+    const deviceHash = device?.hash ?? await sha256b64url(deviceId)
     const state = randomId(deps.random, 32)
     const verifier = randomId(deps.random, 32)
     const sealed = await seal(config.base.tokenKey, pkceAad(deviceHash), verifier, deps.random)
@@ -76,7 +88,7 @@ export function handleConnect(request: Request, deps: Deps): Promise<Response> {
         epoch: body.epoch,
         returnTo: from,
         createdAt: seconds(deps),
-      })
+      }, pendingCutoff(deps))
     } catch (error) {
       return failure(503, 'storage', errorClass(error))
     }

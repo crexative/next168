@@ -69,7 +69,8 @@ export interface Sweep {
 }
 
 export interface ConnectionStore {
-  upsertPending(row: PendingRow): Promise<void>
+  /** Writes the device's pending row and sweeps expired pending rows, in one batch. */
+  upsertPending(row: PendingRow, pendingCutoff: number): Promise<void>
   findPending(stateHash: string, pendingCutoff: number): Promise<PendingLookup | null>
   /** Inserts the credential from the pending row, deletes that row and sweeps, in one batch. True when committed. */
   commit(commit: Commit): Promise<boolean>
@@ -161,8 +162,11 @@ export function d1ConnectionStore(db: D1Like): ConnectionStore {
   })
 
   return {
-    upsertPending: (row) => ready(async () => {
-      await db.prepare(SQL.connect).bind(row.deviceHash, row.pendingId, row.stateHash, row.verifier, row.keyId, row.epoch, row.returnTo, row.createdAt).run()
+    upsertPending: (row, pendingCutoff) => ready(async () => {
+      await db.batch([
+        db.prepare(SQL.connect).bind(row.deviceHash, row.pendingId, row.stateHash, row.verifier, row.keyId, row.epoch, row.returnTo, row.createdAt),
+        db.prepare(SQL.sweepPending).bind(pendingCutoff),
+      ])
     }),
 
     findPending: (stateHash, pendingCutoff) => ready(async () => {

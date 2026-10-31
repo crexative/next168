@@ -166,7 +166,8 @@ green `verify` keeps that address safe.
 
 The same Pages project also deploys `functions/`: the server that keeps a Google Calendar connection for a device
 (design: permanent Google connection, slice S1). It is **dormant until the owner configures it**: with no variables,
-every `/api/google/*` route answers `404`; with `APP_ORIGIN` but without `GOOGLE_SERVER_ENABLED=1`, `503 disabled`.
+every `/api/google/*` route answers `404`; with `APP_ORIGIN` but without `GOOGLE_SERVER_ENABLED=1`, the POST routes
+answer `503 disabled` and the callback answers `303` to `/?google=disabled#/settings/calendars`.
 Pull-request previews have no variables, so they stay at `404`. The static app does not call these routes until the
 client of slice S1b ships behind `VITE_GOOGLE_SERVER`.
 
@@ -213,6 +214,11 @@ duration and at most an error class. Nothing else is logged.
    the given order, or `npx wrangler d1 execute weeklid --remote --file server/google/purge.sql` from the owner's
    machine). Expect `0 | 0`; read the counts again 60 s later and expect `0 | 0` again. Pending rows go first: a
    credential is only ever inserted from a pending row, so nothing can recreate one afterwards.
+3. Then delete the `GOOGLE_TOKEN_KEY` secret from the Pages project (crypto-shredding). D1 Time Travel keeps
+   restorable copies of the database, ciphertexts included, for up to 30 days (Workers Paid; 7 days on Free); without
+   the key those copies cannot be decrypted. Deleting rows or the key does not revoke anything at Google: each refresh
+   token stays valid until the user removes Weeklid at `myaccount.google.com/connections` or the token expires. A later
+   restart needs a new key, and every device then connects again.
 
 **Local development** uses only synthetic values (never a real key or secret; `.dev.vars` and `.wrangler/` are
 ignored):

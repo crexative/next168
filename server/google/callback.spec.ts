@@ -273,6 +273,8 @@ describe('S-6 callback degraded and cancelled: zero revoke calls in every case',
   it('pending replaced by a newer connect between lookup and commit → cancelled, and the newer pending row survives', async () => {
     const s = server()
     const browser = s.browser()
+    expect(await browser.consent()).toBe('connected')
+    const credentials = s.db.rows('google_credentials')
     const { state, challenge } = await browser.connect(EPOCH_A)
     const held = s.google.hold('exchange')
     const callback = browser.callback({ state, code: s.google.issueCode({ challenge }) }, { flow: state })
@@ -281,7 +283,7 @@ describe('S-6 callback degraded and cancelled: zero revoke calls in every case',
     const newer = s.db.rows('google_pending')
     held.release()
     expect((await callback).result).toBe('cancelled')
-    expect(s.db.rows('google_credentials')).toEqual([])
+    expect(s.db.rows('google_credentials')).toEqual(credentials)
     expect(s.db.rows('google_pending')).toEqual(newer)
     expect(newer[0]!.epoch).toBe(EPOCH_B)
     expect(s.google.count('revoke')).toBe(0)

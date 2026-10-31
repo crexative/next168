@@ -46,7 +46,7 @@ export class ControlledStore implements ConnectionStore {
     return work()
   }
 
-  upsertPending: ConnectionStore['upsertPending'] = (row) => this.run('upsertPending', () => this.inner.upsertPending(row))
+  upsertPending: ConnectionStore['upsertPending'] = (...a) => this.run('upsertPending', () => this.inner.upsertPending(...a))
   findPending: ConnectionStore['findPending'] = (...a) => this.run('findPending', () => this.inner.findPending(...a))
   commit: ConnectionStore['commit'] = (c) => this.run('commit', () => this.inner.commit(c))
   deletePending: ConnectionStore['deletePending'] = (...a) => this.run('deletePending', () => this.inner.deletePending(...a))

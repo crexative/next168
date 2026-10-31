@@ -1,11 +1,15 @@
 // @vitest-environment node
 // S-3 (connect) and the /connect half of S-12 (epoch binding).
 import { describe, expect, it } from 'vitest'
+import { sha256b64url } from './crypto'
 import { CALENDAR_SCOPE } from './googleOAuth'
-import { APP, EPOCH_A, EPOCH_B, FAKE, server } from './testing/harness'
+import { PENDING_TTL_S } from './handlers'
+import { APP, EPOCH_A, EPOCH_B, FAKE, server, type Reply } from './testing/harness'
 
 const DEVICE_COOKIE = /^__Host-wl_dev=([A-Za-z0-9_-]{43}); Max-Age=34560000; Path=\/; Secure; HttpOnly; SameSite=Strict$/
 const FLOW_COOKIE = /^__Host-wl_gflow=([A-Za-z0-9_-]{43}); Max-Age=600; Path=\/; Secure; HttpOnly; SameSite=Lax$/
+const deviceIdOf = (reply: Reply): string | undefined =>
+  DEVICE_COOKIE.exec(reply.setCookies.find((c) => c.startsWith('__Host-wl_dev=')) ?? '')?.[1]
 
 describe('S-3 connect', () => {
   it('returns an authorization URL with exactly the D5 parameters', async () => {
@@ -39,16 +43,39 @@ describe('S-3 connect', () => {
     expect(reply.headers.get('cache-control')).toBe('no-store')
   })
 
-  it('re-sends an incoming device cookie with the same value, and stores only its hash', async () => {
+  it('a connected device keeps its id on reconnect, and only its hash is stored', async () => {
     const s = server()
     const browser = s.browser()
-    const first = await browser.connect()
-    const id = DEVICE_COOKIE.exec(first.reply.setCookies.find((c) => c.startsWith('__Host-wl_dev='))!)![1]
+    expect(await browser.consent()).toBe('connected')
+    const id = browser.deviceId!
     const second = await browser.connect(EPOCH_B)
-    expect(DEVICE_COOKIE.exec(second.reply.setCookies.find((c) => c.startsWith('__Host-wl_dev='))!)![1]).toBe(id)
+    expect(deviceIdOf(second.reply)).toBe(id)
     const rows = s.db.rows('google_pending')
     expect(rows).toHaveLength(1)
-    expect(JSON.stringify(rows)).not.toContain(id!)
+    expect(rows[0]!.device_hash).toBe(s.db.rows('google_credentials')[0]!.device_hash)
+    expect(JSON.stringify(rows)).not.toContain(id)
+  })
+
+  it('a planted well-formed device id with no credential is discarded: a new id, and the pending row under its hash', async () => {
+    const s = server()
+    const browser = s.browser()
+    const planted = 'P'.repeat(43)
+    browser.jar.set('__Host-wl_dev', planted)
+    const { reply } = await browser.connect()
+    const minted = deviceIdOf(reply)
+    expect(minted).not.toBe(planted)
+    const rows = s.db.rows('google_pending')
+    expect(rows.map((row) => row.device_hash)).toEqual([await sha256b64url(minted!)])
+    expect(rows[0]!.device_hash).not.toBe(await sha256b64url(planted))
+  })
+
+  it('a connect sweeps expired pending rows in the same batch', async () => {
+    const s = server()
+    await s.browser().connect()
+    await s.browser().connect()
+    s.advance(PENDING_TTL_S + 1)
+    await s.browser().connect()
+    expect(s.db.rows('google_pending')).toHaveLength(1)
   })
 
   it('a malformed incoming device cookie is replaced by a new id', async () => {
@@ -61,6 +88,7 @@ describe('S-3 connect', () => {
   it('a second connect replaces the device pending row: one row, the old state gone, a new pending id', async () => {
     const s = server()
     const browser = s.browser()
+    expect(await browser.consent()).toBe('connected')
     await browser.connect(EPOCH_A)
     const [before] = s.db.rows('google_pending')
     await browser.connect(EPOCH_B)
