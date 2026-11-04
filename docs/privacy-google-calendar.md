@@ -23,12 +23,13 @@ Weeklid never creates, changes or deletes anything in your Google account.
 ## 4. Where your data goes
 
 - Weeklid talks to Google **directly from your browser**. There is no Weeklid server: no Crexative system receives your token or your events.
-- The access token and the events stay **in the memory of the browser tab** that connected. They are not written to the device (no browser storage, no database, no cache) and they disappear when you close or reload the tab.
-- The only thing Weeklid keeps on the device for this feature is a flag saying that you turned the feature on.
+- The access token stays **in the memory of the browser tab** that connected. It is never written to the device and disappears when you close or reload the tab.
+- So that you see your events when you open Weeklid again, a **copy of the events from the last complete read** is saved in your browser's storage on this device (IndexedDB), apart from your plan: for each event only its id, title, start and end, whether it is all-day, and whether it is busy, plus the dates covered and when they were read. It never leaves the device, is not part of exports or backups, and is never placed in the browser's cache.
+- Besides that copy, Weeklid keeps on the device only a flag saying that you turned the feature on.
 
 ## 5. What Weeklid does not keep
 
-Guests, descriptions, locations, meeting links, your email address and your calendar's id are never requested or stored. Weeklid keeps no history of your events and no usage statistics about them.
+Guests, descriptions, locations, meeting links, your email address and your calendar's id are never requested or stored. Weeklid keeps only the latest read (each read replaces the previous copy), no history of your events and no usage statistics about them.
 
 ## 6. AI features
 
@@ -42,10 +43,10 @@ Weeklid does not sell, rent or share your Google data, does not use it for adver
 
 ## 8. Keeping and deleting
 
-- **Disconnect** (Settings › Calendars › Google Calendar) forgets the events in every open Weeklid tab and asks Google to withdraw Weeklid's access. Weeklid tells you whether Google confirmed it.
-- **Delete all data** (Settings › Your data) also forgets them.
-- You can always remove Weeklid's access yourself at [myaccount.google.com/connections](https://myaccount.google.com/connections).
-- Closing or reloading the tab drops the events and the token.
+- **Disconnect** (Settings › Calendars › Google Calendar) forgets the events in every open Weeklid tab, deletes the copy on this device, and asks Google to withdraw Weeklid's access. Weeklid tells you whether Google confirmed it; the copy is deleted either way.
+- **Delete all data** (Settings › Your data) deletes the copy, leaving only a random marker with no data about you or your events. Importing or restoring a backup and changing the plan's time zone also delete the copy, and so does Google telling Weeklid that the permission is gone.
+- You can always remove Weeklid's access yourself at [myaccount.google.com/connections](https://myaccount.google.com/connections). Clearing this site's data in your browser also deletes the copy.
+- Closing or reloading the tab drops the token; the copy stays until one of the above.
 
 ## 9. Changes
 
@@ -54,6 +55,7 @@ Changes to this page are dated here.
 | Date | Change |
 | --- | --- |
 | 2026-10-27 | First draft (read-only primary calendar, memory only). |
+| 2026-10-27 | The last complete read is kept on the device so it shows when Weeklid opens again; the token still stays in memory only (§4, §8). |
 
 ## Before publishing (owner checklist, from the research notes)
 

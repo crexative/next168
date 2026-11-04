@@ -4,11 +4,12 @@ import { expect, test, type BrowserContext, type Page } from '@playwright/test'
 import { onlyProject, openTab, seedKey, TABS, V2_KEY } from './fixtures'
 import { onboardedDocument } from './support/seed'
 import {
-  EVENTS_READONLY, SECRET_TOKEN, expectNoStrayGoogleTraffic, fakeGoogle, everythingStored, gisRecord, releaseToken, setGisPlan,
-  withPrivateFields, type CalendarEvent, type GoogleFake,
+  EVENTS_READONLY, SAVED_GOOGLE_DATABASE, SECRET_TOKEN, cachedUrls, expectNoStrayGoogleTraffic, fakeGoogle, everythingStored, gisRecord, releaseToken,
+  savedGoogleCopy, setGisPlan, withPrivateFields, type CalendarEvent, type GoogleFake,
 } from './support/googleCalendar'
 
-// Google Calendar, Slice 1 (read-only, primary calendar, memory only): acceptance A1, A3–A12 of the Slice 1 spec.
+// Google Calendar, Slice 1 (read-only, primary calendar): acceptance A1, A3–A12 of the Slice 1 spec, with the copy of
+// the last read saved on this device (owner decision 2026-10-27) in place of "memory only".
 // The build under test carries the fake client ID (playwright.config.ts); Google is faked at its real addresses.
 
 // Monday 2026-10-19 12:00 UTC; the planner and the browser use UTC.
@@ -151,17 +152,25 @@ test.describe('A4 activation and configuration', () => {
 })
 
 test.describe('A7 Week and scheduling', () => {
-  test('a week with only Google events still shows its grid and the event', async ({ context, page }) => {
+  test('a week with only Google events still shows its grid and the event, after a reload too', async ({ context, page }) => {
     await open(context, page, GOOGLE_ONLY)
+    // Review finding 5: an empty week with nothing from Google must still say why and offer Update.
+    await week(page)
+    await expect(page.getByTestId('google-notice')).toContainText("Google Calendar isn't loaded")
+    await expect(page.getByTestId('google-notice')).toBeInViewport()
+    await expect(page.getByTestId('google-notice-update')).toBeEnabled()
+    await settingsPage(page, 'calendars')
     await connect(page)
     await connected(page)
     await week(page)
     await expect(standupOverlay(page)).toBeVisible()
     await expect(page.getByTestId('google-notice')).toHaveCount(0)
-    // Review finding 5: after a reload the week is empty again, and it must still say why and offer Update.
+    // The saved copy: after a reload the week shows the event again, with a calm line instead of the warning.
     await page.reload()
     await expect(page.getByRole('heading', { level: 1, name: 'Week' })).toBeVisible()
-    await expect(page.getByTestId('google-notice')).toContainText("Google Calendar isn't loaded")
+    await expect(standupOverlay(page)).toBeVisible()
+    await expect(page.getByTestId('google-notice')).toHaveAttribute('data-state', 'saved')
+    await expect(page.getByTestId('google-notice').locator('p')).toHaveText(/^Google Calendar · updated (just now|\d+ min\. ago)$/u)
     await expect(page.getByTestId('google-notice')).toBeInViewport()
     await expect(page.getByTestId('google-notice-update')).toBeEnabled()
   })
@@ -205,28 +214,243 @@ test.describe('A7 Week and scheduling', () => {
     await expect.poll(async () => JSON.stringify(await chunks())).toBe('[[540,570],[600,660]]')
     const [eventStart, eventEnd] = [9 * 60 + 30, 10 * 60]
     for (const [start, end] of await chunks()) expect(start! < eventEnd && end! > eventStart, `task ${start}-${end} overlaps the event`).toBe(false)
+    // Red team #6: after a cold reload the saved copy is there when the tasks are fitted, and they still avoid it.
+    await page.reload()
+    await expect(standupOverlay(page).getByTestId('calendar-conflict')).toHaveCount(1)
+    await expect.poll(async () => JSON.stringify(await chunks())).toBe('[[540,570],[600,660]]')
   })
 })
 
-test.describe('A8 memory only', () => {
-  test('neither the token nor an event title is stored anywhere; a reload starts with nothing and says so', async ({ context, page }) => {
+test.describe('A8 the token is never stored; the events only in their own store', () => {
+  test('nothing of Google is stored outside its own store, which never holds the token; a reload shows the events without Google', async ({ context, page }) => {
     await open(context, page, WITH_BLOCK)
     await connect(page)
     await connected(page)
     await week(page)
     await expect(standupOverlay(page)).toBeVisible()
-    const stored = await everythingStored(page)
-    expect(stored).toContain('next168-labs-google')
-    for (const secret of [SECRET_TOKEN, 'Standup GCal', 'evt-standup', ...PRIVATE]) expect(stored, secret).not.toContain(secret)
+    await expect.poll(() => savedGoogleCopy(page)).toContain('Standup GCal')
+    const outside = await everythingStored(page, SAVED_GOOGLE_DATABASE)
+    expect(outside).toContain('next168-labs-google')
+    for (const secret of [SECRET_TOKEN, 'Standup GCal', 'evt-standup', ...PRIVATE]) expect(outside, secret).not.toContain(secret)
+    const everything = await everythingStored(page)
+    expect(everything).toContain('Standup GCal')
+    for (const secret of [SECRET_TOKEN, EVENTS_READONLY, 'Bearer', ...PRIVATE]) expect(everything, secret).not.toContain(secret)
     const requests = google.apiRequests.length
     await page.reload()
     await expect(page.getByRole('heading', { level: 1, name: 'Week' })).toBeVisible()
-    await expect(page.getByTestId('google-notice')).toContainText("Google Calendar isn't loaded")
+    await expect(standupOverlay(page)).toBeVisible()
     // Week opens scrolled to the current hour: the line lives in the sticky head so it is actually on screen.
+    await expect(page.getByTestId('google-notice')).toHaveAttribute('data-state', 'saved')
     await expect(page.getByTestId('google-notice')).toBeInViewport()
-    await expect(page.getByText('Standup GCal')).toHaveCount(0)
+    await expect(page.getByText("Google Calendar isn't loaded")).toHaveCount(0)
     await page.waitForTimeout(500)
     expect(google.apiRequests).toHaveLength(requests)
+    expect(google.gisLoads).toBe(1)
+    expect(await page.locator('script[src="https://accounts.google.com/gsi/client"]').count()).toBe(0)
+    for (const secret of [SECRET_TOKEN, EVENTS_READONLY, ...PRIVATE]) expect(await everythingStored(page), secret).not.toContain(secret)
+    expect((await cachedUrls(page)).filter((url) => /(^|\.)google(apis)?\.com$/.test(new URL(url).hostname))).toEqual([])
+  })
+})
+
+test.describe('the saved copy goes with every change that ends what it was read for', () => {
+  async function savedThenReloaded(page: Page): Promise<void> {
+    await expect.poll(() => savedGoogleCopy(page)).toContain('Standup GCal')
+  }
+
+  async function goneEverywhere(page: Page): Promise<void> {
+    await expect.poll(() => savedGoogleCopy(page)).not.toContain('Standup GCal')
+    await expect(page.getByText('Standup GCal')).toHaveCount(0)
+    await page.reload()
+    await week(page)
+    await page.waitForTimeout(300)
+    await expect(page.getByText('Standup GCal')).toHaveCount(0)
+    expect(await savedGoogleCopy(page)).not.toContain('Standup GCal')
+  }
+
+  for (const [name, revoke] of [['Disconnect', 'ok'], ['Disconnect, even when Google does not confirm the revocation', 'fail']] as const) {
+    test(name, async ({ context, page }) => {
+      await open(context, page, WITH_BLOCK)
+      await connect(page)
+      await connected(page)
+      await savedThenReloaded(page)
+      await setGisPlan(page, { revoke })
+      await page.getByTestId('google-disconnect').click()
+      await page.getByTestId('google-disconnect-confirm').click()
+      await expect(page.getByTestId('google-message')).toBeVisible()
+      await goneEverywhere(page)
+    })
+  }
+
+  test('Disconnect after a reload, with no token in the tab', async ({ context, page }) => {
+    await open(context, page, WITH_BLOCK)
+    await connect(page)
+    await connected(page)
+    await savedThenReloaded(page)
+    await page.reload()
+    await expect(page.getByTestId('google-status')).toContainText(/^Updated (just now|\d+ min\. ago)\s· 1 event$/u)
+    await expect(page.getByTestId('google-update')).toHaveText('Update')
+    await page.getByTestId('google-disconnect').click()
+    await page.getByTestId('google-disconnect-confirm').click()
+    await expect(page.getByTestId('google-message')).toContainText("Disconnected on this device. We couldn't confirm it with Google")
+    await expect(page.getByTestId('google-connect')).toBeVisible()
+    await goneEverywhere(page)
+    expect((await gisRecord(page)).revokes).toEqual([])
+  })
+
+  test('Delete all data', async ({ context, page }) => {
+    await open(context, page, WITH_BLOCK)
+    await connect(page)
+    await connected(page)
+    await savedThenReloaded(page)
+    await settingsPage(page, 'data')
+    await page.getByRole('button', { name: 'Delete all data…' }).click()
+    const dialog = page.getByRole('dialog', { name: 'Delete everything?' })
+    await dialog.getByRole('textbox').fill('DELETE')
+    await dialog.getByRole('button', { name: 'Delete everything' }).click()
+    await expect(page.getByTestId('data-notice')).toBeVisible()
+    await expect.poll(() => savedGoogleCopy(page)).not.toContain('Standup GCal')
+    await page.goto(`${LABS}#/week`)
+    await page.waitForTimeout(300)
+    await expect(page.getByText('Standup GCal')).toHaveCount(0)
+  })
+
+  test('Delete all data while the feature is off on this device', async ({ context, page }) => {
+    await open(context, page, WITH_BLOCK)
+    await connect(page)
+    await connected(page)
+    await savedThenReloaded(page)
+    await page.evaluate(() => localStorage.removeItem('next168-labs-google'))
+    await page.reload()
+    await settingsPage(page, 'data')
+    await page.getByRole('button', { name: 'Delete all data…' }).click()
+    const dialog = page.getByRole('dialog', { name: 'Delete everything?' })
+    await dialog.getByRole('textbox').fill('DELETE')
+    await dialog.getByRole('button', { name: 'Delete everything' }).click()
+    await expect(page.getByTestId('data-notice')).toBeVisible()
+    await expect.poll(() => savedGoogleCopy(page)).not.toContain('Standup GCal')
+  })
+
+  test('importing a backup, which also carries no Google data', async ({ context, page }, testInfo) => {
+    await open(context, page, WITH_BLOCK)
+    await connect(page)
+    await connected(page)
+    await savedThenReloaded(page)
+    await settingsPage(page, 'data')
+    const download = page.waitForEvent('download')
+    await page.getByRole('button', { name: 'Export backup' }).click()
+    const file = testInfo.outputPath('backup.json')
+    await (await download).saveAs(file)
+    const exported = readFileSync(file, 'utf8')
+    for (const secret of ['Standup GCal', 'evt-standup', 'google:primary', SECRET_TOKEN, ...PRIVATE]) expect(exported, secret).not.toContain(secret)
+    await page.getByLabel('Choose a Weeklid export file').setInputFiles(file)
+    await page.getByTestId('import-preview').getByRole('button', { name: 'Replace my data' }).click()
+    await expect(page.getByTestId('data-notice')).toContainText('Imported and verified')
+    await goneEverywhere(page)
+  })
+
+  test('a new planner time zone', async ({ context, page }) => {
+    await open(context, page, WITH_BLOCK)
+    await connect(page)
+    await connected(page)
+    await savedThenReloaded(page)
+    await page.evaluate(() => (window as unknown as { __next168Test: { setTimeZone(zone: string): Promise<unknown> } }).__next168Test.setTimeZone('America/Bogota'))
+    await goneEverywhere(page)
+    await expect(page.getByTestId('google-notice')).toContainText("Google Calendar isn't loaded")
+  })
+
+  test('a copy read in another zone is deleted when the app opens, not shown', async ({ context, page }) => {
+    await open(context, page, WITH_BLOCK)
+    await connect(page)
+    await connected(page)
+    await savedThenReloaded(page)
+    // The zone changes while the Google feature is off on this device, so nothing deletes the copy then.
+    await page.evaluate(() => localStorage.removeItem('next168-labs-google'))
+    await page.reload()
+    await expect(page.getByTestId('google-calendar')).toHaveCount(0)
+    await page.evaluate(() => (window as unknown as { __next168Test: { setTimeZone(zone: string): Promise<unknown> } }).__next168Test.setTimeZone('America/Bogota'))
+    expect(await savedGoogleCopy(page)).toContain('Standup GCal')
+    await page.goto(`${LABS}#/week`)
+    await expect(page.getByRole('heading', { level: 1, name: 'Week' })).toBeVisible()
+    await expect(page.getByTestId('google-notice')).toContainText("Google Calendar isn't loaded")
+    await expect.poll(() => savedGoogleCopy(page)).not.toContain('Standup GCal')
+    await expect(page.getByText('Standup GCal')).toHaveCount(0)
+  })
+
+  for (const [name, plan] of [
+    ['Google refusing access on Update', { response: { error: 'access_denied' } }],
+    ['a token without the events permission on Update', { response: { access_token: 'tok-NARROW', expires_in: 3599, scope: 'openid' } }],
+  ] as const) {
+    test(name, async ({ context, page }) => {
+      await open(context, page, WITH_BLOCK)
+      await connect(page)
+      await connected(page)
+      await savedThenReloaded(page)
+      await page.reload()
+      await week(page)
+      await expect(standupOverlay(page)).toBeVisible()
+      await setGisPlan(page, plan)
+      await page.getByTestId('google-notice-update').click()
+      await page.getByTestId('google-continue').click()
+      await goneEverywhere(page)
+    })
+  }
+
+  test('Disconnect in another tab removes what that tab showed from the copy, and the open details', async ({ context, page }) => {
+    await open(context, page, WITH_BLOCK)
+    await connect(page)
+    await connected(page)
+    await savedThenReloaded(page)
+    // A tab opened later shows the copy without connecting.
+    const other = await open(context, await context.newPage(), WITH_BLOCK)
+    await week(other)
+    await standupOverlay(other).click()
+    const details = other.getByRole('dialog').filter({ hasText: 'Standup GCal' })
+    await expect(details).toBeVisible()
+    await page.getByTestId('google-disconnect').click()
+    await page.getByTestId('google-disconnect-confirm').click()
+    await expect(details).toHaveCount(0)
+    await expect(other.getByText('Standup GCal')).toHaveCount(0)
+    await goneEverywhere(other)
+  })
+})
+
+test.describe('the saved copy after a reload', () => {
+  test('after a day the line says the events may be out of date; Update brings them back to now', async ({ context, page }) => {
+    await open(context, page, WITH_BLOCK)
+    await connect(page)
+    await connected(page)
+    await expect.poll(() => savedGoogleCopy(page)).toContain('Standup GCal')
+    await page.clock.setSystemTime(new Date(NOW.getTime() + 25 * 3_600_000))
+    await page.reload()
+    await week(page)
+    const notice = page.getByTestId('google-notice')
+    await expect(notice).toHaveAttribute('data-state', 'stale')
+    await expect(notice.locator('p')).toHaveText('Google Calendar · updated 1 day ago. Your events might be out of date.')
+    await settingsPage(page, 'calendars')
+    await expect(page.getByTestId('google-status')).toHaveText('Updated 1 day ago · 1 event · May be out of date')
+    await page.getByTestId('google-update').click()
+    await page.getByTestId('google-continue').click()
+    await expect(page.getByTestId('google-status')).toContainText(/^Updated at .+\s· 1 event$/u)
+    await week(page)
+    await expect(page.getByTestId('google-notice')).toHaveCount(0)
+  })
+
+  test('the any-AI prompt still has the meeting only as Busy', async ({ context, page }) => {
+    await open(context, page, WITH_BLOCK)
+    await connect(page)
+    await connected(page)
+    await expect.poll(() => savedGoogleCopy(page)).toContain('Standup GCal')
+    // Opened straight on Settings › AI: no Google screen has been shown in this page yet.
+    await page.evaluate(() => { location.hash = '#/settings/ai' })
+    await page.reload()
+    await expect(page.getByRole('heading', { level: 1, name: 'Settings' })).toBeVisible()
+    await expect(page.getByTestId('any-ai-google-note')).toHaveText('Google meetings: only as “Busy”.')
+    await page.getByTestId('any-ai-copy').click()
+    await expect(page.getByTestId('any-ai-copied')).toBeVisible()
+    const copied = await page.evaluate(() => (window as unknown as { __copied: string[] }).__copied)
+    const prompt = copied.at(-1)!
+    expect(prompt).toContain(`${TUESDAY} 09:30-10:00 "Busy"`)
+    for (const secret of ['Standup GCal', 'evt-standup', ...PRIVATE]) expect(prompt, secret).not.toContain(secret)
     expect(google.gisLoads).toBe(1)
   })
 })

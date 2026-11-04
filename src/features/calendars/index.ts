@@ -4,7 +4,7 @@ import { setExternalOccurrenceSource } from '@/features/week/externalOccurrences
 import { provideCalendarLifecycle, provideCalendarSourceStore } from '@/features/settings/data/calendarSourceHook'
 import { calendarServices, calendarTextRevision, cancelCalendarRefreshes, capturePurgeEpoch, writeIfUnpurged } from './calendarStore'
 import { calendarSourceRevision, expandCalendarSources } from './occurrenceSource'
-import { refreshGoogleAvailability } from './googleCalendar'
+import { googleAvailable, refreshGoogleAvailability } from './googleCalendar'
 import { captureLabsFlag } from './googleGate'
 
 export { useCalendarEvents } from './useCalendarEvents'
@@ -32,6 +32,10 @@ export default function registerCalendars(_registry: ShellRegistry): void {
   setExternalOccurrenceSource(expandCalendarSources, calendarSourceRevision)
   if (import.meta.env.VITE_GOOGLE_CLIENT_ID) captureLabsFlag()
   refreshGoogleAvailability()
+  // The connection starts with the app (not with the first screen that shows it), so the copy saved on this device is
+  // on Week, Today and the AI prompt at once, and every change that deletes it is seen. Google's own script still loads
+  // only when the Connect sheet opens. The import resolves after main.ts installed Pinia.
+  if (import.meta.env.VITE_GOOGLE_CLIENT_ID && googleAvailable.value) void import('./google/useGoogleConnection').then(({ useGoogleConnection }) => { useGoogleConnection() })
   provideCalendarSourceStore(currentTexts)
   provideCalendarLifecycle({ cancelRefreshes: cancelCalendarRefreshes, textsChanged: () => { calendarTextRevision.value++ }, capturePurgeEpoch, writeIfUnpurged })
 }

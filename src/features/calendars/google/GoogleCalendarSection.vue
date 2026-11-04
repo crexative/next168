@@ -7,15 +7,18 @@ import Icon from '@/ui/Icon.vue'
 import Sheet from '@/ui/Sheet.vue'
 import { addLocalDays } from '@/core/time'
 import { joinInline } from '@/ui/inlineText'
-import { displayLocale, formatClock, formatDate } from '@/ui/format'
+import { displayLocale, formatClock, formatDate, formatElapsed } from '@/ui/format'
+import { useNow } from '@/features/week/useNow'
 import GoogleConnectSheet from './GoogleConnectSheet.vue'
-import { PERMISSIONS_URL, useGoogleConnection } from './useGoogleConnection'
+import { PERMISSIONS_URL, savedCopyIsStale, useGoogleConnection } from './useGoogleConnection'
 
 // Settings › Calendars › Google Calendar: connect, update, disconnect, and a collapsed "Details" for the owner's
-// spikes. Everything shown comes from this tab's memory; no address, id, title, token or Google text is displayed.
+// spikes. Everything shown comes from this tab's memory or the copy saved on this device; no address, id, title, token
+// or Google text is displayed.
 const { t } = useI18n()
 const planner = usePlannerStore()
 const google = useGoogleConnection()
+const now = useNow()
 const sheetOpen = ref(false)
 const confirmOpen = ref(false)
 const k = (key: string) => `calendars.googleConnection.${key}`
@@ -28,10 +31,16 @@ const status = computed(() => {
   const coverage = google.coverage
   if (!coverage) return t(k('summary'))
   const count = google.occurrences.length
-  return joinInline([t(k('updated'), { time: formatClock(coverage.fetchedAt, displayLocale.value, zone.value) }), t(k('eventCount'), { count }, count)])
+  const events = t(k('eventCount'), { count }, count)
+  if (google.fromDevice) {
+    const ago = formatElapsed(coverage.fetchedAt, now.value, displayLocale.value) ?? t(k('justNow'))
+    return joinInline([t(k('updatedAgo'), { ago }), events, savedCopyIsStale(coverage.fetchedAt, now.value) ? t(k('outdated')) : ''])
+  }
+  return joinInline([t(k('updated'), { time: formatClock(coverage.fetchedAt, displayLocale.value, zone.value) }), events])
 })
 const messageText = computed(() => google.message ? t(k(`messages.${google.message.key}`), google.message.params ?? {}) : '')
-const primaryLabel = computed(() => (google.expired || !google.hasLiveToken() ? t(k('reconnect')) : t(k('update'))))
+// The saved copy is updated with one tap, like a live connection; only a lapsed permission reads "Reconnect".
+const primaryLabel = computed(() => (google.expired || (!google.fromDevice && !google.hasLiveToken()) ? t(k('reconnect')) : t(k('update'))))
 
 function connect(): void {
   sheetOpen.value = true

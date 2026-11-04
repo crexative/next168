@@ -15,7 +15,7 @@ const google = useGoogleConnection()
 
 watch(() => props.open, (open) => { if (open) google.prepare() }, { immediate: true })
 
-const points = computed(() => ['memoryOnly', 'refreshHint', 'aiBusy', 'testing'].map((key) => t(`calendars.googleConnection.${key}`)))
+const points = computed(() => ['deviceCopy', 'refreshHint', 'aiBusy', 'testing'].map((key) => t(`calendars.googleConnection.${key}`)))
 const loadFailed = computed(() => google.gis === 'failed')
 
 function onContinue(): void {

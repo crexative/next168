@@ -1,10 +1,10 @@
 import type { ExternalOccurrence } from '@/core/model'
-import { GOOGLE_SOURCE_ID, occurrencesWithin, type DateWindow } from '../googleCalendar'
+import { GOOGLE_SOURCE_ID, MAX_GOOGLE_TITLE_LENGTH, googleTitle, occurrencesWithin, type DateWindow } from '../googleCalendar'
 
 // Google event resources → ExternalOccurrence, the shape ICS calendars already use. Every output field is built
 // here one by one: nothing of the raw item (guests, descriptions, locations, links) can pass through.
 
-export const MAX_TITLE_LENGTH = 200
+export const MAX_TITLE_LENGTH = MAX_GOOGLE_TITLE_LENGTH
 
 // RFC 3339 with an explicit offset. A time without one would be read in the browser's zone, which may be neither the
 // calendar's nor the planner's: such an event fails the refresh instead of landing at a guessed hour.
@@ -57,10 +57,6 @@ function timeOf(time: GoogleTime | undefined): { value: string; allDay: boolean 
   throw new FormatError()
 }
 
-function title(summary: unknown): string {
-  return typeof summary === 'string' ? [...summary].slice(0, MAX_TITLE_LENGTH).join('') : ''
-}
-
 // Hidden as on Google's own grid: cancelled instances, invitations the person declined (their own attendee entry on
 // the primary calendar) and working-location markers, which are not time anyone is busy.
 function dropped(event: GoogleEvent): boolean {
@@ -78,7 +74,7 @@ function occurrenceOf(event: GoogleEvent): ExternalOccurrence {
     sourceId: GOOGLE_SOURCE_ID,
     uid: event.id,
     ...(original === undefined ? {} : { recurrenceId: original }),
-    title: title(event.summary),
+    title: googleTitle(event.summary),
     start: start.value,
     end: end.value,
     allDay: start.allDay,
