@@ -203,8 +203,8 @@ export class Browser {
     return reply
   }
 
-  async connect(epoch = EPOCH_A, from: 'app' | 'canary' = 'app'): Promise<{ reply: Reply; url: URL; state: string; challenge: string }> {
-    const reply = await this.post('connect', { from, epoch })
+  async connect(epoch = EPOCH_A): Promise<{ reply: Reply; url: URL; state: string; challenge: string }> {
+    const reply = await this.post('connect', { from: 'app', epoch })
     expect(reply.status, JSON.stringify(reply.body)).toBe(200)
     const url = new URL(String(reply.body!.url))
     const state = url.searchParams.get('state')!
@@ -230,8 +230,8 @@ export class Browser {
   }
 
   /** Connect, consent at the fake Google, and come back: returns the callback's result. */
-  async consent(options: { epoch?: string; refreshToken?: string | null; scope?: string; from?: 'app' | 'canary' } = {}): Promise<string | null> {
-    const { state, challenge } = await this.connect(options.epoch, options.from)
+  async consent(options: { epoch?: string; refreshToken?: string | null; scope?: string } = {}): Promise<string | null> {
+    const { state, challenge } = await this.connect(options.epoch)
     const code = this.server.google.issueCode({ refreshToken: options.refreshToken, scope: options.scope, challenge })
     return (await this.callback({ state, code })).result
   }

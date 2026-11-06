@@ -23,8 +23,6 @@ const EXPECTED: Record<string, 'onRequestGet' | 'onRequestPost'> = {
   'functions/api/google/token.ts': 'onRequestPost',
   'functions/api/google/status.ts': 'onRequestPost',
   'functions/api/google/disconnect.ts': 'onRequestPost',
-  'functions/api/google/canary/index.ts': 'onRequestGet',
-  'functions/api/google/canary/script.ts': 'onRequestGet',
 }
 
 describe('S-10 routes', () => {
@@ -107,16 +105,5 @@ describe('S-10 each Pages adapter reaches its own handler', () => {
     expect(response.headers.get('location')).toBe(`${APP}/?google=state#/settings/calendars`)
     expect(response.headers.get('set-cookie')).toBeNull()
     expect(routeOf()).toBe('callback')
-  })
-
-  it('canary page and script: HTML with its CSP, and the JavaScript', async () => {
-    const page = await (await adapter('functions/api/google/canary/index.ts'))({ request: new Request(`${APP}/api/google/canary`), env: env() })
-    expect(page.headers.get('content-type')).toBe('text/html; charset=utf-8')
-    expect(await page.text()).toContain('<script src="/api/google/canary/script"></script>')
-    expect(routeOf()).toBe('canary')
-    const script = await (await adapter('functions/api/google/canary/script.ts'))({ request: new Request(`${APP}/api/google/canary/script`), env: env() })
-    expect(script.headers.get('content-type')).toBe('text/javascript; charset=utf-8')
-    expect(await script.text()).toContain("locks.request('weeklid-google'")
-    expect(routeOf()).toBe('canaryScript')
   })
 })

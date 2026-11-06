@@ -130,10 +130,19 @@ describe('S-3 connect', () => {
     expect(reply.setCookies).toEqual([])
   })
 
-  it('stores the canary return target from `from`', async () => {
+  // A-15: the canary route is gone, so its `from` value is a bad request and nothing is stored.
+  it('`from: canary` → 400 and no pending row', async () => {
     const s = server()
-    await s.browser().connect(EPOCH_A, 'canary')
-    expect(s.db.rows('google_pending')[0]!.return_to).toBe('canary')
+    const reply = await s.browser().post('connect', { from: 'canary', epoch: EPOCH_A })
+    expect(reply.status).toBe(400)
+    expect(reply.body).toEqual({ code: 'badRequest' })
+    expect(s.db.rows('google_pending')).toEqual([])
+  })
+
+  it('stores the app return target', async () => {
+    const s = server()
+    await s.browser().connect(EPOCH_A)
+    expect(s.db.rows('google_pending')[0]!.return_to).toBe('app')
   })
 })
 

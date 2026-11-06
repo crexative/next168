@@ -110,12 +110,15 @@ describe('S-4 callback rejection: fixed redirect, zero Google calls, nothing wri
     expect(s.google.calls).toEqual([])
   })
 
-  it('the canary target is used only once a pending row says so', async () => {
+  // A-15: a row written by the removed canary route (the D1 CHECK still allows it) now returns to the app.
+  it('a pending row left with return_to=canary returns to the app, not to a route that no longer exists', async () => {
     const s = server()
     const browser = s.browser()
-    const { state } = await browser.connect(EPOCH_A, 'canary')
+    const { state } = await browser.connect()
+    s.db.sqlite.exec("UPDATE google_pending SET return_to = 'canary'")
     const done = await browser.callback({ state, error: 'access_denied' })
-    expect(done.location).toBe(`${APP}/api/google/canary?google=denied`)
+    expect(done.reply.status).toBe(303)
+    expect(done.location).toBe(appTarget('denied'))
     const unknown = await browser.callback({ state, code: 'x' })
     expect(unknown.location).toBe(appTarget('state'))
   })
@@ -244,12 +247,12 @@ describe('S-6 callback degraded and cancelled: zero revoke calls in every case',
     }
   })
 
-  it('secret absent → canary, with zero exchange calls and the pending row consumed', async () => {
+  it('secret absent → canary result, with zero exchange calls and the pending row consumed', async () => {
     const s = server({ GOOGLE_CLIENT_SECRET: undefined })
     const browser = s.browser()
-    const { state } = await browser.connect(EPOCH_A, 'canary')
+    const { state } = await browser.connect(EPOCH_A)
     const done = await browser.callback({ state, code: s.google.issueCode() })
-    expect(done.location).toBe(`${APP}/api/google/canary?google=canary`)
+    expect(done.location).toBe(appTarget('canary'))
     expect(s.google.calls).toEqual([])
     expect(s.db.rows('google_pending')).toEqual([])
     expect(s.db.rows('google_credentials')).toEqual([])
