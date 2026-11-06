@@ -266,7 +266,8 @@ describe('A-1 Disconnect', () => {
     const held = new Promise<void>((resolve) => { release = resolve })
     mint = [TOKEN_OK]
     const mintOnce = fakeServer.mint
-    fakeServer.mint = async () => { await held; return mintOnce() }
+    let answered = false
+    fakeServer.mint = async () => { await held; const result = await mintOnce(); answered = true; return result }
     google.update()
     await vi.waitFor(() => expect(google.phase).toBe('fetching'))
     forget = 'confirmed'
@@ -274,8 +275,8 @@ describe('A-1 Disconnect', () => {
     await google.disconnect()
     events.mockClear()
     release()
-    await nextTick()
-    await nextTick()
+    await vi.waitFor(() => expect(answered).toBe(true))
+    await new Promise((resolve) => setTimeout(resolve, 20))
     fakeServer.mint = mintOnce
     expect(events).not.toHaveBeenCalled()
     expect(google.session).toBe('disconnected')
