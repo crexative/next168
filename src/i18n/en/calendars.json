@@ -118,7 +118,14 @@
       "timeout": "Google took too long to respond. Try again.",
       "tooMany": "Your calendar has more than 2,000 events in these weeks, so nothing was updated.",
       "format": "Google sent something Weeklid can't read, so nothing was updated.",
-      "gisLoad": "Couldn't load Google. Check your connection or your blockers."
+      "gisLoad": "Couldn't load Google. Check your connection or your blockers.",
+      "disconnectFailed": "Couldn't disconnect: Weeklid didn't get an answer. You're still connected; try again.",
+      "revokeUnconfirmedServer": "Disconnected on this device. We couldn't confirm with Google that Weeklid lost access to your account: check your account permissions.",
+      "reconnectNeeded": "This device is no longer connected to Google Calendar. Connect again to see your events.",
+      "serverPaused": "The Google Calendar connection is paused for now.",
+      "serverUnavailable": "Couldn't reach Weeklid's Google connection. Try again later.",
+      "connectFailed": "Google didn't complete the connection ({code}). Try again.",
+      "lockUnavailable": "This browser can't connect Google Calendar safely. Update it and try again."
     },
     "details": {
       "title": "Details",
@@ -134,7 +141,19 @@
       "count": "Events shown",
       "coverage": "Coverage",
       "range": "{start} – {end}",
-      "result": "{result} · {time} UTC"
-    }
+      "result": "{result} · {time} UTC",
+      "source": "Connection source",
+      "serverCode": "Last server answer"
+    },
+    "summaryServer": "Read-only access to your primary calendar. Your events are read from Google each time you open Weeklid.",
+    "stayConnected": "You connect once on this device and stay connected, also after closing Weeklid. A Weeklid server keeps Google's permission for this device, encrypted. Your events never go through it and are not saved on this device: Weeklid reads them from Google each time you open it, so without internet you won't see them.",
+    "goesToGoogle": "You'll go to Google and come back here.",
+    "testingServer": "While the app is in testing, Google shows an unverified-app warning and asks you to connect again every 7 days.",
+    "eventsOffline": "Google Calendar needs internet: your tasks might land on top of meetings.",
+    "disconnectBodyServer": "Weeklid will lose access to this Google account. If you connected Weeklid with the same account on other devices, they will need to connect again.",
+    "disconnectNeedsNetwork": "Disconnecting needs internet.",
+    "deleteAllGoogleOffline": "Your data on this device was deleted, but Weeklid couldn't reach its server: its access to your Google Calendar stays until you disconnect online or remove Weeklid at myaccount.google.com/connections.",
+    "googleAccessMayRemain": "Weeklid couldn't confirm that its access to your Google Calendar was removed. To be sure, remove Weeklid at myaccount.google.com/connections.",
+    "installedNote": "Here Google asks for permission again about every hour, and your events aren't saved between visits. To stay connected, open Weeklid in Safari, Chrome, Edge or Firefox."
   }
 }

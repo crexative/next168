@@ -168,13 +168,12 @@ The same Pages project also deploys `functions/`: the server that keeps a Google
 (design: permanent Google connection, slice S1). It is **dormant until the owner configures it**: with no variables,
 every `/api/google/*` route answers `404`; with `APP_ORIGIN` but without `GOOGLE_SERVER_ENABLED=1`, the POST routes
 answer `503 disabled` and the callback answers `303` to `/?google=disabled#/settings/calendars`.
-Pull-request previews have no variables, so they stay at `404`. The static app does not call these routes until the
-client of slice S1b ships behind `VITE_GOOGLE_SERVER`.
+Pull-request previews have no variables, so they stay at `404`. The static app calls these routes only in a build with
+`VITE_GOOGLE_SERVER=1` (slice S1b, below); every other build, including previews and GitHub Pages, never does.
 
 | Path | Role |
 |---|---|
 | `functions/api/google/{connect,callback,token,status,disconnect}.ts` | One-method Pages adapters |
-| `functions/api/google/canary/{index,script}.ts` | Temporary owner canary page, removed by slice S1c |
 | `server/google/` | The framework-free core: guards, configuration, crypto, Google OAuth, D1 store, handlers |
 | `server/google/purge.sql` | The rollback purge, in its required order |
 | `public/_routes.json` | Runs Functions only for `/api/google/*`; every other path stays a static asset |
@@ -187,22 +186,43 @@ POST-only route falls through to the static app, as Pages does for any method wi
 
 | Name | Kind | Value | When |
 |---|---|---|---|
-| `DB` | D1 binding | the D1 database `weeklid` | step C (canary) |
+| `DB` | D1 binding | the D1 database `weeklid` | step C |
 | `GOOGLE_TOKEN_KEY` | secret | `openssl rand -base64 32`, generated locally (exactly 32 bytes) | step C |
 | `APP_ORIGIN` | variable | `https://weeklid.crexative.com` (no trailing slash) | step C |
 | `GOOGLE_SERVER_ENABLED` | variable | `1` | step C |
 | `GOOGLE_CLIENT_SECRET` | secret | from Google Console | step D1 (full-path smoke) |
 | `VITE_GOOGLE_SERVER` | build variable | `1` | step D3, after slice S1b |
+| `VITE_GOOGLE_SERVER_INSTALLED` | build variable | `1`, only after gate G-1 passed (below) | step G-1 |
 
 `VITE_GOOGLE_CLIENT_ID` (already a production variable) is read at runtime too; `GOOGLE_CLIENT_ID` is the fallback
 name if the build variable is not visible to Functions. A variable change applies at the next deployment: after
 changing one, retry the latest production deployment.
 
-**Canary (owner step C, no secret).** After setting the four step-C values and retrying the deployment, open
-`https://weeklid.crexative.com/api/google/canary`, press **Start**, consent, and read the page: `PASS: canary, then
-notConnected` means the consent round trip and the device cookie work on that browser. Record PASS or FAIL for desktop
-Chrome, iPhone Safari, Android Chrome and the two home-screen icons, then remove Weeklid at
-`myaccount.google.com/connections`. The canary never exchanges the code while `GOOGLE_CLIENT_SECRET` is absent.
+**The app client (slice S1b).** A build with `VITE_GOOGLE_CLIENT_ID` and `VITE_GOOGLE_SERVER=1` keeps a device connected
+through these routes; the build fails on any other value, on `VITE_GOOGLE_SERVER=1` without a client ID, and on
+`VITE_GOOGLE_SERVER_INSTALLED=1` without `VITE_GOOGLE_SERVER=1` (`config/googleServerFlags.ts`). Such a build keeps no
+Google event or token on the device, in any context, and erases the copy of an earlier build at every boot. Only top-level
+Safari, Chrome, Edge and Firefox tabs use the server; in-app browsers and (until gate G-1) installed apps stay on Google
+Identity Services (`docs/design/google-permanent-connection-s1b.md`, section 2.1). `bash scripts/check-google-bundles.sh`
+(run by CI) builds each flag row and checks what it may carry: no `api/google` without the flag, and neither Google module
+in the entry chunk of a server build.
+
+Owner rollout, in order:
+1. Merge S1b.
+2. Set `GOOGLE_CLIENT_SECRET` and `VITE_GOOGLE_SERVER=1`, redeploy, and run acceptance checks A-16 (connect, reload and
+   reopen the next day in desktop Chrome, iPhone Safari and Android Chrome) and A-17 (Connections, Details > Connection
+   source reads `server` in those tabs and `gis` in the Instagram, Gmail and Facebook in-app browsers and in the home-screen
+   apps; add the marker of any in-app browser that reads `server` to the allowlist).
+3. Gate G-1 (A-18): on a build that also sets `VITE_GOOGLE_SERVER_INSTALLED=1` (a preview with variables, or production with
+   an immediate revert), Details > Connection source must read `server` in each home-screen app; connect there and
+   force-close the app: it must still be connected. If either platform fails, leave `VITE_GOOGLE_SERVER_INSTALLED` unset.
+4. A-19 over 8 days: two devices on one account, Disconnect on one, and the other shows the reconnect message on its next
+   open; in Testing, expect the reconnect message at about day 7 or 8 (Google's 7-day expiry).
+5. A-15: `GET https://weeklid.crexative.com/api/google/canary` now returns the app, not a page of results.
+
+Rollback of the client: unset `VITE_GOOGLE_SERVER` and redeploy; every tab is on Google Identity Services again and the
+server credentials stay unused until the 190-day sweep or the purge below. The hard stop is still removing
+`GOOGLE_SERVER_ENABLED`.
 
 **Logs** carry one line per request, `{"r","o","s","ms"[,"e"]}`: the route, a closed outcome code, the status, the
 duration and at most an error class. Nothing else is logged.

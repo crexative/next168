@@ -34,7 +34,7 @@ export interface Config {
   enabled: boolean
   /** Null when any base item is missing or malformed: `notConfigured`. */
   base: BaseConfig | null
-  /** Null in canary mode: the code is never exchanged, and mints answer `notConfigured`. */
+  /** Null while the secret is unset: the code is never exchanged, and mints answer `notConfigured`. */
   clientSecret: string | null
   /** A fake OAuth origin for the server e2e harness; null in every real deployment. */
   googleOrigin: string | null

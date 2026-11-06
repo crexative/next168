@@ -63,7 +63,7 @@ export function handleConnect(request: Request, deps: Deps): Promise<Response> {
     if (!config.base || !store) return failure(503, 'notConfigured')
     const body = await readJsonObject(request)
     const from = body?.from
-    if (!body || !hasExactKeys(body, ['from', 'epoch']) || (from !== 'app' && from !== 'canary') || typeof body.epoch !== 'string' || !ID22.test(body.epoch)) {
+    if (!body || !hasExactKeys(body, ['from', 'epoch']) || from !== 'app' || typeof body.epoch !== 'string' || !ID22.test(body.epoch)) {
       return failure(400, 'badRequest')
     }
     // A presented id is adopted only when it already holds a credential: a planted id never becomes a bearer.
@@ -113,11 +113,10 @@ type CallbackResult = Extract<Outcome,
   'disabled' | 'notConfigured' | 'state' | 'storage' | 'denied' | 'auth' | 'canary' | 'cancelled' | 'exchange'
   | 'noRefreshToken' | 'missingScope' | 'connected' | 'error'>
 
-// Writes no cookie. Every exit is a 303 to a fixed target chosen by the pending row's `return_to`; no request
-// parameter is ever reflected.
+// Writes no cookie. Every exit is a 303 to a fixed app address; no request parameter is ever reflected.
 export function handleCallback(request: Request, deps: Deps): Promise<Response> {
   const { config, store } = deps
-  let target = (result: CallbackResult): string => `${config.appOrigin}/?google=${result}#/settings/calendars`
+  const target = (result: CallbackResult): string => `${config.appOrigin}/?google=${result}#/settings/calendars`
   const finish = (result: CallbackResult, error?: ErrorClass): Reply => redirect(target(result), result, error)
 
   return serve(deps, 'callback', async () => {
@@ -139,7 +138,6 @@ export function handleCallback(request: Request, deps: Deps): Promise<Response> 
       return finish('storage', errorClass(error))
     }
     if (!pending) return finish('state')
-    if (pending.returnTo === 'canary') target = (result) => `${config.appOrigin}/api/google/canary?google=${result}`
     const { deviceHash } = pending
 
     // Ends the pending authorization without storing anything; a storage failure is reported as such.

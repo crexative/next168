@@ -11,6 +11,7 @@ import { displayLocale, formatClock, formatDate, formatElapsed } from '@/ui/form
 import { useNow } from '@/features/week/useNow'
 import GoogleConnectSheet from './GoogleConnectSheet.vue'
 import { PERMISSIONS_URL, savedCopyIsStale, useGoogleConnection } from './useGoogleConnection'
+import { useOnline } from './useOnline'
 
 // Settings › Calendars › Google Calendar: connect, update, disconnect, and a collapsed "Details" for the owner's
 // spikes. Everything shown comes from this tab's memory or the copy saved on this device; no address, id, title, token
@@ -19,17 +20,19 @@ const { t } = useI18n()
 const planner = usePlannerStore()
 const google = useGoogleConnection()
 const now = useNow()
+const online = useOnline()
 const sheetOpen = ref(false)
 const confirmOpen = ref(false)
 const k = (key: string) => `calendars.googleConnection.${key}`
 
 const zone = computed(() => planner.document?.settings.timeZone ?? 'UTC')
-const connected = computed(() => google.session === 'connected')
+// The server source can be unavailable (offline, server down) without knowing whether this device is connected: Update retries.
+const connected = computed(() => google.session === 'connected' || google.session === 'unavailable')
 const status = computed(() => {
   if (google.phase === 'authorizing') return t(k('authorizing'))
   if (google.phase === 'fetching') return t(k('fetching'))
   const coverage = google.coverage
-  if (!coverage) return t(k('summary'))
+  if (!coverage) return t(k(google.serverBuild ? 'summaryServer' : 'summary'))
   const count = google.occurrences.length
   const events = t(k('eventCount'), { count }, count)
   if (google.fromDevice) {
@@ -38,9 +41,9 @@ const status = computed(() => {
   }
   return joinInline([t(k('updated'), { time: formatClock(coverage.fetchedAt, displayLocale.value, zone.value) }), events])
 })
-const messageText = computed(() => google.message ? t(k(`messages.${google.message.key}`), google.message.params ?? {}) : '')
+const messageText = computed(() => google.message ? t(k(google.message.topLevel ? google.message.key : `messages.${google.message.key}`), google.message.params ?? {}) : '')
 // The saved copy is updated with one tap, like a live connection; only a lapsed permission reads "Reconnect".
-const primaryLabel = computed(() => (google.expired || (!google.fromDevice && !google.hasLiveToken()) ? t(k('reconnect')) : t(k('update'))))
+const primaryLabel = computed(() => (google.expired || (google.source === 'gis' && !google.fromDevice && !google.hasLiveToken()) ? t(k('reconnect')) : t(k('update'))))
 
 function connect(): void {
   sheetOpen.value = true
@@ -60,6 +63,10 @@ const yesNo = (value: boolean | undefined) => t(k(value === undefined ? 'details
 const shortDate = (date: string) => formatDate(date, displayLocale.value, { day: 'numeric', month: 'short' })
 const details = computed(() => {
   const none = t(k('details.none'))
+  const server = google.serverBuild ? [
+    { label: t(k('details.source')), value: google.source },
+    { label: t(k('details.serverCode')), value: google.lastServerCode ?? none },
+  ] : []
   const last = (kind: 'token' | 'events' | 'revoke') => {
     const entry = google.diagnostics.last[kind]
     return entry ? t(k('details.result'), { result: entry.result, time: entry.at.slice(11, 16) }) : none
@@ -67,6 +74,7 @@ const details = computed(() => {
   const minutes = google.remainingMinutes()
   const coverage = google.coverage
   return [
+    ...server,
     { label: t(k('details.scope')), value: yesNo(google.diagnostics.scopeGranted) },
     { label: t(k('details.remaining')), value: minutes === undefined ? none : t(k('details.minutes'), { count: minutes }) },
     { label: t(k('details.token')), value: last('token') },
@@ -95,9 +103,11 @@ const details = computed(() => {
       <Button v-if="!connected" variant="tinted" :disabled="google.busy" data-testid="google-connect" @click="connect">{{ t(k('connect')) }}</Button>
       <template v-else>
         <Button variant="tinted" :disabled="google.busy" data-testid="google-update" @click="update"><Icon name="refresh-cw" :size="18" />{{ primaryLabel }}</Button>
-        <Button variant="plain" destructive :disabled="google.phase === 'revoking'" data-testid="google-disconnect" @click="confirmOpen = true">{{ t(k('disconnect')) }}</Button>
+        <Button variant="plain" destructive :disabled="google.phase === 'revoking' || (google.serverBuild && !online)" data-testid="google-disconnect" @click="confirmOpen = true">{{ t(k('disconnect')) }}</Button>
+        <span v-if="google.serverBuild && !online" class="t-footnote t-secondary" data-testid="google-disconnect-offline">{{ t(k('disconnectNeedsNetwork')) }}</span>
       </template>
     </div>
+    <p v-if="google.installedNote" class="t-footnote t-secondary" data-testid="google-installed-note">{{ t(k('installedNote')) }}</p>
     <details class="details" data-testid="google-details">
       <summary class="t-subhead">{{ t(k('details.title')) }}</summary>
       <dl class="t-footnote">
@@ -110,7 +120,7 @@ const details = computed(() => {
 
     <GoogleConnectSheet v-model:open="sheetOpen" />
     <Sheet :open="confirmOpen" :title="t(k('disconnectTitle'))" @update:open="(open) => (confirmOpen = open)">
-      <p class="t-body confirm-body">{{ t(k('disconnectBody')) }}</p>
+      <p class="t-body confirm-body">{{ t(k(google.serverBuild ? 'disconnectBodyServer' : 'disconnectBody')) }}</p>
       <template #footer>
         <div class="sheet-actions">
           <Button variant="plain" @click="confirmOpen = false">{{ t(k('cancel')) }}</Button>

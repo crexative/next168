@@ -98,9 +98,10 @@ Remote readback at 2026-10-24 06:01:16 UTC: integration `abcf42ca7840ff13df77503
 
 ## Google Calendar (Slice 1, labs)
 
-Owner approval 2026-10-26: read the **primary** Google calendar from the browser, read-only, with no Weeklid server. Design, red team and spec live with the coordinator (Slice 1 spec, 2026-10-26); the code is `src/features/calendars/googleCalendar.ts` (what the rest of the app sees), `googleGate.ts` (the gate), `googleSavedEvents.ts` (the copy saved on the device) and `google/` (the chunk that talks to Google).
+Owner approval 2026-10-26: read the **primary** Google calendar from the browser, read-only. Slice 1 had no Weeklid server; the permanent connection (S1b, below) adds one that keeps only Google's permission, never the events. Design, red team and spec live with the coordinator (Slice 1 spec, 2026-10-26); the code is `src/features/calendars/googleCalendar.ts` (what the rest of the app sees), `googleGate.ts` (the gate), `googleSavedEvents.ts` (the copy saved on the device) and `google/` (the chunk that talks to Google).
 
-- **Gate.** The feature exists only when the build has `VITE_GOOGLE_CLIENT_ID` (validated by `vite.config.ts`; a malformed ID fails the build), the app is not in companion mode, the context is secure, and the device opted in by opening the app once with `?labs=google-calendar` (`localStorage` `next168-labs-google=1`, removed by Delete all data). A build without the ID contains no Google code: the UI is imported dynamically behind `import.meta.env.VITE_GOOGLE_CLIENT_ID`, and CI fails if `dist/assets` mentions `gsi/client`. The ID is set only in the Cloudflare Pages **Production** variables; GitHub Pages (`crexative.github.io`, not an authorised origin) never gets it.
+- **Token source and the S1b build flag.** Two sources give the tab its access token. Google Identity Services (this section) asks Google in a popup about every hour and keeps a copy of the last read on the device. With `VITE_GOOGLE_SERVER=1` the build uses the Weeklid server (below) wherever the allowlist admits it, and no context of that build saves a copy of the events: the GIS source keeps events in memory too, and every boot deletes the copy an earlier build saved. Read the bullets below about the saved copy as describing a build without the flag.
+- **Gate.** The feature exists only when the build has `VITE_GOOGLE_CLIENT_ID` (validated by `vite.config.ts`; a malformed ID fails the build), the app is not in companion mode, the context is secure, and the device opted in by opening the app once with `?labs=google-calendar` (`localStorage` `next168-labs-google=1`, removed by Delete all data). A build without the ID contains no Google code: the UI is imported dynamically behind `import.meta.env.VITE_GOOGLE_CLIENT_ID`, and CI (`scripts/check-google-bundles.sh`) fails if such a build mentions `gsi/client` or `api/google`. The ID is set only in the Cloudflare Pages **Production** variables; GitHub Pages (`crexative.github.io`, not an authorised origin) never gets it.
 - **Auth.** Google Identity Services, token model: `initTokenClient({ scope: calendar.events.readonly, include_granted_scopes: false, prompt: '' })`, no `login_hint`. The script `https://accounts.google.com/gsi/client` loads only when the Connect sheet opens; `requestAccessToken()` runs synchronously in the tap. A token without the events scope is revoked and nothing is read.
 - **Token in memory, a copy of the events on the device.** The access token lives only in the tab's memory and is never written anywhere. Owner decision 2026-10-27 (Slice 1 showed "isn't loaded" after every reload, which he found unusable): the last **complete** read is also saved in its own IndexedDB database, `next168-google` (store `saved`), outside the planner document, so exports, backups, the pre-upgrade copy and the companion never include it. The record holds only the occurrences the overlay draws (`sourceId`, `uid`, `recurrenceId`, `title`, `start`, `end`, `allDay`, `busy`), the window and zone they cover, `fetchedAt`, and the planner they were read for (workspace id and generation); never the token, the scopes, an address or Google's raw answer. Titles are cut to 200 characters counted as code points (an emoji counts once), the same rule that checks the copy when it is read back. It is written only when a refresh is published (all or nothing), and validated field by field when read back (anything else is deleted). When the app opens, the connection store starts with it (Google's script still loads only when the Connect sheet opens) and shows the copy if it belongs to the current planner and zone; otherwise it deletes it. Week and Today then show a calm line, "Google Calendar · updated 3 hr. ago" with Update, which after 24 h adds "Your events might be out of date."; Settings shows "Updated 3 hr. ago · N events". "Google Calendar isn't loaded…" remains only when there is no copy. Update still needs a tap (Google opens its window only from a gesture); once a token is live in the tab, behaviour is as before. There is no timer and no refresh on focus. Nothing is written to `localStorage`, Cache Storage or the console.
 - **Read.** `GET calendars/primary/events` with `singleEvents=true`, `orderBy=startTime`, `maxResults=250`, a window from today − 7 to today + 42 civil days padded by one day each side, and `fields=nextPageToken,items(id,status,summary,start,end,transparency,eventType,attendees(self,responseStatus),recurringEventId,originalStartTime)`; `cache: 'no-store'`, `credentials: 'omit'`, `referrerPolicy: 'no-referrer'`, 15 s per request, at most 8 pages. A refresh replaces the events only when every page arrived and every event was read (a time without an offset fails it); otherwise the previous events stay and the error is shown. The service worker leaves Google hosts to the network.
@@ -123,6 +124,40 @@ The server in `server/google/` (operations: `DEPLOYMENT.md`, Functions) keeps on
   ([Google, OAuth 2.0 for web server apps, Token revocation](https://developers.google.com/identity/protocols/oauth2/web-server#tokenrevoke),
   read 2026-10-31). The replaced token is left to Google's own per client and user limit on refresh tokens, after
   which older ones stop working.
+
+### Permanent connection (S1b, the app client)
+
+Design: `docs/design/google-permanent-connection-s1b.md` (read it for the rationale and the red-team history). Code:
+`google/serverConnection.ts` (the client of the routes), `googleGate.ts` (`googleTokenSource()` and the address Google
+returns to), `google/useGoogleConnection.ts` (the store, with a `gis` or `server` source), `googleDeleteAll.ts`.
+
+- **What the person gives up.** In a server build Weeklid saves no Google event on the device, in any context. Each time it
+  opens it asks the server for a token and reads the events again, so without internet Week and Today say Google needs
+  internet and AI prompts carry no Google meetings.
+- **Allowlist.** The server source is used only in a top-level browser tab of Safari, Chrome, Edge or Firefox (including
+  Chrome, Edge and Firefox on iPhone), recognised from `navigator.userAgentData.brands` or the user agent, and never when
+  an in-app marker is present. Installed apps are admitted only when the build also sets `VITE_GOOGLE_SERVER_INSTALLED=1`
+  (gate G-1). Everything else stays on Google Identity Services and says why (`installedNote`). Details shows the source.
+  The design (section 2.1) states where an in-app WebView cannot be told apart.
+- **Calls.** `POST /api/google/{connect,token,status,disconnect}` with `X-Weeklid: 1`, same-origin credentials and
+  `no-store`, each under the exclusive `weeklid-google` lock (acquisition 20 s, task 15 s, no fallback; without
+  `navigator.locks` nothing is sent). Connect asks `/connect`, releases the lock and sends the whole page to Google; the
+  server returns the person to `/?google=<result>#/settings/calendars`, and the parameter is read once and removed.
+- **Disconnect and Delete all data** need the network. Disconnect is `status` then `disconnect{revoke:true, gen}` with one
+  retry on `stale`, and the tab forgets only after a terminal answer. Because a missing cookie and a missing credential
+  both end in `none`, the client then sends one `/token`: `noDevice` means access may remain (shown with the permissions
+  link), `notConnected` means this device holds nothing. Delete all data does the same with `revoke:false` and a 5 s limit
+  before the wipe, in every server build, and names what remains when it could not reach the server.
+- **Late results.** After a terminal Disconnect no mint started later succeeds and nothing is persisted. Residual, stated
+  rather than fenced: a token already minted, a refresh already in flight, or a Google read already started in another tab
+  or device can finish and show events for up to about an hour (or until reload for what is on screen). The same-browser
+  lock normally orders a mint before the Disconnect.
+- **Canary.** The temporary canary page and script are removed; `from` is `'app'` only, and a pending row left with
+  `return_to='canary'` returns to the app.
+- **Tests.** `server/google/clientContract.spec.ts` (the client parser over the real handlers), `clientRaces.spec.ts`,
+  `serverConnection.spec.ts`, `serverSession.spec.ts`, `googleGate.spec.ts` (allowlist table), `config/viteConfig.spec.ts`
+  (flag matrix), `deleteAllGoogleServer.spec.ts` and `e2e/google-server.spec.ts` over a third build
+  (`playwright.config.ts`, fake server `e2e/support/googleServer.ts`).
 
 ### Spike evidence (owner, production, real account)
 

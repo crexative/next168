@@ -118,7 +118,14 @@
       "timeout": "Google a mis trop de temps à répondre. Réessaie.",
       "tooMany": "Ton agenda compte plus de 2 000 événements sur ces semaines, donc rien n’a été mis à jour.",
       "format": "Google a envoyé quelque chose que Weeklid ne sait pas lire, donc rien n’a été mis à jour.",
-      "gisLoad": "Impossible de charger Google. Vérifie ta connexion ou tes bloqueurs."
+      "gisLoad": "Impossible de charger Google. Vérifie ta connexion ou tes bloqueurs.",
+      "disconnectFailed": "Déconnexion impossible : Weeklid n’a pas reçu de réponse. Tu es toujours connecté ; réessaie.",
+      "revokeUnconfirmedServer": "Déconnecté sur cet appareil. Google n’a pas confirmé que Weeklid a perdu l’accès à ton compte : vérifie les autorisations de ton compte.",
+      "reconnectNeeded": "Cet appareil n’est plus connecté à Google Agenda. Reconnecte-toi pour voir tes événements.",
+      "serverPaused": "La connexion à Google Agenda est en pause pour le moment.",
+      "serverUnavailable": "Impossible de joindre la connexion Google de Weeklid. Réessaie plus tard.",
+      "connectFailed": "Google n’a pas terminé la connexion ({code}). Réessaie.",
+      "lockUnavailable": "Ce navigateur ne peut pas connecter Google Agenda en toute sécurité. Mets-le à jour et réessaie."
     },
     "details": {
       "title": "Détails",
@@ -134,7 +141,19 @@
       "count": "Événements affichés",
       "coverage": "Période",
       "range": "{start} – {end}",
-      "result": "{result} · {time} UTC"
-    }
+      "result": "{result} · {time} UTC",
+      "source": "Source de la connexion",
+      "serverCode": "Dernière réponse du serveur"
+    },
+    "summaryServer": "Lecture seule de ton agenda principal. Weeklid lit tes événements dans Google à chaque ouverture.",
+    "stayConnected": "Tu te connectes une fois sur cet appareil et tu restes connecté, même après avoir fermé Weeklid. Un serveur de Weeklid garde chiffrée l’autorisation de Google pour cet appareil. Tes événements ne passent jamais par lui et ne sont pas enregistrés sur cet appareil : Weeklid les lit dans Google à chaque ouverture, donc sans internet tu ne les verras pas.",
+    "goesToGoogle": "Tu iras sur Google, puis tu reviendras ici.",
+    "testingServer": "Tant que l’app est en test, Google affiche un avertissement d’app non vérifiée et te demande de te reconnecter tous les 7 jours.",
+    "eventsOffline": "Google Agenda a besoin d’internet : tes tâches pourraient tomber sur des réunions.",
+    "disconnectBodyServer": "Weeklid perdra l’accès à ce compte Google. Si tu as connecté Weeklid avec le même compte sur d’autres appareils, ils devront se reconnecter.",
+    "disconnectNeedsNetwork": "Pour te déconnecter, il faut internet.",
+    "deleteAllGoogleOffline": "Tes données sur cet appareil ont été supprimées, mais Weeklid n’a pas pu joindre son serveur : son accès à ton Google Agenda reste jusqu’à ce que tu te déconnectes avec internet ou que tu retires Weeklid sur myaccount.google.com/connections.",
+    "googleAccessMayRemain": "Weeklid n’a pas pu confirmer que son accès à ton Google Agenda a été retiré. Pour en être sûr, retire Weeklid sur myaccount.google.com/connections.",
+    "installedNote": "Ici, Google redemande l’autorisation environ toutes les heures et tes événements ne sont pas enregistrés entre les visites. Pour rester connecté, ouvre Weeklid dans Safari, Chrome, Edge ou Firefox."
   }
 }

@@ -47,12 +47,6 @@ export function redirect(location: string, outcome: Outcome, error?: ErrorClass)
   return { status: 303, outcome, body: '', headers: [['location', location], ...SECURITY_HEADERS], error }
 }
 
-export function page(contentType: string, body: string, csp?: string): Reply {
-  const headers: [string, string][] = [['content-type', contentType], ...SECURITY_HEADERS]
-  if (csp) headers.push(['content-security-policy', csp])
-  return { status: 200, outcome: 'ok', body, headers }
-}
-
 function toResponse(reply: Reply): Response {
   const headers = new Headers()
   for (const [name, value] of reply.headers) headers.append(name, value)
@@ -105,7 +99,7 @@ export function setCookie(name: string, value: string, maxAge: number, sameSite:
 
 // --- Guards (D7) ---------------------------------------------------------------------------------------------------
 
-// Checks 1–2, shared by every route: the callback and the canary pages stop here.
+// Checks 1–2, shared by every route: the callback stops here.
 export function guardHostAndSwitch(request: Request, config: Config): Reply | null {
   if (!config.appOrigin || new URL(request.url).origin !== config.appOrigin) return failure(404, 'notFound')
   if (!config.enabled) return failure(503, 'disabled')
@@ -136,9 +130,4 @@ export async function readJsonObject(request: Request): Promise<Record<string, u
 export const hasExactKeys = (value: Record<string, unknown>, keys: readonly string[]): boolean => {
   const actual = Object.keys(value)
   return actual.length === keys.length && keys.every((key) => actual.includes(key))
-}
-
-// A GET-only page or script (the temporary canary): checks 1–2 only, then the fixed body.
-export function servePage(runtime: Runtime, route: string, request: Request, contentType: string, body: string, csp?: string): Promise<Response> {
-  return serve(runtime, route, async () => guardHostAndSwitch(request, runtime.config) ?? page(contentType, body, csp), jsonFallback)
 }

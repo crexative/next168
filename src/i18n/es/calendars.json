@@ -118,7 +118,14 @@
       "timeout": "Google tardó demasiado en responder. Inténtalo de nuevo.",
       "tooMany": "Tu calendario tiene más de 2000 eventos en estas semanas, así que no se actualizó nada.",
       "format": "Google envió algo que Weeklid no puede leer, así que no se actualizó nada.",
-      "gisLoad": "No se pudo cargar Google. Revisa tu conexión o tus bloqueadores."
+      "gisLoad": "No se pudo cargar Google. Revisa tu conexión o tus bloqueadores.",
+      "disconnectFailed": "No se pudo desconectar: Weeklid no recibió respuesta. Sigues conectado; inténtalo de nuevo.",
+      "revokeUnconfirmedServer": "Desconectado en este dispositivo. No pudimos confirmar con Google que Weeklid perdió el acceso a tu cuenta: revisa los permisos de tu cuenta.",
+      "reconnectNeeded": "Este dispositivo ya no está conectado a Google Calendar. Vuelve a conectar para ver tus eventos.",
+      "serverPaused": "La conexión con Google Calendar está en pausa por ahora.",
+      "serverUnavailable": "No pudimos llegar a la conexión de Google de Weeklid. Inténtalo más tarde.",
+      "connectFailed": "Google no completó la conexión ({code}). Inténtalo de nuevo.",
+      "lockUnavailable": "Este navegador no puede conectar Google Calendar de forma segura. Actualízalo e inténtalo de nuevo."
     },
     "details": {
       "title": "Detalles",
@@ -134,7 +141,19 @@
       "count": "Eventos mostrados",
       "coverage": "Cobertura",
       "range": "{start} – {end}",
-      "result": "{result} · {time} UTC"
-    }
+      "result": "{result} · {time} UTC",
+      "source": "Origen de la conexión",
+      "serverCode": "Última respuesta del servidor"
+    },
+    "summaryServer": "Solo lectura de tu calendario principal. Weeklid lee tus eventos de Google cada vez que lo abres.",
+    "stayConnected": "Conectas una vez en este dispositivo y sigues conectado, también después de cerrar Weeklid. Un servidor de Weeklid guarda cifrado el permiso de Google para este dispositivo. Tus eventos nunca pasan por él ni se guardan en este dispositivo: Weeklid los lee de Google cada vez que lo abres, así que sin internet no los verás.",
+    "goesToGoogle": "Irás a Google y volverás aquí.",
+    "testingServer": "Mientras la app está en prueba, Google muestra un aviso de app no verificada y te pide conectar de nuevo cada 7 días.",
+    "eventsOffline": "Google Calendar necesita internet: tus tareas podrían caer encima de reuniones.",
+    "disconnectBodyServer": "Weeklid perderá el acceso a esta cuenta de Google. Si conectaste Weeklid con la misma cuenta en otros dispositivos, tendrán que conectarse de nuevo.",
+    "disconnectNeedsNetwork": "Para desconectar necesitas internet.",
+    "deleteAllGoogleOffline": "Se borraron tus datos de este dispositivo, pero Weeklid no pudo llegar a su servidor: su acceso a tu Google Calendar sigue hasta que desconectes con internet o quites Weeklid en myaccount.google.com/connections.",
+    "googleAccessMayRemain": "Weeklid no pudo confirmar que se quitó su acceso a tu Google Calendar. Para estar seguro, quita Weeklid en myaccount.google.com/connections.",
+    "installedNote": "Aquí Google vuelve a pedir permiso más o menos cada hora y tus eventos no se guardan entre visitas. Para seguir conectado, abre Weeklid en Safari, Chrome, Edge o Firefox."
   }
 }

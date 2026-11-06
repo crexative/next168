@@ -1,8 +1,6 @@
 // @vitest-environment node
 // S-1 (guards, each alone) and S-2 (configuration).
-import { describe, expect, it, vi } from 'vitest'
-import { onRequestGet as canaryPage } from '../../functions/api/google/canary/index'
-import { onRequestGet as canaryScript } from '../../functions/api/google/canary/script'
+import { describe, expect, it } from 'vitest'
 import { readConfig } from './config'
 import { APP, EPOCH_A, FAKE, OTHER_TOKEN_KEY, TOKEN_KEY, server, type Reply } from './testing/harness'
 
@@ -134,24 +132,6 @@ describe('S-1 guards, each violation alone', () => {
     const notFound = await foreign.browser().callback({ state: 's', code: 'c' }, { flow: 's', url: 'https://next168.pages.dev/api/google/callback?state=s&code=c' })
     expect(notFound.reply.status).toBe(404)
     expectUntouched(foreign)
-  })
-
-  it('the canary page and script: 404 for a foreign host, 503 disabled without the switch, no CORS', async () => {
-    const log = vi.spyOn(console, 'log').mockImplementation(() => {})
-    const env = { APP_ORIGIN: APP, GOOGLE_SERVER_ENABLED: '1' }
-    for (const route of [canaryPage, canaryScript]) {
-      const path = route === canaryPage ? '/api/google/canary' : '/api/google/canary/script'
-      const ok = await route({ request: new Request(`${APP}${path}`), env })
-      expect(ok.status).toBe(200)
-      const off = await route({ request: new Request(`${APP}${path}`), env: { APP_ORIGIN: APP } })
-      expect(off.status).toBe(503)
-      expect(await off.json()).toEqual({ code: 'disabled' })
-      const foreign = await route({ request: new Request(`https://next168.pages.dev${path}`), env })
-      expect(foreign.status).toBe(404)
-      for (const response of [ok, off, foreign]) for (const [name] of response.headers) expect(name.startsWith('access-control-')).toBe(false)
-    }
-    expect(log.mock.calls.map(([line]) => JSON.parse(String(line)).o)).toEqual(['ok', 'disabled', 'notFound', 'ok', 'disabled', 'notFound'])
-    log.mockRestore()
   })
 })
 

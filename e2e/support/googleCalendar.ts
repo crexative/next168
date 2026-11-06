@@ -99,7 +99,7 @@ export interface GoogleFake {
   holdApi(): () => void
 }
 
-export async function fakeGoogle(context: BrowserContext, options: { gisDelayMs?: number; events?: CalendarEvent[] } = {}): Promise<GoogleFake> {
+export async function fakeGoogle(context: BrowserContext, options: { gisDelayMs?: number; events?: CalendarEvent[]; authorize?: (bearer: string) => boolean } = {}): Promise<GoogleFake> {
   let held: Promise<void> | undefined
   const fake: GoogleFake = {
     gisLoads: 0,
@@ -125,9 +125,12 @@ export async function fakeGoogle(context: BrowserContext, options: { gisDelayMs?
       const cors = { 'access-control-allow-origin': '*', 'access-control-allow-headers': 'authorization', 'access-control-allow-methods': 'GET' }
       if (request.method() === 'OPTIONS') { await route.fulfill({ status: 204, headers: cors }); return }
       fake.apiRequests.push(new URL(href))
+      // Google judges the token when the request arrives; a read held after that still gets its answer.
+      const bearer = (request.headers().authorization ?? '').replace(/^Bearer /, '')
+      const rejected = options.authorize !== undefined && !options.authorize(bearer)
       const wait = held
       if (wait) await wait
-      const answer = fake.apiStatus ?? { status: 200, body: { items: fake.events } }
+      const answer = rejected ? { status: 401, body: { error: { code: 401, status: 'UNAUTHENTICATED' } } } : fake.apiStatus ?? { status: 200, body: { items: fake.events } }
       await route.fulfill({ status: answer.status, headers: { ...cors, 'content-type': 'application/json' }, body: JSON.stringify(answer.body) }).catch(() => undefined)
       return
     }
