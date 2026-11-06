@@ -15,10 +15,15 @@ const google = useGoogleConnection()
 
 watch(() => props.open, (open) => { if (open) google.prepare() }, { immediate: true })
 
-const points = computed(() => ['deviceCopy', 'refreshHint', 'aiBusy', 'testing'].map((key) => t(`calendars.googleConnection.${key}`)))
+// A server build saves no Google events on the device in any context, so it never promises a copy.
+const pointKeys = computed(() => google.source === 'server'
+  ? ['stayConnected', 'goesToGoogle', 'aiBusy', 'testingServer']
+  : google.serverBuild ? ['installedNote', 'aiBusy', 'testing'] : ['deviceCopy', 'refreshHint', 'aiBusy', 'testing'])
+const points = computed(() => pointKeys.value.map((key) => t(`calendars.googleConnection.${key}`)))
 const loadFailed = computed(() => google.gis === 'failed')
 
 function onContinue(): void {
+  if (google.source === 'server') { void google.connect(); emit('update:open', false); return }
   if (loadFailed.value) { google.prepare(); return }
   if (google.update()) emit('update:open', false)
 }

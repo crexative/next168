@@ -16,6 +16,8 @@ import { calendarLifecycle, calendarSourceStore } from './calendarSourceHook'
 import { deviceStorages, removeDeviceData } from './deviceData'
 import { refreshGoogleAvailability } from '@/features/calendars/googleCalendar'
 import { savedGoogleEvents } from '@/features/calendars/googleSavedEvents'
+import { forgetGoogleBeforeDeleteAll, type GoogleDeleteResult } from '@/features/calendars/googleDeleteAll'
+import { PERMISSIONS_URL, googleServerBuild } from '@/features/calendars/googleGate'
 import { downloadBackup } from './exportBackup'
 import PreUpgradeCopy from './PreUpgradeCopy.vue'
 import {
@@ -32,6 +34,9 @@ const planner = usePlannerStore()
 const fileInput = ref<HTMLInputElement | null>(null)
 const preview = shallowRef<ImportPreview | null>(null)
 const notice = ref<Notice | null>(null)
+// What Delete all data could not undo at Google, with the way to do it (server build only).
+const googleNote = ref<Exclude<GoogleDeleteResult, 'none'> | null>(null)
+const GOOGLE_NOTE_KEYS = { unreachable: 'calendars.googleConnection.deleteAllGoogleOffline', mayRemain: 'calendars.googleConnection.googleAccessMayRemain' } as const
 const busy = ref(false)
 const deleteOpen = ref(false)
 const typed = ref('')
@@ -151,6 +156,9 @@ async function deleteEverything(): Promise<void> {
   const hash = deleteHash
   if (!current || !hash || !canDelete.value) return
   busy.value = true
+  googleNote.value = null
+  // A build without the server flag takes no extra turn here.
+  const googleResult = googleServerBuild() ? await forgetGoogleBeforeDeleteAll() : 'none'
   const fresh = freshDocument(current, new Date())
   const replace = (draft: PlannerDocument) => { assertDocumentHash(draft, hash); replaceContent(draft, fresh) }
   let result
@@ -176,6 +184,7 @@ async function deleteEverything(): Promise<void> {
     closeDelete()
     closePreview()
     notice.value = { tone: 'ok', text: t('data.deleteAll.done') }
+    googleNote.value = googleResult === 'none' ? null : googleResult
   } else {
     const changed = refusedAsChanged(result.reason)
     if (changed) { planner.dismissError(); closeDelete() }
@@ -213,6 +222,11 @@ async function deleteEverything(): Promise<void> {
     </section>
 
     <p v-if="notice" class="notice t-subhead" :class="`is-${notice.tone}`" :role="notice.tone === 'error' ? 'alert' : 'status'" data-testid="data-notice">{{ notice.text }}</p>
+
+    <p v-if="googleNote" class="notice t-subhead is-ok" role="status" data-testid="google-delete-note">
+      {{ t(GOOGLE_NOTE_KEYS[googleNote]) }}
+      <a :href="PERMISSIONS_URL" target="_blank" rel="noopener noreferrer" data-testid="google-delete-permissions">{{ t('calendars.googleConnection.permissions') }}</a>
+    </p>
 
     <PreUpgradeCopy />
 

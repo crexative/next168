@@ -6,6 +6,7 @@ import { VitePWA } from 'vite-plugin-pwa'
 import { readPreviewHttps } from './config/lanHttps'
 import { assertPublicUrl } from './config/publicUrl'
 import { assertGoogleClientId } from './config/googleClientId'
+import { assertGoogleServerFlags } from './config/googleServerFlags'
 
 // The installed window's bars match the page's grouped background, as the theme-color metas in index.html do
 // (src/ui/appearance.ts): the brand green lives in the icon and the controls, not in the system chrome.
@@ -28,10 +29,12 @@ function checkPublicUrl(mode: string): void {
   if (raw) assertPublicUrl(raw)
 }
 
-// Google Calendar ships only in a build that has a well-formed client ID; a malformed one fails the build.
+// Google Calendar ships only in a build that has a well-formed client ID; a malformed one fails the build, and so does
+// a server-mode flag without it (config/googleServerFlags.ts).
 function checkGoogleClientId(mode: string): void {
-  const raw = loadEnv(mode, process.cwd(), 'VITE_').VITE_GOOGLE_CLIENT_ID
-  if (raw) assertGoogleClientId(raw)
+  const env = loadEnv(mode, process.cwd(), 'VITE_')
+  if (env.VITE_GOOGLE_CLIENT_ID) assertGoogleClientId(env.VITE_GOOGLE_CLIENT_ID)
+  assertGoogleServerFlags({ clientId: env.VITE_GOOGLE_CLIENT_ID || undefined, server: env.VITE_GOOGLE_SERVER, installed: env.VITE_GOOGLE_SERVER_INSTALLED })
 }
 
 // base './' lets the same build run at '/', at '/next168/' and inside the local companion.

@@ -5,7 +5,8 @@ import { provideCalendarLifecycle, provideCalendarSourceStore } from '@/features
 import { calendarServices, calendarTextRevision, cancelCalendarRefreshes, capturePurgeEpoch, writeIfUnpurged } from './calendarStore'
 import { calendarSourceRevision, expandCalendarSources } from './occurrenceSource'
 import { googleAvailable, refreshGoogleAvailability } from './googleCalendar'
-import { captureLabsFlag } from './googleGate'
+import { captureGoogleReturn, captureLabsFlag, googleServerBuild } from './googleGate'
+import { savedGoogleEvents } from './googleSavedEvents'
 
 export { useCalendarEvents } from './useCalendarEvents'
 export { configureCalendarServices } from './calendarStore'
@@ -31,6 +32,12 @@ const currentTexts: CalendarSourceStore = {
 export default function registerCalendars(_registry: ShellRegistry): void {
   setExternalOccurrenceSource(expandCalendarSources, calendarSourceRevision)
   if (import.meta.env.VITE_GOOGLE_CLIENT_ID) captureLabsFlag()
+  // A server build keeps no Google events on the device in any context: the copy an earlier build saved goes at every
+  // boot (idempotent), and the address Google returned to is read once and cleaned.
+  if (googleServerBuild()) {
+    captureGoogleReturn()
+    void savedGoogleEvents().erase()
+  }
   refreshGoogleAvailability()
   // The connection starts with the app (not with the first screen that shows it), so the copy saved on this device is
   // on Week, Today and the AI prompt at once, and every change that deletes it is seen. Google's own script still loads

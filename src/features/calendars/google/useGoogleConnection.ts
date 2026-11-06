@@ -4,16 +4,21 @@ import type { ExternalOccurrence } from '@/core/model'
 import { addLocalDays, localDateOf, zonedInstant } from '@/core/time'
 import { usePlannerStore } from '@/stores/plannerStore'
 import { publishGoogleSnapshot, type DateWindow, type GoogleCoverage } from '../googleCalendar'
-import { savedCopyOf, savedGoogleEvents, type SavedBinding, type SavedGoogleEventsPort } from '../googleSavedEvents'
+import { PERMISSIONS_URL, googleServerBuild, googleTokenSource, isInstalledContext, takeGoogleReturn, type TokenSource } from '../googleGate'
+import { memoryOnlySavedEvents, savedCopyOf, savedGoogleEvents, type SavedBinding, type SavedGoogleEventsPort } from '../googleSavedEvents'
 import { EVENTS_READONLY, type GisErrorResponse, type GisOAuth2, type GisTokenResponse } from './gis'
 import { loadGis } from './gisLoader'
 import { fetchPrimaryEvents, type GoogleFailure } from './googleApi'
 import { normalizeGoogleEvents } from './googleNormalize'
+import type { MintResult, ServerCode, ServerConnection } from './serverConnection'
 
-// The Google Calendar connection of this tab. The token lives in memory only and is never written anywhere. The last
+// The Google Calendar connection of this tab. The token lives in memory only and is never written anywhere. It comes
+// from one of two sources: Google Identity Services (a popup per hour) or the Weeklid server, which keeps Google's
+// permission for this device so the tab stays connected (design S1b). In a build without VITE_GOOGLE_SERVER the last
 // complete read is also kept on this device (googleSavedEvents.ts), bound to the planner and zone it was read for, so a
 // reload shows it at once; Disconnect, Delete all data, an import or restore, a new workspace or zone, and Google
-// withdrawing the permission delete it. Nothing here reaches localStorage, Cache Storage or the console.
+// withdrawing the permission delete it. In a server build no context saves anything. Nothing here reaches
+// localStorage, Cache Storage or the console.
 
 export const REVOKE_DEADLINE_MS = 10_000
 // A token is treated as expired a minute early, so a request never starts with one about to lapse.
@@ -22,7 +27,7 @@ const PAST_DAYS = 7
 const FUTURE_DAYS = 42
 const DAY_MS = 86_400_000
 export const FORGET_CHANNEL = 'next168-google'
-export const PERMISSIONS_URL = 'https://myaccount.google.com/connections'
+export { PERMISSIONS_URL }
 // A saved copy older than this says its events may be out of date.
 export const SAVED_STALE_AFTER_MS = 86_400_000
 
@@ -38,6 +43,13 @@ export interface GoogleServices {
   now(): Date
   channel(): Pick<BroadcastChannel, 'postMessage' | 'addEventListener'> | undefined
   saved(): SavedGoogleEventsPort
+  source: TokenSource
+  // An installed app that stays on Google Identity Services in a server build (gate G-1): it says why.
+  installedNote: boolean
+  // Undefined in a build without the server flag, so none of the server client ships there.
+  server: (() => Promise<ServerConnection>) | undefined
+  online(): boolean
+  navigate(url: string): void
 }
 
 function defaultServices(): GoogleServices {
@@ -47,7 +59,12 @@ function defaultServices(): GoogleServices {
     fetch: (...args) => globalThis.fetch(...args),
     now: () => new Date(),
     channel: () => (typeof BroadcastChannel === 'function' ? new BroadcastChannel(FORGET_CHANNEL) : undefined),
-    saved: savedGoogleEvents,
+    saved: googleServerBuild() ? () => memoryOnlySavedEvents : savedGoogleEvents,
+    source: googleTokenSource(),
+    installedNote: googleServerBuild() && googleTokenSource() === 'gis' && isInstalledContext(),
+    server: import.meta.env.VITE_GOOGLE_SERVER === '1' ? () => import('./serverConnection').then((module) => module.browserServerConnection()) : undefined,
+    online: () => typeof navigator === 'undefined' || navigator.onLine !== false,
+    navigate: (url) => { globalThis.location.assign(url) },
   }
 }
 
@@ -64,6 +81,8 @@ export interface GoogleMessage {
   params?: Record<string, string | number>
   // Offers the Google Account permissions page.
   permissionsLink?: boolean
+  // The text sits beside the connection messages instead of inside them.
+  topLevel?: boolean
 }
 
 type DiagnosticKind = 'token' | 'events' | 'revoke'
@@ -103,8 +122,9 @@ export const useGoogleConnection = defineStore('googleConnection', () => {
 
   const gis = ref<'idle' | 'loading' | 'ready' | 'failed'>('idle')
   const phase = ref<'idle' | 'authorizing' | 'fetching' | 'revoking'>('idle')
-  // 'new' until a connection succeeds in this tab; 'disconnected' after Disconnect here or in another tab.
-  const session = ref<'new' | 'connected' | 'disconnected'>('new')
+  // 'new' until a connection succeeds in this tab; 'disconnected' after Disconnect here or in another tab; 'unavailable'
+  // when the server source could not be asked (offline, server down or paused) and nothing is known yet.
+  const session = ref<'new' | 'connected' | 'disconnected' | 'unavailable'>('new')
   // A 401 dropped the token while events are still shown: the next tap asks Google again.
   const expired = ref(false)
   // The events shown are the copy saved on this device, not yet read again in this tab.
@@ -115,6 +135,12 @@ export const useGoogleConnection = defineStore('googleConnection', () => {
   const message = ref<GoogleMessage | null>(null)
   const tokenExpiresAt = ref<number | undefined>()
   const diagnostics = reactive<{ scopeGranted?: boolean; last: Partial<Record<DiagnosticKind, DiagnosticEntry>> }>({ last: {} })
+  const source = services.source
+  const serverMode = source === 'server'
+  const serverBuild = googleServerBuild()
+  const installedNote = services.installedNote
+  // The last answer of the Weeklid server, as its closed code: shown in Details, never a token or a reply body.
+  const lastServerCode = ref<ServerCode | undefined>()
 
   const saved = services.saved()
   const channel = services.channel()
@@ -196,6 +222,7 @@ export const useGoogleConnection = defineStore('googleConnection', () => {
     if (next === previous) return
     if (previous !== undefined) forget()
     if (next !== undefined) void keepMatchingCopy()
+    if (serverMode && previous === undefined && next !== undefined) void openServerSession()
   }, { flush: 'sync', immediate: true })
 
   // Civil dates mean something only in the zone they were read in: a new planner zone drops the events and their
@@ -269,9 +296,128 @@ export const useGoogleConnection = defineStore('googleConnection', () => {
     if (error?.type === 'popup_failed_to_open') message.value = { key: 'popupBlocked', tone: 'error', params: { host: globalThis.location?.host ?? '' } }
   }
 
+  // --- The Weeklid server source ---------------------------------------------------------------------------------------
+
+  let serverClient: Promise<ServerConnection> | undefined
+  const serverConnection = (): Promise<ServerConnection> => (serverClient ??= services.server!())
+
+  function noteServerFailure(code: ServerCode): GoogleMessage {
+    lastServerCode.value = code
+    if (code === 'lockUnavailable') return { key: 'lockUnavailable', tone: 'error' }
+    if (code === 'disabled' || code === 'notConfigured') return { key: 'serverPaused', tone: 'info' }
+    return { key: 'serverUnavailable', tone: 'error' }
+  }
+
+  // Nothing could be asked: a connected tab keeps what it shows; a tab that knows nothing says so.
+  function serverUnavailable(notice: GoogleMessage): void {
+    phase.value = 'idle'
+    if (session.value !== 'connected') session.value = 'unavailable'
+    record('token', notice.key)
+    message.value = notice
+  }
+
+  function applyMint(result: MintResult, ticket: Ticket): boolean {
+    if (!isCurrent(ticket)) return false
+    if (result.kind === 'token') {
+      lastServerCode.value = 'ok'
+      const expiresAt = services.now().getTime() + result.expiresIn * 1000 - EXPIRY_MARGIN_MS
+      token = { value: result.accessToken, expiresAt }
+      tokenExpiresAt.value = expiresAt
+      record('token', 'granted')
+      session.value = 'connected'
+      expired.value = false
+      return true
+    }
+    if (result.kind === 'signedOut') {
+      lastServerCode.value = result.code
+      record('token', result.code)
+      const wasConnected = session.value === 'connected'
+      forget()
+      session.value = 'disconnected'
+      // Neutral on every 401: whatever the server says, this tab holds nothing now.
+      message.value = wasConnected ? { key: 'reconnectNeeded', tone: 'info' } : null
+      return false
+    }
+    serverUnavailable(noteServerFailure(result.code))
+    return false
+  }
+
+  // Opening the app, and Update without a live token: ask the server for a token and read the events. Offline sends
+  // nothing; a person who is connected keeps what the tab already shows.
+  async function mintAndRead(ticket: Ticket): Promise<void> {
+    if (!services.online()) {
+      serverUnavailable({ key: 'network', tone: 'info' })
+      return
+    }
+    phase.value = 'fetching'
+    message.value = null
+    const result = await (await serverConnection()).mint()
+    if (applyMint(result, ticket)) await refresh(ticket)
+    else if (isCurrent(ticket) && phase.value === 'fetching') phase.value = 'idle'
+  }
+
+  async function openServerSession(): Promise<void> {
+    const returned = takeGoogleReturn()
+    const ticket = capture()
+    await mintAndRead(ticket)
+    if (returned && returned !== 'connected' && isCurrent(ticket)) message.value = returnMessage(returned)
+  }
+
+  function returnMessage(returned: string): GoogleMessage {
+    if (returned === 'denied') return { key: 'accessDenied', tone: 'info' }
+    if (returned === 'disabled' || returned === 'notConfigured' || returned === 'canary') return { key: 'serverPaused', tone: 'info' }
+    return { key: 'connectFailed', tone: 'error', params: { code: safeCode(returned) } }
+  }
+
+  // The Connect sheet's Continue: the server starts the authorization, then the whole page goes to Google and comes back
+  // to the address the server chose. The lock is released before the page leaves.
+  async function connectServer(): Promise<void> {
+    if (phase.value !== 'idle') return
+    if (!services.online()) {
+      serverUnavailable({ key: 'network', tone: 'info' })
+      return
+    }
+    const ticket = capture()
+    phase.value = 'authorizing'
+    message.value = null
+    const result = await (await serverConnection()).connect()
+    if (!isCurrent(ticket)) return
+    if (result.kind === 'url') {
+      lastServerCode.value = 'ok'
+      services.navigate(result.url)
+      return
+    }
+    phase.value = 'idle'
+    message.value = noteServerFailure(result.code)
+    record('token', result.code)
+  }
+
+  // Disconnect for the server source: the tab forgets only after the server gave a terminal answer.
+  async function disconnectServer(): Promise<void> {
+    if (!services.online()) return
+    const ticket = capture()
+    phase.value = 'revoking'
+    message.value = null
+    const outcome = await (await serverConnection()).forgetThisDevice(true)
+    record('revoke', outcome)
+    if (!isCurrent(ticket)) return
+    if (outcome === 'failed') {
+      phase.value = 'idle'
+      message.value = { key: 'disconnectFailed', tone: 'error' }
+      return
+    }
+    forgetEverywhere()
+    session.value = 'disconnected'
+    message.value = outcome === 'confirmed'
+      ? { key: 'revokeConfirmed', tone: 'ok' }
+      : outcome === 'mayRemain'
+        ? { key: 'googleAccessMayRemain', tone: 'info', permissionsLink: true, topLevel: true }
+        : { key: 'revokeUnconfirmedServer', tone: 'info', permissionsLink: true }
+  }
+
   // Loads Google's script when the Connect sheet opens; the button waits for it, so the tap itself never waits.
   function prepare(): void {
-    if (gis.value === 'loading' || gis.value === 'ready') return
+    if (serverMode || gis.value === 'loading' || gis.value === 'ready') return
     gis.value = 'loading'
     if (message.value?.key === 'gisLoad') message.value = null
     services.loadGis().then((api) => {
@@ -351,6 +497,10 @@ export const useGoogleConnection = defineStore('googleConnection', () => {
   // the same tap. Returns false when Google's script is not loaded yet (the caller opens the Connect sheet).
   function update(): boolean {
     if (phase.value !== 'idle') return true
+    if (serverMode) {
+      void (hasLiveToken() ? refresh(capture()) : mintAndRead(capture()))
+      return true
+    }
     if (hasLiveToken()) {
       void refresh(capture())
       return true
@@ -376,6 +526,7 @@ export const useGoogleConnection = defineStore('googleConnection', () => {
   // Forgets locally first (here and in every other tab), then asks Google to withdraw the access. Only Google's own
   // confirmation is reported as a confirmed revocation.
   async function disconnect(): Promise<void> {
+    if (serverMode) return disconnectServer()
     const live = hasLiveToken() ? token!.value : undefined
     forgetEverywhere()
     session.value = 'disconnected'
@@ -400,7 +551,7 @@ export const useGoogleConnection = defineStore('googleConnection', () => {
   }
 
   return {
-    gis, phase, session, expired, fromDevice, generation, occurrences, coverage, message, diagnostics, busy,
-    prepare, update, disconnect, forget, remainingMinutes, hasLiveToken,
+    gis, phase, session, expired, fromDevice, generation, occurrences, coverage, message, diagnostics, busy, source, serverBuild, installedNote, lastServerCode,
+    prepare, update, connect: connectServer, disconnect, forget, remainingMinutes, hasLiveToken,
   }
 })

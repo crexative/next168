@@ -118,7 +118,14 @@
       "timeout": "Google hat zu lange gebraucht. Versuch es noch einmal.",
       "tooMany": "Dein Kalender hat in diesen Wochen mehr als 2.000 Termine, deshalb wurde nichts aktualisiert.",
       "format": "Google hat etwas geschickt, das Weeklid nicht lesen kann, deshalb wurde nichts aktualisiert.",
-      "gisLoad": "Google konnte nicht geladen werden. Prüfe deine Verbindung oder deine Blocker."
+      "gisLoad": "Google konnte nicht geladen werden. Prüfe deine Verbindung oder deine Blocker.",
+      "disconnectFailed": "Trennen nicht möglich: Weeklid hat keine Antwort bekommen. Du bist weiter verbunden; versuche es noch einmal.",
+      "revokeUnconfirmedServer": "Auf diesem Gerät getrennt. Google hat nicht bestätigt, dass Weeklid den Zugriff auf dein Konto verloren hat: prüfe die Berechtigungen deines Kontos.",
+      "reconnectNeeded": "Dieses Gerät ist nicht mehr mit Google Kalender verbunden. Verbinde dich erneut, um deine Termine zu sehen.",
+      "serverPaused": "Die Verbindung zu Google Kalender ist vorerst pausiert.",
+      "serverUnavailable": "Die Google-Verbindung von Weeklid war nicht erreichbar. Versuche es später noch einmal.",
+      "connectFailed": "Google hat die Verbindung nicht abgeschlossen ({code}). Versuche es noch einmal.",
+      "lockUnavailable": "Dieser Browser kann Google Kalender nicht sicher verbinden. Aktualisiere ihn und versuche es noch einmal."
     },
     "details": {
       "title": "Details",
@@ -134,7 +141,19 @@
       "count": "Angezeigte Termine",
       "coverage": "Zeitraum",
       "range": "{start} – {end}",
-      "result": "{result} · {time} UTC"
-    }
+      "result": "{result} · {time} UTC",
+      "source": "Verbindungsquelle",
+      "serverCode": "Letzte Serverantwort"
+    },
+    "summaryServer": "Nur Lesezugriff auf deinen Hauptkalender. Weeklid liest deine Termine bei jedem Öffnen von Google.",
+    "stayConnected": "Du verbindest dich einmal auf diesem Gerät und bleibst verbunden, auch nach dem Schließen von Weeklid. Ein Weeklid-Server bewahrt die Google-Berechtigung für dieses Gerät verschlüsselt auf. Deine Termine laufen nie darüber und werden nicht auf diesem Gerät gespeichert: Weeklid liest sie bei jedem Öffnen von Google, ohne Internet siehst du sie also nicht.",
+    "goesToGoogle": "Du gehst zu Google und kommst hierher zurück.",
+    "testingServer": "Solange die App im Test ist, zeigt Google einen Hinweis auf eine nicht verifizierte App und bittet dich alle 7 Tage, dich erneut zu verbinden.",
+    "eventsOffline": "Google Kalender braucht Internet: Deine Aufgaben könnten auf Terminen landen.",
+    "disconnectBodyServer": "Weeklid verliert den Zugriff auf dieses Google-Konto. Wenn du Weeklid auf anderen Geräten mit demselben Konto verbunden hast, müssen sie sich erneut verbinden.",
+    "disconnectNeedsNetwork": "Zum Trennen brauchst du Internet.",
+    "deleteAllGoogleOffline": "Deine Daten auf diesem Gerät wurden gelöscht, aber Weeklid konnte seinen Server nicht erreichen: Sein Zugriff auf deinen Google Kalender bleibt, bis du mit Internet trennst oder Weeklid unter myaccount.google.com/connections entfernst.",
+    "googleAccessMayRemain": "Weeklid konnte nicht bestätigen, dass sein Zugriff auf deinen Google Kalender entfernt wurde. Entferne Weeklid zur Sicherheit unter myaccount.google.com/connections.",
+    "installedNote": "Hier fragt Google ungefähr stündlich erneut nach der Berechtigung, und deine Termine werden zwischen den Besuchen nicht gespeichert. Um verbunden zu bleiben, öffne Weeklid in Safari, Chrome, Edge oder Firefox."
   }
 }

@@ -39,9 +39,23 @@ export type ConnectResult =
  */
 export type ForgetOutcome = 'confirmed' | 'unconfirmed' | 'forgotten' | 'cleared' | 'mayRemain' | 'failed'
 
+// The slices of fetch and navigator.locks used here, declared so the client compiles in the browser and under node tests.
+export interface RequestOptions {
+  method: 'POST'
+  credentials: 'same-origin'
+  cache: 'no-store'
+  headers: Record<string, string>
+  signal: AbortSignal
+  body: string | undefined
+}
+
+export interface LockPort {
+  request<T>(name: string, options: { mode: 'exclusive'; signal: AbortSignal }, task: () => Promise<T>): Promise<T>
+}
+
 export interface ServerEnvironment {
-  fetch: typeof fetch
-  locks: Pick<LockManager, 'request'> | undefined
+  fetch(url: string, options: RequestOptions): Promise<Response>
+  locks: LockPort | undefined
   randomBytes(length: number): Uint8Array
 }
 
@@ -187,8 +201,8 @@ export type ServerConnection = ReturnType<typeof createServerConnection>
 
 export function browserServerConnection(): ServerConnection {
   return createServerConnection({
-    fetch: (...args) => globalThis.fetch(...args),
-    locks: typeof navigator !== 'undefined' ? navigator.locks : undefined,
+    fetch: (url, options) => globalThis.fetch(url, options),
+    locks: typeof navigator !== 'undefined' ? (navigator as unknown as { locks?: LockPort }).locks : undefined,
     randomBytes: (length) => crypto.getRandomValues(new Uint8Array(length)),
   })
 }

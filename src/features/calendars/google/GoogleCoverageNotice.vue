@@ -10,6 +10,7 @@ import { displayLocale, formatDate, formatElapsed } from '@/ui/format'
 import { coverageIncludes, type DateWindow } from '../googleCalendar'
 import GoogleConnectSheet from './GoogleConnectSheet.vue'
 import { savedCopyIsStale, useGoogleConnection } from './useGoogleConnection'
+import { useOnline } from './useOnline'
 
 // One line on Week and Today about the Google Calendar data behind the days on screen, or the days tasks are fitted
 // over. A warning where they are not covered in this tab (scheduling cannot avoid meetings it has not seen); a calm
@@ -19,11 +20,13 @@ const { t } = useI18n()
 const google = useGoogleConnection()
 const planner = usePlannerStore()
 const now = useNow()
+const online = useOnline()
 const sheetOpen = ref(false)
 const k = (key: string) => `calendars.googleConnection.${key}`
 
-const state = computed<'notLoaded' | 'expired' | 'partial' | 'saved' | 'stale' | null>(() => {
+const state = computed<'notLoaded' | 'expired' | 'partial' | 'saved' | 'stale' | 'unavailable' | null>(() => {
   if (google.session === 'disconnected') return null
+  if (google.session === 'unavailable') return 'unavailable'
   if (!google.coverage) return 'notLoaded'
   if (google.expired) return 'expired'
   const timeZone = planner.document?.settings.timeZone ?? 'UTC'
@@ -41,6 +44,7 @@ const text = computed(() => {
     const ago = formatElapsed(coverage.fetchedAt, now.value, displayLocale.value) ?? t(k('justNow'))
     return t(k(state.value === 'saved' ? 'savedLine' : 'staleLine'), { ago })
   }
+  if (state.value === 'unavailable' && !online.value) return t(k('eventsOffline'))
   return state.value === 'expired' ? t(k('expiredLine')) : t(k('notLoaded'))
 })
 // The saved copy cannot be read again without a tap: Update stays offered next to it, even where it falls short.

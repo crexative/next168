@@ -118,7 +118,14 @@
       "timeout": "O Google demorou demasiado a responder. Tente de novo.",
       "tooMany": "O seu calendário tem mais de 2000 eventos nestas semanas, por isso nada foi atualizado.",
       "format": "O Google enviou algo que o Weeklid não consegue ler, por isso nada foi atualizado.",
-      "gisLoad": "Não foi possível carregar o Google. Verifique a ligação ou os bloqueadores."
+      "gisLoad": "Não foi possível carregar o Google. Verifique a ligação ou os bloqueadores.",
+      "disconnectFailed": "Não foi possível desligar: o Weeklid não recebeu resposta. Continua ligado; tente de novo.",
+      "revokeUnconfirmedServer": "Desligado neste dispositivo. Não conseguimos confirmar com o Google que o Weeklid perdeu o acesso à sua conta: reveja as autorizações da sua conta.",
+      "reconnectNeeded": "Este dispositivo já não está ligado ao Google Calendar. Ligue de novo para ver os seus eventos.",
+      "serverPaused": "A ligação ao Google Calendar está em pausa por agora.",
+      "serverUnavailable": "Não conseguimos chegar à ligação Google do Weeklid. Tente mais tarde.",
+      "connectFailed": "O Google não concluiu a ligação ({code}). Tente de novo.",
+      "lockUnavailable": "Este navegador não consegue ligar o Google Calendar em segurança. Atualize-o e tente de novo."
     },
     "details": {
       "title": "Detalhes",
@@ -134,7 +141,19 @@
       "count": "Eventos mostrados",
       "coverage": "Período",
       "range": "{start} – {end}",
-      "result": "{result} · {time} UTC"
-    }
+      "result": "{result} · {time} UTC",
+      "source": "Origem da ligação",
+      "serverCode": "Última resposta do servidor"
+    },
+    "summaryServer": "Só leitura do seu calendário principal. O Weeklid lê os seus eventos do Google sempre que o abre.",
+    "stayConnected": "Liga uma vez neste dispositivo e fica ligado, também depois de fechar o Weeklid. Um servidor do Weeklid guarda cifrada a autorização do Google para este dispositivo. Os seus eventos nunca passam por ele nem ficam guardados neste dispositivo: o Weeklid lê-os do Google sempre que o abre, por isso sem internet não os verá.",
+    "goesToGoogle": "Vai ao Google e volta para aqui.",
+    "testingServer": "Enquanto a app está em teste, o Google mostra um aviso de app não verificada e pede-lhe que ligue de novo a cada 7 dias.",
+    "eventsOffline": "O Google Calendar precisa de internet: as suas tarefas podem cair em cima de reuniões.",
+    "disconnectBodyServer": "O Weeklid vai perder o acesso a esta conta Google. Se ligou o Weeklid com a mesma conta noutros dispositivos, terão de ligar de novo.",
+    "disconnectNeedsNetwork": "Para desligar precisa de internet.",
+    "deleteAllGoogleOffline": "Os seus dados neste dispositivo foram apagados, mas o Weeklid não conseguiu chegar ao seu servidor: o acesso ao seu Google Calendar mantém-se até desligar com internet ou remover o Weeklid em myaccount.google.com/connections.",
+    "googleAccessMayRemain": "O Weeklid não conseguiu confirmar que o acesso ao seu Google Calendar foi removido. Para ter a certeza, remova o Weeklid em myaccount.google.com/connections.",
+    "installedNote": "Aqui o Google volta a pedir autorização mais ou menos a cada hora e os seus eventos não ficam guardados entre visitas. Para continuar ligado, abra o Weeklid no Safari, Chrome, Edge ou Firefox."
   }
 }

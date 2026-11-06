@@ -259,6 +259,17 @@ function request<T>(read: IDBRequest<T>): Promise<T> {
   })
 }
 
+// The port of a server build (VITE_GOOGLE_SERVER=1), where no context keeps Google events on the device: nothing is
+// read, nothing is written, and no database is created.
+export const memoryOnlySavedEvents: SavedGoogleEventsPort = {
+  loadMatching: () => Promise.resolve(undefined),
+  save: () => Promise.resolve('refused'),
+  discard: () => '',
+  adopt: () => undefined,
+  erase: () => Promise.resolve(),
+  settled: () => Promise.resolve(),
+}
+
 let shared: SavedGoogleEventsPort | undefined
 
 // One per page, so every caller shares the epoch this tab knows.
