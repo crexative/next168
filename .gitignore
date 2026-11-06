@@ -45,3 +45,4 @@ dev-dist/
 .wrangler/
 .dev.vars
 e2e/.wrangler-state/
+dist-server

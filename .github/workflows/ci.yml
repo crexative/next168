@@ -31,18 +31,11 @@ jobs:
       - run: npx vitest run
       - run: npm run build
 
-      # Built without VITE_GOOGLE_CLIENT_ID, as forks, previews and GitHub Pages are: no Google sign-in code may ship,
-      # and no client code may call the Google server routes (functions/api/google, design CI-2).
-      - name: Require a build without a Google client ID to carry no Google code
-        run: |
-          if grep -rl "gsi/client" dist/assets; then
-            echo "::error::dist/assets references gsi/client although VITE_GOOGLE_CLIENT_ID is unset: the Google module must stay behind its dynamic import."
-            exit 1
-          fi
-          if grep -rl "api/google" dist/assets; then
-            echo "::error::dist/assets references api/google although VITE_GOOGLE_CLIENT_ID is unset: the server-mode client must stay behind its build flag."
-            exit 1
-          fi
+      # The Google flag matrix (design S1b 2.7): a build without a client ID carries no Google code and no call to the Google
+      # server routes; a client-ID-only build carries no server-mode client; a server-mode build keeps both Google modules out
+      # of its entry chunk. Builds go to throwaway folders.
+      - name: Require every Google flag row to ship only what it may
+        run: bash scripts/check-google-bundles.sh
 
       - name: Install companion
         run: npm --prefix companion ci

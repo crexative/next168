@@ -2,7 +2,7 @@ import { existsSync } from 'node:fs'
 import { defineConfig, devices, webkit } from '@playwright/test'
 import { previewPorts } from './e2e/support/ports'
 
-const { root: ROOT_PORT, subpath: SUBPATH_PORT } = previewPorts()
+const { root: ROOT_PORT, subpath: SUBPATH_PORT, server: SERVER_PORT } = previewPorts()
 // A well-formed but fake Google OAuth client ID: the e2e build ships the Google Calendar code, and every Google
 // request is answered by e2e/support/googleCalendar.ts.
 const E2E_GOOGLE_CLIENT_ID = '000000000000-e2etest.apps.googleusercontent.com'
@@ -38,6 +38,14 @@ export default defineConfig({
     {
       command: `VITE_E2E=1 VITE_GOOGLE_CLIENT_ID=${E2E_GOOGLE_CLIENT_ID} npm run build && npm run preview -- --port ${ROOT_PORT} --strictPort`,
       url: `http://127.0.0.1:${ROOT_PORT}/`,
+      reuseExistingServer: false,
+      timeout: 180_000,
+    },
+    {
+      // The same app built as the Weeklid-server client (VITE_GOOGLE_SERVER=1), in its own output folder; the Google server
+      // routes are answered by e2e/support/googleServer.ts.
+      command: `VITE_E2E=1 VITE_GOOGLE_CLIENT_ID=${E2E_GOOGLE_CLIENT_ID} VITE_GOOGLE_SERVER=1 npm run build-only -- --outDir dist-server --emptyOutDir && npm run preview -- --outDir dist-server --port ${SERVER_PORT} --strictPort`,
+      url: `http://127.0.0.1:${SERVER_PORT}/`,
       reuseExistingServer: false,
       timeout: 180_000,
     },
