@@ -26,7 +26,8 @@ const PERMISSIONS = 'https://myaccount.google.com/connections'
 const SERVER_BASE = `http://127.0.0.1:${previewPorts().server}/`
 const TWO_HOURS = 2 * 3600 * 1000
 
-test.use({ baseURL: SERVER_BASE, serviceWorkers: 'block', launchOptions: { args: ['--disable-features=WebGPU'] } })
+// No launch flags: this file also runs on WebKit (@smoke), which rejects Chromium-only arguments.
+test.use({ baseURL: SERVER_BASE, serviceWorkers: 'block' })
 
 interface Rig { context: BrowserContext; page: Page; google: GoogleFake; server: GoogleServerFake; console: string[] }
 
@@ -556,8 +557,12 @@ test.describe('A-11 late results across a Disconnect', () => {
         await afterwards(a, b)
       })
 
-      for (const [label, at] of [['(a)', 'afterMint'], ['(d)', 'afterRead']] as const) {
-        test(`${label} a mint that outlives the lock's 15 s abort overlaps the Disconnect, and its reply reaches no one (${name})`, async ({ context }) => {
+      // (a) is serialized by the browser lock (above) unless the 15 s abort frees it. (d) is NOT a lock case: it is the
+      // handler-level residual, where a refresh already in flight at the server across a Disconnect can answer 200
+      // (proved against the real handler in server/google/clientRaces.spec.ts); here the client has aborted, so the
+      // reply reaches no one, and the next mint fails.
+      for (const [label, at, what] of [['(a)', 'afterMint', "a mint that outlives the lock's 15 s abort overlaps the Disconnect"], ['(d)', 'afterRead', 'a refresh in flight at the server across the Disconnect (handler-level residual, not serialized by the lock)']] as const) {
+        test(`${label} ${what}: its reply reaches no one and the next mint fails (${name})`, async ({ context }) => {
           const world = newWorld()
           world.revokeAnswer = revokeAnswer
           const { a, b } = await twoTabs(context, world, broadcast)
