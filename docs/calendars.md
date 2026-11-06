@@ -130,4 +130,18 @@ Record dates in UTC and codes, counts and yes/no only: never addresses, ids, tit
 
 | UTC date | Spike / check | Platform | Browser version | Observed |
 | --- | --- | --- | --- | --- |
-| | | | | |
+| 2026-11-06 | S0 P1: exchange, refresh token, events scope | macOS, owner-run helper (#43), localhost:8788 | Chrome (not recorded) | exchange yes 200; refresh-token yes 200; events-scope yes 200 |
+| 2026-11-06 | S0 P2a: wrong PKCE verifier | same | same | exchange no 400; error invalid_grant 400; rejected yes 400 |
+| 2026-11-06 | S0 P2b: omitted PKCE verifier | same | same | exchange no 400; error invalid_grant 400; rejected yes 400 |
+| 2026-11-06 | S0 P2c: omitted client secret | same | same | exchange no 400; error invalid_request 400; rejected yes 400 |
+| 2026-11-06 | S0 P1′: second grant (RT2) | same | same | exchange yes 200; refresh-token yes 200; events-scope yes 200 |
+| 2026-11-06 | S0 P3: refresh RT1, expiry, primary events | same | same | exchange yes 200; refresh yes 200; expiry yes 200; events yes 200 |
+| 2026-11-06 | S0 P4: revoke RT1, then refresh RT2 | same | same | revoke yes 200; other-refresh-survives no 400; invalid-grant yes 400 (error invalid_grant) |
+| 2026-11-06 | S0 cleanup of the four refresh tokens | same | same | 4 of 4 failed 400, consistent with P4: every token was already revoked |
+
+**Reading (2026-11-06).** P1, P1′ and P3 confirm that a web client with a secret gets a refresh token for
+`calendar.events.readonly` and that it refreshes (about one hour of access) and reads the primary calendar. P2a and
+P2b reject a wrong or missing verifier and P2c a missing secret, so PKCE stays as defence in depth next to the secret.
+P4 shows **grant-wide revocation**: revoking one refresh token invalidated the other. Disconnect therefore removes
+Google from every device of that person, and its copy must say so (O-6). The owner removed the temporary localhost
+redirect URI afterwards; P4 had already revoked every token of the grant.
