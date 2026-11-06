@@ -56,9 +56,11 @@ async function newRig(context: BrowserContext, world: World, options: { device?:
   await context.addInitScript(browserTabChrome)
   await context.addInitScript(networkSwitch)
   if (installed) await context.addInitScript(installedApp)
-  let server!: GoogleServerFake
-  const google = await fakeGoogle(context, { events: [STANDUP], authorize: installed ? undefined : (token) => server.tokenIsValid(token) })
-  server = await fakeGoogleServer(context, world, device)
+  // Google judges tokens by what the server fake issued, which is registered right after it.
+  const issued = new Set<GoogleServerFake>()
+  const google = await fakeGoogle(context, { events: [STANDUP], authorize: installed ? undefined : (token) => [...issued].some((fake) => fake.tokenIsValid(token)) })
+  const server = await fakeGoogleServer(context, world, device)
+  issued.add(server)
   server.connected = options.connected ?? false
   const page = options.page ?? await context.newPage()
   const rig: Rig = { context, page, google, server, console: [] }
