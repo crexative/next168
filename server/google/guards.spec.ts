@@ -1,6 +1,6 @@
 // @vitest-environment node
 // S-1 (guards, each alone) and S-2 (configuration).
-import { describe, expect, it, vi } from 'vitest'
+import { describe, expect, it } from 'vitest'
 import { readConfig } from './config'
 import { APP, EPOCH_A, FAKE, OTHER_TOKEN_KEY, TOKEN_KEY, server, type Reply } from './testing/harness'
 
