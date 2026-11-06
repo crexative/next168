@@ -1,7 +1,7 @@
 # Permanent Google connection, slice S1b: the app client
 
-Status: **proposed, revision 4 (simplified)**; risk tier critical (auth/credentials). Earlier revisions: `a3a5613`,
-`8e5fea2` and `c7d5791` (2026-11-06). This revision is against `main` 8d6b6cb (S1a server merged at 9e2be62).
+Status: **proposed, revision 5**; risk tier critical (auth/credentials). Earlier revisions: `a3a5613`,
+`8e5fea2`, `c7d5791` and `e9deeff` (2026-11-06). This revision is against `main` 8d6b6cb (S1a server merged at 9e2be62).
 
 **Goal.** A person connects Google Calendar once per device and stays connected across reloads and restarts, through
 the deployed S1a server. Google Calendar stays read-only, primary calendar only. The lost v7.1 design survives in two
@@ -9,8 +9,9 @@ fragments: "client server mode" and "it also deletes the canary route; critical"
 
 **What the person gives up in server mode (stated plainly).** Weeklid no longer saves Google events on the device.
 Each time it opens, it asks the server for a token and reads the events again. **Without internet, Google events are
-not shown:** Week and Today say so, and AI prompts made offline carry no Google meetings. Today's mode (GIS) keeps
-working, unchanged, wherever server mode is not used.
+not shown:** Week and Today say so, and AI prompts made offline carry no Google meetings. In a server build, the
+contexts that still use today's GIS mode (installed apps before G-1, in-app browsers) stop saving the copy too
+(4-3); only a build without the flag keeps it.
 
 ## Round 3 resolution: simplification (Codex REJECT on `c7d5791`)
 
@@ -24,8 +25,17 @@ fencing it again.
 | 3 | The epoch fence does not cover the copy reader (`keepMatchingCopy`) | Gone: server mode never reads or writes the copy. The first thing a server-mode boot does is `erase()` the GIS-era copy (§2.5) | the persisted copy in server mode, `saveConnected`, `fencedCheck`, the fenced-mutations table |
 | 4 | Clearing a same-value tombstone | Gone, as in #1 | tombstones |
 | 5 | Positive browser detection matches embedded WebViews | Replaced by an **explicit allowlist** of top-level Safari, Chrome, Edge and Firefox tabs. Everything else, in-app WebViews included, stays on GIS. The doc states where a WebView cannot be told apart (§2.1) | the display-mode-only heuristic |
-| 6 | "Only while connected" does not settle the cache-header rule | Moot in server mode: nothing is stored. OD-S1b-4 is withdrawn for server mode and remains only for GIS mode's existing copy, which goes when GIS mode is retired | retention rule R-e |
+| 6 | "Only while connected" does not settle the cache-header rule | Moot in server mode: nothing is stored. OD-S1b-4 is withdrawn for every context of a server build (4-3) and remains only for builds without the flag | retention rule R-e |
 | 7 | INFO: callback-commit race during Delete all data or Disconnect | Still relevant (both call the server): server test A-12 | — |
+
+### Round 4 resolution (Codex ACCEPT WITH CHANGES on `e9deeff`): small edits, no new mechanism
+
+| # | Round-4 finding | Resolution | Where |
+|---|---|---|---|
+| 4-1 | A late read can follow a Disconnect | The claim "a stale tab can only under-connect" is dropped. The residual is now stated: a token already minted, or a Google read already in flight, in another tab or on another device, can still finish and show events, for up to the token's lifetime (about 1 h) for new reads, and until reload for what is already on screen. The bounded guarantee is that **no new mint succeeds afterwards and nothing is persisted**. A-11 holds a minted `/token` reply, a Google read and a second device across the Disconnect | §2.3, A-11 |
+| 4-2 | A missing device cookie looks like a successful cleanup | Client-only. `/status` and `/disconnect` cannot tell "no cookie" from "no credential" (both give `-.-` and `none`), but `/token` can: `noDevice` before storage, `notConnected` once the credential is read as absent and before any Google call (`handlers.ts:210`, `:220`). After a `none`, the client sends one `/token`; on `noDevice` it never claims cleanup and shows `googleAccessMayRemain` with the permissions link. No server change | §2.4, §3, A-13 |
+| 4-3 | The GIS copy survives in mixed modes | Copy persistence is off in **every** context of a server build: the GIS source keeps events in memory only too. Every boot in a server build, in any context, runs `erase()` (idempotent). The privacy claim is widened to match, and A-7 covers a browser tab plus an installed app | §2.2, §2.5, A-6, A-7 |
+| 4-4 | The installed gate contradicts the allowlist | Two branches: a **browser-tab branch** (the allowlist), and an **installed-app branch** admitted only when `VITE_GOOGLE_SERVER_INSTALLED=1`, with its own pinned signals. A-18 checks that branch | §2.1, A-14, A-18 |
 
 Kept from earlier rounds:
 - **R1-2:** neutral copy on any `/token` 401.
@@ -88,13 +98,12 @@ WebViews.
 
 ### 2.1 Context allowlist (fail-safe to GIS)
 
-The server source is used only when **every** condition below holds; otherwise the tab uses GIS mode, exactly as
-today.
+Common preconditions: `VITE_GOOGLE_SERVER=1`, the labs flag on, a secure context, not the companion (the gate as
+today), and a top-level window (`window.top === window`). The server source is then used when **one of the two
+branches** holds; otherwise the tab uses GIS mode.
 
-- `VITE_GOOGLE_SERVER=1`, the labs flag on, a secure context, and not the companion (the gate as today).
-- A top-level window (`window.top === window`), with `matchMedia('(display-mode: browser)').matches`.
-  `navigator.standalone` must not be `true`, and `document.referrer` must not start with `android-app://`.
-- The browser is on the allowlist:
+**Browser-tab branch.** `matchMedia('(display-mode: browser)').matches`, `navigator.standalone !== true`, a
+`document.referrer` that does not start with `android-app://`, and the browser on the allowlist:
 
 | Platform | Admitted when | Notes |
 |---|---|---|
@@ -103,22 +112,27 @@ today.
 | macOS Safari | UA contains `Version/` and `Safari/`, not `Chrome/` | — |
 | iPhone/iPad | UA contains `Safari/` and either `Version/` (Safari), `CriOS/`, `EdgiOS/` or `FxiOS/`, and **none of** `FBAN`, `FBAV`, `Instagram`, `GSA/`, `Line/`, `WhatsApp` | **Limitation:** every iOS browser is WebKit (R-M1). An in-app WKWebView that sends a Safari-like UA without a marker cannot be told apart and would be admitted. The consequence is bounded: the round trip to Google may fail (`connectFailed`), and nothing is stored on the device in server mode |
 
-Installed apps (`standalone`, `fullscreen`, `minimal-ui`) are admitted only after gate G-1 sets
-`VITE_GOOGLE_SERVER_INSTALLED=1`. Even then, the platform row must still match. Until then they get GIS and the
-`installedNote`.
+**Installed-app branch**, only when `VITE_GOOGLE_SERVER_INSTALLED=1` (set after gate G-1):
+- iPhone/iPad home-screen app: `navigator.standalone === true`. Only Safari's home-screen apps set it; an in-app
+  WKWebView does not.
+- Android or desktop installed app: `matchMedia('(display-mode: standalone)')` or `minimal-ui` or `fullscreen` matches
+  **and** `navigator.userAgentData.brands` contains `Google Chrome` or `Microsoft Edge` (a WebAPK runs in Chrome).
+
+Without `INSTALLED=1`, the branch is off: installed apps get GIS and the `installedNote`. The selection is a pure
+function of the flags and these signals, with a table-driven unit test (A-14).
 
 ### 2.2 Files
 
 | File | Change |
 |---|---|
 | `src/features/calendars/google/serverConnection.ts` (new) | `post()` with `X-Weeklid: 1`, same-origin credentials, `no-store`, a 15 s abort, the R-8 lock copied from the canary, and a closed reply mapping (§2.4); `forgetThisDevice(revoke)` = `status` → `disconnect{revoke, gen}`, with one retry on `stale` |
-| `useGoogleConnection.ts` | A `TokenSource` port (`gis` \| `server`). The server path keeps events **in memory only** (no `saved()` calls) and keeps today's tickets and BroadcastChannel forget |
+| `useGoogleConnection.ts` | A `TokenSource` port (`gis` \| `server`). In a server build **both** sources keep events in memory only: `saved()` is a no-op port, so `loadMatching` returns nothing and `save` writes nothing. Today's tickets and BroadcastChannel forget stay |
 | `googleGate.ts` | `googleTokenSource()` (§2.1); `captureGoogleReturn()` strips `?google=` |
-| `src/features/calendars/index.ts` | Server source: strip `?google=`, call `savedGoogleEvents().erase()`, start the store |
-| `DataSettings.vue` | Server build: Delete all data runs `forgetThisDevice(false)` (5 s) before the existing wipe; the result picks the message (§3) |
+| `src/features/calendars/index.ts` | Any server build, any context: strip `?google=` and call `savedGoogleEvents().erase()` on every boot, before the store starts |
+| `DataSettings.vue` | Server build: Delete all data runs `forgetThisDevice(false)` (5 s, plus the `noDevice` probe of §2.4) before the existing wipe; the result picks the message (§3) |
 | Sheet and section `.vue` | Connect → `/connect` → `location.assign`; Disconnect disabled while `navigator.onLine === false`; a Google line on Week and Today for "unavailable offline"; Details shows the selected source and the last server code |
 | `env.d.ts`, `vite.config.ts`, `ci.yml` | The flag matrix (§2.7) |
-| i18n (5 locales), `docs/calendars.md`, `DEPLOYMENT.md`, privacy draft | §3; G-1; merged steps D1 and D3. Privacy §4 and §8: one encrypted permission per device on D1, events never through it and never stored on the device in server mode, account-wide Disconnect, how to delete |
+| i18n (5 locales), `docs/calendars.md`, `DEPLOYMENT.md`, privacy draft | §3; G-1; merged steps D1 and D3. Privacy §4 and §8: one encrypted permission per device on D1, events never through it and never stored on the device in any context of a server build, account-wide Disconnect, how to delete (and `googleAccessMayRemain`) |
 | Canary removal, e2e, contract spec | §2.6, §4 |
 
 No new server route, no server behaviour change beyond the canary removal, no D1 migration, no timer, and no new
@@ -143,24 +157,26 @@ The only durable client state is today's labs flag. The device cookie and the D1
            network / 5xx / second stale ─▶ still connected, disconnectFailed ("try again")
 ```
 
-**Why a stale tab can only under-connect (no new mechanism).** A tab is connected only while it holds an access
-token from a successful `/token`. That call needs this device's credential row (R-3), and a row is created only by a
-callback commit from a pending row (R-2). A pending row comes only from `/connect`, which a tap starts. Disconnect
-deletes the row before revoking (R-4). In the same browser, the shared lock (R-8) puts every mint either before the
-Disconnect or after it:
+**What Disconnect guarantees, and what it does not.**
 
-- **After it**, the mint answers `notConnected`.
-- **Before it**, the token it got is dropped in memory by the broadcast forget. Google invalidates it too when the
-  revoke is confirmed (R-G3).
-- **Writes:** `touch` and `rotate` are conditional on the connection id, so a late mint never re-creates or revives a
-  row.
+The guarantee: **after a terminal Disconnect answer, no new mint for this device succeeds, and nothing Google is
+persisted anywhere on any device.**
+- Disconnect deletes this device's credential row before revoking (R-4), so a later `/token` answers `notConnected`.
+- A row is created only by a callback commit from a pending row, which only a Connect tap starts (R-2). `touch` and
+  `rotate` are conditional on the connection id (R-3), so a late mint never re-creates or revives a row.
+- No context of a server build persists events (§2.2).
 
-The residual cases:
+The residual, stated rather than fenced. Event reads do not take the lock, and the lock does not span devices.
+1. **Same device, another tab.** A `/token` reply already minted, or a Google read already in flight, can finish
+   after the Disconnect. With BroadcastChannel, the forget bumps that tab's generation and aborts its requests, so
+   the result is dropped. Without it, the tab shows those events and can read again with that token until it
+   expires, about 1 h.
+2. **Another device on the same account.** It keeps what is on screen until it reloads or reads again. A new read
+   succeeds only while its access token is live and Google has not invalidated it. A confirmed revoke ends that at
+   once (R-G3); an unconfirmed one does not, and the Disconnect message says so, with the permissions link. Its next
+   mint fails with `reconnect` once Google has revoked the grant.
 
-- If the revoke is *unconfirmed*, a token minted on another device just before the Disconnect stays valid in that
-  tab's memory for up to about an hour. The message says the revoke was unconfirmed and links to the permissions page.
-- If the browser loses the broadcast (no BroadcastChannel), a same-browser tab keeps its in-memory token until it
-  expires. It shows events read before the Disconnect and cannot mint again.
+Neither case can mint again or persist anything.
 
 **Retained rules:** no `/token` answer changes anything durable; access tokens stay in memory and are never logged;
 without `navigator.locks` nothing is sent (`lockUnavailable`).
@@ -172,6 +188,20 @@ without `navigator.locks` nothing is sent (`lockUnavailable`).
 | Disconnect | `forgetThisDevice(true)`; local forget only after a terminal answer | The button is disabled with `disconnectNeedsNetwork`; a `/disconnect` that does not get through leaves the tab connected and shows `disconnectFailed` |
 | Delete all data (server build, any source, labs on or off) | `forgetThisDevice(false)` first (this device's permission goes; other devices keep theirs), then the wipe | The wipe runs anyway; the message `deleteAllGoogleOffline` names what remains and links to `https://myaccount.google.com/connections` |
 
+**A missing device cookie (4-2).** With no cookie, `/status` answers `gen:'-.-'` and `/disconnect` answers `none`.
+A cookie with no credential gives the same answers (`handlers.ts:276`, `:302`, `:321`), so `none` alone proves
+nothing. `/token` distinguishes them without contacting Google: `noDevice` when there is no cookie (`handlers.ts:210`),
+`notConnected` once the credential is read as absent (`:220`). So after a `none`, the client sends one `/token`:
+
+| `/token` after `none` | Meaning | Disconnect | Delete all data |
+|---|---|---|---|
+| `notConnected` | this device holds nothing on the server | `revokeUnconfirmed` + link (as before) | done, no Google message |
+| `noDevice` | the cookie is gone, and a credential may still exist under it | `googleAccessMayRemain` + link; the tab still forgets in memory | wipe, then `googleAccessMayRemain` + link |
+| `200` (a race with a new connect) | a credential exists | run `forgetThisDevice` once more; if it is still not terminal → `disconnectFailed` | as Disconnect, then the wipe |
+
+A credential stranded behind a lost cookie can never be minted again (its device id is gone) and is swept after 190
+days (R-6). The person is told to remove access at Google.
+
 After an offline Delete all data, the wipe also removes the labs flag (R-10), so the app makes no server call until
 the person opts in again. If they opt in again while the server still holds that device's credential, the next open
 mints and connects. That is what `deleteAllGoogleOffline` promises ("access stays until you disconnect online"), and
@@ -179,10 +209,10 @@ the 190-day sweep (R-6) ends it otherwise.
 
 ### 2.5 Migration and rollback
 
-- **The first server-source boot** erases the GIS-era copy (`erase()`, the existing behaviour); the person connects
-  once. Today's GIS mode keeps its copy where it still runs. On Android, a Chrome tab (server) and the installed app
-  (GIS) share storage, so a Chrome tab opening deletes the installed app's copy. That direction is safe: data goes,
-  nothing appears.
+- **Every boot of any context in a server build** erases the GIS-era copy (`erase()`, idempotent), and no context of
+  a server build writes one again (4-3). So in a server build nothing Google is stored on the device, in a browser
+  tab, an installed app or an in-app browser alike. The person loses the offline copy in the GIS contexts too; the
+  `installedNote` says so. Only a build without `VITE_GOOGLE_SERVER` keeps today's copy.
 - Old-chunk tabs keep GIS until they reload. Disconnect revokes both grants (same client).
 - **Rollback:** unset `VITE_GOOGLE_SERVER` and redeploy, and every tab is on GIS mode. The server credentials sit
   unused until the sweep or the `DEPLOYMENT.md` purge. The hard stop is still removing `GOOGLE_SERVER_ENABLED`.
@@ -247,7 +277,8 @@ Unchanged: `connect`, `continue`, `readOnly`, `aiBusy`, `accessDenied`, `missing
 | `messages.connectFailed` | Google didn't complete the connection ({code}). Try again. | Google no completó la conexión ({code}). Inténtalo de nuevo. |
 | `messages.lockUnavailable` | This browser can't connect Google Calendar safely. Update it and try again. | Este navegador no puede conectar Google Calendar de forma segura. Actualízalo e inténtalo de nuevo. |
 | `deleteAllGoogleOffline` | Your data on this device was deleted, but Weeklid couldn't reach its server: its access to your Google Calendar stays until you disconnect online or remove Weeklid at myaccount.google.com/connections. | Se borraron tus datos de este dispositivo, pero Weeklid no pudo llegar a su servidor: su acceso a tu Google Calendar sigue hasta que desconectes con internet o quites Weeklid en myaccount.google.com/connections. |
-| `installedNote` | Here Google asks for permission again about every hour. To stay connected, open Weeklid in Safari, Chrome, Edge or Firefox. | Aquí Google vuelve a pedir permiso más o menos cada hora. Para seguir conectado, abre Weeklid en Safari, Chrome, Edge o Firefox. |
+| `googleAccessMayRemain` | Weeklid couldn't confirm that its access to your Google Calendar was removed. To be sure, remove Weeklid at myaccount.google.com/connections. | Weeklid no pudo confirmar que se quitó su acceso a tu Google Calendar. Para estar seguro, quita Weeklid en myaccount.google.com/connections. |
+| `installedNote` | Here Google asks for permission again about every hour, and your events aren't saved between visits. To stay connected, open Weeklid in Safari, Chrome, Edge or Firefox. | Aquí Google vuelve a pedir permiso más o menos cada hora y tus eventos no se guardan entre visitas. Para seguir conectado, abre Weeklid en Safari, Chrome, Edge o Firefox. |
 
 `googleCopy.spec.ts` gains server-mode cases. They assert "ni se guardan en este dispositivo", "misma cuenta" and
 the link in `deleteAllGoogleOffline`. They also assert that no server-mode string says "todos tus dispositivos" or
@@ -267,19 +298,19 @@ The e2e harness extends the existing one:
 | A-3 | Headers, credentials, `no-store` and the lock on every call; nothing is sent without `navigator.locks` | unit, plus the e2e request log |
 | A-4 | Connect → `/connect{from:'app', epoch}` → navigation; `gisLoads === 0` | e2e |
 | A-5 | **Stays connected:** `?google=connected`, then a reload → one `/token` and one read each time, no consent; the parameter is stripped | e2e |
-| A-6 | **Nothing Google is persisted in server mode:** after connect and read, IndexedDB `next168-google` holds no copy, and no storage, cache or console entry holds a token or an event title | e2e |
-| A-7 | The first server-mode boot deletes a seeded GIS-era copy | e2e |
+| A-6 | **Nothing Google is persisted in a server build, in either source:** after connect and read in a server-source tab **and** in a GIS-source context (emulated installed app), IndexedDB `next168-google` holds no copy, and no storage, cache or console entry holds a token or an event title | e2e |
+| A-7 | **Mixed modes (4-3):** with a seeded GIS-era copy, a boot of either a browser tab (server) or an emulated installed app (GIS) on the same origin deletes it. Then the installed app connects through GIS and reads, and a reload of each context finds no copy | e2e |
 | A-8 | Offline at open → no request, `eventsOffline` on Week and Today; online, Update → events | e2e |
 | A-9 | `/token 401` → Connect and the neutral message; `5xx` → `serverUnavailable`; `disabled` → `serverPaused` | e2e |
 | A-10 | Disconnect: disabled offline; online → `status` + `disconnect{revoke:true, gen}`; local forget only after a terminal answer; a failed request → still connected, `disconnectFailed`; the dialog text matches §3 | e2e |
-| A-11 | **Two tabs:** B's `/token` is held; A disconnects (the fake server deletes the credential); B's reply is released. The fake must follow R-4: after the Disconnect, a mint answers `notConnected`. Assert B shows no event read after the Disconnect; B's next open → `notConnected`, Connect shown | e2e |
+| A-11 | **Late results across a Disconnect (4-1).** The fake server follows R-4: after a Disconnect, every mint for that device answers `notConnected`, and the fake Google rejects that grant's tokens once the revoke is confirmed. (a) Tab B's `/token` is **minted** and its reply held; A disconnects; the reply is released. (b) Tab B's Google read is held; A disconnects; the read is released. (c) Device 2 (a second browser context, its own cookie jar) is connected and reading; device 1 disconnects with a confirmed revoke. In each case, assert the bounded outcome: with BroadcastChannel, (a) and (b) show nothing new; without it, they may show those events; (c) keeps what is on screen. In every case the next mint fails (`notConnected` or `reconnect`), and storage holds no Google data | e2e |
 | A-12 | **Callback-commit race (R3-7), against the real handlers:** `/connect` makes a pending row; Delete all data's `status` + `disconnect{revoke:false, gen}` runs before the callback → the callback answers `cancelled` and no credential exists. Between `status` and `disconnect` a commit lands → `stale` → the retry deletes it | unit (node), S1a harness |
-| A-13 | Delete all data online → `forget` before the wipe; offline → wipe, `deleteAllGoogleOffline` with the link; with the labs flag off and no `next168-google` database the call is still made | e2e |
-| A-14 | Flag matrix (§2.7) and `googleTokenSource()` matrix, including installed and WebView user agents → `gis` | unit, CI |
+| A-13 | Delete all data online → `forget` before the wipe; offline → wipe, `deleteAllGoogleOffline` with the link; with the labs flag off and no `next168-google` database the call is still made. **No cookie (4-2):** `none` then `/token noDevice` → `googleAccessMayRemain` with the link and no success claim; `none` then `notConnected` → no Google message. The same two cases for Disconnect | e2e, plus a node case over the real handlers confirming the `noDevice`/`notConnected` split |
+| A-14 | Flag matrix (§2.7) and `googleTokenSource()` matrix: each browser-tab row → `server`; WebView user agents → `gis`; an installed app → `gis` without `INSTALLED` and `server` with it (iOS `navigator.standalone === true`; Android/desktop `standalone` with a Chrome or Edge brand); an installed context with another brand → `gis` | unit, CI |
 | A-15 | Canary gone; a pre-existing `return_to='canary'` row → `303` to the app; `from:'canary'` → 400 | unit; owner in production: `GET /api/google/canary` returns the app |
 | A-16 | **Production, browser tabs** (desktop Chrome, iPhone Safari, Android Chrome): connect; reload; reopen the next day, still connected | production with the owner |
 | A-17 | **Allowlist on real contexts:** Details → source reads `server` in those tabs and `gis` in the Instagram, Gmail and Facebook in-app browsers on iPhone and Android and in the home-screen apps. Any in-app context that reads `server` is recorded, and its marker is added to §2.1 | production with the owner |
-| A-18 | **Gate G-1:** with `INSTALLED=1` (OD-S1b-3), connect inside each home-screen app; the return lands in the app with it connected; still connected after a force-close. If either fails, `INSTALLED` stays unset | production with the owner |
+| A-18 | **Gate G-1, installed-app branch:** on a build with `INSTALLED=1` (OD-S1b-3), Details → source reads `server` in each home-screen app. Connect there; the return lands in the app with it connected; still connected after a force-close. If either platform fails, `INSTALLED` stays unset and both apps keep `gis` | production with the owner |
 | A-19 | Two devices on the same account: Disconnect on A → B's next open → `reconnectNeeded`. In Testing, `reconnectNeeded` at about day 7–8 | production with the owner, dated |
 | A-20 | The privacy draft describes §2.3–§2.4 and how to delete (R-P1); no "no Weeklid server" | PR diff review |
 
@@ -295,10 +326,10 @@ The e2e harness extends the existing one:
 - **YAGNI:** timers, visibility rereads, Background Sync, token sharing between tabs, a "connected" broadcast, a D1
   migration.
 
-## 6. What the red team should attack (round 4)
+## 6. What the red team should attack (round 5)
 
-1. The stale-tab argument in §2.3: find a mint, read or publish that survives a confirmed Disconnect beyond the stated
-   residuals.
+1. The Disconnect guarantee in §2.3: find a mint or a persisted write that survives a terminal Disconnect, beyond the
+   stated residual.
 2. The allowlist: an admitted context that should be excluded, or a common real browser wrongly sent to GIS.
 3. Delete all data offline, then opting in again: is the reconnect honest given `deleteAllGoogleOffline`?
 4. The Android shared storage between a Chrome tab and the installed app (§2.5).
