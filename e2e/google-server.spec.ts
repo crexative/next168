@@ -1,4 +1,4 @@
-import { expect, test, type BrowserContext, type Page } from '@playwright/test'
+import { expect as baseExpect, test, type BrowserContext, type Page } from '@playwright/test'
 import { onlyProject, openTab, seedKey, V2_KEY } from './fixtures'
 import { onboardedDocument } from './support/seed'
 import {
@@ -11,6 +11,9 @@ import { previewPorts } from './support/ports'
 // Google Calendar through the Weeklid server (design S1b): acceptance A-3 to A-11 and A-13 over the build with
 // VITE_GOOGLE_SERVER=1. Google and the Weeklid server are faked at their real addresses (support/googleCalendar.ts,
 // support/googleServer.ts); the contexts are made to match the allowlist of design 2.1.
+
+// CI runs every spec in parallel on shared runners; these flows cross two servers and several tabs.
+const expect = baseExpect.configure({ timeout: 15_000 })
 
 const NOW = new Date('2026-10-19T12:00:00.000Z')
 const TUESDAY = '2026-10-20'
@@ -137,7 +140,7 @@ test.describe('A-4 Connect', () => {
     await boot(rig.page)
     await expect(rig.page.getByTestId('google-connect')).toBeVisible()
     await expect(rig.page.getByTestId('google-message')).toHaveCount(0)
-    expect(rig.server.count('token')).toBe(1)
+    await expect.poll(() => rig.server.count('token')).toBe(1)
     await rig.page.getByTestId('google-connect').click()
     const sheet = rig.page.getByTestId('google-connect-sheet')
     await expect(sheet).toContainText('A Weeklid server keeps Google\'s permission for this device, encrypted.')
