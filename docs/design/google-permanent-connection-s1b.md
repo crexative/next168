@@ -35,6 +35,7 @@ fencing it again.
 | 4-1 | A late read can follow a Disconnect | The claim "a stale tab can only under-connect" is dropped. The residual is now stated: a token already minted, or a Google read already in flight, in another tab or on another device, can still finish and show events, for up to the token's lifetime (about 1 h) for new reads, and until reload for what is already on screen. The bounded guarantee is that **no new mint succeeds afterwards and nothing is persisted**. A-11 holds a minted `/token` reply, a Google read and a second device across the Disconnect | §2.3, A-11 |
 | 4-2 | A missing device cookie looks like a successful cleanup | Client-only. `/status` and `/disconnect` cannot tell "no cookie" from "no credential" (both give `-.-` and `none`), but `/token` can: `noDevice` before storage, `notConnected` once the credential is read as absent and before any Google call (`handlers.ts:210`, `:220`). After a `none`, the client sends one `/token`; on `noDevice` it never claims cleanup and shows `googleAccessMayRemain` with the permissions link. No server change | §2.4, §3, A-13 |
 | 4-3 | The GIS copy survives in mixed modes | Copy persistence is off in **every** context of a server build: the GIS source keeps events in memory only too. Every boot in a server build, in any context, runs `erase()` (idempotent). The privacy claim is widened to match, and A-7 covers a browser tab plus an installed app | §2.2, §2.5, A-6, A-7 |
+| 4-1b | (round 5) A `/token` refresh in flight across a Disconnect can still answer `200` | Accepted as a residual, with no server change. The guarantee is narrowed to mints *started after* the terminal Disconnect answer. The in-flight refresh is residual 3: one access token of about 1 h, nothing persisted. A-11 gains case (d), which holds the refresh across the Disconnect | §2.3, A-11 |
 | 4-4 | The installed gate contradicts the allowlist | Two branches: a **browser-tab branch** (the allowlist), and an **installed-app branch** admitted only when `VITE_GOOGLE_SERVER_INSTALLED=1`, with its own pinned signals. A-18 checks that branch | §2.1, A-14, A-18 |
 
 Kept from earlier rounds:
@@ -159,9 +160,10 @@ The only durable client state is today's labs flag. The device cookie and the D1
 
 **What Disconnect guarantees, and what it does not.**
 
-The guarantee: **after a terminal Disconnect answer, no new mint for this device succeeds, and nothing Google is
-persisted anywhere on any device.**
-- Disconnect deletes this device's credential row before revoking (R-4), so a later `/token` answers `notConnected`.
+The guarantee: **a mint for this device *started after* the terminal Disconnect answer does not succeed, and nothing
+Google is persisted anywhere on any device.**
+- Disconnect deletes this device's credential row before revoking (R-4), so a `/token` started later answers
+  `notConnected`.
 - A row is created only by a callback commit from a pending row, which only a Connect tap starts (R-2). `touch` and
   `rotate` are conditional on the connection id (R-3), so a late mint never re-creates or revives a row.
 - No context of a server build persists events (§2.2).
@@ -176,7 +178,14 @@ The residual, stated rather than fenced. Event reads do not take the lock, and t
    once (R-G3); an unconfirmed one does not, and the Disconnect message says so, with the permissions link. Its next
    mint fails with `reconnect` once Google has revoked the grant.
 
-Neither case can mint again or persist anything.
+3. **A refresh already in flight (accepted, no server change).** A `/token` that read the credential and started its
+   Google refresh before Disconnect deleted the row can still answer `200` afterwards. Its zero-row `touch` or
+   `rotate` writes do not block the response (`handlers.ts:213-248`). The shared lock normally orders this mint before
+   the Disconnect in the same browser. It can still overlap when the lock task's 15 s abort releases the lock while
+   the server is still working. The result is one access token of about 1 h, handled as in case 1, and nothing is
+   persisted.
+
+None of these cases can mint again once a mint starts after the terminal answer, and none persists anything.
 
 **Retained rules:** no `/token` answer changes anything durable; access tokens stay in memory and are never logged;
 without `navigator.locks` nothing is sent (`lockUnavailable`).
@@ -303,7 +312,7 @@ The e2e harness extends the existing one:
 | A-8 | Offline at open → no request, `eventsOffline` on Week and Today; online, Update → events | e2e |
 | A-9 | `/token 401` → Connect and the neutral message; `5xx` → `serverUnavailable`; `disabled` → `serverPaused` | e2e |
 | A-10 | Disconnect: disabled offline; online → `status` + `disconnect{revoke:true, gen}`; local forget only after a terminal answer; a failed request → still connected, `disconnectFailed`; the dialog text matches §3 | e2e |
-| A-11 | **Late results across a Disconnect (4-1).** The fake server follows R-4: after a Disconnect, every mint for that device answers `notConnected`, and the fake Google rejects that grant's tokens once the revoke is confirmed. (a) Tab B's `/token` is **minted** and its reply held; A disconnects; the reply is released. (b) Tab B's Google read is held; A disconnects; the read is released. (c) Device 2 (a second browser context, its own cookie jar) is connected and reading; device 1 disconnects with a confirmed revoke. In each case, assert the bounded outcome: with BroadcastChannel, (a) and (b) show nothing new; without it, they may show those events; (c) keeps what is on screen. In every case the next mint fails (`notConnected` or `reconnect`), and storage holds no Google data | e2e |
+| A-11 | **Late results across a Disconnect (4-1).** The fake server follows R-4: after a Disconnect, every mint for that device answers `notConnected`, and the fake Google rejects that grant's tokens once the revoke is confirmed. (a) Tab B's `/token` is **minted** and its reply held; A disconnects; the reply is released. (b) Tab B's Google read is held; A disconnects; the read is released. (c) Device 2 (a second browser context, its own cookie jar) is connected and reading; device 1 disconnects with a confirmed revoke. (d) **In-flight refresh (4-1b), against the real handler:** tab B's `/token` has read the credential and its fake Google refresh is held; A's Disconnect reaches its terminal answer; the refresh is released. Assert `/token` answers `200` with one access token, no credential row exists, and B's next mint answers `notConnected`. In each case, assert the bounded outcome: with BroadcastChannel, (a), (b) and (d) show nothing new; without it, they may show those events until the token lapses; (c) keeps what is on screen. In every case the next mint started after the terminal answer fails (`notConnected` or `reconnect`), and storage holds no Google data | e2e |
 | A-12 | **Callback-commit race (R3-7), against the real handlers:** `/connect` makes a pending row; Delete all data's `status` + `disconnect{revoke:false, gen}` runs before the callback → the callback answers `cancelled` and no credential exists. Between `status` and `disconnect` a commit lands → `stale` → the retry deletes it | unit (node), S1a harness |
 | A-13 | Delete all data online → `forget` before the wipe; offline → wipe, `deleteAllGoogleOffline` with the link; with the labs flag off and no `next168-google` database the call is still made. **No cookie (4-2):** `none` then `/token noDevice` → `googleAccessMayRemain` with the link and no success claim; `none` then `notConnected` → no Google message. The same two cases for Disconnect | e2e, plus a node case over the real handlers confirming the `noDevice`/`notConnected` split |
 | A-14 | Flag matrix (§2.7) and `googleTokenSource()` matrix: each browser-tab row → `server`; WebView user agents → `gis`; an installed app → `gis` without `INSTALLED` and `server` with it (iOS `navigator.standalone === true`; Android/desktop `standalone` with a Chrome or Edge brand); an installed context with another brand → `gis` | unit, CI |
