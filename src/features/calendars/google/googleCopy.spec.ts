@@ -42,4 +42,40 @@ describe('Google Calendar copy', () => {
       expect(text, key).not.toBe(`calendars.googleConnection.messages.${key}`)
     }
   })
+
+  // Server mode (design S1b section 3): nothing about Google is saved on the device, Disconnect is account-wide, and the
+  // way to remove access at Google is always named.
+  describe('server mode', () => {
+    const SERVER_KEYS = ['summaryServer', 'stayConnected', 'goesToGoogle', 'testingServer', 'eventsOffline', 'disconnectBodyServer', 'disconnectNeedsNetwork', 'deleteAllGoogleOffline', 'googleAccessMayRemain', 'installedNote']
+    const SERVER_MESSAGES = ['disconnectFailed', 'revokeUnconfirmedServer', 'reconnectNeeded', 'serverPaused', 'serverUnavailable', 'connectFailed', 'lockUnavailable']
+    const serverTexts = (locale: string) => [
+      ...SERVER_KEYS.map((key) => t(`calendars.googleConnection.${key}`, locale)),
+      ...SERVER_MESSAGES.map((key) => t(`calendars.googleConnection.messages.${key}`, locale)),
+    ]
+
+    it('says in Spanish that the events are not saved on this device and where the permission lives', () => {
+      expect(t('calendars.googleConnection.stayConnected', 'es')).toContain('ni se guardan en este dispositivo')
+      expect(t('calendars.googleConnection.stayConnected', 'es')).toContain('sin internet no los verás')
+      expect(t('calendars.googleConnection.disconnectBodyServer', 'es')).toContain('misma cuenta')
+      expect(t('calendars.googleConnection.disconnectBodyServer', 'en')).toContain('same account')
+    })
+
+    it.each(SUPPORTED_LOCALES)('names where to remove access in %s, in both messages that cannot confirm it', (locale) => {
+      expect(t('calendars.googleConnection.deleteAllGoogleOffline', locale)).toContain('myaccount.google.com/connections')
+      expect(t('calendars.googleConnection.googleAccessMayRemain', locale)).toContain('myaccount.google.com/connections')
+    })
+
+    it.each(SUPPORTED_LOCALES)('never promises all devices or a copy of the events in %s', (locale) => {
+      const text = serverTexts(locale).join('\n')
+      expect(text).not.toMatch(/todos tus dispositivos|every device|all your devices|all devices|todos os (?:seus )?dispositivos|alle (?:deine )?Geräte|tous (?:tes|vos) appareils/iu)
+      expect(text).not.toMatch(/\b(?:copy|copia|cópia|Kopie|copie)\b/iu)
+    })
+
+    it('has every server-mode text in every locale', () => {
+      for (const locale of SUPPORTED_LOCALES) {
+        for (const key of SERVER_KEYS) expect(t(`calendars.googleConnection.${key}`, locale), `${locale} ${key}`).not.toBe(`calendars.googleConnection.${key}`)
+        for (const key of SERVER_MESSAGES) expect(t(`calendars.googleConnection.messages.${key}`, locale), `${locale} ${key}`).not.toBe(`calendars.googleConnection.messages.${key}`)
+      }
+    })
+  })
 })

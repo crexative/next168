@@ -147,6 +147,7 @@ export const useGoogleConnection = defineStore('googleConnection', () => {
   // Never reactive, never exposed: the access token.
   let token: { value: string; expiresAt: number } | undefined
   let oauth2: GisOAuth2 | undefined
+  let serverClient: Promise<ServerConnection> | undefined
   const inflight = new Set<AbortController>()
 
   const hasLiveToken = () => token !== undefined && token.expiresAt > services.now().getTime()
@@ -298,8 +299,9 @@ export const useGoogleConnection = defineStore('googleConnection', () => {
 
   // --- The Weeklid server source ---------------------------------------------------------------------------------------
 
-  let serverClient: Promise<ServerConnection> | undefined
-  const serverConnection = (): Promise<ServerConnection> => (serverClient ??= services.server!())
+  function serverConnection(): Promise<ServerConnection> {
+    return (serverClient ??= services.server!())
+  }
 
   function noteServerFailure(code: ServerCode): GoogleMessage {
     lastServerCode.value = code
@@ -358,9 +360,8 @@ export const useGoogleConnection = defineStore('googleConnection', () => {
 
   async function openServerSession(): Promise<void> {
     const returned = takeGoogleReturn()
-    const ticket = capture()
-    await mintAndRead(ticket)
-    if (returned && returned !== 'connected' && isCurrent(ticket)) message.value = returnMessage(returned)
+    await mintAndRead(capture())
+    if (returned && returned !== 'connected') message.value = returnMessage(returned)
   }
 
   function returnMessage(returned: string): GoogleMessage {

@@ -140,3 +140,32 @@ describe('googleTokenSource', () => {
     })
   })
 })
+
+describe('the address Google returns to', () => {
+  const run = async (href: string) => {
+    const replaceState = vi.fn()
+    const gate = await import('./googleGate')
+    gate.captureGoogleReturn({ href }, { replaceState })
+    return { replaceState, taken: gate.takeGoogleReturn() }
+  }
+
+  it('reads the result once and drops the parameter from the address, keeping the hash', async () => {
+    const { replaceState, taken } = await run('https://weeklid.crexative.com/?google=connected#/settings/calendars')
+    expect(taken).toBe('connected')
+    expect(replaceState).toHaveBeenCalledWith(null, '', 'https://weeklid.crexative.com/#/settings/calendars')
+    const gate = await import('./googleGate')
+    expect(gate.takeGoogleReturn()).toBeUndefined()
+  })
+
+  it('drops an unknown value without keeping it', async () => {
+    const { replaceState, taken } = await run('https://weeklid.crexative.com/?google=%3Cscript%3E#/week')
+    expect(taken).toBeUndefined()
+    expect(replaceState).toHaveBeenCalledWith(null, '', 'https://weeklid.crexative.com/#/week')
+  })
+
+  it('leaves an address without the parameter alone', async () => {
+    const { replaceState, taken } = await run('https://weeklid.crexative.com/#/week')
+    expect(taken).toBeUndefined()
+    expect(replaceState).not.toHaveBeenCalled()
+  })
+})
