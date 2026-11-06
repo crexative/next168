@@ -40,3 +40,8 @@ dev-dist/
 
 # Local development CA, certificates and private keys
 .lan-https/
+
+# Cloudflare Pages Functions: local state and secrets, never committed
+.wrangler/
+.dev.vars
+e2e/.wrangler-state/

@@ -34,7 +34,7 @@ export default defineConfig({
   },
   test: {
     environment: 'happy-dom',
-    include: ['src/**/*.spec.ts', 'src/**/*.test.ts', 'config/**/*.spec.ts'],
+    include: ['src/**/*.spec.ts', 'src/**/*.test.ts', 'config/**/*.spec.ts', 'server/**/*.spec.ts'],
     root,
     setupFiles: ['./src/test/setup.ts'],
     globalSetup: ['./config/preFenceSetup.ts'],

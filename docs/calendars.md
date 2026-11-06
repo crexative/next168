@@ -109,6 +109,21 @@ Owner approval 2026-10-26: read the **primary** Google calendar from the browser
 - **AI.** The any-AI prompt and the on-device assistant get Google meetings as "Busy" without titles (`externalForAi`); the any-AI panel says so.
 - **Diagnostics.** A collapsed "Details" in the section shows, from memory and the saved copy, whether the scope was granted, the token's remaining minutes, the last token/events/revoke result as a code with its UTC time, the number of events and the coverage dates. Never an address, id, title, token or Google's own text.
 
+### Connection server (S1a, dormant)
+
+The server in `server/google/` (operations: `DEPLOYMENT.md`, Functions) keeps one encrypted refresh token per device.
+
+- **Device id.** `/connect` adopts the `__Host-wl_dev` id a browser presents only when a credential already exists for
+  its hash; otherwise it mints a new id, so an id planted on a device without a connection never becomes the bearer of
+  a credential. Each connect also sweeps expired pending rows in the same D1 batch.
+- **Commit.** The callback inserts the credential from the device's pending row, deletes that row and sweeps, in one
+  batch. On a reconnect the insert replaces the device's previous refresh token (`ON CONFLICT DO UPDATE`) **without
+  revoking it**, by design: Google's revocation endpoint invalidates every access and refresh token the user granted
+  to the project, so revoking the old token would also kill the one just issued
+  ([Google, OAuth 2.0 for web server apps, Token revocation](https://developers.google.com/identity/protocols/oauth2/web-server#tokenrevoke),
+  read 2026-10-31). The replaced token is left to Google's own per client and user limit on refresh tokens, after
+  which older ones stop working.
+
 ### Spike evidence (owner, production, real account)
 
 Record dates in UTC and codes, counts and yes/no only: never addresses, ids, titles or screenshots of events.

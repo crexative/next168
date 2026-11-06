@@ -122,7 +122,7 @@ Auto-detects browser language with localStorage persistence.
 
 ### Prerequisites
 
-- Node.js 20.19.0+ or 22.12.0+ (see `package.json` engines)
+- Node.js 22.13.0+ (see `package.json` engines; Wrangler needs Node 22, and the server tests use `node:sqlite`)
 - npm or yarn
 
 ### Quick Start
