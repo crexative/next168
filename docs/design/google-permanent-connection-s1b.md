@@ -1,7 +1,7 @@
 # Permanent Google connection, slice S1b: the app client
 
-Status: **proposed, revision 5**; risk tier critical (auth/credentials). Earlier revisions: `a3a5613`,
-`8e5fea2`, `c7d5791` and `e9deeff` (2026-11-06). This revision is against `main` 8d6b6cb (S1a server merged at 9e2be62).
+Status: **proposed, revision 6**; risk tier critical (auth/credentials). Earlier revisions: `a3a5613`,
+`8e5fea2`, `c7d5791`, `e9deeff` and revision 5 (2026-11-06). This revision is against `main` `f77ebc0` (S1a server merged at 9e2be62).
 
 **Goal.** A person connects Google Calendar once per device and stays connected across reloads and restarts, through
 the deployed S1a server. Google Calendar stays read-only, primary calendar only. The lost v7.1 design survives in two
@@ -90,6 +90,55 @@ production endpoint was called.
 | R-M1 | UA tokens: Chrome adds `CriOS/` on iPhone; Edge `Edg/` (desktop), `EdgA/` (Android), `EdgiOS/` (iPhone); Firefox `Firefox/`; Safari `Version/…` (+ `Mobile` on iPhone); "non-Apple iPhone browsers … are still based on WebKit" | https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/User-Agent (read 2026-11-06) |
 | R-C1 | Pages: with no matching Function, a request falls back to static assets | https://developers.cloudflare.com/pages/functions/routing/ (read 2026-11-06) |
 
+### R-M2. Browser market, identification and cookie research (read 2026-11-06)
+
+StatCounter's latest available monthly data was October 2026. Desktop: Chrome 66.98%, Edge 13.24%, Safari 7.83%,
+Firefox 5.72%, Opera 2.65%, Brave 1.01%. Mobile: Chrome 70.37%, Safari 21.91%, Samsung Internet 3.16%, Opera
+1.88%, UC Browser 0.94%, Firefox 0.61%. The vendor panel does not separately list Yandex, DuckDuckGo, Vivaldi or
+Arc; treat those as smaller/unreported categories rather than inferring zero use. Opera's panel does not split Opera,
+Opera GX, Opera Mobile or Opera Mini. Sources: [StatCounter desktop](https://gs.statcounter.com/browser-market-share/desktop/worldwide),
+[StatCounter mobile](https://gs.statcounter.com/browser-market-share/mobile/worldwide), read 2026-11-06.
+
+| Browser | Client Hints brands; UA tokens (desktop / Android / iOS) | Cookie/storage flow evidence | Decision and reason |
+|---|---|---|---|
+| Chrome | `Google Chrome` (with `Chromium`) on desktop/Android; `Chrome/`; `CriOS/` on iOS; no iOS Client Hints | No documented block to this first-party cookie and top-level redirect flow | Yes: desktop, Android, iOS. Positive brand or platform token; iOS follows the existing WebKit rule. |
+| Safari | No browser Client Hints brand; `Version/` + `Safari/` on macOS and iOS | Third-party-cookie blocking does not apply; WebKit's bounce-tracker mitigations may affect classified sites | Yes: macOS, iOS. Existing Safari marker. No Android Safari. |
+| Edge | `Microsoft Edge` on desktop/Android; `Edg/`, `EdgA/`, `EdgiOS/` | No documented block to this first-party cookie and top-level redirect flow | Yes: desktop, Android, iOS. Distinct brand/token on each supported engine/platform. |
+| Firefox | No browser Client Hints brand; `Firefox/` on desktop/Android; `FxiOS/` on iPhone (iPad may use Safari UA) | No documented block to this first-party cookie and top-level redirect flow | Yes: desktop, Android, iOS. Distinct Gecko token; Android WebView marker remains excluded. |
+| Samsung Internet | Do not rely on a Client Hints brand; `SamsungBrowser/` on Android, including desktop-site mode | No documented block to this first-party cookie and top-level redirect flow | Yes: Android. Samsung's vendor UA format makes the token mandatory for current Android UAs. |
+| Opera, Opera GX, Opera Mobile | No stable brand used; `OPR/` on desktop and Android; Opera on iOS uses `OPT/`; GX uses the shared Opera `OPR/` marker | No documented block for Opera/Opera GX/Opera Mobile; Opera Mini's proxy mode is outside this flow review | Yes: desktop, Android, iOS. MDN documents positive tokens; the marker cannot distinguish GX from standard Opera. Opera Mini stays on GIS. |
+| Brave | `Brave` + `Chromium` on desktop/Android, but Brave may hide the brand; no distinct desktop/Android UA token; iOS adds `Brave` to Safari UA (v1.78+) | No documented block to first-party cookies; privacy protections aimed at third parties do not establish a flow failure | Yes: desktop/Android when brand is present; iOS with `Brave` token. Missing/hidden brand fails safe to GIS. |
+| Yandex Browser | No relied-on brand; `YaBrowser/` on desktop and Android; no verified iOS marker | No browser-specific first-party-cookie or top-level redirect restriction found | Yes: desktop, Android. Token is present in maintained UA parser source; no iOS admission without a verified marker. |
+| UC Browser | No relied-on brand; `UCBrowser/` on desktop and Android; current iOS token not verified | No browser-specific first-party-cookie or top-level redirect restriction found; UC's proxy/cache behavior was not independently verified | Yes: desktop, Android. No iOS admission without a verified marker. UC's UA spec is linked by UCWeb, but its PDF endpoint did not render in the reader on this date. |
+| DuckDuckGo Browser | No reliable browser Client Hints brand or vendor-documented UA token found across desktop/mobile; observed iOS UA may include `DuckDuckGo/`; Android and Apple apps use embedded WebView engines | Mobile OAuth is documented as blocked in embedded WebViews; no separate desktop cookie failure found | No: all platforms. Google OAuth policy disallows embedded user agents. The gate rejects observed `DuckDuckGo/` before Safari matching; unidentified Safari-like contexts retain the iOS limitation below. |
+| Vivaldi | No default distinct marker on desktop or Android; desktop CH brand masking is opt-in. `Vivaldi/` may appear only on selected partner sites. iOS may send `VivaiOS/` only on those partner sites; otherwise WebKit UA, no CH | No browser-specific first-party-cookie or top-level redirect restriction found | No: all platforms. Vivaldi's identifiable markers are not used by default and cannot reliably identify ordinary visits here. |
+| Arc / Arc Search | Chromium brands and ordinary Chromium UA on desktop; no distinct Android browser marker verified; Arc Search on iOS uses WebKit, no distinct stable token verified | No browser-specific first-party-cookie or top-level redirect restriction found | No: all platforms. Chromium/WebKit alone cannot distinguish Arc from unknown browsers or embedded views. |
+
+Source notes: [Chrome Client Hints](https://developer.chrome.com/docs/privacy-security/user-agent-client-hints),
+[MDN UA reference and Opera tokens](https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Headers/User-Agent),
+[Firefox UA reference](https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Headers/User-Agent/Firefox),
+[Brave UA matrix](https://github.com/brave/brave-browser/wiki/User-Agents),
+[Samsung UA format](https://developer.samsung.com/browser/user-agent-string-format.html),
+[UA Parser Yandex token](https://github.com/tobie/ua-parser/blob/master/regexes.yaml),
+[UCWeb UA specification](https://www.ucweb.com/download/ucbrowser_user_agent_en.pdf),
+[Vivaldi UA and Client Hints matrix](https://help.vivaldi.com/developers/web/vivaldi-user-agent-and-client-hints-user-agent/),
+[Vivaldi UA changes](https://vivaldi.com/blog/vivaldi-2-10-no-strings-attached-2/),
+[Arc FAQ](https://arc.net/faq), and [DuckDuckGo Apple browser source](https://github.com/duckduckgo/apple-browsers), all read 2026-11-06.
+For OAuth/WebView behavior: [Google OAuth policies](https://developers.google.com/identity/protocols/oauth2/policies),
+[Google `disallowed_useragent`](https://developers.google.com/identity/protocols/oauth2/native-app), and the
+[UK Competition and Markets Authority's in-app browser report](https://assets.publishing.service.gov.uk/media/668807ac7541f54efe51ba6c/WP4_-_In-app_browsing_within_the_iOS_and_Android_mobile_ecosystems.pdf), read 2026-11-06.
+
+Cookie flow assessment: `/connect` is a same-origin HTTPS POST that receives first-party `Set-Cookie` headers; the
+`__Host-` device cookie is Secure, HttpOnly, host-only and `Path=/`. The short-lived `SameSite=Lax` flow cookie is
+returned on the top-level safe-method callback navigation from Google. Lax does not cover a cross-site POST, but the
+callback is a GET/303 round trip. These cookies are not third-party subresource cookies or JavaScript storage. WebKit
+blocks third-party cookies and can restrict data for classified bounce trackers; its documentation does not say this
+ordinary first-party cookie flow is blocked for Safari. No reviewed browser vendor source documents a first-party
+HTTPS-cookie or top-level-navigation restriction that breaks the admitted variants. This is source-based risk review,
+not a real-device OAuth observation; A-17 checks the actual browser context. Sources: [MDN `__Host-` cookies](https://developer.mozilla.org/en-US/docs/Web/HTTP/Guides/Cookies),
+[MDN `SameSite=Lax`](https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Headers/Set-Cookie),
+[WebKit Tracking Prevention](https://webkit.org/tracking-prevention/), read 2026-11-06.
+
 **Not verified by a primary source:** that the Android WebView adds a `wv` token, or reports the brand
 `"Android WebView"` in `navigator.userAgentData`. Two attempts to find Chrome's own page failed (a 404 and an
 unrelated page). The allowlist does not rely on either signal to *admit* a context. A-17 observes real in-app
@@ -108,16 +157,17 @@ branches** holds; otherwise the tab uses GIS mode.
 
 | Platform | Admitted when | Notes |
 |---|---|---|
-| Desktop, Android (Chromium) | `navigator.userAgentData.brands` contains `Google Chrome` or `Microsoft Edge` | WebViews and other Chromium browsers (Samsung Internet, Opera, Brave) do not carry those brands; unverified for WebViews, observed by A-17 |
+| Desktop, Android (Chromium) | `navigator.userAgentData.brands` contains `Google Chrome`, `Microsoft Edge` or `Brave`; alternatively UA contains `Edg/`, `EdgA/`, `OPR/`, `YaBrowser/`, `UCBrowser/`, or `SamsungBrowser/` | `Brave` Client Hints can be hidden; absent/unrecognized brands fail safe. Opera Mini and DuckDuckGo WebView markers are rejected. |
 | Desktop, Android (Firefox) | UA contains `Firefox/` and no `; wv)` | Firefox has no `userAgentData` |
 | macOS Safari | UA contains `Version/` and `Safari/`, not `Chrome/` | — |
-| iPhone/iPad | UA contains `Safari/` and either `Version/` (Safari), `CriOS/`, `EdgiOS/` or `FxiOS/`, and **none of** `FBAN`, `FBAV`, `Instagram`, `GSA/`, `Line/`, `WhatsApp` | **Limitation:** every iOS browser is WebKit (R-M1). An in-app WKWebView that sends a Safari-like UA without a marker cannot be told apart and would be admitted. The consequence is bounded: the round trip to Google may fail (`connectFailed`), and nothing is stored on the device in server mode |
+| iPhone/iPad | UA contains `Safari/` and either `Version/` (Safari), `CriOS/`, `EdgiOS/`, `FxiOS/`, `Brave`, or Opera's `OPT/`; and **none of** `FBAN`, `FBAV`, `Instagram`, `GSA/`, `Line/`, `WhatsApp`, `DuckDuckGo/` | **Limitation:** every iOS browser is WebKit (R-M1). An in-app WKWebView that sends a Safari-like UA without a marker cannot be told apart and would be admitted. The consequence is bounded: the round trip to Google may fail (`connectFailed`), and nothing is stored on the device in server mode. |
 
 **Installed-app branch**, only when `VITE_GOOGLE_SERVER_INSTALLED=1` (set after gate G-1):
 - iPhone/iPad home-screen app: `navigator.standalone === true`. Only Safari's home-screen apps set it; an in-app
   WKWebView does not.
 - Android or desktop installed app: `matchMedia('(display-mode: standalone)')` or `minimal-ui` or `fullscreen` matches
   **and** `navigator.userAgentData.brands` contains `Google Chrome` or `Microsoft Edge` (a WebAPK runs in Chrome).
+  This installed-app signal remains unchanged by the expanded browser-tab allowlist.
 
 Without `INSTALLED=1`, the branch is off: installed apps get GIS and the `installedNote`. The selection is a pure
 function of the flags and these signals, with a table-driven unit test (A-14).
@@ -287,7 +337,7 @@ Unchanged: `connect`, `continue`, `readOnly`, `aiBusy`, `accessDenied`, `missing
 | `messages.lockUnavailable` | This browser can't connect Google Calendar safely. Update it and try again. | Este navegador no puede conectar Google Calendar de forma segura. Actualízalo e inténtalo de nuevo. |
 | `deleteAllGoogleOffline` | Your data on this device was deleted, but Weeklid couldn't reach its server: its access to your Google Calendar stays until you disconnect online or remove Weeklid at myaccount.google.com/connections. | Se borraron tus datos de este dispositivo, pero Weeklid no pudo llegar a su servidor: su acceso a tu Google Calendar sigue hasta que desconectes con internet o quites Weeklid en myaccount.google.com/connections. |
 | `googleAccessMayRemain` | Weeklid couldn't confirm that its access to your Google Calendar was removed. To be sure, remove Weeklid at myaccount.google.com/connections. | Weeklid no pudo confirmar que se quitó su acceso a tu Google Calendar. Para estar seguro, quita Weeklid en myaccount.google.com/connections. |
-| `installedNote` | Here Google asks for permission again about every hour, and your events aren't saved between visits. To stay connected, open Weeklid in Safari, Chrome, Edge or Firefox. | Aquí Google vuelve a pedir permiso más o menos cada hora y tus eventos no se guardan entre visitas. Para seguir conectado, abre Weeklid en Safari, Chrome, Edge o Firefox. |
+| `installedNote` | Here Google asks for permission again about every hour, and your events aren't saved between visits. To stay connected, open Weeklid in your usual browser. | Aquí Google vuelve a pedir permiso más o menos cada hora y tus eventos no se guardan entre visitas. Para seguir conectado, abre Weeklid en tu navegador habitual. |
 
 `googleCopy.spec.ts` gains server-mode cases. They assert "ni se guardan en este dispositivo", "misma cuenta" and
 the link in `deleteAllGoogleOffline`. They also assert that no server-mode string says "todos tus dispositivos" or
@@ -315,13 +365,34 @@ The e2e harness extends the existing one:
 | A-11 | **Late results across a Disconnect (4-1).** The fake server follows R-4: after a Disconnect, every mint for that device answers `notConnected`, and the fake Google rejects that grant's tokens once the revoke is confirmed. (a) Tab B's `/token` is **minted** and its reply held; A disconnects; the reply is released. (b) Tab B's Google read is held; A disconnects; the read is released. (c) Device 2 (a second browser context, its own cookie jar) is connected and reading; device 1 disconnects with a confirmed revoke. (d) **In-flight refresh (4-1b), against the real handler:** tab B's `/token` has read the credential and its fake Google refresh is held; A's Disconnect reaches its terminal answer; the refresh is released. Assert `/token` answers `200` with one access token, no credential row exists, and B's next mint answers `notConnected`. In each case, assert the bounded outcome: with BroadcastChannel, (a), (b) and (d) show nothing new; without it, they may show those events until the token lapses; (c) keeps what is on screen. In every case the next mint started after the terminal answer, with no new Connect, fails (`notConnected` or `reconnect`), and storage holds no Google data | e2e |
 | A-12 | **Callback-commit race (R3-7), against the real handlers:** `/connect` makes a pending row; Delete all data's `status` + `disconnect{revoke:false, gen}` runs first. If the row is already gone when the callback looks it up, the callback answers `state` and makes no Google call; if it is removed during the code exchange, the callback answers `cancelled` and discards the exchanged token without revoking it. In both cases no credential exists. Between `status` and `disconnect` a commit lands → `stale` → the retry deletes it | unit (node), S1a harness |
 | A-13 | Delete all data online → `forget` before the wipe; offline → wipe, `deleteAllGoogleOffline` with the link; with the labs flag off and no `next168-google` database the call is still made. **No cookie (4-2):** `none` then `/token noDevice` → `googleAccessMayRemain` with the link and no success claim; `none` then `notConnected` → no Google message. The same two cases for Disconnect | e2e, plus a node case over the real handlers confirming the `noDevice`/`notConnected` split |
-| A-14 | Flag matrix (§2.7) and `googleTokenSource()` matrix: each browser-tab row → `server`; WebView user agents → `gis`; an installed app → `gis` without `INSTALLED` and `server` with it (iOS `navigator.standalone === true`; Android/desktop `standalone` with a Chrome or Edge brand); an installed context with another brand → `gis` | unit, CI |
+| A-14 | Flag matrix (§2.7) and `googleTokenSource()` matrix: every admitted browser/platform in §2.1 → `server`; plain Chromium, Vivaldi, Arc, Opera Mini and DuckDuckGo WebView markers → `gis`; in-app markers reject even with an admitted brand; installed contexts stay `gis` without `INSTALLED`, and the existing installed-app brand gate remains Chrome/Edge when enabled | unit, CI |
 | A-15 | Canary gone; a pre-existing `return_to='canary'` row → `303` to the app; `from:'canary'` → 400 | unit; owner in production: `GET /api/google/canary` returns the app |
 | A-16 | **Production, browser tabs** (desktop Chrome, iPhone Safari, Android Chrome): connect; reload; reopen the next day, still connected | production with the owner |
-| A-17 | **Allowlist on real contexts:** Details → source reads `server` in those tabs and `gis` in the Instagram, Gmail and Facebook in-app browsers on iPhone and Android and in the home-screen apps. Any in-app context that reads `server` is recorded, and its marker is added to §2.1 | production with the owner |
+| A-17 | **Browser allowlist on real contexts:** the owner checks desktop Chrome, Edge, Safari, Firefox, Brave, Opera (including GX), Yandex, UC Browser and DuckDuckGo; Android Chrome, Edge, Firefox, Samsung Internet, Opera Mobile, Brave, Yandex, UC Browser and DuckDuckGo; and iPhone Safari, Chrome, Edge, Firefox, Brave, Opera and DuckDuckGo. Details → source reads `server` for admitted browser tabs, and `gis` for plain Chromium, Vivaldi, Arc, Opera Mini, DuckDuckGo, Instagram, Gmail and Facebook in-app contexts and home-screen apps without the installed flag. Record any mismatch before changing §2.1. | production with the owner |
 | A-18 | **Gate G-1, installed-app branch:** on a build with `INSTALLED=1` (OD-S1b-3), Details → source reads `server` in each home-screen app. Connect there; the return lands in the app with it connected; still connected after a force-close. If either platform fails, `INSTALLED` stays unset and both apps keep `gis` | production with the owner |
 | A-19 | Two devices on the same account: Disconnect on A → B's next open → `reconnectNeeded`. In Testing, `reconnectNeeded` at about day 7–8 | production with the owner, dated |
 | A-20 | The privacy draft describes §2.3–§2.4 and how to delete (R-P1); no "no Weeklid server" | PR diff review |
+
+### Browser-gate regression evidence
+
+On 2026-11-07 UTC, against the changed working tree based on `f77ebc0`, each positive marker was removed in turn and
+its focused test was run with `npx vitest run src/features/calendars/googleGate.spec.ts -t '<case>'`. Every revert
+returned exit 1 because the selected case expected `server` and got `gis`; the source was restored after each check.
+
+| Reverted rule | Selected test cases | Result |
+|---|---|---|
+| `Brave` Client Hints brand | desktop Brave; Android Brave | 2 expected failures |
+| `Edg/` UA marker | desktop Edge | 1 expected failure |
+| existing `Firefox/` marker on the new Android row | Android Firefox | 1 expected failure |
+| `OPR/` UA marker | desktop Opera; desktop Opera GX; Android Opera Mobile | 3 expected failures |
+| `SamsungBrowser/` UA marker | Android Samsung Internet | 1 expected failure |
+| `YaBrowser/` UA marker | desktop Yandex; Android Yandex | 2 expected failures |
+| `UCBrowser/` UA marker | desktop UC; Android UC | 2 expected failures |
+| `Brave` iOS token rule | Brave iOS marker without `Version/` | 1 expected failure |
+| Opera `OPT/` iOS token rule | Opera iOS marker without `Version/` | 1 expected failure |
+
+The marker-only iOS cases ensure the new token rule independently admits the app when the legacy Safari `Version/`
+signal is absent; separate fixtures retain the documented full Brave and Opera UA strings.
 
 ## 5. Rejected alternatives and over-engineering removed
 

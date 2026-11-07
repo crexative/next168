@@ -55,9 +55,11 @@ describe('googleTokenSource', () => {
   const CHROME_BRANDS = ['Not A;Brand', 'Chromium', 'Google Chrome']
   const UA = {
     desktopChrome: 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36',
+    desktopEdge: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36 Edg/130.0.0.0',
     androidChrome: 'Mozilla/5.0 (Linux; Android 14; Pixel 8) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Mobile Safari/537.36',
     androidWebView: 'Mozilla/5.0 (Linux; Android 14; Pixel 8; wv) AppleWebKit/537.36 (KHTML, like Gecko) Version/4.0 Chrome/130.0.0.0 Mobile Safari/537.36',
     firefox: 'Mozilla/5.0 (X11; Linux x86_64; rv:130.0) Gecko/20100101 Firefox/130.0',
+    androidFirefox: 'Mozilla/5.0 (Android 14; Mobile; rv:130.0) Gecko/130.0 Firefox/130.0',
     firefoxWebView: 'Mozilla/5.0 (Android 14; Mobile; rv:130.0; wv) Gecko/130.0 Firefox/130.0',
     macSafari: 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.0 Safari/605.1.15',
     iphoneSafari: 'Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.0 Mobile/15E148 Safari/604.1',
@@ -68,6 +70,24 @@ describe('googleTokenSource', () => {
     iphoneFacebook: 'Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Mobile/15E148 [FBAN/FBIOS;FBAV/450.0]',
     iphoneGmail: 'Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.0 Mobile/15E148 Safari/604.1 GSA/300.0',
     iphoneBareWebView: 'Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Mobile/15E148',
+    desktopOpera: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/140.0.0.0 Safari/537.36 OPR/125.0.0.0',
+    desktopYandex: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/140.0.0.0 YaBrowser/25.2.0.0 Safari/537.36',
+    desktopUc: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/140.0.0.0 Safari/537.36 UCBrowser/13.5.0.1300',
+    androidSamsung: 'Mozilla/5.0 (Linux; Android 14; K) AppleWebKit/537.36 (KHTML, like Gecko) SamsungBrowser/27.0 Chrome/130.0.0.0 Mobile Safari/537.36',
+    androidOpera: 'Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/140.0.0.0 Mobile Safari/537.36 OPR/90.0.0.0',
+    androidYandex: 'Mozilla/5.0 (Linux; Android 14; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/140.0.0.0 Mobile Safari/537.36 YaBrowser/25.2.0.0',
+    androidUc: 'Mozilla/5.0 (Linux; U; Android 14; en-US; Pixel 8) AppleWebKit/537.36 (KHTML, like Gecko) Version/4.0 Chrome/140.0.0.0 Mobile Safari/537.36 UCBrowser/13.5.0.1300',
+    androidDuckDuckGo: 'Mozilla/5.0 (Linux; Android 14; Pixel 8) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/140.0.0.0 Mobile Safari/537.36 DuckDuckGo/5',
+    desktopBrave: 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/140.0.0.0 Safari/537.36',
+    androidBrave: 'Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/140.0.0.0 Mobile Safari/537.36',
+    iphoneBrave: 'Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.0 Mobile/15E148 Safari/604.1 Brave',
+    iphoneBraveMarkerOnly: 'Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15 Mobile/15E148 Safari/604.1 Brave',
+    iphoneOpera: 'Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.0 Mobile/15E148 Safari/604.1 OPT/4.0',
+    iphoneOperaMarkerOnly: 'Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15 Mobile/15E148 Safari/604.1 OPT/4.0',
+    iphoneDuckDuckGo: 'Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.0 Mobile/15E148 DuckDuckGo/1 Safari/605.1.15',
+    desktopVivaldi: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/140.0.0.0 Safari/537.36',
+    desktopArc: 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/140.0.0.0 Safari/537.36',
+    desktopDuckDuckGo: 'Mozilla/5.0 (Macintosh; Intel Mac OS X 14_0) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/140.0.0.0 Safari/537.36 DuckDuckGo/1',
   }
   const tab: SourceInput = {
     server: true, installedServer: false, topLevel: true, browserDisplay: true, installedDisplay: false, navigatorStandalone: false,
@@ -78,13 +98,29 @@ describe('googleTokenSource', () => {
   it.each([
     ['desktop Chrome', { userAgent: UA.desktopChrome, brands: CHROME_BRANDS }],
     ['desktop or Android Edge', { userAgent: UA.androidChrome, brands: ['Chromium', 'Microsoft Edge'] }],
+    ['desktop Edge', { userAgent: UA.desktopEdge, brands: [] }],
     ['Android Chrome', { userAgent: UA.androidChrome, brands: CHROME_BRANDS }],
     ['Firefox', { userAgent: UA.firefox, brands: [] }],
+    ['Android Firefox', { userAgent: UA.androidFirefox, brands: [] }],
     ['macOS Safari', { userAgent: UA.macSafari, brands: [] }],
     ['iPhone Safari', { userAgent: UA.iphoneSafari, brands: [] }],
     ['iPhone Chrome', { userAgent: UA.iphoneChrome, brands: [] }],
     ['iPhone Edge', { userAgent: UA.iphoneEdge, brands: [] }],
     ['iPhone Firefox', { userAgent: UA.iphoneFirefox, brands: [] }],
+    ['desktop Opera', { userAgent: UA.desktopOpera, brands: [] }],
+    ['desktop Opera GX', { userAgent: UA.desktopOpera, brands: [] }],
+    ['Android Opera Mobile', { userAgent: UA.androidOpera, brands: [] }],
+    ['desktop Brave', { userAgent: UA.desktopBrave, brands: ['Chromium', 'Brave'] }],
+    ['Android Brave', { userAgent: UA.androidBrave, brands: ['Chromium', 'Brave'] }],
+    ['iPhone Brave', { userAgent: UA.iphoneBrave, brands: [] }],
+    ['iPhone Brave marker without Safari Version', { userAgent: UA.iphoneBraveMarkerOnly, brands: [] }],
+    ['Android Samsung Internet', { userAgent: UA.androidSamsung, brands: ['Chromium'] }],
+    ['desktop Yandex Browser', { userAgent: UA.desktopYandex, brands: [] }],
+    ['Android Yandex Browser', { userAgent: UA.androidYandex, brands: [] }],
+    ['desktop UC Browser', { userAgent: UA.desktopUc, brands: [] }],
+    ['Android UC Browser', { userAgent: UA.androidUc, brands: [] }],
+    ['iPhone Opera', { userAgent: UA.iphoneOpera, brands: [] }],
+    ['iPhone Opera marker without Safari Version', { userAgent: UA.iphoneOperaMarkerOnly, brands: [] }],
   ])('a browser tab in %s → server', (_, change) => {
     expect(sourceOf(change)).toBe('server')
   })
@@ -96,10 +132,19 @@ describe('googleTokenSource', () => {
     ['Facebook on iPhone', { userAgent: UA.iphoneFacebook, brands: [] }],
     ['Gmail or Google app on iPhone', { userAgent: UA.iphoneGmail, brands: [] }],
     ['a bare iPhone WebView', { userAgent: UA.iphoneBareWebView, brands: [] }],
-    ['Samsung Internet or Brave (Chromium without the allowed brands)', { userAgent: UA.androidChrome, brands: ['Chromium', 'Brave'] }],
+    ['plain Chromium without an admitted browser brand', { userAgent: UA.androidChrome, brands: ['Chromium'] }],
+    ['Opera Mini, whose proxy mode is outside the flow guarantee', { userAgent: 'Mozilla/5.0 (Linux; Android 10) Opera Mini/80.0.2254/191.249 Mobile', brands: [] }],
+    ['Android DuckDuckGo, which uses an embedded WebView for Google OAuth', { userAgent: UA.androidDuckDuckGo, brands: [] }],
+    ['DuckDuckGo even with an otherwise admitted Chrome brand', { userAgent: UA.androidDuckDuckGo, brands: CHROME_BRANDS }],
+    ['iPhone DuckDuckGo, which uses WKWebView for Google OAuth', { userAgent: UA.iphoneDuckDuckGo, brands: [] }],
+    ['desktop DuckDuckGo, whose vendor source does not establish the external OAuth browser flow', { userAgent: UA.desktopDuckDuckGo, brands: [] }],
+    ['plain Chromium', { userAgent: UA.desktopVivaldi, brands: ['Chromium'] }],
+    ['Vivaldi with its masked Chromium identity', { userAgent: UA.desktopVivaldi, brands: ['Chromium'] }],
+    ['Arc with its plain Chromium identity', { userAgent: UA.desktopArc, brands: ['Chromium'] }],
     ['an unknown browser', { userAgent: 'Mozilla/5.0 (compatible; Odd/1.0)', brands: [] }],
     ['no user agent at all', { userAgent: '', brands: [] }],
     ['Instagram even with a Chrome brand', { userAgent: UA.iphoneInstagram, brands: CHROME_BRANDS }],
+    ['an in-app browser with an admitted Brave brand', { userAgent: UA.iphoneInstagram, brands: ['Brave', 'Chromium'] }],
     ['a frame', { topLevel: false }],
     ['a window that is not a browser tab', { browserDisplay: false }],
     ['a home-screen app, without the installed flag', { browserDisplay: false, navigatorStandalone: true, userAgent: UA.iphoneSafari, brands: [] }],
@@ -107,6 +152,10 @@ describe('googleTokenSource', () => {
     ['a Trusted Web Activity', { referrer: 'android-app://com.example.twa' }],
   ])('%s → gis', (_, change) => {
     expect(sourceOf(change)).toBe('gis')
+  })
+
+  it('an installed Brave browser without INSTALLED → gis', () => {
+    expect(sourceOf({ browserDisplay: false, installedDisplay: true, installedServer: false, userAgent: UA.androidBrave, brands: ['Brave', 'Chromium'] })).toBe('gis')
   })
 
   it('a build without the server flag is gis in every context', () => {
@@ -127,7 +176,7 @@ describe('googleTokenSource', () => {
     })
 
     it('an installed context with another brand → gis even with INSTALLED', () => {
-      expect(sourceOf({ ...androidApp, installedServer: true, brands: ['Chromium', 'Brave'] })).toBe('gis')
+      expect(sourceOf({ ...androidApp, installedServer: true, brands: ['Chromium', 'Unknown Browser'] })).toBe('gis')
       expect(sourceOf({ ...androidApp, installedServer: true, brands: [] })).toBe('gis')
     })
 

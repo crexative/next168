@@ -154,6 +154,6 @@
     "disconnectNeedsNetwork": "Para desligar precisa de internet.",
     "deleteAllGoogleOffline": "Os seus dados neste dispositivo foram apagados, mas o Weeklid não conseguiu chegar ao seu servidor: o acesso ao seu Google Calendar mantém-se até desligar com internet ou remover o Weeklid em myaccount.google.com/connections.",
     "googleAccessMayRemain": "O Weeklid não conseguiu confirmar que o acesso ao seu Google Calendar foi removido. Para ter a certeza, remova o Weeklid em myaccount.google.com/connections.",
-    "installedNote": "Aqui o Google volta a pedir autorização mais ou menos a cada hora e os seus eventos não ficam guardados entre visitas. Para continuar ligado, abra o Weeklid no Safari, Chrome, Edge ou Firefox."
+    "installedNote": "Aqui o Google volta a pedir autorização mais ou menos a cada hora e os seus eventos não ficam guardados entre visitas. Para continuar ligado, abra o Weeklid no seu navegador habitual."
   }
 }

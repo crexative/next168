@@ -201,8 +201,9 @@ changing one, retry the latest production deployment.
 **The app client (slice S1b).** A build with `VITE_GOOGLE_CLIENT_ID` and `VITE_GOOGLE_SERVER=1` keeps a device connected
 through these routes; the build fails on any other value, on `VITE_GOOGLE_SERVER=1` without a client ID, and on
 `VITE_GOOGLE_SERVER_INSTALLED=1` without `VITE_GOOGLE_SERVER=1` (`config/googleServerFlags.ts`). Such a build keeps no
-Google event or token on the device, in any context, and erases the copy of an earlier build at every boot. Only top-level
-Safari, Chrome, Edge and Firefox tabs use the server; in-app browsers and (until gate G-1) installed apps stay on Google
+Google event or token on the device, in any context, and erases the copy of an earlier build at every boot. Only
+positively identified top-level Safari, Chrome, Edge, Firefox, Brave, Opera, Yandex, UC Browser and Samsung Internet
+tabs use the server on their supported platforms; in-app browsers and (until gate G-1) installed apps stay on Google
 Identity Services (`docs/design/google-permanent-connection-s1b.md`, section 2.1). `bash scripts/check-google-bundles.sh`
 (run by CI) builds each flag row and checks what it may carry: no `api/google` without the flag, and neither Google module
 in the entry chunk of a server build.
@@ -211,8 +212,11 @@ Owner rollout, in order:
 1. Merge S1b.
 2. Set `GOOGLE_CLIENT_SECRET` and `VITE_GOOGLE_SERVER=1`, redeploy, and run acceptance checks A-16 (connect, reload and
    reopen the next day in desktop Chrome, iPhone Safari and Android Chrome) and A-17 (Connections, Details > Connection
-   source reads `server` in those tabs and `gis` in the Instagram, Gmail and Facebook in-app browsers and in the home-screen
-   apps; add the marker of any in-app browser that reads `server` to the allowlist).
+   source reads `server` in desktop Chrome, Edge, Safari, Firefox, Brave, Opera/Opera GX, Yandex and UC Browser;
+   Android Chrome, Edge, Firefox, Samsung Internet, Opera Mobile, Brave, Yandex and UC Browser; and iPhone Safari,
+   Chrome, Edge, Firefox, Brave and Opera. Check `gis` in DuckDuckGo on desktop, Android and iPhone, plus Opera Mini,
+   Vivaldi, Arc, plain Chromium, Instagram/Gmail/Facebook in-app browsers and home-screen apps without the installed
+   flag. Record any mismatch in the rollout notes).
 3. Gate G-1 (A-18): on a build that also sets `VITE_GOOGLE_SERVER_INSTALLED=1` (a preview with variables, or production with
    an immediate revert), Details > Connection source must read `server` in each home-screen app; connect there and
    force-close the app: it must still be connected. If either platform fails, leave `VITE_GOOGLE_SERVER_INSTALLED` unset.

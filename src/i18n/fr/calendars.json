@@ -154,6 +154,6 @@
     "disconnectNeedsNetwork": "Pour te déconnecter, il faut internet.",
     "deleteAllGoogleOffline": "Tes données sur cet appareil ont été supprimées, mais Weeklid n’a pas pu joindre son serveur : son accès à ton Google Agenda reste jusqu’à ce que tu te déconnectes avec internet ou que tu retires Weeklid sur myaccount.google.com/connections.",
     "googleAccessMayRemain": "Weeklid n’a pas pu confirmer que son accès à ton Google Agenda a été retiré. Pour en être sûr, retire Weeklid sur myaccount.google.com/connections.",
-    "installedNote": "Ici, Google redemande l’autorisation environ toutes les heures et tes événements ne sont pas enregistrés entre les visites. Pour rester connecté, ouvre Weeklid dans Safari, Chrome, Edge ou Firefox."
+    "installedNote": "Ici, Google redemande l’autorisation environ toutes les heures et tes événements ne sont pas enregistrés entre les visites. Pour rester connecté, ouvre Weeklid dans ton navigateur habituel."
   }
 }

@@ -70,22 +70,26 @@ export interface SourceInput {
 
 // Markers that in-app browsers add to an otherwise Safari-like iPhone or Android user agent.
 const IN_APP_MARKERS = /FBAN|FBAV|Instagram|GSA\/|Line\/|WhatsApp/
-const CHROMIUM_BRANDS = ['Google Chrome', 'Microsoft Edge']
+const CHROMIUM_BRANDS = ['Google Chrome', 'Microsoft Edge', 'Brave']
+const INSTALLED_CHROMIUM_BRANDS = ['Google Chrome', 'Microsoft Edge']
 
 const hasChromiumBrand = (brands: readonly string[]): boolean => brands.some((brand) => CHROMIUM_BRANDS.includes(brand))
+const hasInstalledChromiumBrand = (brands: readonly string[]): boolean => brands.some((brand) => INSTALLED_CHROMIUM_BRANDS.includes(brand))
 
 function allowedBrowser({ userAgent: ua, brands }: SourceInput): boolean {
   if (IN_APP_MARKERS.test(ua)) return false
+  if (/Opera Mini\//i.test(ua) || /DuckDuckGo\//.test(ua)) return false
   if (hasChromiumBrand(brands)) return true
   if (/Firefox\//.test(ua)) return !/; wv\)/.test(ua)
-  if (/iPhone|iPad|iPod/.test(ua)) return /Safari\//.test(ua) && /Version\/|CriOS\/|EdgiOS\/|FxiOS\//.test(ua)
+  if (/Edg\/|EdgA\/|OPR\/|YaBrowser\/|UCBrowser\/|SamsungBrowser\//.test(ua)) return true
+  if (/iPhone|iPad|iPod/.test(ua)) return /Safari\//.test(ua) && /Version\/|CriOS\/|EdgiOS\/|FxiOS\/|Brave\b|OPT\//.test(ua)
   return /Version\//.test(ua) && /Safari\//.test(ua) && !/Chrome\//.test(ua)
 }
 
 export function googleTokenSource(input: SourceInput = currentSourceInput()): TokenSource {
   if (!input.server || !input.topLevel) return 'gis'
   const browserTab = input.browserDisplay && !input.navigatorStandalone && !input.referrer.startsWith('android-app://') && allowedBrowser(input)
-  const installedApp = input.installedServer && (input.navigatorStandalone || (input.installedDisplay && hasChromiumBrand(input.brands)))
+  const installedApp = input.installedServer && (input.navigatorStandalone || (input.installedDisplay && hasInstalledChromiumBrand(input.brands)))
   return browserTab || installedApp ? 'server' : 'gis'
 }
 
