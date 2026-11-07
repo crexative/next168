@@ -68,6 +68,23 @@ export async function seal(key: Uint8Array<ArrayBuffer>, aad: string, plaintext:
   return { iv: base64url(iv), ciphertext: base64url(new Uint8Array(ciphertext)) }
 }
 
+// Binary form for BLOB columns: `iv (12 bytes) || ciphertext`, so a stored row carries no base64 overhead.
+export async function sealBytes(key: Uint8Array<ArrayBuffer>, aad: string, plaintext: Uint8Array<ArrayBuffer>, random: RandomSource): Promise<Uint8Array<ArrayBuffer>> {
+  const iv = random(new Uint8Array(12))
+  const ciphertext = new Uint8Array(await crypto.subtle.encrypt({ name: 'AES-GCM', iv, additionalData: encoder.encode(aad) }, await importKey(key), plaintext))
+  const packed = new Uint8Array(iv.length + ciphertext.length)
+  packed.set(iv)
+  packed.set(ciphertext, iv.length)
+  return packed
+}
+
+// Rejects (OperationError) when the key, the AAD or the bytes do not match.
+export async function openBytes(key: Uint8Array<ArrayBuffer>, aad: string, packed: Uint8Array<ArrayBuffer>): Promise<Uint8Array<ArrayBuffer>> {
+  if (packed.length < 13) throw new DOMException('sealed bytes too short', 'OperationError')
+  const plaintext = await crypto.subtle.decrypt({ name: 'AES-GCM', iv: packed.slice(0, 12), additionalData: encoder.encode(aad) }, await importKey(key), packed.slice(12))
+  return new Uint8Array(plaintext)
+}
+
 // Rejects (OperationError) when the key, the AAD or the ciphertext does not match.
 export async function open(key: Uint8Array<ArrayBuffer>, aad: string, sealed: Sealed): Promise<string> {
   const plaintext = await crypto.subtle.decrypt(

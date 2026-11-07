@@ -1,5 +1,6 @@
 // @vitest-environment node
-// S-10: Functions run only under /api/google/*, and each route file exports exactly one method handler.
+// S-10: Functions run only under the Google and accounts routes, and each Google route file exports exactly one method handler.
+// The accounts routes have their own spec (server/accounts/routes.spec.ts).
 import { readdirSync, readFileSync, statSync } from 'node:fs'
 import { join, relative } from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -26,12 +27,14 @@ const EXPECTED: Record<string, 'onRequestGet' | 'onRequestPost'> = {
 }
 
 describe('S-10 routes', () => {
-  it('public/_routes.json routes only /api/google/* to Functions', () => {
-    expect(JSON.parse(readFileSync(join(root, 'public/_routes.json'), 'utf8'))).toEqual({ version: 1, include: ['/api/google/*'], exclude: [] })
+  it('public/_routes.json routes only the Google and accounts paths to Functions', () => {
+    expect(JSON.parse(readFileSync(join(root, 'public/_routes.json'), 'utf8'))).toEqual({
+      version: 1, include: ['/api/google/*', '/api/auth/*', '/api/sync', '/api/sync/*'], exclude: [],
+    })
   })
 
-  it('functions/ holds exactly the Google routes', () => {
-    expect(files(join(root, 'functions')).sort()).toEqual(Object.keys(EXPECTED).sort())
+  it('functions/ holds exactly the Google routes and the accounts routes', () => {
+    expect(files(join(root, 'functions')).filter((file) => file.startsWith('functions/api/google/')).sort()).toEqual(Object.keys(EXPECTED).sort())
   })
 
   it.each(Object.entries(EXPECTED))('%s exports only %s', async (file, method) => {

@@ -15,7 +15,7 @@ class SqliteStatement implements D1StatementLike {
 
   execute(): Executed {
     const statement = this.db.prepare(this.sql)
-    const params = this.values.map((value) => (value === undefined ? null : value)) as (string | number | null)[]
+    const params = this.values.map((value) => (value === undefined ? null : value instanceof ArrayBuffer ? new Uint8Array(value) : value)) as (string | number | null | Uint8Array)[]
     const isSelect = /^\s*SELECT\b/i.test(this.sql)
     if (isSelect || /\bRETURNING\b/i.test(this.sql)) {
       const results = statement.all(...params).map((row) => ({ ...row }))
@@ -35,7 +35,7 @@ class SqliteStatement implements D1StatementLike {
 
 export interface SqliteD1 extends D1Like {
   sqlite: DatabaseSync
-  rows(table: 'google_pending' | 'google_credentials'): Row[]
+  rows(table: string): Row[]
 }
 
 export function sqliteD1(): SqliteD1 {
@@ -56,7 +56,7 @@ export function sqliteD1(): SqliteD1 {
     },
     rows(table) {
       try {
-        return db.prepare(`SELECT * FROM ${table} ORDER BY device_hash`).all().map((row) => ({ ...row }))
+        return db.prepare(`SELECT * FROM ${table} ORDER BY 1`).all().map((row) => ({ ...row }))
       } catch {
         return []
       }

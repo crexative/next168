@@ -6,7 +6,7 @@ const SECRET = 'build-token-5f2e' // secret-guard: allow — synthetic test vect
 const ENV: ConfigEnv = { command: 'build', mode: 'production', isPreview: false, isSsrBuild: false }
 
 afterEach(() => {
-  for (const name of ['VITE_PUBLIC_URL', 'VITE_GOOGLE_CLIENT_ID', 'VITE_GOOGLE_SERVER', 'VITE_GOOGLE_SERVER_INSTALLED']) delete process.env[name]
+  for (const name of ['VITE_PUBLIC_URL', 'VITE_GOOGLE_CLIENT_ID', 'VITE_GOOGLE_SERVER', 'VITE_GOOGLE_SERVER_INSTALLED', 'VITE_ACCOUNTS']) delete process.env[name]
 })
 
 // The real build entry: an unsafe VITE_PUBLIC_URL fails the build without echoing the value into the logs.
@@ -95,4 +95,17 @@ describe('vite.config Google server flags', () => {
     if (builds) expect(() => config(ENV)).not.toThrow()
     else expect(() => config(ENV)).toThrow(/^VITE_GOOGLE_/)
   })
+})
+
+// The accounts flag: unset, '' or '1' build; anything else fails the build.
+describe('vite.config accounts flag', () => {
+  it.each([[undefined, true], ['', true], ['1', true], ['0', false], ['true', false], ['2', false], [' 1', false], ['yes', false]] as [string | undefined, boolean][])(
+    'VITE_ACCOUNTS=%j builds: %s', async (value, builds) => {
+      if (value === undefined) delete process.env.VITE_ACCOUNTS
+      else process.env.VITE_ACCOUNTS = value
+      const config = (await import('../vite.config')).default as UserConfigFnObject
+      if (builds) expect(() => config(ENV)).not.toThrow()
+      else expect(() => config(ENV)).toThrow('VITE_ACCOUNTS must be unset or 1')
+    },
+  )
 })

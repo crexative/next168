@@ -1,1 +1,1 @@
-{"version":1,"include":["/api/google/*"],"exclude":[]}
+{"version":1,"include":["/api/google/*","/api/auth/*","/api/sync","/api/sync/*"],"exclude":[]}

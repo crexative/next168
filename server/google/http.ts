@@ -1,11 +1,17 @@
 // Request guards (D7), responses, cookies and the one-line outcome log (D12).
 import type { Config } from './config'
 
+/** What the guards read: the Google config and the accounts config both satisfy it. */
+export type GuardConfig = Pick<Config, 'appOrigin' | 'enabled'>
+
 export type Outcome =
   | 'ok' | 'noDevice' | 'notConnected' | 'reconnect' | 'notConfigured' | 'disabled' | 'serverConfig'
   | 'googleUnavailable' | 'storage' | 'forbidden' | 'notFound' | 'badRequest' | 'state' | 'cancelled' | 'denied'
   | 'auth' | 'exchange' | 'noRefreshToken' | 'missingScope' | 'canary' | 'connected' | 'confirmed' | 'unconfirmed'
   | 'forgotten' | 'none' | 'stale' | 'error'
+  // Accounts and sync (server/accounts): the same closed vocabulary, extended once.
+  | 'signedIn' | 'signedOut' | 'unauthorized' | 'accountMismatch' | 'accountDeleted' | 'notInvited' | 'noPlan' | 'unchanged'
+  | 'conflict' | 'replaced' | 'tooLarge' | 'accountRemoved'
 
 export type ErrorClass = 'AbortError' | 'TimeoutError' | 'TypeError' | 'SyntaxError' | 'OperationError' | 'Other'
 
@@ -50,23 +56,27 @@ export function redirect(location: string, outcome: Outcome, error?: ErrorClass)
 function toResponse(reply: Reply): Response {
   const headers = new Headers()
   for (const [name, value] of reply.headers) headers.append(name, value)
-  return new Response(reply.status === 303 ? null : reply.body, { status: reply.status, headers })
+  return new Response(reply.status === 303 || reply.status === 304 ? null : reply.body, { status: reply.status, headers })
 }
 
-export interface Runtime {
-  config: Config
+/** What `serve` needs: the clock and the log sink. */
+export interface Clock {
   now: () => number
   log: (line: string) => void
 }
 
-function logLine(runtime: Runtime, route: string, reply: Reply, started: number): void {
+export interface Runtime extends Clock {
+  config: Config
+}
+
+function logLine(runtime: Clock, route: string, reply: Reply, started: number): void {
   const line: Record<string, string | number> = { r: route, o: reply.outcome, s: reply.status, ms: Math.max(0, Math.round(runtime.now() - started)) }
   if (reply.error) line.e = reply.error
   runtime.log(JSON.stringify(line))
 }
 
 // Runs a route, turns an escaped exception into `fallback` and writes exactly one log line.
-export async function serve(runtime: Runtime, route: string, work: () => Promise<Reply>, fallback: (error: ErrorClass) => Reply): Promise<Response> {
+export async function serve(runtime: Clock, route: string, work: () => Promise<Reply>, fallback: (error: ErrorClass) => Reply): Promise<Response> {
   const started = runtime.now()
   let reply: Reply
   try {
@@ -100,14 +110,14 @@ export function setCookie(name: string, value: string, maxAge: number, sameSite:
 // --- Guards (D7) ---------------------------------------------------------------------------------------------------
 
 // Checks 1–2, shared by every route: the callback stops here.
-export function guardHostAndSwitch(request: Request, config: Config): Reply | null {
+export function guardHostAndSwitch(request: Request, config: GuardConfig): Reply | null {
   if (!config.appOrigin || new URL(request.url).origin !== config.appOrigin) return failure(404, 'notFound')
   if (!config.enabled) return failure(503, 'disabled')
   return null
 }
 
 // Checks 1–6 for every POST, in order; each failure stops before any storage or Google access.
-export function guardPost(request: Request, config: Config, options: { requireJson: boolean }): Reply | null {
+export function guardPost(request: Request, config: GuardConfig, options: { requireJson: boolean }): Reply | null {
   const hostOrSwitch = guardHostAndSwitch(request, config)
   if (hostOrSwitch) return hostOrSwitch
   if (request.headers.get('x-weeklid') !== '1') return failure(403, 'forbidden')

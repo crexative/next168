@@ -11,4 +11,6 @@ interface ImportMetaEnv {
   readonly VITE_GOOGLE_SERVER?: string
   // '1' also admits installed apps to the server source, set only after gate G-1 passed.
   readonly VITE_GOOGLE_SERVER_INSTALLED?: string
+  // '1' ships the accounts and sync client (docs/design/accounts-and-sync.md); off by default and for every free build.
+  readonly VITE_ACCOUNTS?: string
 }
