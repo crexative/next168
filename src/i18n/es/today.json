@@ -2,8 +2,21 @@
   "now": {
     "label": "Ahora",
     "eyebrow": "Ahora",
-    "free": "Tiempo libre",
-    "freeUntil": "Tiempo libre hasta la {time} | Tiempo libre hasta las {time}",
+    "free": "Libre",
+    "freeUntil": "Libre hasta la {time} | Libre hasta las {time}",
+    "until": "hasta la {time} | hasta las {time}",
+    "ask": "¿Cómo fue?",
+    "answered": "{status} · Cambiar",
+    "taskContext": "En {title} · hasta la {time} | En {title} · hasta las {time}",
+    "routineContext": "Tu rutina: {title} · hasta la {time} | Tu rutina: {title} · hasta las {time}",
+    "more": "+{count}",
+    "completeTask": "Marcar como hecha",
+    "changed": "Ahora: {title}, hasta la {time} | Ahora: {title}, hasta las {time}",
+    "changedOpen": "Ahora: {title}",
+    "alsoNow": "También ahora: {title} · hasta la {time} | También ahora: {title} · hasta las {time}",
+    "askAvailable": "Puedes marcar cómo fue {title}",
+    "closeDay": "Cierre del día",
+    "readOnly": "Solo lectura en esta pestaña",
     "progress": "Progreso",
     "next": "Después",
     "nothingNext": "Nada más planificado esta semana",
@@ -19,17 +32,22 @@
     "untilTime": "Hasta la {time} | Hasta las {time}",
     "sinceDate": "Desde el {date}",
     "untilDate": "Hasta el {date}",
-    "late": "Tarde",
+    "late": "Atrasada",
     "kinds": {
       "task": "Tarea",
-      "event": "Evento",
+      "event": "Calendario de Weeklid",
       "external": "Calendario"
     },
     "carryOver": "Desde ayer · hasta {time}",
-    "taskDone": "Tarea hecha: {title}"
+    "taskDone": "Tarea hecha: {title}",
+    "earlier": "Antes · {count}",
+    "unanswered": "{count} sin marcar",
+    "nowLine": "Ahora {time}",
+    "gap": "Libre · {duration}"
   },
   "status": {
-    "markDone": "Marcar como hecho: {title}",
+    "markDone": "¿Cómo fue {title}? Sin marcar. Toca para marcar como hecho; mantén pulsado para más opciones",
+    "markTaskDone": "Marcar como hecho: {title}",
     "stateDone": "Hecho: {title}. Toca para quitar la respuesta",
     "statePartial": "A medias: {title}. Toca para marcarlo como hecho",
     "stateSkipped": "No: {title}. Toca para marcarlo como hecho",
@@ -55,7 +73,7 @@
     "action": "Abrir la semana"
   },
   "header": {
-    "subtitle": "{date} · {hours} libres esta semana"
+    "subtitle": "{date}"
   },
   "todo": {
     "title": "Por hacer hoy",

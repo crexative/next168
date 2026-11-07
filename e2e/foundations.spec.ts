@@ -246,14 +246,15 @@ test.describe('headings', () => {
 test.describe('colour is never alone', () => {
   const glyphOf = (element: Element) => getComputedStyle(element.querySelector('.category-glyph')!, '::before').content.replace(/^"|"$/g, '')
 
-  test('Today rows tell blocks, tasks and events apart by the line beside them, with no glyph or sub-label to read', async ({ page }) => {
+  test('Today rows tell blocks and tasks apart by the line beside them and calendar events by a glyph and their source in words', async ({ page }) => {
     await startWith(page, { ...richDocument, events: [{ id: 'e-dentist', title: 'Dentist', start: '2026-10-21T15:00:00.000Z', end: '2026-10-21T16:00:00.000Z', allDay: false, attendees: [] }] })
     await openView(page, 'today')
     const rows = await page.getByTestId('timeline-item').evaluateAll((items) => items.map((item) => {
       const style = getComputedStyle(item.querySelector('.row-bar')!)
       return {
         kind: item.getAttribute('data-kind'),
-        pattern: style.backgroundImage !== 'none' ? 'dotted' : style.borderInlineStartStyle === 'dashed' ? 'dashed' : 'solid',
+        pattern: style.backgroundImage !== 'none' ? 'dotted' : style.borderInlineStartStyle === 'dashed' ? 'dashed' : style.backgroundColor === 'rgba(0, 0, 0, 0)' ? 'none' : 'solid',
+        glyphs: item.querySelectorAll('svg').length,
         marks: item.querySelectorAll('[data-testid="category-mark"], [data-testid="timeline-category"]').length,
         kindWord: item.querySelector('.visually-hidden')?.textContent?.trim() ?? null,
       }
@@ -262,10 +263,12 @@ test.describe('colour is never alone', () => {
     const patterns = (kind: string) => [...new Set(rows.filter((row) => row.kind === kind).map((row) => row.pattern))]
     expect(patterns('block')).toEqual(['solid'])
     expect(patterns('task')).toEqual(['dotted'])
-    expect(patterns('event')).toEqual(['dashed'])
+    // A calendar event has no bar: a calendar glyph and the source in words tell it apart, whatever the colours.
+    expect(patterns('event')).toEqual(['none'])
+    expect(rows.filter((row) => row.kind === 'event').every((row) => row.glyphs === 1)).toBe(true)
     // The same distinction in words for a screen reader, which cannot see the line.
     expect(rows.find((row) => row.kind === 'task')?.kindWord).toBe('Task:')
-    expect(rows.find((row) => row.kind === 'event')?.kindWord).toBe('Event:')
+    expect(rows.find((row) => row.kind === 'event')?.kindWord).toBe('Weeklid calendar:')
   })
 
   test('Week blocks show the glyph and say the category', async ({ page }) => {
@@ -474,10 +477,10 @@ test.describe('accessibility plumbing', () => {
     await page.emulateMedia({ forcedColors: 'active' })
     await startWith(page)
     await openView(page, 'today')
-    // Deep work is the block in progress; in its last minutes the status circle sits in the Now card.
-    await page.clock.fastForward('04:10:00')
-    const deepWork = page.getByTestId('now-card')
-    const circle = deepWork.getByTestId('status-control')
+    // Deep work is over by 15:45; its row sits in the folded "Earlier" row, with the status circle.
+    await page.clock.fastForward('05:30:00')
+    await page.getByTestId('timeline-earlier').click()
+    const circle = page.getByTestId('timeline-item').filter({ hasText: 'Deep work' }).getByTestId('status-control')
     await expect(circle).toHaveAttribute('data-status', 'none')
     const idle = await circle.locator('.status-ring').evaluate((element) => getComputedStyle(element).backgroundColor)
     await circle.click()

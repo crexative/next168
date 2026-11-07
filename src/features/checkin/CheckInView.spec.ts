@@ -328,7 +328,7 @@ describe('check-in blocks to mark', () => {
     // Yoga is mid-way (ends 13:00) and Sleep has its own sentences.
     expect(listed()).toEqual(['Gym', 'Run'])
     expect(text('checkin-blocks')).toContain('Not marked yet')
-    expect(circle('Gym')!.getAttribute('aria-label')).toBe('Mark Gym as done')
+    expect(circle('Gym')!.getAttribute('aria-label')).toBe('How did Gym go? Not marked. Tap to mark done; press and hold for more')
     expect(host.querySelector('[data-testid="checkin-block"] .tabular')?.textContent?.replace(/\s/g, ' ')).toBe('8:00 AM – 9:00 AM')
   })
 

@@ -748,7 +748,7 @@ for (const theme of THEMES) {
       await audit(page, `${theme}/check-in filled`)
     })
 
-    test('Today and the nightly check-in (Spanish): Now card, circle and menu, rows, free card, evening card, form and saved state', async ({ page }, testInfo) => {
+    test('Today and the nightly check-in (Spanish): Now card, answers and menu, rows, free card, evening card, form and saved state', async ({ page }, testInfo) => {
       const spanish = { ...plannedDocument, settings: { ...plannedDocument.settings, locale: 'es' } }
       // Headless Chromium reports notifications as blocked; the reminder button only exists where they can be asked for.
       await page.addInitScript(() => {
@@ -759,36 +759,37 @@ for (const theme of THEMES) {
       await start(page, theme, spanish, 'es', new Date('2026-10-21T10:15:30.000Z'))
       await open(page, 'today')
       await expect(page.getByTestId('now-card').getByTestId('now-left')).toBeVisible()
-      await expect(page.getByTestId('now-card').getByTestId('status-control')).toHaveCount(0)
+      await expect(page.getByTestId('now-card').getByTestId('now-do')).toHaveCount(0)
       await audit(page, `${theme}/today: now card mid-block`)
 
-      // In the block's last minutes the circle appears; right click opens its menu, A medias asks the minutes.
+      // In the block's last minutes the three answers appear; A medias asks the minutes.
       await page.clock.fastForward(37 * 60_000)
-      const circle = page.getByTestId('now-card').getByTestId('status-control')
-      await expect(circle).toBeVisible()
-      await audit(page, `${theme}/today: now card with the circle`)
-      await circle.click({ button: 'right' })
-      await expect(page.getByRole('menu')).toBeVisible()
-      await audit(page, `${theme}/today: status menu open`)
-      await page.getByRole('menuitem', { name: 'A medias' }).click()
+      const card = page.getByTestId('now-card')
+      await expect(card.getByTestId('now-do').getByRole('button')).toHaveCount(3)
+      await audit(page, `${theme}/today: now card with the answers`)
+      await card.getByRole('button', { name: 'A medias' }).click()
       await expect(page.getByLabel(/Minutos dedicados/)).toBeVisible()
       await audit(page, `${theme}/today: now card with the minutes field`)
       await page.getByRole('button', { name: 'Guardar', exact: true }).click()
-      await expect(circle).toHaveAttribute('data-status', 'partial')
+      await expect(card.getByTestId('now-answered')).toBeVisible()
       await audit(page, `${theme}/today: now card answered Partly`)
-      await circle.click({ button: 'right' })
-      await page.getByRole('menuitem', { name: 'Quitar respuesta' }).click()
-      await expect(circle).toHaveAttribute('data-status', 'none')
 
-      // Deep work is over: its row carries a circle, the card says when the free time ends, and an old block is one line.
+      // Deep work is over: its row, in the folded "Antes" row, carries a ring; the card says Libre and an old block is one line.
       await page.clock.setSystemTime(new Date('2026-10-21T12:00:00.000Z'))
       await page.clock.fastForward(31_000)
-      await expect(page.getByTestId('now-title')).toHaveText('Tiempo libre hasta las 18:00')
+      await expect(page.getByTestId('now-title')).toHaveText('Libre')
+      await page.getByTestId('timeline-earlier').click()
       const deepRow = page.getByTestId('timeline-item').filter({ hasText: 'Deep work' })
-      await expect(deepRow.getByTestId('status-control')).toBeVisible()
-      await audit(page, `${theme}/today: free card and finished blocks with a circle`)
-      await deepRow.getByTestId('status-control').click()
-      await expect(deepRow.getByTestId('status-control')).toHaveAttribute('data-status', 'done')
+      const ring = deepRow.getByTestId('status-control')
+      await expect(ring).toHaveAttribute('data-status', 'partial')
+      await audit(page, `${theme}/today: free card and finished blocks with a ring`)
+      await ring.click({ button: 'right' })
+      await expect(page.getByRole('menu')).toBeVisible()
+      await audit(page, `${theme}/today: status menu open`)
+      await page.getByRole('menuitem', { name: 'Quitar respuesta' }).click()
+      await expect(ring).toHaveAttribute('data-status', 'none')
+      await ring.click()
+      await expect(ring).toHaveAttribute('data-status', 'done')
       await audit(page, `${theme}/today: finished block answered`)
       await page.locator('[data-kind="task"]').first().getByTestId('status-control').click()
       // The previous toast leaves first (out-in); the newest one is the one that appears.
@@ -864,7 +865,8 @@ for (const theme of THEMES) {
       const fresh = { ...plannedDocument, checkIns: [], tasks: [], settings: { ...plannedDocument.settings, locale: 'es' } }
       await start(page, theme, fresh, 'es', new Date('2026-10-21T23:30:00.000Z'))
       await open(page, 'today')
-      await expect(page.getByTestId('checkin-card')).toBeVisible()
+      // With sleep in progress the Now card carries the way in to the check-in, in place of the separate card.
+      await expect(page.getByTestId('now-close-day')).toBeVisible()
       await audit(page, `${theme}/today: plan seen for the first time, sleep in progress`)
       await open(page, 'checkin')
       await audit(page, `${theme}/check-in without a saved entry`)

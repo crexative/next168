@@ -67,7 +67,7 @@ describe('ItemStatusControl tap', () => {
       expect(circle().getAttribute('data-status')).toBe(status ?? 'none')
     }
     expect(names).toEqual([
-      'Mark Deep work as done',
+      'How did Deep work go? Not marked. Tap to mark done; press and hold for more',
       'Deep work: done. Tap to remove the answer',
       'Deep work: partly done. Tap to mark it done',
       'Deep work: not done. Tap to mark it done',
