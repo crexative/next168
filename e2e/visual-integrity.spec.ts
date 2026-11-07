@@ -842,10 +842,17 @@ for (const theme of THEMES) {
           settings: { ...plannedDocument.settings, locale },
           events: [...plannedDocument.events, { id: 'e-visit', title: 'Arzttermin und Rückruf', start: '2026-10-21T09:00:00.000Z', end: '2026-10-21T10:00:00.000Z', allDay: false, attendees: [] }],
         }
-        await start(page, theme, crowded, locale, new Date('2026-10-21T21:00:00.000Z'))
+        // The overlap notice shows only while the pair is current or upcoming (Today redesign): 09:30, inside both.
+        await start(page, theme, crowded, locale, new Date('2026-10-21T09:30:00.000Z'))
         await open(page, 'today')
         await expect(page.getByTestId('timeline-overlap').first()).toBeVisible()
-        await audit(page, `${theme}/${locale}/320 today: rows with circles and the overlap line`)
+        await audit(page, `${theme}/${locale}/320 today: the overlap line`)
+        // In the evening the finished rows, with their circles, sit in the folded "Antes" row.
+        await page.clock.setSystemTime(new Date('2026-10-21T21:00:00.000Z'))
+        await page.clock.fastForward(31_000)
+        await page.getByTestId('timeline-earlier').click()
+        await expect(page.getByTestId('status-control').first()).toBeVisible()
+        await audit(page, `${theme}/${locale}/320 today: rows with circles`)
         await page.getByTestId('status-control').first().click({ button: 'right' })
         await expect(page.getByRole('menu')).toBeVisible()
         await audit(page, `${theme}/${locale}/320 today: status menu`)

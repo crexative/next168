@@ -449,7 +449,12 @@ test.describe('announcements and accessibility', () => {
       await start(page, { theme, size: SIZES[0] })
       for (const time of ['19:19', '19:53', '18:10', '10:10', '07:40', '23:30']) {
         await goTo(page, time)
-        if (time === '19:19') await earlier(page).click()
+        if (time === '19:19') {
+          await earlier(page).click()
+          // The rows grow in over 0.35 s; the audit measures them at rest.
+          await expect(rows(page)).toHaveCount(10)
+          await settled(page)
+        }
         expect(await visualIntegrityViolations(page), `visual integrity at ${time}`).toEqual([])
         const results = await new AxeBuilder({ page: page as unknown as ConstructorParameters<typeof AxeBuilder>[0]['page'] }).analyze()
         expect(results.violations.map((violation) => `${time}: ${violation.id}`), `axe at ${time}`).toEqual([])

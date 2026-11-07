@@ -119,6 +119,8 @@ function clear(occurrence: DatedOccurrence): void {
   <div v-if="document" class="today-view">
     <p class="today-subtitle t-subhead t-secondary" data-testid="today-subtitle">{{ subtitle }}</p>
     <AssistantEntryButton />
+    <!-- Without a timeline the coverage notice has no "Tu día" heading to sit under; it still shows, above the empty state. -->
+    <component :is="GoogleCoverageNotice" v-if="!hasContent && GoogleCoverageNotice && googleAvailable" :ranges="googleRanges" />
     <EmptyState v-if="!hasContent" icon="sun" :title="t('today.empty.title')" :description="t('today.empty.description')">
       <!-- The setup wizard is the quick way in; when it cannot be offered, the link to Week remains. -->
       <SetupWeekPrompt v-if="setupWeekOffered(planner)" />
