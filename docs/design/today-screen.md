@@ -15,13 +15,23 @@ reported instance.
 
 | # | Finding | Family checked | Resolution | Where |
 |---|---|---|---|---|
-| 1 | MAJOR: a task underway is missing from Now and Next | Anything happening now that is not a routine block: fixed-time task chunks, Weeklid events, calendar events, two overlapping blocks; and the same gap in "Next" (`nextUp` ignores events) and in "Libre" (gaps ignored busy events) | **D1 decided:** a task chunk spanning now is the primary Now item; its routine block is the context line. One priority rule (§5.1) picks Now from all kinds; Next and gaps use all kinds. Fact found: floating tasks are re-fitted to start at or after now (`scheduling.ts:38-40`), so only fixed-time tasks (`at`) can span now; floating ones appear as Next | §1, §5.1, §5, checks 17–19 |
+| 1 | MAJOR: a task underway is missing from Now and Next | Anything happening now that is not a routine block: fixed-time task chunks, Weeklid events, calendar events, two overlapping blocks; and the same gap in "Next" (`nextUp` ignores events) and in "Libre" (gaps ignored busy events) | **D1 decided:** a task chunk spanning now is the primary Now item; its routine block is the context line. One priority rule (§5.1) picks Now from all kinds; Next and gaps use all kinds. (The round-1 claim that only fixed-time tasks can span now was wrong; corrected in row R2-1.) | §1, §5.1, §5, checks 17–19 |
 | 2 | MAJOR: conflict state does not decide what to do | Every place the overlap shows: Now title, context line, Do slot, Next, list row text, both languages | **D2 decided:** a calendar or Weeklid event (a commitment with others) wins Now over a routine block; the routine shows as "Tu rutina: …" on the context line; no check-in asked about the event | §5.1, §5, §9, check 9 (es + en) |
 | 3 | MAJOR: 30-minute window unproven and hides check-ins | Every element this redesign hides or moves that holds an answerable item: Now-card question, collapsed "Antes", evening Do slot, read-only tab; and the claim "only behaviour change" | **D3 decided:** 30 min is a hypothesis with a measure, source, baseline and review date (§5.2). After the window, unanswered items stay countable on the "Antes" row, which opens straight to them. The full list of behaviour changes replaces the "only change" claim | §5, §5.2, §5.3, §7, checks 6, 20 |
 | 4 | MAJOR: VoiceOver behaviour asserted, not supported | Every accessibility claim in §10 that cites existing behaviour or adds new ARIA: announcer, progressbar `aria-valuetext`, `aria-expanded`/`aria-controls`, event row names, now-line text | **D4 decided:** false claim removed (the announcer only reads the page title on navigation, `AppShell.vue:137`). New block-change announcement specified with timing and duplicate suppression; `aria-valuetext` specified; each has a check | §1, §10, checks 3, 21, 22 |
 | 5 | MINOR: "También ahora" uses a fixed article | Every Spanish string with "la/las {time}" in §9, the states table and wireframes | All such keys now carry "singular \| plural" forms and are rendered through `untilClock` (`clockPhrase.ts:10-12`); one check at 1:00 | §9, check 23 |
 | 6 | MINOR: status-control visibility note wrong; event details "as Week does" do not exist on Today | Every "existing behaviour" claim in §1 and every new interactive element | §1 corrected (an answered block keeps its control mid-block, `NowCard.vue:48-50`). Event rows on Today stay non-interactive (D5 decided). DOM rule chosen: collapsed past rows are **not rendered** until expanded (§7), check 6 matches | §1, §7, §8, checks 6, 10 |
 | — | Keep free-hours removal (reviewer agrees) | Other tests asserting removed or renamed text ("Tarde", subtitle) | **D6 decided:** removed from the header (Insights already shows it, `InsightsView.vue:87`). The implementation change updates `e2e/today-checkin.spec.ts:71` in the same PR, plus any spec asserting "Tarde" | §3, §12 note |
+
+**Round 2** (Codex on 947e03c, `/tmp/weeklid-today-rt/r2.md`, ACCEPT WITH CHANGES):
+
+| # | Finding | Family checked | Resolution | Where |
+|---|---|---|---|---|
+| R2-1 | MAJOR: floating tasks can already span now | Every statement that ties "can be Now" to a task type (§1, §5.1, round-1 row 1) | Claim removed: `scheduleStable` keeps a previous floating placement while its chunk ends after now (`scheduling.ts:151-167`), so any task kind can be underway; §5.1 rule 2 applies to every chunk spanning now. Today's caller passes no `previous` today (`TodayView.vue:58`); the rule does not depend on that | §1, §5.1, check 24 |
+| R2-2 | MAJOR: a long timed event monopolises Now; equal ties have no meaning | Every rule that ranks items: event vs task/routine, event vs event, task vs task, block vs block; and what the context line shows in each case | **D7 decided (owner may veto):** a timed event wins Now only if it lasts ≤ 4 h; a longer one is context ("También ahora: …") and the task or routine stays primary (with nothing else spanning now, the long event is Now). Ties inside one rank: the shorter wins (more specific), then the later start, then key order; the runner-up is the context line | §5.1, §9, checks 25, 26 |
+| R2-3 | MINOR: 14-day comparison is not strong evidence | Every claim in §5.2 that reads as proof | Called directional; counts reported next to the rate; the effect of plan edits on the denominator stated | §5.2 |
+| R2-4 | MINOR: the announcement omits the new check-in action | Every moment the Do slot gains an action without a spoken cue: a Now boundary, the 10-minute mark | When the question becomes available it is announced once, combined with the Now change when both happen on one refresh; losing it is not announced | §9, §10, checks 22, 27 |
+| R2-5 | MINOR: "Antes" focus jump fails in read-only | Every focus move onto a control that can be disabled | Focus stays on the "Antes" button when rings are disabled (`planner.writable` false) | §7, check 28 |
 
 ## 1. What the screen does today (code facts)
 
@@ -37,9 +47,10 @@ timeline (`:136`), "Por hacer hoy" (`:154`).
 - **Current and next** come from blocks only (`src/core/now.ts:4-13`); calendar events never become "now".
   "Después" is the next block or placed task by start time (`nextUp.ts:6-11`), never an event; a task chunk already
   under way is in neither. Free time between the current item and the next one is not represented.
-- **Task placement on Today**: floating tasks are re-fitted from the next five-minute step after now
-  (`scheduling.ts:38-40`, `TodayView.vue:54-59`), so they never span now; fixed-time tasks (`at` + duration) are one
-  interval at their time (`scheduling.ts:121-133`) and can.
+- **Task placement**: new floating placements start at the next five-minute step after now (`scheduling.ts:38-40`),
+  but `scheduleStable` keeps a previous floating placement while its chunk ends after now (`scheduling.ts:151-167`),
+  so a floating chunk can span now; fixed-time tasks (`at` + duration) are one interval at their time
+  (`scheduling.ts:121-133`) and can too. Today currently calls `fitTasks` without `previous` (`TodayView.vue:58`).
 - **Announcements**: the shell's polite live region (`src/ui/announcer.ts`) reads the page title after navigation
   (`AppShell.vue:137`). Today announces nothing when the current block changes.
 - **Event rows** on Today have no press handler; event details exist only in Week (`DayColumn.vue`).
@@ -201,17 +212,20 @@ No second column: the screen has one job and the readable column stays 720 px (`
 One rule picks the primary item from **every kind** that spans now (`start ≤ now < end`): blocks, placed task
 chunks, Weeklid events, busy calendar events (all-day and free events never count).
 
-1. A calendar or Weeklid event wins (a commitment with other people).
-2. Else a task chunk (the specific thing to do inside a broad routine).
+1. A calendar or Weeklid event lasting **at most 4 h** wins (a commitment with other people; D7). A longer timed
+   event (a trip, a conference day) does not outrank a task or routine.
+2. Else a task chunk (the specific thing to do inside a broad routine), floating or fixed.
 3. Else a routine block.
-4. Ties inside one kind: the one that started last; then the shorter; then the stable key order of `buildTimeline`.
+4. Else a timed event longer than 4 h.
+5. Ties inside one rank: the shorter wins (the more specific commitment); then the later start; then the stable key
+   order of `buildTimeline`.
 
-The context line names at most one other item spanning now: the routine block under a task ("En Trabajo · hasta las
-5:00 p. m.") or the routine displaced by an event ("Tu rutina: Ejercicio · hasta las 7:00 p. m."); with more, it adds
-"+N". **Next** is the earliest item of any kind starting at or after the primary item's end (events included,
+The context line names the runner-up, at most one item, with "+N" for the rest: the routine under a task ("En
+Trabajo · hasta las 5:00 p. m."), the routine displaced by an event ("Tu rutina: Ejercicio · hasta las 7:00 p. m."),
+or a long event or a tied equal-rank item ("También ahora: Viaje · hasta las 9:00 p. m."). An event runner-up
+outranks a routine runner-up for this line. **Next** is the earliest item of any kind starting at or after the primary item's end (events included,
 replacing `nextUp`'s blocks-and-tasks rule); when nothing of any kind spans the time between, that time is a gap.
-**Libre** means no item of any kind spans now. Because floating tasks are re-fitted to start at or after now
-(`scheduling.ts:38-40`), only fixed-time tasks reach rule 2; a floating chunk shows as Next.
+**Libre** means no item of any kind spans now.
 
 ### 5.2 The 30-minute Ending window is a hypothesis (D3 decided)
 
@@ -219,8 +233,14 @@ The Now card keeps asking for up to 30 minutes after a block ends (the list's ri
 is unchanged). 30 is not settled:
 
 - **Measure:** answer rate = answered occurrences / askable occurrences per day (`document.actuals` against
-  askable `datedOccurrences`; askable per `planSince.ts`), computed locally from an export; no telemetry.
-- **Baseline:** the owner's 14 days before the release; **after:** the 14 days after it.
+  askable `datedOccurrences`; askable per `planSince.ts`), computed locally from an export; no telemetry. Always report
+  the two counts next to the rate ("31 / 44 = 70 %").
+- **Denominator and plan edits:** askable occurrences are rebuilt from the plan in the export, and an export holds only
+  the current plan; a routine edited or deleted mid-window changes its past occurrences (answers keep their own
+  snapshot, `actuals.ts:19-30`). So take one export at the end of each window, count each window against its own
+  export, and list any routine edits in the window next to the result.
+- **Baseline:** the owner's 14 days before the release; **after:** the 14 days after it. With one person and two
+  windows this is **directional**, not proof that the window caused a change.
 - **Review date:** 14 days after release, and no later than 2026-12-18. Keep 30 if the rate rises; otherwise try 60 or
   drop the extension.
 - **Never hidden after the window:** an unanswered item stays counted on the "Antes" row ("2 sin marcar"), which opens
@@ -254,8 +274,9 @@ is unchanged). 30 is not settled:
   now (greyed title), in time order, between the "Antes" row and the now-line. State is per visit; it starts collapsed.
 - **DOM rule (one rule):** while collapsed, past rows are **not rendered** (no hidden copies, no `aria-controls` to an
   absent element). Expanding renders them. Upcoming rows are always rendered, in time order.
-- **Opens straight to them:** when k > 0, expanding moves focus to the first unanswered ring and scrolls it into view
-  (`block: 'nearest'`); when k = 0, focus stays on the "Antes" row. Collapsing returns focus to the "Antes" row.
+- **Opens straight to them:** when k > 0 and rings are enabled, expanding moves focus to the first unanswered ring and
+  scrolls it into view (`block: 'nearest'`); when k = 0 or the rings are disabled (`planner.writable` false), focus
+  stays on the "Antes" row. Collapsing returns focus to the "Antes" row.
 - If no past items: the row is absent. If everything is past: the row stays collapsed and the now-line follows it.
 
 ## 8. Calendar events
@@ -283,6 +304,8 @@ is unchanged). 30 is not settled:
 | `today.now.more` | +{count} | +{count} |
 | `today.now.completeTask` | Marcar como hecha | Mark as done |
 | `today.now.changed` (spoken) | Ahora: {title}, hasta la {time} \| Ahora: {title}, hasta las {time} | Now: {title}, until {time} |
+| `today.now.alsoNow` | También ahora: {title} · hasta la {time} \| También ahora: {title} · hasta las {time} | Also now: {title} · until {time} |
+| `today.now.askAvailable` (spoken) | Puedes marcar cómo fue {title} | You can mark how {title} went |
 | `today.now.closeDay` | Cierre del día | Day wrap-up |
 | `today.now.readOnly` | Solo lectura en esta pestaña | Read-only in this tab |
 | `today.timeline.earlier` | Antes · {count} | Earlier · {count} |
@@ -294,7 +317,7 @@ is unchanged). 30 is not settled:
 | `today.status.markDone` | ¿Cómo fue {title}? Sin marcar. Toca para marcar como hecho; mantén pulsado para más opciones | How did {title} go? Not marked. Tap to mark done; press and hold for more |
 
 Existing "Quedan {duration}", "Hecho / A medias / No", "Después", empty states: unchanged. Every Spanish key with
-"la/las {time}" above (`until`, `freeUntil`, `taskContext`, `routineContext`, `changed`) carries both forms and is
+"la/las {time}" above (`until`, `freeUntil`, `taskContext`, `routineContext`, `alsoNow`, `changed`) carries both forms and is
 rendered with `untilClock(t, key, time)` (`clockPhrase.ts:10-12`), never `t(key, { time })`; the other languages ship
 one form. The wireframes write "las 8:00" only because those hours are plural.
 
@@ -322,8 +345,12 @@ one form. The wireframes write "las 8:00" only because those hours are plural.
   counts as a key) differs from the last key Today announced or rendered. Timing: on the first `useNow` refresh after
   the boundary. Not on first render (the shell already reads the page title, `AppShell.vue:137`); not while
   `document.visibilityState` is `hidden` (the key is recorded silently, so returning does not replay it); never for
-  minute-count, Do-slot or context-line changes. Each boundary is announced exactly once, because the announcer
+  minute-count or context-line changes. Each boundary is announced exactly once, because the announcer
   itself re-reads identical messages (`announcer.ts:13-15`) and so cannot de-duplicate.
+- **Announcing the check-in question:** when the Do slot's "¿Cómo fue?" becomes available for an occurrence it did not
+  offer at the previous refresh (the 10-minute mark, or a boundary), Today announces `today.now.askAvailable` once per
+  occurrence, under the same first-render and hidden-tab rules. If the Now key changes on the same refresh, one message
+  carries both: "{changed}. {askAvailable}". The question going away is not announced.
 - **Reduced motion / transparency / forced colours:** see Motion; forced-colors keeps the existing ring shapes.
 
 ## 11. Motion
@@ -390,9 +417,23 @@ and any spec asserting "Tarde".
     19:59:50 and advance through 20:01:30: the live region shows "Ahora: Libre, hasta las 11:00 p. m." exactly once
     (sample its text every 100 ms; count transitions into that value). With the page hidden
     (`visibilityState` emulated `hidden`) across 20:00, nothing is announced, and nothing is announced on return.
-22. **No duplicate on refresh:** between 19:19 and 19:58 (several `useNow` refreshes) the live region never changes.
+22. **No duplicate on refresh:** between 19:19 and 19:49 (several `useNow` refreshes) the live region never changes.
 23. **la/las:** at 12:40 (es) the card reads "hasta la 1:00 p. m." and "Tu rutina: Trabajo · hasta las 5:00 p. m.";
     the text "las 1:00" appears nowhere on the page.
+24. **Kept floating chunk (R2-1)**, unit test on the Now selector: a floating task (no `at`) whose kept placement
+    (`previous`) chunk is 09:50–10:40 inside Work, `now` 10:10 → the primary item is that task and the context is Work.
+    If the implementation makes Today pass `previous`, the same holds on screen ("Quedan 30 min").
+25. **Long event (D7):** add a timed Weeklid event "Viaje" 06:00–21:00. At 11:00 (no task underway) `now-title` is
+    "Trabajo" and the context line is "También ahora: Viaje · hasta las 9:00 p. m." (en "Also now: Viaje · until
+    9:00 PM"); at 17:40 the 1-h event 17:30–18:30 is Now with the context "También ahora: Viaje …" (event runner-up
+    first); at 20:30 (nothing else spans now) "Viaje" is Now.
+26. **Tie (D7):** add a Weeklid event 17:30–18:00 beside the 17:30–18:30 one: at 17:40 the 30-min event is Now and the
+    context line is "También ahora: <1-h event> · hasta las 6:30 p. m."; swapping their key order changes nothing.
+27. **Check-in announcement (R2-4):** advance from 19:49:50 to 19:50:30: the live region shows "Puedes marcar cómo
+    fue Proyecto personal" exactly once. Unit test on the announcement builder: a Now-key change and a new question on
+    one refresh give one message "Ahora: …. Puedes marcar cómo fue …".
+28. **Read-only focus (R2-5):** with `planner.writable` false, pressing "Antes" expands it and
+    `document.activeElement` stays the "Antes" button.
 
 ### Pixel-perfect checklist (audit at 2x)
 
@@ -423,8 +464,8 @@ and any spec asserting "Tarde".
 
 - **The 30-minute "Ending" extension**: does it ask about a block the person skipped, or race the next block's own
   question? Is the §5.2 measure computable from an export and honest with one person's data?
-- **§5.1 priority**: an all-day event never wins; a long Weeklid event (e.g. "Trip") would win over every routine all
-  day. Is that right?
+- **§5.1 priority and the 4 h limit (D7)**: is 4 h the right line between a meeting and a trip? A 5-h workshop now
+  ranks below a routine.
 - **Focus jump on expanding "Antes"** (§7): helpful or disorienting for VoiceOver users?
 - **Collapsing the past**: does hiding six rows behind "Antes" bury the catch-up answers Summary depends on? Measure
   answer rate before/after rather than assuming.
