@@ -296,8 +296,9 @@ maximum fails above 1.9 MB", is **not met** by a plan at the array maxima of `pl
 | 50,000 actuals alone | 12.3 MB | 0.45 MB | 0.11 s |
 | 5,000 tasks alone | 1.5 MB (11.8 MB) | 0.21 MB (8.25 MB) | 0.02 s |
 
-The binding limit is the 2 MB request body, not the sealed size: a body under 2,000,000 bytes seals to at most about
-1.7 MB even for random printable text (checked in `size.spec.ts`), so the row cap never trips in practice. The design's
+The binding limit is the 2 MB request body, not the sealed size: a body under 2,000,000 bytes seals to under 1.9 MB
+even for random text (1.99 MB of random letters and digits sealed to 1.39 MB; random printable ASCII cannot be denser than
+about 0.82 of its size, so about 1.63 MB; `size.spec.ts` checks the first), so the row cap never trips in practice. The design's
 fallback is what is implemented: a plan whose JSON exceeds 2 MB is refused with `413 tooLarge` ("plan too large to sync")
 and nothing is stored. Options for the owner, if the maxima must sync: prune old `actuals` before sync (they are 12 MB of
 the 15.8 MB), allow a gzip request body with a streamed decompression bound, or split the plan over several rows. A
