@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { scheduleTasks } from '@/core/scheduler'
 import { deepWork, plannerDocument, sleep } from '@/features/week/testDocument'
-import { buildTimeline } from './todayTimeline'
+import { buildTimeline, liveOverlapTitles } from './todayTimeline'
 
 const document = plannerDocument({
   blocks: [deepWork, sleep],
@@ -29,15 +29,23 @@ describe('today timeline', () => {
     expect(allDay).toEqual([{ key: 'external:cal/y/', title: 'Conference', kind: 'external' }])
   })
 
-  it('names what overlapping blocks and events share time with, but never for placed tasks', () => {
-    const overlaps = (title: string) => items.filter((item) => item.title === title).map((item) => item.overlapsWith)
+  it('names what a block shares time with while the pair is current or upcoming, never on events or placed tasks', () => {
+    const during = new Date('2026-10-21T10:45:00Z')
+    const overlaps = (title: string, now = during) => items.filter((item) => item.title === title).map((item) => liveOverlapTitles(item, items, now))
     expect(overlaps('Deep work')).toEqual([['Client call']])
-    expect(overlaps('Client call')).toEqual([['Deep work']])
-    expect(overlaps('Gym class')).toEqual([['Sleep']])
+    expect(overlaps('Client call')).toEqual([[]])
+    expect(overlaps('Gym class')).toEqual([[]])
     expect(overlaps('Write report')).toEqual([[]])
-    // Last night's tail of Sleep overlaps nothing; tonight's Sleep overlaps the evening class.
+    // Last night's tail of Sleep overlaps nothing; tonight's Sleep overlaps the evening class, which names it only on Sleep.
     expect(overlaps('Sleep')).toEqual([[], ['Gym class']])
     expect(items.find((item) => item.kind === 'task')).toMatchObject({ start: '2026-10-21T09:00:00.000Z' })
+  })
+
+  it('stops naming a pair once the overlap itself is over', () => {
+    const deepWorkRow = items.find((item) => item.title === 'Deep work')!
+    expect(liveOverlapTitles(deepWorkRow, items, new Date('2026-10-21T10:59:00Z'))).toEqual(['Client call'])
+    expect(liveOverlapTitles(deepWorkRow, items, new Date('2026-10-21T11:00:00Z'))).toEqual([])
+    expect(liveOverlapTitles(deepWorkRow, items, new Date('2026-10-21T12:00:00Z'))).toEqual([])
   })
 
   it('lists each overlapping title once, however many times it overlaps', () => {
@@ -49,6 +57,6 @@ describe('today timeline', () => {
       ],
     })
     const built = buildTimeline({ document: twice, today: '2026-10-21', timeZone: 'UTC', placements: [], external: [] })
-    expect(built.items.find((item) => item.title === 'Deep work')?.overlapsWith).toEqual(['Standup'])
+    expect(liveOverlapTitles(built.items.find((item) => item.title === 'Deep work')!, built.items, new Date('2026-10-21T08:00:00Z'))).toEqual(['Standup'])
   })
 })

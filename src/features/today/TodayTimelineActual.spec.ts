@@ -6,6 +6,7 @@ import { deepWork, plannerDocument } from '@/features/week/testDocument'
 import TodayTimeline from './TodayTimeline.vue'
 import { recordActual } from './actuals'
 import { buildTimeline } from './todayTimeline'
+import { expandEarlier } from './timelineFixtures'
 
 let unmount = () => undefined as void
 afterEach(() => unmount())
@@ -40,6 +41,7 @@ describe('TodayTimeline partial status', () => {
       now: new Date('2026-10-21T11:15:00Z'), timeZone: 'UTC', writable: true, planSince: Date.parse('2026-10-20T00:00:00Z'), onRecord,
     })
     unmount = mounted.unmount
+    await expandEarlier(mounted.host)
     mounted.host.querySelector('[data-testid="status-control"]')!.dispatchEvent(new MouseEvent('contextmenu', { bubbles: true, cancelable: true }))
     await nextTick()
     mounted.host.querySelector<HTMLButtonElement>('[data-testid="status-partial"]')!.click()

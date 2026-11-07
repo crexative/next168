@@ -89,8 +89,8 @@ test.describe('today', () => {
     const card = page.getByTestId('now-card')
     await expect(card.getByTestId('now-title')).toHaveText('Deep work')
     await expect(card.getByTestId('now-left')).toHaveText('45 min left')
-    await expect(card.getByTestId('now-next')).toContainText('Gym')
-    await expect(card.getByTestId('now-next')).toContainText('6:00 PM')
+    // Nothing starts when Deep work ends at 11:00: the free time to the gym at 6:00 PM is what comes next.
+    await expect(card.getByTestId('now-next')).toContainText('Free until 6:00 PM')
     await expect(card.getByRole('progressbar')).toHaveAttribute('aria-valuenow', '63')
     const before = await card.boundingBox()
 
@@ -122,11 +122,11 @@ test.describe('today', () => {
   })
 
   test('marking an occurrence done stores its snapshot and survives a reload', async ({ page }) => {
-    // The status circle appears in the block's last ten minutes.
+    // The three answers appear in the block's last ten minutes.
     await openSeeded(page, 'today', new Date('2026-10-21T10:55:00.000Z'))
-    const circle = page.getByTestId('now-card').getByTestId('status-control')
-    await circle.click()
-    await expect(circle).toHaveAttribute('data-status', 'done')
+    const card = page.getByTestId('now-card')
+    await card.getByRole('button', { name: 'Done', exact: true }).click()
+    await expect(card.getByTestId('now-answered')).toHaveText('Done · Change')
     await expect.poll(async () => (await storedDocument(page)).actuals).toEqual([{
       date: WEDNESDAY,
       blockId: 'b-work',
@@ -138,7 +138,7 @@ test.describe('today', () => {
     }])
 
     await page.reload()
-    await expect(page.getByTestId('now-card').getByTestId('status-control')).toHaveAttribute('data-status', 'done')
+    await expect(page.getByTestId('now-card').getByTestId('now-answered')).toHaveText('Done · Change')
     // Last night's sleep is a single quiet line without a circle; Gym has not started yet.
     const rows = page.getByTestId('timeline-item')
     await expect(rows.filter({ hasText: 'Sleep' }).getByTestId('status-control')).toHaveCount(0)
@@ -148,8 +148,7 @@ test.describe('today', () => {
   test('a partial actual records the minutes spent', async ({ page }, testInfo) => {
     test.skip(testInfo.project.name !== 'desktop')
     await openSeeded(page, 'today', new Date('2026-10-21T10:55:00.000Z'))
-    await page.getByTestId('now-card').getByTestId('status-control').click({ button: 'right' })
-    await page.getByRole('menuitem', { name: 'Partly' }).click()
+    await page.getByTestId('now-card').getByRole('button', { name: 'Partly' }).click()
     await page.getByLabel('Minutes spent (planned 120)').fill('50')
     await page.getByRole('button', { name: 'Save', exact: true }).click()
     await expect.poll(async () => (await storedDocument(page)).actuals[0]).toMatchObject({ status: 'partial', actualMinutes: 50, plannedMinutes: 120 })

@@ -2,8 +2,21 @@
   "now": {
     "label": "Now",
     "eyebrow": "Now",
-    "free": "Free time",
-    "freeUntil": "Free time until {time}",
+    "free": "Free",
+    "freeUntil": "Free until {time}",
+    "until": "until {time}",
+    "ask": "How did it go?",
+    "answered": "{status} · Change",
+    "taskContext": "In {title} · until {time}",
+    "routineContext": "Your routine: {title} · until {time}",
+    "more": "+{count}",
+    "completeTask": "Mark as done",
+    "changed": "Now: {title}, until {time}",
+    "changedOpen": "Now: {title}",
+    "alsoNow": "Also now: {title} · until {time}",
+    "askAvailable": "You can mark how {title} went",
+    "closeDay": "Day wrap-up",
+    "readOnly": "Read-only in this tab",
     "progress": "Progress",
     "next": "Next",
     "nothingNext": "Nothing else planned this week",
@@ -19,17 +32,22 @@
     "untilTime": "Until {time}",
     "sinceDate": "Since {date}",
     "untilDate": "Until {date}",
-    "late": "Late",
+    "late": "Overdue",
     "kinds": {
       "task": "Task",
-      "event": "Event",
+      "event": "Weeklid calendar",
       "external": "Calendar"
     },
     "carryOver": "Since yesterday · until {time}",
-    "taskDone": "Task done: {title}"
+    "taskDone": "Task done: {title}",
+    "earlier": "Earlier · {count}",
+    "unanswered": "{count} to mark",
+    "nowLine": "Now {time}",
+    "gap": "Free · {duration}"
   },
   "status": {
-    "markDone": "Mark {title} as done",
+    "markDone": "How did {title} go? Not marked. Tap to mark done; press and hold for more",
+    "markTaskDone": "Mark {title} as done",
     "stateDone": "{title}: done. Tap to remove the answer",
     "statePartial": "{title}: partly done. Tap to mark it done",
     "stateSkipped": "{title}: not done. Tap to mark it done",
@@ -55,7 +73,7 @@
     "action": "Open the week"
   },
   "header": {
-    "subtitle": "{date} · {hours} free this week"
+    "subtitle": "{date}"
   },
   "todo": {
     "title": "To do today",

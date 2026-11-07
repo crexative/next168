@@ -10,6 +10,7 @@ import { setExternalOccurrenceSource } from '@/features/week/externalOccurrences
 import { useUndoToast } from '@/ui/undoToast'
 import { setupOpen } from '@/features/onboarding/reopen'
 import TodayView from './TodayView.vue'
+import { expandEarlier } from './timelineFixtures'
 import { setupRequest } from '@/features/onboarding/reopen'
 
 // Saturday 2026-10-24. Family 10:00–14:00, Reading 15:00–16:00, Sleep 22:00–06:00, plus one task inside Family.
@@ -62,50 +63,31 @@ const controlOf = (selector: string) => host.querySelector<HTMLButtonElement>(`$
 const taskCircle = () => controlOf('[data-kind="task"]')
 
 describe('Today header and cards', () => {
-  it('replaces the two-row card with one line: the date and the live free hours', async () => {
+  it('says only the date under the title: no free hours, no counter and no card (check 1)', async () => {
     await mount('2026-10-24T12:00:00Z')
-    expect(text('today-subtitle')).toBe('Saturday, October 24 · 23 h free this week')
+    expect(text('today-subtitle')).toBe('Saturday, October 24')
     expect(host.querySelector('[data-testid="free-hours"], [data-testid="day-progress"], .today-stats')).toBeNull()
+    expect(host.querySelector('.today-view')!.firstElementChild).toBe(host.querySelector('[data-testid="today-subtitle"]'))
   })
 
-  it('says only the date while the first-run setup is open, then the free hours once it is done', async () => {
+  it('says only the date while the first-run setup is open, and still after it is done', async () => {
     setupOpen.value = true
     try {
       const store = await mount('2026-10-24T12:00:00Z', { ...base, settings: { ...base.settings, onboardingDone: false } })
       expect(text('today-subtitle')).toBe('Saturday, October 24')
       await store.commit((draft) => { draft.settings.onboardingDone = true })
       await nextTick()
-      expect(text('today-subtitle')).toBe('Saturday, October 24 · 23 h free this week')
-    } finally {
-      setupOpen.value = false
-    }
-  })
-
-  it('shows the free hours again when the first-run setup is closed without finishing', async () => {
-    setupOpen.value = true
-    try {
-      await mount('2026-10-24T12:00:00Z', { ...base, settings: { ...base.settings, onboardingDone: false } })
       expect(text('today-subtitle')).toBe('Saturday, October 24')
-      setupOpen.value = false
-      await nextTick()
-      expect(text('today-subtitle')).toBe('Saturday, October 24 · 23 h free this week')
     } finally {
       setupOpen.value = false
     }
   })
 
-  it('keeps the subtitle number in step with the plan: whole hours, never tenths', async () => {
-    const store = await mount('2026-10-24T12:00:00Z')
-    await store.commit((draft) => { draft.blocks.push({ id: 'walk', categoryId: 'family', title: 'Walk', days: [6], start: 1000, end: 1090 }) })
-    await nextTick()
-    // 90 more planned minutes today: 23 h 0 min - 1 h 30 min = 21 h 30 min, shown rounded.
-    expect(text('today-subtitle')).toMatch(/· 2[12] h free this week$/)
-    expect(text('today-subtitle')).not.toMatch(/[.,]\d/)
-  })
-
-  it('puts a placed task in "Next" when it starts before the next block', async () => {
+  it('says Free, with how long and until when, between two blocks', async () => {
     await mount('2026-10-24T14:30:00Z')
-    expect(clock(text('now-title'))).toBe('Free time until 3:00 PM')
+    expect(text('now-title')).toBe('Free')
+    expect(text('now-left')).toBe('30 min left')
+    expect(clock(text('now-until'))).toBe('until 3:00 PM')
     expect(text('now-next')).toContain('Reading')
   })
 
@@ -119,9 +101,12 @@ describe('Today header and cards', () => {
   it('only offers the check-in card from 20:00, then shows it done with the streak', async () => {
     await mount('2026-10-24T19:59:00Z')
     expect(host.querySelector('[data-testid="checkin-card"]')).toBeNull()
+    expect(host.querySelector('[data-testid="now-close-day"]')).toBeNull()
     app!.unmount(); host.remove()
     const store = await mount('2026-10-24T20:00:00Z')
+    // In free time the Now card's slot stays empty and the card is the way in.
     expect(host.querySelector('[data-testid="checkin-card"]')).not.toBeNull()
+    expect(host.querySelector('[data-testid="now-close-day"]')).toBeNull()
     expect(host.querySelector('[data-testid="checkin-done"]')).toBeNull()
     await store.commit((draft) => { draft.checkIns.push({ date: '2026-10-23' }, { date: '2026-10-24' }) })
     await nextTick()
@@ -133,21 +118,23 @@ describe('Today header and cards', () => {
 
 describe('Today status questions', () => {
   it('does not ask for status inside the Now card while the block is mid-way, even when the plan existed before', async () => {
-    await mount('2026-10-24T12:00:00Z')
+    await mount('2026-10-24T12:00:00Z', { ...base, tasks: [] })
     expect(host.querySelector('[data-testid="now-title"]')?.textContent).toBe('Family lunch')
     expect(controlOf('.now-card')).toBeNull()
     expect(host.querySelector('[role="group"]')).toBeNull()
+    expect(host.querySelector('[data-testid="now-do"]')).toBeNull()
   })
 
   it('asks in the last minutes of the block when older evidence shows the plan existed', async () => {
     await mount('2026-10-24T13:55:00Z')
-    expect(controlOf('.now-card')?.getAttribute('aria-label')).toBe('Mark Family lunch as done')
+    expect(host.querySelector('[data-testid="now-ask"]')?.textContent).toBe('How did it go?')
+    expect(host.querySelector('[data-testid="answer-done"]')).not.toBeNull()
   })
 
   it('does not ask about a block that started before the plan was first seen', async () => {
     await mount('2026-10-24T13:55:00Z', { ...base, checkIns: [], tasks: [] })
     // First time the plan is seen at 13:55 (no older evidence): Family lunch started at 10:00 and is not asked.
-    expect(controlOf('.now-card')).toBeNull()
+    expect(host.querySelector('[data-testid="now-do"]')).toBeNull()
     expect(host.querySelector('[data-testid="status-control"]')).toBeNull()
   })
 
@@ -170,7 +157,7 @@ describe('Today status questions', () => {
   it('asks about a block that started after the stored “plan first seen” moment, even with no other evidence', async () => {
     window.localStorage.setItem('next168-plan-since:ws-today', String(Date.parse('2026-10-24T09:00:00Z')))
     await mount('2026-10-24T13:55:00Z', { ...base, checkIns: [], tasks: [] })
-    expect(controlOf('.now-card')?.getAttribute('aria-label')).toBe('Mark Family lunch as done')
+    expect(host.querySelector('[data-testid="answer-done"]')).not.toBeNull()
   })
 
   it('stamps the finish time with the current moment', async () => {
@@ -210,9 +197,15 @@ describe('Today status questions', () => {
     expect(taskCircle()).not.toBeNull()
   })
 
-  it('shows only the date and the free hours on a day with nothing to do', async () => {
+  it('shows only the date on a day with nothing to do', async () => {
     await mount('2026-10-24T12:00:00Z', { ...base, blocks: [], tasks: [], checkIns: [] })
-    expect(text('today-subtitle')).toBe('Saturday, October 24 · 36 h free this week')
+    expect(text('today-subtitle')).toBe('Saturday, October 24')
+  })
+
+  it('puts the way in to the check-in in the Now card while something is current, and drops the card then', async () => {
+    await mount('2026-10-24T23:30:00Z')
+    expect(host.querySelector('[data-testid="now-close-day"]')?.getAttribute('href')).toBe('#/checkin')
+    expect(host.querySelector('[data-testid="checkin-card"]')).toBeNull()
   })
 
   it('does not pull focus to the check-in card when Today opens without a fresh save', async () => {
@@ -224,6 +217,12 @@ describe('Today status questions', () => {
 })
 
 describe('Today block status', () => {
+  // A finished block sits in the folded "Earlier" row; these tests answer from its own row.
+  async function mountExpanded(at: string, seed: PlannerDocument = base) {
+    const store = await mount(at, seed)
+    await expandEarlier(host)
+    return store
+  }
   const lunchRow = () => [...host.querySelectorAll<HTMLElement>('[data-testid="timeline-item"]')].find((row) => row.textContent?.includes('Family lunch'))!
   const lunchCircle = () => lunchRow().querySelector<HTMLButtonElement>('[data-testid="status-control"]')!
   const actuals = (store: Awaited<ReturnType<typeof mount>>) => store.document!.actuals.map((actual) => [actual.blockId, actual.status])
@@ -233,7 +232,7 @@ describe('Today block status', () => {
   })
 
   it('marks a finished block done with one tap, tells so in a toast and undoes it', async () => {
-    const store = await mount('2026-10-24T14:30:00Z')
+    const store = await mountExpanded('2026-10-24T14:30:00Z')
     expect(lunchCircle().getAttribute('data-status')).toBe('none')
     lunchCircle().click()
     await store.settled()
@@ -249,7 +248,7 @@ describe('Today block status', () => {
   })
 
   it('undoes an answer back to the previous one exactly, minutes included', async () => {
-    const store = await mount('2026-10-24T14:30:00Z', answered('partial'))
+    const store = await mountExpanded('2026-10-24T14:30:00Z', answered('partial'))
     lunchCircle().click()
     await store.settled()
     expect(store.document!.actuals[0]).toMatchObject({ status: 'done' })
@@ -260,7 +259,7 @@ describe('Today block status', () => {
   })
 
   it('takes a done answer back with a second tap, and the toast offers it again', async () => {
-    const store = await mount('2026-10-24T14:30:00Z', answered('done'))
+    const store = await mountExpanded('2026-10-24T14:30:00Z', answered('done'))
     lunchCircle().click()
     await store.settled()
     await nextTick()
@@ -272,7 +271,7 @@ describe('Today block status', () => {
   })
 
   it('does not overwrite a newer answer when the undo no longer applies, and raises no error', async () => {
-    const store = await mount('2026-10-24T14:30:00Z')
+    const store = await mountExpanded('2026-10-24T14:30:00Z')
     lunchCircle().click()
     await store.settled()
     await store.commit((draft) => { draft.actuals[0]!.status = 'skipped' })
@@ -284,7 +283,7 @@ describe('Today block status', () => {
   })
 
   it('shows no toast and keeps the circle open when the save did not go through', async () => {
-    const store = await mount('2026-10-24T14:30:00Z')
+    const store = await mountExpanded('2026-10-24T14:30:00Z')
     vi.spyOn(repos.planner, 'save').mockResolvedValueOnce({ kind: 'error', reason: 'disk-full' })
     lunchCircle().click()
     await store.settled()
@@ -294,7 +293,7 @@ describe('Today block status', () => {
   })
 
   it('commits once when the circle is tapped twice before the first save settles', async () => {
-    const store = await mount('2026-10-24T14:30:00Z')
+    const store = await mountExpanded('2026-10-24T14:30:00Z')
     const save = vi.spyOn(repos.planner, 'save')
     const circle = lunchCircle()
     circle.click()
@@ -305,11 +304,11 @@ describe('Today block status', () => {
   })
 
   it('asks the question of a block still in progress only from its last ten minutes', async () => {
-    await mount('2026-10-24T13:49:00Z')
-    expect(host.querySelector('[data-testid="status-control"][aria-label="Mark Family lunch as done"]')).toBeNull()
+    await mount('2026-10-24T13:49:00Z', { ...base, tasks: [] })
+    expect(host.querySelector('[data-testid="now-ask"]')).toBeNull()
     app!.unmount(); host.remove()
-    await mount('2026-10-24T13:50:00Z')
-    expect(controlOf('.now-card')).not.toBeNull()
+    await mount('2026-10-24T13:50:00Z', { ...base, tasks: [] })
+    expect(host.querySelector('[data-testid="now-ask"]')).not.toBeNull()
   })
 })
 
@@ -354,7 +353,7 @@ describe('Today wiring', () => {
   })
 })
 
-it('keeps the header separator attached on both sides at a wrap boundary', async () => {
+it('keeps the Next row\'s separators as their own items, so they never run into the words', async () => {
   await mount('2026-10-24T12:00:00Z')
-  expect(host.querySelector('[data-testid="today-subtitle"]')?.textContent).toContain('\u00a0· ')
+  expect(host.querySelector('[data-testid="now-next"]')?.textContent).toMatch(/Next · .+ · /)
 })

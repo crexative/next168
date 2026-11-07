@@ -2,8 +2,21 @@
   "now": {
     "label": "Maintenant",
     "eyebrow": "Maintenant",
-    "free": "Temps libre",
-    "freeUntil": "Temps libre jusqu’à {time}",
+    "free": "Libre",
+    "freeUntil": "Libre jusqu’à {time}",
+    "until": "jusqu’à {time}",
+    "ask": "Comment ça s’est passé ?",
+    "answered": "{status} · Modifier",
+    "taskContext": "Dans {title} · jusqu’à {time}",
+    "routineContext": "Ta routine : {title} · jusqu’à {time}",
+    "more": "+{count}",
+    "completeTask": "Marquer comme faite",
+    "changed": "Maintenant : {title}, jusqu’à {time}",
+    "changedOpen": "Maintenant : {title}",
+    "alsoNow": "Aussi maintenant : {title} · jusqu’à {time}",
+    "askAvailable": "Tu peux indiquer comment {title} s’est passé",
+    "closeDay": "Bilan du jour",
+    "readOnly": "Lecture seule dans cet onglet",
     "progress": "Avancement",
     "next": "Ensuite",
     "nothingNext": "Rien d'autre de prévu cette semaine",
@@ -22,14 +35,19 @@
     "late": "En retard",
     "kinds": {
       "task": "Tâche",
-      "event": "Événement",
+      "event": "Calendrier Weeklid",
       "external": "Calendrier"
     },
     "carryOver": "Depuis hier · jusqu’à {time}",
-    "taskDone": "Tâche terminée : {title}"
+    "taskDone": "Tâche terminée : {title}",
+    "earlier": "Avant · {count}",
+    "unanswered": "{count} à indiquer",
+    "nowLine": "Maintenant {time}",
+    "gap": "Libre · {duration}"
   },
   "status": {
-    "markDone": "Marquer {title} comme fait",
+    "markDone": "Comment s’est passé {title} ? Non indiqué. Touche pour marquer comme fait ; appui long pour plus",
+    "markTaskDone": "Marquer {title} comme fait",
     "stateDone": "{title} : fait. Touche pour retirer la réponse",
     "statePartial": "{title} : à moitié. Touche pour le marquer comme fait",
     "stateSkipped": "{title} : non. Touche pour le marquer comme fait",
@@ -55,7 +73,7 @@
     "action": "Ouvrir la semaine"
   },
   "header": {
-    "subtitle": "{date} · {hours} libres cette semaine"
+    "subtitle": "{date}"
   },
   "todo": {
     "title": "À faire aujourd’hui",

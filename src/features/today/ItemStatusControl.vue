@@ -43,7 +43,7 @@ const label = computed(() => {
   if (props.status === 'done') return t('today.status.stateDone', { title: props.title })
   if (props.status === 'partial') return t('today.status.statePartial', { title: props.title })
   if (props.status === 'skipped') return t('today.status.stateSkipped', { title: props.title })
-  return t('today.status.markDone', { title: props.title })
+  return t(hasMenu.value ? 'today.status.markDone' : 'today.status.markTaskDone', { title: props.title })
 })
 
 function menuItems(): HTMLElement[] {
@@ -271,7 +271,7 @@ onBeforeUnmount(() => {
   user-select: none;
 }
 .status-ring {
-  --ring: var(--item-color, var(--block-color, var(--tint)));
+  --ring: var(--label-2);
   display: grid;
   place-items: center;
   box-sizing: border-box;

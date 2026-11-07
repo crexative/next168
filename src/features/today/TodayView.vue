@@ -1,21 +1,18 @@
 <script setup lang="ts">
-import { inlineSeparators } from '@/ui/inlineText'
 import { computed, nextTick, onMounted, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { currentAndNext } from '@/core/now'
 import { fitTasks, placementClock } from '@/core/scheduling'
 import { addLocalDays, localDateOf, type DatedOccurrence } from '@/core/time'
 import { usePlannerStore } from '@/stores/plannerStore'
 import Button from '@/ui/Button.vue'
 import EmptyState from '@/ui/EmptyState.vue'
-import { formatWholeHours } from '@/ui/format'
 import { useUndoToast } from '@/ui/undoToast'
 import AssistantEntryButton from '@/features/assistant/AssistantEntryButton.vue'
-import { weekSplit, weekSplitHours } from '@/features/capacity/freeHours'
 import CheckInCard from '@/features/checkin/CheckInCard.vue'
 import { consumeSavedFlag } from '@/features/checkin/checkinFlash'
+import { checkInCardVisible, checkInDoneToday } from '@/features/checkin/evening'
 import SetupWeekPrompt from '@/features/onboarding/SetupWeekPrompt.vue'
-import { setupOpen, setupWeekOffered } from '@/features/onboarding/reopen'
+import { setupWeekOffered } from '@/features/onboarding/reopen'
 import { useExternalOccurrences } from '@/features/week/externalOccurrences'
 import { GoogleCoverageNotice, googleAvailable } from '@/features/calendars/googleCalendar'
 import { formatDate } from '@/ui/format'
@@ -24,8 +21,10 @@ import NowCard from './NowCard.vue'
 import TodayTimeline from './TodayTimeline.vue'
 import TodayTodo from './TodayTodo.vue'
 import type { ActualStatus } from './actuals'
-import { nextUp } from './nextUp'
-import { isAskable, planSince, readPlanSince, stampPlanSince } from './planSince'
+import { upcomingItems } from './nextUp'
+import { useNowAnnouncements } from './nowAnnouncement'
+import { buildNowState } from './nowState'
+import { planSince, readPlanSince, stampPlanSince } from './planSince'
 import { completeTask, reopenTask } from './taskCompletion'
 import { buildTimeline } from './todayTimeline'
 import { useBlockStatus } from './useBlockStatus'
@@ -37,18 +36,9 @@ const now = useNow()
 const document = computed(() => planner.document)
 const timeZone = computed(() => document.value?.settings.timeZone ?? 'UTC')
 const today = computed(() => localDateOf(now.value, timeZone.value))
-const dateLabel = computed(() => formatDate(today.value, locale.value, { weekday: 'long', day: 'numeric', month: 'long' }))
+const subtitle = computed(() => formatDate(today.value, locale.value, { weekday: 'long', day: 'numeric', month: 'long' }))
 const external = useExternalOccurrences(() => document.value ? { fromDate: today.value, days: 7, timeZone: timeZone.value } : null)
 const googleRanges = computed(() => [{ start: today.value, end: addLocalDays(today.value, 7) }])
-
-const nowAndNext = computed(() => document.value ? currentAndNext(document.value, now.value, timeZone.value) : { current: null, next: null })
-// Free hours from now to the end of the week, in whole hours: the one figure Today keeps from the old header card.
-const freeHours = computed(() => document.value ? weekSplitHours(weekSplit(document.value, now.value, timeZone.value)).freeAhead : 0)
-// While the first-run setup is on screen the week is still being decided, so its free hours would mislead: date only.
-// A setup closed without finishing leaves Hoy as usual.
-const subtitle = computed(() => document.value?.settings.onboardingDone === false && setupOpen.value
-  ? dateLabel.value
-  : inlineSeparators(t('today.header.subtitle', { date: dateLabel.value, hours: formatWholeHours(freeHours.value) })))
 
 // Tasks are re-fitted on five-minute steps, so the plan does not shift every minute and starts on tidy times.
 const fitFrom = computed(() => placementClock(now.value).getTime())
@@ -68,8 +58,26 @@ watch(() => (document.value && document.value.blocks.length > 0 ? document.value
 }, { immediate: true })
 const since = computed(() => document.value ? planSince(document.value, stamped.value) : undefined)
 
-const currentKey = computed(() => nowAndNext.value.current ? `block:${nowAndNext.value.current.blockId}@${nowAndNext.value.current.start}` : undefined)
-const upNext = computed(() => nextUp(nowAndNext.value.next, timeline.value.items, now.value))
+// The evening link to the check-in replaces its card while it sits in the Now card's action slot.
+const closeDayOpen = computed(() => !!document.value && checkInCardVisible(document.value, now.value) && !checkInDoneToday(document.value, now.value))
+const nowState = computed(() => buildNowState({
+  items: timeline.value.items,
+  upcoming: document.value ? upcomingItems(document.value, today.value, timeZone.value, timeline.value.items) : [],
+  actuals: document.value?.actuals ?? [],
+  since: since.value,
+  now: now.value,
+  today: today.value,
+  timeZone: timeZone.value,
+  closeDayOpen: closeDayOpen.value,
+}))
+// The row of a block the Now card is asking about while it is under way does not ask a second time.
+const askedKey = computed(() => {
+  const action = nowState.value.action
+  const instant = now.value.getTime()
+  if (action?.kind !== 'ask' || Date.parse(action.occurrence.start) > instant || Date.parse(action.occurrence.end) <= instant) return undefined
+  return `block:${action.occurrence.blockId}@${action.occurrence.start}`
+})
+useNowAnnouncements(nowState, timeZone, computed(() => document.value !== null && document.value !== undefined))
 
 const toast = useUndoToast()
 const checkInCard = ref<InstanceType<typeof CheckInCard> | null>(null)
@@ -111,7 +119,8 @@ function clear(occurrence: DatedOccurrence): void {
   <div v-if="document" class="today-view">
     <p class="today-subtitle t-subhead t-secondary" data-testid="today-subtitle">{{ subtitle }}</p>
     <AssistantEntryButton />
-    <component :is="GoogleCoverageNotice" v-if="GoogleCoverageNotice && googleAvailable" :ranges="googleRanges" />
+    <!-- Without a timeline the coverage notice has no "Tu día" heading to sit under; it still shows, above the empty state. -->
+    <component :is="GoogleCoverageNotice" v-if="!hasContent && GoogleCoverageNotice && googleAvailable" :ranges="googleRanges" />
     <EmptyState v-if="!hasContent" icon="sun" :title="t('today.empty.title')" :description="t('today.empty.description')">
       <!-- The setup wizard is the quick way in; when it cannot be offered, the link to Week remains. -->
       <SetupWeekPrompt v-if="setupWeekOffered(planner)" />
@@ -119,19 +128,15 @@ function clear(occurrence: DatedOccurrence): void {
     </EmptyState>
     <template v-else>
       <NowCard
-        :current="nowAndNext.current"
-        :next="upNext"
+        :state="nowState"
         :categories="document.categories"
-        :actuals="document.actuals"
-        :askable="nowAndNext.current !== null && isAskable(nowAndNext.current.start, since)"
         :writable="planner.writable"
-        :now="now"
         :today="today"
         :time-zone="timeZone"
         @record="record"
-        @clear="clear"
+        @complete-task="complete"
       />
-      <CheckInCard ref="checkInCard" :document="document" :now="now" />
+      <CheckInCard v-if="nowState.action?.kind !== 'closeDay'" ref="checkInCard" :document="document" :now="now" />
       <TodayTimeline
         v-if="timeline.items.length || timeline.allDay.length"
         :items="timeline.items"
@@ -141,15 +146,22 @@ function clear(occurrence: DatedOccurrence): void {
         :now="now"
         :time-zone="timeZone"
         :writable="planner.writable"
-        :current-key="currentKey"
+        :asked-key="askedKey"
         :plan-since="since"
         @record="record"
         @clear="clear"
         @complete-task="complete"
-      />
-      <EmptyState v-else icon="calendar-days" :title="t('today.emptyDay.title')" :description="t('today.emptyDay.description')">
-        <Button variant="tinted" href="#/week">{{ t('today.emptyDay.action') }}</Button>
-      </EmptyState>
+      >
+        <template #notice>
+          <component :is="GoogleCoverageNotice" v-if="GoogleCoverageNotice && googleAvailable" :ranges="googleRanges" />
+        </template>
+      </TodayTimeline>
+      <template v-else>
+        <component :is="GoogleCoverageNotice" v-if="GoogleCoverageNotice && googleAvailable" :ranges="googleRanges" />
+        <EmptyState icon="calendar-days" :title="t('today.emptyDay.title')" :description="t('today.emptyDay.description')">
+          <Button variant="tinted" href="#/week">{{ t('today.emptyDay.action') }}</Button>
+        </EmptyState>
+      </template>
     </template>
     <TodayTodo :today="today" />
   </div>

@@ -2,8 +2,21 @@
   "now": {
     "label": "Jetzt",
     "eyebrow": "Jetzt",
-    "free": "Freie Zeit",
-    "freeUntil": "Freie Zeit bis {time}",
+    "free": "Frei",
+    "freeUntil": "Frei bis {time}",
+    "until": "bis {time}",
+    "ask": "Wie lief es?",
+    "answered": "{status} · Ändern",
+    "taskContext": "In {title} · bis {time}",
+    "routineContext": "Deine Routine: {title} · bis {time}",
+    "more": "+{count}",
+    "completeTask": "Als erledigt markieren",
+    "changed": "Jetzt: {title}, bis {time}",
+    "changedOpen": "Jetzt: {title}",
+    "alsoNow": "Auch jetzt: {title} · bis {time}",
+    "askAvailable": "Du kannst markieren, wie {title} lief",
+    "closeDay": "Tagesabschluss",
+    "readOnly": "In diesem Tab nur lesbar",
     "progress": "Fortschritt",
     "next": "Danach",
     "nothingNext": "Diese Woche ist nichts weiter geplant",
@@ -19,17 +32,22 @@
     "untilTime": "Bis {time}",
     "sinceDate": "Seit {date}",
     "untilDate": "Bis {date}",
-    "late": "Verspätet",
+    "late": "Überfällig",
     "kinds": {
       "task": "Aufgabe",
-      "event": "Termin",
+      "event": "Weeklid-Kalender",
       "external": "Kalender"
     },
     "carryOver": "Seit gestern · bis {time}",
-    "taskDone": "Aufgabe erledigt: {title}"
+    "taskDone": "Aufgabe erledigt: {title}",
+    "earlier": "Früher · {count}",
+    "unanswered": "{count} offen",
+    "nowLine": "Jetzt {time}",
+    "gap": "Frei · {duration}"
   },
   "status": {
-    "markDone": "{title} als erledigt markieren",
+    "markDone": "Wie lief {title}? Nicht markiert. Tippen zum Erledigen; gedrückt halten für mehr",
+    "markTaskDone": "{title} als erledigt markieren",
     "stateDone": "{title}: erledigt. Tippen, um die Antwort zu entfernen",
     "statePartial": "{title}: teilweise. Tippen, um es als erledigt zu markieren",
     "stateSkipped": "{title}: nein. Tippen, um es als erledigt zu markieren",
@@ -55,7 +73,7 @@
     "action": "Woche öffnen"
   },
   "header": {
-    "subtitle": "{date} · {hours} frei diese Woche"
+    "subtitle": "{date}"
   },
   "todo": {
     "title": "Heute zu tun",

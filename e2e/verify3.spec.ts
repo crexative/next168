@@ -198,6 +198,8 @@ test.describe('update notice on a phone', () => {
     // After Deep work ended, with an earlier check-in showing the plan existed, its row carries the status circle.
     await seed(page, 'fr', new Date('2026-10-21T12:00:00.000Z'), [{ date: '2026-10-20' }])
     await page.goto('./#/today')
+    // Finished rows sit in the folded "Antes" row (Today redesign); open it so the first row is on screen.
+    await page.getByTestId('timeline-earlier').click()
     await expect(page.getByTestId('timeline-item').first()).toBeVisible()
     await page.waitForFunction(() => window.document.getAnimations().length === 0)
     await page.evaluate(() => { const channel = new BroadcastChannel('next168'); channel.postMessage({ type: 'update-available' }); channel.close() })
