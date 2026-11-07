@@ -1,7 +1,7 @@
 # Accounts and plan sync across devices (v1)
 
-Status: **proposed, revision 3**; risk tier critical (auth, personal data, deletion). Revision 1: `9190e83`, rejected
-by Codex in round 1; revision 2: `4924abb`, accepted with changes in round 2. This revision is against `main` f77ebc0. External pages were read on 2026-11-07 (UTC); no Google,
+Status: **proposed, revision 4**; risk tier critical (auth, personal data, deletion). Revision 1: `9190e83`, rejected
+by Codex in round 1; revision 2: `4924abb`, accepted with changes in round 2; revision 3: `99d4e61`, rejected in round 3. This revision is against `main` f77ebc0. External pages were read on 2026-11-07 (UTC); no Google,
 Apple or Cloudflare production endpoint was called and no secret was read.
 
 **Goal (v1).** A person signs in with Google and sees the same plan on every device where they are signed in.
@@ -9,9 +9,8 @@ Nobody has to sign in: without an account, Weeklid behaves exactly as it does to
 
 ## Red-team round 1 resolution
 
-**Coordinator direction (2026-11-07), which the owner may veto:** v1 is Google sign-in plus plan sync, nothing else.
-Apple sign-in, iCloud calendars and moving the Google Calendar credential to the account move to *later, after
-beta evidence*. As in S1b, we remove machinery instead of fencing it.
+**Coordinator direction (2026-11-07), owner may veto:** v1 is Google sign-in plus plan sync only; Apple, iCloud and the
+per-account calendar credential wait for beta evidence. As in S1b, machinery is removed rather than fenced.
 
 | # | Finding (family) | Resolution | Where |
 |---|---|---|---|
@@ -22,7 +21,7 @@ beta evidence*. As in S1b, we remove machinery instead of fencing it.
 | 5 | MAJOR: the finish ticket has no expiry or single use; linking isn't bound (*replay and binding*) | **Cut.** With Apple out, the callback is Google's top-level GET, which carries a Lax cookie, so the S1a pattern works and there is **no finish ticket**. The pending row is bound to the flow cookie and consumed atomically. There is only one provider, so there's **no linking** in v1. Family check: replay, a missing or foreign flow cookie, an expired row, and a session cookie that isn't regenerated | §2.1, S1 |
 | 6 | MAJOR: no safe D1 upgrade (`CREATE TABLE IF NOT EXISTS` can't add a column) (*schema evolution*) | **Resolved.** v1 **adds only new tables** and alters no S1b table (S3 is out). A versioned migration file, applied before the flag is on; old workers never read the new tables; rollback = flag off, then an ordered purge. Tested against the current S1b schema with rows in it | §2.4, S1 |
 | 7 | MAJOR: moving the credential can race Disconnect and strand a grant (*ownership change*) | **Out of v1** (S3 removed): each device keeps its own S1b calendar connection, unchanged. No credential changes owner | §3 |
-| 8 | MAJOR: a point-in-time restore can bring a deleted account back (*restore resurrects*) | **Resolved.** There's a deletion ledger. After any restore, the owner's procedure re-applies the current ledger, deletes every session and raises every plan's epoch. What stays recoverable inside the 7/30-day window is disclosed | §2.5 |
+| 8 | MAJOR: a point-in-time restore can bring a deleted account back (*restore resurrects*) | **Superseded by round 3:** account data is never restored | §2.5 |
 | 9 | MAJOR: the iCloud proxy has CSRF, URL-exposure and abuse gaps (*proxy surface*) | **Out of v1** (S5 removed). Recorded requirements for later: a guarded POST, the URL redacted from logs, per-account limits, strict host, redirect and egress checks | §3 |
 | 10 | MINOR: guard matrix, Supabase, cost labels, GDPR wording | **Resolved.** The guard matrix covers both flag states, signed in and out, requests and the `sync` key. The Supabase row is corrected, costs are labelled *modeled*, and GDPR is stated as a precaution pending legal review | S1, §1.3, §0 |
 | S0 | Measure the real maximum sealed payload | **Resolved.** S0 measures the worst-case serialized, compressed, sealed bytes against D1's 2 MB row limit, and checks a bound BLOB above 100 KB on a preview database | S0 |
@@ -30,18 +29,24 @@ beta evidence*. As in S1b, we remove machinery instead of fencing it.
 
 ## Red-team round 2 resolution (Codex, ACCEPT WITH CHANGES on `4924abb`)
 
-Every fix below reuses an existing mechanism: the origin-wide exclusive commit lock (`src/repositories/storageCommit.ts:27-33`),
-`purgeEpoch` with `saveAtEpoch` (`BrowserPlannerRepository.ts:110-113`), and delete-all as a single hold of that lock
-(`:218-221`).
+| # | Finding | Resolution |
+|---|---|---|
+| 1, 3, 4, 5 | Binding across tabs; restore fence; Remove and other tabs; retry bursts | **Superseded by round 3** (a single lock hold per attempt; no restore; no dirty mark) |
+| 2 | One conflict copy can overwrite unsynced work | **Resolved by pausing**, the simpler option: while a `sync-conflict` copy exists, sync pauses until the person chooses. Keeping several copies would need a cap, a list, and the same pause once the cap is reached (§2.3) |
+| 6 | Minors | **Resolved:** server request bounds before parsing (S0); an explicit login-CSRF test (S1); the beta allowlist is intentional (§2.4) |
 
-| # | Finding (family) | Resolution | Where |
-|---|---|---|---|
-| 1 | Binding across tabs; an interrupted sign-in (*a check, then a separate act*) | **Resolved.** Nothing syncs until the binding equals the session's account. The binding is claimed or changed only inside the commit lock, in one strict transaction that compares and writes `sync`. Every sync request carries the bound account, and the server answers `409 accountMismatch` if the session cookie (one per browser) belongs to another. Cancel claims nothing, so no pull can start. A pull is applied with `saveAtEpoch` only while the binding is unchanged | §2.2, S2 |
-| 2 | One conflict copy can overwrite unsynced work (*silent loss*) | **Resolved by blocking, the simpler of the two options.** While a `sync-conflict` copy exists, sync pauses (no push, pull or adoption), and Settings › Account shows "Sync is paused: Restore, Keep the synced plan, or Download this copy". Keeping several copies would need a cap, a list and the same block once the cap is reached | §2.3, S2 |
-| 3 | Writes during a restore (*a procedure with no fence*) | **Resolved.** Routes off, drain, ledger saved, restore, replay, purge sessions and pending rows, bump epochs, verify, then routes on. Every step can be rerun, and the routes stay off until the verification query passes | §2.5, S1 |
-| 4 | Remove from this device leaves `sync`; another tab pulls back (*partial removal*) | **Resolved.** Removal is delete-all's single lock hold, extended to write `sync: null`. Its `purgeEpoch` move makes any tab's in-flight pull fail `saveAtEpoch`, and the cleared binding blocks the next one | §2.2, S2 |
-| 5 | Retry bursts across tabs (*uncoordinated retries*) | **Resolved.** One sync at a time per device: a second Web Lock, `weeklid-sync`, requested with `ifAvailable`, so other tabs skip and only mark `dirty`. Conflict and network retries use jittered exponential backoff (1 s × 2ⁿ ± 50 %, 3 rounds for a conflict, at most 5 min for the network) | §2.3, S2 |
-| 6 | Minors | **Resolved.** The server checks request bounds before parsing; an explicit login-CSRF test; the allowlist and the manual restore are intentional (§2.5). The research date stays at 2026-11-07, which is correct in UTC | S0, S1, §2.5 |
+## Red-team round 3 resolution: simplification (Codex REJECT on `99d4e61`)
+
+**Coordinator direction (2026-11-07), owner may veto:** the device is the source of truth and the server only a relay and
+copy. All three MAJORs were in round-2 machinery, so it is removed, not fenced (supersedes round 1 #8, round 2 #1, #3–#5).
+
+| # | Finding (family) | Resolution | Mechanism removed | Where |
+|---|---|---|---|---|
+| N1 | A pull's write is not fenced by the binding (*a check outside the write*) | **Resolved.** An attempt is one hold of the commit lock: read, one request (8 s timeout), then a commit that re-checks `sync` and `purgeEpoch` **in the same transaction** as the document write. Every writer of `sync` holds the same lock | `saveAtEpoch` as the pull fence | §2.3 |
+| N2 | The restore cannot prove the routes are closed on every worker (*an unverifiable fence*) | **Cut.** Account data is never restored from Time Travel. If the server copy is lost, devices re-upload (`noPlan` → a create; conflicts pause). Nothing restored means nothing resurrected | the 9-step restore, the route fence, the deletion ledger | §2.5 |
+| N3 | The dirty mark and backoff between tabs (*shared mutable flags*) | **Cut.** No dirty mark: every attempt re-reads the document and compares its hash with `baseHash`. No second lock. Backoff is per tab; one attempt per trigger, serialized by the lock, so a burst is bounded and duplicates are harmless | `dirty`, `weeklid-sync`, cross-tab backoff | §2.3 |
+| R2-4 | Remove must clear `sync` atomically; a push in flight (*partial removal*) | **Resolved.** `sync: null` goes in the delete-all transaction itself. Remove waits for the running attempt. A push that already left may land at the server, which is harmless: it is the person's own account | — | §2.2 |
+| R2-7 | Research date (INFO) | **Kept:** 2026-11-07 is the UTC date of the reads; the reviewer's environment showed the local date, 2026-11-06 | — | header |
 
 ## 0. Owner decisions
 
@@ -54,6 +59,7 @@ Every fix below reuses an existing mechanism: the origin-wide exclusive commit l
 | OD-5 | End-to-end encryption. | **No in v1.** The plan is sealed with a server key (§2.4), and the payload format is versioned. | A lost key would mean a lost plan, and it would prevent the approved remote MCP "proposal inbox" from reading the plan. |
 | OD-6 | Delete all data while signed in. | It **empties the account's plan on every device** (a new epoch), then wipes this device and signs out. The confirmation says so. | Otherwise the next sync would bring the deleted plan back. |
 | OD-7 | Price and payment provider (blocks charging, not building). | Decide after the beta. Comparable planners charge about USD 2.8–4.2 a month or USD 29.99 a year (`docs/research/competitors-commercial.md:29`, `:32`). | Modeled infrastructure cost is about USD 5 a month at 10,000 people (§1.3). It does not drive the price. |
+| OD-8 | Account data is never restored from Time Travel (coordinator direction). | **Accept.** If the database is lost, people sign in again, devices re-upload, and Google Calendar connections (S1b) must be redone. | A restore cannot be fenced provably; the devices already hold the plan. |
 
 ## 1. Dated research (read 2026-11-07)
 
@@ -69,8 +75,7 @@ Every fix below reuses an existing mechanism: the origin-wide exclusive commit l
 stores pending rows by state hash (`connectionStore.ts:113`), uses the Lax flow cookie `__Host-wl_gflow` and the Strict
 `__Host-wl_dev` (S1b R-1; `handlers.ts:22-24`), the POST guards (`http.ts:110-119`) and AES-GCM sealing (`crypto.ts`,
 `config.ts:54-57`). Sign-in reuses the client (plus one redirect URI) and these modules, with its own route and scope.
-**Owner canary (S1):** a sign-in by a non-test user while the consent screen also lists the calendar scope confirms R-G1
-holds for this project.
+**Owner canary (S1):** a non-test user signs in while the consent screen lists the calendar scope (confirms R-G1).
 
 ### 1.2 Apple and iCloud (later, not v1)
 
@@ -127,54 +132,57 @@ the D1 pricing page says "updated Oct 30, 2026" but lists no change; Durable Obj
 
 ### 2.2 The binding between account and device
 
-The meta key `sync` (in the existing `meta` store: **no IndexedDB version bump**, `storageVersion.ts:16`) holds
-`{accountId, epoch, baseRevision, dirty}`. It stays after sign-out, so the plan stays **bound** to that account.
+The meta key `sync` (existing `meta` store, **no IndexedDB version bump**, `storageVersion.ts:16`) holds `{accountKey,
+epoch, baseRevision, baseHash}`. `accountKey` = server-computed `sha256(sub)`, so it survives a lost server copy (§2.5).
+It stays after sign-out (the plan stays **bound**) and is written only inside the commit lock (`storageCommit.ts:27-33`),
+in the same transaction as the document. Without Web Locks commits are refused (`BrowserPlannerRepository.ts:349`).
 
 | On sign-in with account X | Result |
 |---|---|
 | The plan is bound to X | Normal sync |
-| The plan is bound to another account | **Never uploaded.** "This device holds another account's plan": **Remove it from this device and continue** (the device part of Delete all data) or **Cancel** (the plan stays local, X's session is deleted) |
-| The plan is unbound and empty | Pull X's plan |
-| The plan is unbound and has content; X has no plan | "Save this device's plan to your account?" Yes uploads it; no cancels |
+| The plan is bound to another account | **Never uploaded.** "This device holds another account's plan": **Remove it from this device and continue** or **Cancel** (the plan stays local, X's session is deleted) |
+| The plan is unbound and empty | Claim the binding, then pull |
+| The plan is unbound and has content; X has no plan | "Save this device's plan to your account?" Yes claims the binding and uploads; No cancels |
 | The plan is unbound and has content; X has a plan | **Use my account's plan** (this device's plan downloads first as the existing export) or **Replace my account's plan with this one** (a new epoch) |
 
-**Sign-out** asks: **Remove this account's data from this device** (recommended on a shared device; it reuses the
-device part of Delete all data, which also forgets this device's Google Calendar permission) or **Keep it**. The copy
-for "Keep it": "Anyone who uses this browser can still see this plan and this device's Google events. It stays linked
-to your account and will not be added to another one." An import or restore while signed out clears the binding in the
-same transaction.
+The choice comes *before* any claim; the claim writes `sync` only if it still holds what the dialog showed, else it
+asks again. Cancel claims nothing. **Sign-out** asks: **Remove this account's data from this device** (recommended on a shared device) or **Keep it**.
+The copy for "Keep it": "Anyone who uses this browser can still see this plan and this device's Google events. It
+stays linked to your account and will not be added to another one."
 
-**Atomic binding (round 2).** Sync is gated: nothing pulls, pushes or merges unless `sync.accountId` equals the
-session's account, and the choices above are shown *before* any claim. Claiming (`absent → X`) or changing the binding
-runs inside the commit lock, as one strict transaction that re-reads `sync` and writes it only if the value is still
-the one the dialog showed; otherwise the dialog re-reads and asks again. Cancel claims nothing and deletes the session,
-so no pull can follow. Every `/api/sync` request carries the bound account, and the server refuses it with `409
-accountMismatch` when the cookie (one per browser, so the last sign-in wins) belongs to someone else. Remove (sign-out,
-an account mismatch) is delete-all's single lock hold, extended to write `sync: null`. Moving `purgeEpoch` makes a pull
-already in flight in another tab fail `saveAtEpoch`. Without Web Locks, commits are already refused
-(`BrowserPlannerRepository.ts:349`), so sync never starts.
+**Remove** = the device part of Delete all data (which also forgets this device's Google Calendar permission), with
+`sync: null` in its single transaction (`BrowserPlannerRepository.ts:218-221`, `indexedDbStore.ts:95`). It waits for a
+running attempt (≤ one timeout); a push already sent may still land, harmlessly, in the person's own account. Import or
+restore while signed out also clears `sync` in its transaction.
 
-### 2.3 Sync: server revision, epoch and merge
+### 2.3 Sync: one attempt is one hold of the commit lock
 
-- Server row: `plans(account_id PRIMARY KEY, revision, epoch, key_id, iv, ciphertext BLOB, updated_at)`.
-- **Push:** `PUT /api/sync {baseRevision, epoch, document}` → `UPDATE plans SET … revision = revision + 1 WHERE
-  account_id = ? AND revision = ? AND epoch = ?`. Zero rows means `409 {revision, epoch}`. **Replace** (Delete all
-  data, import, restore, "replace my account's plan") is `PUT /api/sync/replace {baseRevision}`, which also raises
-  `epoch`. **Pull:** `GET /api/sync` with `If-None-Match`.
-- **409 on the same epoch:** pull, merge three ways against the base saved in `snapshots` (`sync-base`), commit locally
-  through the usual compare-and-swap, push again, with jittered backoff (1 s × 2ⁿ ± 50 %); after 3 rounds, stop and
-  say so. **409 with a higher epoch (`replaced`):** adopt the server's plan; any local changes not yet synced go to
-  `snapshots` (`sync-conflict`), with Restore. A device that was offline for weeks therefore cannot bring back a
-  deleted plan.
-- **One copy, never overwritten:** while `sync-conflict` exists, sync pauses (no push, pull or adoption) until the
-  person chooses Restore, "Keep the synced plan" or Download. The notice: "Sync is paused until you choose what to do
-  with the change that was replaced."
-- **One sync at a time per device:** a sync holds the Web Lock `weeklid-sync`, requested with `ifAvailable`. A tab that
-  doesn't get it only sets `dirty`, which the holder pushes before releasing. Network failures back off up to 5 min.
-- **Merge rule (the same for edits and deletes):** for each key, a side that differs from the base wins; if both
-  sides differ, **the server wins**, and the device's version goes to `sync-conflict`. If the merged plan fails
-  `validateDocument` (overlaps, references), the merge is dropped: the server's plan wins whole, and this device's plan
-  goes to `sync-conflict`.
+Each attempt runs entirely inside one hold of the existing exclusive lock (`webLockRunner`):
+
+1. Read `sync`, `purgeEpoch`, the document and `sync-base`; stop if the binding does not match the session's
+   `accountKey`, if a `sync-conflict` copy exists, or if the device is offline.
+2. **One** request, with an 8 s timeout (S1a's `GOOGLE_DEADLINE_MS`). If the document's hash differs from `baseHash`,
+   push `PUT /api/sync {accountKey, baseRevision, epoch, document}` (`UPDATE … WHERE revision = ? AND epoch = ?`; a
+   `409` carries the server's plan); otherwise pull with `GET` and `If-None-Match`. **Replace** (Delete all data while
+   signed in, import, restore, "replace my account's plan") is `PUT /api/sync/replace` and raises `epoch`. The server
+   answers `409 accountMismatch` for another account's cookie, and `noPlan` when it holds no copy (the device then
+   creates it).
+3. Commit in **one strict transaction** that re-checks `sync` and `purgeEpoch` and writes the document, `sync` and
+   `sync-base` together. A same-epoch `409` is merged (below), and one follow-up attempt pushes the result. A `409
+   replaced` adopts the server's plan, with this device's unsynced changes in `sync-conflict`, so a device that was
+   offline for weeks cannot bring back a deleted plan.
+
+A local save during an attempt waits (≤ 8 s plus local work): the price of this simplicity. **No dirty mark:** every
+attempt re-reads the document. **Triggers:** open, focus, 2 s after a save (debounced), "Sync now". Backoff is per tab
+(1 s × 2ⁿ ± 50 %, ≤ 5 min, reset on success). **A burst is bounded:** one attempt per trigger per tab, serialized by the
+lock; after one tab pushes, the others' hash equals `baseHash`, so they only send a conditional GET (`304`).
+**Conflict copy:** while `sync-conflict` exists, sync pauses until the person chooses Restore, "Keep the synced plan"
+or Download ("Sync is paused until you choose what to do with the change that was replaced"). It is never overwritten.
+
+**Merge rule (the same for edits and deletes):** for each key, a side that differs from the base wins; if both sides
+differ, **the server wins**, and the device's version goes to `sync-conflict`. If the merged plan fails
+`validateDocument` (overlaps, references), the server's plan wins whole, and this device's plan goes to
+`sync-conflict`.
 
 | Field | Stable key |
 |---|---|
@@ -186,10 +194,8 @@ already in flight in another tab fail `saveAtEpoch`. Without Web Locks, commits 
 | `workspaceId`, `schemaVersion` | must be equal, or it is treated as a replacement |
 | `revision`, `generation`, `updatedAt` | local only; never compared in sync |
 
-- **Not synced:** raw calendar texts (up to 5 MiB each, `docs/calendars.md:27`; on another device, subscriptions refresh
-  and imported files show the existing "import again" message), proposals, preferences and S1b state.
-- **Offline:** everything works locally; `dirty` is pushed on open, on focus, when the connection returns and after a
-  commit. There is no background sync, and the only timer is the backoff.
+**Not synced:** raw calendar texts (up to 5 MiB each, `docs/calendars.md:27`; on another device, subscriptions refresh
+and imported files show the existing "import again" message), proposals, preferences and S1b state.
 
 ### 2.4 Server storage and migration
 
@@ -197,57 +203,49 @@ already in flight in another tab fail `saveAtEpoch`. Without Web Locks, commits 
   against a leaked export or console view; it is not end-to-end encryption (OD-5). Logs record only the route, the
   outcome and the duration.
 - **Migration:** `server/accounts/migrations/0001_accounts.sql` creates only **new** tables (`accounts`, `identities`,
-  `sessions`, `auth_pending`, `plans`, `deleted_accounts`, `beta_access`) and a `schema_migrations(version)` row. It
-  never touches `google_pending` or `google_credentials` (`connectionStore.ts:88-109`). The owner applies it before
-  setting `ACCOUNTS_ENABLED=1`. The routes answer `503 notConfigured` if version 1 is missing. Old workers never read
-  these tables. **Rollback:** flag off (routes give 404), then `server/accounts/purge.sql` deletes sessions, then
-  pending rows, then everything else, and the owner deletes `SYNC_KEY`.
-
-### 2.5 Deletion, export and restore
-
-- **Delete account** (Settings › Account): one batch deletes the account, its identity, sessions, plan and beta
-  access, and writes `deleted_accounts(sha256(sub), deleted_at)`. The device keeps its local plan only if the person
-  chooses to; the binding is cleared either way.
-- **Restore procedure** (owner, `DEPLOYMENT.md`; **manual on purpose**, because a disaster restore is rare and
-  automating it would be YAGNI): (1) set `ACCOUNTS_ENABLED=0` and redeploy, so every route answers 404; (2) wait 60 s
-  for in-flight requests to drain (more than the request deadline, as S1b's purge does); (3) save `deleted_accounts`
-  from the current database to a local file; (4) restore; (5) re-apply the saved deletions; (6) `DELETE FROM sessions;
-  DELETE FROM auth_pending`; (7) `UPDATE plans SET epoch = epoch + 1`; (8) run the verification query (no session, no
-  pending row, no account whose identity is in the ledger); (9) only then set the flag back to 1. Each step can be rerun, and the flag
-  stays off until (8) passes. After (7), every device adopts the restored plan, and its newer local copy goes to
-  `sync-conflict`. Ledger rows are purged after 30 days. The disclosed copy: deleted data stays restorable by Cloudflare
-  for up to 30 days (7 on Free).
+  `sessions`, `auth_pending`, `plans`, `beta_access`) and a `schema_migrations(version)` row. It never touches
+  `google_pending` or `google_credentials` (`connectionStore.ts:88-109`). The owner applies it before setting
+  `ACCOUNTS_ENABLED=1`; the routes answer `503 notConfigured` if version 1 is missing, and old workers never read these
+  tables. **Rollback:** flag off (routes give 404), then `server/accounts/purge.sql` (sessions, then pending rows, then
+  everything else), and the owner deletes `SYNC_KEY`.
 - **The beta allowlist is intentional:** it caps the free beta at OD-1's 100 people until payments exist.
+
+### 2.5 Deletion, export and the server copy
+
+- **The device is the source of truth; the server is a relay and a copy.** Account data is **never restored from Time
+  Travel** (stated in `DEPLOYMENT.md`). If the copy is lost, the database is recreated empty, people sign in again (same
+  `accountKey`) and devices re-upload (`noPlan` → a create; others merge or pause). Nothing restored, nothing resurrected.
+- **Delete account** (Settings › Account): one batch deletes the account, its identity, sessions, plan and beta
+  access. The device keeps its local plan only if the person chooses to; `sync` is cleared either way.
+- **Privacy copy:** "Your plan lives on your devices; Weeklid's server keeps an encrypted copy to pass it between them,
+  deleted with your account. Cloudflare's recovery copies expire within 30 days, and Weeklid never restores from them."
 - **Export:** "Download my account data" = the server plan as the existing export bundle plus the account record
   (portability, R-L3; a query under R-L1).
 
 ## 3. Later, after beta evidence (not v1)
 
-Apple sign-in (OD-2; it needs a form_post callback with a single-use, hash-stored ticket bound to the device and
-account-bound linking), iCloud public links (a guarded POST proxy, URL redaction, per-account limits, strict host,
-redirect and egress checks), the Google Calendar credential per account (an atomic move that is fenced against
-Disconnect), a calendar list scope, realtime push and end-to-end encryption.
+Apple sign-in (OD-2; a single-use, hash-stored, device-bound ticket and account-bound linking); iCloud links (a guarded
+POST proxy, URL redaction, limits, strict egress); a per-account calendar credential; realtime push; end-to-end encryption.
 
 ## 4. Slices (the free tier stays unchanged)
 
 | Slice | Executable acceptance |
 |---|---|
-| **S0** Size | A unit test builds a plan at the schema maxima (`model.ts:246-252`) and a realistic one, serializes, gzips and seals them, and **fails if the maximum exceeds 1.9 MB**. **Server bounds:** `/api/sync` rejects a declared or streamed body above 2 MB with `413` before reading it in full, and anything that is not a valid `plannerDocumentSchema` with `400` before compressing or sealing; tests cover both. A preview-D1 canary (owner, no production) binds a BLOB above 100 KB. If the maximum fails, v1 refuses to push ("plan too large to sync") and nothing else is built |
-| **S1** Server | Node tests over the real handlers with a fake Google: callback replay, a missing or foreign flow cookie, or an expired row → no session; **login CSRF:** the attacker's own `state` and code delivered to a victim browser, with the victim's flow cookie or none → no session, and the victim is not signed in as the attacker; bad `iss`, `aud` or `nonce` → no session; a new session cookie on every sign-in, with only its hash stored; two accounts never share a plan row; deleting leaves zero rows in every table and writes the ledger; the restore script on a fixture resurrects nothing and leaves no session, **interrupted after each of steps 1–8 and rerun**, with the routes off until step 8 passes; a sync request with another account's id → `409 accountMismatch`. **Migration:** applied to a database built from today's S1b `SCHEMA` with rows in it, the S1b specs still pass, a second run is a no-op, and purge restores the S1b-only state. **Free-tier guard matrix:** {flag off, flag on} × {signed out}: no request to `/api/auth` or `/api/sync`, and no `sync` meta key; the existing e2e suite passes with the flag off; with the flag on and the person signed out, the same holds after edits, import and Delete all data. **Owner canary:** the R-G1 check |
-| **S2** Client | e2e with two browser contexts and a fake server: an edit on A appears on B when B gets focus; concurrent edits to different keys of **every** collection in §2.3 are all kept; the same key changed on both devices (an edit or a delete) → the server wins and Restore brings back the device's version; a merge that would create overlapping blocks → the server's plan wins whole, with Restore; an offline push after a delete-all elsewhere gets `replaced`, nothing deleted comes back, and the local edits sit in `sync-conflict`; two replacements at once → one wins and the other is in `sync-conflict`. **A → sign-out (Keep) → B:** B's server plan stays without A's content, and the device asks to remove or cancel. **Shared device:** A signs out with Remove → nothing of A's (plan, `sync` key, Google permission) remains, and B starts empty. Import while signed out → unbound. **Round 2:** two tabs sign in as A and B at once on an unbound plan → at most one claim succeeds, nothing is uploaded to the other account, and the other tab asks again; Cancel while a pull is held → nothing is applied and `sync` stays absent; Remove while another tab's pull or push is held → the held pull fails `saveAtEpoch`, `sync` is gone, and nothing comes back; a second conflict while `sync-conflict` exists → sync stays paused and the first copy is unchanged; three tabs focused at once → one `/api/sync` exchange at a time, with retries spread by jitter. `STORAGE_VERSION` is still 3 |
+| **S0** Size | A unit test builds a plan at the schema maxima (`model.ts:246-252`) and a realistic one, serializes, gzips and seals them, and **fails if the maximum exceeds 1.9 MB**. **Server bounds:** `/api/sync` rejects a declared or streamed body above 2 MB with `413` before reading it in full, and anything that is not a valid `plannerDocumentSchema` with `400` before compressing or sealing. A preview-D1 canary (owner, no production) binds a BLOB above 100 KB. If the maximum fails, v1 refuses to push ("plan too large to sync") and nothing else is built |
+| **S1** Server | Node tests over the real handlers with a fake Google: callback replay, a missing or foreign flow cookie, or an expired row → no session; **login CSRF:** the attacker's own `state` and code delivered to a victim browser, with the victim's flow cookie or none → no session, and the victim is not signed in as the attacker; bad `iss`, `aud` or `nonce` → no session; a new session cookie on every sign-in, with only its hash stored; another account's `accountKey` → `409 accountMismatch`; a `409` carries the server's plan; an empty account → `noPlan`, then a create; deleting leaves zero rows in every account table. **Migration:** applied to a database built from today's S1b `SCHEMA` with rows in it, the S1b specs still pass, a second run is a no-op, and purge restores the S1b-only state. **Free-tier guard matrix:** {flag off, flag on} × {signed out}: no request to `/api/auth` or `/api/sync`, and no `sync` meta key; the existing e2e suite passes with the flag off; with the flag on and the person signed out, the same holds after edits, import and Delete all data. **Owner canary:** the R-G1 check |
+| **S2** Client | e2e with two browser contexts and a fake server: an edit on A appears on B when B gets focus; concurrent edits to different keys of **every** collection in §2.3 are all kept; the same key changed on both devices (an edit or a delete) → the server wins and Restore brings back the device's version; a merge that would create overlapping blocks → the server's plan wins whole, with Restore; an offline push after a delete-all elsewhere gets `replaced`, nothing deleted comes back, and the local edits sit in `sync-conflict`; a second conflict while a copy exists → sync stays paused and the first copy is unchanged. **Binding:** A → sign-out (Keep) → B: nothing of A's reaches B's account, and the device asks to remove or cancel; a shared device, where A signs out with Remove → no plan, `sync` key or Google permission of A's remains; import while signed out → unbound; two tabs sign in as A and B at once → at most one claim succeeds and nothing is uploaded to the other account; Cancel while another tab's attempt holds a response → nothing is applied and `sync` stays absent. **One hold:** with a held pull response in tab 1, tab 2's Remove waits, then leaves nothing behind; a local save made during an attempt commits after it, and the next attempt pushes it; three tabs focused at once → their requests never overlap, and the later ones are `304`. **Server loss:** an emptied fake server → the first device re-creates the plan, and the second merges. `STORAGE_VERSION` is still 3 |
 
 ## 5. Rejected and removed
 
 CRDTs (they change the stored format for a single-person plan); realtime WebSockets; a plan normalized into SQL tables;
-R2 and `plans_previous` (nothing needs them while S0 holds; Time Travel and `sync-conflict` cover recovery); linking
-accounts by email; storing Google tokens for sign-in; KV; Supabase (§1.3); CalDAV app passwords; and everything in §3.
+R2 and `plans_previous`; **restoring account data from Time Travel, the deletion ledger and the restore fence** (round 3);
+**a dirty mark, a second lock and cross-tab backoff** (round 3); linking accounts by email; storing Google tokens for
+sign-in; KV; Supabase (§1.3); CalDAV app passwords; and everything in §3.
 
-## 6. What the red team should attack (round 3)
+## 6. What the red team should attack (round 4)
 
-1. The binding claim: a tab that read `sync` before another tab's claim but writes after it; a path that writes `sync`
-   outside the commit lock.
-2. The `sync-conflict` pause: a way to leave it with no choice made; a delete-all or Remove while it is paused.
-3. Merge: a key deleted on one side and edited on the other; trimming the applied-id sets so that a proposal applies
-   twice; a lost `sync-base` treated as "everything changed".
-4. The restore: a flag change that does not reach every running deployment within the drain window.
-5. The free-tier guard: any path in a flag-off build that loads account code, takes `weeklid-sync` or writes `sync`.
+1. Writes to `sync` or the document outside the lock, or a commit that skips the in-transaction re-check.
+2. The 8 s hold: an attempt that outlives its timeout, and saves stuck behind it.
+3. Server loss: a stale device that re-creates first and brings back deleted content.
+4. The pause and the merge: leaving `sync-conflict` with no choice; delete versus edit; trimming the applied-id sets.
+5. The free-tier guard: any flag-off path that loads account code or writes `sync`.
