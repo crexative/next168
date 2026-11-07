@@ -9,6 +9,7 @@ import { googleSnapshot } from '../googleCalendar'
 import { IndexedDbSavedGoogleEvents, SAVED_GOOGLE_DATABASE } from '../googleSavedEvents'
 import { EVENTS_READONLY, type GisOAuth2, type GisTokenClientConfig } from './gis'
 import { configureGoogleServices, useGoogleConnection } from './useGoogleConnection'
+import type { ServerConnection } from './serverConnection'
 import GoogleCalendarSection from './GoogleCalendarSection.vue'
 import GoogleCoverageNotice from './GoogleCoverageNotice.vue'
 
@@ -40,9 +41,14 @@ const fetchMock = vi.fn(async (url: string) => respond(url))
 let device: IDBFactory
 let now = NOW
 const loadGis = vi.fn(async () => fakeGis)
+const fakeServer: ServerConnection = {
+  mint: async () => ({ kind: 'token', accessToken: TOKEN, expiresIn: 3599 }),
+  connect: async () => ({ kind: 'unavailable', code: 'error' }),
+  forgetThisDevice: async () => 'confirmed',
+}
 
-function configure(): void {
-  configureGoogleServices({ clientId: '000000000000-unit.apps.googleusercontent.com', loadGis, fetch: fetchMock as unknown as typeof fetch, now: () => now, channel: () => undefined, saved: () => new IndexedDbSavedGoogleEvents(device) })
+function configure(source: 'server' | 'gis' = 'gis'): void {
+  configureGoogleServices({ clientId: '000000000000-unit.apps.googleusercontent.com', loadGis, fetch: fetchMock as unknown as typeof fetch, now: () => now, channel: () => undefined, saved: () => new IndexedDbSavedGoogleEvents(device), source, server: async () => fakeServer, online: () => true })
 }
 
 let app: App | undefined
@@ -219,6 +225,25 @@ describe('useGoogleConnection', () => {
 })
 
 describe('GoogleCalendarSection details', () => {
+  it('shows Events permission as Yes after the server mints a token and the calendar read succeeds', async () => {
+    host = document.createElement('div')
+    document.body.append(host)
+    const pinia = createPinia()
+    setActivePinia(pinia)
+    configurePlannerStore({ repository: createTestRepositories().planner, now: () => NOW, newId: newTestId, locale: () => 'en', timeZone: () => 'UTC' })
+    await usePlannerStore().load()
+    configure('server')
+    app = createApp(GoogleCalendarSection).use(pinia).use(i18n)
+    app.mount(host)
+
+    await vi.waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1))
+    await vi.waitFor(() => expect(useGoogleConnection().phase).toBe('idle'))
+
+    const scopeLabel = [...host.querySelectorAll('dt')].find((label) => label.textContent === 'Permission to see events')
+    expect(scopeLabel?.nextElementSibling?.textContent).toBe('Yes')
+    expect(host.querySelector('[data-testid=google-details]')?.textContent).toContain('Events shown1')
+  })
+
   it('show codes, counts and dates from memory, never an id, address, title, token or Google text, and nothing is logged', async () => {
     host = document.createElement('div')
     document.body.append(host)

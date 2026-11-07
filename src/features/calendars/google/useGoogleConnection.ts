@@ -322,6 +322,8 @@ export const useGoogleConnection = defineStore('googleConnection', () => {
     if (!isCurrent(ticket)) return false
     if (result.kind === 'token') {
       lastServerCode.value = 'ok'
+      // The server returns a token only after confirming the events scope.
+      diagnostics.scopeGranted = true
       const expiresAt = services.now().getTime() + result.expiresIn * 1000 - EXPIRY_MARGIN_MS
       token = { value: result.accessToken, expiresAt }
       tokenExpiresAt.value = expiresAt
