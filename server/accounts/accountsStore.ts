@@ -107,7 +107,8 @@ export const SQL = {
   signInEmail: `UPDATE identities SET email = ?2 WHERE sub = ?1 AND EXISTS (SELECT 1 FROM sessions WHERE token_hash = ?3)`,
   dropReplacedSession: `DELETE FROM sessions WHERE token_hash = ?1 AND account_id = ?2`,
   session: `SELECT s.account_id, a.account_key, i.email, a.consent_version FROM sessions s JOIN accounts a ON a.account_id = s.account_id JOIN identities i ON i.account_id = a.account_id JOIN beta_access b ON b.account_id = a.account_id WHERE s.token_hash = ?1 AND s.last_used_at >= ?2`,
-  touchSession: `UPDATE sessions SET last_used_at = ?2 WHERE token_hash = ?1 AND last_used_at < ?3`,
+  // The same validity as `session`: an idle-expired or un-invited session is never refreshed, so a read cannot revive it.
+  touchSession: `UPDATE sessions SET last_used_at = ?2 WHERE token_hash = ?1 AND last_used_at < ?3 AND last_used_at >= ?4 AND account_id IN (SELECT account_id FROM beta_access WHERE account_id IS NOT NULL)`,
   endSession: `DELETE FROM sessions WHERE token_hash = ?1`,
   deleteSessions: `DELETE FROM sessions WHERE account_id = ?1`,
   deletePlan: `DELETE FROM plans WHERE account_id = ?1`,
@@ -191,7 +192,7 @@ export function d1AccountsStore(db: D1Like): AccountsStore {
     session: async (tokenHash, idleCutoff, now) => {
       const [read] = await db.batch<{ account_id: string; account_key: string; email: string; consent_version: number }>([
         db.prepare(SQL.session).bind(tokenHash, idleCutoff),
-        db.prepare(SQL.touchSession).bind(tokenHash, now, now - 86_400),
+        db.prepare(SQL.touchSession).bind(tokenHash, now, now - 86_400, idleCutoff),
       ])
       const row = read?.results[0]
       return row ? { accountId: row.account_id, accountKey: row.account_key, email: row.email, consentVersion: row.consent_version } : null

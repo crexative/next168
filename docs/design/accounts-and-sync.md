@@ -284,7 +284,7 @@ Owner decisions of 2026-11-07 applied: an invite-only beta of at most 100 people
 |---|---|---|
 | S0 bounds | `server/accounts/planCodec.ts` (2,000,000-byte body bound read as a stream, `plannerDocumentSchema` validation before gzip and sealing, 1,900,000-byte sealed cap, also a `CHECK` on `plans.payload`) | `server/accounts/size.spec.ts` |
 | S1 server | `server/accounts/**`, `functions/api/auth/*`, `functions/api/sync/*`; migration `server/accounts/migrations/0001_accounts.sql`, purge `server/accounts/purge.sql` | `signin.spec.ts`, `sync.spec.ts`, `guards.spec.ts`, `migration.spec.ts`, `routes.spec.ts` in `server/accounts/` |
-| S1 free-tier guard | `ACCOUNTS_ENABLED` (server), `VITE_ACCOUNTS` (build; inert until S2), `config/accountsFlag.ts` | `guards.spec.ts`, `e2e/accounts-free-tier.spec.ts`, `scripts/check-google-bundles.sh`, `config/viteConfig.spec.ts` |
+| S1 free-tier guard | `ACCOUNTS_ENABLED` (server), `VITE_ACCOUNTS` (build; inert until S2), `config/accountsFlag.ts` | `guards.spec.ts` (real in S1); flagless-build check in `scripts/check-google-bundles.sh`; `config/viteConfig.spec.ts`. The flag-on e2e and the flag-on entry-chunk check are S2 placeholders: nothing imports the flag yet, so they cannot fail until S2 |
 
 **S0 measurement (2026-11-07, Node 22, repetitive realistic text; random text in parentheses).** The design's gate, "the
 maximum fails above 1.9 MB", is **not met** by a plan at the array maxima of `plannerDocumentSchema`:

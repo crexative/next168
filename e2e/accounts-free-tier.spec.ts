@@ -3,10 +3,12 @@ import { expect, test, type BrowserContext, type Page } from '@playwright/test'
 import { V2_KEY, openSettingsPage, seedKey } from './fixtures'
 import { previewPorts } from './support/ports'
 
-// Free-tier guard of accounts and sync (design accounts-and-sync.md, S1): a signed-out device, and a build without the
-// flag, make no request to /api/auth or /api/sync and write nothing new. The default build has no VITE_ACCOUNTS; the
-// server-mode build has VITE_ACCOUNTS=1 and nobody signed in. Both run the same journey (an edit, an export, Delete all
-// data, an import, Delete all data again), and their storage footprints must be the same.
+// Free-tier guard of accounts and sync (design accounts-and-sync.md). WHAT IT TESTS IN S1: the app as built makes no request
+// to /api/auth or /api/sync and writes no sync, account or session key, through an edit, an export, Delete all data, an import
+// and Delete all data again. WHAT IT DOES NOT TEST YET: nothing imports ACCOUNTS_ENABLED until slice S2, so the second build
+// (server mode, VITE_ACCOUNTS=1) is byte-for-byte as inert as the first, and the comparison between them cannot fail today.
+// It is an S2 placeholder: it starts to bite when the client code lands behind the flag. The flag-off server behaviour that
+// is real in S1 is proven by server/accounts/guards.spec.ts.
 
 test.use({ serviceWorkers: 'block' })
 test.beforeEach(({}, testInfo) => {
@@ -87,7 +89,7 @@ async function journey(page: Page, base: string, requests: string[]): Promise<vo
   await erase()
 }
 
-test('a signed-out device and a build without the flag make no account request and write nothing new @smoke', async ({ context, page }) => {
+test('the app as built makes no account request and writes no account key; the flag-on comparison is an S2 placeholder @smoke', async ({ context, page }) => {
   const requests: Record<'off' | 'on', string[]> = { off: [], on: [] }
   await journey(page, FLAG_OFF, requests.off)
   const off = await footprint(page, context)
@@ -116,7 +118,7 @@ test('a signed-out device and a build without the flag make no account request a
   expect(on).toEqual(off)
 })
 
-test('STORAGE_VERSION is still 3 with the accounts flag on', async ({ page }) => {
+test('STORAGE_VERSION is still 3 in the flag-on build (S2 placeholder)', async ({ page }) => {
   await seedKey(page, V2_KEY, JSON.stringify(DOCUMENT))
   await openSettingsPage(page, 'data', FLAG_ON)
   const versions = await page.evaluate(async () => Object.fromEntries(await Promise.all((await indexedDB.databases()).map(async ({ name }) => {

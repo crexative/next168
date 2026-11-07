@@ -1,6 +1,7 @@
 // @vitest-environment node
 // S1 sign-in: state, PKCE and the single-use pending row; login CSRF; ID token checks; sessions; the invite-only beta.
 import { describe, expect, it } from 'vitest'
+import { sha256b64url } from '../google/crypto'
 import { IDENTITY_SCOPE } from './identity'
 import { ALICE, APP, BOB, FAKE_ID, accountKeyOf, server } from './testing/harness'
 
@@ -62,9 +63,12 @@ describe('S1 state, PKCE and the single-use pending row', () => {
   it('signs in, and the code verifier the server sends is the preimage of the challenge it announced', async () => {
     const s = invitedServer()
     const b = s.browser()
-    expect(await b.signIn(ALICE)).toBe('signedIn')
+    const { state, nonce, challenge } = await b.start()
+    const code = s.identity.issueCode(ALICE, { challenge, nonce })
+    expect((await b.callback({ state, code })).result).toBe('signedIn')
     expect(s.identity.calls).toHaveLength(1)
     const call = s.identity.calls[0]!
+    expect(await sha256b64url(call.form.code_verifier!)).toBe(challenge)
     expect(call.form.grant_type).toBe('authorization_code')
     expect(call.form.redirect_uri).toBe(`${APP}/api/auth/callback`)
     expect(b.session).toMatch(/^[A-Za-z0-9_-]{43}$/)
@@ -311,6 +315,20 @@ describe('S1 sessions', () => {
     expect((await b.sessionStatus()).body!.signedIn).toBe(true)
     s.advance(181 * 86_400)
     expect((await b.sessionStatus()).body!.signedIn).toBe(false)
+    // Presenting the expired cookie must not have refreshed it: the second look is still signed out.
+    expect((await b.sessionStatus()).body!.signedIn).toBe(false)
+    expect((await b.sessionStatus()).body!.signedIn).toBe(false)
+  })
+
+  it('a session whose invite was removed is not refreshed by being presented', async () => {
+    const s = invitedServer()
+    const b = s.browser()
+    await b.signIn(ALICE)
+    const before = s.rows('sessions')[0]!.last_used_at
+    s.db.sqlite.prepare('DELETE FROM beta_access WHERE email = ?').run(ALICE.email)
+    s.advance(3 * 86_400)
+    expect((await b.sessionStatus()).body!.signedIn).toBe(false)
+    expect(s.rows('sessions')[0]!.last_used_at).toBe(before)
   })
 
   it('sign out deletes the session row and clears the cookie; the old cookie no longer works', async () => {

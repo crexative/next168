@@ -45,8 +45,8 @@ for installed in '' 1; do
   done
 done
 
-# Accounts flag on: whatever account code ships stays out of the entry chunk, so a signed-out device never loads it. Without
-# the S2 client the build carries none at all; the entry-chunk rule is what must keep holding once it does.
+# Accounts flag on: S2 PLACEHOLDER. Nothing imports ACCOUNTS_ENABLED in S1, so this build carries no account code and the check
+# below cannot fail today. It exists so that once the S2 client lands behind the flag it must stay out of the entry chunk.
 build accounts VITE_GOOGLE_CLIENT_ID="$CLIENT_ID" VITE_GOOGLE_SERVER= VITE_GOOGLE_SERVER_INSTALLED= VITE_ACCOUNTS=1
 entry="$(grep -oE 'assets/index-[A-Za-z0-9_-]+\.js' "$OUT/accounts/index.html" | head -n 1)"
 [ -n "$entry" ] || fail "no entry chunk found in the accounts build."

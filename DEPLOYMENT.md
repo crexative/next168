@@ -268,8 +268,9 @@ Slices S0 and S1 of `docs/design/accounts-and-sync.md`: Google sign-in and a ser
 off and invisible.** With `ACCOUNTS_ENABLED` unset (or anything other than `1`) every `/api/auth/*` and `/api/sync*`
 route answers `404`, reads and writes nothing, calls nobody and sets no cookie. The static app has no account code yet
 (the client is slice S2): a build made with `VITE_ACCOUNTS=1` is inert, and a build without it carries no reference to
-`/api/auth` or `/api/sync` (`bash scripts/check-google-bundles.sh`, run by CI). A signed-out device makes no new request
-and writes no new key (`e2e/accounts-free-tier.spec.ts`). The calendar connection above is not touched: sign-in asks for
+`/api/auth` or `/api/sync` (`bash scripts/check-google-bundles.sh`, run by CI). The only check of the client flag that can fail in S1 is the flagless build ("no `/api/auth` or `/api/sync`"); the
+flag-on bundle check and the flag-on half of `e2e/accounts-free-tier.spec.ts` are S2 placeholders that start to bite when
+the client lands. The server's off-by-default behaviour is proven by `server/accounts/guards.spec.ts`. The calendar connection above is not touched: sign-in asks for
 `openid email profile` only and stores no Google token.
 
 | Path | Role |
