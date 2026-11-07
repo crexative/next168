@@ -58,6 +58,7 @@ describe('googleTokenSource', () => {
     desktopEdge: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36 Edg/130.0.0.0',
     androidChrome: 'Mozilla/5.0 (Linux; Android 14; Pixel 8) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Mobile Safari/537.36',
     androidWebView: 'Mozilla/5.0 (Linux; Android 14; Pixel 8; wv) AppleWebKit/537.36 (KHTML, like Gecko) Version/4.0 Chrome/130.0.0.0 Mobile Safari/537.36',
+    androidEdgeWebView: 'Mozilla/5.0 (Linux; Android 14; Pixel 8; wv) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Mobile Safari/537.36 EdgA/130.0.0.0',
     firefox: 'Mozilla/5.0 (X11; Linux x86_64; rv:130.0) Gecko/20100101 Firefox/130.0',
     androidFirefox: 'Mozilla/5.0 (Android 14; Mobile; rv:130.0) Gecko/130.0 Firefox/130.0',
     firefoxWebView: 'Mozilla/5.0 (Android 14; Mobile; rv:130.0; wv) Gecko/130.0 Firefox/130.0',
@@ -127,6 +128,7 @@ describe('googleTokenSource', () => {
 
   it.each([
     ['the Android WebView', { userAgent: UA.androidWebView, brands: ['Android WebView', 'Chromium'] }],
+    ['an Android WebView with an Edge UA marker', { userAgent: UA.androidEdgeWebView, brands: [] }],
     ['a Firefox WebView', { userAgent: UA.firefoxWebView, brands: [] }],
     ['Instagram on iPhone', { userAgent: UA.iphoneInstagram, brands: [] }],
     ['Facebook on iPhone', { userAgent: UA.iphoneFacebook, brands: [] }],
@@ -178,6 +180,10 @@ describe('googleTokenSource', () => {
     it('an installed context with another brand → gis even with INSTALLED', () => {
       expect(sourceOf({ ...androidApp, installedServer: true, brands: ['Chromium', 'Unknown Browser'] })).toBe('gis')
       expect(sourceOf({ ...androidApp, installedServer: true, brands: [] })).toBe('gis')
+    })
+
+    it('an installed Brave browser stays on GIS even with INSTALLED', () => {
+      expect(sourceOf({ ...androidApp, installedServer: true, brands: ['Chromium', 'Brave'] })).toBe('gis')
     })
 
     it('an installed app in a frame → gis', () => {

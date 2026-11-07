@@ -288,7 +288,7 @@ test.describe('A-6 nothing Google is persisted in a server build, in either sour
     await boot(app.page)
     await app.page.getByTestId('google-details').locator('summary').click()
     await expect(source(app.page)).toHaveText('gis')
-    await expect(app.page.getByTestId('google-installed-note')).toContainText('To stay connected, open Weeklid in Safari, Chrome, Edge or Firefox.')
+    await expect(app.page.getByTestId('google-installed-note')).toContainText('To stay connected, open Weeklid in your usual browser.')
     await app.page.getByTestId('google-connect').click()
     await expect(app.page.getByTestId('google-connect-sheet')).toContainText('your events aren\'t saved between visits')
     await expect(app.page.getByTestId('google-connect-sheet')).not.toContainText('A copy of your events is saved')

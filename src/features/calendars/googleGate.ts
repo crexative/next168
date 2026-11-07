@@ -78,6 +78,7 @@ const hasInstalledChromiumBrand = (brands: readonly string[]): boolean => brands
 
 function allowedBrowser({ userAgent: ua, brands }: SourceInput): boolean {
   if (IN_APP_MARKERS.test(ua)) return false
+  if (/; wv\)/.test(ua)) return false
   if (/Opera Mini\//i.test(ua) || /DuckDuckGo\//.test(ua)) return false
   if (hasChromiumBrand(brands)) return true
   if (/Firefox\//.test(ua)) return !/; wv\)/.test(ua)
