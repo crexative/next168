@@ -1,7 +1,7 @@
 # Accounts and plan sync across devices (v1)
 
-Status: **proposed, revision 4**; risk tier critical (auth, personal data, deletion). Revision 1: `9190e83`, rejected
-by Codex in round 1; revision 2: `4924abb`, accepted with changes in round 2; revision 3: `99d4e61`, rejected in round 3. This revision is against `main` f77ebc0. External pages were read on 2026-11-07 (UTC); no Google,
+Status: **proposed, revision 5**; risk tier critical (auth, personal data, deletion). Revision 1: `9190e83`, rejected
+by Codex in round 1; revision 2: `4924abb`, accepted with changes in round 2; revision 3: `99d4e61`, rejected in round 3; revision 4: `56f09b2`, accepted with changes in round 4. This revision is against `main` f77ebc0. External pages were read on 2026-11-07 (UTC); no Google,
 Apple or Cloudflare production endpoint was called and no secret was read.
 
 **Goal (v1).** A person signs in with Google and sees the same plan on every device where they are signed in.
@@ -42,11 +42,19 @@ copy. All three MAJORs were in round-2 machinery, so it is removed, not fenced (
 
 | # | Finding (family) | Resolution | Mechanism removed | Where |
 |---|---|---|---|---|
-| N1 | A pull's write is not fenced by the binding (*a check outside the write*) | **Resolved.** An attempt is one hold of the commit lock: read, one request (8 s timeout), then a commit that re-checks `sync` and `purgeEpoch` **in the same transaction** as the document write. Every writer of `sync` holds the same lock | `saveAtEpoch` as the pull fence | §2.3 |
+| N1 | A pull's write is not fenced by the binding (*a check outside the write*) | **Resolved.** An attempt is one hold of the commit lock: read, one request (now a 10 s budget, R4-1), then a commit that re-checks `sync` and `purgeEpoch` **in the same transaction** as the document write. Every writer of `sync` holds the same lock | `saveAtEpoch` as the pull fence | §2.3 |
 | N2 | The restore cannot prove the routes are closed on every worker (*an unverifiable fence*) | **Cut.** Account data is never restored from Time Travel. If the server copy is lost, devices re-upload (`noPlan` → a create; conflicts pause). Nothing restored means nothing resurrected | the 9-step restore, the route fence, the deletion ledger | §2.5 |
 | N3 | The dirty mark and backoff between tabs (*shared mutable flags*) | **Cut.** No dirty mark: every attempt re-reads the document and compares its hash with `baseHash`. No second lock. Backoff is per tab; one attempt per trigger, serialized by the lock, so a burst is bounded and duplicates are harmless | `dirty`, `weeklid-sync`, cross-tab backoff | §2.3 |
 | R2-4 | Remove must clear `sync` atomically; a push in flight (*partial removal*) | **Resolved.** `sync: null` goes in the delete-all transaction itself. Remove waits for the running attempt. A push that already left may land at the server, which is harmless: it is the person's own account | — | §2.2 |
 | R2-7 | Research date (INFO) | **Kept:** 2026-11-07 is the UTC date of the reads; the reviewer's environment showed the local date, 2026-11-06 | — | header |
+
+## Red-team round 4 resolution (Codex, ACCEPT WITH CHANGES on `56f09b2`)
+
+| # | Finding | Resolution | Where |
+|---|---|---|---|
+| R4-1 | MAJOR: the lock hold isn't really bounded | **Resolved.** One `AbortController` with a 10 s budget covers the request, its body and the `409` follow-up, so the task always settles and the lock is released. On expiry, saves proceed and "Couldn't sync. Retry" appears. Hung-server tests | §2.3, S2 |
+| R4-2 | MAJOR: a deleted account or a lost copy is silently resurrected | **Resolved (coordinator direction):** a tombstone of the hashed key gives `410 accountDeleted` (Remove or Keep local only, never a re-upload); `noPlan` after a previous sync asks before re-uploading. What a lost database loses is stated. Tests for both | §2.3, §2.5, S1, S2, OD-9 |
+| R4-3 | MINOR: 304 is unspecified | **Resolved.** The ETag is `"<epoch>.<revision>"`; a `304` writes nothing; `noPlan` is a `404`, never a `304`. S2 test | §2.3, S1, S2 |
 
 ## 0. Owner decisions
 
@@ -60,6 +68,7 @@ copy. All three MAJORs were in round-2 machinery, so it is removed, not fenced (
 | OD-6 | Delete all data while signed in. | It **empties the account's plan on every device** (a new epoch), then wipes this device and signs out. The confirmation says so. | Otherwise the next sync would bring the deleted plan back. |
 | OD-7 | Price and payment provider (blocks charging, not building). | Decide after the beta. Comparable planners charge about USD 2.8–4.2 a month or USD 29.99 a year (`docs/research/competitors-commercial.md:29`, `:32`). | Modeled infrastructure cost is about USD 5 a month at 10,000 people (§1.3). It does not drive the price. |
 | OD-8 | Account data is never restored from Time Travel (coordinator direction). | **Accept.** If the database is lost, people sign in again, devices re-upload, and Google Calendar connections (S1b) must be redone. | A restore cannot be fenced provably; the devices already hold the plan. |
+| OD-9 | A deleted account's Google identity cannot sign up again (a permanent tombstone, coordinator direction). | **Accept for v1**, and have the lawyer confirm that keeping one hash per deleted account is allowed (OD-4). Revisit if people ask to start over. | It is the only way to stop an offline device from silently re-creating a deleted account. |
 
 ## 1. Dated research (read 2026-11-07)
 
@@ -161,18 +170,25 @@ Each attempt runs entirely inside one hold of the existing exclusive lock (`webL
 
 1. Read `sync`, `purgeEpoch`, the document and `sync-base`; stop if the binding does not match the session's
    `accountKey`, if a `sync-conflict` copy exists, or if the device is offline.
-2. **One** request, with an 8 s timeout (S1a's `GOOGLE_DEADLINE_MS`). If the document's hash differs from `baseHash`,
+2. Network, under **one** `AbortController` with a **10 s total budget** that covers the request, reading its body and
+   the follow-up push after a `409`. Abort makes every `fetch` and body read reject, so the task always settles and
+   `webLockRunner` releases. If the document's hash differs from `baseHash`,
    push `PUT /api/sync {accountKey, baseRevision, epoch, document}` (`UPDATE … WHERE revision = ? AND epoch = ?`; a
-   `409` carries the server's plan); otherwise pull with `GET` and `If-None-Match`. **Replace** (Delete all data while
+   `409` carries the server's plan); otherwise pull with `GET` and `If-None-Match: "<epoch>.<revision>"`
+   (the server's ETag). **`304`** writes nothing: the document, `sync` and `sync-base` stay as they are, and the next
+   push uses them unchanged. **Replace** (Delete all data while
    signed in, import, restore, "replace my account's plan") is `PUT /api/sync/replace` and raises `epoch`. The server
-   answers `409 accountMismatch` for another account's cookie, and `noPlan` when it holds no copy (the device then
-   creates it).
+   answers `409 accountMismatch` for another account's cookie, `410 accountDeleted` for a tombstoned `accountKey`
+   (§2.5), and `404 noPlan` when it holds no copy. `noPlan` is never a `304`. A device that has never synced
+   (`baseRevision = 0`) creates the copy after the existing confirmation. A device that has synced before **pauses**
+   and asks: "Your account copy is missing. Restore it from this device?" Only Yes uploads.
 3. Commit in **one strict transaction** that re-checks `sync` and `purgeEpoch` and writes the document, `sync` and
-   `sync-base` together. A same-epoch `409` is merged (below), and one follow-up attempt pushes the result. A `409
+   `sync-base` together. A same-epoch `409` is merged (below), committed, then pushed once within the same budget. A `409
    replaced` adopts the server's plan, with this device's unsynced changes in `sync-conflict`, so a device that was
    offline for weeks cannot bring back a deleted plan.
 
-A local save during an attempt waits (≤ 8 s plus local work): the price of this simplicity. **No dirty mark:** every
+A local save during an attempt waits **at most 10 s plus local work**, the price of this simplicity. When the budget
+expires, the save proceeds right after, and Settings › Account shows "Couldn't sync. Retry". **No dirty mark:** every
 attempt re-reads the document. **Triggers:** open, focus, 2 s after a save (debounced), "Sync now". Backoff is per tab
 (1 s × 2ⁿ ± 50 %, ≤ 5 min, reset on success). **A burst is bounded:** one attempt per trigger per tab, serialized by the
 lock; after one tab pushes, the others' hash equals `baseHash`, so they only send a conditional GET (`304`).
@@ -203,7 +219,7 @@ and imported files show the existing "import again" message), proposals, prefere
   against a leaked export or console view; it is not end-to-end encryption (OD-5). Logs record only the route, the
   outcome and the duration.
 - **Migration:** `server/accounts/migrations/0001_accounts.sql` creates only **new** tables (`accounts`, `identities`,
-  `sessions`, `auth_pending`, `plans`, `beta_access`) and a `schema_migrations(version)` row. It never touches
+  `sessions`, `auth_pending`, `plans`, `beta_access`, `deleted_accounts`) and a `schema_migrations(version)` row. It never touches
   `google_pending` or `google_credentials` (`connectionStore.ts:88-109`). The owner applies it before setting
   `ACCOUNTS_ENABLED=1`; the routes answer `503 notConfigured` if version 1 is missing, and old workers never read these
   tables. **Rollback:** flag off (routes give 404), then `server/accounts/purge.sql` (sessions, then pending rows, then
@@ -213,10 +229,18 @@ and imported files show the existing "import again" message), proposals, prefere
 ### 2.5 Deletion, export and the server copy
 
 - **The device is the source of truth; the server is a relay and a copy.** Account data is **never restored from Time
-  Travel** (stated in `DEPLOYMENT.md`). If the copy is lost, the database is recreated empty, people sign in again (same
-  `accountKey`) and devices re-upload (`noPlan` → a create; others merge or pause). Nothing restored, nothing resurrected.
+  Travel** (stated in `DEPLOYMENT.md`). If the copy is lost, the database is recreated empty and people sign in again
+  (same `accountKey`). A device that had synced re-uploads **only after the person confirms** (§2.3). Nothing is restored
+  silently.
 - **Delete account** (Settings › Account): one batch deletes the account, its identity, sessions, plan and beta
-  access. The device keeps its local plan only if the person chooses to; `sync` is cleared either way.
+  access, and inserts a permanent tombstone `deleted_accounts(account_key)`: only the hash, no personal data. Any
+  later sync or sign-in for that key gets `410 accountDeleted`. The device then offers **Remove from this device** or
+  **Keep it on this device only** (`sync` cleared), and never offers a re-upload. A request already in flight at
+  deletion may still land; the same batch removes it.
+- **What a lost database loses:** the tombstones live in the same D1 database, so they survive a re-created database
+  only if they are kept apart from it. v1 keeps them in D1, which is the simplest option. If the database *and* its
+  tombstones are lost, an offline device of a deleted account could re-create the account copy, but only after the
+  explicit "Restore it from this device?". That is the person's own choice.
 - **Privacy copy:** "Your plan lives on your devices; Weeklid's server keeps an encrypted copy to pass it between them,
   deleted with your account. Cloudflare's recovery copies expire within 30 days, and Weeklid never restores from them."
 - **Export:** "Download my account data" = the server plan as the existing export bundle plus the account record
@@ -232,8 +256,8 @@ POST proxy, URL redaction, limits, strict egress); a per-account calendar creden
 | Slice | Executable acceptance |
 |---|---|
 | **S0** Size | A unit test builds a plan at the schema maxima (`model.ts:246-252`) and a realistic one, serializes, gzips and seals them, and **fails if the maximum exceeds 1.9 MB**. **Server bounds:** `/api/sync` rejects a declared or streamed body above 2 MB with `413` before reading it in full, and anything that is not a valid `plannerDocumentSchema` with `400` before compressing or sealing. A preview-D1 canary (owner, no production) binds a BLOB above 100 KB. If the maximum fails, v1 refuses to push ("plan too large to sync") and nothing else is built |
-| **S1** Server | Node tests over the real handlers with a fake Google: callback replay, a missing or foreign flow cookie, or an expired row → no session; **login CSRF:** the attacker's own `state` and code delivered to a victim browser, with the victim's flow cookie or none → no session, and the victim is not signed in as the attacker; bad `iss`, `aud` or `nonce` → no session; a new session cookie on every sign-in, with only its hash stored; another account's `accountKey` → `409 accountMismatch`; a `409` carries the server's plan; an empty account → `noPlan`, then a create; deleting leaves zero rows in every account table. **Migration:** applied to a database built from today's S1b `SCHEMA` with rows in it, the S1b specs still pass, a second run is a no-op, and purge restores the S1b-only state. **Free-tier guard matrix:** {flag off, flag on} × {signed out}: no request to `/api/auth` or `/api/sync`, and no `sync` meta key; the existing e2e suite passes with the flag off; with the flag on and the person signed out, the same holds after edits, import and Delete all data. **Owner canary:** the R-G1 check |
-| **S2** Client | e2e with two browser contexts and a fake server: an edit on A appears on B when B gets focus; concurrent edits to different keys of **every** collection in §2.3 are all kept; the same key changed on both devices (an edit or a delete) → the server wins and Restore brings back the device's version; a merge that would create overlapping blocks → the server's plan wins whole, with Restore; an offline push after a delete-all elsewhere gets `replaced`, nothing deleted comes back, and the local edits sit in `sync-conflict`; a second conflict while a copy exists → sync stays paused and the first copy is unchanged. **Binding:** A → sign-out (Keep) → B: nothing of A's reaches B's account, and the device asks to remove or cancel; a shared device, where A signs out with Remove → no plan, `sync` key or Google permission of A's remains; import while signed out → unbound; two tabs sign in as A and B at once → at most one claim succeeds and nothing is uploaded to the other account; Cancel while another tab's attempt holds a response → nothing is applied and `sync` stays absent. **One hold:** with a held pull response in tab 1, tab 2's Remove waits, then leaves nothing behind; a local save made during an attempt commits after it, and the next attempt pushes it; three tabs focused at once → their requests never overlap, and the later ones are `304`. **Server loss:** an emptied fake server → the first device re-creates the plan, and the second merges. `STORAGE_VERSION` is still 3 |
+| **S1** Server | Node tests over the real handlers with a fake Google: callback replay, a missing or foreign flow cookie, or an expired row → no session; **login CSRF:** the attacker's own `state` and code delivered to a victim browser, with the victim's flow cookie or none → no session, and the victim is not signed in as the attacker; bad `iss`, `aud` or `nonce` → no session; a new session cookie on every sign-in, with only its hash stored; another account's `accountKey` → `409 accountMismatch`; a `409` carries the server's plan; an empty account → `noPlan`, then a create; deleting leaves zero rows in every account table except the tombstone, which holds only the hash, and a later sync or sign-in for that key → `410 accountDeleted`; `noPlan` is a `404`, never a `304`; the ETag is `"<epoch>.<revision>"`. **Migration:** applied to a database built from today's S1b `SCHEMA` with rows in it, the S1b specs still pass, a second run is a no-op, and purge restores the S1b-only state. **Free-tier guard matrix:** {flag off, flag on} × {signed out}: no request to `/api/auth` or `/api/sync`, and no `sync` meta key; the existing e2e suite passes with the flag off; with the flag on and the person signed out, the same holds after edits, import and Delete all data. **Owner canary:** the R-G1 check |
+| **S2** Client | e2e with two browser contexts and a fake server: an edit on A appears on B when B gets focus; concurrent edits to different keys of **every** collection in §2.3 are all kept; the same key changed on both devices (an edit or a delete) → the server wins and Restore brings back the device's version; a merge that would create overlapping blocks → the server's plan wins whole, with Restore; an offline push after a delete-all elsewhere gets `replaced`, nothing deleted comes back, and the local edits sit in `sync-conflict`; a second conflict while a copy exists → sync stays paused and the first copy is unchanged. **Binding:** A → sign-out (Keep) → B: nothing of A's reaches B's account, and the device asks to remove or cancel; a shared device, where A signs out with Remove → no plan, `sync` key or Google permission of A's remains; import while signed out → unbound; two tabs sign in as A and B at once → at most one claim succeeds and nothing is uploaded to the other account; Cancel while another tab's attempt holds a response → nothing is applied and `sync` stays absent. **One hold:** with a held pull response in tab 1, tab 2's Remove waits, then leaves nothing behind; a local save made during an attempt commits after it, and the next attempt pushes it; three tabs focused at once → their requests never overlap, and the later ones are `304`. **Hung server:** the fake server never answers → a local save made during the attempt completes within 10 s plus a margin, the lock is released, and "Couldn't sync. Retry" appears; the same with a hang during the follow-up push after a `409`. **304:** the document, `sync` and `sync-base` are byte-identical before and after, and the next push succeeds from that base. **Lost copy:** an emptied fake server → a device that has synced before asks before re-uploading (No uploads nothing), and a never-synced device keeps the first-upload confirmation. **Deleted account:** an offline device returns after deletion → `accountDeleted`, it offers Remove or Keep local only, and no request ever uploads. `STORAGE_VERSION` is still 3 |
 
 ## 5. Rejected and removed
 
@@ -245,7 +269,7 @@ sign-in; KV; Supabase (§1.3); CalDAV app passwords; and everything in §3.
 ## 6. What the red team should attack (round 4)
 
 1. Writes to `sync` or the document outside the lock, or a commit that skips the in-transaction re-check.
-2. The 8 s hold: an attempt that outlives its timeout, and saves stuck behind it.
+2. The 10 s budget: anything that runs outside the `AbortController`; a tombstone bypass through a new sign-in.
 3. Server loss: a stale device that re-creates first and brings back deleted content.
 4. The pause and the merge: leaving `sync-conflict` with no choice; delete versus edit; trimming the applied-id sets.
 5. The free-tier guard: any flag-off path that loads account code or writes `sync`.
