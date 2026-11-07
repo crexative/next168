@@ -154,6 +154,6 @@
     "disconnectNeedsNetwork": "Disconnecting needs internet.",
     "deleteAllGoogleOffline": "Your data on this device was deleted, but Weeklid couldn't reach its server: its access to your Google Calendar stays until you disconnect online or remove Weeklid at myaccount.google.com/connections.",
     "googleAccessMayRemain": "Weeklid couldn't confirm that its access to your Google Calendar was removed. To be sure, remove Weeklid at myaccount.google.com/connections.",
-    "installedNote": "Here Google asks for permission again about every hour, and your events aren't saved between visits. To stay connected, open Weeklid in Safari, Chrome, Edge or Firefox."
+    "installedNote": "Here Google asks for permission again about every hour, and your events aren't saved between visits. To stay connected, open Weeklid in your usual browser."
   }
 }

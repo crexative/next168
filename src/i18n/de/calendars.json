@@ -154,6 +154,6 @@
     "disconnectNeedsNetwork": "Zum Trennen brauchst du Internet.",
     "deleteAllGoogleOffline": "Deine Daten auf diesem Gerät wurden gelöscht, aber Weeklid konnte seinen Server nicht erreichen: Sein Zugriff auf deinen Google Kalender bleibt, bis du mit Internet trennst oder Weeklid unter myaccount.google.com/connections entfernst.",
     "googleAccessMayRemain": "Weeklid konnte nicht bestätigen, dass sein Zugriff auf deinen Google Kalender entfernt wurde. Entferne Weeklid zur Sicherheit unter myaccount.google.com/connections.",
-    "installedNote": "Hier fragt Google ungefähr stündlich erneut nach der Berechtigung, und deine Termine werden zwischen den Besuchen nicht gespeichert. Um verbunden zu bleiben, öffne Weeklid in Safari, Chrome, Edge oder Firefox."
+    "installedNote": "Hier fragt Google ungefähr stündlich erneut nach der Berechtigung, und deine Termine werden zwischen den Besuchen nicht gespeichert. Um verbunden zu bleiben, öffne Weeklid in deinem üblichen Browser."
   }
 }
