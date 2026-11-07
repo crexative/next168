@@ -7,6 +7,7 @@ import { readPreviewHttps } from './config/lanHttps'
 import { assertPublicUrl } from './config/publicUrl'
 import { assertGoogleClientId } from './config/googleClientId'
 import { assertGoogleServerFlags } from './config/googleServerFlags'
+import { assertAccountsFlag } from './config/accountsFlag'
 
 // The installed window's bars match the page's grouped background, as the theme-color metas in index.html do
 // (src/ui/appearance.ts): the brand green lives in the icon and the controls, not in the system chrome.
@@ -35,6 +36,7 @@ function checkGoogleClientId(mode: string): void {
   const env = loadEnv(mode, process.cwd(), 'VITE_')
   if (env.VITE_GOOGLE_CLIENT_ID) assertGoogleClientId(env.VITE_GOOGLE_CLIENT_ID)
   assertGoogleServerFlags({ clientId: env.VITE_GOOGLE_CLIENT_ID || undefined, server: env.VITE_GOOGLE_SERVER, installed: env.VITE_GOOGLE_SERVER_INSTALLED })
+  assertAccountsFlag(env.VITE_ACCOUNTS)
 }
 
 // base './' lets the same build run at '/', at '/next168/' and inside the local companion.
