@@ -65,18 +65,24 @@ async function box(locator: Locator) {
 
 const circle = (scope: Locator) => scope.getByTestId('status-control')
 
+// Finished items sit in the folded "Antes" row; these tests answer from their own rows.
+async function expandEarlier(page: Page): Promise<void> {
+  await page.getByTestId('timeline-earlier').click()
+  await expect(page.getByTestId('timeline-earlier')).toHaveAttribute('aria-expanded', 'true')
+}
+
 for (const size of SIZES) {
   for (const theme of THEMES) {
     test.describe(`${size.name}, ${theme}`, () => {
-      test('the subtitle says the date and the free hours, with no counter and no card', async ({ page }) => {
-        await start(page, size, theme)
+      test('the subtitle says the date alone, with no counter and no card', async ({ page }) => {
+        await start(page, size, theme, plan, '2026-10-21T10:15:30.000Z')
         await open(page, 'today', 'Hoy')
-        // 109.75 h to Monday 00:00 minus 4.75 h of Trabajo profundo, 1 h of Gimnasio and 34 h of Dormir.
         const subtitle = page.getByTestId('today-subtitle')
-        await expect(subtitle).toHaveText('miércoles, 21 de octubre · 70 h libres esta semana')
+        await expect(subtitle).toHaveText('miércoles, 21 de octubre')
         await expect(page.getByTestId('free-hours')).toHaveCount(0)
         await expect(page.getByTestId('day-progress')).toHaveCount(0)
         await expect(page.getByText('de 168')).toHaveCount(0)
+        await expect(page.getByText('libres esta semana')).toHaveCount(0)
         const rect = await box(subtitle)
         expect(rect.x).toBeGreaterThanOrEqual(0)
         expect(rect.x + rect.width).toBeLessThanOrEqual(size.width)
@@ -87,64 +93,76 @@ for (const size of SIZES) {
         await expect(card.getByTestId('now-next')).toContainText('Después')
         await expect(circle(card)).toHaveCount(0)
         await expect(card.getByRole('group')).toHaveCount(0)
+        await expect(card.getByRole('button')).toHaveCount(0)
       })
 
-      test('in the last ten minutes the circle appears: 44 px, one tap marks Hecho, with a toast to undo it', async ({ page }) => {
+      test('in the last ten minutes three labelled buttons appear: one tap on Hecho marks it, with a toast to undo it', async ({ page }) => {
         await start(page, size, theme, plan, '2026-10-21T10:49:30.000Z')
         await open(page, 'today', 'Hoy')
         const card = page.getByTestId('now-card')
-        await expect(circle(card)).toHaveCount(0)
+        await expect(card.getByTestId('now-do')).toHaveCount(0)
         await page.clock.runFor(31_000)
-        const control = circle(card)
-        await expect(control).toHaveAccessibleName('Marcar como hecho: Trabajo profundo')
-        const rect = await box(control)
-        expect(rect.width).toBeGreaterThanOrEqual(44)
-        expect(rect.height).toBeGreaterThanOrEqual(44)
-        expect(rect.x + rect.width).toBeLessThanOrEqual(size.width)
-        const idle = await control.locator('.status-ring').evaluate((element) => getComputedStyle(element).backgroundColor)
-
-        await control.click()
-        await expect(control).toHaveAttribute('data-status', 'done')
-        // Filled with a check, not only recoloured: the ring's fill differs from the idle ring.
-        await expect.poll(() => control.locator('.status-ring').evaluate((element) => getComputedStyle(element).backgroundColor)).not.toBe(idle)
-        await expect(control.locator('svg')).toHaveCount(1)
+        await expect(card.getByTestId('now-ask')).toHaveText('¿Cómo fue?')
+        const buttons = card.getByTestId('now-do').getByRole('button')
+        await expect(buttons).toHaveText(['Hecho', 'A medias', 'No'])
+        for (const button of await buttons.all()) {
+          const rect = await box(button)
+          expect(rect.height).toBeGreaterThanOrEqual(44)
+          expect(rect.x + rect.width).toBeLessThanOrEqual(size.width)
+        }
+        await buttons.first().click()
+        await expect(card.getByTestId('now-answered')).toHaveText('Hecho · Cambiar')
         await expect(page.getByRole('status').filter({ hasText: 'Trabajo profundo: Hecho' })).toBeVisible()
         await expect.poll(async () => (await stored(page)).actuals).toMatchObject([{ blockId: 'b-work', status: 'done' }])
 
         await page.getByRole('button', { name: 'Deshacer' }).click()
-        await expect(control).toHaveAttribute('data-status', 'none')
-        await expect.poll(async () => (await stored(page)).actuals).toEqual([])
-
-        // Tapping a done circle takes the answer back; the toast offers it again.
-        await control.click()
-        await expect(control).toHaveAttribute('data-status', 'done')
-        await control.click()
-        await expect(control).toHaveAttribute('data-status', 'none')
-        await expect(page.getByRole('status').filter({ hasText: 'Respuesta quitada: Trabajo profundo' })).toBeVisible()
+        await expect(card.getByTestId('now-do').getByRole('button')).toHaveText(['Hecho', 'A medias', 'No'])
         await expect.poll(async () => (await stored(page)).actuals).toEqual([])
       })
 
-      test('right click opens "A medias" and "No"; A medias asks the minutes, and No is one choice', async ({ page }) => {
+      test('A medias asks the minutes and No is one choice; the answer can be changed from its line', async ({ page }) => {
         await start(page, size, theme, plan, '2026-10-21T10:55:00.000Z')
         await open(page, 'today', 'Hoy')
         const card = page.getByTestId('now-card')
-        const control = circle(card)
+        await card.getByRole('button', { name: 'A medias' }).click()
+        const minutes = card.getByLabel('Minutos dedicados (planificados 120)')
+        await expect(minutes).toHaveValue('60')
+        await minutes.fill('45')
+        await card.getByRole('button', { name: 'Guardar' }).click()
+        await expect(card.getByTestId('now-answered')).toHaveText('A medias · Cambiar')
+        await expect.poll(async () => (await stored(page)).actuals).toMatchObject([{ blockId: 'b-work', status: 'partial', actualMinutes: 45 }])
+        await expect(page.getByRole('status').filter({ hasText: 'Trabajo profundo: A medias' })).toBeVisible()
+
+        await card.getByTestId('now-answered').click()
+        await card.getByRole('button', { name: 'No', exact: true }).click()
+        await expect(card.getByTestId('now-answered')).toHaveText('No · Cambiar')
+        await expect.poll(async () => (await stored(page)).actuals).toMatchObject([{ blockId: 'b-work', status: 'skipped' }])
+      })
+
+      test('a finished block: right click or a long press on its ring opens the same menu; Escape returns focus; the answer can be removed', async ({ page }) => {
+        await start(page, size, theme, plan, '2026-10-21T12:00:00.000Z')
+        await open(page, 'today', 'Hoy')
+        await expandEarlier(page)
+        const row = page.getByTestId('timeline-item').filter({ has: page.locator('.row-title-text', { hasText: 'Trabajo profundo' }) })
+        const control = circle(row)
         await control.click({ button: 'right' })
         const menu = page.getByRole('menu', { name: '¿Cómo fue Trabajo profundo?' })
         await expect(menu).toBeVisible()
         await expect(menu.getByRole('menuitem')).toHaveText(['A medias', 'No'])
         // The menu grows in from 96 % over 200 ms, so its rows reach full size a moment after it is visible.
         for (const item of await menu.getByRole('menuitem').all()) await expect.poll(async () => (await box(item)).height).toBeGreaterThanOrEqual(44)
-        await menu.getByRole('menuitem', { name: 'A medias' }).click()
-        const minutes = card.getByLabel('Minutos dedicados (planificados 120)')
-        await expect(minutes).toHaveValue('60')
-        await minutes.fill('45')
-        await card.getByRole('button', { name: 'Guardar' }).click()
-        await expect(control).toHaveAttribute('data-status', 'partial')
-        await expect.poll(async () => (await stored(page)).actuals).toMatchObject([{ blockId: 'b-work', status: 'partial', actualMinutes: 45 }])
-        await expect(page.getByRole('status').filter({ hasText: 'Trabajo profundo: A medias' })).toBeVisible()
+        await page.keyboard.press('Escape')
+        await expect(page.getByRole('menu')).toHaveCount(0)
+        await expect(control).toBeFocused()
 
-        await control.click({ button: 'right' })
+        const rect = await box(control)
+        await page.mouse.move(rect.x + rect.width / 2, rect.y + rect.height / 2)
+        await page.mouse.down()
+        await page.clock.runFor(600)
+        await page.mouse.up()
+        await expect(page.getByRole('menu')).toBeVisible()
+        // The release after a long press is not a tap: nothing was recorded.
+        expect((await stored(page)).actuals).toEqual([])
         await page.getByRole('menuitem', { name: 'No', exact: true }).click()
         await expect(control).toHaveAttribute('data-status', 'skipped')
         await expect.poll(async () => (await stored(page)).actuals).toMatchObject([{ blockId: 'b-work', status: 'skipped' }])
@@ -154,26 +172,10 @@ for (const size of SIZES) {
         await expect.poll(async () => (await stored(page)).actuals).toEqual([])
       })
 
-      test('a long press opens the same menu, and Escape closes it and returns focus', async ({ page }) => {
-        await start(page, size, theme, plan, '2026-10-21T10:55:00.000Z')
-        await open(page, 'today', 'Hoy')
-        const control = circle(page.getByTestId('now-card'))
-        const rect = await box(control)
-        await page.mouse.move(rect.x + rect.width / 2, rect.y + rect.height / 2)
-        await page.mouse.down()
-        await page.clock.runFor(600)
-        await page.mouse.up()
-        await expect(page.getByRole('menu')).toBeVisible()
-        // The release after a long press is not a tap: nothing was recorded.
-        expect((await stored(page)).actuals).toEqual([])
-        await page.keyboard.press('Escape')
-        await expect(page.getByRole('menu')).toHaveCount(0)
-        await expect(control).toBeFocused()
-      })
-
       test('a finished block is one row with one circle: no buttons, sub-labels or emoji', async ({ page }) => {
         await start(page, size, theme, plan, '2026-10-21T12:00:00.000Z')
         await open(page, 'today', 'Hoy')
+        await expandEarlier(page)
         const row = page.getByTestId('timeline-item').filter({ hasText: 'Trabajo profundo' })
         await expect(circle(row)).toHaveCount(1)
         await expect(row.getByRole('button')).toHaveCount(1)
@@ -193,15 +195,15 @@ for (const size of SIZES) {
         await expect(circle(row)).toHaveAccessibleName('Hecho: Trabajo profundo. Toca para quitar la respuesta')
       })
 
-      test('an appointment on top of a block is a quiet line, not a red alarm', async ({ page }) => {
+      test('an appointment on top of a block is a quiet line on the block only, and only while the pair is current or upcoming', async ({ page }) => {
         const withAppointment = { ...plan, events: [{ id: 'e-doctor', title: 'Cita médica', start: '2026-10-21T09:00:00.000Z', end: '2026-10-21T10:00:00.000Z', allDay: false, attendees: [] }] }
-        await start(page, size, theme, withAppointment, '2026-10-21T12:00:00.000Z')
+        await start(page, size, theme, withAppointment, '2026-10-21T09:30:30.000Z')
         await open(page, 'today', 'Hoy')
-        // Matched by their own title: each row's note names the other one.
+        // Matched by their own title: the block's note names the event.
         const work = page.getByTestId('timeline-item').filter({ has: page.locator('.row-title-text', { hasText: 'Trabajo profundo' }) })
         const doctor = page.getByTestId('timeline-item').filter({ has: page.locator('.row-title-text', { hasText: 'Cita médica' }) })
         await expect(work.getByTestId('timeline-overlap')).toHaveText('Se cruza con Cita médica')
-        await expect(doctor.getByTestId('timeline-overlap')).toHaveText('Se cruza con Trabajo profundo')
+        await expect(doctor.getByTestId('timeline-overlap')).toHaveCount(0)
         await expect(page.getByTestId('conflict-mark')).toHaveCount(0)
         await expect(page.getByText('Conflicto')).toHaveCount(0)
         const [note, danger] = await Promise.all([
@@ -209,6 +211,10 @@ for (const size of SIZES) {
           page.evaluate(() => { const probe = document.createElement('i'); probe.style.color = 'var(--danger-label)'; document.body.append(probe); const color = getComputedStyle(probe).color; probe.remove(); return color }),
         ])
         expect(note).not.toBe(danger)
+        // Once the shared hour is over the notice goes.
+        await page.clock.setSystemTime(new Date('2026-10-21T10:00:00.000Z'))
+        await page.clock.runFor(30_000)
+        await expect(page.getByTestId('timeline-overlap')).toHaveCount(0)
       })
 
       test('tonight’s sleep reads from its start to its end, and a re-fitted task starts on a five-minute step', async ({ page }) => {
@@ -248,25 +254,29 @@ for (const size of SIZES) {
         await start(page, size, theme, freshPlan, '2026-10-21T11:00:00.000Z')
         await open(page, 'today', 'Hoy')
         await expect(circle(page.getByTestId('now-card'))).toHaveCount(0)
+        await expect(page.getByTestId('now-do')).toHaveCount(0)
+        await expandEarlier(page)
         await expect(page.getByTestId('timeline-item').filter({ hasText: 'Trabajo profundo' }).getByTestId('status-control')).toHaveCount(0)
         const carry = page.getByTestId('timeline-carry')
         await expect(carry).toContainText('Dormir')
         await expect(carry).toContainText('Desde ayer · hasta')
-        // A single line: the whole row is shorter than two text lines plus its padding.
+        // A single line: the row is the minimum row height, never two text lines plus its padding.
         const row = page.locator('li.is-carry')
-        expect((await box(row)).height).toBeLessThan(48)
+        expect((await box(row)).height).toBeLessThanOrEqual(48)
         await expect(row.getByTestId('timeline-start')).toHaveCount(0)
         const lines = await carry.evaluate((element) => Math.round(element.getBoundingClientRect().height / parseFloat(getComputedStyle(element).lineHeight)))
         expect(lines).toBe(1)
       })
 
-      test('free time says when it ends, in one title under "AHORA"', async ({ page }) => {
+      test('free time says Libre, how long it lasts and until when, under "AHORA"', async ({ page }) => {
         await start(page, size, theme, plan, '2026-10-21T16:30:00.000Z')
         await open(page, 'today', 'Hoy')
         const card = page.getByTestId('now-card')
         await expect(card.getByTestId('now-eyebrow')).toHaveText('Ahora')
         await expect(card.getByTestId('now-eyebrow')).toHaveCSS('text-transform', 'uppercase')
-        await expect(card.getByTestId('now-title')).toHaveText('Tiempo libre hasta las 6:00 p. m.')
+        await expect(card.getByTestId('now-title')).toHaveText('Libre')
+        await expect(card.getByTestId('now-left')).toHaveText('Quedan 1 h 30 min')
+        await expect(card.getByTestId('now-until')).toHaveText(/^hasta las 6:00\sp\.\sm\.$/)
         await expect(card).not.toContainText('Sin planificar')
         await expect(card.getByTestId('now-next')).toContainText('Gimnasio')
         await expect(circle(card)).toHaveCount(0)
@@ -324,7 +334,7 @@ for (const theme of THEMES) {
         await expect(blocks).toContainText('Aún sin marcar')
         const gym = blocks.getByTestId('checkin-block').filter({ hasText: 'Gimnasio' })
         await expect(gym).toHaveCount(1)
-        await expect(gym.getByTestId('status-control')).toHaveAccessibleName('Marcar como hecho: Gimnasio')
+        await expect(gym.getByTestId('status-control')).toHaveAccessibleName('¿Cómo fue Gimnasio? Sin marcar. Toca para marcar como hecho; mantén pulsado para más opciones')
         expect((await box(gym.getByTestId('status-control'))).width).toBeGreaterThanOrEqual(44)
         // Stress keeps its question, with the ends of the scale named instead of folded into the label.
         const stress = page.getByRole('radiogroup', { name: 'Estrés hoy' })
@@ -348,6 +358,7 @@ for (const theme of THEMES) {
         await page.clock.runFor(5000)
         await expect(done).toHaveText('Hecho ✓ · racha 2')
         // Hoy shows the same answer on the same block: one fact, one place.
+        await expandEarlier(page)
         await expect(page.getByTestId('timeline-item').filter({ hasText: 'Gimnasio' }).getByTestId('status-control')).toHaveAttribute('data-status', 'done')
       })
     }

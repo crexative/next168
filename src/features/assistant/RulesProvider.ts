@@ -2,7 +2,7 @@ import { currentAndNext } from '@/core/now'
 import { fitTasks, placementClock } from '@/core/scheduling'
 import { localDateOf } from '@/core/time'
 import { buildTimeline } from '@/features/today/todayTimeline'
-import { nextUp } from '@/features/today/nextUp'
+import { nextBlockOrTask } from '@/features/today/nextBlockOrTask'
 import { readsAsOne } from '@/features/today/clockPhrase'
 import { computeStats } from '@/core/stats'
 import type { Category, PlannerDocument } from '@/core/model'
@@ -65,7 +65,7 @@ export function answerFromStats(question: string, { document, now, timeZone, loc
     const busy = external.filter((item) => item.busy && !item.allDay).map(({ start, end }) => ({ start, end }))
     const placements = fitTasks({ document, busy, now: placementClock(now), timeZone })
     const timeline = buildTimeline({ document, today, timeZone, external, placements })
-    const next = nextUp(nextBlock, timeline.items, now)
+    const next = nextBlockOrTask(nextBlock, timeline.items, now)
     const time = next ? formatClock(next.start, displayLocaleFor(locale), timeZone) : ''
     const parts: string[] = []
     if (current) parts.push(t('assistant.answers.currentBlock', { title: current.title, left: formatDuration(current.minutesLeft) }))

@@ -5,6 +5,7 @@ import { deepWork, plannerDocument, sleep } from '@/features/week/testDocument'
 import TodayTimeline from './TodayTimeline.vue'
 import { recordActual } from './actuals'
 import { buildTimeline } from './todayTimeline'
+import { expandEarlier } from './timelineFixtures'
 
 let unmount = () => undefined as void
 afterEach(() => unmount())
@@ -14,7 +15,7 @@ const document = plannerDocument({ blocks: [deepWork, sleep] })
 const { items } = buildTimeline({ document, today: TODAY, timeZone: 'UTC', external: [], placements: [] })
 const SINCE = Date.parse('2026-10-20T00:00:00Z')
 const deepWorkKey = items.find((item) => item.kind === 'block' && item.title === 'Deep work')!.key
-const task = { kind: 'task' as const, key: 'task:t@10', title: 'Write report', start: '2026-10-21T13:00:00.000Z', end: '2026-10-21T14:00:00.000Z', overlapsWith: [], taskId: 't', categoryId: 'work', late: false }
+const task = { kind: 'task' as const, key: 'task:t@10', title: 'Write report', start: '2026-10-21T13:00:00.000Z', end: '2026-10-21T14:00:00.000Z', taskId: 't', categoryId: 'work', late: false }
 
 async function render(props: Record<string, unknown> = {}) {
   const mounted = await mountForTest(TodayTimeline, {
@@ -31,6 +32,7 @@ const controls = (host: ParentNode) => [...host.querySelectorAll<HTMLButtonEleme
 describe('TodayTimeline rows', () => {
   it('collapses last night’s sleep to a single line without a status question', async () => {
     const host = await render()
+    await expandEarlier(host)
     const carry = host.querySelector('[data-testid="timeline-carry"]')!
     expect(carry.textContent?.replace(/\s+/g, ' ').trim()).toMatch(/^Sleep\s*Since yesterday · until 6:00\sAM$/)
     expect(carry.textContent).toContain('yesterday\u00a0· until')
@@ -41,6 +43,7 @@ describe('TodayTimeline rows', () => {
 
   it('puts one circle on a finished block and nothing else: no chips, no sub-labels, no emoji mark', async () => {
     const host = await render()
+    await expandEarlier(host)
     const row = rowOf(host, 'Deep work')
     expect(controls(row)).toHaveLength(1)
     expect(controls(host)).toHaveLength(1)
@@ -52,12 +55,18 @@ describe('TodayTimeline rows', () => {
   })
 
   it('does not ask about the block the Now card asks about', async () => {
-    const delegated = await render({ currentKey: deepWorkKey })
-    expect(controls(delegated)).toHaveLength(0)
+    const asked = await render({ askedKey: deepWorkKey })
+    await expandEarlier(asked)
+    expect(controls(asked)).toHaveLength(0)
+    unmount()
+    const notAsked = await render()
+    await expandEarlier(notAsked)
+    expect(controls(notAsked)).toHaveLength(1)
   })
 
   it('does not ask about blocks that started before the plan existed, or that have not started', async () => {
     const late = await render({ planSince: Date.parse('2026-10-21T14:00:00Z') })
+    await expandEarlier(late)
     expect(controls(late)).toHaveLength(0)
     unmount()
     const early = await render({ now: new Date('2026-10-21T08:00:00Z') })
@@ -84,12 +93,14 @@ describe('TodayTimeline rows', () => {
     const onRecord = vi.fn()
     const onClear = vi.fn()
     const host = await render({ onRecord, onClear })
+    await expandEarlier(host)
     controls(host)[0]!.click()
     expect(onRecord).toHaveBeenCalledWith(expect.objectContaining({ blockId: 'deep' }), 'done', undefined)
     unmount()
     const answered = structuredClone(document)
     recordActual(answered, datedOccurrences(answered, TODAY, 1, 'UTC').find((item) => item.title === 'Deep work')!, 'done')
     const again = await render({ onRecord, onClear, actuals: answered.actuals })
+    await expandEarlier(again)
     controls(again)[0]!.click()
     expect(onClear).toHaveBeenCalledWith(expect.objectContaining({ blockId: 'deep' }))
   })
@@ -105,17 +116,18 @@ describe('TodayTimeline rows', () => {
   })
 
   it('reads a task or an event as one before its title for assistive technology, without a visible sub-label', async () => {
-    const event = { kind: 'event' as const, key: 'event:e', title: 'Dentist', start: '2026-10-21T15:00:00.000Z', end: '2026-10-21T16:00:00.000Z', overlapsWith: [] }
+    const event = { kind: 'event' as const, key: 'event:e', title: 'Dentist', start: '2026-10-21T15:00:00.000Z', end: '2026-10-21T16:00:00.000Z' }
     const host = await render({ items: [task, event] })
     expect(rowOf(host, 'Write report').querySelector('.visually-hidden')?.textContent).toBe('Task: ')
-    expect(rowOf(host, 'Dentist').querySelector('.visually-hidden')?.textContent).toBe('Event: ')
+    expect(rowOf(host, 'Dentist').querySelector('.visually-hidden')?.textContent).toBe('Weeklid calendar: ')
     expect(host.querySelector('.row-kind')).toBeNull()
   })
 
   it('shows midnight where an item began before the day, and only the start where it runs past the end of the day', async () => {
     const host = await render({ items: [...items, {
-      kind: 'event' as const, key: 'event:late', title: 'Night shift', start: '2026-10-20T22:00:00.000Z', end: '2026-10-21T01:00:00.000Z', overlapsWith: [],
+      kind: 'event' as const, key: 'event:late', title: 'Night shift', start: '2026-10-20T22:00:00.000Z', end: '2026-10-21T01:00:00.000Z',
     }] })
+    await expandEarlier(host)
     const times = (title: string) => {
       const row = rowOf(host, title)
       return [row.querySelector('[data-testid="timeline-start"]')?.textContent, row.querySelector('[data-testid="timeline-end"]')?.textContent ?? null]
@@ -126,19 +138,31 @@ describe('TodayTimeline rows', () => {
     expect(rowOf(host, 'Sleep').querySelector('[data-testid="timeline-span-hint"]')?.textContent?.replace(/\s/g, ' ')).toBe('Until 6:00 AM')
   })
 
-  it('says what an item overlaps with, as plain information and never as an alarm', async () => {
-    const overlapping = { ...items.find((item) => item.title === 'Deep work')!, overlapsWith: ['Dentist', 'Standup'] }
-    const host = await render({ items: [overlapping] })
-    const note = host.querySelector('[data-testid="timeline-overlap"]')!
-    expect(note.textContent).toBe('Overlaps with Dentist and Standup')
-    expect(note.className).toContain('t-secondary')
-    expect(host.querySelector('[data-testid="conflict-mark"], .badge.is-conflict, svg')).toBeNull()
+  it('says what a routine overlaps with, as plain information and never as an alarm, and only on the routine', async () => {
+    const dentist = { kind: 'event' as const, key: 'event:dentist', title: 'Dentist', start: '2026-10-21T10:00:00.000Z', end: '2026-10-21T10:30:00.000Z' }
+    const standup = { kind: 'event' as const, key: 'event:standup', title: 'Standup', start: '2026-10-21T10:20:00.000Z', end: '2026-10-21T10:40:00.000Z' }
+    const work = items.find((item) => item.title === 'Deep work')!
+    const host = await render({ items: [work, dentist, standup], now: new Date('2026-10-21T10:15:00Z') })
+    const notes = [...host.querySelectorAll('[data-testid="timeline-overlap"]')]
+    expect(notes).toHaveLength(1)
+    expect(notes[0]!.textContent).toBe('Overlaps with Dentist and Standup')
+    expect(notes[0]!.className).toContain('t-secondary')
+    expect(rowOf(host, 'Deep work').contains(notes[0]!)).toBe(true)
+    expect(host.querySelector('[data-testid="conflict-mark"], .badge.is-conflict')).toBeNull()
     unmount()
     expect((await render()).querySelector('[data-testid="timeline-overlap"]')).toBeNull()
   })
 
+  it('shows no overlap notice once the shared time has passed', async () => {
+    const dentist = { kind: 'event' as const, key: 'event:dentist', title: 'Dentist', start: '2026-10-21T10:00:00.000Z', end: '2026-10-21T10:30:00.000Z' }
+    const work = items.find((item) => item.title === 'Deep work')!
+    const host = await render({ items: [work, dentist], now: new Date('2026-10-21T10:30:00Z') })
+    expect(host.querySelector('[data-testid="timeline-overlap"]')).toBeNull()
+  })
+
   it('dims what is over and locks the circles while the plan is read-only', async () => {
     const host = await render({ items: [...items, task], writable: false })
+    await expandEarlier(host)
     const past = [...host.querySelectorAll('[data-testid="timeline-item"].is-past')].map((row) => row.querySelector('.row-title-text')?.textContent ?? 'carry-over')
     // Last night's Sleep and the finished Deep work are over; tonight's Sleep and the 13:00 task are not.
     expect(past).toEqual(['carry-over', 'Deep work'])

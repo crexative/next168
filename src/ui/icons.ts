@@ -1,11 +1,12 @@
 import type { Component } from 'vue'
 import {
-  CalendarDays, Check, ChartNoAxesColumn, ChevronRight, Inbox, Info, ListChecks, Plus, RefreshCw,
+  Calendar, CalendarDays, Check, ChartNoAxesColumn, ChevronRight, Inbox, Info, ListChecks, Plus, RefreshCw,
   Settings, Sun, TriangleAlert, Undo2, X,
 } from 'lucide-vue-next'
 
 // Kebab-case lucide names. Feature slices add theirs with registerIcons() from their own index.ts.
 const registry = new Map<string, Component>(Object.entries({
+  calendar: Calendar,
   'calendar-days': CalendarDays,
   check: Check,
   'chart-no-axes-column': ChartNoAxesColumn,

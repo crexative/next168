@@ -107,15 +107,12 @@ for (const size of Object.keys(SIZES) as (keyof typeof SIZES)[]) {
         await expect(page.getByRole('heading', { level: 1, name: 'Hoy' })).toBeVisible()
       })
 
-      test('Today\'s subtitle, Week and Resumen show the same free hours, from one source', async ({ page }) => {
+      test('Week and Resumen show the same free hours, from one source, and Today no longer repeats them', async ({ page }) => {
         await start(page, size, theme, planned)
         await open(page, 'today', 'Hoy')
-        const todaySubtitle = (await page.getByTestId('today-subtitle').textContent())!
         // Mon 00:00 → Wed 10:15 is past (58 h 15 min). Of the 109 h 45 min ahead, blocks cover 55 h 45 min: today's work
         // to 17:00 (6 h 45 min), Thu and Fri work (16 h), four nights of sleep (32 h) and Sunday night up to Monday 00:00 (1 h).
-        expect(hoursIn(todaySubtitle)).toBe('54')
-        // The text agrees; how it may break is the separator's business, so no-break spaces read as spaces here.
-        expect(todaySubtitle.replace(/\u00a0/g, ' ')).toBe('miércoles, 21 de octubre · 54 h libres esta semana')
+        await expect(page.getByTestId('today-subtitle')).toHaveText('miércoles, 21 de octubre')
 
         await open(page, 'week', 'Semana')
         const slot = page.getByTestId('week-free-hours-slot')
@@ -130,7 +127,7 @@ for (const size of Object.keys(SIZES) as (keyof typeof SIZES)[]) {
         await open(page, 'insights', 'Resumen')
         // The "this week, from now" card is gone; one live line says the same figure the badge does.
         await expect(page.getByTestId('week-split')).toHaveCount(0)
-        await expect(page.getByTestId('free-hours-live')).toHaveText(`Esta semana te quedan ${hoursIn(todaySubtitle)} h libres.`)
+        await expect(page.getByTestId('free-hours-live')).toHaveText(`Esta semana te quedan ${hoursIn(weekBadge)} h libres.`)
         await audit(page, `${size}/${theme}/insights live line`)
       })
     })

@@ -2,8 +2,21 @@
   "now": {
     "label": "Agora",
     "eyebrow": "Agora",
-    "free": "Tempo livre",
-    "freeUntil": "Tempo livre até à {time} | Tempo livre até às {time}",
+    "free": "Livre",
+    "freeUntil": "Livre até à {time} | Livre até às {time}",
+    "until": "até à {time} | até às {time}",
+    "ask": "Como foi?",
+    "answered": "{status} · Alterar",
+    "taskContext": "Em {title} · até à {time} | Em {title} · até às {time}",
+    "routineContext": "Sua rotina: {title} · até à {time} | Sua rotina: {title} · até às {time}",
+    "more": "+{count}",
+    "completeTask": "Marcar como feita",
+    "changed": "Agora: {title}, até à {time} | Agora: {title}, até às {time}",
+    "changedOpen": "Agora: {title}",
+    "alsoNow": "Também agora: {title} · até à {time} | Também agora: {title} · até às {time}",
+    "askAvailable": "Você pode marcar como foi {title}",
+    "closeDay": "Fecho do dia",
+    "readOnly": "Somente leitura nesta aba",
     "progress": "Progresso",
     "next": "A seguir",
     "nothingNext": "Nada mais planejado nesta semana",
@@ -22,14 +35,19 @@
     "late": "Atrasada",
     "kinds": {
       "task": "Tarefa",
-      "event": "Evento",
+      "event": "Calendário do Weeklid",
       "external": "Calendário"
     },
     "carryOver": "Desde ontem · até {time}",
-    "taskDone": "Tarefa feita: {title}"
+    "taskDone": "Tarefa feita: {title}",
+    "earlier": "Antes · {count}",
+    "unanswered": "{count} sem marcar",
+    "nowLine": "Agora {time}",
+    "gap": "Livre · {duration}"
   },
   "status": {
-    "markDone": "Marcar {title} como feito",
+    "markDone": "Como foi {title}? Sem marcar. Toque para marcar como feito; mantenha pressionado para mais opções",
+    "markTaskDone": "Marcar {title} como feito",
     "stateDone": "{title}: feito. Toque para remover a resposta",
     "statePartial": "{title}: pela metade. Toque para marcar como feito",
     "stateSkipped": "{title}: não. Toque para marcar como feito",
@@ -55,7 +73,7 @@
     "action": "Abrir a semana"
   },
   "header": {
-    "subtitle": "{date} · {hours} livres nesta semana"
+    "subtitle": "{date}"
   },
   "todo": {
     "title": "Para fazer hoje",

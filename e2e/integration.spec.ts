@@ -77,20 +77,22 @@ test.describe('Week and Today ergonomics', () => {
     expect(await page.evaluate(() => window.scrollY)).toBeGreaterThan(0)
   })
 
-  test('near the end of the current block the Now card offers one 44 px circle to mark it', async ({ page }) => {
+  test('near the end of the current block the Now card offers three labelled 44 px buttons to mark it', async ({ page }) => {
     await page.clock.install({ time: NOW })
     // An earlier check-in shows the plan existed before today, so the current block can be asked about.
     await seedOnboarded(page, { ...planned, checkIns: [{ date: '2026-10-25' }] })
     await openTab(page, 'today')
     const card = page.getByTestId('now-card')
     await expect(card.getByTestId('now-title')).toHaveText('Deep work')
-    // Mid-block (11:30 of 09:00–12:00) nothing is asked yet; from 11:50 the circle is there.
-    await expect(card.getByTestId('status-control')).toHaveCount(0)
+    // Mid-block (11:30 of 09:00–12:00) nothing is asked yet; from 11:50 the buttons are there.
+    await expect(card.getByTestId('now-do')).toHaveCount(0)
     await page.clock.runFor(21 * 60_000)
-    const circle = card.getByTestId('status-control')
-    await expect(circle).toBeVisible()
-    const box = (await circle.boundingBox())!
-    expect(box.height).toBeGreaterThanOrEqual(44)
-    expect(box.width).toBeGreaterThanOrEqual(44)
+    const buttons = card.getByTestId('now-do').getByRole('button')
+    await expect(buttons).toHaveText(['Done', 'Partly', 'No'])
+    for (const button of await buttons.all()) {
+      const box = (await button.boundingBox())!
+      expect(box.height).toBeGreaterThanOrEqual(44)
+      expect(box.width).toBeGreaterThanOrEqual(44)
+    }
   })
 })
