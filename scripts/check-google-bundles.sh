@@ -22,6 +22,11 @@ build plain VITE_GOOGLE_CLIENT_ID= VITE_GOOGLE_SERVER= VITE_GOOGLE_SERVER_INSTAL
 if grep -rl "gsi/client" "$OUT/plain/assets"; then fail "a build without a Google client ID references gsi/client: the Google module must stay behind its dynamic import."; fi
 if grep -rl "api/google" "$OUT/plain/assets"; then fail "a build without a Google client ID references api/google: the server-mode client must stay behind its build flag."; fi
 
+# Accounts and sync (design accounts-and-sync.md S1): a build without VITE_ACCOUNTS carries no call to the account or sync routes.
+for needle in "api/auth" "api/sync"; do
+  if grep -rl "$needle" "$OUT/plain/assets"; then fail "a build without VITE_ACCOUNTS references $needle: account code must stay behind its build flag."; fi
+done
+
 # Client ID only (the e2e build): Google sign-in ships, the server-mode client does not.
 build client VITE_GOOGLE_CLIENT_ID="$CLIENT_ID" VITE_GOOGLE_SERVER= VITE_GOOGLE_SERVER_INSTALLED=
 if grep -rl "api/google" "$OUT/client/assets"; then fail "a build with a client ID but without VITE_GOOGLE_SERVER references api/google."; fi
@@ -38,5 +43,14 @@ for installed in '' 1; do
     others="$(grep -rl "$needle" "$OUT/$folder/assets" | grep -v "$entry" || true)"
     [ -n "$others" ] || fail "no chunk of the server-mode build carries $needle."
   done
+done
+
+# Accounts flag on: whatever account code ships stays out of the entry chunk, so a signed-out device never loads it. Without
+# the S2 client the build carries none at all; the entry-chunk rule is what must keep holding once it does.
+build accounts VITE_GOOGLE_CLIENT_ID="$CLIENT_ID" VITE_GOOGLE_SERVER= VITE_GOOGLE_SERVER_INSTALLED= VITE_ACCOUNTS=1
+entry="$(grep -oE 'assets/index-[A-Za-z0-9_-]+\.js' "$OUT/accounts/index.html" | head -n 1)"
+[ -n "$entry" ] || fail "no entry chunk found in the accounts build."
+for needle in "api/auth" "api/sync"; do
+  if grep -q "$needle" "$OUT/accounts/$entry"; then fail "the entry chunk of the accounts build references $needle: it must stay in a lazy chunk."; fi
 done
 echo "Google bundle rows hold."

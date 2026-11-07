@@ -46,12 +46,12 @@ export interface ClientCredentials {
 
 type Fetch = typeof fetch
 
-interface TokenResponse {
+export interface TokenResponse {
   status: number
   body: Record<string, unknown> | null
 }
 
-async function postForm(fetcher: Fetch, url: string, form: Record<string, string>, deadlineMs: number): Promise<TokenResponse> {
+export async function postForm(fetcher: Fetch, url: string, form: Record<string, string>, deadlineMs: number): Promise<TokenResponse> {
   const response = await fetcher(url, {
     method: 'POST',
     headers: { 'content-type': 'application/x-www-form-urlencoded' },
@@ -71,7 +71,7 @@ async function postForm(fetcher: Fetch, url: string, form: Record<string, string
   return { status: response.status, body }
 }
 
-const stringField = (body: Record<string, unknown> | null, name: string): string | null => {
+export const stringField = (body: Record<string, unknown> | null, name: string): string | null => {
   const value = body?.[name]
   return typeof value === 'string' && value.length > 0 ? value : null
 }

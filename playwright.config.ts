@@ -42,9 +42,10 @@ export default defineConfig({
       timeout: 180_000,
     },
     {
-      // The same app built as the Weeklid-server client (VITE_GOOGLE_SERVER=1), in its own output folder; the Google server
-      // routes are answered by e2e/support/googleServer.ts.
-      command: `VITE_E2E=1 VITE_GOOGLE_CLIENT_ID=${E2E_GOOGLE_CLIENT_ID} VITE_GOOGLE_SERVER=1 npm run build-only -- --outDir dist-server --emptyOutDir && npm run preview -- --outDir dist-server --port ${SERVER_PORT} --strictPort`,
+      // The same app built as the Weeklid-server client (VITE_GOOGLE_SERVER=1) with the accounts flag on (VITE_ACCOUNTS=1), in its
+      // own output folder; the Google server routes are answered by e2e/support/googleServer.ts. The accounts routes are not
+      // answered: a signed-out device must never call them (e2e/accounts-free-tier.spec.ts).
+      command: `VITE_E2E=1 VITE_GOOGLE_CLIENT_ID=${E2E_GOOGLE_CLIENT_ID} VITE_GOOGLE_SERVER=1 VITE_ACCOUNTS=1 npm run build-only -- --outDir dist-server --emptyOutDir && npm run preview -- --outDir dist-server --port ${SERVER_PORT} --strictPort`,
       url: `http://127.0.0.1:${SERVER_PORT}/`,
       reuseExistingServer: false,
       timeout: 180_000,

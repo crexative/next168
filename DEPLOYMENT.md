@@ -12,6 +12,7 @@ This guide covers deploying Weeklid to various hosting platforms.
   - [GitHub Pages](#github-pages)
   - [Cloudflare Pages](#cloudflare-pages)
     - [Functions (Google connection server)](#functions-google-connection-server)
+    - [Functions (accounts and sync, off by default)](#functions-accounts-and-sync-off-by-default)
 - [Custom Domain Setup](#custom-domain-setup)
 - [Environment Configuration](#environment-configuration)
 - [Production Checklist](#production-checklist)
@@ -260,6 +261,86 @@ unless the origin is `https://<name>.test:<port>`. The unit suite is `npx vitest
 an in-memory SQLite (`node:sqlite`) and never contacts Google. The repository needs Node 22.13 or later (`package.json`
 engines): Wrangler requires Node 22 and `node:sqlite` is available without a flag from 22.13. CI uses Node 22 and
 Cloudflare builds with `NODE_VERSION=22.16.0`.
+
+### Functions (accounts and sync, off by default)
+
+Slices S0 and S1 of `docs/design/accounts-and-sync.md`: Google sign-in and a server copy of the plan. **It ships switched
+off and invisible.** With `ACCOUNTS_ENABLED` unset (or anything other than `1`) every `/api/auth/*` and `/api/sync*`
+route answers `404`, reads and writes nothing, calls nobody and sets no cookie. The static app has no account code yet
+(the client is slice S2): a build made with `VITE_ACCOUNTS=1` is inert, and a build without it carries no reference to
+`/api/auth` or `/api/sync` (`bash scripts/check-google-bundles.sh`, run by CI). A signed-out device makes no new request
+and writes no new key (`e2e/accounts-free-tier.spec.ts`). The calendar connection above is not touched: sign-in asks for
+`openid email profile` only and stores no Google token.
+
+| Path | Role |
+|---|---|
+| `functions/api/auth/{start,callback,session,signout,delete}.ts` | One-method Pages adapters for sign-in |
+| `functions/api/sync/{index,replace}.ts` | `GET`/`PUT /api/sync`, `PUT /api/sync/replace` |
+| `server/accounts/` | The framework-free core: configuration, ID token checks, D1 store, plan codec, handlers |
+| `server/accounts/migrations/0001_accounts.sql` | Additive, idempotent migration; creates only new tables and never touches `google_*` |
+| `server/accounts/purge.sql` | The rollback purge, in its required order; leaves the database as it was before the migration |
+| `public/_routes.json` | Runs Functions only for `/api/google/*`, `/api/auth/*`, `/api/sync` and `/api/sync/*` |
+
+| Name | Kind | Value |
+|---|---|---|
+| `ACCOUNTS_ENABLED` | variable | `1` to switch on; anything else (or absent) is off |
+| `SYNC_KEY` | secret | `openssl rand -base64 32`, generated locally (exactly 32 bytes); seals plans and sign-in secrets |
+| `GOOGLE_CLIENT_SECRET`, `VITE_GOOGLE_CLIENT_ID` (or `GOOGLE_CLIENT_ID`), `APP_ORIGIN`, `DB` | as for the Google connection server | the same values; sign-in reuses the Google client |
+| `VITE_ACCOUNTS` | build variable | leave **unset** until slice S2 ships; `1` only builds the (still inert) client flag |
+
+Routes answer `503 notConfigured` when a value above is missing or malformed, or when migration 1 has not been applied.
+Logs are the same closed line `{"r","o","s","ms"[,"e"]}`, with routes `auth.*` and `sync.*`; no e-mail, subject, plan or
+token is ever logged.
+
+**Owner steps to switch it on, in order** (preview first; nothing here is done by an agent):
+1. **Before inviting anyone:** the lawyer review and the published *Política de Tratamiento* of OD-4 (spending approval
+   is yours). Crexative S.A.S. is the controller.
+2. Create a preview database (`weeklid-preview`) and bind it as `DB` in the **Preview** environment, so the canary below
+   never touches production data.
+3. Google Cloud console, the existing web OAuth client: add the redirect URI
+   `https://<preview host>/api/auth/callback` (and later `https://weeklid.crexative.com/api/auth/callback`). Do not add
+   scopes; the consent screen keeps listing the calendar scope for the connection above.
+4. Generate `SYNC_KEY` locally and set it as a Preview secret. Never paste it anywhere else.
+5. Apply the migration to that database and check it:
+   `npx wrangler d1 execute weeklid-preview --remote --file server/accounts/migrations/0001_accounts.sql`, then
+   `SELECT version FROM schema_migrations;` returns `1`. Running it twice is harmless.
+6. Invite people (at most 100; the database refuses the 101st): `INSERT INTO beta_access (email, created_at) VALUES
+   ('person@example.com', strftime('%s','now'));` with the address in lowercase. Removing a row ends that person's access
+   at once and frees the seat.
+7. Set `ACCOUNTS_ENABLED=1` on Preview and retry the deployment.
+8. **Canary R-G1** (a person who is not a Google test user signs in; there must be no unverified-app warning). There is no
+   sign-in button until S2, so from the preview page's console:
+   `fetch('/api/auth/start',{method:'POST',headers:{'X-Weeklid':'1','Content-Type':'application/json'},body:'{"consent":1}'}).then(r=>r.json()).then(({url})=>location.assign(url))`.
+   Expect Google's account chooser, then a redirect to `/?account=signedIn#/settings/account`.
+9. **Canary S0** (a bound BLOB above 100 KB on a D1 database; preview only). In the same console:
+   ```js
+   const h = { 'X-Weeklid': '1', 'Content-Type': 'application/json' }, now = '2026-10-20T10:00:00.000Z'
+   const note = () => btoa(String.fromCharCode(...crypto.getRandomValues(new Uint8Array(150))))
+   const document = { schemaVersion: 3, workspaceId: 'canary', revision: 1, generation: 0, updatedAt: now,
+     settings: { locale: 'en', weekStartsOn: 1, timeZone: 'UTC', onboardingDone: true, theme: 'system' },
+     categories: [], blocks: [], checkIns: [], actuals: [], events: [], calendarSources: [], appliedProposalIds: [], appliedCaptureIds: [],
+     tasks: Array.from({ length: 800 }, (_, i) => ({ id: 't' + i, title: 'Task ' + i, priority: 2, createdAt: now, notes: note() })) }
+   const { accountKey } = await (await fetch('/api/auth/session', { method: 'POST', headers: h })).json()
+   const put = await fetch('/api/sync', { method: 'PUT', headers: h, body: JSON.stringify({ accountKey, baseRevision: 0, epoch: 0, document }) })
+   console.log(put.status, await put.text())
+   ```
+   Expect `200 {"epoch":1,"revision":1}`, and `SELECT length(payload) FROM plans;` above 100000. A `GET /api/sync` with the
+   header `X-Weeklid-Account: <accountKey>` must return the same document. If D1 rejects the bind, stop: the design's
+   chunking question reopens and nothing goes to production.
+10. Clean the canary with `server/accounts/purge.sql` on the preview database (do not use *Delete account* for this: it
+    leaves a permanent tombstone for that Google identity, which is the intended behaviour, OD-9).
+11. Production: repeat steps 4 to 7 on the production database. People can only use it once the S2 client ships.
+
+**Stopping and purging (rollback).**
+1. Remove `ACCOUNTS_ENABLED` and retry the deployment. Observe the stop: `fetch('/api/auth/session',{method:'POST',headers:{'X-Weeklid':'1'}})` answers `{"code":"notFound"}`.
+2. Wait 60 s, then run `server/accounts/purge.sql` (dashboard D1 console, statements in the given order, or
+   `npx wrangler d1 execute weeklid --remote --file server/accounts/purge.sql`). It removes sessions first, then pending
+   sign-ins, then everything else, and drops the account tables, so the Google connection tables are untouched and the
+   routes answer `503 notConfigured` if the switch is ever turned on again before re-running the migration. Purging also
+   deletes the deletion tombstones; that is the cost of a full rollback.
+3. Delete the `SYNC_KEY` secret (crypto-shredding). D1 Time Travel keeps restorable copies of the database for up to 30
+   days (7 on Free). **Account data is never restored from Time Travel** (OD-8): if the database is lost, people sign
+   in again, their devices re-upload only after they confirm, and Google Calendar connections must be redone.
 
 ## Custom Domain Setup
 

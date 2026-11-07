@@ -273,3 +273,47 @@ sign-in; KV; Supabase (§1.3); CalDAV app passwords; and everything in §3.
 3. Server loss: a stale device that re-creates first and brings back deleted content.
 4. The pause and the merge: leaving `sync-conflict` with no choice; delete versus edit; trimming the applied-id sets.
 5. The free-tier guard: any flag-off path that loads account code or writes `sync`.
+
+## 7. Implementation status: S0 and S1 (server), off by default
+
+Owner decisions of 2026-11-07 applied: an invite-only beta of at most 100 people, OD-8 (never restore account data), OD-9
+(a deleted Google ID cannot sign up again), Crexative S.A.S. as controller. The owner's steps to switch it on are in
+`DEPLOYMENT.md` ("Functions (accounts and sync, off by default)").
+
+| Slice | Where | Tests |
+|---|---|---|
+| S0 bounds | `server/accounts/planCodec.ts` (2,000,000-byte body bound read as a stream, `plannerDocumentSchema` validation before gzip and sealing, 1,900,000-byte sealed cap, also a `CHECK` on `plans.payload`) | `server/accounts/size.spec.ts` |
+| S1 server | `server/accounts/**`, `functions/api/auth/*`, `functions/api/sync/*`; migration `server/accounts/migrations/0001_accounts.sql`, purge `server/accounts/purge.sql` | `signin.spec.ts`, `sync.spec.ts`, `guards.spec.ts`, `migration.spec.ts`, `routes.spec.ts` in `server/accounts/` |
+| S1 free-tier guard | `ACCOUNTS_ENABLED` (server), `VITE_ACCOUNTS` (build; inert until S2), `config/accountsFlag.ts` | `guards.spec.ts`, `e2e/accounts-free-tier.spec.ts`, `scripts/check-google-bundles.sh`, `config/viteConfig.spec.ts` |
+
+**S0 measurement (2026-11-07, Node 22, repetitive realistic text; random text in parentheses).** The design's gate, "the
+maximum fails above 1.9 MB", is **not met** by a plan at the array maxima of `plannerDocumentSchema`:
+
+| Plan | Serialized | Gzipped and sealed | Zod parse |
+|---|---|---|---|
+| Every array at its maximum | 15.8 MB (45.7 MB) | **2.32 MB** (21.4 MB) | 0.21 s (0.70 s) |
+| Heavy realistic: 20 categories, 100 blocks, 1,000 tasks, 365 check-ins, 5,000 actuals, 500 events | 1.75 MB (5.7 MB) | 0.14 MB (2.87 MB) | 0.06 s |
+| 50,000 actuals alone | 12.3 MB | 0.45 MB | 0.11 s |
+| 5,000 tasks alone | 1.5 MB (11.8 MB) | 0.21 MB (8.25 MB) | 0.02 s |
+
+The binding limit is the 2 MB request body, not the sealed size: a body under 2,000,000 bytes seals to at most about
+1.7 MB even for random printable text (checked in `size.spec.ts`), so the row cap never trips in practice. The design's
+fallback is what is implemented: a plan whose JSON exceeds 2 MB is refused with `413 tooLarge` ("plan too large to sync")
+and nothing is stored. Options for the owner, if the maxima must sync: prune old `actuals` before sync (they are 12 MB of
+the 15.8 MB), allow a gzip request body with a streamed decompression bound, or split the plan over several rows. A
+Zod parse of a heavy plan costs tens of milliseconds of CPU, which is above the Workers Free per-request CPU budget: sync
+is expected to need Workers Paid.
+
+**Clarifications made while implementing, none of which changes a decision above:**
+- `accounts` also stores `account_key` (`sha256(sub)`, base64url) so deletion can write the tombstone in the same batch
+  (SQLite has no SHA); `auth_pending` also stores `consent_version` so the consent shown at sign-in reaches `accounts`.
+- `beta_access(email, account_id, created_at)`: the owner inserts a lowercase e-mail; the first sign-in with that verified
+  e-mail binds it to the account by `sub`; after that the e-mail is not consulted. A trigger refuses the 101st row.
+- Routes: `POST /api/auth/{start,session,signout,delete}`, `GET /api/auth/callback`, `GET`/`PUT /api/sync`,
+  `PUT /api/sync/replace`. The account key travels in the `X-Weeklid-Account` header on `GET`. The tombstone check comes
+  before the session check on `/api/sync` so an offline device of a deleted account, which has no session left, learns
+  `410 accountDeleted`; the cost is that anyone who already holds an account key can learn whether it was deleted.
+- "Download my account data" has no route yet: the plan (`GET /api/sync`) and the account record (`POST /api/auth/session`)
+  are what S2 composes it from.
+- Not built (S2 and later): the client sync engine, Settings › Account, the binding rules of section 2.2, the merge, and the
+  10 s lock-hold budget.
