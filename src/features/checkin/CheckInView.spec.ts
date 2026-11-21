@@ -10,6 +10,7 @@ import { useUndoToast } from '@/ui/undoToast'
 import { setHourCycle } from '@/ui/format'
 import CheckInView from './CheckInView.vue'
 import { consumeSavedFlag } from './checkinFlash'
+import { dropDraft } from './checkInDraft'
 
 // 2026-10-24 is a Saturday; the plan sleeps every night 22:00 → 06:00 and works Monday to Friday 09:00 → 17:00.
 const sleepCategory = { id: 'sleep', name: 'Sleep', colorKey: 'purple' as const, icon: '😴', goal: { type: 'none' as const, hoursPerWeek: 0 } }
@@ -73,7 +74,7 @@ async function editFact(fact: string, value: string): Promise<void> {
   await nextTick()
 }
 
-beforeEach(() => { vi.useFakeTimers({ toFake: ['Date', 'setTimeout', 'clearTimeout'] }); vi.setSystemTime(fixedNow()); window.location.hash = '' })
+beforeEach(() => { dropDraft(); vi.useFakeTimers({ toFake: ['Date', 'setTimeout', 'clearTimeout'] }); vi.setSystemTime(fixedNow()); window.location.hash = '' })
 afterEach(() => { vi.unstubAllGlobals(); useUndoToast().dismiss(); app?.unmount(); host?.remove(); app = undefined; vi.runOnlyPendingTimers(); vi.useRealTimers(); i18n.global.locale.value = 'en' })
 
 describe('check-in conversation', () => {
@@ -126,6 +127,48 @@ describe('check-in conversation', () => {
     expect($<HTMLInputElement>('[data-testid="fact-input"]')!.value).toBe('22:00')
     await editFact('bedtime', '23:30')
     expect(answers()[0]).toBe('You went to bed at 11:30 PM last night')
+    expect(step()).toBe('stress')
+  })
+
+  it('counts a told time being changed as no part: the count shows the next part asked', async () => {
+    await mount(planned)
+    await tap('answer-wake')
+    expect(step()).toBe('wake')
+    expect(clock($('.progress .count')?.textContent)).toBe('Part 1 of 2')
+  })
+
+  it('keeps a question left for later in the conversation, to answer before saving', async () => {
+    const store = await mount(planned)
+    await skip()
+    expect(step()).toBe('final')
+    const open = $<HTMLButtonElement>('[data-testid="answer-stress"]')!
+    expect(clock(open.textContent)).toBe('Not answered')
+    expect(open.getAttribute('aria-label')).toBe('Answer: How stressed were you today? Not answered')
+    open.click()
+    await nextTick()
+    expect(step()).toBe('stress')
+    await tap('stress-4')
+    expect(step()).toBe('final')
+    expect(text('answer-stress')).toBe('4')
+    submit()
+    await store.settled()
+    expect(store.document?.checkIns.at(-1)).toMatchObject({ date: '2026-10-24', stress: 4 })
+  })
+
+  it('keeps unsaved answers when closed with × and shows them again on reopening, until saved', async () => {
+    window.location.hash = '#/checkin'
+    await mount(planned)
+    await tap('stress-2')
+    expect(frame()?.dataset).toBeDefined()
+    $<HTMLButtonElement>('.setup-close')!.click()
+    app!.unmount(); host.remove()
+    const store = await mount(planned)
+    await toFinal()
+    expect(text('answer-stress')).toBe('2')
+    submit()
+    await store.settled()
+    app!.unmount(); host.remove()
+    await mount({ ...planned, checkIns: [] })
     expect(step()).toBe('stress')
   })
 
@@ -252,7 +295,7 @@ describe('check-in conversation', () => {
     expect(step()).toBe('stress')
     expect($('[data-testid="stress-3"]')?.getAttribute('aria-pressed')).toBe('true')
     await skip()
-    expect($('[data-testid="answer-stress"]')).toBeNull()
+    expect(text('answer-stress')).toBe('Not answered')
     await toFinal()
     submit()
     await store.settled()
@@ -407,6 +450,18 @@ describe('check-in routines to mark', () => {
     await store.settled()
     expect(store.document?.checkIns.at(-1)).toMatchObject({ date: '2026-10-24', exercise: 'yes' })
     expect(window.location.hash).toBe('#/today')
+  })
+
+  it('never records more Partly minutes than the routine had planned', async () => {
+    const store = await mount(trained)
+    await reply('partial')
+    const input = $<HTMLInputElement>('[data-testid="checkin-minutes"] input')!
+    input.value = '500'
+    input.dispatchEvent(new Event('input', { bubbles: true }))
+    $('[data-testid="checkin-minutes"]')!.dispatchEvent(new Event('submit', { cancelable: true }))
+    await store.settled()
+    await nextTick()
+    expect(store.document?.actuals).toMatchObject([{ blockId: 'gym', status: 'partial', actualMinutes: 60 }])
   })
 
   it('clears a saved exercise answer after the last mark is withdrawn', async () => {

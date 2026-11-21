@@ -43,6 +43,8 @@
     "final": "Das ist dein Tagesabschluss.",
     "done": "Fertig für heute. Erhol dich gut.",
     "date": "Tagesabschluss · {date}",
-    "addNote": "Notiz hinzufügen"
+    "addNote": "Notiz hinzufügen",
+    "unanswered": "Nicht beantwortet",
+    "answer": "Beantworten"
   }
 }

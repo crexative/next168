@@ -43,6 +43,8 @@
     "final": "Voici ton bilan du jour.",
     "done": "C’est bon pour aujourd’hui. Repose-toi bien.",
     "date": "Bilan du jour · {date}",
-    "addNote": "Ajouter une note"
+    "addNote": "Ajouter une note",
+    "unanswered": "Sans réponse",
+    "answer": "Répondre"
   }
 }
