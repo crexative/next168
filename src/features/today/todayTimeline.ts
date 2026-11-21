@@ -5,7 +5,8 @@ import { chunkIsLate, chunkTitle, type PartLabel } from '@/core/scheduling'
 interface TimelineBase { key: string; title: string; start: string; end: string }
 export type TimelineItem =
   | TimelineBase & { kind: 'block'; occurrence: DatedOccurrence; categoryId: string }
-  | TimelineBase & { kind: 'task'; taskId: string; categoryId: string; late: boolean }
+  // `title` names the piece ("1 de 2 · Llamar al banco" when the task is split); `taskTitle` is the task's own name.
+  | TimelineBase & { kind: 'task'; taskId: string; categoryId: string; late: boolean; taskTitle?: string }
   // `sourceName` is the calendar a Google or file event comes from; Weeklid's own events have none.
   | TimelineBase & { kind: 'event' | 'external'; sourceName?: string }
 
@@ -53,7 +54,7 @@ export function buildTimeline({ document, today, timeZone, external, placements,
       if (!task) return []
       return placement.chunks.map((chunk, index) => ({ chunk, title: chunkTitle(task.title, index, placement.chunks.length, partLabel) }))
         .filter(({ chunk }) => intersects(chunk.start, chunk.end, from, to)).map(({ chunk, title }): TimelineItem => ({
-        kind: 'task', key: `task:${task.id}@${chunk.start}`, title, start: chunk.start, end: chunk.end,
+        kind: 'task', key: `task:${task.id}@${chunk.start}`, title, taskTitle: task.title, start: chunk.start, end: chunk.end,
         taskId: task.id, categoryId: task.categoryId ?? '', late: chunkIsLate(task, chunk, timeZone),
       }))
     }),

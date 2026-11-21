@@ -89,7 +89,9 @@ onMounted(async () => {
   setTimeout(() => checkInCard.value?.focus(), 0)
 })
 
-async function complete(taskId: string, title: string): Promise<void> {
+async function complete(taskId: string, shown: string): Promise<void> {
+  // Completing a piece completes the task: the toast names the task, not the piece.
+  const title = planner.document?.tasks.find((task) => task.id === taskId)?.title ?? shown
   const holder: { after?: string } = {}
   const result = await planner.commit((draft) => { holder.after = completeTask(draft, taskId, new Date()) })
   if (!result.ok || holder.after === undefined) return

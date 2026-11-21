@@ -29,6 +29,36 @@ async function newBlockFromEmptyHour(): Promise<void> {
   await tick()
 }
 
+// crexative/next168#58: a task the scheduler splits reads as its parts, not as the same task drawn twice.
+describe('WeekView: a split task', () => {
+  it('titles each piece with its part, part first', async () => {
+    vi.useFakeTimers({ toFake: ['Date'] })
+    vi.setSystemTime(new Date('2026-10-21T08:00:00Z'))
+    const { planner } = createTestRepositories()
+    configurePlannerStore({ repository: planner, now: fixedNow, newId: newTestId, locale: () => 'en', timeZone: () => 'UTC' })
+    const pinia = createPinia()
+    setActivePinia(pinia)
+    const store = usePlannerStore()
+    await store.load()
+    // Two 30-minute stretches of Work on Wednesday: the one-hour report fits in neither alone.
+    await store.commit((draft) => {
+      draft.categories.push({ id: 'work', name: 'Work', colorKey: 'blue', goal: { type: 'none', hoursPerWeek: 0 } })
+      draft.blocks.push({ id: 'early', categoryId: 'work', title: 'Work', start: 540, end: 570, days: [3] })
+      draft.blocks.push({ id: 'late', categoryId: 'work', title: 'Work', start: 660, end: 690, days: [3] })
+      draft.tasks.push({ id: 'report', title: 'Report', categoryId: 'work', durationMin: 60, dueDate: '2026-10-21', priority: 1, createdAt: '2026-10-20T08:00:00.000Z' })
+    })
+    i18n.global.locale.value = 'en'
+    const host = globalThis.document.createElement('div')
+    globalThis.document.body.append(host)
+    const app = createApp(WeekView).use(pinia).use(i18n)
+    app.mount(host)
+    cleanup = () => { app.unmount(); host.remove() }
+    await tick()
+    const pieces = [...host.querySelectorAll<HTMLElement>('[data-date="2026-10-21"] [data-testid="week-task"]')].map((piece) => piece.getAttribute('title'))
+    expect(pieces).toEqual(['1\u00a0of\u00a02\u00a0· Report', '2\u00a0of\u00a02\u00a0· Report'])
+  })
+})
+
 describe('WeekView saving', () => {
   it('shows the moved-task notice on reopen and Undo restores its expired slot', async () => {
     vi.useFakeTimers({ toFake: ['Date'] })

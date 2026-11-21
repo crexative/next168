@@ -24,5 +24,5 @@
     "clock24": "24 horas",
     "footer": "Automático segue a região e a aparência do seu dispositivo. As horas aparecem assim: {example}"
   },
-  "taskPart": "{part} de {parts} · {title}"
+  "taskPart": "{part} de {parts} · {title}"
 }

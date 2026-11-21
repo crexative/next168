@@ -252,9 +252,9 @@ async function toggleEarlier(): Promise<void> {
             v-if="entry.item.kind === 'task'"
             class="row-control"
             :item-key="entry.item.key"
-            :title="entry.item.title"
+            :title="entry.item.taskTitle ?? entry.item.title"
             :writable="writable"
-            @record="emit('completeTask', entry.item.taskId, entry.item.title)"
+            @record="emit('completeTask', entry.item.taskId, entry.item.taskTitle ?? entry.item.title)"
           />
           <ItemStatusControl
             v-else-if="asksStatus(entry.item)"

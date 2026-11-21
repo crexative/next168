@@ -10,6 +10,7 @@ import { configureCalendarServices, useCalendarStore } from '@/features/calendar
 import { IndexedDbCalendarSourceStore } from '@/features/calendars/calendarSourceStore'
 import { setExternalOccurrenceSource } from '@/features/week/externalOccurrences'
 import TodayView from './TodayView.vue'
+import { useUndoToast } from '@/ui/undoToast'
 
 let cleanup = () => undefined as void
 beforeEach(() => { vi.useFakeTimers({ toFake: ['Date'] }); vi.setSystemTime(fixedNow()) })
@@ -44,6 +45,37 @@ describe('TodayView', () => {
     await calendars.removeSource(planner.document!.calendarSources[0]!.id)
     await vi.waitFor(() => expect(host.textContent).not.toContain('Team meeting'))
     expect(taskStart()).toBe('12:00\u00a0PM')
+  })
+
+  // crexative/next168#58: each piece of a split task says its part; completing one completes the task, named plainly.
+  it('titles the pieces of a split task with their part, and its action and toast with the task', async () => {
+    configurePlannerStore({ repository: createTestRepositories().planner, now: fixedNow, newId: newTestId, locale: () => 'en', timeZone: () => 'UTC' })
+    const pinia = createPinia()
+    setActivePinia(pinia)
+    const store = usePlannerStore()
+    await store.load()
+    // Saturday from noon: two 30-minute stretches of Work, and a one-hour report due today.
+    await store.commit((draft) => {
+      draft.categories.push({ id: 'work', name: 'Work', colorKey: 'blue', goal: { type: 'none', hoursPerWeek: 0 } })
+      draft.blocks.push({ id: 'early', categoryId: 'work', title: 'Work', days: [6], start: 780, end: 810 })
+      draft.blocks.push({ id: 'late', categoryId: 'work', title: 'Work', days: [6], start: 900, end: 930 })
+      draft.tasks.push({ id: 'report', categoryId: 'work', title: 'Write report', durationMin: 60, dueDate: '2026-10-24', priority: 1, createdAt: fixedNow().toISOString() })
+    })
+    i18n.global.locale.value = 'en'
+    const host = document.createElement('div')
+    document.body.append(host)
+    const app = createApp(TodayView).use(pinia).use(i18n)
+    app.mount(host)
+    cleanup = () => { app.unmount(); host.remove(); useUndoToast().dismiss() }
+    const pieces = () => [...host.querySelectorAll('[data-kind="task"] .row-title-text')].map((node) => node.textContent?.trim())
+    // Each row also starts with its kind for screen readers ("Task: ").
+    await vi.waitFor(() => expect(pieces()).toEqual(['Task: 1\u00a0of\u00a02\u00a0· Write report', 'Task: 2\u00a0of\u00a02\u00a0· Write report']))
+    const action = host.querySelector<HTMLButtonElement>('[data-kind="task"] .row-control button')!
+    expect(action.getAttribute('aria-label')).not.toMatch(/of\u00a02/)
+    expect(action.getAttribute('aria-label')).toContain('Write report')
+    action.click()
+    await store.settled()
+    await vi.waitFor(() => expect(useUndoToast().toast.value?.message).toBe('Task done: Write report'))
   })
 
   it('shows a saved event for today even when there are no recurring blocks', async () => {
