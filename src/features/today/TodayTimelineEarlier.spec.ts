@@ -129,7 +129,7 @@ describe('the now-line, free time and calendar rows', () => {
   it('shows a late task chunk as Overdue and never as "Tarde"', async () => {
     const late = { ...task('t', '19:30', '20:00', 'Report'), late: true }
     const host = await render('19:19', { items: [project, late, sleep] })
-    expect(host.querySelector('.badge.is-late')?.textContent).toBe('Overdue')
+    expect(host.querySelector('[data-testid="timeline-late"]')?.textContent?.trim()).toBe('Overdue')
   })
 })
 

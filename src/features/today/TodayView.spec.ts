@@ -43,7 +43,9 @@ describe('TodayView', () => {
 
     await calendars.removeSource(planner.document!.calendarSources[0]!.id)
     await vi.waitFor(() => expect(host.textContent).not.toContain('Team meeting'))
-    expect(taskStart()).toBe('12:00\u00a0PM')
+    // Moved to 12:00, it is under way now, so the Ahora hero holds it and the list does not repeat it.
+    expect(host.querySelector('[data-testid="now-title"]')?.textContent?.trim()).toBe('Write report')
+    expect(taskStart()).toBeUndefined()
   })
 
   it('shows a saved event for today even when there are no recurring blocks', async () => {

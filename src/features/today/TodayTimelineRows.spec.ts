@@ -123,7 +123,7 @@ describe('TodayTimeline rows', () => {
     expect(host.querySelector('.row-kind')).toBeNull()
   })
 
-  it('shows midnight where an item began before the day, and only the start where it runs past the end of the day', async () => {
+  it('shows midnight where an item began before the day, and its real end when it ends tomorrow', async () => {
     const host = await render({ items: [...items, {
       kind: 'event' as const, key: 'event:late', title: 'Night shift', start: '2026-10-20T22:00:00.000Z', end: '2026-10-21T01:00:00.000Z',
     }] })
@@ -133,12 +133,13 @@ describe('TodayTimeline rows', () => {
       return [row.querySelector('[data-testid="timeline-start"]')?.textContent, row.querySelector('[data-testid="timeline-end"]')?.textContent ?? null]
     }
     expect(times('Night shift')).toEqual(['12:00\u00a0AM', '1:00\u00a0AM'])
-    // Tonight's Sleep: "10:00 PM", then its own line "Until 6:00 AM" — never "12:00 AM" as an end.
-    expect(times('Sleep')).toEqual(['10:00\u00a0PM', null])
-    expect(rowOf(host, 'Sleep').querySelector('[data-testid="timeline-span-hint"]')?.textContent?.replace(/\s/g, ' ')).toBe('Until 6:00 AM')
+    // Tonight's Sleep: "10:00 PM" to "6:00 AM" in the time column (R_Hoy), never "12:00 AM" as an end, and no
+    // second "Until 6:00 AM" line (REVIEW B1).
+    expect(times('Sleep')).toEqual(['10:00\u00a0PM', '6:00\u00a0AM'])
+    expect(rowOf(host, 'Sleep').querySelector('[data-testid="timeline-span-hint"]')).toBeNull()
   })
 
-  it('says what a routine overlaps with, as plain information and never as an alarm, and only on the routine', async () => {
+  it('says what a routine overlaps with in amber (needs attention, never red), and only on the routine', async () => {
     const dentist = { kind: 'event' as const, key: 'event:dentist', title: 'Dentist', start: '2026-10-21T10:00:00.000Z', end: '2026-10-21T10:30:00.000Z' }
     const standup = { kind: 'event' as const, key: 'event:standup', title: 'Standup', start: '2026-10-21T10:20:00.000Z', end: '2026-10-21T10:40:00.000Z' }
     const work = items.find((item) => item.title === 'Deep work')!
@@ -146,11 +147,24 @@ describe('TodayTimeline rows', () => {
     const notes = [...host.querySelectorAll('[data-testid="timeline-overlap"]')]
     expect(notes).toHaveLength(1)
     expect(notes[0]!.textContent).toBe('Overlaps with Dentist and Standup')
-    expect(notes[0]!.className).toContain('t-secondary')
+    expect(notes[0]!.className).toContain('row-attention')
+    expect(notes[0]!.className).not.toMatch(/danger/)
     expect(rowOf(host, 'Deep work').contains(notes[0]!)).toBe(true)
     expect(host.querySelector('[data-testid="conflict-mark"], .badge.is-conflict')).toBeNull()
     unmount()
     expect((await render()).querySelector('[data-testid="timeline-overlap"]')).toBeNull()
+  })
+
+  it('leaves out what the Ahora hero shows, moves the routine\'s overlap onto the event, and names no free time inside the hero\'s task', async () => {
+    const work = items.find((item) => item.title === 'Deep work')!
+    const report = { ...task, key: 'task:r@9', title: 'Report', start: '2026-10-21T09:00:00.000Z', end: '2026-10-21T10:30:00.000Z' }
+    const dentist = { kind: 'event' as const, key: 'event:dentist', title: 'Dentist', start: '2026-10-21T10:40:00.000Z', end: '2026-10-21T10:50:00.000Z' }
+    const host = await render({ items: [work, report, dentist], now: new Date('2026-10-21T09:15:00Z'), hiddenKeys: [report.key, work.key] })
+    const titles = [...host.querySelectorAll('[data-testid="timeline-item"] .row-title-text')].map((title) => title.textContent?.replace(/^.*: /, '').trim())
+    expect(titles).toEqual(['Dentist'])
+    expect(rowOf(host, 'Dentist').querySelector('[data-testid="timeline-overlap"]')?.textContent).toBe('Overlaps with Deep work')
+    // Free time starts when the hero's task ends (10:30), not at now; the routine around it does not hide free time.
+    expect([...host.querySelectorAll('[data-testid="timeline-gap"]')].map((gap) => gap.textContent?.replace(/\s/g, ' '))).toEqual(['Free · 10 min'])
   })
 
   it('shows no overlap notice once the shared time has passed', async () => {

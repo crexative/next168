@@ -21,7 +21,9 @@
     "next": "Danach",
     "nothingNext": "Diese Woche ist nichts weiter geplant",
     "tomorrowAt": "Morgen, {time}",
-    "dayAt": "{day}, {time}"
+    "dayAt": "{day}, {time}",
+    "within": "In {title}",
+    "alsoWith": "Auch {title}"
   },
   "timeline": {
     "label": "Dein Tag",
@@ -65,7 +67,8 @@
   "empty": {
     "title": "Noch nichts geplant",
     "description": "Füge deiner Woche Routinen hinzu, dann zeigt Heute, was jetzt und als Nächstes ansteht.",
-    "action": "Woche planen"
+    "action": "Woche planen",
+    "weekBar": "0 h von 168 h"
   },
   "emptyDay": {
     "title": "Ein freier Tag",
@@ -78,5 +81,7 @@
   "todo": {
     "title": "Heute zu tun",
     "add": "Für heute hinzufügen"
-  }
+  },
+  "aside": "Mehr für heute",
+  "weekGlance": "Diese Woche"
 }

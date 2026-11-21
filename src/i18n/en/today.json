@@ -21,7 +21,9 @@
     "next": "Next",
     "nothingNext": "Nothing else planned this week",
     "tomorrowAt": "Tomorrow, {time}",
-    "dayAt": "{day}, {time}"
+    "dayAt": "{day}, {time}",
+    "within": "In {title}",
+    "alsoWith": "Also {title}"
   },
   "timeline": {
     "label": "Your day",
@@ -65,7 +67,8 @@
   "empty": {
     "title": "Nothing planned yet",
     "description": "Add routines to your week and Today shows what is happening now and next.",
-    "action": "Plan your week"
+    "action": "Plan your week",
+    "weekBar": "0 h of 168 h"
   },
   "emptyDay": {
     "title": "A free day",
@@ -78,5 +81,7 @@
   "todo": {
     "title": "To do today",
     "add": "Add for today"
-  }
+  },
+  "aside": "More for today",
+  "weekGlance": "This week"
 }
