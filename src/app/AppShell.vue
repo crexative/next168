@@ -327,7 +327,7 @@ dismissUndoWhenChanged(() => planner.document?.workspaceId)
 }
 .tabbar-item:active { transform: scale(0.97); }
 /* Like the system tab bar, labels stop growing at large text sizes (the icon and the accessible name stay). */
-.tabbar-item span { max-width: 100%; overflow: hidden; font-size: min(0.75rem, 15px); text-overflow: ellipsis; white-space: nowrap; }
+.tabbar-item span { max-width: 100%; overflow: hidden; font-size: min(0.75rem, 15px); font-weight: 600; text-overflow: ellipsis; white-space: nowrap; }
 .tabbar-item:focus-visible { outline-offset: -2px; }
 .tabbar-item[aria-current='page'] { background: var(--tint-soft); color: var(--tint-label); }
 

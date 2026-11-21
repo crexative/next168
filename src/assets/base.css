@@ -80,7 +80,7 @@ input[type='file']::file-selector-button {
 .t-body { font-size: 1.0625rem; line-height: 1.35; font-weight: 400; }
 .t-subhead { font-size: 0.9375rem; line-height: 1.33; font-weight: 400; }
 .t-footnote { font-size: 0.8125rem; line-height: 1.38; font-weight: 400; letter-spacing: 0.005em; }
-.t-caption { font-size: 0.75rem; line-height: 1.33; font-weight: 600; }
+.t-caption { font-size: 0.75rem; line-height: 1.33; font-weight: 500; letter-spacing: 0.01em; }
 .t-secondary { color: var(--label-2); }
 /* Settings-like pages: every group opens with this title, inset to the rows' text, in sentence case (no uppercase
    eyebrows anywhere); explanatory copy is .t-subhead.t-secondary. */
