@@ -26,9 +26,20 @@ describe('Week opens with now in the middle of what the sticky header leaves (re
     root.append(sticky(52, 100), sticky(152, 90), box(document.createElement('div'), 400, 2000))
     document.body.append(root)
     const line = box(document.createElement('div'), 1000, 2)
-    scrollToNow(line, root)
+    scrollToNow(line, root, 0)
     // 1000 - 242 - (375 - 242) / 2
     expect(scrollTo).toHaveBeenCalledWith({ top: 691.5, behavior: 'instant' })
+  })
+
+  it('leaves the bottom bar out of what shows: a phone\'s floating tab bar does not hide the line', () => {
+    vi.stubGlobal('innerHeight', 375)
+    const scrollTo = vi.spyOn(window, 'scrollTo').mockImplementation(() => {})
+    const root = document.createElement('div')
+    root.append(sticky(52, 100), sticky(152, 90))
+    document.body.append(root)
+    scrollToNow(box(document.createElement('div'), 1000, 2), root, 76)
+    // 1000 - 242 - (375 - 76 - 242) / 2
+    expect(scrollTo).toHaveBeenCalledWith({ top: 729.5, behavior: 'instant' })
   })
 
   it('never scrolls above the top of the page', () => {
@@ -37,7 +48,7 @@ describe('Week opens with now in the middle of what the sticky header leaves (re
     const root = document.createElement('div')
     root.append(sticky(0, 120))
     document.body.append(root)
-    scrollToNow(box(document.createElement('div'), 200, 2), root)
+    scrollToNow(box(document.createElement('div'), 200, 2), root, 0)
     expect(scrollTo).toHaveBeenCalledWith({ top: 0, behavior: 'instant' })
   })
 })

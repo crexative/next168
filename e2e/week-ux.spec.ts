@@ -330,9 +330,12 @@ test.describe('week opens on now', () => {
         .filter((element) => element.getClientRects().length > 0 && ['sticky', 'fixed'].includes(getComputedStyle(element).position))
         .map((element) => element.getBoundingClientRect().bottom)))
       const line = (await page.getByTestId('now-line').first().boundingBox())!
+      // What shows ends at the floating tab bar on a phone (review of #56: on its side the line went behind it).
+      const bar = await page.locator('nav.tabbar').boundingBox()
+      const bottom = bar && bar.height > 0 ? bar.y : height
       // In the visible part of the page, not at its edge: on arrival the strips under the head are counted too.
-      expect(line.y, `now line at ${line.y.toFixed(0)} px, header ends at ${covered.toFixed(0)} px`).toBeGreaterThan(covered + (height - covered) / 4)
-      expect(line.y + line.height).toBeLessThan(height)
+      expect(line.y, `now line at ${line.y.toFixed(0)} px, header ends at ${covered.toFixed(0)} px`).toBeGreaterThan(covered + (bottom - covered) / 4)
+      expect(line.y + line.height, `now line at ${line.y.toFixed(0)} px, tab bar at ${bottom.toFixed(0)} px`).toBeLessThan(bottom)
     })
   }
 })
