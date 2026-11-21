@@ -99,7 +99,8 @@ test.describe('materials', () => {
     expect(bars.head!.shadow).toBe('none')
     expect(bars.strip!.shadow).not.toBe('none')
 
-    await openView(page, 'settings/advanced')
+    // A tab: on a phone Settings is a sheet with its own bar, not the large title's toolbar.
+    await openView(page, 'insights')
     await page.mouse.wheel(0, 400)
     await expect(page.locator('.toolbar[data-collapsed]')).toHaveCount(1)
     expect(await page.locator('.toolbar').evaluate((element) => getComputedStyle(element).boxShadow)).not.toBe('none')
@@ -501,7 +502,7 @@ test.describe('accessibility plumbing', () => {
   test('increased contrast makes bars solid and field borders full strength', async ({ page }) => {
     await page.emulateMedia({ contrast: 'more' })
     await startWith(page)
-    await openView(page, 'settings/advanced')
+    await openView(page, 'insights')
     await page.mouse.wheel(0, 300)
     await expect(page.locator('.toolbar[data-collapsed]')).toHaveCount(1)
     await page.waitForFunction(() => document.getAnimations().every((animation) => animation.playState !== 'running'))

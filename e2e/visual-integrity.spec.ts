@@ -161,7 +161,8 @@ async function anyAiStates(page: Page, theme: string, label: string, includeSett
   const check = includeSettings ? audit : panelFits
   await open(page, 'assistant')
   await check(page, `${theme}/${label}/assistant with the use-with-your-AI row closed`)
-  await page.getByTestId('any-ai-toggle').click()
+  // "Responder con: Usar con tu IA" opens its page in Settings (R_Asistente).
+  await page.getByTestId('reply-with').locator('select').selectOption('anyAi')
   await expect(page.getByTestId('any-ai-copy')).toBeVisible()
   await check(page, `${theme}/${label}/use with your AI open`)
   await page.getByTestId('any-ai-copy').click()
@@ -429,7 +430,7 @@ for (const theme of THEMES) {
         await withoutClipboard(page)
         if (zoom === '200%') await page.addInitScript(() => { document.addEventListener('DOMContentLoaded', () => { document.documentElement.style.fontSize = '200%' }) })
         await open(page, 'assistant')
-        await page.getByTestId('any-ai-toggle').click()
+        await page.getByTestId('reply-with').locator('select').selectOption('anyAi')
         await page.getByTestId('any-ai-paste').fill(syntheticWeekReply('workspace-visual', 1))
         await page.getByTestId('any-ai-review').click()
         await expect(page.getByTestId('review-approve')).toBeEnabled()

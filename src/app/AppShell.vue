@@ -295,7 +295,6 @@ dismissUndoWhenChanged(() => planner.document?.workspaceId)
 }
 /* --banners-height is the height of the fixed bottom notices (StatusBanners), so none of them covers the end of a page. */
 .content { padding-bottom: calc(var(--tabbar-inset) + var(--space-4) + var(--banners-height, 0px)); }
-.shell:has(.view[data-presentation='sheet']) .content { padding-bottom: calc(var(--safe-bottom) + var(--space-4) + var(--banners-height, 0px)); }
 .main { outline: none; }
 .view { margin-inline: auto; }
 /* 720 px: one measure for every text and list screen, centred in the space beside the sidebar. */

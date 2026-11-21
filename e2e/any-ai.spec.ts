@@ -77,14 +77,15 @@ async function settled(page: Page): Promise<void> {
 }
 
 // The way a person gets there: the assistant entry (the toolbar icon on a phone, the sidebar footer row on wider
-// screens), then the "Usar con tu IA" row.
+// screens), then "Responder con: Usar con tu IA" (R_Asistente), which opens its page in Settings.
 async function openFromAssistant(page: Page): Promise<void> {
   await page.goto('./#/today')
   if (page.viewportSize()!.width < 768) await page.getByTestId('assistant-entry').click()
   else await page.getByTestId('sidebar-footer').getByRole('link', { name: 'Asistente' }).click()
   await expect(page.getByRole('heading', { level: 1, name: 'Asistente' })).toBeVisible()
   await settled(page)
-  await page.getByRole('button', { name: /Usar con tu IA/ }).click()
+  await page.getByRole('combobox', { name: 'Responder con' }).selectOption({ label: 'Usar con tu IA' })
+  await expect(page).toHaveURL(/#\/settings\/ai$/)
   await expect(page.getByTestId('any-ai-copy')).toBeVisible()
 }
 

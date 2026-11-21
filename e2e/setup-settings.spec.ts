@@ -100,10 +100,10 @@ for (const size of SIZES) {
       await start(page, size, theme, planned())
       await page.goto('./#/settings')
       await expect(page.getByRole('heading', { level: 1, name: 'Ajustes' })).toBeVisible()
-      await expect(page.locator('main .home h2')).toHaveText(['Categorías y metas', 'General'])
+      await expect(page.locator('main .home h2')).toHaveText(['Tu semana', 'Categorías y metas', 'General'])
       const general = page.getByTestId('general-settings')
       await expect(general.getByLabel('Idioma')).toBeVisible()
-      for (const name of ['La semana empieza el', 'Formato de hora', 'Apariencia']) await expect(general.getByRole('radiogroup', { name })).toBeVisible()
+      for (const name of ['La semana empieza el', 'Formato de hora', 'Apariencia']) await expect(general.getByRole('combobox', { name })).toBeVisible()
       await expect(general.locator('.list-footer')).not.toContainText('m..')
       await expect(page.getByTestId('settings-more').getByRole('link')).toHaveText([/^Calendarios/, /^Usar con tu IA/, /^Tus datos/, /^Avanzado/])
       await expect(page.getByRole('button', { name: /Borrar todos los datos/ })).toHaveCount(0)
@@ -168,7 +168,13 @@ for (const size of SIZES) {
     test(`settings: a weekly backup nudge appears and an export silences it (${label})`, async ({ page }) => {
       await start(page, size, theme, planned())
       await page.addInitScript(() => window.localStorage.setItem('next168-first-seen', '2026-10-01T00:00:00.000Z'))
+      // Calm by default (R_Ajustes): the reminder is one amber line in the "Tus datos" row; its export is on that page.
       await page.goto('./#/settings')
+      await expect(page.getByTestId('data-link')).toContainText('Aún no has exportado una copia de tu semana.')
+      await expect(page.getByTestId('export-nudge')).toHaveCount(0)
+      await calm(page)
+      expect(await visualIntegrityViolations(page)).toEqual([])
+      await page.getByTestId('data-link').click()
       const nudge = page.getByTestId('export-nudge')
       await expect(nudge).toContainText('Aún no has exportado una copia de tu semana.')
       await calm(page)
@@ -177,6 +183,8 @@ for (const size of SIZES) {
       await nudge.getByRole('button', { name: 'Exportar copia' }).click()
       await download
       await expect(nudge).toHaveCount(0)
+      await page.goto('./#/settings')
+      await expect(page.getByTestId('data-link')).not.toContainText('Aún no has exportado')
     })
 
     test(`assistant without the model: back control and the three suggestions, no question box, status only in Advanced (${label})`, async ({ page }) => {
@@ -184,7 +192,8 @@ for (const size of SIZES) {
       await page.goto('./#/tasks')
       await page.goto('./#/assistant')
       await expect(page.getByRole('heading', { level: 1, name: 'Asistente' })).toBeVisible()
-      const back = page.getByTestId('back-button')
+      // On a phone the assistant is a sheet over the tab it came from: "Listo" leads back; wider, the back control does.
+      const back = size.width < 768 ? page.getByTestId('sheet-done') : page.getByTestId('back-button')
       await expect(back).toHaveAttribute('href', '#/tasks')
       const suggestions = page.getByTestId('suggestions').getByRole('button')
       await expect(suggestions).toHaveCount(3)
@@ -210,10 +219,21 @@ for (const size of SIZES) {
 }
 
 test('assistant back control falls back to Hoy when the page was opened directly', async ({ page }) => {
-  await start(page, SIZES[0], 'light', planned())
+  await start(page, SIZES[1], 'light', planned())
   await page.goto('./#/assistant')
   await expect(page.getByTestId('back-button')).toHaveAttribute('href', '#/today')
   await expect(page.getByTestId('back-button')).toHaveAccessibleName('Volver a Hoy')
+})
+
+test('on a phone the assistant opened directly is a sheet whose "Listo" leads to Hoy, with no tab bar under it', async ({ page }) => {
+  await start(page, SIZES[0], 'light', planned())
+  await page.goto('./#/assistant')
+  await expect(page.getByTestId('sheet-done')).toHaveAttribute('href', '#/today')
+  await expect(page.getByTestId('back-button')).toHaveCount(0)
+  await expect(page.locator('nav.tabbar')).toBeHidden()
+  await page.getByTestId('sheet-done').click()
+  await expect(page.getByRole('heading', { level: 1, name: 'Hoy' })).toBeVisible()
+  await expect(page.locator('nav.tabbar')).toBeVisible()
 })
 
 test('onboarding does not ask the browser to protect storage; the first check-in does', async ({ page }) => {
@@ -282,7 +302,8 @@ for (const theme of THEMES) {
     const sheet = page.getByRole('dialog', { name: 'Revisar propuesta' })
     await expect(sheet.getByTestId('change-after')).toContainText('Estudio')
     await expect(sheet.getByTestId('review-loading')).toHaveCount(0)
-    await expect(sheet.locator('.side')).toHaveCount(2)
+    // A new routine has no "before": every field reads as new, nothing struck through.
+    await expect(sheet.getByTestId('change-before')).toHaveCount(0)
     await calm(page)
     expect(await visualIntegrityViolations(page)).toEqual([])
   })
