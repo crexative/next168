@@ -57,7 +57,9 @@ describe('follow-ups phrased from the earlier answers', () => {
     expect(say(question(state, 'summary'))).toBe('Aún no hay nada. Puedes añadir algo o empezar así.')
     const working = walked('work')
     expect(summaryRows(working).map((row) => row.category.key)).toEqual(['sleep', 'work'])
-    expect(say(question(working, 'summary'))).toBe('Así queda tu semana. Toca algo para cambiarlo.')
+    expect(say(question(working, 'summary'))).toBe('Así queda tu semana.')
+    expect(say(hint(working, 'summary'))).toBe('Toca algo para cambiarlo.')
+    expect(hint(state, 'summary')).toBeUndefined()
   })
 })
 

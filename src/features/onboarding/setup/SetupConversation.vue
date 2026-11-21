@@ -122,8 +122,11 @@ function onFocusIn(event: FocusEvent): void {
     </div>
 
     <footer v-if="summary" class="dock">
+      <!-- "Crear mi semana", then "Repasar las preguntas" and the trust line under it (R_InicioResumen). -->
       <div class="column actions">
         <Button data-primary data-dock-primary data-testid="setup-primary" block :disabled="busy" @click="emit('submit')">{{ state.add ? t('onboarding.summary.addSave') : first ? t('onboarding.summary.start') : t('onboarding.summary.save') }}</Button>
+        <Button v-if="reviewable" variant="plain" data-testid="summary-review" @click="emit('review')">{{ t('onboarding.summary.review') }}</Button>
+        <p v-if="showTrust" class="trust t-footnote" data-testid="setup-trust"><Icon name="lock" :size="13" class="trust-icon" />{{ t('onboarding.guided.trust') }}</p>
       </div>
     </footer>
     <SetupAnswer v-else ref="dock" :key="screen" :state="state" :busy="busy" :group-label="now.question" :question-id="questionId" @advance="emit('advance')" @edited="emit('edited')" />
@@ -175,7 +178,8 @@ function onFocusIn(event: FocusEvent): void {
 .resumed { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; column-gap: var(--space-3); text-align: center; }
 .resumed p { margin: 0; color: var(--label-2); }
 .dock { flex: none; border-top: 0.5px solid var(--separator); background: var(--surface); }
-.actions { display: flex; justify-content: center; padding-block: var(--group-gap) calc(var(--space-4) + var(--safe-bottom)); }
+.actions { display: flex; flex-direction: column; align-items: center; gap: var(--space-1); padding-block: var(--space-3) calc(var(--space-4) + var(--safe-bottom)); }
+.actions > .trust { justify-content: center; text-align: center; }
 .actions :deep(.ui-button) { width: 100%; min-height: 52px; border-radius: 26px; overflow-wrap: anywhere; hyphens: auto; }
 
 /* A new message arrives calmly from just below; without motion it only fades in. */

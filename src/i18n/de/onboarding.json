@@ -160,7 +160,7 @@
   },
   "summary": {
     "title": "Deine typische Woche",
-    "bubble": "So sieht deine Woche aus. Tippe etwas an, um es zu ändern.",
+    "bubble": "So sieht deine Woche aus.",
     "empty": "Noch nichts da. Füge etwas hinzu oder starte so.",
     "assigned": "{hours} zugewiesen",
     "unassigned": "{hours} nicht zugewiesen",
@@ -188,6 +188,7 @@
     "addFailed": "Hinzufügen hat nicht geklappt. Versuch es noch einmal.",
     "addBubble": "Das kommt zu deiner Woche dazu. Tippe etwas an, um es zu ändern.",
     "addEmpty": "Noch nichts zum Hinzufügen.",
-    "addTitle": "Was du hinzufügst"
+    "addTitle": "Was du hinzufügst",
+    "bubbleHint": "Tippe etwas an, um es zu ändern."
   }
 }

@@ -78,6 +78,8 @@ export function hint(state: SetupState, screen: ScreenId): Line | undefined {
     // Ida and vuelta come from the hours just given; saying so invites a change when they are off.
     case 'commuteRanges': return commuteBase(state) ? { key: 'onboarding.guided.commuteRanges.hint' } : undefined
     case 'more': return { key: state.add ? 'onboarding.guided.add.hint' : 'onboarding.guided.more.hint' }
+    // "Así queda tu semana." over "Toca algo para cambiarlo." (R_InicioResumen).
+    case 'summary': return state.add || weekIsEmpty(state) ? undefined : { key: 'onboarding.summary.bubbleHint' }
     default: return roundIndex(screen) === undefined ? undefined : { key: 'onboarding.guided.again.hint' }
   }
 }

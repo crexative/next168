@@ -5,7 +5,7 @@ import { categoryColor } from '@/features/insights/categoryColor'
 import { formatWholeHours, wholeHourParts } from '@/ui/format'
 import Button from '@/ui/Button.vue'
 import Icon from '@/ui/Icon.vue'
-import { appendFromSummary, canAppend, clearRanges, setRemoved, weekTotals, type Issue, type SetupState } from '../setupModel'
+import { appendFromSummary, canAppend, categoryMinutes, clearRanges, setRemoved, weekTotals, type Issue, type SetupState } from '../setupModel'
 import { addGoalOverruns } from '../setupCommit'
 import { TOPICS } from '../setupTopics'
 import { summaryRows } from './conversation'
@@ -31,6 +31,11 @@ const totals = computed(() => {
   return { assigned: assigned!, free: free!, overlapping: week.overlapping }
 })
 const visibleRows = computed(() => summaryRows(props.state))
+// The 168 h bar (R_InicioResumen): each category's hours in its colour, the hours left hatched.
+const segments = computed(() => visibleRows.value
+  .filter((row) => row.status !== 'removed')
+  .map((row) => ({ key: row.category.key, name: row.category.name, minutes: categoryMinutes(props.state, row.category), color: colorOf(row.category.key) }))
+  .filter((segment) => segment.minutes > 0))
 const place = computed(() => `${t('app.tabs.settings')} › ${t('settings.categoriesTitle')}`)
 const hasTasks = (key: string) => {
   const id = props.state.categories.find((category) => category.key === key)?.categoryId
@@ -88,8 +93,12 @@ async function addMore(): Promise<void> {
 
 <template>
   <section class="week" data-testid="week-card" :aria-label="t(adding ? 'onboarding.summary.addTitle' : 'onboarding.summary.title')">
-    <h4 class="week-title t-headline">{{ t(adding ? 'onboarding.summary.addTitle' : 'onboarding.summary.title') }}</h4>
-    <p v-if="!adding" class="counter t-body" role="status" data-testid="week-counter">
+    <h4 class="week-title t-title-2">{{ t(adding ? 'onboarding.summary.addTitle' : 'onboarding.summary.title') }}</h4>
+    <div v-if="!adding" class="bar" aria-hidden="true" data-testid="summary-bar">
+      <i v-for="segment in segments" :key="segment.key" class="segment" :data-segment="segment.key" :style="{ flexGrow: segment.minutes, background: segment.color }" />
+      <i v-if="totals.free > 0" class="segment is-free" :style="{ flexGrow: totals.free * 60 }" />
+    </div>
+    <p v-if="!adding" class="counter t-subhead" role="status" data-testid="week-counter">
       <strong>{{ t('onboarding.summary.assigned', { hours: formatWholeHours(totals.assigned) }) }}</strong> · {{ t('onboarding.summary.unassigned', { hours: formatWholeHours(totals.free) }) }}
     </p>
     <p v-if="totals.overlapping" class="warn t-body" data-testid="overlap-warning">⚠ {{ t('onboarding.summary.overlapping') }}</p>
@@ -110,22 +119,23 @@ async function addMore(): Promise<void> {
     </ul>
     <Button v-if="canAppend(state)" variant="plain" data-testid="summary-add" @click="addMore"><Icon name="plus" :size="20" /> {{ t('onboarding.summary.add') }}</Button>
     <p v-else class="trust t-body" data-testid="summary-limit">{{ t('onboarding.guided.again.limit') }}</p>
-    <Button v-if="reviewable" variant="plain" data-testid="summary-review" @click="emit('review')">{{ t('onboarding.summary.review') }}</Button>
-    <p v-if="showTrust" class="trust t-body" data-testid="setup-trust">{{ t('onboarding.guided.trust') }}</p>
   </section>
 </template>
 
 <style scoped>
-/* The week, as the last message: on a phone it uses the column's full width; with room to spare it sits in a card. */
-.week { display: flex; flex-direction: column; gap: var(--space-3); }
-@media (min-width: 40rem) {
-  .week { padding: var(--card-padding-block) var(--card-padding); border: 0.5px solid var(--separator); border-radius: 20px; background: var(--surface); }
-}
+/* The week, as the last message: a grey card with the 168 h bar and the list of what goes in it (R_InicioResumen). */
+.week { display: flex; flex-direction: column; gap: var(--space-3); padding: var(--card-padding-block) var(--card-padding); border-radius: 20px; background: var(--surface-2); }
+.bar { display: flex; gap: 2px; height: 28px; overflow: hidden; border-radius: 8px; }
+.segment { display: block; flex: 0 1 auto; flex-basis: 0; min-width: 0; }
+.segment.is-free { background: repeating-linear-gradient(135deg, var(--fill) 0 4px, transparent 4px 8px); box-shadow: inset 0 0 0 1px var(--separator); }
+.counter { color: var(--label-2); }
+.counter strong { color: var(--label); }
 .week-title, .counter, .warn, .trust { margin: 0; }
 .warn { color: var(--danger-label); overflow-wrap: anywhere; }
 .trust { color: var(--label-2); }
-.cards { display: flex; flex-direction: column; gap: var(--space-2); margin: 0; padding: 0; }
-.removed { list-style: none; display: flex; align-items: center; justify-content: space-between; gap: var(--space-3); min-height: var(--tap-target); padding: var(--space-1) var(--card-padding); border-radius: var(--radius-card); border: 1px dashed var(--separator); }
+.cards { display: flex; flex-direction: column; margin: 0; padding: 0; border-radius: var(--radius-card); background: var(--surface); }
+.cards > :deep(li + li) { border-top: 0.5px solid var(--separator); }
+.removed { list-style: none; display: flex; align-items: center; justify-content: space-between; gap: var(--space-3); min-height: var(--tap-target); padding: var(--space-1) var(--card-padding); color: var(--label-2); }
 .removed > span { min-width: 0; overflow-wrap: anywhere; }
 .week > :deep(.ui-button) { overflow-wrap: anywhere; hyphens: auto; }
 </style>

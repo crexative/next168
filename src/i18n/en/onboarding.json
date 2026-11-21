@@ -160,7 +160,7 @@
   },
   "summary": {
     "title": "Your typical week",
-    "bubble": "Here's your week. Tap anything to change it.",
+    "bubble": "Here's your week.",
     "empty": "Nothing here yet. Add something or start like this.",
     "assigned": "{hours} assigned",
     "unassigned": "{hours} unassigned",
@@ -188,6 +188,7 @@
     "addFailed": "Couldn't add it. Try again.",
     "addBubble": "This is added to your week. Tap anything to change it.",
     "addEmpty": "Nothing to add yet.",
-    "addTitle": "What you add"
+    "addTitle": "What you add",
+    "bubbleHint": "Tap anything to change it."
   }
 }

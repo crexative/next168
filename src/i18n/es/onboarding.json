@@ -160,7 +160,7 @@
   },
   "summary": {
     "title": "Tu semana tipo",
-    "bubble": "Así queda tu semana. Toca algo para cambiarlo.",
+    "bubble": "Así queda tu semana.",
     "empty": "Aún no hay nada. Puedes añadir algo o empezar así.",
     "assigned": "{hours} asignadas",
     "unassigned": "{hours} sin asignar",
@@ -188,6 +188,7 @@
     "addFailed": "No se pudo añadir. Inténtalo de nuevo.",
     "addBubble": "Esto se añade a tu semana. Toca algo para cambiarlo.",
     "addEmpty": "Aún no hay nada que añadir.",
-    "addTitle": "Lo que añades"
+    "addTitle": "Lo que añades",
+    "bubbleHint": "Toca algo para cambiarlo."
   }
 }
