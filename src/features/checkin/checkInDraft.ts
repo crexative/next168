@@ -14,8 +14,12 @@ export function keepDraft(key: string, form: CheckInFormState): void {
   draft = { key, form: { ...form } }
 }
 
+// Taking the draft removes it: closing keeps it again only while something is still unsaved, so an answer undone
+// after reopening never comes back.
 export function takeDraft(key: string): CheckInFormState | undefined {
-  return draft?.key === key ? { ...draft.form } : undefined
+  const taken = draft?.key === key ? { ...draft.form } : undefined
+  draft = undefined
+  return taken
 }
 
 export function dropDraft(): void {

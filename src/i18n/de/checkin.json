@@ -45,6 +45,7 @@
     "date": "Tagesabschluss · {date}",
     "addNote": "Notiz hinzufügen",
     "unanswered": "Nicht beantwortet",
-    "answer": "Beantworten"
+    "answer": "Beantworten",
+    "unsaved": "Deine früheren Antworten sind noch nicht gespeichert."
   }
 }

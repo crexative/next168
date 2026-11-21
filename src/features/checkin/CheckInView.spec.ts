@@ -172,6 +172,57 @@ describe('check-in conversation', () => {
     expect(step()).toBe('stress')
   })
 
+  it('never brings back an answer undone after reopening: the next close keeps only what is still unsaved', async () => {
+    window.location.hash = '#/checkin'
+    const reopen = async (document: PlannerDocument) => { $<HTMLButtonElement>('.setup-close')!.click(); app!.unmount(); host.remove(); return mount(document) }
+    await mount(planned)
+    await tap('stress-2')
+    await reopen(planned)
+    expect(text('answer-stress')).toBe('2')
+    expect(text('checkin-unsaved')).toBe('Your earlier answers are not saved yet.')
+    await tap('answer-stress')
+    await skip()
+    await reopen(planned)
+    expect(step()).toBe('stress')
+    expect($('[data-testid="checkin-unsaved"]')).toBeNull()
+
+    // The same over a saved answer: 3 saved, 5 kept on close, then set back to 3 and closed.
+    const saved = { ...planned, checkIns: [{ date: '2026-10-24', bedtime: 1320, wake: 360, stress: 3 as const }] }
+    await reopen(saved)
+    await tap('answer-stress')
+    await tap('stress-5')
+    await reopen(saved)
+    expect(text('answer-stress')).toBe('5')
+    await tap('answer-stress')
+    await tap('stress-3')
+    const store = await reopen(saved)
+    expect(text('answer-stress')).toBe('3')
+    expect($('[data-testid="checkin-unsaved"]')).toBeNull()
+    submit()
+    await store.settled()
+    expect(store.document?.checkIns).toMatchObject([{ date: '2026-10-24', stress: 3 }])
+  })
+
+  it('asks a told time again, with its question, when its answer was withdrawn', async () => {
+    await mount(planned)
+    await tap('answer-bedtime')
+    await skip()
+    const row = $('[data-step="bedtime"]')!
+    expect(clock(row.querySelector('.turn-question')?.textContent)).toBe('When did you go to bed last night?')
+    expect(text('answer-bedtime')).toBe('Not answered')
+  })
+
+  it('tells a time saved elsewhere while the check-in is open, instead of asking it', async () => {
+    const store = await mount({ ...planned, checkIns: [{ date: '2026-10-24', bedtime: 1320, stress: 2 }] })
+    expect(step()).toBe('wake')
+    await store.commit((draft) => { draft.checkIns = [{ date: '2026-10-24', bedtime: 1320, wake: 390, stress: 2 }] })
+    await nextTick()
+    await nextTick()
+    expect(step()).toBe('final')
+    expect(answers()).toContain('You woke up at 6:30 AM today')
+    expect($('[data-step="wake"] .turn-question')).toBeNull()
+  })
+
   it('asks a time while it is unknown, and agrees the Spanish article with the hour', async () => {
     await mount({ ...planned, blocks: [] })
     i18n.global.locale.value = 'es'

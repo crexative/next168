@@ -45,6 +45,7 @@
     "date": "Day wrap-up · {date}",
     "addNote": "Add a note",
     "unanswered": "Not answered",
-    "answer": "Answer"
+    "answer": "Answer",
+    "unsaved": "Your earlier answers are not saved yet."
   }
 }

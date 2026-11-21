@@ -45,6 +45,7 @@
     "date": "Bilan du jour · {date}",
     "addNote": "Ajouter une note",
     "unanswered": "Sans réponse",
-    "answer": "Répondre"
+    "answer": "Répondre",
+    "unsaved": "Tes réponses précédentes ne sont pas encore enregistrées."
   }
 }

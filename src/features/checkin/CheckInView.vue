@@ -54,6 +54,8 @@ const fromPlan = ref(false)
 const showWorkEnd = computed(() => worksThatDay.value || form.workEnd !== '')
 // The form as loaded (before a kept draft), so the conversation knows what is unsaved and what the plan told.
 const pristine = ref<CheckInFormState | null>(null)
+// Answers brought back from a draft kept on close: the conversation says they are not saved yet.
+const restored = ref(false)
 const dirty = computed(() => !!pristine.value && JSON.stringify(form) !== JSON.stringify(pristine.value))
 const currentDraftKey = () => draftKey(planner.document?.workspaceId ?? '', date.value, formSnapshot)
 
@@ -71,6 +73,7 @@ function load(): void {
   pristine.value = { ...form }
   const kept = takeDraft(currentDraftKey())
   if (kept) Object.assign(form, kept)
+  restored.value = !!kept
   loaded = true
 }
 
@@ -218,7 +221,7 @@ function answerOf(step: StepId): string {
 }
 
 // A told fact shows only its sentence; an asked turn keeps its question above your answer.
-const showsQuestion = (step: StepId) => !(FACTS as string[]).includes(step) || !toldFacts.value.has(step as FactId)
+const showsQuestion = (step: StepId) => !answered(step) || !(FACTS as string[]).includes(step) || !toldFacts.value.has(step as FactId)
 const changeLabel = (step: StepId) => `${t(answered(step) ? 'checkin.change' : 'checkin.chat.answer')}: ${questionOf(step)} ${answerOf(step)}`
 
 const heading = ref<HTMLElement | null>(null)
@@ -356,6 +359,7 @@ onBeforeUnmount(() => {
       <div ref="scroller" class="scroller">
         <div class="column">
           <p class="date-line t-footnote" data-testid="checkin-date">{{ t('checkin.chat.date', { date: dateLabel }) }}</p>
+          <p v-if="restored && dirty" class="unsaved t-footnote" data-testid="checkin-unsaved">{{ t('checkin.chat.unsaved') }}</p>
           <div role="log" :aria-label="t('checkin.title')">
           <ol class="transcript">
             <li v-for="step in log" :key="step" class="turn" :data-step="step">
@@ -429,6 +433,7 @@ onBeforeUnmount(() => {
 .column { box-sizing: border-box; width: 100%; max-width: var(--column); margin-inline: auto; padding-inline: max(var(--page-gutter), var(--safe-left)) max(var(--page-gutter), var(--safe-right)); }
 .scroller > .column { display: flex; flex-direction: column; gap: var(--space-3); padding-block: var(--space-2) var(--space-4); }
 .date-line { margin: 0 0 var(--space-1); color: var(--label-2); font-weight: 600; text-align: center; }
+.unsaved { margin: 0; color: var(--warning-label); text-align: center; }
 .transcript { display: flex; flex-direction: column; gap: var(--space-3); margin: 0; padding: 0; list-style: none; }
 .turn { display: flex; flex-direction: column; align-items: flex-end; gap: var(--space-2); }
 .turn-question { align-self: flex-start; margin: 0; color: var(--label-2); }

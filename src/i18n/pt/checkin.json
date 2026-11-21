@@ -45,6 +45,7 @@
     "date": "Fechamento do dia · {date}",
     "addNote": "Adicionar uma nota",
     "unanswered": "Sem resposta",
-    "answer": "Responder"
+    "answer": "Responder",
+    "unsaved": "Suas respostas anteriores ainda não foram salvas."
   }
 }
