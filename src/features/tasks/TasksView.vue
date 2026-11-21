@@ -346,6 +346,7 @@ async function moveDue(task: Task, date: string): Promise<void> {
 .show-all { display: flex; align-items: center; min-height: var(--row-min-height); padding: 0 var(--page-gutter); }
 .done-toggle { display: flex; align-items: center; justify-content: space-between; gap: var(--space-3); width: 100%; min-height: var(--row-min-height); padding: 0 var(--page-gutter); border: 0; background: transparent; color: var(--label); text-align: start; }
 .done-toggle:focus-visible { outline-offset: -2px; }
-.done-row { display: flex; align-items: center; justify-content: space-between; gap: var(--space-3); min-height: var(--row-min-height); padding: 0 var(--space-2) 0 var(--page-gutter); }
+.tasks #task-done-list { padding-top: var(--space-2); }
+.done-row { display: flex; align-items: center; justify-content: space-between; gap: var(--space-3); min-height: var(--row-min-height); padding: 0 var(--page-gutter); }
 .done-title { min-width: 0; color: var(--label-2); text-decoration: line-through; overflow-wrap: anywhere; }
 </style>

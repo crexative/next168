@@ -202,7 +202,7 @@ function setToday(on: boolean): void {
 .length.is-on { background: var(--tint); color: var(--tint-text); }
 .length:has(:focus-visible) { outline: 2px solid var(--tint-label); outline-offset: 2px; }
 .length-input { position: absolute; inset: 0; margin: 0; opacity: 0; cursor: pointer; }
-.when { margin: 0; padding: 0; list-style: none; border-radius: var(--radius-card); background: var(--surface); overflow: hidden; }
+.when { margin: 0; padding: 0; list-style: none; border-radius: var(--radius-card); background: var(--surface); }
 .when > li + li { border-top: 0.5px solid var(--separator); }
 .when-row { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 0 var(--space-3); width: 100%; min-height: max(var(--tap-target), var(--row-min-height)); padding: var(--row-padding-block) var(--card-padding); border: 0; background: transparent; color: var(--label); text-align: start; }
 .when-row:focus-visible { outline-offset: -2px; }

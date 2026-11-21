@@ -162,7 +162,8 @@ for (const locale of LOCALES) {
       await added(page)
       await expectBudget(page, 4)
       await reload(page)
-      await expect(row(page, 'Comprar pan')).toContainText(loose(text.due('2026-10-30')))
+      // Filed under its day (30 Oct): the group says the date, so the row does not repeat it.
+      await expect(page.locator('section.group').filter({ has: page.locator('h2', { hasText: /30/ }) }).filter({ hasText: 'Comprar pan' })).toHaveCount(1)
     })
 
     test('complete a visible task: 1 action', async ({ page }) => {
