@@ -11,6 +11,11 @@ import Button from '@/ui/Button.vue'
 import ConversationFrame from '@/ui/ConversationFrame.vue'
 import QuickReplies from '@/ui/QuickReplies.vue'
 import { openFullScreen } from '@/ui/sheetStack'
+import Icon from '@/ui/Icon.vue'
+import { registerIcons } from '@/ui/icons'
+import { CalendarDays, Clock, Pencil, Target, Trash2 } from 'lucide-vue-next'
+
+registerIcons({ clock: Clock, 'calendar-days': CalendarDays, target: Target, 'trash-2': Trash2, pencil: Pencil })
 
 // A routine changed by talking (R_EditarRutina, DIRECTION §4): "¿Qué quieres cambiar de Trabajo?" with Horario, Días,
 // Meta and Quitar, one short question each. The whole form stays one tap away ("Editar todo"). The conversation only
@@ -56,14 +61,14 @@ const question = computed(() => {
 const perWeek = computed(() => t('week.talk.perWeek', { hours: duration(weekly(start.value, end.value, days.value)) }))
 
 const choices = computed(() => [
-  { value: 'time', label: t('week.talk.schedule'), testId: 'talk-time' },
-  { value: 'days', label: t('week.talk.days'), testId: 'talk-days' },
-  { value: 'goal', label: t('week.talk.goal'), testId: 'talk-goal' },
-  { value: 'remove', label: t('week.talk.remove'), testId: 'talk-remove' },
+  { value: 'time', label: t('week.talk.schedule'), testId: 'talk-time', icon: 'clock' },
+  { value: 'days', label: t('week.talk.days'), testId: 'talk-days', icon: 'calendar-days' },
+  { value: 'goal', label: t('week.talk.goal'), testId: 'talk-goal', icon: 'target' },
+  { value: 'remove', label: t('week.talk.remove'), testId: 'talk-remove', icon: 'trash-2', destructive: true },
 ])
 const goalChoices = computed(() => (['none', 'min', 'max'] as const).map((value) => ({ value, label: t(`week.talk.goalType.${value}`), testId: `talk-goal-${value}` })))
 const removeChoices = computed(() => [
-  { value: 'yes', label: t('week.talk.removeYes'), testId: 'talk-remove-yes' },
+  { value: 'yes', label: t('week.talk.removeYes'), testId: 'talk-remove-yes', destructive: true },
   { value: 'no', label: t('week.talk.removeNo'), testId: 'talk-remove-no' },
 ])
 
@@ -123,9 +128,10 @@ onBeforeUnmount(() => release?.())
     @close="emit('close')"
   >
     <section class="talk" data-testid="routine-talk" :data-step="step">
+      <!-- What is being changed, as a capsule under the mark (R_EditarRutina). -->
+      <p class="context t-footnote" data-testid="talk-context"><span class="dot" :style="{ background: color }" aria-hidden="true" />{{ context }}</p>
       <div class="scroller">
         <div class="column">
-          <p class="context t-subhead" data-testid="talk-context"><span class="dot" :style="{ background: color }" aria-hidden="true" />{{ context }}</p>
           <div class="turn">
             <AppMark class="avatar" :size="32" />
             <div class="bubble">
@@ -139,8 +145,7 @@ onBeforeUnmount(() => release?.())
         <div class="column dock-column">
           <template v-if="step === 'choose'">
             <QuickReplies :options="choices" :columns="2" :group-label="question" :disabled="!writable" @answer="choose" />
-            <Button variant="plain" data-testid="talk-edit-all" @click="emit('editAll')">{{ t('week.talk.editAll') }}</Button>
-            <Button variant="quiet" class="cancel" data-testid="talk-cancel" @click="emit('close')">{{ t('common.cancel') }}</Button>
+            <Button variant="plain" class="edit-all" data-testid="talk-edit-all" @click="emit('editAll')"><Icon name="pencil" :size="18" /> {{ t('week.talk.editAll') }}</Button>
           </template>
 
           <template v-else-if="step === 'time'">
@@ -194,7 +199,8 @@ onBeforeUnmount(() => release?.())
 .scroller > .column { margin-top: auto; }
 .column { box-sizing: border-box; width: 100%; max-width: var(--column); margin-inline: auto; padding-inline: max(var(--page-gutter), var(--safe-left)) max(var(--page-gutter), var(--safe-right)); }
 .scroller > .column { display: flex; flex-direction: column; gap: var(--space-4); padding-block: var(--space-2) var(--space-4); }
-.context { display: flex; align-items: center; justify-content: center; gap: var(--space-2); margin: 0; color: var(--label-2); text-align: center; font-variant-numeric: tabular-nums; }
+.context { flex: none; align-self: center; display: flex; align-items: center; justify-content: center; gap: var(--space-2); max-width: calc(100% - 2 * var(--page-gutter)); margin: 0 0 var(--space-2); padding: var(--space-1) var(--space-3); border-radius: 999px; background: var(--surface-2); color: var(--label-2); text-align: center; overflow-wrap: anywhere; font-variant-numeric: tabular-nums; }
+.edit-all { align-self: flex-start; }
 .dot { flex: none; width: 8px; height: 8px; border-radius: 50%; }
 .turn { display: flex; align-items: flex-end; gap: var(--space-3); }
 .avatar { flex: none; margin-block-end: 2px; }

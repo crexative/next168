@@ -44,7 +44,7 @@ describe('a routine changed by talking (R_EditarRutina)', () => {
     expect($('[data-testid=talk-question]')!.textContent).toBe('What do you want to change about Work?')
     expect([...document.body.querySelectorAll('.quick-reply')].map((node) => node.textContent?.trim())).toEqual(['Time', 'Days', 'Goal', 'Remove'])
     await tap('[data-testid=talk-edit-all]')
-    await tap('[data-testid=talk-cancel]')
+    await tap('.setup-close')
     expect(events).toEqual(['editAll', 'close'])
   })
 
