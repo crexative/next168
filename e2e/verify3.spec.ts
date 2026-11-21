@@ -154,6 +154,8 @@ test.describe('Week at tablet widths', () => {
         const point = { x: blockBox.x + blockBox.width / 2, y: blockBox.y + blockBox.height / 2 }
         expect(await page.evaluate(({ x, y }) => document.elementFromPoint(x, y)?.closest('[data-block-id]')?.getAttribute('data-block-id'), point)).toBe('b-work')
         await page.touchscreen.tap(point.x, point.y)
+        // A routine opens as a conversation (R_EditarRutina); the whole form is "Editar todo".
+        await page.getByTestId('talk-edit-all').click()
         const editor = page.getByRole('dialog', { name: 'Edit routine', exact: true })
         await expect(editor).toBeVisible()
         await expect(editor.getByLabel('Name', { exact: true })).toHaveValue('Deep work')

@@ -654,6 +654,8 @@ test.describe('answering', () => {
     await page.goto('./#/week')
     await expect(page.getByRole('heading', { level: 1, name: 'Semana' })).toBeVisible()
     await page.locator('[data-date="2026-10-26"] [data-block-id="b-gym"]').first().click()
+    // A routine opens as a conversation (R_EditarRutina); the whole form is "Editar todo".
+    await page.getByTestId('talk-edit-all').click()
     await page.getByRole('dialog').getByRole('button', { name: 'Eliminar rutina' }).click()
     await expect(page.getByTestId('undo-toast')).toBeVisible()
     await page.evaluate(() => { location.hash = '#/settings' })
@@ -1398,6 +1400,8 @@ test.describe('the setup owns the screen (S1-12, N10)', () => {
     await page.goto('./#/week')
     await expect(page.getByRole('heading', { level: 1, name: 'Semana' })).toBeVisible()
     await page.locator('[data-date="2026-10-26"] [data-block-id="b-gym"]').first().click()
+    // A routine opens as a conversation (R_EditarRutina); the whole form is "Editar todo".
+    await page.getByTestId('talk-edit-all').click()
     await page.getByRole('dialog').getByRole('button', { name: 'Eliminar rutina' }).click()
     await expect(page.getByTestId('undo-toast')).toBeVisible()
     await page.evaluate(() => { location.hash = '#/settings' })

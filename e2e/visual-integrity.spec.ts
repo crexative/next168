@@ -979,6 +979,8 @@ test.describe('Week readability', () => {
       })
       expect(own, 'the routine has an area of its own').not.toBeNull()
       await routine.click({ position: own! })
+      // A routine opens as a conversation (R_EditarRutina); the whole form is "Editar todo".
+      await page.getByTestId('talk-edit-all').click()
       await expect(page.getByRole('dialog').getByRole('heading', { name: 'Edit routine' })).toBeVisible()
     })
   }

@@ -404,6 +404,8 @@ test('GUARD: an empty hour opens "Nueva rutina", a block opens "Editar rutina", 
   await page.keyboard.press('Escape')
   await expect(page.getByRole('dialog')).toHaveCount(0)
   await page.locator('[data-date="2026-10-26"] [data-block-id="b-work"]').first().click()
+  // A routine opens as a conversation (R_EditarRutina); the whole form is "Editar todo".
+  await page.getByTestId('talk-edit-all').click()
   await expect(page.getByRole('dialog', { name: 'Editar rutina' })).toBeVisible()
   await page.keyboard.press('Escape')
   await page.goto('./#/settings')

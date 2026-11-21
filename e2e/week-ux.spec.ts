@@ -253,6 +253,8 @@ for (const theme of THEMES) {
       expect(lastHour.y + lastHour.height).toBeLessThanOrEqual(add.y)
 
       await column(page, WEDNESDAY).locator('[data-block-id="b-gym"]').first().click({ position: { x: 12, y: 6 } })
+      // A routine opens as a conversation (R_EditarRutina); the whole form is "Editar todo".
+      await page.getByTestId('talk-edit-all').click()
       await page.getByRole('button', { name: 'Eliminar rutina' }).click()
       const toast = page.getByTestId('undo-toast')
       await expect(toast).toBeVisible()
@@ -424,6 +426,8 @@ test.describe('tasks in Week', () => {
     const x = drawn.x + drawn.width / 2
     // 9 px under the block, in the empty part of the column.
     await page.mouse.click(x, drawn.y + drawn.height + 9)
+    // A routine opens as a conversation (R_EditarRutina); the whole form is "Editar todo".
+    await page.getByTestId('talk-edit-all').click()
     await expect(page.getByRole('dialog', { name: 'Editar rutina' })).toBeVisible()
     await page.keyboard.press('Escape')
     await expect(page.getByRole('dialog')).toHaveCount(0)
@@ -513,6 +517,8 @@ test.describe('tasks in Week', () => {
     await expect(chooser).toBeHidden()
     await pressSharedTarget(page, (await gym.getAttribute('data-hit-key'))!)
     await page.getByRole('dialog', { name: '¿Cuál quieres abrir?' }).getByRole('button', { name: /Gimnasio/ }).click()
+    // A routine opens as a conversation (R_EditarRutina); the whole form is "Editar todo".
+    await page.getByTestId('talk-edit-all').click()
     await expect(page.getByRole('dialog', { name: 'Editar rutina' })).toBeVisible()
   })
 

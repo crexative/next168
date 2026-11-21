@@ -242,6 +242,8 @@ test.describe('week', () => {
   test('deleting a block shows an undo toast that restores it', async ({ page }) => {
     await openSeeded(page, 'week')
     await block(page, WEDNESDAY, 'b-gym').click()
+    // A routine opens as a conversation (R_EditarRutina); the whole form is "Editar todo".
+    await page.getByTestId('talk-edit-all').click()
     const dialog = page.getByRole('dialog', { name: 'Edit routine' })
     await dialog.getByRole('button', { name: 'Delete routine' }).click()
     await expect(block(page, WEDNESDAY, 'b-gym')).toHaveCount(0)
