@@ -86,7 +86,9 @@ function onFocusIn(event: FocusEvent): void {
     <div ref="scroller" class="setup-scroller">
       <div class="column">
         <p v-if="draftUnavailable" class="t-body note" role="status" data-testid="draft-unavailable">{{ t('onboarding.guided.draftUnavailable') }}</p>
-        <TransitionGroup tag="ol" name="say" class="transcript" role="log" :aria-label="t('onboarding.guided.conversation')">
+        <!-- The log role sits on a wrapper: on the <ol> itself it would strip the list semantics from its items. -->
+        <div role="log" :aria-label="t('onboarding.guided.conversation')">
+        <TransitionGroup tag="ol" name="say" class="transcript">
           <li v-for="exchange in exchanges" :key="exchange.screen" class="exchange is-past" :data-exchange="exchange.screen">
             <button class="turn" type="button" :data-answer="exchange.screen" :aria-label="exchange.label" :disabled="busy" @click="emit('jump', exchange.screen)">
               <span class="turn-question t-subhead">{{ exchange.question }}</span>
@@ -103,6 +105,7 @@ function onFocusIn(event: FocusEvent): void {
             </div>
           </li>
         </TransitionGroup>
+        </div>
         <div v-if="resumed" class="resumed">
           <p class="t-body" role="status">{{ t('onboarding.guided.resumed') }}</p>
           <Button variant="plain" data-testid="start-over" @click="emit('startOver')">{{ t('onboarding.guided.startOver') }}</Button>

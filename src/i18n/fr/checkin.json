@@ -37,5 +37,15 @@
   },
   "reminder": {
     "body": "Comment s’est passée la journée ? Cela prend une minute."
+  },
+  "chat": {
+    "stress": "À quel point as-tu été stressé aujourd’hui ?",
+    "final": "Voici ton bilan du jour.",
+    "done": "C’est bon pour aujourd’hui. Repose-toi bien.",
+    "date": "Bilan du jour · {date}",
+    "addNote": "Ajouter une note",
+    "unanswered": "Sans réponse",
+    "answer": "Répondre",
+    "unsaved": "Tes réponses précédentes ne sont pas encore enregistrées."
   }
 }

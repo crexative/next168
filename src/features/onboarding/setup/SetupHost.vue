@@ -22,7 +22,7 @@ import {
 import { categoryFor } from './conversation'
 import { TOPICS } from '../setupTopics'
 import SetupConversation from './SetupConversation.vue'
-import SetupFrame from './SetupFrame.vue'
+import ConversationFrame from '@/ui/ConversationFrame.vue'
 import { keepInView } from '@/ui/keepInView'
 import { afterViewportPin } from '@/ui/visualViewportPin'
 
@@ -444,10 +444,10 @@ onBeforeUnmount(stopKeepingInView)
 </script>
 
 <template>
-  <SetupFrame
+  <ConversationFrame
     :open="open" :title="t(adding ? 'onboarding.guided.add.title' : 'onboarding.guided.sheetTitle')" :close-label="t('onboarding.guided.close')"
     :progress-label="t('onboarding.guided.progress', { step: part, total: TOTAL_PARTS })"
-    :count-label="t('onboarding.guided.progressShort', { step: part, total: TOTAL_PARTS })" :part="part" :total="adding ? 0 : TOTAL_PARTS" :locked="locked" :dirty="dirty"
+    :count-label="t('onboarding.guided.progress', { step: part, total: TOTAL_PARTS })" :part="part" :total="adding ? 0 : TOTAL_PARTS" :locked="locked" :dirty="dirty"
     @close="closeFlow"
   >
     <div class="setup-lock" :inert="locked || undefined">
@@ -465,7 +465,7 @@ onBeforeUnmount(stopKeepingInView)
         />
       </div>
     </div>
-  </SetupFrame>
+  </ConversationFrame>
 </template>
 
 <style scoped>
