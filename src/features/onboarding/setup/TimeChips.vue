@@ -54,6 +54,6 @@ const editing = ref(false)
   font-weight: 600; font-variant-numeric: tabular-nums; touch-action: manipulation; text-align: start; overflow-wrap: anywhere;
 }
 .time[aria-pressed='true'] { border-width: 1.5px; border-color: var(--tint); background: color-mix(in srgb, var(--tint) 14%, transparent); color: var(--tint-label); }
-.other { border-color: transparent; background: transparent; color: var(--tint-label); white-space: nowrap; }
+.other { border-color: transparent; background: transparent; color: var(--tint-label); min-width: 0; overflow-wrap: anywhere; }
 .times > :deep(.editor) { flex: 1 1 100%; }
 </style>

@@ -185,6 +185,8 @@ function addOther(): void {
     clearPending(props.state)
     otherOpen.value = false
     emit('edited')
+    // The field is gone: focus goes to the chip just added, so it is neither lost nor left on the page behind.
+    void nextTick(() => root.value?.querySelector<HTMLElement>(`[data-chip="${CSS.escape(named.key)}"]`)?.focus({ preventScroll: true }))
     return
   }
   // A name already on the list picks that item when it is free; one picked in another round says so.
@@ -291,10 +293,11 @@ const labels = computed(() => ({
 .dock-answer > .column:empty { display: none; }
 .dock-actions { flex: none; }
 .column { box-sizing: border-box; width: 100%; max-width: var(--column); margin-inline: auto; padding-inline: max(var(--page-gutter), var(--safe-left)) max(var(--page-gutter), var(--safe-right)); }
-/* "Siguiente" is the call to action; the bar keeps 16 px plus the safe area under it. */
+/* "Siguiente" is the call to action: the group gap clears it of the answers above and of "Lo veo después" beside it,
+   and the bar keeps 16 px plus the safe area under it (docs/design/visual-design.md › Spacing). */
 .actions {
-  display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--space-3) var(--space-4);
-  padding-block: var(--space-3) calc(var(--space-4) + var(--safe-bottom));
+  display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--group-gap);
+  padding-block: var(--group-gap) calc(var(--space-4) + var(--safe-bottom));
 }
 /* An answer that says "none": an outlined chip with the other answers. */
 .reply-chip {

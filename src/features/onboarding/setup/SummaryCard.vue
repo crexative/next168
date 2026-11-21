@@ -61,7 +61,9 @@ function onName(name: string): void {
 
 <style scoped>
 .card { list-style: none; }
-.head { border-radius: inherit; display: flex; align-items: center; gap: var(--space-3); width: 100%; min-height: var(--tap-target); padding: var(--row-padding-block) var(--card-padding); border: 0; background: transparent; color: var(--label); text-align: start; touch-action: manipulation; }
+/* The rows read as one grouped list, but each tap target keeps 8 px from the next: 4 px of margin on either side of
+   the separator, taken from the row's padding. */
+.head { border-radius: inherit; display: flex; align-items: center; gap: var(--space-3); width: 100%; min-height: var(--tap-target); margin-block: var(--space-1); padding: calc(var(--row-padding-block) - var(--space-1)) var(--card-padding); border: 0; background: transparent; color: var(--label); text-align: start; touch-action: manipulation; }
 .head:focus-visible { outline-offset: -2px; }
 .chevron { flex: none; color: var(--label-3); }
 .dot { flex: none; align-self: flex-start; width: 8px; height: 8px; margin-block-start: 0.55em; border-radius: 50%; }
