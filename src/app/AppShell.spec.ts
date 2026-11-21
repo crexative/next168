@@ -57,19 +57,22 @@ async function openOverlay(host: HTMLElement): Promise<void> {
   expectOverlay(host, true)
 }
 
-it.each([768, 900, 1023])('closes the %i px overlay when Settings is selected from a Settings subpage', async (width) => {
-  const host = await mountShell('#/settings/data', width)
+// On a tablet Settings opens as a form sheet over the tab (no sidebar toggle while it is up): chosen from the overlay,
+// the overlay closes and the sheet shows.
+it.each([768, 900, 1023])('closes the %i px overlay when Settings is selected from it', async (width) => {
+  const host = await mountShell('#/week', width)
   await openOverlay(host)
 
   host.querySelector<HTMLAnchorElement>('#app-sidebar a[href="#/settings"]')!.click()
 
   await vi.waitFor(() => expect(window.location.hash).toBe('#/settings'))
   await nextTick()
-  expectOverlay(host, false)
-  expect(host.querySelector('[data-view]')?.getAttribute('data-view')).toBe('settings')
+  expect(host.querySelector('.shell')?.getAttribute('data-sidebar')).toBe('hidden')
+  await vi.waitFor(() => expect(host.querySelector('[data-view]')?.getAttribute('data-view')).toBe('settings'))
+  expect(host.querySelector('[data-view]')?.getAttribute('data-presentation')).toBe('form')
 })
 
-const destinations: ViewId[] = ['today', 'week', 'tasks', 'insights', 'assistant', 'settings']
+const destinations: ViewId[] = ['today', 'week', 'tasks', 'insights', 'assistant']
 
 it.each(destinations)('closes the overlay when the current %s sidebar destination is selected again', async (id) => {
   const host = await mountShell(`#/${id}`)
@@ -184,7 +187,24 @@ describe('Settings and the assistant as a full-height sheet on a phone (DIRECTIO
     expect(document.documentElement.dataset.presentation).toBe('sheet')
   })
 
-  it.each([768, 1440])('keeps the page with its large title at %i px', async (width) => {
+  it('on a tablet, Settings is a centred form sheet with Listo and no grabber (R_TabletAjustes); the assistant stays a page', async () => {
+    const host = await mountShell('#/tasks', 900)
+    await nextTick()
+    window.location.hash = '#/settings'
+    window.dispatchEvent(new HashChangeEvent('hashchange'))
+    await vi.waitFor(() => expect(host.querySelector('[data-testid=sheet-bar]')).not.toBeNull())
+    expect(host.querySelector('.view')?.getAttribute('data-presentation')).toBe('form')
+    expect(host.querySelector('.sheet-grabber')).toBeNull()
+    expect(host.querySelector<HTMLAnchorElement>('[data-testid=sheet-done]')!.getAttribute('href')).toBe('#/tasks')
+    expect(host.querySelector('[data-testid=sidebar-toggle]')).toBeNull()
+    expect(document.documentElement.dataset.presentation).toBe('form')
+    window.location.hash = '#/assistant'
+    window.dispatchEvent(new HashChangeEvent('hashchange'))
+    await vi.waitFor(() => expect(host.querySelector('[data-testid=sheet-bar]')).toBeNull())
+    expect(document.documentElement.dataset.presentation).toBeUndefined()
+  })
+
+  it.each([1440])('keeps the page with its large title at %i px', async (width) => {
     const host = await mountShell('#/settings', width)
     await nextTick()
     expect(host.querySelector('[data-testid=sheet-bar]')).toBeNull()

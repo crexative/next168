@@ -58,14 +58,21 @@ const topTabsShown = computed(() => layout.value !== 'none' && toolbarEntriesSho
 const isTab = computed(() => currentView.value?.tabOrder !== undefined)
 const addPlacement = computed(() => layout.value === 'none' ? 'floating' : layout.value === 'overlay' ? 'toolbar' : 'title')
 // On a phone, Settings and the assistant open over the tab they came from as a full-height sheet (DIRECTION §3):
-// a grabber, the title in the bar and "Listo" back to that tab; no tab bar and no "+" while it is up.
+// a grabber, the title in the bar and "Listo" back to that tab; no tab bar and no "+" while it is up. On a tablet
+// Settings is a centred form sheet over the dimmed tab (R_TabletAjustes); desktop keeps the page beside the sidebar.
 const SHEET_VIEWS: ReadonlySet<string> = new Set(['settings', 'assistant'])
-const sheetPresented = computed(() => layout.value === 'none' && !!currentView.value && SHEET_VIEWS.has(currentView.value.id))
+const presentation = computed<'sheet' | 'form' | undefined>(() => {
+  const id = currentView.value?.id
+  if (layout.value === 'none' && id && SHEET_VIEWS.has(id)) return 'sheet'
+  if (layout.value === 'overlay' && id === 'settings') return 'form'
+  return undefined
+})
+const sheetPresented = computed(() => presentation.value !== undefined)
 provide(SHEET_PRESENTED, sheetPresented)
 const lastTab = ref<ViewId>('today')
 watch(currentView, (view) => { if (view?.tabOrder !== undefined) lastTab.value = view.id }, { immediate: true })
-watch(sheetPresented, (sheet) => {
-  if (sheet) document.documentElement.dataset.presentation = 'sheet'
+watch(presentation, (kind) => {
+  if (kind) document.documentElement.dataset.presentation = kind
   else delete document.documentElement.dataset.presentation
 }, { immediate: true })
 // A view of plain lists asks for the white page; every other screen keeps the grouped grey.
@@ -166,7 +173,7 @@ dismissUndoWhenChanged(() => planner.document?.workspaceId)
 <template>
   <div class="shell" :data-layout="layout" :data-sidebar="sidebarVisible ? 'shown' : 'hidden'">
     <button
-      v-if="layout !== 'none'"
+      v-if="layout !== 'none' && !sheetPresented"
       ref="toggleButton"
       class="sidebar-toggle"
       type="button"
@@ -219,9 +226,9 @@ dismissUndoWhenChanged(() => planner.document?.workspaceId)
         <RecoveryScreen v-if="planner.status === 'corrupt'" />
         <StorageErrorScreen v-else-if="planner.status === 'error' || planner.error === UPGRADE_COPY_FAILED" />
         <Transition v-else name="view" mode="out-in" @after-leave="scrollToTop" @after-enter="onViewEntered">
-          <div v-if="currentView" :key="currentView.id" class="view" :data-view="currentView.id" :data-measure="FULL_WIDTH_VIEWS.has(currentView.id) ? 'full' : 'readable'" :data-presentation="sheetPresented ? 'sheet' : undefined">
+          <div v-if="currentView" :key="currentView.id" class="view" :data-view="currentView.id" :data-measure="FULL_WIDTH_VIEWS.has(currentView.id) ? 'full' : 'readable'" :data-presentation="presentation">
             <header v-if="sheetPresented" class="sheet-bar" data-testid="sheet-bar">
-              <span class="sheet-grabber" aria-hidden="true" />
+              <span v-if="presentation === 'sheet'" class="sheet-grabber" aria-hidden="true" />
               <!-- Focusable by script only: the shell moves focus here after a route change, as with the large title. -->
               <h1 class="sheet-title t-headline" tabindex="-1">{{ t(currentView.titleKey) }}</h1>
               <a class="sheet-done t-body" :href="viewHash(lastTab)" data-testid="sheet-done">{{ t('common.done') }}</a>
@@ -307,6 +314,14 @@ dismissUndoWhenChanged(() => planner.document?.workspaceId)
   background: var(--bg-grouped);
 }
 html[data-backdrop='plain'] .view[data-presentation='sheet'] { background: var(--bg); }
+/* The tablet's form sheet: 640 wide, 64 from the top, radius 24, on the grouped grey (R_TabletAjustes). */
+.view[data-presentation='form'] {
+  max-width: 40rem;
+  margin: calc(var(--safe-top) + 64px) auto var(--space-8);
+  padding-bottom: var(--space-6);
+  border-radius: 24px;
+  background: var(--bg-grouped);
+}
 .sheet-bar {
   position: sticky;
   top: 0;
