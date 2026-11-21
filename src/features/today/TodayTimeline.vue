@@ -354,8 +354,11 @@ async function toggleEarlier(): Promise<void> {
 .row-note { margin: 0; }
 /* Something that needs attention says so in amber, never red (DIRECTION principle 6). */
 .row-attention { display: flex; align-items: center; color: var(--warning-label); }
-/* Last night's tail: one quiet line in the text column. */
-.carry { grid-column: 3; }
+/* Last night's tail (inside "Antes"): one quiet line that takes the time column's room too, so it stays one line with
+   wide fonts. */
+.row.is-carry { grid-template-columns: 4px minmax(0, 1fr); }
+.is-carry .row-time { display: none; }
+.carry { grid-column: 2; }
 .carry { display: flex; align-items: baseline; gap: var(--space-2); min-width: 0; margin: 0; flex-wrap: wrap; }
 .carry-title { min-width: 0; overflow-wrap: normal; color: var(--label-2); }
 .carry-note { flex: none; font-variant-numeric: tabular-nums; }
@@ -417,8 +420,7 @@ async function toggleEarlier(): Promise<void> {
   .now-label { grid-column: 2; grid-row: 1; justify-self: start; }
   .now-dot { grid-column: 1; grid-row: 2; }
   .now-rule { grid-column: 2; grid-row: 2; margin: 0; }
-  .is-carry .row-time { display: none; }
-  .carry { grid-column: 2; flex-wrap: wrap; white-space: normal; }
+  .carry { flex-wrap: wrap; white-space: normal; }
   .carry-note { flex: 0 1 auto; min-width: 0; }
 }
 </style>
