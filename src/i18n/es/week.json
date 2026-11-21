@@ -11,7 +11,7 @@
   "details": {
     "when": "Cuándo",
     "calendar": "Calendario",
-    "conflictsWith": "Choca con {title}",
+    "conflictsWith": "Se cruza con {title}",
     "ownEvent": "Evento de Weeklid",
     "calendarFallback": "Calendario",
     "location": "Lugar",

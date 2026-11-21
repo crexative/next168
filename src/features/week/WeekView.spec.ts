@@ -104,7 +104,7 @@ describe('WeekView saving', () => {
     await tick()
     const conflicts = globalThis.document.querySelectorAll<HTMLButtonElement>('[data-testid="busy-details-conflict"] button')
     expect(conflicts).toHaveLength(2)
-    expect([...conflicts].map((button) => button.textContent?.trim())).toEqual(['Conflicts with Focus', 'Conflicts with Focus'])
+    expect([...conflicts].map((button) => button.textContent?.trim())).toEqual(['Overlaps Focus', 'Overlaps Focus'])
     conflicts[1]!.click()
     await tick()
 

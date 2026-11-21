@@ -34,7 +34,7 @@
   "overlay": "Événements du calendrier",
   "untitled": "Événement sans titre",
   "free": "Libre",
-  "conflict": "Conflit avec ton planning",
+  "conflict": "Chevauche ton planning",
   "size": "Ce calendrier dépasse la limite de 5 Mo.",
   "frequency": "Les récurrences par seconde ou minute ne sont pas prises en charge.",
   "timezone": "Ce calendrier utilise un fuseau horaire inconnu. Exporte-le avec une définition VTIMEZONE.",

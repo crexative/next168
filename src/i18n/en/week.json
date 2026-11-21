@@ -11,7 +11,7 @@
   "details": {
     "when": "When",
     "calendar": "Calendar",
-    "conflictsWith": "Conflicts with {title}",
+    "conflictsWith": "Overlaps {title}",
     "ownEvent": "Weeklid event",
     "calendarFallback": "Calendar",
     "location": "Location",

@@ -104,16 +104,17 @@ function showToday(): void {
   pagerIndex.value = pagerIndexFor(dates.value, today.value, 0)
 }
 
-// "Día · Semana" (R_Semana): a phone opens on one day, a tablet or desktop on the whole week; each can switch.
+// "Día · Semana" (R_Semana): a phone opens on one day, a tablet or desktop on the whole week; each can switch, and a
+// view the person chose stays chosen when the width crosses 768 px (rotating a tablet, resizing a window).
 const range = computed(() => weekRangeLabel(dates.value, locale.value, today.value))
-const viewMode = ref<'day' | 'week'>(isWide.value ? 'week' : 'day')
-watch(isWide, (wide) => { viewMode.value = wide ? 'week' : 'day' })
+const chosenView = ref<'day' | 'week' | null>(null)
+const viewMode = computed<'day' | 'week'>(() => chosenView.value ?? (isWide.value ? 'week' : 'day'))
 function setView(view: 'day' | 'week'): void {
-  viewMode.value = view
+  chosenView.value = view
 }
 function pickDay(index: number): void {
   pagerIndex.value = index
-  viewMode.value = 'day'
+  chosenView.value = 'day'
 }
 
 // A task that moved on to another day says so, and Undo keeps it where it was for the rest of the day.
@@ -162,7 +163,7 @@ watch(hasGrid, async (shown) => {
   const line = root.value?.querySelector('[data-testid="now-line"]')
   if (!line) return
   positioned = true
-  scrollToNow(line)
+  scrollToNow(line, root.value!)
 }, { immediate: true, flush: 'post' })
 
 const detailsOpen = ref(false)

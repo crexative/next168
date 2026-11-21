@@ -270,8 +270,11 @@ for (const theme of THEMES) {
       const week = views.getByRole('radio', { name: 'Semana' })
       await expect(views.getByRole('radio', { name: 'Día' })).toHaveAttribute('aria-checked', 'true')
       await expect(page.getByTestId('week-overview')).toHaveCount(0)
-      const weekBox = await box(week)
-      expect(weekBox.height).toBeGreaterThanOrEqual(32)
+      for (const radio of await views.getByRole('radio').all()) {
+        const target = await box(radio)
+        expect(target.width).toBeGreaterThanOrEqual(44)
+        expect(target.height).toBeGreaterThanOrEqual(44)
+      }
 
       await week.click()
       await expect(week).toHaveAttribute('aria-checked', 'true')
@@ -309,8 +312,48 @@ for (const theme of THEMES) {
   })
 }
 
+// The week opens on the current hour, which must land below the sticky header (toolbar, range, switch and day strip),
+// not under it: toBeInViewport would accept a line the header covers.
+test.describe('week opens on now', () => {
+  test.beforeEach(onlyProject('phone'))
+
+  for (const { width, height, percent } of [{ width: 390, height: 844, percent: 200 }, { width: 375, height: 667, percent: 150 }, { width: 390, height: 844, percent: 100 }]) {
+    test(`the now line is below the sticky header at ${width}x${height}, ${percent} % text`, async ({ page }) => {
+      await page.addInitScript((value) => { document.addEventListener('DOMContentLoaded', () => { document.documentElement.style.fontSize = `${value}%` }) }, percent)
+      await openWeek(page, 'light', 'phone')
+      await page.setViewportSize({ width, height })
+      await page.reload()
+      await page.waitForFunction(() => document.getAnimations().length === 0)
+      const covered = await page.evaluate(() => Math.max(0, ...Array.from(document.querySelectorAll<HTMLElement>('.toolbar, [data-testid=week-head], .pager-head'))
+        .filter((element) => element.getClientRects().length > 0 && ['sticky', 'fixed'].includes(getComputedStyle(element).position))
+        .map((element) => element.getBoundingClientRect().bottom)))
+      const line = (await page.getByTestId('now-line').first().boundingBox())!
+      expect(line.y, `now line at ${line.y.toFixed(0)} px, header ends at ${covered.toFixed(0)} px`).toBeGreaterThan(covered)
+      expect(line.y + line.height).toBeLessThan(height)
+    })
+  }
+})
+
 test.describe('week on desktop', () => {
   test.beforeEach(onlyProject('desktop'))
+
+  test('a view the person chose stays chosen when the width crosses 768 px and back', async ({ page }) => {
+    await openWeek(page, 'light', 'desktop')
+    const views = page.getByRole('radiogroup', { name: 'Vista' })
+    // Each resize is awaited until the page has seen the width change and drawn it.
+    const resize = async (width: number) => {
+      await page.setViewportSize({ width, height: 900 })
+      await page.waitForFunction((wide) => matchMedia('(min-width: 768px)').matches === wide, width >= 768)
+      await page.evaluate(() => new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve))))
+    }
+    await expect(views.getByRole('radio', { name: 'Semana' })).toHaveAttribute('aria-checked', 'true')
+    await views.getByRole('radio', { name: 'Día' }).click()
+    await resize(700)
+    await expect(views.getByRole('radio', { name: 'Día' })).toHaveAttribute('aria-checked', 'true')
+    await resize(1440)
+    await expect(views.getByRole('radio', { name: 'Día' })).toHaveAttribute('aria-checked', 'true')
+    await expect(page.locator('.pager')).toHaveCount(1)
+  })
 
   test('"Añadir" sits in the title row and there is no floating one', async ({ page }) => {
     await openWeek(page, 'light', 'desktop')

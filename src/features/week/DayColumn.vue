@@ -420,7 +420,8 @@ function onColumnClick(event: MouseEvent, blockId?: string): void {
   border-color: var(--warning);
   background: var(--surface);
 }
-.conflict-mark { display: inline-flex; align-items: center; gap: 2px; vertical-align: top; color: var(--warning-label); font-weight: 600; }
+/* Drawn at the caption weight it is measured at (dayColumnPlan.ts › busyShow): a bolder word would not fit its box. */
+.conflict-mark { display: inline-flex; align-items: center; gap: 2px; vertical-align: top; color: var(--warning-label); }
 /* A conflict with no room for words keeps its ⚠, centred like a glyph (dayColumnPlan.ts measures it there). */
 .busy.is-icon-only { display: flex; align-items: center; justify-content: center; padding: 0; }
 /* A conflict too narrow for "⚠ title" on one line draws its ⚠ on a line of its own above the title (ICON_PX + 1 px). */

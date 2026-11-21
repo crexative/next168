@@ -110,7 +110,7 @@ test.describe('Week at tablet widths', () => {
         const dialog = page.getByRole('dialog', { name: title })
         await expect(dialog).toBeVisible()
         await expect(dialog.getByTestId('busy-details')).toContainText('9:30 AM')
-        await expect(dialog.getByTestId('busy-details-conflict')).toHaveText('Conflicts with Deep work')
+        await expect(dialog.getByTestId('busy-details-conflict')).toHaveText('Overlaps Deep work')
         await dialog.getByRole('button', { name: 'Close' }).click()
         await expect(dialog).toHaveCount(0)
       }
@@ -167,7 +167,7 @@ test.describe('Week at tablet widths', () => {
         await page.touchscreen.tap(tapBox.x + tapBox.width / 2, tapBox.y + tapBox.height / 2)
         const details = page.getByRole('dialog', { name: 'Team sync', exact: true })
         await expect(details).toBeVisible()
-        const conflict = details.getByRole('button', { name: 'Conflicts with Deep work', exact: true })
+        const conflict = details.getByRole('button', { name: 'Overlaps Deep work', exact: true })
         await conflict.tap()
         await expect(details).toHaveCount(0)
         await expect(editor).toBeVisible()
