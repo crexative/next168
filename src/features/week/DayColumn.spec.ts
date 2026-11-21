@@ -88,6 +88,13 @@ it('draws every word of an unmeasured column and marks the column for the whole-
   expect(root.querySelector('[data-testid="week-task"] .task-title')?.textContent).toBe('Report')
 })
 
+it('a block\'s title carries no inline category mark: the category is said in its own line, the mark is not repeated', () => {
+  const { root } = column({})
+  const title = root.querySelector('.block[data-block-id="deep"] .block-title')!
+  expect(title.querySelector('.category-glyph, .block-mark')).toBeNull()
+  expect(title.textContent?.trim()).toBe('Deep work')
+})
+
 it('marks a done block as done (dimmed with a check) and only a skipped one as struck through', () => {
   const actual = (blockId: string, status: 'done' | 'skipped' | 'partial') => ({
     date: DATE, blockId, categoryId: blockId === 'deep' ? 'work' : 'gym', plannedStartAt: blockId === 'deep' ? `${DATE}T09:00:00.000Z` : `${DATE}T12:00:00.000Z`,
