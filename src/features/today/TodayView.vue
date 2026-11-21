@@ -134,16 +134,18 @@ function clear(occurrence: DatedOccurrence): void {
     <AssistantEntryButton />
     <!-- Without a timeline the coverage notice has no "Tu día" heading to sit under; it still shows, above the empty state. -->
     <component :is="GoogleCoverageNotice" v-if="!hasContent && GoogleCoverageNotice && googleAvailable" :ranges="googleRanges" />
-    <EmptyState v-if="!hasContent" :week-bar="t('today.empty.weekBar')" :title="t('today.empty.title')" :description="t('today.empty.description')">
-      <!-- The setup wizard is the quick way in, a single routine the other; when setup cannot be offered, Week remains. -->
-      <template v-if="setupWeekOffered(planner)">
-        <SetupWeekPrompt />
-        <Button variant="plain" data-testid="today-add-routine" @click="openAdd('routine')">{{ t('week.empty.addBlock') }}</Button>
-      </template>
-      <Button v-else variant="tinted" href="#/week">{{ t('today.empty.action') }}</Button>
-    </EmptyState>
-    <!-- To-dos for today show whether the day has a plan or not (one just added from "+" › Tarea included). -->
-    <TodayTodo v-if="!hasContent" :today="today" />
+    <template v-if="!hasContent">
+      <EmptyState :week-bar="t('today.empty.weekBar')" :title="t('today.empty.title')" :description="t('today.empty.description')">
+        <!-- The setup wizard is the quick way in, a single routine the other; when setup cannot be offered, Week remains. -->
+        <template v-if="setupWeekOffered(planner)">
+          <SetupWeekPrompt />
+          <Button variant="plain" data-testid="today-add-routine" @click="openAdd('routine')">{{ t('week.empty.addBlock') }}</Button>
+        </template>
+        <Button v-else variant="tinted" href="#/week">{{ t('today.empty.action') }}</Button>
+      </EmptyState>
+      <!-- To-dos for today show whether the day has a plan or not (one just added from "+" › Tarea included). -->
+      <TodayTodo :today="today" />
+    </template>
     <div v-else class="today-columns">
       <div class="today-main">
         <NowCard
