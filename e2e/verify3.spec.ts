@@ -97,7 +97,7 @@ test.describe('Week at tablet widths', () => {
           await expect(locator).toHaveCSS('overflow-wrap', 'normal')
         }
         // The conflict keeps its icon, and its word in the accessible name.
-        await expect(event.getByTestId('calendar-conflict')).toContainText(/Conflict/)
+        await expect(event.getByTestId('calendar-conflict')).toContainText(/Overlaps/)
         expect(await event.getByTestId('calendar-conflict').locator('svg').count()).toBe(1)
         // The word is drawn only where it fits whole beside the icon and the title.
         if (await event.locator('.conflict-text:not(.visually-hidden)').count()) {

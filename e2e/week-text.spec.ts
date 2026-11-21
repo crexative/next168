@@ -59,7 +59,7 @@ async function auditEverySize(page: Page, label: string, phone: number, seed: nu
   await setTextSize(page, 100)
   await page.setViewportSize({ width: phone, height: 720 })
   await settled(page)
-  await page.getByTestId('week-view-toggle').click()
+  await page.getByTestId('week-view').getByRole('radio').nth(1).click()
   await expect(page.getByTestId('week-overview')).toBeVisible()
   await auditWeek(page, `${label} ${await theme()} ${phone} px overview`, 7, titles)
 }

@@ -5,7 +5,7 @@
   "grid": {
     "allDay": "Dia inteiro",
     "allDayItem": "{title}, dia inteiro",
-    "conflict": "Conflito",
+    "conflict": "Sobrepõe-se",
     "crossesMidnight": "{range} (noturno)"
   },
   "details": {
@@ -69,8 +69,9 @@
     "today": "Hoje"
   },
   "view": {
-    "showWeek": "Ver a semana toda",
-    "showDay": "Ver um dia"
+    "day": "Dia",
+    "week": "Semana",
+    "label": "Visualização"
   },
   "overview": {
     "days": "Dias da semana",

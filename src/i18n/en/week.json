@@ -5,7 +5,7 @@
   "grid": {
     "allDay": "All day",
     "allDayItem": "{title}, all day",
-    "conflict": "Conflict",
+    "conflict": "Overlaps",
     "crossesMidnight": "{range} (overnight)"
   },
   "details": {
@@ -69,8 +69,9 @@
     "today": "Today"
   },
   "view": {
-    "showWeek": "Show the whole week",
-    "showDay": "Show one day"
+    "day": "Day",
+    "week": "Week",
+    "label": "View"
   },
   "overview": {
     "days": "Days of the week",

@@ -253,7 +253,8 @@ describe('WeekView saving', () => {
     const click = async (id: string) => { host.querySelector<HTMLElement>(`[data-testid="${id}"]`)!.click(); await tick() }
     expect(range()).toBe('Oct 19 – 25')
     // "Today" appears only once another week is shown.
-    expect(host.querySelector('[data-testid="week-today"]')).toBeNull()
+    // "Hoy" is always there beside the arrows (R_Semana).
+    expect(host.querySelector('[data-testid="week-today"]')).not.toBeNull()
     expect(host.querySelector('[data-date="2026-10-19"]')).not.toBeNull()
     await click('week-next')
     expect(range()).toBe('Oct 26 – Nov 1')
@@ -265,7 +266,6 @@ describe('WeekView saving', () => {
     expect(range()).toBe('Oct 12 – 18')
     await click('week-today')
     expect(range()).toBe('Oct 19 – 25')
-    expect(host.querySelector('[data-testid="week-today"]')).toBeNull()
     expect(host.querySelector('[data-testid="now-line"]')).not.toBeNull()
   })
 
@@ -297,13 +297,13 @@ describe('WeekView saving', () => {
     expect(host.querySelector<HTMLElement>('[data-testid="pager-track"]')?.style.transform).toBe('translateX(calc(-200% + 0px))')
     // Week draws no "+" of its own: the shell's one adds (features/add).
     expect(globalThis.document.querySelector('[data-testid="add-entry"]')).toBeNull()
-    // One toolbar button switches between a day and the whole week; its name says what it will show.
-    const toggle = () => host.querySelector<HTMLElement>('[data-testid="week-view-toggle"]')!
-    expect(host.querySelectorAll('[role="radio"]')).toHaveLength(0)
-    expect(toggle().getAttribute('aria-label')).toBe('Show the whole week')
-    toggle().click()
+    // A labelled "Day · Week" switch (R_Semana) shows one day or the whole week.
+    const view = (label: string) => [...host.querySelectorAll<HTMLElement>('[data-testid="week-view"] [role="radio"]')].find((radio) => radio.textContent?.trim() === label)!
+    expect(host.querySelector('[data-testid="week-view"]')?.getAttribute('aria-label')).toBe('View')
+    expect(view('Day').getAttribute('aria-checked')).toBe('true')
+    view('Week').click()
     await tick()
-    expect(toggle().getAttribute('aria-label')).toBe('Show one day')
+    expect(view('Week').getAttribute('aria-checked')).toBe('true')
     expect(host.querySelector('.pager')).toBeNull()
     expect(host.querySelectorAll('[data-testid="week-overview"] .day-column')).toHaveLength(7)
     expect(host.querySelector('[data-testid="week-overview"] .legend')?.textContent).toContain('Work')
