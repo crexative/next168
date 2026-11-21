@@ -20,12 +20,18 @@ function syncPageFlag(): void {
 // A sheet opening from inside another (focus is in that sheet's panel) returns focus where that sheet would have: the
 // control that opened the first sheet, not a control of a sheet that is going away.
 export function openSheet(entry: Omit<SheetEntry, 'returnFocusTo' | 'closing'>): SheetEntry {
-  const active = document.activeElement as HTMLElement | null
-  const from = entries.find((other) => active && other.panel()?.contains(active))
-  const opened: SheetEntry = { ...entry, returnFocusTo: from ? from.returnFocusTo : active, closing: false }
+  const opened: SheetEntry = { ...entry, returnFocusTo: focusOrigin(), closing: false }
   entries.push(opened)
   syncPageFlag()
   return opened
+}
+
+// Where focus goes back to when something opened now closes: the focused control, or, when focus is in a sheet that is
+// handing off (a chooser), the control that opened that sheet.
+export function focusOrigin(): HTMLElement | null {
+  const active = document.activeElement as HTMLElement | null
+  const from = entries.find((other) => active && other.panel()?.contains(active))
+  return from ? from.returnFocusTo : active
 }
 
 // A close interrupted by a reopen: the sheet is open again.

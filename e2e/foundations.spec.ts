@@ -169,6 +169,8 @@ test.describe('buttons', () => {
     }
     await openView(page, 'week')
     await page.locator('[data-block-id="b-gym"]').first().click()
+    // A routine opens as a conversation (R_EditarRutina); the whole form is "Edit all".
+    await page.getByTestId('talk-edit-all').click()
     const save = page.getByRole('dialog').getByRole('button', { name: 'Save', exact: true })
     await expect(save).toBeVisible()
     const [saveBox, bodyBox] = await Promise.all([save.boundingBox(), page.locator('.sheet-body').boundingBox()])

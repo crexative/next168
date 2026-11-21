@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, nextTick, onBeforeUnmount, onMounted, ref, useId, watch } from 'vue'
+import { computed, nextTick, onBeforeUnmount, onMounted, onUnmounted, ref, useId, watch } from 'vue'
 import type { Category, DayIndex, Goal, TimeBlock } from '@/core/model'
 import { categoryColor } from '@/features/insights/categoryColor'
 import DayPicker from '@/features/onboarding/setup/DayPicker.vue'
@@ -10,7 +10,7 @@ import AppMark from '@/ui/AppMark.vue'
 import Button from '@/ui/Button.vue'
 import ConversationFrame from '@/ui/ConversationFrame.vue'
 import QuickReplies from '@/ui/QuickReplies.vue'
-import { openFullScreen } from '@/ui/sheetStack'
+import { anySheetOpen, focusOrigin, openFullScreen } from '@/ui/sheetStack'
 import Icon from '@/ui/Icon.vue'
 import { registerIcons } from '@/ui/icons'
 import { CalendarDays, Clock, Pencil, Target, Trash2 } from 'lucide-vue-next'
@@ -117,8 +117,19 @@ watch(step, async () => {
 })
 
 let release: (() => void) | undefined
+// Week removes the conversation rather than closing its frame, so it gives focus back itself: to the routine tapped
+// (also through a chooser), unless a sheet it opened ("Editar todo") or something else has taken focus meanwhile.
+const origin = focusOrigin()
 onMounted(() => { release = openFullScreen() })
 onBeforeUnmount(() => release?.())
+onUnmounted(() => {
+  void nextTick(() => {
+    const active = document.activeElement
+    if (anySheetOpen() || (active && active !== document.body)) return
+    const target = origin?.isConnected ? origin : document.querySelector<HTMLElement>('main h1')
+    target?.focus({ preventScroll: true })
+  })
+})
 </script>
 
 <template>

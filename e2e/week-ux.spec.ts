@@ -527,7 +527,8 @@ test.describe('tasks in Week', () => {
   // focus to the item chosen.
   const focusInside = (page: Page, name: string) => page.getByRole('dialog', { name }).evaluate((dialog) => dialog.contains(document.activeElement))
   for (const [label, row, editor, anchor] of [
-    ['a routine', /Gimnasio/, 'Editar rutina', '[data-block-id="b-gym"]'],
+    // A routine opens as its conversation (R_EditarRutina).
+    ['a routine', /Gimnasio/, 'Cambiar Gimnasio', '[data-block-id="b-gym"]'],
     ['a task', /Planear la ruta/, 'Editar tarea', '[data-task-id="t-route"]'],
   ] as const) {
     test(`${label} opened from the chooser keeps focus, closes on Escape and gives focus back to it`, async ({ page }) => {
