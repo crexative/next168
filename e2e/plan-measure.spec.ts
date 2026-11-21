@@ -153,8 +153,9 @@ test.describe('plan and measure', () => {
     const bar = page.getByTestId('week-bar')
     await expect(bar.locator('[data-segment]')).toHaveCount(4)
     await expect(page.getByTestId('capacity-available')).toHaveText('102 h assigned · 66 h unassigned')
-    await expect(page.getByTestId('goal-row-c-work').getByTestId('goal-state')).toHaveText('!')
-    await expect(page.getByTestId('goal-row-c-sleep').getByTestId('goal-state')).toHaveText('✓')
+    // Calm when on track: only the goal that needs attention has a mark (⚠, amber).
+    await expect(page.getByTestId('goal-row-c-work').getByTestId('goal-state')).toHaveCount(1)
+    await expect(page.getByTestId('goal-row-c-sleep').getByTestId('goal-state')).toHaveCount(0)
     await expect(page.getByTestId('measures-empty')).toContainText('Day wrap-up')
     await page.getByRole('link', { name: 'Do the Day wrap-up' }).click()
     await expect(page).toHaveURL(/#\/checkin$/)
