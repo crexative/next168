@@ -357,7 +357,7 @@ dismissUndoWhenChanged(() => planner.document?.workspaceId)
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-.top-tab[aria-current='page'] { background: var(--surface); box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12); }
+.top-tab[aria-current='page'] { background: var(--segment-selected); box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12); }
 .top-tab:focus-visible { outline-offset: -2px; }
 
 .toolbar-entries { display: inline-flex; align-items: center; gap: var(--space-2); }

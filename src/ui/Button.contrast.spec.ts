@@ -23,7 +23,7 @@ describe('tinted button label contrast', () => {
 describe('redesign text tokens', () => {
   for (const { name, tokens } of themes) {
     for (const [label, background] of [
-      ['--tint-label', '--tint-soft'], ['--label-2', '--tint-soft'], ['--label', '--tint-soft'],
+      ['--tint-label', '--tint-soft'], ['--label-2', '--tint-soft'], ['--label', '--tint-soft'], ['--label', '--segment-selected'],
       ...SURFACES.flatMap((surface) => [['--label-2', surface], ['--warning-label', surface], ['--danger-label', surface], ['--tint-label', surface]]),
     ] as const) {
       it(`${name}: ${label} reaches AA on ${background}`, () => {
