@@ -74,7 +74,7 @@ function saveMinutes(): void {
     <template v-else>
       <p class="ask t-footnote" data-testid="now-ask">{{ question }}</p>
       <!-- The answers are visible replies, not hidden behind a long press (DIRECTION principle 5). -->
-      <QuickReplies :options="replies" :columns="3" :group-label="question" :disabled="!writable" @answer="onReply" />
+      <QuickReplies :options="replies" :columns="3" min-cell="5.5rem" :group-label="question" :disabled="!writable" @answer="onReply" />
       <form v-if="askingMinutes" class="minutes" data-testid="now-minutes" @submit.prevent="saveMinutes">
         <label class="t-footnote" :for="inputId">{{ t('today.status.minutesLabel', { planned: plannedMinutes }) }}</label>
         <div class="minutes-row">

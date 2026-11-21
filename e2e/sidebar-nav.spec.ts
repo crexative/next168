@@ -74,7 +74,8 @@ for (const theme of THEMES) {
       expect(await page.evaluate(() => window.localStorage.getItem('next168-sidebar'))).toBeNull()
     })
 
-    test('text screens keep one 720 px measure, centred with the sidebar shown or hidden; only Week grows', async ({ page }) => {
+    // Hoy sets an aside beside its day on a desktop (R_EscritorioHoy): its measure is 1040 px.
+    test('text screens keep one 720 px measure (Hoy 1040), centred with the sidebar shown or hidden; only Week grows', async ({ page }) => {
       await start(page, theme)
       for (const hidden of [false, true]) {
         if (hidden) { await toggle(page).click(); await expect(sidebar(page)).toBeHidden() }
@@ -82,8 +83,9 @@ for (const theme of THEMES) {
           await page.goto(`./#/${route}`)
           await settle(page)
           const { width, offCentre } = await viewMeasure(page)
-          expect(width, `${route} width, sidebar ${hidden ? 'hidden' : 'shown'}`).toBeLessThanOrEqual(MEASURE + 0.5)
-          expect(width, `${route} uses the measure`).toBeGreaterThan(MEASURE - 0.5)
+          const measure = route === 'today' ? 1040 : MEASURE
+          expect(width, `${route} width, sidebar ${hidden ? 'hidden' : 'shown'}`).toBeLessThanOrEqual(measure + 0.5)
+          expect(width, `${route} uses the measure`).toBeGreaterThan(Math.min(measure, (page.viewportSize()?.width ?? 0) - (hidden ? 0 : 272)) - 0.5)
           expect(offCentre, `${route} centred`).toBeLessThanOrEqual(1)
         }
       }

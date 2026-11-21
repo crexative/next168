@@ -82,10 +82,10 @@ const askedKey = computed(() => {
   return `block:${action.occurrence.blockId}@${action.occurrence.start}`
 })
 // What the Ahora hero shows is not repeated in the list: its item, and the routine it sits in (principle 3).
-const heroKeys = computed(() => {
+const hero = computed(() => {
   const state = nowState.value
-  if (!state.primary) return []
-  return state.context && state.context.kind !== 'alsoNow' ? [state.primary.key, state.context.key] : [state.primary.key]
+  if (!state.primary) return undefined
+  return { key: state.primary.key, contextKey: state.context && state.context.kind !== 'alsoNow' ? state.context.key : undefined }
 })
 // On the desktop "Añadir" is the page's filled button, so the hero's action is tinted; the day's extras move to an aside.
 const wide = useMediaQuery(PERSISTENT_QUERY)
@@ -166,7 +166,7 @@ function clear(occurrence: DatedOccurrence): void {
           :writable="planner.writable"
           :asked-key="askedKey"
           :plan-since="since"
-          :hidden-keys="heroKeys"
+          :hero="hero"
           @record="record"
           @clear="clear"
           @complete-task="complete"

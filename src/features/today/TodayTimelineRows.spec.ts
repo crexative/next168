@@ -159,7 +159,7 @@ describe('TodayTimeline rows', () => {
     const work = items.find((item) => item.title === 'Deep work')!
     const report = { ...task, key: 'task:r@9', title: 'Report', start: '2026-10-21T09:00:00.000Z', end: '2026-10-21T10:30:00.000Z' }
     const dentist = { kind: 'event' as const, key: 'event:dentist', title: 'Dentist', start: '2026-10-21T10:40:00.000Z', end: '2026-10-21T10:50:00.000Z' }
-    const host = await render({ items: [work, report, dentist], now: new Date('2026-10-21T09:15:00Z'), hiddenKeys: [report.key, work.key] })
+    const host = await render({ items: [work, report, dentist], now: new Date('2026-10-21T09:15:00Z'), hero: { key: report.key, contextKey: work.key } })
     const titles = [...host.querySelectorAll('[data-testid="timeline-item"] .row-title-text')].map((title) => title.textContent?.replace(/^.*: /, '').trim())
     expect(titles).toEqual(['Dentist'])
     expect(rowOf(host, 'Dentist').querySelector('[data-testid="timeline-overlap"]')?.textContent).toBe('Overlaps with Deep work')

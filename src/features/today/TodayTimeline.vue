@@ -27,8 +27,8 @@ const props = defineProps<{
   // Key of the block the Now card already asks about while it is under way, so its row does not ask a second time.
   askedKey?: string
   planSince?: number
-  // Items the Ahora hero already shows (its item and the routine it sits in): each thing appears once (principle 3).
-  hiddenKeys?: readonly string[]
+  // What the Ahora hero already shows: its item and the routine it sits in. Each thing appears once (principle 3).
+  hero?: { key: string; contextKey?: string }
 }>()
 const emit = defineEmits<{
   record: [occurrence: DatedOccurrence, status: ActualStatus, actualMinutes?: number]
@@ -118,7 +118,7 @@ function hasControl(item: TimelineItem): boolean {
 
 // The routines whose rows the Ahora hero holds instead of the list.
 const hiddenBlocks = computed(() => {
-  const hidden = new Set(props.hiddenKeys ?? [])
+  const hidden = new Set([props.hero?.key, props.hero?.contextKey].filter((key): key is string => !!key))
   return props.items.filter((item) => item.kind === 'block' && hidden.has(item.key))
 })
 
@@ -169,12 +169,12 @@ const entries = computed<Entry[]>(() => {
   if (expanded.value) result.push(...past.value.map((item): Entry => ({ type: 'item', key: item.key, item })))
   result.push({ type: 'now', key: 'now' })
   let covered = props.now.getTime()
-  const hidden = new Set(props.hiddenKeys ?? [])
+  const hidden = new Set([props.hero?.key, props.hero?.contextKey].filter((key): key is string => !!key))
   for (const item of props.items.filter((candidate) => !isPast(candidate))) {
     // The hero's own item still fills its time (no "Libre" inside it); the routine it sits in does not, as in the list
     // before: free time inside a routine is named.
     if (hidden.has(item.key)) {
-      if (item.kind !== 'block') covered = Math.max(covered, Date.parse(item.end))
+      if (item.key === props.hero?.key) covered = Math.max(covered, Date.parse(item.end))
       continue
     }
     // Free time is named only between the current item and the next one, never after the day's last item.
@@ -354,7 +354,8 @@ async function toggleEarlier(): Promise<void> {
 .row-note { margin: 0; }
 /* Something that needs attention says so in amber, never red (DIRECTION principle 6). */
 .row-attention { display: flex; align-items: center; color: var(--warning-label); }
-/* Last night's tail: one quiet line. */
+/* Last night's tail: one quiet line in the text column. */
+.carry { grid-column: 3; }
 .carry { display: flex; align-items: baseline; gap: var(--space-2); min-width: 0; margin: 0; flex-wrap: wrap; }
 .carry-title { min-width: 0; overflow-wrap: normal; color: var(--label-2); }
 .carry-note { flex: none; font-variant-numeric: tabular-nums; }
@@ -383,7 +384,7 @@ async function toggleEarlier(): Promise<void> {
 
 /* The now-line: "Ahora 10:40" in the time column, a dot on the bar column and a 2 px green rule (green = now). */
 .is-now { display: grid; grid-template-columns: var(--time-column) 4px minmax(0, 1fr); gap: var(--space-3); align-items: center; min-height: 24px; padding: var(--space-1) var(--page-gutter); }
-.now-label { justify-self: end; color: var(--tint-label); text-align: end; font-variant-numeric: tabular-nums; }
+.now-label { justify-self: end; color: var(--tint-label); font-weight: 600; text-align: end; font-variant-numeric: tabular-nums; }
 .now-dot { justify-self: center; width: 8px; height: 8px; border-radius: 4px; background: var(--tint); }
 .now-rule { height: 2px; margin-inline-start: -14px; background: var(--tint); }
 
@@ -416,7 +417,8 @@ async function toggleEarlier(): Promise<void> {
   .now-label { grid-column: 2; grid-row: 1; justify-self: start; }
   .now-dot { grid-column: 1; grid-row: 2; }
   .now-rule { grid-column: 2; grid-row: 2; margin: 0; }
-  .carry { flex-wrap: wrap; white-space: normal; }
+  .is-carry .row-time { display: none; }
+  .carry { grid-column: 2; flex-wrap: wrap; white-space: normal; }
   .carry-note { flex: 0 1 auto; min-width: 0; }
 }
 </style>

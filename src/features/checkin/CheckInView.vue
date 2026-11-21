@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref, useId, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { checkInDateFor } from './evening'
+import { checkInDateFor, checkInDoneToday } from './evening'
 import { assertEntry, CHANGED_ELSEWHERE, snapshotOf } from '@/features/insights/entryGuard'
 import { backTarget } from '@/features/settings/navigationTrail'
 import { actualFor } from '@/features/today/actuals'
@@ -287,9 +287,12 @@ const stressReplies = computed(() => (['1', '2', '3', '4', '5'] as const).map((v
 const noteOpen = ref(false)
 watch(() => form.note, (note) => { if (note) noteOpen.value = true }, { immediate: true })
 const remindAt = computed(() => formatMinute(REMINDER_MINUTE, locale.value))
-const reminderShown = ref(reminderSupported() || reminderEnabled())
+// As on the old card: offered where notifications work and the day is still open, and kept while it is armed.
+const reminderSupportedNow = ref(reminderSupported())
 const reminderOn = ref(reminderEnabled())
 const reminderBlocked = ref(false)
+const doneToday = computed(() => !!planner.document && checkInDoneToday(planner.document, now.value))
+const reminderShown = computed(() => (reminderSupportedNow.value && !doneToday.value) || reminderOn.value)
 async function toggleReminder(): Promise<void> {
   if (reminderOn.value) {
     disableReminder()
@@ -300,6 +303,7 @@ async function toggleReminder(): Promise<void> {
   const outcome = await enableReminder()
   reminderOn.value = outcome === 'enabled'
   reminderBlocked.value = outcome === 'blocked'
+  reminderSupportedNow.value = reminderSupported()
 }
 
 // The frame owns the screen while the check-in is open; × leads back to where it was opened from.
@@ -391,7 +395,9 @@ onBeforeUnmount(() => releaseFullScreen?.())
 
 <style scoped>
 .checkin { display: flex; flex: 1; flex-direction: column; min-height: 0; }
-.scroller { display: flex; flex: 1 1 auto; flex-direction: column; justify-content: flex-end; min-height: 0; overflow-y: auto; overscroll-behavior: contain; }
+.scroller { display: flex; flex: 1 1 auto; flex-direction: column; min-height: 0; overflow-y: auto; overscroll-behavior: contain; }
+/* The conversation rests on the dock like a chat; margin (not justify-content) keeps a tall one scrollable to its top. */
+.scroller > .column { margin-top: auto; }
 .column { box-sizing: border-box; width: 100%; max-width: var(--column); margin-inline: auto; padding-inline: max(var(--page-gutter), var(--safe-left)) max(var(--page-gutter), var(--safe-right)); }
 .scroller > .column { display: flex; flex-direction: column; gap: var(--space-3); padding-block: var(--space-2) var(--space-4); }
 .date-line { margin: 0 0 var(--space-1); color: var(--label-2); font-weight: 600; text-align: center; }
