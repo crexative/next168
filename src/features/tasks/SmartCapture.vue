@@ -23,7 +23,9 @@ import './registerIcons'
 // dates, times and lengths the closed L0 grammar is sure of shown as chips the person can change (✎) or give back to
 // the title (✕). Two or more lines (a paste, Shift+Enter or dictation with line breaks): nothing is inferred; the
 // preview offers one task per line, titles only, or the whole text as one task. No model is involved.
-const props = withDefaults(defineProps<{ dueToday?: boolean; label?: string }>(), { dueToday: false, label: undefined })
+// `inSheet`: the capture is the body of the Nueva tarea sheet (R_HojaTarea): a large title field with its hint, the
+// options always shown, and the sheet's header "Añadir" submitting through `submit()` instead of a button here.
+const props = withDefaults(defineProps<{ dueToday?: boolean; label?: string; inSheet?: boolean }>(), { dueToday: false, label: undefined, inSheet: false })
 const emit = defineEmits<{ added: [count: number] }>()
 
 const MAX_LINES = 20
@@ -89,7 +91,7 @@ const effective = computed<TaskDraft>(() => {
   return draft
 })
 
-const detailsOpen = computed(() => !multiLine.value && text.value.trim().length > 0)
+const detailsOpen = computed(() => !multiLine.value && (props.inSheet || text.value.trim().length > 0))
 const shownDraft = computed<TaskDraft>(() => ({ ...effective.value, categoryId: resolveWhen(categories.value, effective.value.categoryId) }))
 const busy = computed(() => ['saving', 'checking', 'unverified'].includes(submission.state.value))
 const canAdd = computed(() => planner.writable && !busy.value && !multiLine.value && parsed.value.title.trim().length > 0)
@@ -329,11 +331,18 @@ const statusText = computed(() => {
   }
 })
 
-defineExpose({ focus: () => field.value?.focus() })
+// What the sheet's header action does: one task, or every chosen line of a multi-line paste.
+const canSubmit = computed(() => (multiLine.value ? !busy.value && !tooManyLines.value && chosen.value.length > 0 : canAdd.value))
+const dirty = computed(() => text.value.trim().length > 0)
+function submit(): void {
+  void (multiLine.value ? addAll() : addOne())
+}
+
+defineExpose({ focus: () => field.value?.focus(), submit, canSubmit, dirty })
 </script>
 
 <template>
-  <form ref="root" class="add" :aria-label="label ?? t('tasks.add.title')" novalidate @submit.prevent="multiLine ? undefined : addOne()">
+  <form ref="root" class="add" :class="{ 'in-sheet': inSheet }" :aria-label="label ?? t('tasks.add.title')" novalidate @submit.prevent="multiLine ? undefined : addOne()">
     <label class="field" :for="ids.field">
       <span class="visually-hidden">{{ t('tasks.add.titleLabel') }}</span>
       <textarea
@@ -341,11 +350,13 @@ defineExpose({ focus: () => field.value?.focus() })
         ref="field"
         v-model="text"
         class="input capture-field"
+        :class="{ 'is-title': inSheet }"
         rows="1"
         autocomplete="off"
         :enterkeyhint="multiLine ? 'enter' : 'done'"
-        :placeholder="t('capture.placeholder')"
-        :aria-describedby="spans.length ? ids.chips : ids.hint"
+        :placeholder="inSheet ? t('tasks.add.titleLabel') : t('capture.placeholder')"
+        :aria-describedby="spans.length ? `${ids.chips} ${ids.hint}` : ids.hint"
+        :data-autofocus="inSheet || undefined"
         :readonly="busy"
         :aria-busy="busy || undefined"
         data-testid="capture-field"
@@ -354,7 +365,8 @@ defineExpose({ focus: () => field.value?.focus() })
         @compositionend="composing = false"
       />
     </label>
-    <p :id="ids.hint" class="visually-hidden">{{ t('capture.dictationHint') }}</p>
+    <p v-if="inSheet" :id="ids.hint" class="t-footnote t-secondary hint">{{ t('tasks.add.manyHint') }}</p>
+    <p v-else :id="ids.hint" class="visually-hidden">{{ t('capture.dictationHint') }}</p>
 
     <div v-if="spans.length && !multiLine" :id="ids.chips" class="chips" role="group" :aria-label="t('capture.chip.group')" data-testid="capture-chips">
       <span v-for="span in spans" :key="span.key" class="chip" :data-field="span.field" data-testid="capture-chip">
@@ -416,7 +428,7 @@ defineExpose({ focus: () => field.value?.focus() })
 
     <div v-if="detailsOpen" class="details" role="group" :aria-label="t('tasks.add.details')" data-testid="task-details">
       <TaskOptions :draft="shownDraft" :categories="categories" :time-zone="timeZone" :suggested-category-id="suggestedCategoryId" standard-lengths @patch="patch" />
-      <Button type="submit" block :disabled="!canAdd">
+      <Button v-if="!inSheet" type="submit" block :disabled="!canAdd">
         <Icon name="plus" :size="20" /> {{ t('tasks.add.submit') }}
       </Button>
     </div>
@@ -477,6 +489,18 @@ defineExpose({ focus: () => field.value?.focus() })
 <style scoped>
 .add { display: flex; flex-direction: column; gap: var(--space-3); padding: var(--card-padding-block) var(--card-padding); background: var(--surface); border-radius: var(--radius-card); }
 .field { display: flex; flex: 1; flex-direction: column; gap: var(--space-1); min-width: 0; }
+/* In the sheet the form is the grouped page itself; the title is a large white field without a border. */
+.add.in-sheet { padding: 0; background: transparent; border-radius: 0; gap: var(--space-2); }
+.in-sheet .details { margin-top: var(--space-3); }
+.capture-field.is-title {
+  border-color: transparent;
+  border-radius: var(--radius-card);
+  background: var(--surface);
+  padding-inline: var(--card-padding);
+  font-size: 1.375rem;
+  font-weight: 600;
+}
+.hint { padding-inline: var(--space-1); }
 .capture-field {
   padding-inline: min(var(--space-3), 12px);
   min-height: var(--tap-target);
