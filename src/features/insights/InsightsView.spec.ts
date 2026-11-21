@@ -75,16 +75,22 @@ describe('Summary: your typical week', () => {
 
   it('names the week it is about under the title, in words', async () => {
     await mount()
-    expect(text('insights-subtitle')).toMatch(/^Week of Oct 19\s?–\s?25$/)
+    // A range of two numbers has an unspaced dash (REVIEW B2).
+    expect(text('insights-subtitle')).toBe('Week of Oct 19–25')
     app?.unmount()
     await mount(base, 'es')
     expect(text('insights-subtitle')).toBe('Semana del 19 al 25 oct')
+    app?.unmount()
+    // German writes the day with its period: "vom 19. bis 25. Okt.".
+    await mount(base, 'de')
+    expect(text('insights-subtitle')).toBe('Woche vom 19. bis 25. Okt.')
   })
 
   it('gives the live free hours one line that matches the free-hours figure everywhere', async () => {
     await mount()
     const free = freeHoursWhole(base, new Date(NOW), 'UTC')
-    expect(text('free-hours-live')).toBe(`${free} h free this week`)
+    // "From now": the free hours count from now, unlike the bar's unassigned hours, which count the whole week.
+    expect(text('free-hours-live')).toBe(`${free} h free from now`)
     expect(host.querySelector('[data-testid="week-split"]')).toBeNull()
     expect(host.textContent).not.toMatch(/Already past|Planned ahead|This week from now/)
   })
@@ -200,7 +206,7 @@ describe('Summary: your goals this week', () => {
 describe('Summary: last 7 days', () => {
   it('names the window by its dates, not by weekdays that roll', async () => {
     await mount()
-    expect(text('measures-range')).toBe('Oct 15 – 21')
+    expect(text('measures-range')).toBe('Oct 15–21')
     // Each date is unbreakable (month and day stay together); only the dash may break the line.
     expect(host.querySelector('[data-testid="measures-range"]')!.textContent).toContain('Oct\u00a015')
   })

@@ -10,9 +10,11 @@ import { usePlannerStore } from '@/stores/plannerStore'
 import AssistantEntryButton from '@/features/assistant/AssistantEntryButton.vue'
 import ShareWeekButton from '@/features/share/ShareWeekButton.vue'
 import { freeHoursWhole } from '@/features/capacity/freeHours'
+import { freeHoursText } from '@/features/capacity/freeHoursText'
 import { useNow } from '@/features/week/useNow'
 import { weekDates } from '@/features/week/localTime'
 import { weekRangeLabel } from '@/features/week/weekNavigation'
+import { dayOfMonth, tightRange } from './dateText'
 import Icon from '@/ui/Icon.vue'
 import { EXERCISE_ICON } from './exercise'
 import MeasureTiles from './MeasureTiles.vue'
@@ -37,10 +39,10 @@ const subtitle = computed(() => {
   const first = dates[0]!, last = dates[6]!
   const sameMonth = first.slice(0, 7) === last.slice(0, 7)
   return t('insights.subtitle', {
-    from: formatDate(first, locale.value, sameMonth ? { day: 'numeric' } : { day: 'numeric', month: 'short' }),
+    from: sameMonth ? dayOfMonth(first, locale.value) : formatDate(first, locale.value, { day: 'numeric', month: 'short' }),
     to: formatDate(last, locale.value, { day: 'numeric', month: 'short' }),
     // For a language whose words do not fit "from … to …" ("Week of Oct 19–25").
-    range: weekRangeLabel(dates, locale.value, today),
+    range: tightRange(weekRangeLabel(dates, locale.value, today)),
   })
 })
 const stats = computed(() => (document.value ? computeStats(document.value) : null))
@@ -104,7 +106,7 @@ function doneText(row: Row): string {
     />
     <template v-else>
       <section class="week" :aria-label="t('insights.bar.title')">
-        <h2 class="headline t-title-1" data-testid="free-hours-live">{{ t('capacity.badge', { hours: freeHours }, freeHours) }}</h2>
+        <h2 class="headline t-title-1" data-testid="free-hours-live">{{ freeHoursText(t, 'insights.headline', freeHours) }}</h2>
         <WeekBar :categories="document.categories" :planned-minutes="plannedMinutes" />
         <ShareWeekButton v-if="document.blocks.length > 0" />
       </section>

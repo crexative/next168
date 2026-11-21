@@ -49,5 +49,6 @@
       "none": "No data"
     }
   },
-  "subtitle": "Week of {range}"
+  "subtitle": "Week of {range}",
+  "headline": "{hours} h free from now"
 }

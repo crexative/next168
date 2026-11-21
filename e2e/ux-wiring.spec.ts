@@ -125,9 +125,10 @@ for (const size of Object.keys(SIZES) as (keyof typeof SIZES)[]) {
         await expect(slot.getByTestId('free-hours')).toHaveText(weekBadge)
 
         await open(page, 'insights', 'Resumen')
-        // The "this week, from now" card is gone; the headline says the same figure the badge does (R_Resumen).
+        // The "this week, from now" card is gone; the headline gives the same figure as the badge, said "desde ahora"
+        // so it does not read against the bar's unassigned hours, which count the whole week.
         await expect(page.getByTestId('week-split')).toHaveCount(0)
-        await expect(page.getByTestId('free-hours-live')).toHaveText(weekBadge)
+        await expect(page.getByTestId('free-hours-live')).toHaveText(`${hoursIn(weekBadge)} h libres desde ahora`)
         await audit(page, `${size}/${theme}/insights live line`)
       })
     })

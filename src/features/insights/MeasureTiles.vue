@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { tightRange } from './dateText'
 import { unbreakable } from '@/ui/inlineText'
 import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
@@ -35,7 +36,7 @@ const range = computed(() => {
   if (!first || !last) return ''
   // formatRange is in every supported browser but not yet in the project's TypeScript lib.
   const format = new Intl.DateTimeFormat(locale.value, { day: 'numeric', month: 'short', timeZone: 'UTC' }) as Intl.DateTimeFormat & { formatRange(start: Date, end: Date): string }
-  return unbreakable(format.formatRange(new Date(`${first}T12:00:00Z`), new Date(`${last}T12:00:00Z`)))
+  return unbreakable(tightRange(format.formatRange(new Date(`${first}T12:00:00Z`), new Date(`${last}T12:00:00Z`))))
 })
 
 const tiles = computed(() => {

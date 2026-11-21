@@ -213,3 +213,28 @@ test.describe('category colours', () => {
     expect(stored.categories.at(-1)).toMatchObject({ name: 'Reading', colorKey: 'blue' })
   })
 })
+
+// REVIEW M3 and principle 6: the key's shapes say the state; only "needs attention" is in colour (amber), the rest
+// are the secondary label colour, and "no data" is an outline. Checked on the drawn colours, not on class names.
+test('the key to the day shapes draws only "needs attention" in amber', async ({ page }) => {
+  const today = '2026-10-26'
+  await start(page, { categories: [sleep, work, study], blocks, checkIns: [{ date: '2026-10-25', bedtime: 1380, wake: 420, stress: 2 }, { date: today, bedtime: 60, wake: 300, stress: 5 }] })
+  await openTab(page, 'insights')
+  const key = page.getByRole('list', { name: 'Key to the dots' })
+  await expect(key).toBeVisible()
+  const drawn = await key.locator('.dot').evaluateAll((dots) => {
+    const token = (name: string) => { const probe = document.createElement('i'); probe.style.color = `var(${name})`; document.body.append(probe); const value = getComputedStyle(probe).color; probe.remove(); return value }
+    const label2 = token('--label-2'), amber = token('--warning-label')
+    return dots.map((dot) => {
+      const style = getComputedStyle(dot)
+      const fill = style.backgroundColor
+      return { fill: fill === label2 ? 'label-2' : fill === amber ? 'amber' : fill === 'rgba(0, 0, 0, 0)' ? 'none' : fill, edge: style.borderTopColor === label2 && style.borderTopWidth !== '0px' ? 'label-2' : 'none' }
+    })
+  })
+  expect(drawn).toEqual([
+    { fill: 'label-2', edge: 'none' },
+    { fill: 'label-2', edge: 'none' },
+    { fill: 'amber', edge: 'none' },
+    { fill: 'none', edge: 'label-2' },
+  ])
+})

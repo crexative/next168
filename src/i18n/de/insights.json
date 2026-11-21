@@ -49,5 +49,6 @@
       "none": "Keine Daten"
     }
   },
-  "subtitle": "Woche vom {from} bis {to}"
+  "subtitle": "Woche vom {from} bis {to}",
+  "headline": "{hours} h frei ab jetzt"
 }
