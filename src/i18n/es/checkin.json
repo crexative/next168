@@ -43,6 +43,9 @@
     "final": "Este es tu cierre de hoy.",
     "done": "Listo por hoy. Que descanses.",
     "date": "Cierre del día · {date}",
-    "addNote": "Añadir una nota"
+    "addNote": "Añadir una nota",
+    "unanswered": "Sin responder",
+    "answer": "Responder",
+    "unsaved": "Tus respuestas de antes aún no están guardadas."
   }
 }

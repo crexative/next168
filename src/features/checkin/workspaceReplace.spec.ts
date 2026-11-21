@@ -52,8 +52,10 @@ async function setup(component: object, first: PlannerDocument) {
 
 // The check-in is a conversation teleported to the body; its note and "Save" are on the last turn.
 const checkinStep = () => document.body.querySelector<HTMLElement>('[data-testid="checkin"]')?.dataset.step
+// Bounded: a walk that only awaits ticks never yields to vitest's timer, so a stuck conversation must fail, not hang.
 async function toFinal(): Promise<void> {
-  while (checkinStep() !== 'final') {
+  for (let taps = 0; checkinStep() !== 'final'; taps++) {
+    if (taps === 12) throw new Error(`the check-in did not move past "${checkinStep()}" in 12 taps`)
     document.body.querySelector<HTMLButtonElement>('[data-testid="checkin-skip"]')!.click()
     await nextTick()
   }

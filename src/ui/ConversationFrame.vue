@@ -152,8 +152,8 @@ onBeforeUnmount(() => {
 .bar-inner > .bar-button { justify-self: start; }
 
 .progress { justify-self: end; min-width: 0; margin: 0; padding-inline-end: 8px; text-align: end; }
-/* Like the tab labels, the count stops growing at large text and may wrap between its words: it never runs out of the bar. */
-.count { color: var(--label-2); font-size: min(0.8125rem, 15px); font-weight: 600; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+/* The count grows with the text and may wrap between its words: it never runs out of the bar. */
+.count { color: var(--label-2); font-size: 0.8125rem; font-weight: 600; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
 /* A part added later (a pick that asks one more question) slides in as a new segment. */
 .segments { display: flex; gap: 4px; margin: var(--space-1) var(--space-2) var(--space-2); }
 .segment { flex: 1; height: 4px; border-radius: 2px; background: var(--fill); transition: background-color 0.2s, flex-grow var(--spring-duration) var(--ease-out); }

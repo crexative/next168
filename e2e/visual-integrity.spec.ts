@@ -808,6 +808,7 @@ for (const theme of THEMES) {
       await expect(page.getByTestId('checkin-card')).toBeVisible()
       await audit(page, `${theme}/today: the check-in row in the evening`)
       await page.getByTestId('checkin-card').click()
+      // The check-in is a conversation (R_Cierre): told times, one open question at a time.
       await expect(page.getByTestId('checkin')).toBeVisible()
       await settle(page)
       await audit(page, `${theme}/check-in prefilled from the plan`)

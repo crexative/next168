@@ -43,6 +43,9 @@
     "final": "Este é o seu fechamento de hoje.",
     "done": "Pronto por hoje. Descanse bem.",
     "date": "Fechamento do dia · {date}",
-    "addNote": "Adicionar uma nota"
+    "addNote": "Adicionar uma nota",
+    "unanswered": "Sem resposta",
+    "answer": "Responder",
+    "unsaved": "Suas respostas anteriores ainda não foram salvas."
   }
 }
