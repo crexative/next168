@@ -106,3 +106,10 @@ export async function writeStoredDocument(page: Page, document: unknown): Promis
     }
   }), JSON.stringify(document))
 }
+
+// A time row of a range card opens its times; the first range of a question opens on its start by itself (DIRECTION
+// §4, fewer taps), so a row is pressed only while it is closed.
+export async function openField(row: Locator): Promise<void> {
+  if (await row.getAttribute('aria-expanded') !== 'true') await row.click()
+  await expect(row).toHaveAttribute('aria-expanded', 'true')
+}
