@@ -178,6 +178,22 @@ describe('check-in conversation', () => {
     expect(step()).toBe('stress')
   })
 
+  it('keeps no draft after a save that leaves no entry: withdrawing the times the plan told and saving', async () => {
+    window.location.hash = '#/checkin'
+    const store = await mount(planned)
+    const told = ['bedtime', 'wake', 'workEnd'].filter((fact) => $(`[data-testid="answer-${fact}"]`))
+    expect(told.length).toBeGreaterThan(0)
+    for (const fact of told) { await tap(`answer-${fact}`); await skip() }
+    await toFinal()
+    submit()
+    await store.settled()
+    expect(store.document?.checkIns.find((checkIn) => checkIn.date === '2026-10-24')).toBeUndefined()
+    app!.unmount(); host.remove()
+    await mount(planned)
+    expect($('[data-testid="checkin-unsaved"]')).toBeNull()
+    for (const fact of told) expect($(`[data-testid="answer-${fact}"]`), fact).not.toBeNull()
+  })
+
   it('never brings back an answer undone after reopening: the next close keeps only what is still unsaved', async () => {
     window.location.hash = '#/checkin'
     const reopen = async (document: PlannerDocument) => { $<HTMLButtonElement>('.setup-close')!.click(); app!.unmount(); host.remove(); return mount(document) }
@@ -510,6 +526,17 @@ describe('check-in routines to mark', () => {
     await store.settled()
     expect(store.document?.checkIns.at(-1)).toMatchObject({ date: '2026-10-24', exercise: 'yes' })
     expect(window.location.hash).toBe('#/today')
+  })
+
+  it('closes the Partly minutes when the routine is answered Done instead, so the next one opens without them', async () => {
+    await mount(trained)
+    await reply('partial')
+    expect($('[data-testid="checkin-minutes"]')).not.toBeNull()
+    await reply('done')
+    await usePlannerStore().settled()
+    await nextTick()
+    expect(question()).toBe('How did Run go?')
+    expect($('[data-testid="checkin-minutes"]')).toBeNull()
   })
 
   it('never records more Partly minutes than the routine had planned', async () => {

@@ -125,6 +125,9 @@ async function save(): Promise<void> {
       : upsertCheckIn(draft.checkIns, next)
   })
   if (result.ok) {
+    // What was saved is no longer unsaved, even when the stored entry did not change (every answer withdrawn on a
+    // day with no entry): otherwise leaving would keep the draft just dropped.
+    pristine.value = { ...form }
     dropDraft()
     // Today shows "Guardado ✓" and takes focus; the conversation ends with its last line, said aloud.
     markCheckInSaved()
@@ -278,6 +281,8 @@ function answerBlock(value: string): void {
     partialMinutes.value = actualOf(step)?.actualMinutes ?? Math.round(occurrence.plannedMinutes / 2)
     return
   }
+  // Hecho or No after A medias: the minutes field belongs to this routine and must not open on the next one.
+  partialMinutes.value = null
   void blockStatus.record(occurrence, value as 'done' | 'skipped')
   done(step)
 }
