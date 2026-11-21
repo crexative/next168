@@ -7,7 +7,9 @@ import { isHover, watchPressEnd } from '@/ui/pressEnd'
 
 // `timeline` lays the row out like Today's list (R_Hoy): an empty time column, a dashed bar in the task's colour, the
 // text, and the circle at the trailing end.
-withDefaults(defineProps<{ title: string; subtitle?: string; color: string; completeLabel: string; variant?: 'list' | 'timeline' }>(), { variant: 'list' })
+// `list` is a plain row on the page (R_Tareas): a 24 px ring in the task's colour, the title and its meta. `attention`
+// draws the meta in amber (overdue, does not fit).
+withDefaults(defineProps<{ title: string; subtitle?: string; color: string; completeLabel: string; variant?: 'list' | 'timeline'; attention?: boolean }>(), { variant: 'list', attention: false })
 // The circle completes; a tap on the text opens the task; a swipe to the left removes it (the screen offers Undo).
 const emit = defineEmits<{ complete: []; open: []; remove: [] }>()
 
@@ -80,7 +82,7 @@ onBeforeUnmount(() => stopWatchingPress?.())
       </button>
       <button class="task-text" type="button" @click="onOpen">
         <span class="t-body title">{{ title }}</span>
-        <span v-if="subtitle" class="t-footnote t-secondary">{{ subtitle }}</span>
+        <span v-if="subtitle" class="t-footnote meta" :class="{ 'is-attention': attention }">{{ subtitle }}</span>
         <slot />
       </button>
       <button v-if="variant === 'timeline'" class="check" type="button" :aria-label="completeLabel" @click="emit('complete')">
@@ -120,6 +122,12 @@ onBeforeUnmount(() => stopWatchingPress?.())
   text-align: start;
 }
 .title { overflow-wrap: anywhere; }
+.meta { color: var(--label-2); }
+.meta.is-attention { color: var(--warning-label); }
+/* Tareas: plain rows on the page; the 44 px circle target is pulled to the gutter so the 24 px ring lines up with it. */
+.is-list .task-content { padding: var(--space-1) var(--page-gutter) var(--space-1) calc(var(--page-gutter) - 10px); background: var(--bg); }
+.is-list + .is-list .task-content::before { left: calc(var(--page-gutter) - 10px + var(--tap-target) + var(--space-2)); border-top-width: 0.5px; }
+.is-list .check-ring { width: 24px; height: 24px; }
 /* Today's list: plain rows on the page, grid like the timeline (56 px time, 4 px bar, text, 44 px circle). */
 .is-timeline .task-content { display: grid; grid-template-columns: 56px 4px minmax(0, 1fr) var(--tap-target); gap: var(--space-3); padding: 10px var(--page-gutter); background: var(--bg); }
 .is-timeline + .is-timeline .task-content::before { left: calc(var(--page-gutter) + 56px + 4px + 2 * var(--space-3)); border-top-width: 0.5px; }

@@ -89,15 +89,16 @@ describe('AddEntry', () => {
     await tick()
     globalThis.document.querySelector<HTMLElement>('[data-testid="add-task"]')!.click()
     await tick()
-    const title = globalThis.document.querySelector<HTMLInputElement>('[role="dialog"] [data-testid="task-title"]')!
+    const title = globalThis.document.querySelector<HTMLTextAreaElement>('[role="dialog"] [data-testid="capture-field"]')!
     title.value = 'Buy a gift for mum'
     title.dispatchEvent(new Event('input'))
     await tick()
     // A task with no length is a to-do the week never places, so this one gets an hour.
-    ;[...globalThis.document.querySelectorAll<HTMLElement>('[role="dialog"] [role="radio"]')].find((radio) => radio.textContent?.trim() === '1 h')!.click()
+    ;[...globalThis.document.querySelectorAll<HTMLElement>('[role="dialog"] [data-testid="task-length"] label')].find((chip) => chip.textContent?.trim() === '1 h')!.querySelector('input')!.click()
     await tick()
-    globalThis.document.querySelector<HTMLButtonElement>('[role="dialog"] button[type="submit"]')!.click()
-    await store.settled()
+    globalThis.document.querySelector<HTMLButtonElement>('[role="dialog"] [data-testid="task-add"]')!.click()
+    // The capture binds the planner (an async fingerprint) before it commits.
+    for (let turn = 0; turn < 10; turn++) { await new Promise((resolve) => setTimeout(resolve, 0)); await store.settled() }
     await tick()
     expect(store.document!.tasks).toMatchObject([{ title: 'Buy a gift for mum', durationMin: 60 }])
     expect(store.document!.tasks[0]).not.toHaveProperty('categoryId')
@@ -116,7 +117,7 @@ describe('AddEntry', () => {
     trigger.click()
     await tick()
     expect(globalThis.document.querySelector('[role="menu"]')).toBeNull()
-    expect(globalThis.document.querySelector('[role="dialog"] [data-testid="task-title"]')).not.toBeNull()
+    expect(globalThis.document.querySelector('[role="dialog"] [data-testid="capture-field"]')).not.toBeNull()
   })
 
   it('opens the guided add for a routine', async () => {

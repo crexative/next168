@@ -40,9 +40,19 @@ async function open(taskId: string | undefined, overrides: Partial<PlannerDocume
 }
 
 const dialog = () => document.body.querySelector<HTMLElement>('[role=dialog]')!
-const titleField = () => dialog().querySelector<HTMLInputElement>('[data-testid=task-title]')!
+// An edit has its own title field and "Save"; a new task is the capture (SmartCapture) with "Add" in the header.
+const titleField = () => dialog().querySelector<HTMLInputElement>('[data-testid=task-title], [data-testid=capture-field]')!
 const when = () => dialog().querySelector<HTMLSelectElement>('[data-testid=task-when]')!
-const save = () => dialog().querySelector<HTMLButtonElement>('button[type=submit]')!
+const save = () => dialog().querySelector<HTMLButtonElement>('[data-testid=task-save], [data-testid=task-add]')!
+const today = () => dialog().querySelector<HTMLInputElement>('[data-testid=task-today]')!
+// A new task binds the planner (an async fingerprint) before it commits, so a few turns of the event loop pass first.
+async function settle(store: ReturnType<typeof usePlannerStore>) {
+  for (let turn = 0; turn < 10; turn++) {
+    await new Promise((resolve) => setTimeout(resolve, 0))
+    await store.settled()
+  }
+  await nextTick()
+}
 async function set(field: HTMLInputElement | HTMLSelectElement, value: string, event = 'input') {
   field.value = value
   field.dispatchEvent(new Event(event))
@@ -59,8 +69,9 @@ describe('editing a task', () => {
     expect(when().value).toBe('c-study')
     expect(dialog().querySelector<HTMLElement>('[data-testid=task-more-options]')!.style.display).not.toBe('none')
     expect(dialog().querySelector<HTMLInputElement>('[data-testid=task-due]')!.value).toBe('2026-10-30')
-    // 45 min is not one of the chips, yet the task's own length stays selected and visible.
-    expect(dialog().querySelector('[role=radio][aria-checked=true]')!.textContent?.trim()).toBe('45 min')
+    // 45 min is not one of the chips: "Other" is chosen and shows it.
+    expect(dialog().querySelector('[data-testid=task-length] label:has(input:checked)')!.textContent?.trim()).toBe('Other')
+    expect(dialog().querySelector<HTMLInputElement>('[data-testid=task-other-duration]')!.value).toBe('45')
   })
 
   it('saves the changes, and "any free slot" removes the category from the stored task', async () => {
@@ -119,10 +130,15 @@ describe('editing a task', () => {
     expect(store.document!.tasks).toEqual([TASK])
   })
 
-  it('has no Cancel button on the phone: the close button and the swipe are the way out', async () => {
+  it('has "Cancel", the title and "Save" in its header (R_HojaTarea), and no ✕ or second Cancel at the foot', async () => {
     await open('t-1')
-    const labels = [...dialog().querySelectorAll('button')].map((button) => button.textContent?.trim())
-    expect(labels).not.toContain('Cancel')
+    const header = dialog().querySelector('[data-testid=sheet-form-header]')!
+    expect([...header.querySelectorAll('button, h2')].map((node) => node.textContent?.trim())).toEqual(['Cancel', 'Edit task', 'Save'])
+    expect([...dialog().querySelectorAll('button')].filter((button) => button.textContent?.trim() === 'Cancel')).toHaveLength(1)
+    expect(dialog().querySelector('.sheet-close')).toBeNull()
+    dialog().querySelector<HTMLButtonElement>('[data-testid=sheet-cancel]')!.click()
+    await nextTick()
+    expect(closed).toHaveBeenCalled()
   })
 })
 
@@ -132,7 +148,7 @@ describe('adding a task from the sheet', () => {
     await set(titleField(), 'Call the bank')
     save().click()
     save().click()
-    await store.settled()
+    await settle(store)
     expect(store.document!.tasks).toHaveLength(1)
   })
 
@@ -141,39 +157,37 @@ describe('adding a task from the sheet', () => {
     await set(titleField(), 'Stale task')
     store.document = testDocument({ workspaceId: 'ws-b', categories: [WORK, STUDY], tasks: [], revision: 1 })
     save().click()
-    await store.settled()
+    await settle(store)
     expect(store.document!.tasks).toEqual([])
     expect(store.error).toBeNull()
   })
 
-  it('starts with no category, offers the last choice only as a suggestion, and needs a title', async () => {
-    localStorage.setItem(LAST_TASK_CATEGORY_KEY, 'c-work')
+  it('starts with no category, offers the last choice first in "During", and needs a title', async () => {
+    localStorage.setItem(LAST_TASK_CATEGORY_KEY, 'c-study')
     const { store } = await open(undefined, { tasks: [] })
     expect(when().value).toBe('')
-    const suggestion = dialog().querySelector<HTMLButtonElement>('[data-testid=task-suggested-category]')!
-    expect(suggestion.textContent?.trim()).toBe('During Work')
-    expect(suggestion.getAttribute('aria-pressed')).toBe('false')
+    expect([...when().options].map((option) => option.value)).toEqual(['', 'c-study', 'c-work'])
+    expect(save().textContent?.trim()).toBe('Add')
     expect(save().disabled).toBe(true)
     await set(titleField(), 'Call the bank')
     expect(save().disabled).toBe(false)
     save().click()
-    await store.settled()
+    await settle(store)
     expect(store.document!.tasks).toMatchObject([{ title: 'Call the bank', priority: 2 }])
     expect(store.document!.tasks[0]).not.toHaveProperty('categoryId')
     expect(store.document!.tasks[0]).not.toHaveProperty('durationMin')
     // A task for any free slot keeps the suggestion for the next one.
-    expect(localStorage.getItem(LAST_TASK_CATEGORY_KEY)).toBe('c-work')
+    expect(localStorage.getItem(LAST_TASK_CATEGORY_KEY)).toBe('c-study')
   })
 
-  it('files a task under the suggested category with one tap', async () => {
+  it('files a task under the suggested category, the first one offered', async () => {
     localStorage.setItem(LAST_TASK_CATEGORY_KEY, 'c-work')
     const { store } = await open(undefined, { tasks: [] })
     await set(titleField(), 'Send the invoice')
-    dialog().querySelector<HTMLButtonElement>('[data-testid=task-suggested-category]')!.click()
-    await nextTick()
+    await set(when(), when().options[1]!.value, 'change')
     expect(when().value).toBe('c-work')
     save().click()
-    await store.settled()
+    await settle(store)
     expect(store.document!.tasks).toMatchObject([{ title: 'Send the invoice', categoryId: 'c-work' }])
   })
 
@@ -182,12 +196,11 @@ describe('adding a task from the sheet', () => {
     const { store } = await open(undefined, { tasks: [], settings: { ...testDocument().settings, timeZone: 'America/Bogota' } })
     await set(titleField(), 'Jog')
     vi.setSystemTime(new Date('2026-10-26T05:10:00.000Z')) // 00:10 on the 26th in Bogotá
-    const today = dialog().querySelector<HTMLButtonElement>('[data-testid=task-today]')!
-    today.click()
+    today().click()
     await nextTick()
-    expect(today.getAttribute('aria-pressed')).toBe('true')
+    expect(today().checked).toBe(true)
     save().click()
-    await store.settled()
+    await settle(store)
     expect(store.document!.tasks).toMatchObject([{ title: 'Jog', dueDate: '2026-10-26' }])
   })
 
@@ -195,8 +208,7 @@ describe('adding a task from the sheet', () => {
     vi.setSystemTime(new Date('2026-10-26T04:58:00.000Z')) // 23:58 on the 25th in Bogotá
     const { store } = await open(undefined, { tasks: [], settings: { ...testDocument().settings, timeZone: 'America/Bogota' } })
     await set(titleField(), 'Jog')
-    const today = dialog().querySelector<HTMLButtonElement>('[data-testid=task-today]')!
-    today.click()
+    today().click()
     await nextTick()
     const due = dialog().querySelector<HTMLInputElement>('[data-testid=task-due]')!
     expect(due.value).toBe('2026-10-25')
@@ -204,10 +216,10 @@ describe('adding a task from the sheet', () => {
     document.dispatchEvent(new Event('visibilitychange'))
     await nextTick()
     await nextTick()
-    expect(today.getAttribute('aria-pressed')).toBe('true')
+    expect(today().checked).toBe(true)
     expect(due.value).toBe('2026-10-26')
     save().click()
-    await store.settled()
+    await settle(store)
     expect(store.document!.tasks).toMatchObject([{ title: 'Jog', dueDate: '2026-10-26' }])
   })
 
@@ -215,26 +227,25 @@ describe('adding a task from the sheet', () => {
     vi.setSystemTime(new Date('2026-10-26T04:58:00.000Z'))
     const { store } = await open(undefined, { tasks: [], settings: { ...testDocument().settings, timeZone: 'America/Bogota' } })
     await set(titleField(), 'Jog')
-    dialog().querySelector<HTMLButtonElement>('[data-testid=task-today]')!.click()
+    today().click()
     await nextTick()
     vi.setSystemTime(new Date('2026-10-26T05:03:00.000Z'))
     save().click()
-    await store.settled()
+    await settle(store)
     expect(store.document!.tasks).toMatchObject([{ title: 'Jog', dueDate: '2026-10-26' }])
   })
 
   it('a task already due today shows "Today" on until midnight, then off, and keeps its date', async () => {
     vi.setSystemTime(new Date('2026-10-26T04:58:00.000Z'))
     const { store } = await open('t-1', { tasks: [{ ...TASK, dueDate: '2026-10-25' }], settings: { ...testDocument().settings, timeZone: 'America/Bogota' } })
-    const today = dialog().querySelector<HTMLButtonElement>('[data-testid=task-today]')!
-    expect(today.getAttribute('aria-pressed')).toBe('true')
+    expect(today().checked).toBe(true)
     vi.setSystemTime(new Date('2026-10-26T05:03:00.000Z'))
     document.dispatchEvent(new Event('visibilitychange'))
     await nextTick()
-    expect(today.getAttribute('aria-pressed')).toBe('false')
+    expect(today().checked).toBe(false)
     await set(titleField(), 'Read a chapter again')
     save().click()
-    await store.settled()
+    await settle(store)
     expect(store.document!.tasks[0]).toMatchObject({ title: 'Read a chapter again', dueDate: '2026-10-25' })
   })
 
@@ -243,17 +254,16 @@ describe('adding a task from the sheet', () => {
     vi.setSystemTime(new Date('2026-10-26T04:30:00.000Z'))
     const { store } = await open(undefined, { tasks: [], settings: { ...testDocument().settings, timeZone: 'America/Bogota' } })
     await set(titleField(), 'Jog')
-    const today = dialog().querySelector<HTMLButtonElement>('[data-testid=task-today]')!
-    today.click()
+    today().click()
     await nextTick()
-    expect(today.getAttribute('aria-pressed')).toBe('true')
-    today.click()
+    expect(today().checked).toBe(true)
+    today().click()
     await nextTick()
-    expect(today.getAttribute('aria-pressed')).toBe('false')
-    today.click()
+    expect(today().checked).toBe(false)
+    today().click()
     await nextTick()
     save().click()
-    await store.settled()
+    await settle(store)
     expect(store.document!.tasks).toMatchObject([{ title: 'Jog', dueDate: '2026-10-25' }])
   })
 
@@ -262,7 +272,7 @@ describe('adding a task from the sheet', () => {
     await set(titleField(), 'During work')
     await set(when(), 'c-work', 'change')
     save().click()
-    await store.settled()
+    await settle(store)
     expect(store.document!.tasks).toMatchObject([{ title: 'During work', categoryId: 'c-work' }])
     expect(localStorage.getItem(LAST_TASK_CATEGORY_KEY)).toBe('c-work')
   })
@@ -271,23 +281,14 @@ describe('adding a task from the sheet', () => {
     const { store } = await open('t-1')
     await set(when(), 'c-work', 'change')
     save().click()
-    await store.settled()
+    await settle(store)
     expect(store.document!.tasks[0]).toMatchObject({ id: 't-1', categoryId: 'c-work' })
-  })
-
-  it('does not file a task under a category that was edited elsewhere after the sheet opened', async () => {
-    const { store } = await open(undefined, { tasks: [] })
-    await set(titleField(), 'Stale')
-    await set(when(), 'c-work', 'change')
-    store.document = { ...store.document!, categories: [{ ...WORK, name: 'Renamed' }, STUDY] }
-    save().click()
-    await store.settled()
-    expect(store.document!.tasks).toEqual([])
   })
 })
 
 
 it.each([undefined, 't-1'])('refuses a stale category after Vue has flushed external changes (task %s)', async (taskId) => {
+  const notice = taskId ? 'changed elsewhere' : 'Your plan changed while you were typing'
   const { store, isOpen } = await open(taskId, taskId ? {} : { tasks: [] })
   await set(titleField(), 'My edit')
   await set(when(), 'c-work', 'change')
@@ -295,9 +296,8 @@ it.each([undefined, 't-1'])('refuses a stale category after Vue has flushed exte
   await nextTick()
   const before = JSON.stringify(store.document)
   save().click()
-  await store.settled()
-  await nextTick()
+  await settle(store)
   expect(JSON.stringify(store.document)).toBe(before)
-  expect(dialog().querySelector('[role=alert]')?.textContent).toContain('changed elsewhere')
+  expect(dialog().querySelector('[role=alert], [role=status]')?.textContent).toContain(notice)
   expect(isOpen.value).toBe(true)
 })

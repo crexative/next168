@@ -7,7 +7,7 @@ import { configurePlannerStore, usePlannerStore } from '@/stores/plannerStore'
 import { createTestRepositories, fixedNow, newTestId, testDocument } from '@/repositories/testSupport'
 import { mountWithPlanner, SLEEP, WORK, type Mounted } from '@/features/settings/testSupport'
 import { LAST_TASK_CATEGORY_KEY } from './lastCategory'
-import TasksView from './TasksView.vue'
+import SmartCapture from './SmartCapture.vue'
 
 const STUDY = { id: 'c-study', name: 'Study', colorKey: 'orange', goal: { type: 'none', hoursPerWeek: 0 } } as const
 const COMMUTE = { id: 'c-commute', name: 'Travel', icon: '🚌', colorKey: 'gray', goal: { type: 'none', hoursPerWeek: 0 } } as const
@@ -30,29 +30,44 @@ async function submit() {
   await nextTick()
 }
 const optionValues = () => [...when().options].map((option) => option.value)
+const lengthChip = (label: string) => [...details()!.querySelectorAll<HTMLLabelElement>('[data-testid=task-length] label')].find((chip) => chip.textContent?.trim() === label)!.querySelector('input')!
 
-it('starts as one "Add a task…" field; the length and "More options" appear once there is a title', async () => {
-  mounted = await mountWithPlanner(TasksView, { ...done, categories: [WORK] })
-  expect(field().placeholder).toBe('Add a task… (or paste or dictate several)')
-  expect(mounted.host.querySelectorAll('form.add textarea, form.add input, form.add select, form.add button')).toHaveLength(1)
-  expect(details()).toBeNull()
-  await type('Call the bank')
-  const chips = [...details()!.querySelectorAll('[role=radiogroup] [role=radio]')].map((chip) => chip.textContent?.trim())
-  expect(chips.slice(0, 5)).toEqual(['No time', '15 min', '30 min', '1 h', '2 h'])
-  expect(details()!.querySelector('[role=radio][aria-checked=true]')!.textContent?.trim()).toBe('No time')
-  // The category, the due date, a fixed time, notes and the priority are one level deeper.
+// Nueva tarea (R_HojaTarea): the title with its hint, the lengths, "When?" and "More options", all on screen at once.
+it('shows the title with its hint, the lengths, "When?" and "More options" closed', async () => {
+  mounted = await mountWithPlanner(SmartCapture, { ...done, categories: [WORK] })
+  expect(field().placeholder).toBe('Task')
+  expect(field().hasAttribute('data-autofocus')).toBe(true)
+  expect(mounted.host.querySelector('.hint')!.textContent?.trim()).toBe('Paste or dictate several, one per line.')
+  const chips = [...details()!.querySelectorAll('[data-testid=task-length] label')].map((chip) => chip.textContent?.trim())
+  expect(chips).toEqual(['No time', '15 min', '30 min', '1 h', '2 h', 'Other'])
+  expect(lengthChip('No time').checked).toBe(true)
+  expect(when().value).toBe('')
+  // The due date, a fixed time, notes and the priority are one level deeper.
   const more = details()!.querySelector<HTMLElement>('[data-testid=task-more-options]')!
   expect(more.style.display).toBe('none')
   details()!.querySelector<HTMLButtonElement>('[data-testid=task-more]')!.click()
   await nextTick()
   expect(more.style.display).not.toBe('none')
   expect(more.querySelector('input[type=date]')).not.toBeNull()
-  await type('   ')
-  expect(details()).toBeNull()
+})
+
+it('"Other" opens a minutes field, and a length that is not a chip shows there', async () => {
+  mounted = await mountWithPlanner(SmartCapture, { ...done, categories: [WORK] })
+  await type('Read')
+  expect(details()!.querySelector('[data-testid=task-other-duration]')).toBeNull()
+  lengthChip('Other').click()
+  await nextTick()
+  const minutes = details()!.querySelector<HTMLInputElement>('[data-testid=task-other-duration]')!
+  minutes.value = '45'
+  minutes.dispatchEvent(new Event('change'))
+  await nextTick()
+  expect(lengthChip('Other').checked).toBe(true)
+  await submit()
+  expect(mounted.store.document!.tasks).toMatchObject([{ title: 'Read', durationMin: 45 }])
 })
 
 it('adds with Enter using the defaults: a to-do with no time and no category', async () => {
-  mounted = await mountWithPlanner(TasksView, { ...done, categories: [SLEEP, WORK] })
+  mounted = await mountWithPlanner(SmartCapture, { ...done, categories: [SLEEP, WORK] })
   await type('Buy a gift for mum')
   await submit()
   const [task] = mounted.store.document!.tasks
@@ -63,7 +78,7 @@ it('adds with Enter using the defaults: a to-do with no time and no category', a
 })
 
 it('offers "any free slot" first and never Sleep or the commute', async () => {
-  mounted = await mountWithPlanner(TasksView, { ...done, categories: [SLEEP, WORK, COMMUTE, STUDY] })
+  mounted = await mountWithPlanner(SmartCapture, { ...done, categories: [SLEEP, WORK, COMMUTE, STUDY] })
   await type('x')
   expect(optionValues()).toEqual(['', 'c-work', 'c-study'])
   expect(when().value).toBe('')
@@ -71,23 +86,22 @@ it('offers "any free slot" first and never Sleep or the commute', async () => {
 })
 
 it('files the task under the category chosen with "During …" and takes the length from a chip', async () => {
-  mounted = await mountWithPlanner(TasksView, { ...done, categories: [WORK, STUDY] })
+  mounted = await mountWithPlanner(SmartCapture, { ...done, categories: [WORK, STUDY] })
   await type('Read a chapter')
   when().value = 'c-study'
   when().dispatchEvent(new Event('change'))
-  ;[...details()!.querySelectorAll<HTMLElement>('[role=radio]')].find((chip) => chip.textContent?.trim() === '30 min')!.click()
+  lengthChip('30 min').click()
   await nextTick()
   await submit()
   expect(mounted.store.document!.tasks).toMatchObject([{ title: 'Read a chapter', categoryId: 'c-study', durationMin: 30 }])
 })
 
-const suggestion = () => mounted!.host.querySelector<HTMLButtonElement>('[data-testid=task-suggested-category]')
-const todayChip = () => mounted!.host.querySelector<HTMLButtonElement>('[data-testid=task-today]')!
+const todayChip = () => mounted!.host.querySelector<HTMLInputElement>('[data-testid=task-today]')!
 
-it('offers the last choice for the next task only as a suggestion, never as its default, and across visits', async () => {
-  mounted = await mountWithPlanner(TasksView, { ...done, categories: [WORK, STUDY] })
+it('offers the last choice for the next task first in "During", never as its default, and across visits', async () => {
+  mounted = await mountWithPlanner(SmartCapture, { ...done, categories: [WORK, STUDY] })
   await type('Read a chapter')
-  expect(suggestion()).toBeNull()
+  expect(optionValues()).toEqual(['', 'c-work', 'c-study'])
   when().value = 'c-study'
   when().dispatchEvent(new Event('change'))
   await nextTick()
@@ -96,57 +110,50 @@ it('offers the last choice for the next task only as a suggestion, never as its 
   // An unrelated title does not silently inherit Study: Enter files it under any free slot.
   await type('Jog')
   expect(when().value).toBe('')
-  expect(suggestion()!.textContent?.trim()).toBe('During Study')
-  expect(suggestion()!.getAttribute('aria-pressed')).toBe('false')
+  expect(optionValues()).toEqual(['', 'c-study', 'c-work'])
   await submit()
   expect(mounted.store.document!.tasks.find((task) => task.title === 'Jog')).not.toHaveProperty('categoryId')
 
   mounted.unmount()
-  mounted = await mountWithPlanner(TasksView, { ...done, categories: [WORK, STUDY] })
+  mounted = await mountWithPlanner(SmartCapture, { ...done, categories: [WORK, STUDY] })
   await type('Fresh visit')
   expect(when().value).toBe('')
-  expect(suggestion()!.textContent?.trim()).toBe('During Study')
-  suggestion()!.click()
-  await nextTick()
-  expect(when().value).toBe('c-study')
-  expect(suggestion()!.getAttribute('aria-pressed')).toBe('true')
-  await submit()
-  expect(mounted.store.document!.tasks.find((task) => task.title === 'Fresh visit')).toMatchObject({ categoryId: 'c-study' })
+  expect(optionValues()).toEqual(['', 'c-study', 'c-work'])
 })
 
 it('"Today" tapped after midnight in the planner\'s zone gives the new day, not the day the form was typed on', async () => {
   vi.setSystemTime(new Date('2026-10-26T04:50:00.000Z')) // 23:50 on the 25th in Bogotá
-  mounted = await mountWithPlanner(TasksView, { ...done, settings: { ...done.settings, timeZone: 'America/Bogota' }, categories: [WORK] })
+  mounted = await mountWithPlanner(SmartCapture, { ...done, settings: { ...done.settings, timeZone: 'America/Bogota' }, categories: [WORK] })
   await type('Jog')
   vi.setSystemTime(new Date('2026-10-26T05:10:00.000Z')) // 00:10 on the 26th in Bogotá
   todayChip().click()
   await nextTick()
-  expect(todayChip().getAttribute('aria-pressed')).toBe('true')
+  expect(todayChip().checked).toBe(true)
   await submit()
   expect(mounted.store.document!.tasks).toMatchObject([{ title: 'Jog', dueDate: '2026-10-26' }])
 })
 
 it('"Today" tapped before midnight and added after it is due the new day (verify7)', async () => {
   vi.setSystemTime(new Date('2026-10-26T04:58:00.000Z')) // 23:58 on the 25th in Bogotá
-  mounted = await mountWithPlanner(TasksView, { ...done, settings: { ...done.settings, timeZone: 'America/Bogota' }, categories: [WORK] })
+  mounted = await mountWithPlanner(SmartCapture, { ...done, settings: { ...done.settings, timeZone: 'America/Bogota' }, categories: [WORK] })
   await type('Jog')
   todayChip().click()
   await nextTick()
   vi.setSystemTime(new Date('2026-10-26T05:03:00.000Z')) // 00:03 on the 26th
   document.dispatchEvent(new Event('visibilitychange'))
   await nextTick()
-  expect(todayChip().getAttribute('aria-pressed')).toBe('true')
+  expect(todayChip().checked).toBe(true)
   await submit()
   expect(mounted.store.document!.tasks).toMatchObject([{ title: 'Jog', dueDate: '2026-10-26' }])
 })
 
 it('"Today" in one tap makes the task due today; Enter still adds with no other tap', async () => {
-  mounted = await mountWithPlanner(TasksView, { ...done, categories: [WORK] })
+  mounted = await mountWithPlanner(SmartCapture, { ...done, categories: [WORK] })
   await type('Jog')
-  expect(todayChip().getAttribute('aria-pressed')).toBe('false')
+  expect(todayChip().checked).toBe(false)
   todayChip().click()
   await nextTick()
-  expect(todayChip().getAttribute('aria-pressed')).toBe('true')
+  expect(todayChip().checked).toBe(true)
   await submit()
   expect(mounted.store.document!.tasks).toMatchObject([{ title: 'Jog', dueDate: fixedNow().toISOString().slice(0, 10) }])
   expect(mounted.store.document!.tasks[0]).not.toHaveProperty('categoryId')
@@ -157,7 +164,7 @@ it.each([
   ['Sleep', 'c-sleep'],
 ])('does not offer a remembered choice that is %s: the task goes to any free slot', async (_name, remembered) => {
   localStorage.setItem(LAST_TASK_CATEGORY_KEY, remembered)
-  mounted = await mountWithPlanner(TasksView, { ...done, categories: [SLEEP, WORK] })
+  mounted = await mountWithPlanner(SmartCapture, { ...done, categories: [SLEEP, WORK] })
   await type('x')
   expect(when().value).toBe('')
   await submit()
@@ -165,7 +172,7 @@ it.each([
 })
 
 it('adds a task when there are no categories at all', async () => {
-  mounted = await mountWithPlanner(TasksView, { ...done, categories: [] })
+  mounted = await mountWithPlanner(SmartCapture, { ...done, categories: [] })
   await type('Call the bank')
   await submit()
   expect(mounted.store.document!.tasks).toMatchObject([{ title: 'Call the bank' }])
@@ -182,20 +189,19 @@ it('still suggests the remembered choice when the planner finishes loading after
   i18n.global.locale.value = 'en'
   const host = document.createElement('div')
   document.body.append(host)
-  const app = createApp(TasksView).use(pinia).use(i18n)
+  const app = createApp(SmartCapture).use(pinia).use(i18n)
   app.mount(host)
   await nextTick()
-  // Nothing is shown yet: the document is not loaded.
-  expect(host.querySelector('form.add')).toBeNull()
   await store.load()
   await nextTick()
   const input = host.querySelector<HTMLTextAreaElement>('form.add textarea')!
   input.value = 'x'
   input.dispatchEvent(new Event('input'))
   await nextTick()
-  // The remembered choice is a suggestion: offered once the categories are there, never applied by itself.
-  expect(host.querySelector<HTMLSelectElement>('[data-testid=task-when]')!.value).toBe('')
-  expect(host.querySelector('[data-testid=task-suggested-category]')!.textContent?.trim()).toBe('During Study')
+  // The remembered choice is a suggestion: listed first once the categories are there, never applied by itself.
+  const select = host.querySelector<HTMLSelectElement>('[data-testid=task-when]')!
+  expect(select.value).toBe('')
+  expect([...select.options].map((option) => option.value)).toEqual(['', 'c-study', 'c-work'])
   app.unmount()
   host.remove()
 })

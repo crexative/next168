@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, nextTick, ref, useId, watch } from 'vue'
+import { computed, nextTick, onMounted, ref, useId, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { normalizeCaptureText, parseCapture, type CaptureSpan } from '@/core/capture'
 import { MAX_FIXED_MIN, MAX_TASK_MIN, MIN_TASK_MIN } from '@/core/model'
@@ -23,9 +23,9 @@ import './registerIcons'
 // dates, times and lengths the closed L0 grammar is sure of shown as chips the person can change (✎) or give back to
 // the title (✕). Two or more lines (a paste, Shift+Enter or dictation with line breaks): nothing is inferred; the
 // preview offers one task per line, titles only, or the whole text as one task. No model is involved.
-// `inSheet`: the capture is the body of the Nueva tarea sheet (R_HojaTarea): a large title field with its hint, the
-// options always shown, and the sheet's header "Añadir" submitting through `submit()` instead of a button here.
-const props = withDefaults(defineProps<{ dueToday?: boolean; label?: string; inSheet?: boolean }>(), { dueToday: false, label: undefined, inSheet: false })
+// It is the body of the Nueva tarea sheet (R_HojaTarea): a large title field with its hint, the options always shown,
+// and the sheet's header "Añadir" submitting through `submit()`.
+const props = withDefaults(defineProps<{ dueToday?: boolean; label?: string }>(), { dueToday: false, label: undefined })
 const emit = defineEmits<{ added: [count: number] }>()
 
 const MAX_LINES = 20
@@ -91,7 +91,7 @@ const effective = computed<TaskDraft>(() => {
   return draft
 })
 
-const detailsOpen = computed(() => !multiLine.value && (props.inSheet || text.value.trim().length > 0))
+const detailsOpen = computed(() => !multiLine.value)
 const shownDraft = computed<TaskDraft>(() => ({ ...effective.value, categoryId: resolveWhen(categories.value, effective.value.categoryId) }))
 const busy = computed(() => ['saving', 'checking', 'unverified'].includes(submission.state.value))
 const canAdd = computed(() => planner.writable && !busy.value && !multiLine.value && parsed.value.title.trim().length > 0)
@@ -198,11 +198,21 @@ function typedElsewhere(): boolean {
   return true
 }
 
+// In the sheet the task is bound to the planner as the sheet opened (as its form always was): a category or anything
+// else changed elsewhere meanwhile refuses the save once, says so, and the next tap saves on the planner as it is now.
+// The planner is read at once (bindToPlanner reads it before any await); its fingerprint may still be on its way.
+let sheetBinding: Promise<CaptureBinding | null> = Promise.resolve(null)
+function bindSheet(): void {
+  sheetBinding = submission.bind()
+}
+onMounted(bindSheet)
+
 async function addOne(): Promise<void> {
   if (!canAdd.value || typedElsewhere()) return
   const row = rowOf(effective.value)
   const categoryId = row.categoryId
-  const receipt = await submission.submit([row], await submission.bind())
+  const receipt = await submission.submit([row], await sheetBinding ?? await submission.bind())
+  if (submission.state.value === 'changed') bindSheet()
   if (!receipt) return
   if (categoryId && categoryId !== ANY_FREE_TIME) {
     rememberTaskCategory(categoryId)
@@ -215,6 +225,8 @@ async function addOne(): Promise<void> {
 // is cleared, the result is announced, and Undo is offered for exactly the tasks of its receipt.
 function added(receipt: CaptureReceipt, message: string): void {
   resetBox()
+  // What was just added is now part of the planner the next task is bound to.
+  bindSheet()
   rows.value = []
   announce(message)
   toast.show({
@@ -342,7 +354,7 @@ defineExpose({ focus: () => field.value?.focus(), submit, canSubmit, dirty })
 </script>
 
 <template>
-  <form ref="root" class="add" :class="{ 'in-sheet': inSheet }" :aria-label="label ?? t('tasks.add.title')" novalidate @submit.prevent="multiLine ? undefined : addOne()">
+  <form ref="root" class="add" :aria-label="label ?? t('tasks.add.title')" novalidate @submit.prevent="multiLine ? undefined : addOne()">
     <label class="field" :for="ids.field">
       <span class="visually-hidden">{{ t('tasks.add.titleLabel') }}</span>
       <textarea
@@ -350,13 +362,12 @@ defineExpose({ focus: () => field.value?.focus(), submit, canSubmit, dirty })
         ref="field"
         v-model="text"
         class="input capture-field"
-        :class="{ 'is-title': inSheet }"
         rows="1"
         autocomplete="off"
         :enterkeyhint="multiLine ? 'enter' : 'done'"
-        :placeholder="inSheet ? t('tasks.add.titleLabel') : t('capture.placeholder')"
+        :placeholder="t('tasks.add.titleLabel')"
         :aria-describedby="spans.length ? `${ids.chips} ${ids.hint}` : ids.hint"
-        :data-autofocus="inSheet || undefined"
+        data-autofocus
         :readonly="busy"
         :aria-busy="busy || undefined"
         data-testid="capture-field"
@@ -365,8 +376,7 @@ defineExpose({ focus: () => field.value?.focus(), submit, canSubmit, dirty })
         @compositionend="composing = false"
       />
     </label>
-    <p v-if="inSheet" :id="ids.hint" class="t-footnote t-secondary hint">{{ t('tasks.add.manyHint') }}</p>
-    <p v-else :id="ids.hint" class="visually-hidden">{{ t('capture.dictationHint') }}</p>
+    <p :id="ids.hint" class="t-footnote t-secondary hint">{{ t('tasks.add.manyHint') }}</p>
 
     <div v-if="spans.length && !multiLine" :id="ids.chips" class="chips" role="group" :aria-label="t('capture.chip.group')" data-testid="capture-chips">
       <span v-for="span in spans" :key="span.key" class="chip" :data-field="span.field" data-testid="capture-chip">
@@ -428,9 +438,6 @@ defineExpose({ focus: () => field.value?.focus(), submit, canSubmit, dirty })
 
     <div v-if="detailsOpen" class="details" role="group" :aria-label="t('tasks.add.details')" data-testid="task-details">
       <TaskOptions :draft="shownDraft" :categories="categories" :time-zone="timeZone" :suggested-category-id="suggestedCategoryId" standard-lengths @patch="patch" />
-      <Button v-if="!inSheet" type="submit" block :disabled="!canAdd">
-        <Icon name="plus" :size="20" /> {{ t('tasks.add.submit') }}
-      </Button>
     </div>
 
     <section v-if="multiLine" :id="ids.preview" class="preview" :aria-label="t('capture.preview.label')" data-testid="capture-preview">
@@ -487,31 +494,26 @@ defineExpose({ focus: () => field.value?.focus(), submit, canSubmit, dirty })
 </template>
 
 <style scoped>
-.add { display: flex; flex-direction: column; gap: var(--space-3); padding: var(--card-padding-block) var(--card-padding); background: var(--surface); border-radius: var(--radius-card); }
+.add { display: flex; flex-direction: column; gap: var(--space-2); }
 .field { display: flex; flex: 1; flex-direction: column; gap: var(--space-1); min-width: 0; }
-/* In the sheet the form is the grouped page itself; the title is a large white field without a border. */
-.add.in-sheet { padding: 0; background: transparent; border-radius: 0; gap: var(--space-2); }
-.in-sheet .details { margin-top: var(--space-3); }
-.capture-field.is-title {
+/* The form is the sheet's grouped page; the title is a large white field without a border that grows with its lines
+   (grow()), up to a few, then scrolls. */
+.capture-field {
+  min-height: var(--tap-target);
+  max-height: 12em;
+  padding-inline: var(--card-padding);
+  padding-block: calc((var(--tap-target) - 1.35em) / 2);
   border-color: transparent;
   border-radius: var(--radius-card);
   background: var(--surface);
-  padding-inline: var(--card-padding);
   font-size: 1.375rem;
   font-weight: 600;
-}
-.hint { padding-inline: var(--space-1); }
-.capture-field {
-  padding-inline: min(var(--space-3), 12px);
-  min-height: var(--tap-target);
-  max-height: 12em;
+  line-height: 1.35;
   resize: none;
   overflow-y: auto;
-  line-height: 1.35;
-  /* One line until there is more: the height follows the content (grow()). */
-  padding-block: calc((var(--tap-target) - 1.35em) / 2);
 }
-.details { display: flex; flex-direction: column; gap: var(--space-3); }
+.hint { padding-inline: var(--space-1); }
+.details { display: flex; flex-direction: column; gap: var(--space-3); margin-top: var(--space-3); }
 .chips { display: flex; flex-wrap: wrap; gap: var(--space-2); }
 .chip {
   display: inline-flex;
