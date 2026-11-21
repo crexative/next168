@@ -704,8 +704,9 @@ for (const theme of THEMES) {
       // "Add category" opens the guided add, a full-screen frame rather than a sheet.
       await page.getByRole('button', { name: 'Add category' }).click()
       await expect(page.locator('[data-testid=setup][data-mode=add]')).toBeVisible()
-      // It may open while the edit sheet is still springing away: audit it once it has arrived.
-      await expect.poll(() => page.locator('.setup-frame').evaluate((element) => element.getBoundingClientRect().top)).toBe(0)
+      // It may open while the edit sheet is still springing away: audit it once it has arrived (at the top on a phone,
+      // centred as a modal from 768 px).
+      await expect.poll(() => page.locator('.setup-frame').evaluate((element) => { const box = element.getBoundingClientRect(); const settled = window.innerWidth < 768 ? 0 : (window.innerHeight - box.height) / 2; return Math.round(box.top - settled) })).toBe(0)
       await auditSheet(page, `${theme}/add a category, first question`)
       await page.keyboard.press('Escape')
       await expect(page.getByTestId('setup')).toHaveCount(0)

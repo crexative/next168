@@ -163,6 +163,16 @@ onBeforeUnmount(() => {
 .setup-frame-leave-active { transition: opacity 0.15s; }
 .setup-frame-enter-from { opacity: 0; transform: translateY(24px); }
 .setup-frame-leave-to { opacity: 0; }
+/* Tablet and desktop: a centred modal, 560 px wide, over the dimmed page (DIRECTION §4 anatomy); the page behind is
+   inert while it is open (sheetStack.openFullScreen), so the dimming is drawn, not a layer to press. */
+@media (min-width: 768px) {
+  .setup-frame {
+    --column: 35rem;
+    inset: 0; margin: auto; width: min(35rem, 100vw - 2rem); height: min(46rem, 100dvh - 4rem);
+    border-radius: 24px; overflow: hidden;
+    box-shadow: 0 0 0 100vmax rgb(0 0 0 / 0.32), 0 16px 48px rgb(0 0 0 / 0.24);
+  }
+}
 @media (prefers-reduced-motion: reduce) {
   .setup-frame-enter-active { transition: opacity 0.2s; }
   .setup-frame-enter-from { transform: none; }
