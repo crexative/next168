@@ -60,7 +60,7 @@ async function typeOwn(page: Page, name: string, goesIn?: string): Promise<void>
 
 // The times as offered, then "No, eso es todo" and the summary.
 async function sendAndFinish(page: Page): Promise<void> {
-  await tap(page, 'Enviar respuesta')
+  await tap(page, 'Siguiente')
   await expect(setup(page)).toHaveAttribute('data-screen', /^more:\d+$/)
   await tap(page, 'No, eso es todo')
   await onScreen(page, 'summary')
@@ -373,7 +373,7 @@ test.describe('what the summary says (S2-12, S2-14)', () => {
     const before = await stored(page)
     await openWeekAdd(page)
     await tap(page, 'Trabajo')
-    await tap(page, 'Enviar respuesta')
+    await tap(page, 'Siguiente')
     await onScreen(page, 'more:1')
     await typeOwn(page, 'Reunión', 'Trabajo')
     await sendAndFinish(page)
