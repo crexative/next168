@@ -559,8 +559,12 @@ test('@smoke the Now card, the folded row and the answer buttons work on the dev
 
 // Review of #54: with a 12-hour clock ("12:00 p. m.", "11:00 p. m."), every time stays whole inside its column and on
 // screen, at a phone, a tablet and a desktop width; the geometry guard does not look at text off the leading edge.
-for (const width of [390, 820, 1440]) {
-  test(`12-hour times fit their column at ${width} px`, async ({ page }) => {
+// "wide font" spaces the letters out, as a wider system font (Linux CI's) draws them: the column must follow.
+for (const width of [390, 820, 1440]) for (const font of ['system font', 'wide font'] as const) {
+  test(`12-hour times fit their column at ${width} px (${font})`, async ({ page }) => {
+    if (font === 'wide font') await page.addInitScript(() => document.addEventListener('DOMContentLoaded', () => {
+      document.head.append(Object.assign(document.createElement('style'), { textContent: '.row-start, .row-end { letter-spacing: 0.12em }' }))
+    }))
     await start(page, { at: '11:50', size: { width, height: 900 } })
     const times = await page.locator('[data-testid="timeline-item"] .row-time').evaluateAll((columns) => columns.flatMap((column) => {
       const box = column.getBoundingClientRect()

@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { inlineSeparators, joinInline } from '@/ui/inlineText'
-import { computed, nextTick, ref } from 'vue'
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import type { BlockActual, Category } from '@/core/model'
 import { addLocalDays, localDateOf, zonedInstant, type DatedOccurrence } from '@/core/time'
@@ -212,6 +212,35 @@ const nowLabel = computed(() => t('today.timeline.nowLine', { time: formatTime(p
 const earlierButton = ref<HTMLButtonElement | null>(null)
 const section = ref<HTMLElement | null>(null)
 
+// The time column takes the width of the widest time on the list, as the page's own font draws it ("12:30 p. m." is far
+// wider than "12:30", and wider again in some fonts), never less than the 24-hour column. Measured after each change of
+// the list, the language, the text size or the fonts.
+const timeColumn = ref<string | undefined>()
+async function fitTimeColumn(): Promise<void> {
+  await nextTick()
+  const root = section.value
+  if (!root) return
+  const widths = Array.from(root.querySelectorAll<HTMLElement>('.row-start, .row-end')).map((time) => {
+    const range = document.createRange()
+    range.selectNodeContents(time)
+    return range.getBoundingClientRect().width
+  })
+  const widest = Math.ceil(Math.max(0, ...widths))
+  timeColumn.value = widest > 0 ? `max(0.9375rem * 3.75, ${widest + 1}px)` : undefined
+}
+watch(() => [props.items, displayLocale.value, expanded.value], () => { void fitTimeColumn() }, { flush: 'post' })
+let resized: ResizeObserver | undefined
+onMounted(() => {
+  void fitTimeColumn()
+  void document.fonts?.ready.then(() => fitTimeColumn())
+  // The text size (rem) changes the widths too; the section's own width follows it.
+  if (typeof ResizeObserver !== 'undefined' && section.value) {
+    resized = new ResizeObserver(() => { void fitTimeColumn() })
+    resized.observe(section.value)
+  }
+})
+onBeforeUnmount(() => resized?.disconnect())
+
 // Opening goes straight to the first answer still missing, unless the rings are off; closing returns to the row.
 async function toggleEarlier(): Promise<void> {
   // Only opening and closing animate; rows that leave because time moved on do so at once.
@@ -235,7 +264,7 @@ async function toggleEarlier(): Promise<void> {
 </script>
 
 <template>
-  <section ref="section" class="timeline-section" :class="{ 'is-12h': twelveHour }" :aria-label="t('today.timeline.label')">
+  <section ref="section" class="timeline-section" :class="{ 'is-12h': twelveHour }" :style="timeColumn ? { '--time-column': timeColumn } : undefined" :aria-label="t('today.timeline.label')">
     <h2 class="t-section section-title">{{ t('today.timeline.title') }}</h2>
     <slot name="notice" />
     <ul v-if="allDay.length" class="all-day">
