@@ -325,11 +325,18 @@ test.describe('week opens on now', () => {
       await openWeek(page, 'light', 'phone')
       await page.setViewportSize({ width, height })
       await page.reload()
+      // Measure only once Week is on screen and has scrolled to now: the head, the day strip and the line all drawn
+      // (review of #56: measured earlier, a header not yet mounted counted as nothing and a hidden line could pass).
+      const nowLine = page.getByTestId('now-line').first()
+      await expect(nowLine).toBeVisible()
+      await expect(page.getByTestId('week-head')).toBeVisible()
+      await expect(page.locator('.pager-head')).toBeVisible()
+      await expect.poll(() => page.evaluate(() => window.scrollY)).toBeGreaterThan(0)
       await page.waitForFunction(() => document.getAnimations().length === 0)
       const covered = await page.evaluate(() => Math.max(0, ...Array.from(document.querySelectorAll<HTMLElement>('.toolbar, [data-testid=week-head], .pager-head'))
         .filter((element) => element.getClientRects().length > 0 && ['sticky', 'fixed'].includes(getComputedStyle(element).position))
         .map((element) => element.getBoundingClientRect().bottom)))
-      const line = (await page.getByTestId('now-line').first().boundingBox())!
+      const line = (await nowLine.boundingBox())!
       // What shows ends at the floating tab bar on a phone (review of #56: on its side the line went behind it).
       const bar = await page.locator('nav.tabbar').boundingBox()
       const bottom = bar && bar.height > 0 ? bar.y : height

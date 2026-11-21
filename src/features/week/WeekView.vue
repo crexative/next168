@@ -285,7 +285,7 @@ async function remove(blockId: string): Promise<void> {
              controls: Week opens on the current hour, and the week shown must still be named. -->
         <!-- A div: the free-hours badge inside is a paragraph of its own. -->
         <div class="week-subtitle t-subhead t-secondary">
-          <span data-testid="week-range" aria-live="polite">{{ range }}</span><template v-if="isCurrentWeek"><span aria-hidden="true"> · </span><span class="free-hours-slot" data-testid="week-free-hours-slot"><FreeHoursBadge :document="document" :now="now" :framed="false" /></span></template>
+          <span data-testid="week-range" aria-live="polite">{{ range }}</span><template v-if="isCurrentWeek"><span aria-hidden="true"> · </span><div class="free-hours-slot" data-testid="week-free-hours-slot"><FreeHoursBadge :document="document" :now="now" :framed="false" /></div></template>
         </div>
         <!-- The view switch and the arrows stay under the toolbar, so they show on arrival even when the grid opens on the
              current hour. -->
@@ -374,6 +374,7 @@ async function remove(blockId: string): Promise<void> {
 <style scoped>
 .week-subtitle { margin: 0 var(--page-gutter) var(--space-2); font-variant-numeric: tabular-nums; }
 /* The badge is a sentence of the subtitle here, in its colour. */
+.free-hours-slot { display: inline; }
 .free-hours-slot :deep(p) { display: inline; color: inherit; font: inherit; }
 .week-head {
   position: sticky;
