@@ -782,11 +782,15 @@ async function targetProblems(page: Page): Promise<TargetProblem[]> {
 async function walk(page: Page, visit: (label: string) => Promise<void>, options: { custom?: string } = {}): Promise<void> {
   const pickers = async (label: string) => {
     const range = live(page).locator('[data-range]').first()
-    for (const field of ['days', 'start', 'end'] as const) {
+    // The days are chips in the card (R_InicioHorario); "Elegir días" opens the seven toggles.
+    if (await range.locator('[data-preset=pick]').count() > 0) {
+      await range.locator('[data-preset=pick]').click()
+      await visit(`${label}, days picker`)
+    }
+    for (const field of ['start', 'end'] as const) {
       const row = range.locator(`[data-field=${field}]`)
       if (await row.count() === 0) continue
-      await row.click()
-      if (field === 'days') await live(page).locator('[data-preset=pick]').click()
+      await openField(row)
       await visit(`${label}, ${field} picker`)
       if (field === 'start') {
         await live(page).getByTestId('other-time').click()
