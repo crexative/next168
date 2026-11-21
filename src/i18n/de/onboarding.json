@@ -155,10 +155,8 @@
     "draftUnavailable": "Dieser Browser speichert keinen Entwurf. Lade nicht neu, bis du fertig bist.",
     "change": "Ändern: {question} {answer}",
     "conversation": "Unterhaltung",
-    "send": "Antwort senden",
     "needFix": "Korrigiere zuerst die markierte Zeit.",
-    "progressShort": "{step} von {total}",
-    "sendShort": "Senden"
+    "progressShort": "{step} von {total}"
   },
   "summary": {
     "title": "Deine typische Woche",

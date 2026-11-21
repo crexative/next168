@@ -416,11 +416,28 @@ describe('the conversation', () => {
   const turn = (screen: string) => turns().find((element) => element.dataset.answer === screen)!
   const quick = (value: string) => click(`[data-value=${value}]`)
 
+  // Fewer taps (DIRECTION §4): the first range opens on its start; a start picked opens the end; an end picked closes.
+  it('opens on the start time, moves on to the end once a start is picked, and closes once the end is picked', async () => {
+    await mount(firstRun())
+    const expanded = (field: string) => live(`[data-field=${field}]`)!.getAttribute('aria-expanded')
+    expect(expanded('start')).toBe('true')
+    expect(expanded('end')).toBe('false')
+    const start = live('[data-field=start]')!.closest('.field')!.querySelector<HTMLButtonElement>('[data-minute]:not([aria-pressed=true])')!
+    start.click()
+    await nextTick()
+    expect(expanded('start')).toBe('false')
+    expect(expanded('end')).toBe('true')
+    live('[data-field=end]')!.closest('.field')!.querySelector<HTMLButtonElement>('[data-minute]')!.click()
+    await nextTick()
+    expect(expanded('end')).toBe('false')
+    expect(expanded('start')).toBe('false')
+  })
+
   it('shows English PM and AM in the other-time editor with a 12-hour clock', async () => {
     setHourCycle('h12')
     try {
       await mount(firstRun())
-      await click('[data-field=start]')
+      // The first range opens on its start, its times ready.
       await click('[data-testid=other-time]')
       const period = () => live('[data-testid=time-period]')!.textContent!.trim().replace(/\s/g, ' ')
 
@@ -480,20 +497,20 @@ describe('the conversation', () => {
     await click('[data-testid=time-use]')
     await click('[data-testid=setup-primary]')
     expect(screen()).toBe('work')
-    await click('[data-field=start]')
     await click('[data-minute="600"]')
     await click('[data-testid=setup-primary]')
     expect(screen()).toBe('summary')
     expect(JSON.parse(sessionStorage.getItem(DRAFT_KEY)!).answers).toMatchObject({ commute: 'no', exercise: 'no' })
   })
 
-  it.each(['en', 'es', 'fr', 'pt', 'de'] as const)('shows a visible send label and arrow in %s', async (locale) => {
+  // "Siguiente", not "Enviar": nothing leaves the device (DIRECTION §4 improvement 5).
+  it.each(['en', 'es', 'fr', 'pt', 'de'] as const)('shows a visible "Next" label and arrow in %s', async (locale) => {
     await mount(firstRun())
     i18n.global.locale.value = locale
     await nextTick()
     const send = live('[data-testid=setup-primary]')!
-    expect(send.textContent?.trim()).toBe(i18n.global.t('onboarding.guided.sendShort'))
-    expect(send.textContent?.trim()).not.toBe('onboarding.guided.sendShort')
+    expect(send.textContent?.trim()).toBe(i18n.global.t('onboarding.guided.next'))
+    expect(send.textContent?.trim()).not.toBe('onboarding.guided.next')
     expect(send.querySelector('svg')).not.toBeNull()
   })
 
@@ -507,7 +524,8 @@ describe('the conversation', () => {
     expect(icon?.getAttribute('width')).toBe('22')
     expect(icon?.getAttribute('height')).toBe('22')
     expect(icon?.getAttribute('aria-hidden')).toBe('true')
-    expect(send.getAttribute('aria-label')).toBe(i18n.global.t('onboarding.guided.send'))
+    // Its name is the visible word.
+    expect(send.hasAttribute('aria-label')).toBe(false)
   })
 
   it('keeps every answer above the question; changing an earlier one drops what no longer applies and brings it back with that answer', async () => {
@@ -612,8 +630,7 @@ describe('the conversation', () => {
     expect(send().disabled).toBe(false)
     expect(send().getAttribute('aria-describedby')!.split(' ')).toHaveLength(1)
     const reason = () => window.document.getElementById(send().getAttribute('aria-describedby')!.split(' ')[1]!)
-    // A time with no days cannot be sent until it has one.
-    await click('[data-field=days]')
+    // A time with no days cannot be sent until it has one; the days are chips in the card.
     await click('[data-preset=pick]')
     await click('[data-day="6"][aria-pressed=true]')
     expect(send().disabled).toBe(true)

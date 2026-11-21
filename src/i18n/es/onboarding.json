@@ -155,10 +155,8 @@
     "draftUnavailable": "Este navegador no guarda borradores. No recargues hasta terminar.",
     "change": "Cambiar: {question} {answer}",
     "conversation": "Conversación",
-    "send": "Enviar respuesta",
     "needFix": "Primero corrige el horario marcado.",
-    "progressShort": "{step} de {total}",
-    "sendShort": "Enviar"
+    "progressShort": "{step} de {total}"
   },
   "summary": {
     "title": "Tu semana tipo",

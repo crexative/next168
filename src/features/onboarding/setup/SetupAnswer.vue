@@ -243,10 +243,11 @@ const labels = computed(() => ({
       <div class="column actions">
         <button v-if="extra?.kind === 'skip'" class="skip t-body" type="button" data-testid="setup-secondary" :disabled="busy" @click="onSecondary">{{ t(extra.key) }}</button>
         <button
-          v-if="!answersOnTap" class="send" type="button" data-primary data-dock-primary data-testid="setup-primary" :aria-label="t('onboarding.guided.send')"
+          v-if="!answersOnTap" class="send" type="button" data-primary data-dock-primary data-testid="setup-primary"
           :aria-describedby="blocked ? `${questionId} ${reasonId}` : questionId" :disabled="busy || !canContinue" @click="onPrimary"
         >
-          <span>{{ t('onboarding.guided.sendShort') }}</span>
+          <!-- "Siguiente", not "Enviar": nothing leaves the device (DIRECTION §4 improvement 5). -->
+          <span>{{ t('onboarding.guided.next') }}</span>
           <Icon name="send" :size="22" class="send-icon" />
         </button>
         <span v-if="blocked" :id="reasonId" class="visually-hidden" data-testid="send-reason">{{ t(`onboarding.guided.${blocked}`) }}</span>
@@ -267,17 +268,15 @@ const labels = computed(() => ({
 .dock-answer > .column:empty { display: none; }
 .dock-actions { flex: none; }
 .column { box-sizing: border-box; width: 100%; max-width: var(--column); margin-inline: auto; padding-inline: max(var(--page-gutter), var(--safe-left)) max(var(--page-gutter), var(--safe-right)); }
-/* Send is the call to action: the group gap clears it of the answers above and of "Later" beside or above it, and the
-   bar keeps 16 px plus the safe area under it (docs/design/visual-design.md › Spacing). Below 480 px it spans the
-   column like the summary's button; from 480 px it hugs its label at the trailing edge, "Later" on the leading one. */
+/* "Siguiente" is the call to action; the bar keeps 16 px plus the safe area under it. */
 .actions {
-  display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--group-gap);
-  padding-block: var(--group-gap) calc(var(--space-4) + var(--safe-bottom));
+  display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--space-3) var(--space-4);
+  padding-block: var(--space-3) calc(var(--space-4) + var(--safe-bottom));
 }
 /* An answer that says "none": an outlined chip with the other answers. */
 .reply-chip {
-  align-self: flex-start; min-height: var(--tap-target); max-width: 100%; padding: var(--space-2) var(--space-4); border: 1.5px solid var(--field-border); border-radius: 999px;
-  background: transparent; color: var(--label); font-weight: 600; text-align: center; overflow-wrap: anywhere; hyphens: auto; touch-action: manipulation;
+  align-self: flex-start; min-height: var(--tap-target); max-width: 100%; padding: var(--space-2) var(--space-4); border: 1.5px solid transparent; border-radius: 999px;
+  background: var(--fill); color: var(--label); font-weight: 600; text-align: center; overflow-wrap: anywhere; hyphens: auto; touch-action: manipulation;
   transition: transform 0.1s var(--ease-out), opacity 0.1s;
 }
 .reply-chip:active:not(:disabled) { transform: scale(0.97); }
@@ -302,9 +301,9 @@ const labels = computed(() => ({
 .send:focus-visible { outline-offset: 3px; }
 .send-icon { flex: none; }
 .send-icon:dir(rtl) { transform: scaleX(-1); }
-@media (max-width: 479px) {
-  .send { flex: 1 0 100%; }
-}
+/* "Lo veo después" and "Siguiente" share the row (R_InicioSueno); Siguiente takes the room left, and wraps under it
+   only when the text is large. */
+.send { flex: 1 1 auto; max-width: 15rem; }
 .other, .add {
   align-self: flex-start; min-height: var(--tap-target); padding: var(--space-2) var(--space-4); border: 2px dashed var(--field-border);
   border-radius: 999px; background: transparent; color: var(--label); font-weight: 600; touch-action: manipulation;

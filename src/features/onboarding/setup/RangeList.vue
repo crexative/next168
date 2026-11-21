@@ -10,7 +10,9 @@ import { useSetupFormat } from './useSetupFormat'
 // The ranges of one category, one picker open at a time across all of them, and "Add another time".
 const props = defineProps<{ state: SetupState; category: CategoryDraft; labels?: Record<string, string>; sleep?: boolean }>()
 const { t } = useSetupFormat()
-const open = ref<{ key: string; field: Field } | null>(null)
+// The first range opens on its start, its times ready (fewer taps: DIRECTION §4).
+const first = props.category.ranges[0]
+const open = ref<{ key: string; field: Field } | null>(first ? { key: first.key, field: 'start' } : null)
 
 function change(key: string, change: { days?: DayIndex[]; start?: number; end?: number }): void {
   const range = props.category.ranges.find((candidate) => candidate.key === key)
@@ -24,7 +26,7 @@ function remove(key: string): void {
 
 function add(): void {
   const range = addRange(props.state, props.category)
-  open.value = { key: range.key, field: 'days' }
+  open.value = { key: range.key, field: 'start' }
 }
 </script>
 

@@ -155,10 +155,8 @@
     "draftUnavailable": "Este navegador não guarda rascunho. Não recarregue até terminar.",
     "change": "Mudar: {question} {answer}",
     "conversation": "Conversa",
-    "send": "Enviar resposta",
     "needFix": "Primeiro corrija o horário marcado.",
-    "progressShort": "{step} de {total}",
-    "sendShort": "Enviar"
+    "progressShort": "{step} de {total}"
   },
   "summary": {
     "title": "Sua semana típica",
