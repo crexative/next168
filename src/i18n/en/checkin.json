@@ -37,5 +37,12 @@
   },
   "reminder": {
     "body": "How was today? It takes a minute."
+  },
+  "chat": {
+    "stress": "How stressed were you today?",
+    "final": "This is your wrap-up for today.",
+    "done": "All set for today. Rest well.",
+    "date": "Day wrap-up · {date}",
+    "addNote": "Add a note"
   }
 }

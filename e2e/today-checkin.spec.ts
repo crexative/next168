@@ -288,12 +288,17 @@ for (const size of SIZES) {
   }
 }
 
-const fact = (page: Page, testId: string) => page.getByTestId(testId)
+// The check-in is a conversation (R_Cierre): told facts are your answers, open questions come one at a time.
+const checkin = (page: Page) => page.getByTestId('checkin')
+const answerOf = (page: Page, step: string) => page.getByTestId(`answer-${step}`)
+async function toFinal(page: Page): Promise<void> {
+  while (await checkin(page).getAttribute('data-step') !== 'final') await page.getByTestId('checkin-skip').click()
+}
 
 for (const theme of THEMES) {
   test.describe(`check-in, ${theme}`, () => {
     for (const size of SIZES) {
-      test(`${size.name}: card from 20:00, sentences, the day's blocks, saved and back on Today`, async ({ page }) => {
+      test(`${size.name}: card from 20:00, told facts, the day's routines, saved and back on Today`, async ({ page }) => {
         await start(page, size, theme, plan, '2026-10-21T19:59:00.000Z')
         await open(page, 'today', 'Hoy')
         await expect(page.getByTestId('checkin-card')).toHaveCount(0)
@@ -301,52 +306,46 @@ for (const theme of THEMES) {
         const card = page.getByTestId('checkin-card')
         await expect(card).toBeVisible()
         await expect(card).toContainText('Cierre del día')
-        await expect(card).not.toContainText('Registro de la noche')
 
-        // Tap 1: open the form. The route and the card agree on one name.
+        // Tap 1: open the conversation. The day is a line, not a field; the times from the plan are told as answers.
         await card.getByRole('link', { name: /Cierre del día/ }).click()
-        await expect(page.getByRole('heading', { level: 1, name: 'Cierre del día' })).toBeVisible()
-        await expect(page.locator('.view-enter-active, .view-leave-active')).toHaveCount(0)
-        // The day is a line under the title, not a field; the times are sentences prefilled from the plan.
-        await expect(page.getByTestId('checkin-date')).toHaveText('miércoles, 21 de octubre')
+        await expect(checkin(page)).toBeVisible()
+        await expect(page.getByTestId('checkin-date')).toHaveText('Cierre del día · miércoles, 21 de octubre')
         await expect(page.locator('input[type="date"]')).toHaveCount(0)
-        await expect(page.getByLabel('Fecha en que despertaste')).toHaveCount(0)
-        await expect(fact(page, 'fact-bedtime')).toHaveText('Anoche te acostaste a las 10:00 p. m.')
-        await expect(fact(page, 'fact-wake')).toHaveText('Hoy te levantaste a las 6:00 a. m.')
-        await expect(fact(page, 'fact-work-end')).toHaveText('Hoy terminaste de trabajar a las 11:00 a. m.')
-        await expect(page.getByTestId('plan-hint')).toBeVisible()
-        for (const testId of ['fact-bedtime', 'fact-wake', 'fact-work-end']) expect((await box(fact(page, testId))).height).toBeGreaterThanOrEqual(44)
+        await expect(answerOf(page, 'bedtime')).toHaveText('Anoche te acostaste a las 10:00 p. m.')
+        await expect(answerOf(page, 'wake')).toHaveText('Hoy te levantaste a las 6:00 a. m.')
+        await expect(answerOf(page, 'workEnd')).toHaveText('Hoy terminaste de trabajar a las 11:00 a. m.')
+        for (const step of ['bedtime', 'wake', 'workEnd']) expect((await box(answerOf(page, step))).height).toBeGreaterThanOrEqual(44)
 
-        // The wake-up sentence opens its time when tapped, and goes back to a sentence when it is set.
-        await fact(page, 'fact-wake').getByRole('button').click()
-        const wake = fact(page, 'fact-wake').getByLabel('¿A qué hora te levantaste hoy?')
+        // A told time is asked again when tapped, prefilled, and told again once it is set.
+        await answerOf(page, 'wake').click()
+        await expect(page.getByTestId('checkin-question')).toHaveText('¿A qué hora te levantaste hoy?')
+        const wake = page.getByTestId('fact-input')
         await expect(wake).toHaveValue('06:00')
         await wake.fill('07:00')
-        await wake.press('Enter')
-        await expect(fact(page, 'fact-wake')).toHaveText('Hoy te levantaste a las 7:00 a. m.')
-        await fact(page, 'fact-wake').getByRole('button').click()
-        await fact(page, 'fact-wake').getByLabel('¿A qué hora te levantaste hoy?').fill('06:00')
-        await fact(page, 'fact-wake').getByLabel('¿A qué hora te levantaste hoy?').press('Enter')
+        await page.getByRole('button', { name: 'Siguiente' }).click()
+        await expect(answerOf(page, 'wake')).toHaveText('Hoy te levantaste a las 7:00 a. m.')
+        await answerOf(page, 'wake').click()
+        await page.getByTestId('fact-input').fill('06:00')
+        await page.getByRole('button', { name: 'Siguiente' }).click()
 
-        // The exercise question is gone: the day's blocks that are over and unmarked ask instead, with the Hoy circle.
-        await expect(page.getByText('¿Hiciste ejercicio?')).toHaveCount(0)
-        const blocks = page.getByTestId('checkin-blocks')
-        await expect(blocks).toContainText('Aún sin marcar')
-        const gym = blocks.getByTestId('checkin-block').filter({ hasText: 'Gimnasio' })
-        await expect(gym).toHaveCount(1)
-        await expect(gym.getByTestId('status-control')).toHaveAccessibleName('¿Cómo fue Gimnasio? Sin marcar. Toca para marcar como hecho; mantén pulsado para más opciones')
-        expect((await box(gym.getByTestId('status-control'))).width).toBeGreaterThanOrEqual(44)
-        // Stress keeps its question, with the ends of the scale named instead of folded into the label.
-        const stress = page.getByRole('radiogroup', { name: 'Estrés hoy' })
-        await expect(stress).toBeVisible()
-        await expect(page.getByTestId('choice-ends')).toContainText('calma')
-        await expect(page.getByTestId('choice-ends')).toContainText('alto')
+        // No exercise question: the routines that are over and unmarked are asked one by one, with visible replies.
+        await expect(checkin(page)).not.toContainText('¿Hiciste ejercicio?')
+        await expect(page.getByTestId('checkin-question')).toHaveText('¿Cómo fue Trabajo profundo?')
+        await page.getByTestId('checkin-skip').click()
+        await expect(page.getByTestId('checkin-question')).toHaveText('¿Cómo fue Gimnasio?')
+        const replies = checkin(page).locator('.quick-reply')
+        await expect(replies).toHaveText(['Hecho', 'A medias', 'No'])
+        for (const reply of await replies.all()) expect((await box(reply)).height).toBeGreaterThanOrEqual(44)
 
-        // Taps 2–4: the gym block, stress, save. Exercise is read from the block, so the timeline agrees with the check-in.
-        await gym.getByTestId('status-control').click()
-        await expect(gym.getByTestId('status-control')).toHaveAttribute('data-status', 'done')
+        // Taps 2–4: the gym, stress, save. Exercise is read from the routine, so the timeline agrees with the check-in.
+        await replies.first().click()
         await expect.poll(async () => (await stored(page)).actuals).toMatchObject([{ blockId: 'b-gym', status: 'done' }])
-        await stress.getByRole('radio', { name: '2' }).click()
+        await expect(page.getByTestId('checkin-question')).toHaveText('¿Cómo de estresado estuviste hoy?')
+        await expect(checkin(page).locator('.ends')).toContainText('calma')
+        await expect(checkin(page).locator('.ends')).toContainText('alto')
+        await page.getByTestId('stress-2').click()
+        await expect(page.getByTestId('checkin-question')).toHaveText('Este es tu cierre de hoy.')
         await page.getByRole('button', { name: 'Guardar cierre' }).click()
 
         await expect(page).toHaveURL(/#\/today$/)
@@ -357,26 +356,21 @@ for (const theme of THEMES) {
         await expect.poll(async () => (await stored(page)).checkIns.at(-1)).toEqual({ date: '2026-10-21', bedtime: 1320, wake: 360, workEnd: 660, exercise: 'yes', stress: 2 })
         await page.clock.runFor(5000)
         await expect(done).toHaveText('Hecho ✓ · racha 2')
-        // Hoy shows the same answer on the same block: one fact, one place.
+        // Hoy shows the same answer on the same routine: one fact, one place.
         await expandEarlier(page)
         await expect(page.getByTestId('timeline-item').filter({ hasText: 'Gimnasio' }).getByTestId('status-control')).toHaveAttribute('data-status', 'done')
       })
     }
 
-    test('the back control is top-leading in the toolbar, above the large title, and leads to Hoy', async ({ page }) => {
+    test('× is top-leading in the conversation and leads back to Hoy', async ({ page }) => {
       await start(page, SIZES[0], theme, plan, '2026-10-21T20:30:00.000Z')
       await open(page, 'checkin', 'Cierre del día')
-      const back = page.locator('.toolbar-inner').getByRole('link', { name: 'Volver a Hoy' })
+      const back = page.getByRole('button', { name: 'Volver a Hoy' })
       await expect(back).toBeVisible()
-      const [backRect, gearRect, toolbarRect] = await Promise.all([box(back), box(page.locator('.toolbar-actions .gear')), box(page.locator('.toolbar'))])
-      // Leading edge, on the toolbar row level with the settings gear, which is the trailing control of that row.
-      expect(backRect.x).toBeLessThan(SIZES[0].width / 2)
-      expect(backRect.x + backRect.width).toBeLessThan(gearRect.x)
-      expect(Math.abs(backRect.y + backRect.height / 2 - (gearRect.y + gearRect.height / 2))).toBeLessThanOrEqual(2)
-      expect(backRect.y + backRect.height).toBeLessThanOrEqual(toolbarRect.y + toolbarRect.height + 1)
-      expect(backRect.height).toBeGreaterThanOrEqual(44)
-      // Under the title there is the date line, not a back link.
-      await expect(page.locator('.checkin').getByRole('link', { name: 'Volver a Hoy' })).toHaveCount(0)
+      const rect = await box(back)
+      expect(rect.x).toBeLessThan(SIZES[0].width / 2)
+      expect(rect.y).toBeLessThan(80)
+      expect(rect.height).toBeGreaterThanOrEqual(44)
       await back.click()
       await expect(page).toHaveURL(/#\/today$/)
     })
@@ -384,15 +378,15 @@ for (const theme of THEMES) {
     test('Fin del trabajo is not said on a day without work (Saturday)', async ({ page }) => {
       await start(page, SIZES[0], theme, plan, '2026-10-24T20:30:00.000Z')
       await open(page, 'checkin', 'Cierre del día')
-      await expect(page.getByTestId('checkin-date')).toHaveText('sábado, 24 de octubre')
-      await expect(fact(page, 'fact-bedtime')).toBeVisible()
-      await expect(fact(page, 'fact-work-end')).toHaveCount(0)
+      await expect(page.getByTestId('checkin-date')).toHaveText('Cierre del día · sábado, 24 de octubre')
+      await expect(answerOf(page, 'bedtime')).toBeVisible()
+      await expect(answerOf(page, 'workEnd')).toHaveCount(0)
     })
   })
 }
 
 test.describe('check-in answers can be withdrawn', () => {
-  test('Borrar clears stress, and the saved entry loses the field but keeps what was derived', async ({ page }) => {
+  test('changing stress and leaving it for later withdraws it; the saved entry keeps what was derived', async ({ page }) => {
     // Tonight's gym was marked done on Hoy, so the check-in derives "exercise: yes" from the timeline (an unmarked
     // block would leave it unknown, and the saved answer would be dropped).
     const gymDone = {
@@ -402,14 +396,13 @@ test.describe('check-in answers can be withdrawn', () => {
     const saved = { ...plan, actuals: [gymDone], checkIns: [...plan.checkIns, { date: '2026-10-21', bedtime: 1320, wake: 360, exercise: 'yes', stress: 3 }] }
     await start(page, SIZES[0], 'light', saved, '2026-10-21T20:30:00.000Z')
     await open(page, 'checkin', 'Cierre del día')
-    const stress = page.getByRole('radiogroup', { name: 'Estrés hoy' })
-    await expect(stress.getByRole('radio', { name: '3' })).toHaveAttribute('aria-checked', 'true')
-    const clearStress = page.getByRole('button', { name: 'Borrar: Estrés hoy' })
-    expect((await box(clearStress)).height).toBeGreaterThanOrEqual(44)
-    await clearStress.click()
-    await expect(stress.getByRole('radio', { name: '3' })).toHaveAttribute('aria-checked', 'false')
-    await expect(stress.getByRole('radio', { name: '1' })).toBeFocused()
-    await expect(page.getByRole('button', { name: /^Borrar/ })).toHaveCount(0)
+    // The end of work and this morning's work are still open: they are asked first, and left for later.
+    await toFinal(page)
+    await answerOf(page, 'stress').click()
+    await expect(page.getByTestId('stress-3')).toHaveAttribute('aria-pressed', 'true')
+    await page.getByTestId('checkin-skip').click()
+    await expect(answerOf(page, 'stress')).toHaveCount(0)
+    await toFinal(page)
     await page.getByRole('button', { name: 'Guardar cierre' }).click()
     await expect(page).toHaveURL(/#\/today$/)
     await expect.poll(async () => (await stored(page)).checkIns.at(-1)).toEqual({ date: '2026-10-21', bedtime: 1320, wake: 360, exercise: 'yes' })

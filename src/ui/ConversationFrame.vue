@@ -1,14 +1,16 @@
 <script setup lang="ts">
 import { computed, nextTick, onBeforeUnmount, ref, useId, watch } from 'vue'
-import Icon from '@/ui/Icon.vue'
-import { registerUnsavedInput } from '@/ui/unsavedGuard'
-import AppMark from '@/ui/AppMark.vue'
-import { pinToVisualViewport } from '@/ui/visualViewportPin'
+import Icon from './Icon.vue'
+import { registerUnsavedInput } from './unsavedGuard'
+import AppMark from './AppMark.vue'
+import { pinToVisualViewport } from './visualViewportPin'
 
-// The guided setup's full-screen frame: a top bar (‹ to leave, the app's mark, which part of five) over the
-// conversation. Going back is not a button here: the person taps an earlier answer to change it. Not a sheet: it covers the screen on a phone and centres a reading column on wider screens. It keeps
-// focus inside, closes with Escape, and follows the visible viewport so the docked answers stay above the keyboard.
-const props = defineProps<{
+// The conversation frame (redesign 2026-11, DIRECTION §4): Weeklid talking to you, one question at a time. A top bar
+// (‹ or × to leave, the app's mark, "Parte N de M" over a segmented bar) over the conversation. Going back is not a
+// button here: the person taps an earlier answer to change it. Not a sheet: it covers the screen on a phone and
+// centres a reading column on wider screens. It keeps focus inside, closes with Escape, and follows the visible
+// viewport so the docked answers stay above the keyboard. Used by the guided setup and the daily check-in.
+const props = withDefaults(defineProps<{
   open: boolean
   title: string
   closeLabel: string
@@ -18,12 +20,14 @@ const props = defineProps<{
   total: number
   locked: boolean
   dirty: boolean
-}>()
+  // ‹ leaves a flow that goes on later (setup); × cancels one (the check-in, an edit).
+  leading?: 'back' | 'close'
+}>(), { leading: 'back' })
 const emit = defineEmits<{ close: [] }>()
 
 const titleId = useId()
 const root = ref<HTMLElement | null>(null)
-const pills = computed(() => Array.from({ length: props.total }, (_, index) => (index + 1 < props.part ? 'done' : index + 1 === props.part ? 'current' : 'next')))
+const segments = computed(() => Array.from({ length: props.total }, (_, index) => (index + 1 <= props.part ? 'done' : 'next')))
 const FOCUSABLE = 'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'
 
 let returnFocusTo: HTMLElement | null = null
@@ -106,18 +110,21 @@ onBeforeUnmount(() => {
         <header class="bar">
           <div class="bar-inner">
             <button class="bar-button setup-close" type="button" :aria-label="closeLabel" :disabled="locked" @click="requestClose">
-              <Icon name="chevron-left" :size="28" />
+              <Icon :name="leading === 'close' ? 'x' : 'chevron-left'" :size="leading === 'close' ? 24 : 28" />
             </button>
             <h2 :id="titleId" class="title">
               <AppMark class="mark" :size="32" />
               <span class="visually-hidden">{{ title }}</span>
             </h2>
-            <p v-if="total > 0" class="progress" data-testid="setup-progress">
+            <p v-if="total > 0" class="progress t-footnote" data-testid="setup-progress">
               <span class="visually-hidden">{{ progressLabel }}</span>
-              <span class="pills" aria-hidden="true"><span v-for="(state, index) in pills" :key="index" class="pill" :class="`is-${state}`" /></span>
-              <span class="count t-subhead" aria-hidden="true">{{ countLabel }}</span>
+              <span class="count" aria-hidden="true">{{ countLabel }}</span>
             </p>
           </div>
+          <!-- The parts as one 4 px bar of equal segments: done and current in the tint, the rest quiet. -->
+          <span v-if="total > 0" class="segments" aria-hidden="true">
+            <span v-for="(state, index) in segments" :key="index" class="segment" :class="`is-${state}`" />
+          </span>
         </header>
         <slot />
       </div>
@@ -133,24 +140,24 @@ onBeforeUnmount(() => {
   height: min(var(--vv-height, 100dvh), 100dvh);
   background: var(--surface); color: var(--label); outline: none;
 }
-.bar { flex: none; padding: var(--safe-top) max(var(--space-2), var(--safe-right)) 0 max(var(--space-2), var(--safe-left)); border-bottom: 0.5px solid var(--separator); }
-.bar-inner { display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; gap: var(--space-2); min-height: calc(var(--tap-target) + var(--space-2)); }
+.bar { flex: none; padding: var(--safe-top) max(var(--space-2), var(--safe-right)) 0 max(var(--space-2), var(--safe-left)); }
+.bar-inner { display: grid; grid-template-columns: minmax(var(--tap-target), 1fr) auto minmax(0, 1fr); align-items: center; gap: var(--space-2); min-height: calc(var(--tap-target) + var(--space-2)); }
 .bar-button {
   display: inline-flex; flex: none; align-items: center; justify-content: center; width: var(--tap-target); height: var(--tap-target);
-  border: 0; border-radius: 50%; background: transparent; color: var(--tint-label); touch-action: manipulation;
+  border: 0; border-radius: 50%; background: transparent; color: var(--label-2); touch-action: manipulation;
 }
 .bar-button:focus-visible { outline-offset: -2px; }
 .bar-button:disabled { opacity: 0.4; }
 .title { margin: 0; line-height: 0; }
 .bar-inner > .bar-button { justify-self: start; }
 
-/* Five steps: the parts done are light pills, the current one a darker pill, the rest quiet dots. */
-.progress { display: flex; flex-direction: column; align-items: flex-end; justify-self: end; gap: 3px; margin: 0; padding-inline-end: var(--space-3); }
-.pills { display: flex; align-items: center; gap: 5px; }
-.count { color: var(--label-2); font-variant-numeric: tabular-nums; white-space: nowrap; }
-.pill { width: 7px; height: 7px; border-radius: 4px; background: var(--label-3); transition: width var(--spring-duration) var(--ease-out), background-color 0.2s; }
-.pill.is-done { width: 18px; background: color-mix(in srgb, var(--tint) 45%, transparent); }
-.pill.is-current { width: 22px; background: var(--tint); }
+.progress { justify-self: end; min-width: 0; margin: 0; padding-inline-end: 8px; text-align: end; }
+/* Like the tab labels, the count stops growing at large text and may wrap between its words: it never runs out of the bar. */
+.count { color: var(--label-2); font-size: min(0.8125rem, 15px); font-weight: 600; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+/* A part added later (a pick that asks one more question) slides in as a new segment. */
+.segments { display: flex; gap: 4px; margin: var(--space-1) var(--space-2) var(--space-2); }
+.segment { flex: 1; height: 4px; border-radius: 2px; background: var(--fill); transition: background-color 0.2s, flex-grow var(--spring-duration) var(--ease-out); }
+.segment.is-done { background: var(--tint); }
 
 .setup-frame-enter-active { transition: opacity 0.25s var(--ease-out), transform var(--spring-duration) var(--ease-out); }
 .setup-frame-leave-active { transition: opacity 0.15s; }
@@ -159,6 +166,6 @@ onBeforeUnmount(() => {
 @media (prefers-reduced-motion: reduce) {
   .setup-frame-enter-active { transition: opacity 0.2s; }
   .setup-frame-enter-from { transform: none; }
-  .pill { transition: none; }
+  .segment { transition: none; }
 }
 </style>
