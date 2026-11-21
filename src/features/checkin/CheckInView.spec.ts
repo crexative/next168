@@ -9,6 +9,7 @@ import { createTestRepositories, fixedNow, newTestId, testDocument } from '@/rep
 import { useUndoToast } from '@/ui/undoToast'
 import { setHourCycle } from '@/ui/format'
 import CheckInView from './CheckInView.vue'
+import { trail } from '@/features/settings/navigationTrail'
 import { consumeSavedFlag } from './checkinFlash'
 import { dropDraft } from './checkInDraft'
 
@@ -176,6 +177,44 @@ describe('check-in conversation', () => {
     app!.unmount(); host.remove()
     await mount({ ...planned, checkIns: [] })
     expect(step()).toBe('stress')
+  })
+
+  it('names the assistant on the × when it was opened from there', async () => {
+    trail.value = { from: 'assistant', to: 'checkin' }
+    await mount(planned)
+    expect($('.setup-close')!.getAttribute('aria-label')).toBe('Back to Assistant')
+    trail.value = null
+  })
+
+  it('reopens where it was: questions left for later stay so, and the answers after them are shown', async () => {
+    window.location.hash = '#/checkin'
+    await mount({ ...planned, blocks: [] })
+    for (let taps = 0; step() !== 'stress'; taps++) {
+      if (taps === MAX_TURNS) stuck(step())
+      await skip()
+    }
+    await tap('stress-2')
+    expect(step()).toBe('final')
+    $<HTMLButtonElement>('.setup-close')!.click()
+    app!.unmount(); host.remove()
+    await mount({ ...planned, blocks: [] })
+    expect(step()).toBe('final')
+    expect(text('answer-stress')).toBe('2')
+    expect(text('checkin-unsaved')).toBe('Your earlier answers are not saved yet.')
+  })
+
+  it('a change saved elsewhere drops the answer being changed, so a value typed against the old one is not kept', async () => {
+    const store = await mount({ ...planned, checkIns: [{ date: '2026-10-24', bedtime: 1320, stress: 2 }] })
+    await tap('answer-bedtime')
+    const field = $<HTMLInputElement>('[data-testid="fact-input"]')!
+    field.value = '23:45'
+    field.dispatchEvent(new Event('input', { bubbles: true }))
+    await nextTick()
+    await store.commit((draft) => { draft.checkIns = [{ date: '2026-10-24', bedtime: 1290, stress: 2 }] })
+    await nextTick()
+    await nextTick()
+    expect(step()).not.toBe('bedtime')
+    expect(answers()).toContain('You went to bed at 9:30 PM last night')
   })
 
   it('keeps no draft after a save that leaves no entry: withdrawing the times the plan told and saving', async () => {
