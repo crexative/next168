@@ -252,11 +252,11 @@ async function remove(): Promise<void> {
 .swatch { width: 14px; height: 14px; border-radius: 50%; flex: none; }
 .empty { padding: var(--row-padding-block) var(--card-padding); }
 /* Leading, under the rows' swatches, like the other plain actions in Settings; centred it floated between sections. */
-/* The add row is one tap target the width of the row, joined to the row above like the others (not a button 4 px
-   under it, which the geometry guard counts as neither joined nor apart). */
-.add-row { position: relative; display: flex; align-items: stretch; min-height: var(--row-min-height); }
+/* The add row's plain button keeps 8 px from the row above (4 px is neither joined nor apart for the geometry guard)
+   and room for its focus ring inside the card. */
+.add-row { position: relative; display: flex; align-items: center; min-height: var(--row-min-height); padding: var(--space-2) var(--card-padding); }
 .add-row::before { content: ''; position: absolute; top: 0; right: 0; left: var(--card-padding); border-top: 1px solid var(--separator); }
-.add-category { flex: 1; justify-content: flex-start; min-height: var(--row-min-height); padding-inline: calc(var(--card-padding) - var(--space-1)); border-radius: 0 0 var(--radius-card) var(--radius-card); }
+.add-category { align-self: center; }
 .editor { display: flex; flex-direction: column; gap: var(--space-3); }
 .field { display: flex; flex-direction: column; gap: var(--space-1); }
 .error { color: var(--danger-label); }

@@ -4,11 +4,13 @@ import { usePlannerStore } from '@/stores/plannerStore'
 import { exportNudge, noteFirstVisit, readNudgeInput, type Nudge } from './exportReminder'
 
 // The reminder to export a copy, shared by the "Tus datos" row (one amber line, R_Ajustes) and the notice with its
-// actions on the "Tus datos" page. Re-read after each action: the stored times are not reactive.
+// actions on the "Tus datos" page. Re-read after each action: the stored times are not reactive. One value for every
+// user: the row and the page live in the same view, so an export on the page must quiet the row too.
+const nudge = ref<Nudge | null>(null)
+
 export function useExportNudge() {
   const { t } = useI18n()
   const planner = usePlannerStore()
-  const nudge = ref<Nudge | null>(null)
 
   function refresh(): void {
     const document = planner.document

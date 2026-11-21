@@ -160,7 +160,8 @@ async function panelFits(page: Page, state: string): Promise<void> {
 async function anyAiStates(page: Page, theme: string, label: string, includeSettings = true): Promise<void> {
   const check = includeSettings ? audit : panelFits
   await open(page, 'assistant')
-  await check(page, `${theme}/${label}/assistant with the use-with-your-AI row closed`)
+  // The panel lives in Settings now ("Responder con: Usar con tu IA"); the assistant page is audited whole, not as a panel.
+  if (includeSettings) await check(page, `${theme}/${label}/assistant with Responder con`)
   // "Responder con: Usar con tu IA" opens its page in Settings (R_Asistente).
   await page.getByTestId('reply-with').locator('select').selectOption('anyAi')
   await expect(page.getByTestId('any-ai-copy')).toBeVisible()
