@@ -178,7 +178,9 @@ function onFocusIn(event: FocusEvent): void {
 .resumed { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; column-gap: var(--space-3); text-align: center; }
 .resumed p { margin: 0; color: var(--label-2); }
 .dock { flex: none; border-top: 0.5px solid var(--separator); background: var(--surface); }
-.actions { display: flex; flex-direction: column; align-items: center; gap: var(--space-1); padding-block: var(--space-3) calc(var(--space-4) + var(--safe-bottom)); }
+/* The primary keeps the group gap from the conversation above and from "Repasar las preguntas" under it. */
+.actions { display: flex; flex-direction: column; align-items: center; gap: var(--space-1); padding-block: var(--group-gap) calc(var(--space-4) + var(--safe-bottom)); }
+.actions > [data-testid=summary-review] { margin-block-start: calc(var(--group-gap) - var(--space-1)); }
 .actions > .trust { justify-content: center; text-align: center; }
 .actions :deep(.ui-button) { width: 100%; min-height: 52px; border-radius: 26px; overflow-wrap: anywhere; hyphens: auto; }
 

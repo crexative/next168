@@ -185,6 +185,8 @@ function addOther(): void {
     clearPending(props.state)
     otherOpen.value = false
     emit('edited')
+    // The field is gone: focus goes to the chip just added, so it is neither lost nor left on the page behind.
+    void nextTick(() => root.value?.querySelector<HTMLElement>(`[data-chip="${CSS.escape(named.key)}"]`)?.focus({ preventScroll: true }))
     return
   }
   // A name already on the list picks that item when it is free; one picked in another round says so.

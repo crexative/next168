@@ -76,7 +76,8 @@ test.describe('plan and measure', () => {
     await screen('exerciseRanges')
     await setup.getByRole('button', { name: 'Next', exact: true }).click()
     await screen('more')
-    await setup.getByRole('button', { name: 'Later', exact: true }).click()
+    // "What else…?" takes several picks; nothing picked here.
+    await setup.getByRole('button', { name: 'No, that\'s all', exact: true }).click()
     await screen('summary')
     await expect(page.getByTestId('week-counter')).toHaveText(/^99 h assigned · 69 h unassigned$/)
     // Everything is editable in the summary: rename Work.

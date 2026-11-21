@@ -379,9 +379,10 @@ test.describe('answering', () => {
     await step(() => tap(page, 'Siguiente'), 'exercise')
     await step(() => tap(page, 'Sí'), 'exerciseRanges')
     await step(() => tap(page, 'Siguiente'), 'more')
-    await step(() => tap(page, 'Familia'), 'extra:family')
-    await step(() => tap(page, 'Siguiente'), 'more:1')
-    await step(() => tap(page, 'No, eso es todo'), 'summary')
+    // Several picks at once: the chip, then Siguiente; one time question per pick; no "¿Algo más?" round.
+    await step(() => tap(page, 'Familia'), 'more')
+    await step(() => tap(page, 'Siguiente'), 'extra:family')
+    await step(() => tap(page, 'Siguiente'), 'summary')
     // Pickers and the time editor never add a second filled button.
     await live(page).getByTestId('card-work').click()
     await openField(live(page).locator('[data-category=work] [data-field=start]').first())
@@ -431,14 +432,14 @@ test.describe('answering', () => {
       expect.soft(english.filter((value) => appearsAsWords(text, value)), label).toEqual([])
     }
     const steps: [string, string][] = [['[data-testid=setup-primary]', 'workStudy'], ['[data-value=work]', 'work'], ['[data-testid=setup-primary]', 'commute'], ['[data-value=yes]', 'commuteRanges'],
-      ['[data-testid=setup-primary]', 'exercise'], ['[data-value=yes]', 'exerciseRanges'], ['[data-testid=setup-primary]', 'more'], ['[data-value=family]', 'extra:family'],
-      ['[data-testid=setup-primary]', 'more:1'], ['[data-testid=more-done]', 'summary']]
+      ['[data-testid=setup-primary]', 'exercise'], ['[data-value=yes]', 'exerciseRanges'], ['[data-testid=setup-primary]', 'more'], ['[data-chip=family]', 'more'],
+      ['[data-testid=setup-primary]', 'extra:family'], ['[data-testid=setup-primary]', 'summary']]
     await check('sleep')
     for (const [selector, next] of steps) {
-      if (next === 'summary') {
-        // "Etwas anderes" opens the name field of "Sonst noch etwas?"; Escape puts it away again.
+      if (selector === '[data-chip=family]') {
+        // "Etwas anderes" opens the name field; Escape puts it away again.
         await live(page).getByTestId('more-other').click()
-        await check('more:1, the name field open')
+        await check('more, the name field open')
         await page.keyboard.press('Escape')
       }
       await live(page).locator(selector).click()
@@ -611,8 +612,8 @@ test.describe('answering', () => {
     await onScreen(page, 'more')
     await tap(page, 'Familia')
     await tap(page, 'Siguiente')
-    await onScreen(page, 'more:1')
-    await tap(page, 'No, eso es todo')
+    await onScreen(page, 'extra:family')
+    await tap(page, 'Siguiente')
     await onScreen(page, 'summary')
     const card = live(page).getByTestId('card-family')
     const text = (await card.textContent())!
@@ -812,27 +813,28 @@ async function walk(page: Page, visit: (label: string) => Promise<void>, options
     await visit(next)
     if (hasPickers) await pickers(next)
   }
-  await live(page).locator('[data-value=family]').click()
-  await onScreen(page, 'extra:family')
-  await visit('extra:family')
-  await live(page).locator('[data-testid=setup-primary]').click()
-  await onScreen(page, 'more:1')
-  await visit('more:1')
+  await live(page).locator('[data-chip=family]').click()
+  await onScreen(page, 'more')
+  await visit('more, Familia picked')
   await live(page).getByTestId('more-other').click()
-  await visit('more:1, the name field open')
+  await visit('more, the name field open')
   if (options.custom) {
     await live(page).getByTestId('more-other-name').fill(options.custom)
-    await visit('more:1, a name being typed')
+    await visit('more, a name being typed')
     await page.keyboard.press('Enter')
-    await expect(setup(page)).toHaveAttribute('data-screen', /^extra:custom/)
-    await visit('extra: the person\'s own')
-    await live(page).locator('[data-testid=setup-primary]').click()
-    await onScreen(page, 'more:2')
-    await visit('more:2')
+    await visit('more, the person\'s own picked')
   } else {
     await page.keyboard.press('Escape')
   }
-  await live(page).getByTestId('more-done').click()
+  await live(page).locator('[data-testid=setup-primary]').click()
+  await onScreen(page, 'extra:family')
+  await visit('extra:family')
+  await live(page).locator('[data-testid=setup-primary]').click()
+  if (options.custom) {
+    await expect(setup(page)).toHaveAttribute('data-screen', /^extra:custom/)
+    await visit('extra: the person\'s own')
+    await live(page).locator('[data-testid=setup-primary]').click()
+  }
   await onScreen(page, 'summary')
   await visit('summary')
   await live(page).getByTestId('card-work').click()
@@ -1014,14 +1016,13 @@ test.describe('reduced motion', () => {
     await onScreen(page, 'exercise')
     await press(live(page).locator('[data-value=no]'))
     await onScreen(page, 'more')
-    await press(live(page).locator('[data-value=family]'))
-    await onScreen(page, 'extra:family')
-    await press(primary(page))
-    await onScreen(page, 'more:1')
+    await press(live(page).locator('[data-chip=family]'))
     await press(live(page).getByTestId('more-other'))
     await page.waitForTimeout(200)
     await page.keyboard.press('Escape')
     await page.waitForTimeout(200)
+    await press(primary(page))
+    await onScreen(page, 'extra:family')
     await live(page).locator('[data-answer=workStudy]').click()
     await onScreen(page, 'workStudy')
     await page.waitForTimeout(400)
@@ -1137,15 +1138,15 @@ test.describe('the conversation', () => {
   })
 })
 
-// ---------- "¿Algo más?": the question comes back after each pick until the person says that is all ----------
+// ---------- "¿A qué más le dedicas tiempo?": several picks, then one short time question per pick (DIRECTION §4.2) ----------
 
-test.describe('"¿Algo más?" asked again (S1)', () => {
+test.describe('"¿A qué más…?" with several picks (S1)', () => {
   const FAMILY = { id: 'c-family', name: 'Familia', colorKey: 'pink', icon: '👨‍👩‍👧', goal: { type: 'none', hoursPerWeek: 0 } }
   const CHESS = { id: 'c-chess', name: 'Ajedrez', colorKey: 'green', goal: { type: 'none', hoursPerWeek: 0 } }
   const FAMILY_BLOCK = { id: 'b-fam', categoryId: 'c-family', title: 'Familia', days: [6], start: 600, end: 840, notes: 'Almuerzo' }
   const CHESS_BLOCK = { id: 'b-chess', categoryId: 'c-chess', title: 'Ajedrez', days: [2], start: 1140, end: 1200 }
-  const heading = (page: Page) => live(page).getByRole('heading', { level: 3 })
   const reply = (page: Page, name: string) => live(page).getByRole('button', { name, exact: true })
+  const chip = (page: Page, name: string) => live(page).getByTestId('more-chips').getByRole('button', { name, exact: true })
 
   async function toMore(page: Page): Promise<void> {
     await onScreen(page, 'sleep')
@@ -1158,71 +1159,81 @@ test.describe('"¿Algo más?" asked again (S1)', () => {
     await expect(live(page).getByTestId('more-other-name')).toBeFocused()
     await live(page).getByTestId('more-other-name').fill(name)
     await tap(page, 'Añadir')
-    await expect(setup(page)).toHaveAttribute('data-screen', /^extra:custom:\d+$/)
+    await expect(chip(page, name)).toHaveAttribute('aria-pressed', 'true')
   }
 
-  test('S1-1: after Familia and its times, "¿Algo más?" offers what is left, "Otra cosa" and the way out', async ({ page }) => {
+  test('S1-1: the chips stay where they are when picked; "Siguiente" asks the times of each pick in order, then the summary', async ({ page }) => {
     await start(page)
     await page.goto('./')
     await toMore(page)
-    await tap(page, 'Familia')
+    await expect(live(page).getByRole('heading', { level: 3 })).toHaveText('¿A qué más le dedicas tiempo cada semana?')
+    const names = ['Familia', 'Amigos', 'Tiempo para ti', 'Aprender']
+    await expect(live(page).getByTestId('more-chips').getByRole('button')).toHaveText(names)
+    for (const name of names) await expect(chip(page, name)).toHaveAttribute('aria-pressed', 'false')
+    await expect(reply(page, 'Otra cosa')).toBeVisible()
+    await expect(reply(page, 'No, eso es todo')).toBeVisible()
+    await chip(page, 'Aprender').click()
+    await chip(page, 'Familia').click()
+    await expect(live(page).getByTestId('more-chips').getByRole('button')).toHaveText(names)
+    await expect(chip(page, 'Aprender')).toHaveAttribute('aria-pressed', 'true')
+    await expect(setup(page)).toHaveAttribute('data-screen', 'more')
+    await tap(page, 'Siguiente')
+    await onScreen(page, 'extra:learning')
+    await tap(page, 'Siguiente')
     await onScreen(page, 'extra:family')
     await tap(page, 'Siguiente')
-    await onScreen(page, 'more:1')
-    await expect(heading(page)).toHaveText('¿Algo más?')
-    for (const name of ['Amigos', 'Tiempo para ti', 'Aprender', 'Otra cosa', 'No, eso es todo']) await expect(reply(page, name)).toBeVisible()
-    await expect(reply(page, 'Familia')).toHaveCount(0)
+    await onScreen(page, 'summary')
+    await expect(live(page).locator('[data-answer=more] .turn-answer')).toHaveText('Aprender, Familia')
   })
 
-  test('polish 2, 3, 5: at 1440x900 the replies sit under the question; one way out; later answers read "Sí, …"', async ({ page }) => {
+  test('polish 2, 3, 5: at 1440x900 the chips sit under the question; one way out; the answer names every pick', async ({ page }) => {
     await start(page, { size: { width: 1440, height: 900 } })
     await page.goto('./')
     await toMore(page)
     await calm(page)
     const gap = await page.evaluate(() => {
       const bubble = document.querySelector('[data-testid=setup] section.screen:not([aria-hidden=true]) .exchange.is-current .bubble')!.getBoundingClientRect()
-      const reply = document.querySelector('[data-testid=setup] section.screen:not([aria-hidden=true]) .reply')!.getBoundingClientRect()
-      return reply.top - bubble.bottom
+      const chip = document.querySelector('[data-testid=setup] section.screen:not([aria-hidden=true]) .chip')!.getBoundingClientRect()
+      return chip.top - bubble.bottom
     })
     expect(gap).toBeLessThan(96)
     await expect(reply(page, 'No, eso es todo')).toBeVisible()
     await expect(reply(page, 'Nada más')).toHaveCount(0)
-    await tap(page, 'Familia')
-    await tap(page, 'Siguiente')
+    await chip(page, 'Familia').click()
     await addTyped(page, 'Práctica de guitarra')
     await tap(page, 'Siguiente')
-    await onScreen(page, 'more:2')
-    await expect(live(page).locator('[data-answer=more] .turn-answer')).toHaveText('Familia')
-    await expect(live(page).locator('[data-answer="more:1"] .turn-answer')).toHaveText('Sí, Práctica de guitarra')
+    await onScreen(page, 'extra:family')
+    await expect(live(page).locator('[data-answer=more] .turn-answer')).toHaveText('Familia, Práctica de guitarra')
   })
 
-  test('S1-2: "Otra cosa" focuses the field; the name added gets its times, then "¿Algo más?" again', async ({ page }) => {
+  test('S1-2: "Otra cosa" focuses the field; the name added joins the chips, picked, and gets its times', async ({ page }) => {
     await start(page)
     await page.goto('./')
     await toMore(page)
     await addTyped(page, 'Práctica de guitarra')
+    await expect(reply(page, 'Otra cosa')).toBeVisible()
     await tap(page, 'Siguiente')
-    await onScreen(page, 'more:1')
-    await expect(heading(page)).toHaveText('¿Algo más?')
+    await expect(setup(page)).toHaveAttribute('data-screen', /^extra:custom:\d+$/)
     await expect(live(page).locator('[data-answer=more] .turn-answer')).toHaveText('Práctica de guitarra')
+    await tap(page, 'Siguiente')
+    await onScreen(page, 'summary')
   })
 
-  test('S1-3: three things with their times, then "No, eso es todo" and one save with all three, in order', async ({ page }) => {
+  test('S1-3: three things with their times and one save with all three, in order', async ({ page }) => {
     await start(page, { document: firstRun() })
     await page.goto('./')
     await toMore(page)
     const before = (await stored(page)).revision
-    await tap(page, 'Familia')
-    await tap(page, 'Siguiente')
-    await onScreen(page, 'more:1')
+    await chip(page, 'Familia').click()
     await addTyped(page, 'Práctica de guitarra')
+    await chip(page, 'Aprender').click()
     await tap(page, 'Siguiente')
-    await onScreen(page, 'more:2')
-    await tap(page, 'Aprender')
+    await onScreen(page, 'extra:family')
+    await tap(page, 'Siguiente')
+    await expect(setup(page)).toHaveAttribute('data-screen', /^extra:custom:\d+$/)
+    await tap(page, 'Siguiente')
     await onScreen(page, 'extra:learning')
     await tap(page, 'Siguiente')
-    await onScreen(page, 'more:3')
-    await tap(page, 'No, eso es todo')
     await onScreen(page, 'summary')
     await primary(page).click()
     await expect(setup(page)).toHaveCount(0)
@@ -1232,63 +1243,64 @@ test.describe('"¿Algo más?" asked again (S1)', () => {
     for (const category of saved.categories) expect(saved.blocks.filter((block) => block.categoryId === category.id).length, category.name).toBeGreaterThan(0)
   })
 
-  test('S1-4: the "No, eso es todo" turn reopens as the current answer; Amigos then asks its times and "¿Algo más?" again', async ({ page }) => {
+  test('S1-4: the "No, eso es todo" turn reopens with nothing picked; Amigos then asks its times', async ({ page }) => {
     await start(page)
     await page.goto('./')
     await toMore(page)
-    await tap(page, 'Familia')
-    await tap(page, 'Siguiente')
     await tap(page, 'No, eso es todo')
     await onScreen(page, 'summary')
-    await live(page).locator('[data-answer="more:1"]').click()
-    await onScreen(page, 'more:1')
-    await expect(reply(page, 'No, eso es todo (actual)')).toBeVisible()
-    await tap(page, 'Amigos')
+    await expect(live(page).locator('[data-answer=more] .turn-answer')).toHaveText('No, eso es todo')
+    await live(page).locator('[data-answer=more]').click()
+    await onScreen(page, 'more')
+    for (const name of ['Familia', 'Amigos']) await expect(chip(page, name)).toHaveAttribute('aria-pressed', 'false')
+    await chip(page, 'Amigos').click()
+    await tap(page, 'Siguiente')
     await onScreen(page, 'extra:friends')
     await tap(page, 'Siguiente')
-    await onScreen(page, 'more:2')
-    await expect(heading(page)).toHaveText('¿Algo más?')
-    await expect(reply(page, 'No, eso es todo')).toBeVisible()
+    await onScreen(page, 'summary')
   })
 
-  test('S1-5: a pick that was replaced keeps the time it was given when it is picked again', async ({ page }) => {
+  test('S1-5: a pick taken off and picked again keeps the time it was given; one taken off asks nothing', async ({ page }) => {
     await start(page)
     await page.goto('./')
     await toMore(page)
-    await tap(page, 'Familia')
+    await chip(page, 'Familia').click()
+    await tap(page, 'Siguiente')
     await onScreen(page, 'extra:family')
     await openField(live(page).locator('[data-field=end]'))
     await live(page).locator('[data-minute="780"]').click()
     await expect(live(page).locator('[data-field=end] .value')).toHaveText('1:00 p. m. · 3 h')
-    await tap(page, 'Siguiente')
-    await onScreen(page, 'more:1')
     await live(page).locator('[data-answer=more]').click()
     await onScreen(page, 'more')
-    await tap(page, 'Amigos')
+    await chip(page, 'Familia').click()
+    await chip(page, 'Amigos').click()
+    await tap(page, 'Siguiente')
     await onScreen(page, 'extra:friends')
     await tap(page, 'Siguiente')
-    await onScreen(page, 'more:1')
-    await tap(page, 'Familia')
+    await onScreen(page, 'summary')
+    await expect(live(page).getByTestId('card-family')).toHaveCount(0)
+    await live(page).locator('[data-answer=more]').click()
+    await onScreen(page, 'more')
+    await chip(page, 'Familia').click()
+    // Both picks already have their times: "Siguiente" goes back to the summary, and Familia kept its 1:00 p. m.
+    await tap(page, 'Siguiente')
+    await onScreen(page, 'summary')
+    await live(page).locator('[data-answer="extra:family"]').click()
     await onScreen(page, 'extra:family')
     await expect(live(page).locator('[data-field=end] .value')).toHaveText('1:00 p. m. · 3 h')
   })
 
-  test('S1-6: Familia removed in the summary is not offered again; "Deshacer" brings it back once and it is saved', async ({ page }) => {
+  test('S1-6: Familia removed in the summary; "Deshacer" brings it back and it is saved', async ({ page }) => {
     await start(page, { document: firstRun() })
     await page.goto('./')
     await toMore(page)
-    await tap(page, 'Familia')
+    await chip(page, 'Familia').click()
     await tap(page, 'Siguiente')
-    await tap(page, 'No, eso es todo')
+    await tap(page, 'Siguiente')
     await onScreen(page, 'summary')
     await live(page).getByTestId('card-family').click()
     await live(page).getByRole('button', { name: 'Quitar Familia' }).click()
     await expect(live(page).getByTestId('removed-note')).toHaveText('«Familia» quitado.')
-    await live(page).locator('[data-answer="more:1"]').click()
-    await onScreen(page, 'more:1')
-    await expect(reply(page, 'Familia')).toHaveCount(0)
-    await tap(page, 'No, eso es todo (actual)')
-    await onScreen(page, 'summary')
     await live(page).getByRole('button', { name: 'Deshacer' }).click()
     await expect(live(page).getByTestId('card-family')).toBeVisible()
     await expect(live(page).locator('[data-answer="extra:family"]')).toHaveCount(1)
@@ -1321,41 +1333,29 @@ test.describe('"¿Algo más?" asked again (S1)', () => {
     expect(after.categories.map((category) => category.id)).toEqual(['c-sleep', 'c-work', 'c-family', 'c-chess'])
   })
 
-  test('S1-10: a reload keeps the screen, the turns and a name typed but not added; nothing is written', async ({ page }) => {
+  test('S1-10: a reload keeps the screen, the picks and a name typed but not added; nothing is written', async ({ page }) => {
     await start(page, { document: firstRun() })
     await page.goto('./')
     await toMore(page)
-    await tap(page, 'Familia')
-    await tap(page, 'Siguiente')
-    await onScreen(page, 'more:1')
+    await chip(page, 'Familia').click()
     await addTyped(page, 'Práctica de guitarra')
-    const screen = (await setup(page).getAttribute('data-screen'))!
-    const turns = await live(page).locator('[data-answer]').allTextContents()
     const before = await bytes(page)
-    await page.reload()
-    await onScreen(page, screen)
-    await expect(live(page).locator('[data-answer]')).toHaveText(turns)
-    await expect(live(page).getByText('Seguimos donde lo dejaste.')).toBeVisible()
-    await tap(page, 'Siguiente')
-    await onScreen(page, 'more:2')
     await tap(page, 'Otra cosa')
     await live(page).getByTestId('more-other-name').fill('Clases de baile')
     await page.reload()
-    await onScreen(page, 'more:2')
+    await onScreen(page, 'more')
+    await expect(live(page).getByText('Seguimos donde lo dejaste.')).toBeVisible()
+    await expect(chip(page, 'Familia')).toHaveAttribute('aria-pressed', 'true')
+    await expect(chip(page, 'Práctica de guitarra')).toHaveAttribute('aria-pressed', 'true')
     await expect(live(page).getByTestId('more-other-name')).toHaveValue('Clases de baile')
     expect(await bytes(page)).toEqual(before)
   })
 
-  test('S1-11: focus lands on the first reply of "¿Algo más?"; Escape puts the name field away, a second one closes without writing', async ({ page }) => {
+  test('S1-11: focus lands on the first chip; Escape puts the name field away, a second one closes without writing', async ({ page }) => {
     await start(page, { document: firstRun() })
     await page.goto('./')
     await toMore(page)
-    await tap(page, 'Familia')
-    await tap(page, 'Siguiente')
-    await onScreen(page, 'more:1')
-    const group = live(page).getByRole('group', { name: '¿Algo más?' })
-    await expect(group.locator('.reply').first()).toBeFocused()
-    await expect(group.locator('.reply').first()).toHaveText('Amigos')
+    await expect(chip(page, 'Familia')).toBeFocused()
     const before = await bytes(page)
     await tap(page, 'Otra cosa')
     await expect(live(page).getByTestId('more-other-name')).toBeFocused()
