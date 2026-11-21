@@ -238,3 +238,36 @@ test('the key to the day shapes draws only "needs attention" in amber', async ({
     { fill: 'none', edge: 'label-2' },
   ])
 })
+
+// Review of #59: with forced colours every shape of the key stays drawn, the diamond included.
+test('with forced colours every shape of the key is drawn in the text colour', async ({ page }) => {
+  await page.emulateMedia({ forcedColors: 'active' })
+  await start(page, { categories: [sleep, work, study], blocks, checkIns: [{ date: '2026-10-25', bedtime: 1380, wake: 420, stress: 2 }, { date: '2026-10-26', bedtime: 60, wake: 300, stress: 5 }] })
+  await openTab(page, 'insights')
+  const key = page.getByRole('list', { name: 'Key to the dots' })
+  await expect(key).toBeVisible()
+  // Drawn means a fill or an outline that differs from the page's own (forced) background.
+  const drawn = await key.locator('.dot').evaluateAll((dots) => {
+    const page = getComputedStyle(document.body).backgroundColor
+    const shows = (colour: string) => colour !== 'rgba(0, 0, 0, 0)' && colour !== page
+    return dots.map((dot) => {
+      const style = getComputedStyle(dot)
+      return shows(style.backgroundColor) || (style.borderTopWidth !== '0px' && shows(style.borderTopColor))
+    })
+  })
+  expect(drawn).toEqual([true, true, true, true])
+})
+
+// Review of #59: the headline's long word ("maintenant") breaks instead of running off a narrow phone at 200 % text.
+test('the headline fits a 320 px phone at 200 % text in French', async ({ page }) => {
+  await page.setViewportSize({ width: 320, height: 640 })
+  await page.addInitScript(() => { document.addEventListener('DOMContentLoaded', () => { document.documentElement.style.fontSize = '200%' }) })
+  await start(page, { settings: { ...onboardedDocument().settings, locale: 'fr' }, categories: [sleep, work, study], blocks })
+  await page.addInitScript(() => window.localStorage.setItem('next168-language', 'fr'))
+  await page.goto('./#/insights')
+  const headline = page.getByTestId('free-hours-live')
+  await expect(headline).toContainText('maintenant')
+  const fit = await headline.evaluate((element) => ({ scroll: element.scrollWidth, client: element.clientWidth, right: element.getBoundingClientRect().right }))
+  expect(fit.scroll).toBeLessThanOrEqual(fit.client)
+  expect(fit.right).toBeLessThanOrEqual(320)
+})

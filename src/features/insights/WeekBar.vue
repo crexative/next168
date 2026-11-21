@@ -75,7 +75,7 @@ const weekLabel = computed(() => formatTotal(WEEK_MINUTES))
 /* Two columns of "● Sueño 56 h"; one column when the text is large. */
 .legend { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(10rem, 100%), 1fr)); gap: var(--space-1) var(--space-4); margin: 0; padding: 0; list-style: none; }
 .legend-item { display: flex; flex-wrap: wrap; align-items: center; gap: 0 var(--space-2); min-width: 0; }
-.legend-name { min-width: 0; overflow-wrap: break-word; }
+.legend-name { flex: 1 1 6rem; min-width: 0; overflow-wrap: break-word; }
 .hours { font-variant-numeric: tabular-nums; }
 .swatch { width: 8px; height: 8px; border-radius: 50%; flex: none; }
 .swatch.is-available { width: 10px; height: 10px; background: repeating-linear-gradient(135deg, var(--label-2) 0 1.5px, transparent 1.5px 3px); box-shadow: inset 0 0 0 1px var(--label-2); }

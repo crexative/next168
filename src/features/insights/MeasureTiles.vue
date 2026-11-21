@@ -36,7 +36,8 @@ const range = computed(() => {
   if (!first || !last) return ''
   // formatRange is in every supported browser but not yet in the project's TypeScript lib.
   const format = new Intl.DateTimeFormat(locale.value, { day: 'numeric', month: 'short', timeZone: 'UTC' }) as Intl.DateTimeFormat & { formatRange(start: Date, end: Date): string }
-  return unbreakable(tightRange(format.formatRange(new Date(`${first}T12:00:00Z`), new Date(`${last}T12:00:00Z`))))
+  // Each date stays whole; a range across months may break after its dash, never inside a date.
+  return tightRange(format.formatRange(new Date(`${first}T12:00:00Z`), new Date(`${last}T12:00:00Z`))).split(/(\s+–\s+)/).map((part, index) => (index % 2 ? part : unbreakable(part))).join('')
 })
 
 const tiles = computed(() => {
@@ -66,7 +67,7 @@ const tiles = computed(() => {
 
 <template>
   <section class="measures" :aria-label="t('insights.measures.title')">
-    <h2 class="section-title">{{ t('insights.measures.title') }}<template v-if="range"><span aria-hidden="true"> · </span><span data-testid="measures-range">{{ range }}</span></template></h2>
+    <h2 class="section-title">{{ t('insights.measures.title') }}<template v-if="range">{{ ' ' }}<span aria-hidden="true">·</span>{{ ' ' }}<span data-testid="measures-range">{{ range }}</span></template></h2>
     <template v-if="hasData">
       <ul class="key t-caption t-secondary" :aria-label="t('insights.measures.key')">
         <li v-for="state in STATES" :key="state"><span class="dot" :class="`is-${state === 'none' ? 'empty' : state}`" aria-hidden="true" />{{ t(`insights.measures.stateName.${state}`) }}</li>
@@ -114,8 +115,10 @@ const tiles = computed(() => {
 .dot.is-bad { width: 9px; height: 9px; border-radius: 1px; background: var(--warning-label); transform: rotate(45deg); }
 .dot.is-empty { background: transparent; border: 1.5px solid var(--label-2); }
 .empty { display: flex; flex-direction: column; align-items: flex-start; gap: var(--space-2); }
+/* Forced colours: every filled shape (the amber diamond too, whatever its specificity) in the text colour, the ring as
+   an outline; the shapes keep telling the states apart. */
 @media (forced-colors: active) {
-  .dot { background: CanvasText; }
-  .dot.is-empty { background: transparent; border-color: CanvasText; }
+  .dot, .dot.is-amber, .dot.is-bad { forced-color-adjust: none; background: CanvasText; }
+  .dot.is-empty { forced-color-adjust: none; background: transparent; border-color: CanvasText; }
 }
 </style>

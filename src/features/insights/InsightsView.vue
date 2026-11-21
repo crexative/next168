@@ -144,7 +144,8 @@ function doneText(row: Row): string {
 .insights-subtitle { margin: calc(var(--header-gap) * -1) 0 calc(var(--space-5) - var(--section-gap)); font-variant-numeric: tabular-nums; }
 .week { display: flex; flex-direction: column; gap: var(--space-3); }
 /* The week's headline: what is free, the figure people come for (R_Resumen). */
-.headline { margin: 0; min-width: 0; overflow-wrap: normal; text-wrap: balance; font-variant-numeric: tabular-nums; }
+/* A long word ("maintenant" at 200 % on a narrow phone) breaks, hyphenated in the page's language, rather than overflow. */
+.headline { margin: 0; min-width: 0; overflow-wrap: break-word; hyphens: auto; text-wrap: balance; font-variant-numeric: tabular-nums; }
 .section-title { margin: 0; font-size: 1.25rem; font-weight: 700; }
 .goals { display: flex; flex-direction: column; gap: var(--space-1); }
 .rows { margin: 0; padding: 0; list-style: none; }
