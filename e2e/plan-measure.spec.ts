@@ -98,7 +98,9 @@ test.describe('plan and measure', () => {
     await expect(page.locator('main')).not.toBeEmpty()
     await openTab(page, 'insights')
     await expect(page.getByTestId('week-bar').locator('[data-segment]')).toHaveCount(4)
-    await expect(page.getByTestId(`goal-row-${document.categories[0].id}`)).toContainText('✓')
+    // A met goal is calm: its line, and no mark (R_Resumen).
+    await expect(page.getByTestId(`goal-row-${document.categories[0].id}`).getByTestId('goal-line')).toBeVisible()
+    await expect(page.getByTestId(`goal-row-${document.categories[0].id}`).getByTestId('goal-state')).toHaveCount(0)
   })
 
   test('closing the guided setup writes nothing and leaves it offered on Today', async ({ page }) => {
