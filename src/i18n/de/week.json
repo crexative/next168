@@ -5,7 +5,7 @@
   "grid": {
     "allDay": "Ganztägig",
     "allDayItem": "{title}, ganztägig",
-    "conflict": "Konflikt",
+    "conflict": "Überschneidet sich",
     "crossesMidnight": "{range} (über Nacht)"
   },
   "details": {
@@ -69,8 +69,9 @@
     "today": "Heute"
   },
   "view": {
-    "showWeek": "Ganze Woche anzeigen",
-    "showDay": "Einen Tag anzeigen"
+    "day": "Tag",
+    "week": "Woche",
+    "label": "Ansicht"
   },
   "overview": {
     "days": "Wochentage",

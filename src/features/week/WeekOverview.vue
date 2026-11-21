@@ -117,20 +117,23 @@ const legend = computed(() => {
   height: 1.75rem;
   border-radius: 0.875rem;
   font-size: 1.0625rem;
-  font-weight: 700;
+  font-weight: 600;
   font-variant-numeric: tabular-nums;
 }
-.is-today .weekday { color: var(--danger-label); }
-.is-today .number { background: var(--danger); color: #fff; }
+.is-today .weekday { color: var(--tint-label); }
+.is-today .number { background: var(--tint); color: var(--tint-text); }
 .overview-body { padding-top: var(--space-2); }
 .overview-body > .is-today { background-color: color-mix(in srgb, var(--tint) 5%, transparent); }
 .overview-body :deep(.time-axis .hour-label) { padding-inline-end: 2px; }
 
-.legend { display: flex; flex-wrap: wrap; gap: var(--space-1) var(--space-4); margin: var(--space-4) 0 0; padding: 0; list-style: none; color: var(--label-2); }
+.legend { display: flex; flex-wrap: wrap; gap: var(--space-1) var(--space-4); margin: var(--space-4) 0 0; padding: 0; list-style: none; color: var(--label-2); font-size: 0.8125rem; line-height: 1.38; }
 .legend-item { display: inline-flex; align-items: center; gap: var(--space-2); }
-.swatch { flex: none; width: 0.75rem; height: 0.75rem; border-radius: 3px; }
-.swatch.is-task { border: 1.5px dashed var(--label-2); }
-.swatch.is-event { border: 1px dashed var(--label-2); background: repeating-linear-gradient(135deg, color-mix(in srgb, var(--label-2) 25%, transparent) 0 2px, transparent 2px 4px); }
+.swatch { flex: none; width: 8px; height: 8px; border-radius: 4px; }
+.swatch.is-task { width: 4px; height: 12px; border-radius: 0; background: repeating-linear-gradient(to bottom, var(--label-2) 0 2px, transparent 2px 4px); }
+.swatch.is-event { width: 12px; height: 8px; border: 1px solid var(--label-2); border-radius: 2px; }
+/* The whole week at a glance (R_SemanaCompleta): solid colour softened by 1 px gaps. */
+.overview-body :deep(.block) { background: color-mix(in srgb, var(--block-color) 85%, transparent); border-radius: 4px; box-shadow: 0 0 0 0.5px var(--bg); }
+.overview-body :deep(.block)::before { display: none; }
 @media (prefers-reduced-motion: reduce) {
   .overview-day:active { opacity: 0.6; }
 }

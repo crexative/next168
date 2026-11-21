@@ -34,7 +34,7 @@
   "overlay": "Calendar events",
   "untitled": "Untitled event",
   "free": "Free",
-  "conflict": "Conflicts with your plan",
+  "conflict": "Overlaps your plan",
   "size": "This calendar exceeds the 5 MB limit.",
   "frequency": "Secondly and minutely recurrence rules are not supported.",
   "timezone": "This calendar uses an unknown time zone. Export it with a VTIMEZONE definition.",
