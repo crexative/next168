@@ -56,9 +56,15 @@ const answers = () => [...document.body.querySelectorAll('[data-testid^="answer-
 const tap = async (testId: string) => { $<HTMLButtonElement>(`[data-testid="${testId}"]`)!.click(); await nextTick() }
 const skip = () => tap('checkin-skip')
 const submit = () => $<HTMLButtonElement>('[data-testid="checkin-save"]')!.click()
+// The conversation has fewer than this many turns. Loops that walk it stop here and fail: an unbounded walk that only
+// awaits ticks never yields to vitest's timer, so a regression that stops the walk would hang the suite instead.
+const MAX_TURNS = 12
+function stuck(at: string | undefined): never { throw new Error(`the check-in did not move past "${at}" in ${MAX_TURNS} taps`) }
+
 // Answers stress (or leaves it) and reaches the last turn, where the note and "Save" are.
 async function toFinal(stress?: string): Promise<void> {
-  while (step() !== 'final') {
+  for (let taps = 0; step() !== 'final'; taps++) {
+    if (taps === MAX_TURNS) stuck(step())
     if (step() === 'stress' && stress) await tap(`stress-${stress}`)
     else await skip()
   }
@@ -374,7 +380,10 @@ describe('check-in conversation', () => {
   it('removes the entry when every answer has been withdrawn', async () => {
     const store = await mount({ ...planned, blocks: [], checkIns: [{ date: '2026-10-24', stress: 3 }] })
     // No plan, no times: the times are asked and left for later.
-    while (['bedtime', 'wake', 'workEnd'].includes(step()!)) await skip()
+    for (let taps = 0; ['bedtime', 'wake', 'workEnd'].includes(step()!); taps++) {
+      if (taps === MAX_TURNS) stuck(step())
+      await skip()
+    }
     await tap('answer-stress')
     await skip()
     await toFinal()
