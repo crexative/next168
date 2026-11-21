@@ -317,7 +317,9 @@ for (const theme of THEMES) {
 test.describe('week opens on now', () => {
   test.beforeEach(onlyProject('phone'))
 
-  for (const { width, height, percent } of [{ width: 390, height: 844, percent: 200 }, { width: 375, height: 667, percent: 150 }, { width: 390, height: 844, percent: 100 }]) {
+  for (const { width, height, percent } of [{ width: 390, height: 844, percent: 200 }, { width: 375, height: 667, percent: 150 }, { width: 390, height: 844, percent: 100 },
+    // A phone on its side at 150 %: the header leaves little room, so the day strip under it must be counted (review of #56).
+    { width: 667, height: 375, percent: 150 }]) {
     test(`the now line is below the sticky header at ${width}x${height}, ${percent} % text`, async ({ page }) => {
       await page.addInitScript((value) => { document.addEventListener('DOMContentLoaded', () => { document.documentElement.style.fontSize = `${value}%` }) }, percent)
       await openWeek(page, 'light', 'phone')
@@ -328,7 +330,8 @@ test.describe('week opens on now', () => {
         .filter((element) => element.getClientRects().length > 0 && ['sticky', 'fixed'].includes(getComputedStyle(element).position))
         .map((element) => element.getBoundingClientRect().bottom)))
       const line = (await page.getByTestId('now-line').first().boundingBox())!
-      expect(line.y, `now line at ${line.y.toFixed(0)} px, header ends at ${covered.toFixed(0)} px`).toBeGreaterThan(covered)
+      // In the visible part of the page, not at its edge: on arrival the strips under the head are counted too.
+      expect(line.y, `now line at ${line.y.toFixed(0)} px, header ends at ${covered.toFixed(0)} px`).toBeGreaterThan(covered + (height - covered) / 4)
       expect(line.y + line.height).toBeLessThan(height)
     })
   }

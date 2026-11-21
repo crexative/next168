@@ -395,7 +395,7 @@ function onColumnClick(event: MouseEvent, blockId?: string): void {
 .block-title, .block-detail, .block-status, .task-title, .task-icon { position: relative; z-index: 3; }
 /* Inline marks sit at the top of their line and are no taller than it, so they never make a line taller than measured. */
 .block-mark { margin-inline-end: 1px; vertical-align: top; }
-.block-status { color: var(--label-2); }
+.block-status { color: var(--label-on-fill); }
 .block-status :deep(svg), .task-icon { vertical-align: top; }
 
 .busy {
@@ -416,8 +416,8 @@ function onColumnClick(event: MouseEvent, blockId?: string): void {
 /* A calendar event marked free: drawn as an outline only, with no hatching; it takes no time from the plan. */
 .busy.is-free { border-style: dashed; background: transparent; }
 .is-conflict {
-  /* A conflict needs attention, not alarm: amber, never red (DIRECTION principle 6). */
-  border-color: var(--warning);
+  /* A conflict needs attention, not alarm: amber, never red (DIRECTION principle 6), dark enough for 3:1 as a border. */
+  border-color: var(--warning-label);
   background: var(--surface);
 }
 /* Drawn at the caption weight it is measured at (dayColumnPlan.ts › busyShow): a bolder word would not fit its box. */
@@ -455,7 +455,7 @@ function onColumnClick(event: MouseEvent, blockId?: string): void {
    there opens the routine (the task stays reachable by keyboard here and from Tasks). */
 .task-box.is-outline { inset: 1px; background: transparent; }
 .task-chunk.is-outline { pointer-events: none; }
-.task-box.is-late { border-color: var(--warning); color: var(--warning-label); }
+.task-box.is-late { border-color: var(--warning-label); color: var(--warning-label); }
 
 /* One visual, one meaning: done is dimmed with its check mark; only "No" is struck through. */
 .block.is-done { opacity: 0.6; }

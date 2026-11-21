@@ -147,8 +147,9 @@ function choose(options: PressOption[]): void {
 const root = ref<HTMLElement | null>(null)
 // The sticky strips under the head sit below it: they read its height from --week-head-height.
 const head = ref<HTMLElement | null>(null)
+const setHeadHeight = (height: number) => root.value?.style.setProperty('--week-head-height', `${height}px`)
 const headObserver = typeof ResizeObserver === 'undefined' ? null : new ResizeObserver(([entry]) => {
-  root.value?.style.setProperty('--week-head-height', `${entry!.borderBoxSize[0]?.blockSize ?? entry!.contentRect.height}px`)
+  setHeadHeight(entry!.borderBoxSize[0]?.blockSize ?? entry!.contentRect.height)
 })
 watch(head, (element, previous) => {
   if (previous) headObserver?.unobserve(previous)
@@ -163,6 +164,9 @@ watch(hasGrid, async (shown) => {
   const line = root.value?.querySelector('[data-testid="now-line"]')
   if (!line) return
   positioned = true
+  // The observer reports after layout, later than this: measure now so the strips under the head are placed (and
+  // counted as covering the page) before scrolling to the line.
+  if (head.value) setHeadHeight(head.value.getBoundingClientRect().height)
   scrollToNow(line, root.value!)
 }, { immediate: true, flush: 'post' })
 
@@ -279,9 +283,10 @@ async function remove(blockId: string): Promise<void> {
         <!-- The subtitle says the week and its free hours (R_Semana); free hours count from now, so only this week has them.
              Announced when the week changes, so a screen reader hears where it landed. It is in the sticky head with the
              controls: Week opens on the current hour, and the week shown must still be named. -->
-        <p class="week-subtitle t-subhead t-secondary">
+        <!-- A div: the free-hours badge inside is a paragraph of its own. -->
+        <div class="week-subtitle t-subhead t-secondary">
           <span data-testid="week-range" aria-live="polite">{{ range }}</span><template v-if="isCurrentWeek"><span aria-hidden="true"> · </span><span class="free-hours-slot" data-testid="week-free-hours-slot"><FreeHoursBadge :document="document" :now="now" :framed="false" /></span></template>
-        </p>
+        </div>
         <!-- The view switch and the arrows stay under the toolbar, so they show on arrival even when the grid opens on the
              current hour. -->
         <WeekNav
