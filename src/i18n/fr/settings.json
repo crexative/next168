@@ -21,5 +21,7 @@
     "title": "Tes données",
     "subtitle": "Exporter, importer ou effacer"
   },
-  "categoriesTitle": "Catégories et objectifs"
+  "categoriesTitle": "Catégories et objectifs",
+  "weekTitle": "Ta semaine",
+  "aiRow": "Utiliser avec ton IA"
 }
