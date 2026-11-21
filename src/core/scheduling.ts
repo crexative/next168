@@ -76,6 +76,13 @@ export function dueEndOf(task: Pick<Task, 'dueDate'>, timeZone: string): number 
 
 // Lateness is per piece: a piece that ends by the end of its task's due date (planner zone) is on time even when a
 // later piece of the same task is not. The task-level `late` (and its warning) stays as it is.
+// A task with no single gap long enough is split into chunks, each drawn on its own: each says which part it is, so two
+// pieces never read as the same task drawn twice (crexative/next168#58). The caller labels it in its language.
+export type PartLabel = (title: string, part: number, parts: number) => string
+export function chunkTitle(title: string, index: number, count: number, label?: PartLabel): string {
+  return label && count > 1 ? label(title, index + 1, count) : title
+}
+
 export function chunkIsLate(task: Pick<Task, 'dueDate'>, chunk: PlacementChunk, timeZone: string): boolean {
   return Date.parse(chunk.end) > dueEndOf(task, timeZone)
 }

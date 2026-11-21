@@ -1,6 +1,6 @@
 import type { ExternalOccurrence, PlannerDocument, TaskPlacement } from '@/core/model'
 import { addLocalDays, datedOccurrences, zonedInstant, type DatedOccurrence } from '@/core/time'
-import { chunkIsLate } from '@/core/scheduling'
+import { chunkIsLate, chunkTitle, type PartLabel } from '@/core/scheduling'
 
 interface TimelineBase { key: string; title: string; start: string; end: string }
 export type TimelineItem =
@@ -17,6 +17,8 @@ export interface TimelineInput {
   timeZone: string
   external: ExternalOccurrence[]
   placements: TaskPlacement[]
+  // Names the chunks of a split task ("1 de 2 · Llamar al banco"); without it they keep the task's title.
+  partLabel?: PartLabel
 }
 
 const intersects = (start: string, end: string, from: number, to: number) => Date.parse(start) < to && Date.parse(end) > from
@@ -36,7 +38,7 @@ export function liveOverlapTitles(item: TimelineItem, items: TimelineItem[], now
   return titles
 }
 
-export function buildTimeline({ document, today, timeZone, external, placements }: TimelineInput): { items: TimelineItem[]; allDay: AllDayItem[] } {
+export function buildTimeline({ document, today, timeZone, external, placements, partLabel }: TimelineInput): { items: TimelineItem[]; allDay: AllDayItem[] } {
   const from = zonedInstant(today, 0, timeZone).getTime()
   const to = zonedInstant(addLocalDays(today, 1), 0, timeZone).getTime()
   const tasks = new Map(document.tasks.map((task) => [task.id, task]))
@@ -49,8 +51,9 @@ export function buildTimeline({ document, today, timeZone, external, placements 
     ...placements.flatMap((placement) => {
       const task = tasks.get(placement.taskId)
       if (!task) return []
-      return placement.chunks.filter((chunk) => intersects(chunk.start, chunk.end, from, to)).map((chunk): TimelineItem => ({
-        kind: 'task', key: `task:${task.id}@${chunk.start}`, title: task.title, start: chunk.start, end: chunk.end,
+      return placement.chunks.map((chunk, index) => ({ chunk, title: chunkTitle(task.title, index, placement.chunks.length, partLabel) }))
+        .filter(({ chunk }) => intersects(chunk.start, chunk.end, from, to)).map(({ chunk, title }): TimelineItem => ({
+        kind: 'task', key: `task:${task.id}@${chunk.start}`, title, start: chunk.start, end: chunk.end,
         taskId: task.id, categoryId: task.categoryId ?? '', late: chunkIsLate(task, chunk, timeZone),
       }))
     }),
