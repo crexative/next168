@@ -63,6 +63,16 @@ function entryFor(on: string) {
   return planner.document?.checkIns.find((checkIn) => checkIn.date === on)
 }
 
+// Where the conversation is: questions left for later, the answer being changed, what is typed in its field, Partly's
+// minutes and the note's field. A load (opening, a change elsewhere, a refused save) drops whatever was half-typed
+// against the old values; questions left for later stay so, with those a kept draft brings back.
+const skipped = ref(new Set<StepId>())
+const editing = ref<StepId | null>(null)
+const factDraft = ref('')
+const partialMinutes = ref<number | null>(null)
+const noteOpen = ref(false)
+const loads = ref(0)
+
 function load(): void {
   const entry = entryFor(date.value)
   const suggestion = planner.document ? suggestFromPlan(planner.document, date.value) : { worksThatDay: true }
@@ -72,8 +82,13 @@ function load(): void {
   formSnapshot = snapshotOf(entry)
   pristine.value = { ...form }
   const kept = takeDraft(currentDraftKey())
-  if (kept) Object.assign(form, kept)
+  if (kept) Object.assign(form, kept.form)
   restored.value = !!kept
+  skipped.value = new Set([...skipped.value, ...((kept?.later ?? []) as StepId[])])
+  editing.value = null
+  partialMinutes.value = null
+  noteOpen.value = form.note !== ''
+  loads.value += 1
   loaded = true
 }
 
@@ -125,6 +140,9 @@ async function save(): Promise<void> {
       : upsertCheckIn(draft.checkIns, next)
   })
   if (result.ok) {
+    // What was saved is no longer unsaved, even when the stored entry did not change (every answer withdrawn on a
+    // day with no entry): otherwise leaving would keep the draft just dropped.
+    pristine.value = { ...form }
     dropDraft()
     // Today shows "Guardado ✓" and takes focus; the conversation ends with its last line, said aloud.
     markCheckInSaved()
@@ -147,8 +165,6 @@ type FactId = 'bedtime' | 'wake' | 'workEnd'
 const FACTS: FactId[] = ['bedtime', 'wake', 'workEnd']
 const FACT_KEYS: Record<FactId, string> = { bedtime: 'checkin.bedtime', wake: 'checkin.wake', workEnd: 'checkin.workEnd' }
 
-const skipped = ref(new Set<StepId>())
-const editing = ref<StepId | null>(null)
 // Facts the plan or a saved check-in answered when the conversation opened are told, not asked.
 const toldFacts = ref(new Set<FactId>())
 // Recomputed from every load, also a reload after a refused save, never from answers typed since.
@@ -258,9 +274,8 @@ function change(step: StepId): void {
   if ((FACTS as string[]).includes(step)) factDraft.value = form[step as FactId]
 }
 
-// A fact asked or changed: one time field and "Siguiente".
-const factDraft = ref('')
-watch(current, (step) => { if ((FACTS as string[]).includes(step)) factDraft.value = form[step as FactId] }, { immediate: true })
+// A fact asked or changed: one time field and "Siguiente", filled with the form's value (again after a reload).
+watch([current, loads], ([step]) => { if ((FACTS as string[]).includes(step)) factDraft.value = form[step as FactId] }, { immediate: true })
 function saveFact(): void {
   const step = current.value as FactId
   if (timeToMinute(factDraft.value) === undefined) return
@@ -268,8 +283,7 @@ function saveFact(): void {
   done(step)
 }
 
-// A routine: Hecho · A medias · No. "A medias" asks how many minutes, prefilled with half the plan.
-const partialMinutes = ref<number | null>(null)
+// A routine: Hecho · A medias · No. "A medias" asks how many minutes, prefilled with half the plan (partialMinutes).
 function answerBlock(value: string): void {
   const step = current.value
   const occurrence = occurrenceOf(step)
@@ -278,6 +292,8 @@ function answerBlock(value: string): void {
     partialMinutes.value = actualOf(step)?.actualMinutes ?? Math.round(occurrence.plannedMinutes / 2)
     return
   }
+  // Hecho or No after A medias: the minutes field belongs to this routine and must not open on the next one.
+  partialMinutes.value = null
   void blockStatus.record(occurrence, value as 'done' | 'skipped')
   done(step)
 }
@@ -303,8 +319,7 @@ const blockReplies = computed(() => [
 ])
 const stressReplies = computed(() => (['1', '2', '3', '4', '5'] as const).map((value) => ({ value, label: value, testId: `stress-${value}` })))
 
-// The last turn: an optional note, the reminder (it moved here from Hoy) and "Guardar cierre".
-const noteOpen = ref(false)
+// The last turn: an optional note (noteOpen), the reminder (it moved here from Hoy) and "Guardar cierre".
 watch(() => form.note, (note) => { if (note) noteOpen.value = true }, { immediate: true })
 const remindAt = computed(() => formatMinute(REMINDER_MINUTE, locale.value))
 // As on the old card: offered where notifications work and the day is still open, and kept while it is armed.
@@ -328,9 +343,11 @@ async function toggleReminder(): Promise<void> {
 
 // The frame owns the screen while the check-in is open; × leads back to where it was opened from.
 const backTo = computed(() => backTarget('checkin', 'today'))
-const closeLabel = computed(() => t('setup.backTo', { place: t(`app.tabs.${backTo.value}`, t('app.tabs.today')) }))
+// The × names where it leads: a tab, the assistant or the proposals (the check-in can be opened from each).
+const PLACE_KEYS: Partial<Record<string, string>> = { assistant: 'assistant.title', proposals: 'proposals.title' }
+const closeLabel = computed(() => t('setup.backTo', { place: t(PLACE_KEYS[backTo.value] ?? `app.tabs.${backTo.value}`, t('app.tabs.today')) }))
 function keepUnsaved(): void {
-  if (dirty.value) keepDraft(currentDraftKey(), { ...form })
+  if (dirty.value) keepDraft(currentDraftKey(), { ...form }, [...skipped.value])
 }
 function close(): void {
   keepUnsaved()

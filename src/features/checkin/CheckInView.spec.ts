@@ -9,6 +9,7 @@ import { createTestRepositories, fixedNow, newTestId, testDocument } from '@/rep
 import { useUndoToast } from '@/ui/undoToast'
 import { setHourCycle } from '@/ui/format'
 import CheckInView from './CheckInView.vue'
+import { trail } from '@/features/settings/navigationTrail'
 import { consumeSavedFlag } from './checkinFlash'
 import { dropDraft } from './checkInDraft'
 
@@ -176,6 +177,60 @@ describe('check-in conversation', () => {
     app!.unmount(); host.remove()
     await mount({ ...planned, checkIns: [] })
     expect(step()).toBe('stress')
+  })
+
+  it('names the assistant on the × when it was opened from there', async () => {
+    trail.value = { from: 'assistant', to: 'checkin' }
+    await mount(planned)
+    expect($('.setup-close')!.getAttribute('aria-label')).toBe('Back to Assistant')
+    trail.value = null
+  })
+
+  it('reopens where it was: questions left for later stay so, and the answers after them are shown', async () => {
+    window.location.hash = '#/checkin'
+    await mount({ ...planned, blocks: [] })
+    for (let taps = 0; step() !== 'stress'; taps++) {
+      if (taps === MAX_TURNS) stuck(step())
+      await skip()
+    }
+    await tap('stress-2')
+    expect(step()).toBe('final')
+    $<HTMLButtonElement>('.setup-close')!.click()
+    app!.unmount(); host.remove()
+    await mount({ ...planned, blocks: [] })
+    expect(step()).toBe('final')
+    expect(text('answer-stress')).toBe('2')
+    expect(text('checkin-unsaved')).toBe('Your earlier answers are not saved yet.')
+  })
+
+  it('a change saved elsewhere drops the answer being changed, so a value typed against the old one is not kept', async () => {
+    const store = await mount({ ...planned, checkIns: [{ date: '2026-10-24', bedtime: 1320, stress: 2 }] })
+    await tap('answer-bedtime')
+    const field = $<HTMLInputElement>('[data-testid="fact-input"]')!
+    field.value = '23:45'
+    field.dispatchEvent(new Event('input', { bubbles: true }))
+    await nextTick()
+    await store.commit((draft) => { draft.checkIns = [{ date: '2026-10-24', bedtime: 1290, stress: 2 }] })
+    await nextTick()
+    await nextTick()
+    expect(step()).not.toBe('bedtime')
+    expect(answers()).toContain('You went to bed at 9:30 PM last night')
+  })
+
+  it('keeps no draft after a save that leaves no entry: withdrawing the times the plan told and saving', async () => {
+    window.location.hash = '#/checkin'
+    const store = await mount(planned)
+    const told = ['bedtime', 'wake', 'workEnd'].filter((fact) => $(`[data-testid="answer-${fact}"]`))
+    expect(told.length).toBeGreaterThan(0)
+    for (const fact of told) { await tap(`answer-${fact}`); await skip() }
+    await toFinal()
+    submit()
+    await store.settled()
+    expect(store.document?.checkIns.find((checkIn) => checkIn.date === '2026-10-24')).toBeUndefined()
+    app!.unmount(); host.remove()
+    await mount(planned)
+    expect($('[data-testid="checkin-unsaved"]')).toBeNull()
+    for (const fact of told) expect($(`[data-testid="answer-${fact}"]`), fact).not.toBeNull()
   })
 
   it('never brings back an answer undone after reopening: the next close keeps only what is still unsaved', async () => {
@@ -510,6 +565,17 @@ describe('check-in routines to mark', () => {
     await store.settled()
     expect(store.document?.checkIns.at(-1)).toMatchObject({ date: '2026-10-24', exercise: 'yes' })
     expect(window.location.hash).toBe('#/today')
+  })
+
+  it('closes the Partly minutes when the routine is answered Done instead, so the next one opens without them', async () => {
+    await mount(trained)
+    await reply('partial')
+    expect($('[data-testid="checkin-minutes"]')).not.toBeNull()
+    await reply('done')
+    await usePlannerStore().settled()
+    await nextTick()
+    expect(question()).toBe('How did Run go?')
+    expect($('[data-testid="checkin-minutes"]')).toBeNull()
   })
 
   it('never records more Partly minutes than the routine had planned', async () => {
