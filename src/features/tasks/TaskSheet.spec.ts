@@ -9,6 +9,7 @@ import { createTestRepositories, fixedNow, newTestId, testDocument } from '@/rep
 import { useUndoToast } from '@/ui/undoToast'
 import { LAST_TASK_CATEGORY_KEY } from './lastCategory'
 import TaskSheet from './TaskSheet.vue'
+import { pickWhen, whenValue, whenValues } from './whenTestSupport'
 
 const WORK = { id: 'c-work', name: 'Work', colorKey: 'blue', goal: { type: 'none', hoursPerWeek: 0 } } as const
 const STUDY = { id: 'c-study', name: 'Study', colorKey: 'orange', goal: { type: 'none', hoursPerWeek: 0 } } as const
@@ -42,7 +43,6 @@ async function open(taskId: string | undefined, overrides: Partial<PlannerDocume
 const dialog = () => document.body.querySelector<HTMLElement>('[role=dialog]')!
 // An edit has its own title field and "Save"; a new task is the capture (SmartCapture) with "Add" in the header.
 const titleField = () => dialog().querySelector<HTMLInputElement>('[data-testid=task-title], [data-testid=capture-field]')!
-const when = () => dialog().querySelector<HTMLSelectElement>('[data-testid=task-when]')!
 const save = () => dialog().querySelector<HTMLButtonElement>('[data-testid=task-save], [data-testid=task-add]')!
 const today = () => dialog().querySelector<HTMLInputElement>('[data-testid=task-today]')!
 // A new task binds the planner (an async fingerprint) before it commits, so a few turns of the event loop pass first.
@@ -66,7 +66,7 @@ describe('editing a task', () => {
   it('shows what the task holds, with "More options" already open because it has a category, a date and a priority', async () => {
     await open('t-1')
     expect(titleField().value).toBe('Read a chapter')
-    expect(when().value).toBe('c-study')
+    expect(whenValue(dialog())).toBe('c-study')
     expect(dialog().querySelector<HTMLElement>('[data-testid=task-more-options]')!.style.display).not.toBe('none')
     expect(dialog().querySelector<HTMLInputElement>('[data-testid=task-due]')!.value).toBe('2026-10-30')
     // 45 min is not one of the chips: "Other" is chosen and shows it.
@@ -77,7 +77,7 @@ describe('editing a task', () => {
   it('saves the changes, and "any free slot" removes the category from the stored task', async () => {
     const { store, isOpen } = await open('t-1')
     await set(titleField(), 'Read two chapters')
-    await set(when(), '', 'change')
+    await pickWhen(dialog(), '')
     save().click()
     await store.settled()
     const [task] = store.document!.tasks
@@ -165,8 +165,8 @@ describe('adding a task from the sheet', () => {
   it('starts with no category, offers the last choice first in "During", and needs a title', async () => {
     localStorage.setItem(LAST_TASK_CATEGORY_KEY, 'c-study')
     const { store } = await open(undefined, { tasks: [] })
-    expect(when().value).toBe('')
-    expect([...when().options].map((option) => option.value)).toEqual(['', 'c-study', 'c-work'])
+    expect(whenValue(dialog())).toBe('')
+    expect(whenValues(dialog())).toEqual(['', 'c-study', 'c-work'])
     expect(save().textContent?.trim()).toBe('Add')
     expect(save().disabled).toBe(true)
     await set(titleField(), 'Call the bank')
@@ -184,8 +184,8 @@ describe('adding a task from the sheet', () => {
     localStorage.setItem(LAST_TASK_CATEGORY_KEY, 'c-work')
     const { store } = await open(undefined, { tasks: [] })
     await set(titleField(), 'Send the invoice')
-    await set(when(), when().options[1]!.value, 'change')
-    expect(when().value).toBe('c-work')
+    await pickWhen(dialog(), whenValues(dialog())[1]!)
+    expect(whenValue(dialog())).toBe('c-work')
     save().click()
     await settle(store)
     expect(store.document!.tasks).toMatchObject([{ title: 'Send the invoice', categoryId: 'c-work' }])
@@ -270,7 +270,7 @@ describe('adding a task from the sheet', () => {
   it('files a task under a category picked after the sheet opened', async () => {
     const { store } = await open(undefined, { tasks: [] })
     await set(titleField(), 'During work')
-    await set(when(), 'c-work', 'change')
+    await pickWhen(dialog(), 'c-work')
     save().click()
     await settle(store)
     expect(store.document!.tasks).toMatchObject([{ title: 'During work', categoryId: 'c-work' }])
@@ -279,7 +279,7 @@ describe('adding a task from the sheet', () => {
 
   it('moves a task to another category it was not filed under when the sheet opened', async () => {
     const { store } = await open('t-1')
-    await set(when(), 'c-work', 'change')
+    await pickWhen(dialog(), 'c-work')
     save().click()
     await settle(store)
     expect(store.document!.tasks[0]).toMatchObject({ id: 't-1', categoryId: 'c-work' })
@@ -291,7 +291,7 @@ it.each([undefined, 't-1'])('refuses a stale category after Vue has flushed exte
   const notice = taskId ? 'changed elsewhere' : 'Your plan changed while you were typing'
   const { store, isOpen } = await open(taskId, taskId ? {} : { tasks: [] })
   await set(titleField(), 'My edit')
-  await set(when(), 'c-work', 'change')
+  await pickWhen(dialog(), 'c-work')
   await store.commit((draft) => { draft.categories.find((category) => category.id === 'c-work')!.name = 'Renamed elsewhere' })
   await nextTick()
   const before = JSON.stringify(store.document)

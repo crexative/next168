@@ -4,8 +4,9 @@ import { PERF_NOW, perfCase } from '../src/core/__fixtures__/schedulingPerf'
 
 // P0 spec §4 A7: time to usable, populated Tasks content on a phone-sized Chromium with 4x CPU throttling. The
 // planner is the typical fixture of the core benchmark, seeded through the one-time import key. Measured from
-// navigation to the first placed task; then a raw tap on the add field (no actionability waits, which would absorb a
-// busy main thread) and, in the page, the time from that touch to the field taking the focus. A loaded machine gets
+// navigation to the first placed task; then a raw tap on the "+" (no actionability waits, which would absorb a
+// busy main thread) and, in the page, the time from that touch to Nueva tarea's title taking the focus. Motion is
+// reduced, so the sheet opens at once and the time is the main thread's, not the slide's. A loaded machine gets
 // up to three attempts; the best one is compared with the budget, and every attempt is printed for the record.
 
 const CPU_THROTTLE = 4
@@ -32,7 +33,7 @@ interface Attempt { populatedMs?: number; firstTapMs?: number; warningCards?: nu
 
 async function attempt(browser: Browser, baseURL: string, tasks: number, budgetMs: number): Promise<Attempt> {
   const { document } = perfCase('typical', tasks)
-  const context = await browser.newContext({ baseURL, viewport: { width: 375, height: 812 }, hasTouch: true, isMobile: true, serviceWorkers: 'block', timezoneId: 'America/Bogota', locale: 'es-CO' })
+  const context = await browser.newContext({ baseURL, viewport: { width: 375, height: 812 }, hasTouch: true, isMobile: true, serviceWorkers: 'block', timezoneId: 'America/Bogota', locale: 'es-CO', reducedMotion: 'reduce' })
   try {
     const page = await context.newPage()
     await page.clock.install({ time: PERF_NOW })
@@ -47,7 +48,7 @@ async function attempt(browser: Browser, baseURL: string, tasks: number, budgetM
     await page.addInitScript(() => {
       const marks = window as unknown as { tapDownAt?: number; tapFocusAt?: number }
       addEventListener('pointerdown', (event) => { if (event.isTrusted && marks.tapDownAt === undefined) marks.tapDownAt = event.timeStamp }, true)
-      addEventListener('focusin', (event) => { if ((event.target as Element).matches('form.add textarea') && marks.tapFocusAt === undefined) marks.tapFocusAt = performance.now() }, true)
+      addEventListener('focusin', (event) => { if ((event.target as Element).matches('[data-testid=capture-field]') && marks.tapFocusAt === undefined) marks.tapFocusAt = performance.now() }, true)
     })
     const start = Date.now()
     // Twice the budget: past that the attempt has failed anyway (the base commit shows nothing for minutes). The
@@ -55,8 +56,8 @@ async function attempt(browser: Browser, baseURL: string, tasks: number, budgetM
     const shown = page.goto('./#/tasks', { waitUntil: 'commit' }).then(() => page.getByTestId('placed-task').first().waitFor({ state: 'visible', timeout: 0 })).then(() => true, () => false)
     if (!await Promise.race([shown, delay(budgetMs * 2).then(() => false)])) return {}
     const populatedMs = Date.now() - start
-    const field = page.locator('form.add textarea')
-    const box = (await field.boundingBox())!
+    const field = page.getByTestId('capture-field')
+    const box = (await page.getByTestId('add-entry').boundingBox())!
     await page.touchscreen.tap(box.x + box.width / 2, box.y + box.height / 2)
     await expect(field).toBeFocused()
     const firstTapMs = await page.evaluate(() => {

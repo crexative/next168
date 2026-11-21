@@ -1,6 +1,7 @@
 import { expect, test, type Page } from '@playwright/test'
 import { V2_KEY, onlyProject, seedKey } from './fixtures'
 import { storedPlanner } from './support/indexedDb'
+import { openNewTask, pickWhen, whenChecked, whenChoices } from './support/newTask'
 import { visualIntegrityViolations } from './support/visualIntegrity'
 
 // Tareas: a task finds a free slot on its own, the length is one tap, a tap opens the task and a swipe removes it
@@ -53,11 +54,11 @@ for (const theme of THEMES) {
       // With a length (typed here, read by the L0 grammar) a task is placed; without one it is a to-do (O-1).
       test('Enter adds a task that fits any free slot, never inside work hours', async ({ page }) => {
         await openTasks(page, theme, size)
-        const field = page.getByPlaceholder('Añadir tarea… (o pega o dicta varias)')
+        const { sheet, field } = await openNewTask(page)
         await field.fill('Comprar regalo para mamá 1 h')
-        await expect(page.getByTestId('capture-chip')).toHaveCount(1)
+        await expect(sheet.getByTestId('capture-chip')).toHaveCount(1)
         await field.press('Enter')
-        await expect(field).toHaveValue('')
+        await expect(sheet).toBeHidden()
         await expect.poll(async () => (await storedPlanner<{ tasks: { title: string; categoryId?: string }[] }>(page)).tasks.map((task) => task.title)).toContain('Comprar regalo para mamá')
         const gift = (await storedPlanner<{ tasks: { title: string; categoryId?: string }[] }>(page)).tasks.find((task) => task.title === 'Comprar regalo para mamá')!
         expect(gift).not.toHaveProperty('categoryId')
@@ -67,16 +68,15 @@ for (const theme of THEMES) {
         await expect(row).not.toContainText('Trabajo')
       })
 
-      test('"Categoría" offers any free slot and the categories, never Sueño or Desplazamientos', async ({ page }) => {
+      test('"Durante" offers any free slot and the categories, never Sueño or Desplazamientos', async ({ page }) => {
         await openTasks(page, theme, size)
-        await page.getByPlaceholder('Añadir tarea… (o pega o dicta varias)').fill('Leer 30 páginas')
-        const details = page.getByTestId('task-details')
-        await details.getByRole('button', { name: 'Más opciones' }).click()
-        await expect(details.getByLabel('Categoría').locator('option')).toHaveText(['En cualquier hueco libre', 'Trabajo', 'Familia'])
-        await expect(details.getByLabel('Categoría')).toHaveValue('')
-        await details.getByRole('radio', { name: '30 min' }).click()
-        await details.getByLabel('Categoría').selectOption('c-family')
-        await page.getByRole('button', { name: 'Añadir tarea', exact: true }).click()
+        const { sheet, field, add } = await openNewTask(page)
+        await field.fill('Leer 30 páginas')
+        await expect(whenChoices(sheet)).toHaveText(['En cualquier hueco libre', 'Trabajo', 'Familia'])
+        await expect(whenChecked(sheet)).toHaveValue('')
+        await sheet.getByRole('radio', { name: '30 min' }).check()
+        await pickWhen(sheet, 'Familia')
+        await add.click()
         await expect.poll(async () => (await storedPlanner<{ tasks: { title: string; categoryId?: string; durationMin: number }[] }>(page)).tasks.find((task) => task.title === 'Leer 30 páginas')).toMatchObject({ categoryId: 'c-family', durationMin: 30 })
       })
 
@@ -119,8 +119,11 @@ for (const theme of THEMES) {
       test('nothing is clipped with the form and its more options open', async ({ page }) => {
         await openTasks(page, theme, size)
         expect(await visualIntegrityViolations(page)).toEqual([])
-        await page.getByPlaceholder('Añadir tarea… (o pega o dicta varias)').fill('Responder el hilo de correos')
-        await page.getByTestId('task-more').click()
+        const { sheet, field } = await openNewTask(page)
+        await page.waitForFunction(() => document.getAnimations().length === 0)
+        expect(await visualIntegrityViolations(page)).toEqual([])
+        await field.fill('Responder el hilo de correos')
+        await sheet.getByTestId('task-more').click()
         await page.waitForFunction(() => document.getAnimations().length === 0)
         expect(await visualIntegrityViolations(page)).toEqual([])
       })
@@ -183,23 +186,22 @@ for (const theme of THEMES) {
         await expect(page.locator('[data-date="2026-10-25"] [data-task-id="jog"]').first()).toHaveAttribute('data-start-minute', '600')
       })
 
-      test('"Hoy" in the quick add puts a new task today, and the last category is only a suggestion', async ({ page }) => {
+      test('"Hoy" in Nueva tarea puts a new task today, and the last category is only offered first', async ({ page }) => {
         await page.addInitScript(() => window.localStorage.setItem('next168-last-task-category', 'c-work'))
         await openOnSunday(page, theme, size, [])
-        const field = page.getByPlaceholder('Añadir tarea… (o pega o dicta varias)')
+        const { sheet, field } = await openNewTask(page)
         // An hour, so the week places it (a task with no length is a to-do).
         await field.fill('Trotar 1 h')
-        const details = page.getByTestId('task-details')
-        const suggestion = details.getByRole('button', { name: 'Durante Trabajo' })
-        await expect(suggestion).toHaveAttribute('aria-pressed', 'false')
-        const today = details.getByRole('button', { name: 'Hoy', exact: true })
-        await expect(today).toHaveAttribute('aria-pressed', 'false')
-        await expectTapTargets(details.getByTestId('task-today').or(details.getByTestId('task-suggested-category')))
-        await today.click()
-        await expect(today).toHaveAttribute('aria-pressed', 'true')
+        await expect(whenChecked(sheet)).toHaveValue('')
+        await expect(whenChoices(sheet).nth(1)).toHaveText('Trabajo')
+        const today = sheet.getByRole('switch', { name: 'Hoy', exact: true })
+        await expect(today).not.toBeChecked()
+        await expectTapTargets(sheet.locator('.when-row, .toggle-row label'))
+        await today.check()
+        await expect(today).toBeChecked()
         expect(await visualIntegrityViolations(page)).toEqual([])
         await field.press('Enter')
-        await expect(field).toHaveValue('')
+        await expect(sheet).toBeHidden()
         await expect.poll(async () => (await storedPlanner<{ tasks: { title: string }[] }>(page)).tasks).toHaveLength(1)
         const [task] = (await storedPlanner<{ tasks: { title: string; categoryId?: string; dueDate?: string }[] }>(page)).tasks
         expect(task).toMatchObject({ title: 'Trotar', dueDate: '2026-10-25' })
@@ -210,6 +212,9 @@ for (const theme of THEMES) {
 
       test('an overdue task offers one-tap fixes; "Hacerla hoy" puts it today and Deshacer brings the date back', async ({ page }) => {
         await openOnSunday(page, theme, size, [trotar('2026-10-24')])
+        // One calm amber row; its fixes open in place.
+        await expect(page.getByTestId('warnings-toggle')).toHaveText('1 tarea no cabe esta semana')
+        await page.getByTestId('warnings-toggle').click()
         const card = page.getByTestId('warning-jog')
         await expect(card.getByTestId('late-text')).toHaveText('Cae después de su fecha límite (24 oct).')
         await expect(card.getByRole('button')).toHaveText(['Hacerla hoy', 'Mover al 26 oct', 'Cambiar categoría'])
@@ -223,7 +228,7 @@ for (const theme of THEMES) {
         await expect.poll(async () => (await storedPlanner<{ tasks: { dueDate?: string }[] }>(page)).tasks[0]!.dueDate).toBe('2026-10-24')
         await expect(page.getByTestId('warning-jog')).toBeVisible()
         await page.getByTestId('warning-jog').getByRole('button', { name: 'Cambiar categoría' }).click()
-        await expect(page.getByRole('dialog', { name: 'Editar tarea' }).getByLabel('Categoría')).toHaveValue('c-work')
+        await expect(page.getByRole('dialog', { name: 'Editar tarea' }).getByTestId('task-when-value')).toHaveText('Trabajo')
       })
     })
   }
@@ -307,13 +312,13 @@ for (const theme of THEMES) {
         await seedKey(page, V2_KEY, JSON.stringify(sundayPlanner([])))
         await page.goto('./#/tasks')
         await page.waitForFunction(() => document.getAnimations().length === 0)
-        const field = page.getByPlaceholder('Añadir tarea… (o pega o dicta varias)')
+        const { sheet, field } = await openNewTask(page)
         await field.fill('Trotar')
-        const today = page.getByTestId('task-details').getByRole('button', { name: 'Hoy', exact: true })
-        await today.click()
-        await expect(today).toHaveAttribute('aria-pressed', 'true')
+        const today = sheet.getByRole('switch', { name: 'Hoy', exact: true })
+        await today.check()
+        await expect(today).toBeChecked()
         await page.clock.fastForward('05:00')
-        await expect(today).toHaveAttribute('aria-pressed', 'true')
+        await expect(today).toBeChecked()
         await field.press('Enter')
         await expect.poll(async () => (await storedPlanner<{ tasks: { dueDate?: string }[] }>(page)).tasks[0]?.dueDate).toBe('2026-10-26')
         await expect(page.getByTestId('task-warnings')).toHaveCount(0)

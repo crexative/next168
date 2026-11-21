@@ -3,6 +3,7 @@ import { expect, test, type Page } from '@playwright/test'
 import { onlyProject, V2_KEY } from './fixtures'
 import { visualIntegrityViolations } from './support/visualIntegrity'
 import { storedRecord } from './support/indexedDb'
+import { openNewTask } from './support/newTask'
 
 // The capture box, end to end (tasks design rev 2.1 §7.5, rev 6 P1-9, P1-10 and P1-14). Unit specs cover the grammar
 // and the preview's logic; these check what only a browser shows: a reload after chip removal, a rich-text paste, and
@@ -29,8 +30,11 @@ async function open(page: Page, theme: 'light' | 'dark' = 'light'): Promise<void
   }, [V2_KEY, JSON.stringify(planner(theme))])
   await page.emulateMedia({ colorScheme: theme, reducedMotion: 'reduce' })
   await page.goto('./#/tasks')
-  await expect(page.getByTestId('capture-field')).toBeVisible()
+  // The capture is Nueva tarea's title field (R_HojaTarea), opened by the "+" on Tareas.
+  await openNewTask(page)
 }
+// Adding closes the sheet.
+const added = (page: Page) => expect(page.getByRole('dialog')).toHaveCount(0)
 
 const field = (page: Page) => page.getByTestId('capture-field')
 const chip = (page: Page, kind: string) => page.locator(`[data-testid=capture-chip][data-field=${kind}]`)
@@ -50,7 +54,7 @@ test.describe('chips survive a reload exactly as left (rev 2.1 §7.5)', () => {
     // (c) A removed chip does not come back while typing on.
     await expect(page.getByTestId('capture-chip')).toHaveCount(0)
     await page.keyboard.press('Enter')
-    await expect(field(page)).toHaveValue('')
+    await added(page)
     await page.reload()
     await expect(page.getByTestId('undated-task').filter({ hasText: 'Dentista mañana 9am ya' })).toBeVisible()
     const [task] = await storedTasks(page)
@@ -67,7 +71,7 @@ test.describe('chips survive a reload exactly as left (rev 2.1 §7.5)', () => {
     await expect(chip(page, 'date')).toHaveCount(0)
     await expect(chip(page, 'time')).toContainText('Hoy')
     await field(page).press('Enter')
-    await expect(field(page)).toHaveValue('')
+    await added(page)
     await page.reload()
     await expect(page.getByTestId('placed-task').filter({ hasText: 'Dentista mañana' })).toBeVisible()
     expect(await storedTasks(page)).toMatchObject([{ title: 'Dentista mañana', dueDate: '2026-10-25', at: 540 }])
@@ -139,7 +143,7 @@ for (const theme of ['light', 'dark'] as const) {
       await expect(page.getByRole('button', { name: 'Dejar como una tarea' })).toBeDisabled()
       await expect(page.getByTestId('capture-keep-one-too-long')).toBeVisible()
       await page.keyboard.press('Enter')
-      await expect(field(page)).toHaveValue('')
+      await added(page)
       await expect(page.getByTestId('live-announcer')).toHaveText('Añadidas 19 tareas')
       const stored = await storedTasks(page)
       expect(stored).toHaveLength(19)

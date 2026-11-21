@@ -8,6 +8,7 @@ import { createTestRepositories, fixedNow, newTestId, testDocument } from '@/rep
 import { mountWithPlanner, SLEEP, WORK, type Mounted } from '@/features/settings/testSupport'
 import { LAST_TASK_CATEGORY_KEY } from './lastCategory'
 import SmartCapture from './SmartCapture.vue'
+import { pickWhen, whenNames, whenValue, whenValues } from './whenTestSupport'
 
 const STUDY = { id: 'c-study', name: 'Study', colorKey: 'orange', goal: { type: 'none', hoursPerWeek: 0 } } as const
 const COMMUTE = { id: 'c-commute', name: 'Travel', icon: '🚌', colorKey: 'gray', goal: { type: 'none', hoursPerWeek: 0 } } as const
@@ -18,7 +19,6 @@ afterEach(() => { mounted?.unmount(); vi.useRealTimers(); document.body.innerHTM
 
 const field = () => mounted!.host.querySelector<HTMLTextAreaElement>('form.add textarea')!
 const details = () => mounted!.host.querySelector('[data-testid=task-details]')
-const when = () => mounted!.host.querySelector<HTMLSelectElement>('[data-testid=task-when]')!
 async function type(text: string) { field().value = text; field().dispatchEvent(new Event('input')); await nextTick() }
 // The box binds the planner (an async fingerprint) before it commits, so a few turns of the event loop pass first.
 async function submit() {
@@ -29,7 +29,7 @@ async function submit() {
   }
   await nextTick()
 }
-const optionValues = () => [...when().options].map((option) => option.value)
+const optionValues = () => whenValues(mounted!.host)
 const lengthChip = (label: string) => [...details()!.querySelectorAll<HTMLLabelElement>('[data-testid=task-length] label')].find((chip) => chip.textContent?.trim() === label)!.querySelector('input')!
 
 // Nueva tarea (R_HojaTarea): the title with its hint, the lengths, "When?" and "More options", all on screen at once.
@@ -41,7 +41,7 @@ it('shows the title with its hint, the lengths, "When?" and "More options" close
   const chips = [...details()!.querySelectorAll('[data-testid=task-length] label')].map((chip) => chip.textContent?.trim())
   expect(chips).toEqual(['No time', '15 min', '30 min', '1 h', '2 h', 'Other'])
   expect(lengthChip('No time').checked).toBe(true)
-  expect(when().value).toBe('')
+  expect(whenValue(mounted!.host)).toBe('')
   // The due date, a fixed time, notes and the priority are one level deeper.
   const more = details()!.querySelector<HTMLElement>('[data-testid=task-more-options]')!
   expect(more.style.display).toBe('none')
@@ -81,15 +81,14 @@ it('offers "any free slot" first and never Sleep or the commute', async () => {
   mounted = await mountWithPlanner(SmartCapture, { ...done, categories: [SLEEP, WORK, COMMUTE, STUDY] })
   await type('x')
   expect(optionValues()).toEqual(['', 'c-work', 'c-study'])
-  expect(when().value).toBe('')
-  expect([...when().options].map((option) => option.textContent?.trim())).toEqual(['Any free slot', 'Work', 'Study'])
+  expect(whenValue(mounted!.host)).toBe('')
+  expect(whenNames(mounted!.host)).toEqual(['Any free slot', 'Work', 'Study'])
 })
 
 it('files the task under the category chosen with "During …" and takes the length from a chip', async () => {
   mounted = await mountWithPlanner(SmartCapture, { ...done, categories: [WORK, STUDY] })
   await type('Read a chapter')
-  when().value = 'c-study'
-  when().dispatchEvent(new Event('change'))
+  await pickWhen(mounted!.host, 'c-study')
   lengthChip('30 min').click()
   await nextTick()
   await submit()
@@ -102,14 +101,12 @@ it('offers the last choice for the next task first in "During", never as its def
   mounted = await mountWithPlanner(SmartCapture, { ...done, categories: [WORK, STUDY] })
   await type('Read a chapter')
   expect(optionValues()).toEqual(['', 'c-work', 'c-study'])
-  when().value = 'c-study'
-  when().dispatchEvent(new Event('change'))
-  await nextTick()
+  await pickWhen(mounted!.host, 'c-study')
   await submit()
   expect(localStorage.getItem(LAST_TASK_CATEGORY_KEY)).toBe('c-study')
   // An unrelated title does not silently inherit Study: Enter files it under any free slot.
   await type('Jog')
-  expect(when().value).toBe('')
+  expect(whenValue(mounted!.host)).toBe('')
   expect(optionValues()).toEqual(['', 'c-study', 'c-work'])
   await submit()
   expect(mounted.store.document!.tasks.find((task) => task.title === 'Jog')).not.toHaveProperty('categoryId')
@@ -117,7 +114,7 @@ it('offers the last choice for the next task first in "During", never as its def
   mounted.unmount()
   mounted = await mountWithPlanner(SmartCapture, { ...done, categories: [WORK, STUDY] })
   await type('Fresh visit')
-  expect(when().value).toBe('')
+  expect(whenValue(mounted!.host)).toBe('')
   expect(optionValues()).toEqual(['', 'c-study', 'c-work'])
 })
 
@@ -166,7 +163,7 @@ it.each([
   localStorage.setItem(LAST_TASK_CATEGORY_KEY, remembered)
   mounted = await mountWithPlanner(SmartCapture, { ...done, categories: [SLEEP, WORK] })
   await type('x')
-  expect(when().value).toBe('')
+  expect(whenValue(mounted!.host)).toBe('')
   await submit()
   expect(mounted.store.document!.tasks[0]).not.toHaveProperty('categoryId')
 })
@@ -199,9 +196,8 @@ it('still suggests the remembered choice when the planner finishes loading after
   input.dispatchEvent(new Event('input'))
   await nextTick()
   // The remembered choice is a suggestion: listed first once the categories are there, never applied by itself.
-  const select = host.querySelector<HTMLSelectElement>('[data-testid=task-when]')!
-  expect(select.value).toBe('')
-  expect([...select.options].map((option) => option.value)).toEqual(['', 'c-study', 'c-work'])
+  expect(whenValue(host)).toBe('')
+  expect(whenValues(host)).toEqual(['', 'c-study', 'c-work'])
   app.unmount()
   host.remove()
 })

@@ -325,7 +325,7 @@ async function moveDue(task: Task, date: string): Promise<void> {
 .tasks-subtitle { margin: calc(var(--header-gap) * -1) var(--page-gutter) var(--group-gap); font-variant-numeric: tabular-nums; }
 .tasks ul { margin: 0; padding: 0; list-style: none; }
 /* One amber row (R_Tareas): the count of tasks that do not fit; it opens their fixes in place. */
-.warnings { margin: 0 var(--page-gutter) var(--group-gap); border-radius: 14px; background: color-mix(in srgb, var(--warning) 12%, var(--surface)); }
+.warnings { margin: 0 var(--page-gutter) var(--section-gap); border-radius: 14px; background: color-mix(in srgb, var(--warning) 12%, var(--surface)); }
 .warnings-row { display: flex; align-items: center; gap: var(--space-3); width: 100%; min-height: 52px; padding: var(--space-2) var(--card-padding); border: 0; border-radius: 14px; background: transparent; color: var(--label); text-align: start; }
 .warnings-row:focus-visible { outline-offset: -2px; }
 .warning-icon { flex: none; color: var(--warning-label); }
@@ -339,7 +339,7 @@ async function moveDue(task: Task, date: string): Promise<void> {
 .warning-hint { color: var(--label-2); }
 .warning-actions { display: flex; flex-wrap: wrap; gap: var(--space-2); }
 .fix { min-height: var(--tap-target); padding: 0 var(--space-3); border: 0; border-radius: 999px; background: var(--surface); color: var(--tint-label); font-weight: 600; }
-.group { margin-bottom: var(--group-gap); }
+.group { margin-bottom: var(--section-gap); }
 .group-title { margin: 0 var(--page-gutter) var(--space-1); color: var(--label-2); font-size: 0.8125rem; font-weight: 600; }
 .group-footer { margin: var(--space-2) var(--page-gutter) 0; }
 .outside-note { color: var(--label); }

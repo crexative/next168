@@ -3,6 +3,7 @@ import AxeBuilder from '@axe-core/playwright'
 import { expect, test, type Page } from '@playwright/test'
 import { LEGACY_BLOCK_COUNT, legacyData, openAdvanced, openSettingsPage, openTab, seedKey, V2_KEY } from './fixtures'
 import { storedPlanner, storedRecord } from './support/indexedDb'
+import { openNewTask, pickWhen } from './support/newTask'
 
 const LEGACY_KEYS = ['next168-data', 'next168-v2', 'next168-v2-backup', 'next168-v2-proposals', 'next168-tutorial-completed']
 // Device preferences kept beside the planner (export nudge, storage protection, last task category).
@@ -114,12 +115,15 @@ test.describe('plan and measure', () => {
     await startWith(page, plannerDocument())
     await openTab(page, 'tasks')
 
-    await page.getByLabel('Task', { exact: true }).fill('Write report')
-    await page.getByRole('radio', { name: '2 h' }).click()
-    await page.getByRole('button', { name: 'More options' }).click()
-    await page.getByLabel('Category').selectOption('c-study')
-    await page.getByRole('button', { name: 'Add task' }).click()
+    const { sheet, field, add } = await openNewTask(page)
+    await field.fill('Write report')
+    await sheet.getByRole('radio', { name: '2 h' }).check()
+    await pickWhen(sheet, 'Study')
+    await add.click()
 
+    // One calm amber row; the reason is in its fixes.
+    await expect(page.getByTestId('warnings-toggle')).toHaveText('1 task does not fit this week')
+    await page.getByTestId('warnings-toggle').click()
     const warning = page.getByTestId('overflow-text')
     await expect(warning).toContainText('1 h missing in Study')
     await expect(page.getByTestId('placed-task')).toContainText('Write report')
@@ -143,6 +147,7 @@ test.describe('plan and measure', () => {
       tasks: [{ id: 't-late', title: 'Hand in form', categoryId: 'c-study', durationMin: 60, dueDate: '2026-10-25', priority: 1, createdAt: '2026-10-20T10:00:00.000Z' }],
     }))
     await openTab(page, 'tasks')
+    await page.getByTestId('warnings-toggle').click()
     await expect(page.getByTestId('late-text')).toContainText('after its due date')
     await expect(page.getByTestId('task-warnings').getByRole('button', { name: 'Do it today' })).toBeVisible()
   })

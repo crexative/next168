@@ -31,7 +31,7 @@ const { t } = useI18n()
 // Opens by itself when the task already carries a choice, so nothing set earlier is hidden.
 const moreOpen = ref(hasExtraOptions(props.draft))
 
-const ids = { length: useId(), other: useId(), when: useId(), more: useId() }
+const ids = { length: useId(), other: useId(), when: useId(), whenList: useId(), more: useId() }
 const STANDARD = DURATION_CHIPS as readonly number[]
 // "Otra" is chosen when the person picked it, or when the task's length is not one of the chips (45 min shows there).
 const otherPicked = ref(props.draft.durationMin !== undefined && !STANDARD.includes(props.draft.durationMin))
@@ -65,6 +65,15 @@ const whenOptions = computed(() => {
   return suggested ? [suggested, ...offered.filter((category) => category !== suggested)] : offered
 })
 const chosenCategory = computed(() => props.categories.find((category) => category.id === props.draft.categoryId))
+const whenOpen = ref(false)
+const whenChoices = computed(() => [
+  { id: ANY_FREE_TIME, name: t('tasks.add.anyFreeTime'), color: '' },
+  ...whenOptions.value.map((category) => ({ id: category.id, name: category.name, color: categoryColor(category) })),
+])
+function pickWhen(id: string): void {
+  update({ categoryId: id })
+  whenOpen.value = false
+}
 const priorityOptions = computed(() => (['1', '2', '3'] as const).map((value) => ({ value, label: t(`tasks.priority.${value}`) })))
 
 const update = (change: Partial<TaskDraft>): void => emit('patch', change)
@@ -117,19 +126,23 @@ function setToday(on: boolean): void {
       <h3 :id="ids.when" class="group-label">{{ t('tasks.add.when') }}</h3>
       <ul class="when">
         <li>
-          <label class="when-row">
-            <span class="t-body">{{ t('tasks.add.category') }}</span>
-            <span class="when-value t-body" aria-hidden="true">
-              <span v-if="chosenCategory" class="dot" :style="{ background: categoryColor(chosenCategory) }" />
-              <span class="when-name">{{ chosenCategory?.name ?? t('tasks.add.anyFreeTime') }}</span>
-              <Icon name="chevron-right" :size="16" />
+          <!-- "Durante": the row says the choice; it opens the choices in place, whose names wrap at any text size. -->
+          <button type="button" class="when-row" :aria-expanded="whenOpen" :aria-controls="ids.whenList" data-testid="task-when-toggle" @click="whenOpen = !whenOpen">
+            <span class="t-body when-label">{{ t('tasks.add.category') }}</span>
+            <span class="when-value t-body">
+              <span v-if="chosenCategory" class="dot" :style="{ background: categoryColor(chosenCategory) }" aria-hidden="true" />
+              <span class="when-name" data-testid="task-when-value">{{ chosenCategory?.name ?? t('tasks.add.anyFreeTime') }}</span>
+              <Icon :name="whenOpen ? 'chevron-up' : 'chevron-down'" :size="16" class="when-chevron" />
             </span>
-            <!-- The platform pop-up, laid over the row: the whole row opens it and it reads as "Durante, Familia". -->
-            <select :value="draft.categoryId" class="when-select" data-testid="task-when" @change="update({ categoryId: ($event.target as HTMLSelectElement).value })">
-              <option :value="ANY_FREE_TIME">{{ t('tasks.add.anyFreeTime') }}</option>
-              <option v-for="category in whenOptions" :key="category.id" :value="category.id">{{ category.name }}</option>
-            </select>
-          </label>
+          </button>
+          <div v-show="whenOpen" :id="ids.whenList" class="when-options" role="radiogroup" :aria-label="t('tasks.add.category')" data-testid="task-when">
+            <label v-for="option in whenChoices" :key="option.id" class="when-option t-body" :data-value="option.id">
+              <input class="when-input" type="radio" :name="ids.whenList" :value="option.id" :checked="draft.categoryId === option.id" @change="pickWhen(option.id)">
+              <span v-if="option.color" class="dot" :style="{ background: option.color }" aria-hidden="true" />
+              <span class="when-name">{{ option.name }}</span>
+              <Icon v-if="draft.categoryId === option.id" name="check" :size="18" class="when-check" />
+            </label>
+          </div>
         </li>
         <ToggleRow :model-value="todayPressed" :label="t('tasks.add.today')" test-id="task-today" @update:model-value="setToday" />
       </ul>
@@ -191,12 +204,18 @@ function setToday(on: boolean): void {
 .length-input { position: absolute; inset: 0; margin: 0; opacity: 0; cursor: pointer; }
 .when { margin: 0; padding: 0; list-style: none; border-radius: var(--radius-card); background: var(--surface); overflow: hidden; }
 .when > li + li { border-top: 0.5px solid var(--separator); }
-.when-row { position: relative; display: flex; align-items: center; justify-content: space-between; gap: var(--space-3); min-height: max(var(--tap-target), var(--row-min-height)); padding: var(--row-padding-block) var(--card-padding); }
-.when-row:has(:focus-visible) { outline: 2px solid var(--tint-label); outline-offset: -2px; }
-.when-value { display: inline-flex; align-items: center; gap: var(--space-2); min-width: 0; color: var(--label-2); }
-.when-name { min-width: 0; overflow-wrap: anywhere; text-align: end; }
+.when-row { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 0 var(--space-3); width: 100%; min-height: max(var(--tap-target), var(--row-min-height)); padding: var(--row-padding-block) var(--card-padding); border: 0; background: transparent; color: var(--label); text-align: start; }
+.when-row:focus-visible { outline-offset: -2px; }
+/* The value takes the rest of the line and moves under the label when the text is large. */
+.when-value { display: inline-flex; align-items: center; gap: var(--space-2); min-width: 0; margin-inline-start: auto; color: var(--label-2); }
+.when-name { min-width: 0; overflow-wrap: break-word; }
+.when-chevron { flex: none; }
 .dot { flex: none; width: 8px; height: 8px; border-radius: 50%; }
-.when-select { position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0; cursor: pointer; font-size: 1rem; }
+.when-options { display: flex; flex-direction: column; border-top: 0.5px solid var(--separator); }
+.when-option { position: relative; display: flex; align-items: center; gap: var(--space-2); min-height: var(--tap-target); padding: var(--space-2) var(--card-padding) var(--space-2) calc(var(--card-padding) + var(--space-3)); cursor: pointer; }
+.when-option:has(:focus-visible) { outline: 2px solid var(--tint-label); outline-offset: -2px; }
+.when-input { position: absolute; inset: 0; margin: 0; opacity: 0; cursor: pointer; }
+.when-check { flex: none; margin-inline-start: auto; color: var(--tint-label); }
 .more {
   display: inline-flex;
   align-items: center;

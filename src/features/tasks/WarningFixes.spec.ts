@@ -6,6 +6,7 @@ import { testDocument } from '@/repositories/testSupport'
 import { mountWithPlanner, type Mounted } from '@/features/settings/testSupport'
 import { useUndoToast } from '@/ui/undoToast'
 import TasksView from './TasksView.vue'
+import { whenValue } from './whenTestSupport'
 
 // The owner's report: on Sunday 25 Oct (Bogotá) "Trotar", filed under Trabajo and due that day, landed on Monday with
 // "Cae después de su fecha límite" and only advice. A task can always be done today when there is time today, and
@@ -99,8 +100,9 @@ it('"Cambiar categoría" opens the task with its "When?" choice in view', async 
   await nextTick()
   const dialog = document.body.querySelector<HTMLElement>('[role=dialog]')!
   expect(dialog.getAttribute('aria-label') ?? text(dialog.querySelector('h2'))).toContain('Editar tarea')
-  expect(dialog.querySelector<HTMLSelectElement>('[data-testid=task-when]')!.value).toBe('c-work')
-  expect(dialog.querySelector<HTMLElement>('[data-testid=task-more-options]')!.style.display).not.toBe('none')
+  // "Durante" is on screen in the sheet, showing the task's category.
+  expect(text(dialog.querySelector('[data-testid=task-when-value]'))).toBe('Trabajo')
+  expect(whenValue(dialog)).toBe('c-work')
 })
 
 // Design rev 4 §2.7: a category with no routine block is a list, so its undated task fits free time with no warning.

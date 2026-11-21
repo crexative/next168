@@ -25,7 +25,8 @@ import './registerIcons'
 // preview offers one task per line, titles only, or the whole text as one task. No model is involved.
 // It is the body of the Nueva tarea sheet (R_HojaTarea): a large title field with its hint, the options always shown,
 // and the sheet's header "Añadir" submitting through `submit()`.
-const props = withDefaults(defineProps<{ dueToday?: boolean; label?: string }>(), { dueToday: false, label: undefined })
+// `formId` lets the sheet's header "Añadir" be this form's submit button, so Enter in any field submits as in a form.
+const props = withDefaults(defineProps<{ dueToday?: boolean; label?: string; formId?: string }>(), { dueToday: false, label: undefined, formId: undefined })
 const emit = defineEmits<{ added: [count: number] }>()
 
 const MAX_LINES = 20
@@ -354,7 +355,7 @@ defineExpose({ focus: () => field.value?.focus(), submit, canSubmit, dirty })
 </script>
 
 <template>
-  <form ref="root" class="add" :aria-label="label ?? t('tasks.add.title')" novalidate @submit.prevent="multiLine ? undefined : addOne()">
+  <form :id="formId" ref="root" class="add" :aria-label="label ?? t('tasks.add.title')" novalidate @submit.prevent="submit">
     <label class="field" :for="ids.field">
       <span class="visually-hidden">{{ t('tasks.add.titleLabel') }}</span>
       <textarea

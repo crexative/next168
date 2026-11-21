@@ -2,6 +2,7 @@ import { expect, test, type Page } from '@playwright/test'
 import { seedKey, V2_KEY } from './fixtures'
 import { onboardedDocument } from './support/seed'
 import { visualIntegrityViolations } from './support/visualIntegrity'
+import { openNewTask, pickWhen, whenChecked, whenChoices } from './support/newTask'
 
 // Slice E: tasks, settings, assistant entry and proposals, in Spanish (es-CO) at a phone and a desktop
 // size, light and dark. Geometry, behaviour and accessibility assertions, one per plan item.
@@ -53,45 +54,45 @@ for (const size of SIZES) {
   for (const theme of THEMES) {
     const label = `${size.width}x${size.height} ${theme}`
 
-    test(`tasks: one field first, length chips after typing, the category one level deeper, last choice suggested (${label})`, async ({ page }) => {
+    // Nueva tarea (R_HojaTarea): the title with its hint, the lengths, "¿Cuándo?" (Durante, Hoy) and "Más opciones";
+    // "Añadir" in the header. The last category is only offered first, never applied by itself.
+    test(`tasks: Nueva tarea has the title, the lengths, "¿Cuándo?" and more options, and the last choice is offered first (${label})`, async ({ page }) => {
       await start(page, size, theme, planned())
       await page.goto('./#/tasks')
       await expect(page.getByRole('heading', { level: 1, name: 'Tareas' })).toBeVisible()
-      const field = page.getByPlaceholder('Añadir tarea… (o pega o dicta varias)')
-      await expect(field).toBeVisible()
-      await expect(page.getByTestId('task-details')).toHaveCount(0)
-      expect(await boxes(page, 'form.add textarea, form.add input, form.add select, form.add button')).toHaveLength(1)
-      expect((await boxes(page, 'form.add textarea'))[0]!.height).toBeGreaterThanOrEqual(44)
+      await expect(page.locator('main textarea')).toHaveCount(0)
+      const { sheet, field, add } = await openNewTask(page)
+      await expect(sheet.getByRole('heading', { name: 'Nueva tarea' })).toBeVisible()
+      await expect(sheet.getByTestId('sheet-cancel')).toHaveText('Cancelar')
+      await expect(add).toHaveText('Añadir')
+      await expect(add).toBeDisabled()
+      expect((await field.boundingBox())!.height).toBeGreaterThanOrEqual(44)
+      await expect(sheet.getByText('Pega o dicta varias, una por línea.')).toBeVisible()
+      await expect(sheet.getByRole('radiogroup', { name: 'Duración' }).getByRole('radio')).toHaveCount(6)
+      await expect(sheet.getByRole('radio', { name: 'Sin tiempo' })).toBeChecked()
+      await expect(whenChecked(sheet)).toHaveValue('')
+      await expect(whenChoices(sheet)).toHaveText(['En cualquier hueco libre', 'Trabajo', 'Estudio'])
+      await expect(sheet.getByRole('switch', { name: 'Hoy' })).not.toBeChecked()
+      // The deadline and the priority are one level deeper.
+      await expect(sheet.getByLabel('Fecha límite')).toBeHidden()
       await field.fill('Leer un capítulo')
-      const details = page.getByTestId('task-details')
-      await expect(details).toBeVisible()
-      await expect(details.getByRole('radiogroup', { name: 'Duración' }).getByRole('radio')).toHaveText(['Sin tiempo', '15 min', '30 min', '1 h', '2 h'])
-      await expect(details.getByRole('radio', { name: 'Sin tiempo' })).toHaveAttribute('aria-checked', 'true')
-      // The category, the deadline and the priority are one level deeper; by default a task fits any free slot.
-      await expect(details.getByLabel('Categoría')).toBeHidden()
+      await expect(add).toBeEnabled()
       await calm(page)
       expect(await visualIntegrityViolations(page)).toEqual([])
-      await details.getByRole('button', { name: 'Más opciones' }).click()
-      await expect(details.getByLabel('Categoría')).toHaveValue('')
-      await expect(details.getByLabel('Categoría').locator('option')).toHaveText(['En cualquier hueco libre', 'Trabajo', 'Estudio'])
-      await expect(details.getByLabel('Fecha límite')).toBeVisible()
-      await expect(details.getByRole('radiogroup', { name: 'Prioridad' })).toBeVisible()
+      await sheet.getByRole('button', { name: 'Más opciones' }).click()
+      await expect(sheet.getByLabel('Fecha límite')).toBeVisible()
+      await expect(sheet.getByRole('radiogroup', { name: 'Prioridad' })).toBeVisible()
       await calm(page)
       expect(await visualIntegrityViolations(page)).toEqual([])
-      await details.getByLabel('Categoría').selectOption('c-study')
-      await page.getByRole('button', { name: 'Añadir tarea', exact: true }).click()
-      await expect(field).toHaveValue('')
-      await expect(page.getByTestId('task-details')).toHaveCount(0)
+      await pickWhen(sheet, 'Estudio')
+      await add.click()
+      await expect(sheet).toBeHidden()
       await page.reload()
-      await page.getByPlaceholder('Añadir tarea… (o pega o dicta varias)').fill('Otra más')
-      // The remembered choice is only a one-tap suggestion: a new task still fits any free slot unless it is tapped.
-      const suggestion = page.getByTestId('task-details').getByRole('button', { name: 'Durante Estudio' })
-      await expect(suggestion).toHaveAttribute('aria-pressed', 'false')
-      await expect(page.getByTestId('task-details').getByLabel('Categoría')).toBeHidden()
-      await suggestion.click()
-      await expect(suggestion).toHaveAttribute('aria-pressed', 'true')
-      await page.getByTestId('task-details').getByRole('button', { name: 'Más opciones' }).click()
-      await expect(page.getByTestId('task-details').getByLabel('Categoría')).toHaveValue('c-study')
+      const next = await openNewTask(page)
+      await next.field.fill('Otra más')
+      await expect(whenChecked(next.sheet)).toHaveValue('')
+      await expect(whenChoices(next.sheet)).toHaveText(['En cualquier hueco libre', 'Estudio', 'Trabajo'])
+      await next.sheet.getByTestId('task-when-toggle').click()
       await calm(page)
       expect(await visualIntegrityViolations(page)).toEqual([])
     })

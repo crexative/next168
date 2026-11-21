@@ -338,9 +338,21 @@ onBeforeUnmount(() => {
 .sheet-panel.is-full { height: calc(min(var(--vv-height, 100dvh), 100dvh) - var(--safe-top) - var(--space-6)); }
 .sheet-close:disabled { opacity: 0.4; }
 .sheet-panel.is-grouped { background: var(--bg-grouped); }
-/* Cancel · title · action: the outer columns share the width so the title stays centred whatever the words. */
-.sheet-header.is-form { display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr); gap: var(--space-2); padding: 0 var(--space-2); }
-.sheet-header.is-form .sheet-title { text-align: center; }
+/* Cancel · title · action: the outer columns share the width so the title stays centred whatever the words. When the
+   three do not fit on one line (a narrow screen, large text), the title takes a line of its own under Cancel and the
+   action, which stay in reach. The query is in em, so it follows the text size. */
+.sheet-grab { container: sheet-head / inline-size; }
+.sheet-header.is-form {
+  display: grid; grid-template-areas: 'cancel title action'; grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  gap: 0 var(--space-2); padding: 0 var(--space-2);
+}
+.sheet-header.is-form .sheet-title { grid-area: title; min-width: 0; text-align: center; overflow-wrap: break-word; }
+.sheet-cancel { grid-area: cancel; }
+.sheet-action { grid-area: action; }
+@container sheet-head (max-width: 22em) {
+  .sheet-header.is-form { grid-template-areas: 'cancel action' 'title title'; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+  .sheet-header.is-form .sheet-title { padding-block-end: var(--space-1); }
+}
 .sheet-cancel { justify-self: start; min-width: var(--tap-target); min-height: var(--tap-target); padding: 0 var(--space-2); border: 0; background: transparent; color: var(--label-2); text-align: start; }
 .sheet-cancel:disabled { opacity: 0.4; }
 .sheet-action { display: flex; justify-content: flex-end; min-width: 0; }

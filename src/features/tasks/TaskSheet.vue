@@ -127,9 +127,9 @@ async function remove(): Promise<void> {
   <Sheet :open="open" :title="t(isEditing ? 'tasks.sheet.edit' : 'tasks.sheet.new')" :dirty="dirty" grouped @update:open="emit('update:open', $event)">
     <template #action>
       <button v-if="isEditing" type="submit" :form="formId" :disabled="!canSave" data-testid="task-save">{{ t('common.save') }}</button>
-      <button v-else type="button" :disabled="!capture?.canSubmit" data-testid="task-add" @click="capture?.submit()">{{ t('tasks.sheet.add') }}</button>
+      <button v-else type="submit" :form="formId" :disabled="!capture?.canSubmit" data-testid="task-add">{{ t('tasks.sheet.add') }}</button>
     </template>
-    <SmartCapture v-if="!isEditing" ref="capture" :due-today="dueToday" :label="t('tasks.sheet.new')" @added="emit('update:open', false)" />
+    <SmartCapture v-if="!isEditing" ref="capture" :form-id="formId" :due-today="dueToday" :label="t('tasks.sheet.new')" @added="emit('update:open', false)" />
     <form v-else :id="formId" class="task-form" novalidate :aria-label="t('tasks.sheet.edit')" @submit.prevent="save">
       <label class="field" :for="`${fieldId}-title`">
         <span class="visually-hidden">{{ t('tasks.add.titleLabel') }}</span>
