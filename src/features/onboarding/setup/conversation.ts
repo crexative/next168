@@ -1,6 +1,6 @@
 import { sequence } from '../setupFlow'
 import {
-  categoryOf, commuteBase, intoKey, isIntoKey, picksOf, roundIndex, roundOptions, statusOf, type CategoryDraft, type CategoryStatus, type RangeDraft, type ScreenId, type SetupState,
+  categoryOf, commuteBase, intoKey, isIntoKey, multiPick, picksOf, roundIndex, roundOptions, statusOf, type CategoryDraft, type CategoryStatus, type RangeDraft, type ScreenId, type SetupState,
 } from '../setupModel'
 import { EXTRA_TOPICS, TOPICS, type TopicId } from '../setupTopics'
 
@@ -35,6 +35,8 @@ const SKIPPABLE: ScreenId[] = ['sleep', 'workStudy', 'commute', 'exercise', 'mor
 export function extraReply(state: SetupState, screen: ScreenId): ExtraReply | undefined {
   // Adding has nothing to skip: leaving is the frame's ‹, and the first question has no "nothing" to say.
   if (state.add && screen === 'more') return undefined
+  // The several-picks question's way out is "No, eso es todo" (R_InicioMas), quiet like a skip.
+  if (screen === 'more') return { key: DONE_KEY, kind: 'skip' }
   const reply = isRangeScreen(state, screen) && screen !== 'sleep' ? 'noFixedTime' : SKIPPABLE.includes(screen) ? 'skip' : undefined
   return reply === undefined ? undefined : { key: `onboarding.guided.${reply}`, kind: EXTRA_REPLY_KIND[reply] }
 }
@@ -105,6 +107,8 @@ export function answer(state: SetupState, screen: ScreenId, speaker: Speaker): s
       const round = roundIndex(screen)
       if (round === undefined) return rangesText(state, screen, speaker)
       const picks = picksOf(state)
+      // Several picks at once (setup): the answer names them all, or "No, that's all".
+      if (multiPick(state)) return picks.length > 0 ? picks.map((key) => pickLabel(state, key, speaker)).join(', ') : answers.more !== null && answers.moreDone ? speaker.t(DONE_KEY) : skipped
       // "What else…?" is answered by naming it; "Anything else?" by "Yes, …" or "No, that's all".
       if (round < picks.length) {
         const label = pickLabel(state, picks[round]!, speaker)

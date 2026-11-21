@@ -1,7 +1,7 @@
 import { beforeAll, describe, expect, it } from 'vitest'
 import { i18n } from '@/i18n'
 import {
-  addOwnCategory, createAddState, emptyState, finishMore, pick, prepareScreen, setAnswer, type ScreenId, type SetupState, type Tri, type WorkStudy,
+  addOwnCategory, createAddState, emptyState, finishMore, pick, prepareScreen, setAnswer, togglePick, type ScreenId, type SetupState, type Tri, type WorkStudy,
 } from '../setupModel'
 import { category, documentWith, env } from '../setupFixtures'
 import { answer, extraReply, hint, question, roundReplies, summaryRows, transcript, weekIsEmpty, type Line, type Speaker } from './conversation'
@@ -112,23 +112,31 @@ describe('the answer, as the person would say it', () => {
     expect(answer(state, 'work', lower)).toBe('Lunes a viernes · 9:00 a. m.–5:00 p. m.')
   })
 
-  it('what else: the first round answers with its pick, later ones with "Sí, …", the way out is always "No, eso es todo"', () => {
+  it('what else in setup: several picks answer together, the way out is "No, eso es todo"', () => {
     const state = emptyState()
     expect(answer(state, 'more', speaker)).toBe('Lo veo después')
+    togglePick(state, 'family', env)
+    togglePick(state, addOwnCategory(state, 'Ajedrez').category.key, env)
+    expect(answer(state, 'more', speaker)).toBe('Familia, Ajedrez')
+    finishMore(state, 0)
+    expect(answer(state, 'more', speaker)).toBe('No, eso es todo')
+  })
+
+  it('asks "¿A qué más…?" once in setup, with "Elige las que quieras."', () => {
+    const state = emptyState()
+    expect([say(question(state, 'more')), say(hint(state, 'more'))]).toEqual(['¿A qué más le dedicas tiempo cada semana?', 'Elige las que quieras.'])
+  })
+
+  // Adding a routine keeps one pick per round.
+  it('adding a routine: the first round answers with its pick, later ones with "Sí, …", the way out is "No, eso es todo"', () => {
+    const state = emptyState()
+    state.add = { entry: 'routine', stored: [], fixed: [] }
     pick(state, 0, 'family', env)
     pick(state, 1, addOwnCategory(state, 'Ajedrez').category.key, env)
     expect([answer(state, 'more', speaker), answer(state, 'more:1', speaker)]).toEqual(['Familia', 'Sí, Ajedrez'])
     finishMore(state, 2)
     expect(answer(state, 'more:2', speaker)).toBe('No, eso es todo')
-    finishMore(state, 0)
-    expect(answer(state, 'more', speaker)).toBe('No, eso es todo')
     expect(roundReplies(state, 0, speaker).done.label).toBe('No, eso es todo')
-  })
-
-  it('asks "¿Algo más?" from the second round on, with its own hint', () => {
-    const state = emptyState()
-    pick(state, 0, 'family', env)
-    expect([say(question(state, 'more')), say(hint(state, 'more'))]).toEqual(['¿A qué más le dedicas tiempo cada semana?', 'Elige una.'])
     expect([say(question(state, 'more:1')), say(hint(state, 'more:1'))]).toEqual(['¿Algo más?', 'Elige otra, o dime que eso es todo.'])
   })
 
@@ -150,11 +158,14 @@ describe('the extra reply beside the answers: a skip or an answer', () => {
   it('skipping is offered as a quiet skip on the yes/no, choice and sleep questions', () => {
     const state = walked('both', 'yes')
     pick(state, 0, 'family', env)
-    for (const screen of ['sleep', 'workStudy', 'commute', 'exercise', 'more'] as ScreenId[]) {
+    for (const screen of ['sleep', 'workStudy', 'commute', 'exercise'] as ScreenId[]) {
       const reply = extraReply(state, screen)
       expect(reply?.kind, screen).toBe('skip')
       expect(say(reply), screen).toBe('Lo veo después')
     }
+    // "¿A qué más…?" is left with a quiet "No, eso es todo" (R_InicioMas).
+    expect(extraReply(state, 'more')).toMatchObject({ kind: 'skip' })
+    expect(say(extraReply(state, 'more'))).toBe('No, eso es todo')
   })
 
   it('"Sin horario fijo" on the other time questions is an answer, drawn like one', () => {

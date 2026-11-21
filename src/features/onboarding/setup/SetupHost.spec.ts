@@ -13,7 +13,7 @@ import WeekView from '@/features/week/WeekView.vue'
 import CategorySettings from '@/features/settings/categories/CategorySettings.vue'
 import { draftOf, saveDraft } from '../draftStorage'
 import { openAdd, setupRequest } from '../reopen'
-import { addOwnCategory, clearRanges, createState, MAX_PICKS, pick } from '../setupModel'
+import { addOwnCategory, clearRanges, createState, MAX_PICKS, togglePick } from '../setupModel'
 import { block, category, documentWith, env } from '../setupFixtures'
 import legacyDrafts from '../__fixtures__/legacyDraftsV2.json'
 import { anyFullScreenOpen, droppedSheet, openSheet } from '@/ui/sheetStack'
@@ -622,9 +622,9 @@ describe('the conversation', () => {
     await click('[data-testid=setup-secondary]')
     await click('[data-testid=setup-secondary]')
     expect(screen()).toBe('more')
-    // "Anything else?" answers on a tap, like the other quick replies: it has no Send.
-    expect(live('[data-testid=setup-primary]')).toBeUndefined()
-    await click('[data-value=family]')
+    // "¿A qué más…?" takes several picks, so it has Siguiente.
+    await click('[data-chip=family]')
+    await click('[data-testid=setup-primary]')
     expect(screen()).toBe('extra:family')
     const send = () => live('[data-testid=setup-primary]')!
     expect(send().disabled).toBe(false)
@@ -647,93 +647,82 @@ describe('the conversation', () => {
   })
 })
 
-describe('"Anything else?" asked again (S1-4, S1-9, N8)', () => {
-  const turn = (screen: string) => [...window.document.body.querySelectorAll<HTMLButtonElement>('[data-testid=setup] [data-answer]')].find((element) => element.dataset.answer === screen)!
-  const choose = (value: string) => click(`[data-value="${value}"]`)
+// "¿A qué más le dedicas tiempo?" takes several picks at once (DIRECTION §4, improvement 2): chips, then Siguiente,
+// then one short time question per pick. The owner kept "2 elegidas · una pregunta corta por cada una".
+describe('"¿A qué más…?" with several picks', () => {
+  const turn = (screen: string) => [...window.document.body.querySelectorAll<HTMLButtonElement>('[data-testid=setup] [data-answer]')].find((element) => element.dataset.answer === screen)
+  const chip = (value: string) => live(`[data-chip="${value}"]`)!
   const send = () => click('[data-testid=setup-primary]')
-  const replies = () => [...window.document.body.querySelectorAll<HTMLButtonElement>('[data-testid=setup] .reply')].map((element) => element.dataset.value)
 
   async function toMore(): Promise<void> {
     for (let guard = 0; guard < 3; guard++) await click('[data-testid=setup-secondary]')
     expect(screen()).toBe('more')
   }
 
-  async function reopen(screenId: string): Promise<void> {
-    turn(screenId).click()
-    await nextTick()
-    expect(screen()).toBe(screenId)
-  }
-
-  it('reopening the "No, that\'s all" turn and picking Friends asks its times, then the round after it, open', async () => {
+  it('picks several with chips, then asks the times of each, then shows the summary', async () => {
     await mount(firstRun())
     await toMore()
-    await choose('family')
+    expect(live('[data-testid=setup-primary]')).toBeDefined()
+    await click('[data-chip="family"]')
+    await click('[data-chip="friends"]')
+    expect([chip('family'), chip('friends'), chip('me')].map((element) => element.getAttribute('aria-pressed'))).toEqual(['true', 'true', 'false'])
+    await click('[data-chip="friends"]')
+    await click('[data-chip="friends"]')
     await send()
-    expect(screen()).toBe('more:1')
-    await click('[data-testid=more-done]')
-    expect(screen()).toBe('summary')
-    await reopen('more:1')
-    expect(live('[data-testid=more-done]')!.getAttribute('aria-label')).toBe('No, that\'s all (current)')
-    await choose('friends')
+    expect(screen()).toBe('extra:family')
+    await send()
     expect(screen()).toBe('extra:friends')
     await send()
-    expect(screen()).toBe('more:2')
-    expect(live('[data-testid=more-done]')!.getAttribute('aria-label')).toBeNull()
-    expect(replies()).toEqual(['me', 'learning'])
-  })
-
-  it('replacing an earlier pick asks the new pick\'s times, then returns to the round the person was on', async () => {
-    await mount(firstRun())
-    await toMore()
-    await choose('family')
-    await send()
-    await choose('friends')
-    await send()
-    expect(screen()).toBe('more:2')
-    await reopen('more')
-    expect(live('.reply.is-current')!.dataset.value).toBe('family')
-    await choose('learning')
-    expect(screen()).toBe('extra:learning')
-    await send()
-    expect(screen()).toBe('more:2')
-    expect(turn('more').textContent).toContain('Learning')
-    expect(turn('more:1').textContent).toContain('Friends')
-  })
-
-  it('"No, that\'s all" at an earlier round, with picks after it, lands on the summary even when the screen left is gone', async () => {
-    await mount(firstRun())
-    await toMore()
-    await choose('family')
-    await send()
-    await choose('friends')
-    await send()
-    await choose('learning')
-    expect(screen()).toBe('extra:learning')
-    await reopen('more:1')
-    await click('[data-testid=more-done]')
     expect(screen()).toBe('summary')
-    await vi.waitFor(() => expect(turns()).toEqual(['sleep', 'workStudy', 'exercise', 'more', 'extra:family', 'more:1']))
+    expect(turn('more')!.textContent).toContain('Family, Friends')
+    expect(turn('more:1')).toBeUndefined()
   })
 
-  it('at MAX_PICKS picks no round is left open and the summary offers no other addition', async () => {
+  it('"No, that\'s all" picks nothing and goes to the summary', async () => {
+    await mount(firstRun())
+    await toMore()
+    await click('[data-chip="family"]')
+    await click('[data-testid=setup-secondary]')
+    expect(screen()).toBe('summary')
+    expect(turn('more')!.textContent).toContain('No, that\'s all')
+  })
+
+  it('reopened, keeps its picks marked; one more pick asks its times too', async () => {
+    await mount(firstRun())
+    await toMore()
+    await click('[data-chip="family"]')
+    await send()
+    await send()
+    expect(screen()).toBe('summary')
+    turn('more')!.click()
+    await nextTick()
+    expect(chip('family').getAttribute('aria-pressed')).toBe('true')
+    await click('[data-chip="learning"]')
+    await send()
+    // Only the new pick has times to ask; then back to the summary.
+    expect(screen()).toBe('extra:learning')
+    await send()
+    expect(screen()).toBe('summary')
+  })
+
+  it('at MAX_PICKS picks the summary offers no other addition', async () => {
     const document = firstRun()
     const state = createState(document, env)
     for (let index = 0; index < MAX_PICKS; index++) {
       const { category: own } = addOwnCategory(state, `Thing ${index + 1}`)
       clearRanges(own)
-      pick(state, index, own.key, env)
+      togglePick(state, own.key, env)
     }
     state.screen = 'summary'
     saveDraft(draftOf(state, { kind: 'stored', workspaceId: document.workspaceId, fingerprint: await documentFingerprint(document) }, true))
     await mount(document)
     expect(screen()).toBe('summary')
-    expect(turn(`more:${MAX_PICKS - 1}`)).toBeDefined()
-    expect(turn(`more:${MAX_PICKS}`)).toBeUndefined()
+    expect(turn('more:1')).toBeUndefined()
     expect(live('[data-testid=summary-add]')).toBeUndefined()
     expect(live('[data-testid=summary-limit]')!.textContent).toBe('That\'s enough for now.')
   })
 
-  it('a version 2 draft reopened on "more" reaffirms both of its answers and reaches the open round (N8)', async () => {
+  it('a version 2 draft reopened on "more" keeps both of its picks marked and asks their times (N8)', async () => {
     const at = (hours: number) => hours * 60
     const document = documentWith(
       [category('c-work', 'Work', { icon: '💼' }), category('c-family', 'Family', { icon: '👨‍👩‍👧', colorKey: 'pink' }), category('c-chess', 'Chess', { colorKey: 'green' })],
@@ -749,22 +738,12 @@ describe('"Anything else?" asked again (S1-4, S1-9, N8)', () => {
     await mount(document)
     await waitForSetup()
     expect(screen()).toBe('more')
-    expect(live('.reply.is-current')!.dataset.value).toBe('friends')
-    await choose('friends')
+    expect([chip('friends'), chip('custom:6')].map((element) => element.getAttribute('aria-pressed'))).toEqual(['true', 'true'])
+    await send()
     expect(screen()).toBe('extra:friends')
     await send()
-    expect(screen()).toBe('more:1')
-    expect(live('.reply.is-current')!.dataset.value).toBe('custom:6')
-    await choose('custom:6')
-    await send()
-    expect(screen()).toBe('more:2')
-    expect(live('.reply.is-current')).toBeUndefined()
-    expect(live('[data-testid=more-done]')!.getAttribute('aria-label')).toBeNull()
+    expect(screen()).toBe('extra:custom:6')
   })
-
-  function turns(): string[] {
-    return [...window.document.body.querySelectorAll<HTMLButtonElement>('[data-testid=setup] [data-answer]')].map((element) => element.dataset.answer!)
-  }
 })
 
 describe('a name typed and not added (S1-13, N3)', () => {

@@ -2,12 +2,12 @@
 import { computed, nextTick, ref, useId, watch } from 'vue'
 import Icon from '@/ui/Icon.vue'
 import {
-  acceptRanges, addTyped, clearPending, nameKey, clearRanges, finishMore, pick, rangeProblem, roundIndex, setAnswer, setPendingInto, setPendingName, setSleepSplit,
+  acceptRanges, addTyped, clearPending, confirmPicks, nameKey, clearRanges, finishMore, moreOptions, multiPick, pick, picksOf, rangeProblem, roundIndex, setAnswer, setPendingInto, setPendingName, setSleepSplit, togglePick,
   type ScreenId, type SetupState, type Tri, type WorkStudy,
 } from '../setupModel'
 import { TOPICS, type TopicId } from '../setupTopics'
 import ChoiceChips from './ChoiceChips.vue'
-import { categoryFor, extraReply, isRangeScreen, roundReplies } from './conversation'
+import { categoryFor, extraReply, isRangeScreen, pickLabel, roundReplies } from './conversation'
 import OtherThingField from './OtherThingField.vue'
 import QuickReplies from './QuickReplies.vue'
 import RangeList from './RangeList.vue'
@@ -27,8 +27,10 @@ const ranges = computed(() => isRangeScreen(props.state, screen.value))
 const quick = computed(() => ['workStudy', 'commute', 'exercise'].includes(screen.value))
 // A round of "Anything else?": its index, or undefined on every other screen.
 const round = computed(() => roundIndex(screen.value))
+// "¿A qué más…?" in setup: several picks with chips, then Siguiente (DIRECTION §4, improvement 2).
+const multi = computed(() => screen.value === 'more' && multiPick(props.state))
 // Questions whose replies answer on a tap have no Send.
-const answersOnTap = computed(() => quick.value || round.value !== undefined)
+const answersOnTap = computed(() => quick.value || (round.value !== undefined && !multi.value))
 
 const extra = computed(() => extraReply(props.state, screen.value))
 // The bar under the answers: the quiet skip and Send. Without it the answers keep the bar's bottom inset themselves.
@@ -46,7 +48,7 @@ const root = ref<HTMLElement | null>(null)
 
 // On arrival the answer is in reach: the current or first reply, or Send when the answer is ready.
 function focusAnswer(): boolean {
-  const order = quick.value ? ['.reply.is-current', '.reply'] : round.value !== undefined ? ['.is-current', '.reply', '[data-testid=more-other]'] : ['.send:not(:disabled)']
+  const order = quick.value ? ['.reply.is-current', '.reply'] : multi.value ? ['.chip'] : round.value !== undefined ? ['.is-current', '.reply', '[data-testid=more-other]'] : ['.send:not(:disabled)']
   const target = order.map((selector) => root.value?.querySelector<HTMLElement>(selector)).find((element) => element)
   target?.focus({ preventScroll: true })
   return target !== undefined
@@ -60,6 +62,7 @@ function done(): void {
 function onPrimary(): void {
   if (!canContinue.value) return
   if (screen.value === 'sleep') setAnswer(props.state, 'sleep', 'yes')
+  if (multi.value) confirmPicks(props.state)
   if (category.value) acceptRanges(category.value)
   done()
 }
@@ -68,7 +71,8 @@ function onPrimary(): void {
 defineExpose({ send: () => { if (!answersOnTap.value && !props.busy) onPrimary() }, focusAnswer: async () => { await nextTick(); return focusAnswer() } })
 
 function onSecondary(): void {
-  if (screen.value === 'more') {
+  if (multi.value) finishMore(props.state, 0)
+  else if (screen.value === 'more') {
     setAnswer(props.state, 'more', null)
     setAnswer(props.state, 'moreDone', false)
   } else if (category.value && ranges.value && screen.value !== 'sleep') clearRanges(category.value)
@@ -91,7 +95,12 @@ function answerQuick(value: string): void {
 // ---------- "Anything else?": one pick per round, "Something else" to name one, and the way out ----------
 const env = { topicName: (topic: TopicId) => t(`onboarding.templates.${TOPICS[topic].nameKey}`) }
 const speaker = { t: (key: string, params?: Record<string, unknown>) => t(key, params ?? {}), rangeLine }
-const replies = computed(() => (round.value === undefined ? undefined : roundReplies(props.state, round.value, speaker)))
+const replies = computed(() => (round.value === undefined || multi.value ? undefined : roundReplies(props.state, round.value, speaker)))
+const multiChips = computed(() => moreOptions(props.state).map((key) => ({ value: key, label: pickLabel(props.state, key, speaker) })))
+function toggleMore(key: string): void {
+  togglePick(props.state, key, env)
+  emit('edited')
+}
 const doneLabel = computed(() => (replies.value?.done.current ? `${replies.value.done.label} ${t('onboarding.guided.current')}` : undefined))
 
 // The name being typed lives in the draft: it is unsaved input, and a reload brings it back with its field open.
@@ -165,6 +174,19 @@ function createAnother(): void {
 function addOther(): void {
   const name = otherName.value.trim()
   if (name === '' || round.value === undefined) return
+  // Several picks: the named item joins the chips, picked, and the question stays for more.
+  if (multi.value) {
+    const named = addTyped(props.state, name)
+    if (picksOf(props.state).includes(named.key) || !togglePick(props.state, named.key, env)) {
+      duplicate.value = true
+      emit('edited')
+      return
+    }
+    clearPending(props.state)
+    otherOpen.value = false
+    emit('edited')
+    return
+  }
   // A name already on the list picks that item when it is free; one picked in another round says so.
   const named = addTyped(props.state, name)
   if (!pick(props.state, round.value, named.key, env)) {
@@ -202,9 +224,10 @@ const labels = computed(() => ({
           :group-label="groupLabel" @answer="answerQuick"
         />
 
-        <div v-else-if="replies" class="round" role="group" :aria-label="groupLabel">
-          <QuickReplies v-if="replies.options.length > 0" :options="replies.options" :current="replies.current" :current-label="t('onboarding.guided.current')" @answer="choose" />
-          <div v-if="replies.stored.length > 0" class="stored" role="group" :aria-labelledby="storedId" data-testid="add-stored">
+        <div v-else-if="multi || replies" class="round" role="group" :aria-label="groupLabel">
+          <ChoiceChips v-if="multi" :chips="multiChips" :selected="picksOf(state)" :group-label="groupLabel" data-testid="more-chips" @toggle="toggleMore" />
+          <QuickReplies v-if="replies && replies.options.length > 0" :options="replies.options" :current="replies.current" :current-label="t('onboarding.guided.current')" @answer="choose" />
+          <div v-if="replies && replies.stored.length > 0" class="stored" role="group" :aria-labelledby="storedId" data-testid="add-stored">
             <p :id="storedId" class="stored-label t-footnote">{{ t('onboarding.guided.add.yours') }}</p>
             <QuickReplies :options="replies.stored" :current="replies.current" :current-label="t('onboarding.guided.current')" @answer="choose" />
           </div>
@@ -227,7 +250,7 @@ const labels = computed(() => ({
               <p v-if="duplicate" class="t-body note" role="status">{{ t('onboarding.guided.more.duplicate') }}</p>
             </form>
             <button
-              v-if="showDone" class="reply-chip done t-body" :class="{ 'is-current': replies.done.current }" type="button" data-testid="more-done" :aria-label="doneLabel"
+              v-if="showDone && replies" class="reply-chip done t-body" :class="{ 'is-current': replies.done.current }" type="button" data-testid="more-done" :aria-label="doneLabel"
               :disabled="busy" @click="finish"
             >
               {{ replies.done.label }}
