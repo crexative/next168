@@ -228,10 +228,10 @@ const labels = computed(() => ({
 
         <div v-else-if="multi || replies" class="round" role="group" :aria-label="groupLabel">
           <ChoiceChips v-if="multi" :chips="multiChips" :selected="picksOf(state)" :group-label="groupLabel" data-testid="more-chips" @toggle="toggleMore" />
-          <QuickReplies v-if="replies && replies.options.length > 0" :options="replies.options" :current="replies.current" :current-label="t('onboarding.guided.current')" @answer="choose" />
+          <QuickReplies v-if="replies && replies.options.length > 0" :options="replies.options" :current="replies.current" :current-label="t('onboarding.guided.current')" :pills="!!state.add" @answer="choose" />
           <div v-if="replies && replies.stored.length > 0" class="stored" role="group" :aria-labelledby="storedId" data-testid="add-stored">
             <p :id="storedId" class="stored-label t-footnote">{{ t('onboarding.guided.add.yours') }}</p>
-            <QuickReplies :options="replies.stored" :current="replies.current" :current-label="t('onboarding.guided.current')" @answer="choose" />
+            <QuickReplies :options="replies.stored" :current="replies.current" :current-label="t('onboarding.guided.current')" pills @answer="choose" />
           </div>
           <div class="round-more">
             <button v-if="!otherOpen" class="other t-body" type="button" data-testid="more-other" :disabled="busy" @click="openOther">{{ t('onboarding.guided.more.other') }}</button>
