@@ -128,6 +128,8 @@ onBeforeUnmount(() => stopWatchingPress?.())
 .is-list .task-content { padding: var(--space-1) var(--page-gutter) var(--space-1) calc(var(--page-gutter) - 10px); background: var(--bg); }
 .is-list + .is-list .task-content::before { left: calc(var(--page-gutter) - 10px + var(--tap-target) + var(--space-2)); border-top-width: 0.5px; }
 .is-list .check-ring { width: 24px; height: 24px; }
+/* With a pointer, the row a press would open shows itself (R_EscritorioTareas). */
+@media (hover: hover) { .is-list .task-content:hover { background: var(--fill); } }
 /* Today's list: plain rows on the page, grid like the timeline (56 px time, 4 px bar, text, 44 px circle). */
 .is-timeline .task-content { display: grid; grid-template-columns: 56px 4px minmax(0, 1fr) var(--tap-target); gap: var(--space-3); padding: 10px var(--page-gutter); background: var(--bg); }
 .is-timeline + .is-timeline .task-content::before { left: calc(var(--page-gutter) + 56px + 4px + 2 * var(--space-3)); border-top-width: 0.5px; }
