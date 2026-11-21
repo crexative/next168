@@ -67,9 +67,11 @@ describe('TodayView', () => {
     const app = createApp(TodayView).use(pinia).use(i18n)
     app.mount(host)
     cleanup = () => { app.unmount(); host.remove(); useUndoToast().dismiss() }
-    const pieces = () => [...host.querySelectorAll('[data-kind="task"] .row-title-text')].map((node) => node.textContent?.trim())
-    // Each row also starts with its kind for screen readers ("Task: ").
-    await vi.waitFor(() => expect(pieces()).toEqual(['Task: 1\u00a0of\u00a02\u00a0· Write report', 'Task: 2\u00a0of\u00a02\u00a0· Write report']))
+    // Shown compactly ("1/2 Write report"); a screen reader hears the part in words.
+    const shown = () => [...host.querySelectorAll('[data-kind="task"] .row-title-text [aria-hidden="true"]')].map((node) => node.textContent?.trim())
+    const spoken = () => [...host.querySelectorAll('[data-kind="task"] .row-title-text .visually-hidden')].map((node) => node.textContent?.trim())
+    await vi.waitFor(() => expect(shown()).toEqual(['1/2 Write report', '2/2 Write report']))
+    expect(spoken()).toEqual(['Task:', 'Write report, part 1 of 2', 'Task:', 'Write report, part 2 of 2'])
     const action = host.querySelector<HTMLButtonElement>('[data-kind="task"] .row-control button')!
     expect(action.getAttribute('aria-label')).not.toMatch(/of\u00a02/)
     expect(action.getAttribute('aria-label')).toContain('Write report')

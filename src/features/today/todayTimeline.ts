@@ -6,7 +6,7 @@ interface TimelineBase { key: string; title: string; start: string; end: string 
 export type TimelineItem =
   | TimelineBase & { kind: 'block'; occurrence: DatedOccurrence; categoryId: string }
   // `title` names the piece ("1 de 2 · Llamar al banco" when the task is split); `taskTitle` is the task's own name.
-  | TimelineBase & { kind: 'task'; taskId: string; categoryId: string; late: boolean; taskTitle?: string }
+  | TimelineBase & { kind: 'task'; taskId: string; categoryId: string; late: boolean; taskTitle?: string; spokenTitle?: string }
   // `sourceName` is the calendar a Google or file event comes from; Weeklid's own events have none.
   | TimelineBase & { kind: 'event' | 'external'; sourceName?: string }
 
@@ -20,6 +20,8 @@ export interface TimelineInput {
   placements: TaskPlacement[]
   // Names the chunks of a split task ("1 de 2 · Llamar al banco"); without it they keep the task's title.
   partLabel?: PartLabel
+  // The same in words, for a screen reader ("Llamar al banco, parte 1 de 2").
+  partSpoken?: PartLabel
 }
 
 const intersects = (start: string, end: string, from: number, to: number) => Date.parse(start) < to && Date.parse(end) > from
@@ -39,7 +41,7 @@ export function liveOverlapTitles(item: TimelineItem, items: TimelineItem[], now
   return titles
 }
 
-export function buildTimeline({ document, today, timeZone, external, placements, partLabel }: TimelineInput): { items: TimelineItem[]; allDay: AllDayItem[] } {
+export function buildTimeline({ document, today, timeZone, external, placements, partLabel, partSpoken }: TimelineInput): { items: TimelineItem[]; allDay: AllDayItem[] } {
   const from = zonedInstant(today, 0, timeZone).getTime()
   const to = zonedInstant(addLocalDays(today, 1), 0, timeZone).getTime()
   const tasks = new Map(document.tasks.map((task) => [task.id, task]))
@@ -52,9 +54,13 @@ export function buildTimeline({ document, today, timeZone, external, placements,
     ...placements.flatMap((placement) => {
       const task = tasks.get(placement.taskId)
       if (!task) return []
-      return placement.chunks.map((chunk, index) => ({ chunk, title: chunkTitle(task.title, index, placement.chunks.length, partLabel) }))
-        .filter(({ chunk }) => intersects(chunk.start, chunk.end, from, to)).map(({ chunk, title }): TimelineItem => ({
-        kind: 'task', key: `task:${task.id}@${chunk.start}`, title, taskTitle: task.title, start: chunk.start, end: chunk.end,
+      const split = placement.chunks.length > 1
+      return placement.chunks.map((chunk, index) => ({
+        chunk, title: chunkTitle(task.title, index, placement.chunks.length, partLabel),
+        spoken: split && partSpoken ? { spokenTitle: chunkTitle(task.title, index, placement.chunks.length, partSpoken) } : {},
+      }))
+        .filter(({ chunk }) => intersects(chunk.start, chunk.end, from, to)).map(({ chunk, title, spoken }): TimelineItem => ({
+        kind: 'task', key: `task:${task.id}@${chunk.start}`, title, taskTitle: task.title, ...spoken, start: chunk.start, end: chunk.end,
         taskId: task.id, categoryId: task.categoryId ?? '', late: chunkIsLate(task, chunk, timeZone),
       }))
     }),

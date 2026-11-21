@@ -24,5 +24,6 @@
     "clock24": "24-hour",
     "footer": "Automatic follows your device’s region and appearance. Times look like this: {example}"
   },
-  "taskPart": "{part} of {parts} · {title}"
+  "taskPart": "{part}/{parts} {title}",
+  "taskPartSpoken": "{title}, part {part} of {parts}"
 }

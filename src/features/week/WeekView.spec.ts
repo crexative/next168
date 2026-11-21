@@ -31,7 +31,7 @@ async function newBlockFromEmptyHour(): Promise<void> {
 
 // crexative/next168#58: a task the scheduler splits reads as its parts, not as the same task drawn twice.
 describe('WeekView: a split task', () => {
-  it('titles each piece with its part, part first', async () => {
+  it('titles each piece with its part ("1/2 Report"), and names it in words for a screen reader', async () => {
     vi.useFakeTimers({ toFake: ['Date'] })
     vi.setSystemTime(new Date('2026-10-21T08:00:00Z'))
     const { planner } = createTestRepositories()
@@ -54,8 +54,9 @@ describe('WeekView: a split task', () => {
     app.mount(host)
     cleanup = () => { app.unmount(); host.remove() }
     await tick()
-    const pieces = [...host.querySelectorAll<HTMLElement>('[data-date="2026-10-21"] [data-testid="week-task"]')].map((piece) => piece.getAttribute('title'))
-    expect(pieces).toEqual(['1\u00a0of\u00a02\u00a0· Report', '2\u00a0of\u00a02\u00a0· Report'])
+    const pieces = [...host.querySelectorAll<HTMLElement>('[data-date="2026-10-21"] [data-testid="week-task"]')]
+    expect(pieces.map((piece) => piece.getAttribute('title'))).toEqual(['1/2 Report', '2/2 Report'])
+    expect(pieces.map((piece) => piece.getAttribute('aria-label')?.split(',').slice(0, 2).join(','))).toEqual(['Task: Report, part 1 of 2', 'Task: Report, part 2 of 2'])
   })
 })
 

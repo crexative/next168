@@ -74,7 +74,8 @@ const { placements, notice, recompute } = useTaskPlacements(() => document.value
 
 const segments = computed(() => document.value ? blockSegmentsByDate(document.value, dates.value, timeZone.value) : {})
 const partLabel = (title: string, part: number, parts: number) => t('common.taskPart', { title, part, parts })
-const taskSegments = computed(() => document.value ? taskSegmentsByDate(placements.value, document.value.tasks, dates.value, timeZone.value, partLabel) : {})
+const partSpoken = (title: string, part: number, parts: number) => t('common.taskPartSpoken', { title, part, parts })
+const taskSegments = computed(() => document.value ? taskSegmentsByDate(placements.value, document.value.tasks, dates.value, timeZone.value, partLabel, partSpoken) : {})
 const calendarNames = computed(() => calendarNamesOf(document.value))
 const busy = computed(() => busySegmentsByDate(external.value, document.value?.events ?? [], dates.value, timeZone.value, calendarNames.value))
 const allDay = computed(() => allDayByDate(external.value, document.value?.events ?? [], dates.value, calendarNames.value))

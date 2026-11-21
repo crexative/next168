@@ -234,7 +234,7 @@ async function toggleEarlier(): Promise<void> {
             <p class="row-title" :class="isCurrent(entry.item) ? 't-headline' : 't-body'">
               <span class="row-title-text">
                 <Icon v-if="isCalendarItem(entry.item)" name="calendar" :size="14" class="row-glyph" />
-                <span v-if="kindWord(entry.item)" class="visually-hidden">{{ kindWord(entry.item) }}: </span>{{ entry.item.title }}
+                <span v-if="kindWord(entry.item)" class="visually-hidden">{{ kindWord(entry.item) }}: </span><template v-if="entry.item.kind === 'task' && entry.item.spokenTitle"><span aria-hidden="true">{{ entry.item.title }}</span><span class="visually-hidden">{{ entry.item.spokenTitle }}</span></template><template v-else>{{ entry.item.title }}</template>
               </span>
               <span v-if="entry.item.kind === 'task' && entry.item.late" class="badge is-late t-caption">{{ t('today.timeline.late') }}</span>
             </p>

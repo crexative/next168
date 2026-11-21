@@ -46,7 +46,9 @@ const timeline = computed(() => {
   if (!document.value) return { items: [], allDay: [] }
   const busy = external.value.filter((item) => item.busy && !item.allDay).map((item) => ({ start: item.start, end: item.end }))
   const placements = fitTasks({ document: document.value, busy, now: new Date(fitFrom.value), timeZone: timeZone.value })
-  return buildTimeline({ document: document.value, today: today.value, timeZone: timeZone.value, external: external.value, placements, partLabel: (title, part, parts) => t('common.taskPart', { title, part, parts }) })
+  return buildTimeline({ document: document.value, today: today.value, timeZone: timeZone.value, external: external.value, placements,
+    partLabel: (title, part, parts) => t('common.taskPart', { title, part, parts }),
+    partSpoken: (title, part, parts) => t('common.taskPartSpoken', { title, part, parts }) })
 })
 // Blocks, placed tasks, events and calendar occurrences all count as planned content.
 const hasContent = computed(() => (document.value?.blocks.length ?? 0) > 0 || timeline.value.items.length > 0 || timeline.value.allDay.length > 0)
