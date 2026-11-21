@@ -73,10 +73,18 @@ describe('Summary: your typical week', () => {
     expect(text('capacity-available')).toBe('112 h asignadas · 56 h sin asignar')
   })
 
+  it('names the week it is about under the title, in words', async () => {
+    await mount()
+    expect(text('insights-subtitle')).toMatch(/^Week of Oct 19\s?–\s?25$/)
+    app?.unmount()
+    await mount(base, 'es')
+    expect(text('insights-subtitle')).toBe('Semana del 19 al 25 oct')
+  })
+
   it('gives the live free hours one line that matches the free-hours figure everywhere', async () => {
     await mount()
     const free = freeHoursWhole(base, new Date(NOW), 'UTC')
-    expect(text('free-hours-live')).toBe(`${free} h free left this week.`)
+    expect(text('free-hours-live')).toBe(`${free} h free this week`)
     expect(host.querySelector('[data-testid="week-split"]')).toBeNull()
     expect(host.textContent).not.toMatch(/Already past|Planned ahead|This week from now/)
   })
@@ -112,14 +120,17 @@ describe('Summary: your goals this week', () => {
     expect(text('actual-line', retained!)).toBe('Hecho: 1 h 30 min de 2 h')
   })
 
-  it('has one row per goal, with one line and one mark', async () => {
+  // Calm when on track (principle 7): only a goal that needs attention has a mark (⚠, amber); one on track has none.
+  it('has one row per goal, with one line, and a mark only where it needs attention', async () => {
     await mount()
     expect(text('goal-line', row('exercise')!)).toBe('3 h of at least 4 h · 1 h to go')
-    expect(text('goal-state', row('exercise')!)).toBe('!')
+    expect(row('exercise')!.querySelector('[data-testid="goal-state"]')).not.toBeNull()
+    expect(row('exercise')!.querySelector('[data-testid="goal-line"]')!.classList.contains('is-attention')).toBe(true)
     expect(text('goal-line', row('reading')!)).toBe('4 h 30 min of at most 5 h · 30 min left')
-    expect(text('goal-state', row('reading')!)).toBe('✓')
+    expect(row('reading')!.querySelector('[data-testid="goal-state"]')).toBeNull()
+    expect(row('reading')!.querySelector('[data-testid="goal-line"]')!.classList.contains('is-attention')).toBe(false)
     expect(text('goal-line', row('study')!)).toBe('7 h 30 min of at most 6 h · 1 h 30 min over')
-    expect(text('goal-state', row('study')!)).toBe('!')
+    expect(row('study')!.querySelector('[data-testid="goal-state"]')).not.toBeNull()
     // A category without a goal has no row, and a row never states its status twice.
     expect(row('sleep')).toBeNull()
     expect(host.querySelector('[data-testid="goal-chip"]')).toBeNull()
@@ -154,7 +165,7 @@ describe('Summary: your goals this week', () => {
     await mount()
     expect(text('goal-line', row('work')!)).toBe('At the max · 40 h')
     expect(row('work')!.textContent).not.toMatch(/0 min|0 h left/)
-    expect(text('goal-state', row('work')!)).toBe('✓')
+    expect(row('work')!.querySelector('[data-testid="goal-state"]')).toBeNull()
   })
 
   it('agrees in number in Spanish: falta 1 h, quedan 30 min, faltan 14 h', async () => {
@@ -198,6 +209,14 @@ describe('Summary: last 7 days', () => {
     await mount(base, 'es', '2026-11-03T10:00:00.000Z')
     expect(text('measures-range')).toBe('28 oct – 3 nov')
     expect(host.querySelector('[data-testid="measures-range"]')!.textContent).toContain('28\u00a0oct')
+  })
+
+  // REVIEW M3: the shapes have a key, and colour is never alone (only "needs attention" is amber).
+  it('keys the day shapes in words: good, borderline, needs attention, no data', async () => {
+    await mount({ ...base, checkIns: [{ date: '2026-10-20', stress: 3 }, { date: '2026-10-21', stress: 4 }] })
+    const key = host.querySelector('[aria-label="Key to the dots"]')!
+    expect([...key.querySelectorAll('li')].map((item) => item.textContent?.trim())).toEqual(['Good', 'Borderline', 'Needs attention', 'No data'])
+    expect([...key.querySelectorAll('.dot')].map((dot) => dot.className)).toEqual(['dot is-good', 'dot is-amber', 'dot is-bad', 'dot is-empty'])
   })
 
   it('shows the average stress as a whole number', async () => {

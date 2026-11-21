@@ -10,8 +10,7 @@
     "unassignedName": "Sin asignar",
     "unassignedSegment": "Sin asignar: {duration}",
     "overlap": "Algunas rutinas se solapan, así que la barra se limita a 168 h.",
-    "legend": "Horas asignadas por categoría",
-    "live": "Esta semana te queda {hours} h libre. | Esta semana te quedan {hours} h libres."
+    "legend": "Horas asignadas por categoría"
   },
   "goals": {
     "deletedCategory": "Categoría eliminada",
@@ -41,6 +40,14 @@
       "amber": "justo",
       "bad": "requiere atención",
       "none": "sin datos"
+    },
+    "key": "Clave de los puntos",
+    "stateName": {
+      "good": "Bien",
+      "amber": "Justo",
+      "bad": "Requiere atención",
+      "none": "Sin datos"
     }
-  }
+  },
+  "subtitle": "Semana del {from} al {to}"
 }

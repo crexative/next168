@@ -10,8 +10,7 @@
     "unassignedName": "Sem atribuição",
     "unassignedSegment": "Sem atribuição: {duration}",
     "overlap": "Algumas rotinas se sobrepõem, então a barra é limitada a 168 h.",
-    "legend": "Horas atribuídas por categoria",
-    "live": "Esta semana, resta {hours} h livre. | Esta semana, restam {hours} h livres."
+    "legend": "Horas atribuídas por categoria"
   },
   "goals": {
     "deletedCategory": "Categoria excluída",
@@ -41,6 +40,14 @@
       "amber": "no limite",
       "bad": "precisa de atenção",
       "none": "sem dados"
+    },
+    "key": "Legenda dos pontos",
+    "stateName": {
+      "good": "Bem",
+      "amber": "No limite",
+      "bad": "Requer atenção",
+      "none": "Sem dados"
     }
-  }
+  },
+  "subtitle": "Semana de {from} a {to}"
 }

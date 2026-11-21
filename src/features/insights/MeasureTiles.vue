@@ -19,6 +19,9 @@ type Measures = {
 const props = defineProps<{ measures: Measures }>()
 const { t, locale } = useI18n()
 
+// The key to the shapes (REVIEW M3): colour is never alone, and only "needs attention" is in colour (amber).
+const STATES = ['good', 'amber', 'bad', 'none'] as const
+
 const hasData = computed(() => props.measures.days.some((day) => day.sleep || day.exercise || day.lateWork || day.stress))
 
 function weekday(date: string, style: 'short' | 'narrow'): string {
@@ -32,7 +35,7 @@ const range = computed(() => {
   if (!first || !last) return ''
   // formatRange is in every supported browser but not yet in the project's TypeScript lib.
   const format = new Intl.DateTimeFormat(locale.value, { day: 'numeric', month: 'short', timeZone: 'UTC' }) as Intl.DateTimeFormat & { formatRange(start: Date, end: Date): string }
-  return format.formatRange(new Date(`${first}T12:00:00Z`), new Date(`${last}T12:00:00Z`)).split(/([–—])/).map((part) => /[–—]/.test(part) ? ` ${part} ` : unbreakable(part.trim())).join('')
+  return unbreakable(format.formatRange(new Date(`${first}T12:00:00Z`), new Date(`${last}T12:00:00Z`)))
 })
 
 const tiles = computed(() => {
@@ -62,21 +65,27 @@ const tiles = computed(() => {
 
 <template>
   <section class="measures" :aria-label="t('insights.measures.title')">
-    <h2 class="t-headline">{{ t('insights.measures.title') }}</h2>
-    <p v-if="range" class="t-footnote t-secondary range" data-testid="measures-range">{{ range }}</p>
-    <div v-if="hasData" class="tiles">
-      <article v-for="tile in tiles" :key="tile.id" class="tile" :data-testid="`measure-${tile.id}`">
-        <h3 class="t-footnote t-secondary">{{ t(`insights.measures.${tile.key}`) }}</h3>
-        <p class="t-title-2" data-testid="measure-value">{{ tile.value }}</p>
-        <ul class="dots">
-          <li v-for="day in measures.days" :key="day.date" class="dot-item">
-            <span class="dot" :class="tile.pick(day) ? `is-${tile.pick(day)}` : 'is-empty'" aria-hidden="true" />
-            <span class="t-caption t-secondary" aria-hidden="true">{{ weekday(day.date, 'narrow') }}</span>
-            <span class="visually-hidden">{{ weekday(day.date, 'short') }}: {{ t(`insights.measures.state.${tile.pick(day) ?? 'none'}`) }}</span>
-          </li>
-        </ul>
-      </article>
-    </div>
+    <h2 class="section-title">{{ t('insights.measures.title') }}<template v-if="range"><span aria-hidden="true"> · </span><span data-testid="measures-range">{{ range }}</span></template></h2>
+    <template v-if="hasData">
+      <ul class="key t-caption t-secondary" :aria-label="t('insights.measures.key')">
+        <li v-for="state in STATES" :key="state"><span class="dot" :class="`is-${state === 'none' ? 'empty' : state}`" aria-hidden="true" />{{ t(`insights.measures.stateName.${state}`) }}</li>
+      </ul>
+      <ul class="rows">
+        <li v-for="tile in tiles" :key="tile.id" class="row" :data-testid="`measure-${tile.id}`">
+          <div class="row-head">
+            <h3 class="t-body name">{{ t(`insights.measures.${tile.key}`) }}</h3>
+            <p class="t-body value" data-testid="measure-value">{{ tile.value }}</p>
+          </div>
+          <ul class="dots">
+            <li v-for="day in measures.days" :key="day.date" class="dot-item">
+              <span class="dot" :class="tile.pick(day) ? `is-${tile.pick(day)}` : 'is-empty'" aria-hidden="true" />
+              <span class="t-caption t-secondary" aria-hidden="true">{{ weekday(day.date, 'narrow') }}</span>
+              <span class="visually-hidden">{{ weekday(day.date, 'short') }}: {{ t(`insights.measures.state.${tile.pick(day) ?? 'none'}`) }}</span>
+            </li>
+          </ul>
+        </li>
+      </ul>
+    </template>
     <div v-else class="empty" data-testid="measures-empty">
       <p class="t-subhead">{{ t('insights.measures.emptyBody') }}</p>
       <Button variant="tinted" href="#/checkin">{{ t('insights.measures.emptyAction') }}</Button>
@@ -85,17 +94,27 @@ const tiles = computed(() => {
 </template>
 
 <style scoped>
-.measures { display: flex; flex-direction: column; gap: var(--space-3); }
-.measures h2 { margin-bottom: calc(var(--space-2) * -1); }
-.range { margin: 0; }
-/* min() lets a tile shrink to the column: at 200 % text 14rem is wider than a phone screen. */
-.tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(14rem, 100%), 1fr)); gap: var(--space-3); }
-.tile { display: flex; min-width: 0; flex-direction: column; gap: var(--space-1); padding: var(--card-padding-block) var(--card-padding); background: var(--surface); border-radius: var(--radius-card); }
-.dots { display: flex; justify-content: space-between; margin-top: var(--space-2); }
-.dot-item { display: flex; flex-direction: column; align-items: center; gap: 2px; }
-.dot { width: 12px; height: 12px; border-radius: 50%; border: 2px solid var(--label-3); box-sizing: border-box; }
-.dot.is-good { background: var(--success); border-color: var(--success); }
-.dot.is-amber { background: var(--warning); border-color: var(--warning); border-radius: 3px; }
-.dot.is-bad { background: var(--danger); border-color: var(--danger); border-radius: 0; transform: rotate(45deg); }
-.empty { display: flex; flex-direction: column; align-items: flex-start; gap: var(--space-2); padding: var(--card-padding-block) var(--card-padding); background: var(--surface); border-radius: var(--radius-card); }
+.measures { display: flex; flex-direction: column; gap: var(--space-2); }
+.section-title { margin: 0; font-size: 1.25rem; font-weight: 700; }
+.key { display: flex; flex-wrap: wrap; gap: var(--space-1) var(--space-3); margin: 0; padding: 0; list-style: none; }
+.key li { display: inline-flex; align-items: center; gap: var(--space-1); }
+.rows { margin: 0; padding: 0; list-style: none; }
+.row { display: flex; flex-direction: column; gap: var(--space-2); padding: var(--space-3) 0; }
+.row + .row { border-top: 0.5px solid var(--separator); }
+.row-head { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 0 var(--space-3); }
+.name { margin: 0; font-weight: 400; min-width: 0; overflow-wrap: break-word; }
+.value { margin: 0; font-weight: 600; font-variant-numeric: tabular-nums; }
+.dots { display: flex; justify-content: space-between; margin: 0; padding: 0 var(--space-2); list-style: none; }
+.dot-item { display: flex; flex-direction: column; align-items: center; gap: 2px; min-width: var(--space-5); }
+/* Shapes carry the state; only "needs attention" is in colour: circle = bien, rounded square = justo, diamond =
+   requiere atención (amber, the label tone: 3:1 on the page), ring = sin datos. */
+.dot { display: inline-block; flex: none; width: 10px; height: 10px; border-radius: 50%; box-sizing: border-box; background: var(--label-2); }
+.dot.is-amber { border-radius: 2px; }
+.dot.is-bad { width: 9px; height: 9px; border-radius: 1px; background: var(--warning-label); transform: rotate(45deg); }
+.dot.is-empty { background: transparent; border: 1.5px solid var(--label-2); }
+.empty { display: flex; flex-direction: column; align-items: flex-start; gap: var(--space-2); }
+@media (forced-colors: active) {
+  .dot { background: CanvasText; }
+  .dot.is-empty { background: transparent; border-color: CanvasText; }
+}
 </style>

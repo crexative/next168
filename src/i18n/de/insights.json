@@ -10,8 +10,7 @@
     "unassignedName": "Nicht zugewiesen",
     "unassignedSegment": "Nicht zugewiesen: {duration}",
     "overlap": "Einige Routinen überschneiden sich, daher ist die Leiste auf 168 h begrenzt.",
-    "legend": "Zugewiesene Stunden je Kategorie",
-    "live": "Diese Woche bleiben dir noch {hours} h frei."
+    "legend": "Zugewiesene Stunden je Kategorie"
   },
   "goals": {
     "deletedCategory": "Gelöschte Kategorie",
@@ -41,6 +40,14 @@
       "amber": "grenzwertig",
       "bad": "braucht Aufmerksamkeit",
       "none": "keine Daten"
+    },
+    "key": "Legende der Punkte",
+    "stateName": {
+      "good": "Gut",
+      "amber": "Knapp",
+      "bad": "Braucht Aufmerksamkeit",
+      "none": "Keine Daten"
     }
-  }
+  },
+  "subtitle": "Woche vom {from} bis {to}"
 }

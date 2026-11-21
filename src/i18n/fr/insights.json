@@ -10,8 +10,7 @@
     "unassignedName": "Non assigné",
     "unassignedSegment": "Non assigné : {duration}",
     "overlap": "Certaines routines se chevauchent : la barre est limitée à 168 h.",
-    "legend": "Heures assignées par catégorie",
-    "live": "Cette semaine, il te reste {hours} h libre. | Cette semaine, il te reste {hours} h libres."
+    "legend": "Heures assignées par catégorie"
   },
   "goals": {
     "deletedCategory": "Catégorie supprimée",
@@ -41,6 +40,14 @@
       "amber": "limite",
       "bad": "à surveiller",
       "none": "pas de données"
+    },
+    "key": "Légende des points",
+    "stateName": {
+      "good": "Bien",
+      "amber": "Juste",
+      "bad": "À surveiller",
+      "none": "Pas de données"
     }
-  }
+  },
+  "subtitle": "Semaine du {from} au {to}"
 }
