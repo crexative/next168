@@ -120,6 +120,9 @@ for (const locale of LOCALES) {
       await openTasks(page, locale)
       await openNewTask(page)
       await page.keyboard.insertText(lines.join('\n'))
+      // The rows grow to their titles after they appear: tap once the preview has stopped moving.
+      await expect(page.getByTestId('capture-row')).toHaveCount(5)
+      await page.evaluate(() => new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve))))
       await page.getByRole('button', { name: text.addAll(5), exact: true }).tap()
       await added(page)
       await expectBudget(page, 2)

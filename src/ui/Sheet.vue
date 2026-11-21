@@ -350,8 +350,12 @@ onBeforeUnmount(() => {
 .sheet-cancel { grid-area: cancel; }
 .sheet-action { grid-area: action; }
 @container sheet-head (max-width: 22em) {
-  .sheet-header.is-form { grid-template-areas: 'cancel action' 'title title'; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
-  .sheet-header.is-form .sheet-title { padding-block-end: var(--space-1); }
+  /* Cancel and the action share a line while they fit (the action wraps under Cancel, at the end, when they do not);
+     the title takes the line under them. */
+  .sheet-header.is-form { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; }
+  .sheet-cancel { order: 1; }
+  .sheet-action { order: 2; margin-inline-start: auto; }
+  .sheet-header.is-form .sheet-title { order: 3; flex: 1 0 100%; padding-block-end: var(--space-1); }
 }
 .sheet-cancel { justify-self: start; min-width: var(--tap-target); min-height: var(--tap-target); padding: 0 var(--space-2); border: 0; background: transparent; color: var(--label-2); text-align: start; }
 .sheet-cancel:disabled { opacity: 0.4; }
