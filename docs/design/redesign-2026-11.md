@@ -62,3 +62,12 @@ Slice 1 adds what later slices draw with: `--radius-bubble`, `--warning-label`, 
 uses by slice 8 is removed. The contrast specs measure every text token on `--bg`, `--bg-grouped`, `--surface`,
 `--surface-2` and `--tint-soft` in light and dark; increased contrast is not yet measured for `--tint-soft` and `--fill`
 (follow-up for slice 8).
+
+## Open for a later slice (from the review of Hoy, #54)
+
+- The hero's "Después" line and the list's "Libre" rows can repeat what the list already says (DIRECTION rule 3, each
+  thing once).
+- During a task the hero does not say what comes next when it is tomorrow.
+- A routine hidden behind a task in the hero cannot be marked in its last minutes from Hoy.
+- In "Por hacer hoy" at 200 % text the task rows keep an empty time column after the times fold above the titles,
+  and "venció el 18 nov" runs 3 px over at 390 px.
