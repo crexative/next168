@@ -312,7 +312,8 @@ html[data-backdrop='plain'] .view[data-presentation='sheet'] { background: var(-
   top: 0;
   z-index: 10;
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  /* The sides keep at least "Listo"'s width, so at large text the title wraps between them instead of running into it. */
+  grid-template-columns: minmax(max-content, 1fr) minmax(0, max-content) minmax(max-content, 1fr);
   align-items: center;
   column-gap: var(--space-2);
   min-height: var(--toolbar-height);

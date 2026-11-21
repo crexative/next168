@@ -158,7 +158,9 @@ async function submit(): Promise<void> {
    the system menu. */
 .reply-with { position: relative; align-self: center; display: inline-flex; flex-wrap: wrap; justify-content: center; align-items: center; column-gap: var(--space-1); min-height: var(--tap-target); padding-inline: var(--space-2); text-align: center; }
 .reply-value { display: inline-flex; align-items: center; gap: 2px; color: var(--label); font-weight: 600; }
-.reply-select { position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0; font-size: 1rem; cursor: pointer; }
+/* Invisible over the visible value (which wraps at large text): 16 px keeps iOS from zooming on focus and keeps the
+   chosen label inside the box at any text size. */
+.reply-select { position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0; font-size: 16px; cursor: pointer; }
 .reply-with:has(.reply-select:focus-visible) { outline: 2px solid var(--tint); outline-offset: 2px; border-radius: 10px; }
 /* The conversation rests on the dock, like a chat. */
 .chat { flex: 1; justify-content: flex-end; }
