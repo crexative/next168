@@ -2,7 +2,7 @@ import { afterEach, describe, expect, it } from 'vitest'
 import { setHourCycle } from '@/ui/format'
 import { calendarExport } from '@/core/calendarExport'
 import type { PlannerEvent } from '@/core/model'
-import { summarizeEntity, type SummaryContext } from './changeSummary'
+import { fieldChanges, summarizeEntity, type SummaryContext } from './changeSummary'
 
 const context: SummaryContext = { categories: [], locale: 'en-US', timeZone: 'UTC', t: key => key }
 
@@ -76,5 +76,17 @@ describe('a task\'s fixed start and length in the approval summary (P1 review F4
     expect(fieldOf({ ...task }, 'at')).toBe('proposals.noFixedTime')
     expect(fieldOf({ ...task, durationMin: 30 }, 'duration')).toBe('proposals.minutes')
     expect(fieldOf({ ...task }, 'duration')).toBe('tasks.add.untimed')
+  })
+})
+
+describe('fieldChanges (R_Propuesta: what changes, struck → new)', () => {
+  const row = (label: string, value: string) => ({ label, value })
+  it('marks only the fields whose value differs; a field one side lacks is added or removed', () => {
+    expect(fieldChanges([row('Title', 'Gym'), row('Time', '6:00 PM – 7:00 PM')], [row('Title', 'Gym'), row('Time', '7:00 AM – 8:00 AM'), row('Days', 'Mon')])).toEqual([
+      { label: 'Title', before: 'Gym', after: 'Gym', changed: false },
+      { label: 'Time', before: '6:00 PM – 7:00 PM', after: '7:00 AM – 8:00 AM', changed: true },
+      { label: 'Days', after: 'Mon', changed: true },
+    ])
+    expect(fieldChanges([row('Title', 'Gym')], [])).toEqual([{ label: 'Title', before: 'Gym', changed: true }])
   })
 })
