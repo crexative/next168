@@ -57,7 +57,9 @@ it('a whole week reads as a one-line summary first, with every group closed and 
   expect(byTestId('review-overview')!.textContent).toBe('8 new categories\u00a0· 32 routines\u00a0· 3 tasks')
   expect(window.document.querySelectorAll('.change')).toHaveLength(0)
   const footer = byTestId('sheet-actions')!
-  expect([...footer.querySelectorAll('button')].map((button) => button.textContent!.trim())).toEqual(['Approve', 'Cancel'])
+  // Two outcomes (R_Propuesta): Approve then Reject; the sheet's ✕ is named Cancel.
+  expect([...footer.querySelectorAll('button')].map((button) => button.textContent!.trim())).toEqual(['Approve', 'Reject'])
+  expect(window.document.body.querySelector('.sheet-close')!.getAttribute('aria-label')).toBe('Cancel')
   expect(footer.closest('.sheet-body')).toBeNull()
 
   const routines = byTestId('review-group-routines')!.querySelector<HTMLButtonElement>('.group-toggle')!
@@ -83,7 +85,7 @@ it('closing a saved import keeps it pending', async () => {
   const { document } = await setup()
   const proposal = await repository.create(focusHour(document.workspaceId), 'import')
   await open(proposal)
-  byTestId<HTMLButtonElement>('review-cancel')!.click()
+  window.document.body.querySelector<HTMLButtonElement>('.sheet-close')!.click()
   await vi.waitFor(() => expect($('[role="dialog"]')).toBeNull())
   expect((await repository.list('pending')).map((item) => item.id)).toEqual([proposal.id])
 })
@@ -94,7 +96,7 @@ it('cancelling a pasted proposal discards it: nothing is applied and nothing sta
   await open(proposal, true)
   expect(byTestId('review-cancel-note')!.textContent).toBe('If you cancel, these changes are discarded and your plan stays as it is.')
   expect(byTestId('proposal-review')!.textContent).not.toContain('Reject')
-  byTestId<HTMLButtonElement>('review-cancel')!.click()
+  window.document.body.querySelector<HTMLButtonElement>('.sheet-close')!.click()
   await vi.waitFor(async () => expect(await repository.list('pending')).toEqual([]))
   expect((await repository.list())[0]!.status).toBe('rejected')
   expect(planner.document!.blocks).toEqual([])
@@ -113,11 +115,11 @@ it.each(['mcp', 'assistant'] as const)('a proposal from %s stays pending in Prop
   const proposal = await repository.create(focusHour(document.workspaceId), source)
   await open(proposal)
   expect(byTestId('review-cancel-note')!.textContent).toBe('If you cancel, the proposal stays pending in Proposals.')
-  byTestId<HTMLButtonElement>('review-cancel')!.click()
+  window.document.body.querySelector<HTMLButtonElement>('.sheet-close')!.click()
   await vi.waitFor(() => expect($('[role="dialog"]')).toBeNull())
   expect((await repository.list('pending')).map((item) => item.id)).toEqual([proposal.id])
   await open(proposal)
-  ;[...window.document.querySelectorAll<HTMLButtonElement>('[data-testid="proposal-review"] button')].find((button) => button.textContent!.trim() === 'Reject')!.click()
+  window.document.querySelector<HTMLButtonElement>('[data-testid="review-reject"]')!.click()
   await vi.waitFor(async () => expect(await repository.list('pending')).toEqual([]))
 })
 

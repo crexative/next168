@@ -18,7 +18,7 @@ import StorageErrorScreen from './StorageErrorScreen.vue'
 import StorageUpgradeWaiting from './StorageUpgradeWaiting.vue'
 import { UPGRADE_COPY_FAILED } from '@/repositories/storageVersion'
 import StatusBanners from './StatusBanners.vue'
-import { SHELL_TOOLBAR_ENTRIES } from './contracts'
+import { SHEET_PRESENTED, SHELL_TOOLBAR_ENTRIES, type ViewId } from './contracts'
 import { shell } from './registry'
 import { isApplePlatform, isSidebarShortcut, layoutFor, OVERLAY_QUERY, PERSISTENT_QUERY, useSidebar } from './sidebar'
 import { useHashRoute, viewHash } from './useHashRoute'
@@ -57,6 +57,17 @@ const topTabsShown = computed(() => layout.value !== 'none' && toolbarEntriesSho
 // toolbar, in the desktop title row.
 const isTab = computed(() => currentView.value?.tabOrder !== undefined)
 const addPlacement = computed(() => layout.value === 'none' ? 'floating' : layout.value === 'overlay' ? 'toolbar' : 'title')
+// On a phone, Settings and the assistant open over the tab they came from as a full-height sheet (DIRECTION §3):
+// a grabber, the title in the bar and "Listo" back to that tab; no tab bar and no "+" while it is up.
+const SHEET_VIEWS: ReadonlySet<string> = new Set(['settings', 'assistant'])
+const sheetPresented = computed(() => layout.value === 'none' && !!currentView.value && SHEET_VIEWS.has(currentView.value.id))
+provide(SHEET_PRESENTED, sheetPresented)
+const lastTab = ref<ViewId>('today')
+watch(currentView, (view) => { if (view?.tabOrder !== undefined) lastTab.value = view.id }, { immediate: true })
+watch(sheetPresented, (sheet) => {
+  if (sheet) document.documentElement.dataset.presentation = 'sheet'
+  else delete document.documentElement.dataset.presentation
+}, { immediate: true })
 // A view of plain lists asks for the white page; every other screen keeps the grouped grey.
 watch(() => currentView.value?.backdrop, (backdrop) => {
   if (backdrop) document.documentElement.dataset.backdrop = backdrop
@@ -208,8 +219,14 @@ dismissUndoWhenChanged(() => planner.document?.workspaceId)
         <RecoveryScreen v-if="planner.status === 'corrupt'" />
         <StorageErrorScreen v-else-if="planner.status === 'error' || planner.error === UPGRADE_COPY_FAILED" />
         <Transition v-else name="view" mode="out-in" @after-leave="scrollToTop" @after-enter="onViewEntered">
-          <div v-if="currentView" :key="currentView.id" class="view" :data-view="currentView.id" :data-measure="FULL_WIDTH_VIEWS.has(currentView.id) ? 'full' : 'readable'">
-            <LargeTitle :title="t(currentView.titleKey)">
+          <div v-if="currentView" :key="currentView.id" class="view" :data-view="currentView.id" :data-measure="FULL_WIDTH_VIEWS.has(currentView.id) ? 'full' : 'readable'" :data-presentation="sheetPresented ? 'sheet' : undefined">
+            <header v-if="sheetPresented" class="sheet-bar" data-testid="sheet-bar">
+              <span class="sheet-grabber" aria-hidden="true" />
+              <!-- Focusable by script only: the shell moves focus here after a route change, as with the large title. -->
+              <h1 class="sheet-title t-headline" tabindex="-1">{{ t(currentView.titleKey) }}</h1>
+              <a class="sheet-done t-body" :href="viewHash(lastTab)" data-testid="sheet-done">{{ t('common.done') }}</a>
+            </header>
+            <LargeTitle v-else :title="t(currentView.titleKey)">
               <template #center>
                 <nav v-if="topTabsShown" class="top-tabs" :aria-label="t('app.navigation.tabs')" data-testid="top-tabs">
                   <a
@@ -248,7 +265,7 @@ dismissUndoWhenChanged(() => planner.document?.workspaceId)
       </main>
     </div>
 
-    <nav class="tabbar" :aria-label="t('app.navigation.tabs')" :inert="covered || undefined">
+    <nav v-show="!sheetPresented" class="tabbar" :aria-label="t('app.navigation.tabs')" :inert="covered || undefined">
       <a
         v-for="tab in tabs"
         :key="tab.id"
@@ -278,10 +295,46 @@ dismissUndoWhenChanged(() => planner.document?.workspaceId)
 }
 /* --banners-height is the height of the fixed bottom notices (StatusBanners), so none of them covers the end of a page. */
 .content { padding-bottom: calc(var(--tabbar-inset) + var(--space-4) + var(--banners-height, 0px)); }
+.shell:has(.view[data-presentation='sheet']) .content { padding-bottom: calc(var(--safe-bottom) + var(--space-4) + var(--banners-height, 0px)); }
 .main { outline: none; }
 .view { margin-inline: auto; }
 /* 720 px: one measure for every text and list screen, centred in the space beside the sidebar. */
 .view[data-measure='readable'] { max-width: 45rem; }
+/* The full-height sheet (phone): a dimmed strip of the screen behind at the top, then the sheet with its bar. */
+.view[data-presentation='sheet'] {
+  min-height: calc(100dvh - var(--safe-top) - var(--space-3));
+  margin-top: calc(var(--safe-top) + var(--space-3));
+  border-radius: 12px 12px 0 0;
+  background: var(--bg-grouped);
+}
+html[data-backdrop='plain'] .view[data-presentation='sheet'] { background: var(--bg); }
+.sheet-bar {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  align-items: center;
+  column-gap: var(--space-2);
+  min-height: var(--toolbar-height);
+  padding: var(--space-2) var(--page-gutter) 0;
+  border-radius: inherit;
+  background: inherit;
+}
+.sheet-grabber { position: absolute; top: 5px; left: 50%; width: 36px; height: 5px; margin-left: -18px; border-radius: 3px; background: var(--label-3); }
+.sheet-title { grid-column: 2; margin: 0; overflow-wrap: anywhere; text-align: center; outline: none; }
+.sheet-done {
+  grid-column: 3;
+  justify-self: end;
+  display: inline-flex;
+  align-items: center;
+  min-height: var(--tap-target);
+  min-width: var(--tap-target);
+  justify-content: flex-end;
+  color: var(--tint-label);
+  font-weight: 600;
+  text-decoration: none;
+}
 
 .tabbar {
   position: fixed;

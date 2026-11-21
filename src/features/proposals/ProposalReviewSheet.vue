@@ -120,12 +120,11 @@ async function decide(approve: boolean) {
 </script>
 
 <template>
-  <Sheet v-model:open="open" :title="t('proposals.review')">
+  <Sheet v-model:open="open" :title="t('proposals.review')" :close-label="t('proposals.cancel')">
     <div v-if="reviewing" class="review" data-testid="proposal-review">
       <header class="review-head">
         <p class="t-title-2">{{ reviewing.summary }}</p>
         <p v-if="overview" class="t-subhead overview" data-testid="review-overview">{{ overview }}</p>
-        <p class="t-footnote t-secondary" data-testid="review-cancel-note">{{ t(pasted ? 'proposals.discardOnCancel' : 'proposals.keepOnCancel') }}</p>
       </header>
       <p v-if="!preview" class="t-subhead t-secondary" role="status" data-testid="review-loading">{{ t('proposals.loading') }}</p>
       <p v-else-if="!preview.valid" class="notice is-error t-subhead" role="alert" data-testid="review-invalid">
@@ -179,12 +178,13 @@ async function decide(approve: boolean) {
         </ul>
       </section>
       <p v-if="message" class="t-subhead" role="status">{{ message }}</p>
-      <Button v-if="!pasted" class="reject" variant="plain" destructive :disabled="busy" @click="decide(false)">{{ t('proposals.reject') }}</Button>
     </div>
     <template #footer>
+      <!-- Two outcomes (R_Propuesta): Aprobar, then Rechazar; the sheet's × is Cancelar, and the note says what it keeps. -->
       <div class="actions">
-        <Button :disabled="busy || !preview?.valid" data-testid="review-approve" @click="decide(true)">{{ t('proposals.approve') }}</Button>
-        <Button variant="plain" :disabled="busy" data-testid="review-cancel" @click="open = false">{{ t('proposals.cancel') }}</Button>
+        <Button block :disabled="busy || !preview?.valid" data-testid="review-approve" @click="decide(true)">{{ t('proposals.approve') }}</Button>
+        <Button v-if="!pasted" class="reject" variant="plain" destructive :disabled="busy" data-testid="review-reject" @click="decide(false)">{{ t('proposals.reject') }}</Button>
+        <p class="t-footnote t-secondary cancel-note" data-testid="review-cancel-note">{{ t(pasted ? 'proposals.discardOnCancel' : 'proposals.keepOnCancel') }}</p>
       </div>
     </template>
   </Sheet>
@@ -220,9 +220,9 @@ pre { margin: 0; font-size: 0.8125rem; white-space: pre-wrap; overflow-wrap: any
 .notice.is-error { padding: var(--space-3); border-radius: var(--radius-control); color: var(--label); }
 .notice.is-error { background: color-mix(in srgb, var(--danger) 14%, var(--surface)); }
 .notice-icon { flex: none; margin-top: 1px; }
-/* Cancel leads and Approve trails; when they no longer fit side by side, Approve wraps onto the top line. */
-.actions { display: flex; flex-direction: row-reverse; flex-wrap: wrap; gap: var(--space-2); }
-.actions > * { flex: 1 1 8rem; min-height: 48px; }
+.actions { display: flex; flex-direction: column; align-items: stretch; gap: var(--space-2); }
+.actions > :deep(.ui-button) { min-height: 50px; }
+.cancel-note { margin: 0; text-align: center; overflow-wrap: anywhere; }
 .review-head .overview { font-weight: 600; }
 .group { display: flex; flex-direction: column; gap: var(--space-2); }
 .group-toggle { display: flex; align-items: center; gap: var(--space-2); width: 100%; min-height: 48px; padding: 0 min(var(--space-3), 12px); border: 0; border-radius: var(--radius-control); background: var(--surface-2); color: var(--label); text-align: start; touch-action: manipulation; }
@@ -232,7 +232,6 @@ pre { margin: 0; font-size: 0.8125rem; white-space: pre-wrap; overflow-wrap: any
 .group-count { flex: none; }
 .chevron { flex: none; color: var(--label-3); }
 .chevron.is-open { transform: rotate(90deg); }
-.reject { align-self: flex-start; }
 @media (min-width: 480px) {
   .diff { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }

@@ -168,3 +168,27 @@ describe('the one "+" and the tabs', () => {
     await vi.waitFor(() => expect(document.documentElement.dataset.backdrop).toBeUndefined())
   })
 })
+
+describe('Settings and the assistant as a full-height sheet on a phone (DIRECTION §3)', () => {
+  it('opens Settings over the tab it came from: a grabber, the title in the bar, "Done" back to that tab, no tab bar', async () => {
+    const host = await mountShell('#/week', 390)
+    await nextTick()
+    expect(host.querySelector('[data-testid=sheet-bar]')).toBeNull()
+    window.location.hash = '#/settings'
+    window.dispatchEvent(new HashChangeEvent('hashchange'))
+    await vi.waitFor(() => expect(host.querySelector('[data-testid=sheet-bar]')).not.toBeNull())
+    expect(host.querySelector('[data-testid=sheet-bar] h1')?.textContent).toBe('Settings')
+    expect(host.querySelector('.large-title')).toBeNull()
+    expect(host.querySelector<HTMLAnchorElement>('[data-testid=sheet-done]')!.getAttribute('href')).toBe('#/week')
+    expect(host.querySelector<HTMLElement>('nav.tabbar')!.style.display).toBe('none')
+    expect(document.documentElement.dataset.presentation).toBe('sheet')
+  })
+
+  it.each([768, 1440])('keeps the page with its large title at %i px', async (width) => {
+    const host = await mountShell('#/settings', width)
+    await nextTick()
+    expect(host.querySelector('[data-testid=sheet-bar]')).toBeNull()
+    expect(host.querySelector('.large-title')?.textContent).toBe('Settings')
+    expect(document.documentElement.dataset.presentation).toBeUndefined()
+  })
+})

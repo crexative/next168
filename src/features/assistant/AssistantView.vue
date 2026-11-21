@@ -1,6 +1,8 @@
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue'
+import { computed, inject, onMounted, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
+import { SHEET_PRESENTED } from '@/app/contracts'
+import { AI_HASH } from '@/features/settings/route'
 import { usePlannerStore } from '@/stores/plannerStore'
 import { localDateOf } from '@/core/time'
 import { externalForAi } from '@/core/aiProjection'
@@ -10,15 +12,16 @@ import AppMark from '@/ui/AppMark.vue'
 import Button from '@/ui/Button.vue'
 import Icon from '@/ui/Icon.vue'
 import BackButton from '@/features/settings/BackButton.vue'
-import AnyAiPanel from './anyAi/AnyAiPanel.vue'
 import ProposalCard from './ProposalCard.vue'
 import { WEBLLM_DOWNLOAD_BYTES } from './WebLlmProvider'
 import { useAssistant } from './useAssistant'
+import type { ProviderChoice } from './selectProvider'
 
 const { t, locale } = useI18n()
 const planner = usePlannerStore()
 const assistant = useAssistant()
 const question = ref('')
+const inSheet = inject(SHEET_PRESENTED, ref(false))
 const external = useExternalOccurrences(() => planner.document ? { fromDate: localDateOf(new Date(), planner.document.settings.timeZone), days: 7, timeZone: planner.document.settings.timeZone } : null)
 
 const sizeLabel = computed(() => formatBytes(WEBLLM_DOWNLOAD_BYTES, locale.value))
@@ -41,6 +44,24 @@ const suggestions = computed(() => SUGGESTIONS.map((key) => ({ key, text: t(`ass
 // download card shows here only after the person chose the model there.
 const canType = computed(() => assistant.active.value === 'webllm')
 const showSuggestions = computed(() => !canType.value || assistant.messages.value.length === 0)
+// "Responder con" (R_Asistente): one pop-up under the title instead of the two cards. Quick answers and the on-device
+// model answer here; "Usar con tu IA" is the way to ask anything with the AI you already use, on its own page.
+const ANY_AI = 'anyAi'
+const replyOptions = computed(() => [
+  { value: 'rules', label: t('assistant.providers.rules'), disabled: false },
+  { value: 'webllm', label: t('assistant.providers.webllm'), disabled: modelState.value === 'unavailable' },
+  { value: ANY_AI, label: t('settings.aiRow'), disabled: false },
+])
+const replyLabel = computed(() => replyOptions.value.find((option) => option.value === assistant.preference.value)?.label ?? '')
+function chooseReply(event: Event): void {
+  const select = event.target as HTMLSelectElement
+  if (select.value === ANY_AI) {
+    select.value = assistant.preference.value
+    window.location.hash = AI_HASH
+    return
+  }
+  assistant.choose(select.value as ProviderChoice)
+}
 const offerDownload = computed(() => assistant.preference.value === 'webllm' && modelState.value === 'downloadable' && !assistant.busy.value)
 
 // A count in the parameters picks the plural form of the answer ("1 task does not fit" / "2 tasks do not fit").
@@ -65,7 +86,14 @@ async function submit(): Promise<void> {
 
 <template>
   <div class="assistant">
-    <BackButton current="assistant" fallback="today" />
+    <BackButton v-if="!inSheet" current="assistant" fallback="today" />
+    <label class="reply-with t-subhead" data-testid="reply-with">
+      <span class="t-secondary">{{ t('assistant.settings.provider') }}:</span>
+      <span class="reply-value">{{ replyLabel }}<Icon name="chevron-down" :size="16" /></span>
+      <select class="reply-select" :value="assistant.preference.value" :aria-label="t('assistant.settings.provider')" @change="chooseReply">
+        <option v-for="option in replyOptions" :key="option.value" :value="option.value" :disabled="option.disabled">{{ option.label }}</option>
+      </select>
+    </label>
 
     <section class="chat" data-testid="chat" :aria-label="t('assistant.chat.label')">
       <div v-if="failureMessage" class="failure-row">
@@ -86,13 +114,12 @@ async function submit(): Promise<void> {
       <p v-if="assistant.busy.value === 'asking'" class="t-footnote t-secondary" role="status">{{ t('assistant.chat.thinking') }}</p>
     </section>
 
+    <div class="dock" data-testid="assistant-dock">
     <ul v-if="showSuggestions" class="suggestions" :aria-label="t('assistant.suggestions.label')" data-testid="suggestions">
       <li v-for="suggestion in suggestions" :key="suggestion.key">
         <button class="suggestion t-subhead" type="button" :disabled="!planner.document || assistant.busy.value === 'asking'" @click="ask(suggestion.text)">{{ suggestion.text }}</button>
       </li>
     </ul>
-    <!-- "Usar con tu IA": beside the suggested questions, the way to ask anything else (and the one AI entry). -->
-    <AnyAiPanel collapsible />
 
     <section v-if="offerDownload" class="card" aria-labelledby="optin-title">
       <h2 id="optin-title" class="t-headline">{{ t('assistant.optIn.title') }}</h2>
@@ -119,13 +146,34 @@ async function submit(): Promise<void> {
     <footer class="notes" data-testid="notes">
       <p class="t-footnote t-secondary privacy"><Icon name="lock" :size="13" class="lock" />{{ t('assistant.privacy') }}</p>
     </footer>
+    </div>
   </div>
 </template>
 
 <style scoped>
 /* Same 16 px side gutter as the other screens. */
-.assistant { display: flex; flex-direction: column; gap: var(--space-4); max-width: 40rem; padding: 0 var(--page-gutter) var(--space-6); }
-.card { display: flex; flex-direction: column; gap: var(--space-3); padding: var(--card-padding-block) var(--card-padding); background: var(--surface); border-radius: var(--radius-card); }
+.assistant { display: flex; flex-direction: column; gap: var(--space-4); max-width: 40rem; min-height: calc(100dvh - var(--safe-top) - var(--toolbar-height) - var(--space-6)); padding: 0 var(--page-gutter); }
+.card { display: flex; flex-direction: column; gap: var(--space-3); padding: var(--card-padding-block) var(--card-padding); background: var(--surface-2); border-radius: var(--radius-card); }
+/* "Responder con: Respuestas rápidas ⌄" under the title: a native pop-up behind the visible value, so it is one tap and
+   the system menu. */
+.reply-with { position: relative; align-self: center; display: inline-flex; flex-wrap: wrap; justify-content: center; align-items: center; column-gap: var(--space-1); min-height: var(--tap-target); padding-inline: var(--space-2); text-align: center; }
+.reply-value { display: inline-flex; align-items: center; gap: 2px; color: var(--label); font-weight: 600; }
+.reply-select { position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0; font-size: 1rem; cursor: pointer; }
+.reply-with:has(.reply-select:focus-visible) { outline: 2px solid var(--tint); outline-offset: 2px; border-radius: 10px; }
+/* The conversation rests on the dock, like a chat. */
+.chat { flex: 1; justify-content: flex-end; }
+.dock {
+  position: sticky;
+  bottom: 0;
+  margin-top: auto;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  margin-inline: calc(var(--page-gutter) * -1);
+  padding: var(--space-3) var(--page-gutter) calc(var(--space-3) + var(--safe-bottom));
+  border-top: 0.5px solid var(--separator);
+  background: var(--bg);
+}
 progress { width: 100%; accent-color: var(--tint); }
 .chat { display: flex; flex-direction: column; gap: var(--space-3); }
 /* An empty conversation leaves the flow (no gap) but stays in the page, so its live region announces the first answer. */
@@ -149,11 +197,11 @@ progress { width: 100%; accent-color: var(--tint); }
 .send:disabled { background: var(--fill); color: var(--label-3); }
 .privacy { display: flex; align-items: flex-start; gap: var(--space-1); }
 .lock { flex: none; margin-top: 2px; }
-.suggestions { display: flex; flex-wrap: wrap; gap: var(--space-2); margin: 0; padding: 0; list-style: none; }
+.suggestions { display: flex; flex-direction: column; align-items: flex-start; gap: var(--space-2); margin: 0; padding: 0; list-style: none; }
 .suggestion { min-height: var(--tap-target); padding: var(--space-2) var(--space-4); border: 1px solid var(--field-border); border-radius: 12px; background: var(--surface); color: var(--label); font-weight: 600; text-align: start; transition: transform 0.1s var(--ease-out), opacity 0.1s; touch-action: manipulation; }
 .suggestion:active:not(:disabled) { transform: scale(0.97); opacity: 0.85; }
 .suggestion:disabled { opacity: 0.4; }
-.notes { display: flex; flex-direction: column; gap: var(--space-1); margin-top: var(--space-2); }
+.notes { display: flex; flex-direction: column; gap: var(--space-1); }
 .notes p { margin: 0; }
 @media (prefers-reduced-motion: reduce) { .suggestion:active:not(:disabled) { transform: none; opacity: 0.7; } }
 .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }

@@ -254,7 +254,7 @@ for (const size of Object.keys(SIZES) as (keyof typeof SIZES)[]) {
       // Approve is in the footer, on screen without scrolling the 43 changes.
       await expect(page.getByTestId('review-approve')).toBeEnabled()
       await expect(page.getByTestId('review-approve')).toBeInViewport({ ratio: 1 })
-      await expect(page.getByTestId('review-cancel')).toBeInViewport({ ratio: 1 })
+      await expect(page.getByTestId('review-cancel-note')).toBeInViewport({ ratio: 1 })
       expect((await storedPlanner<{ categories: unknown[] }>(page)).categories).toHaveLength(0)
       await noViolations(page, `${size}/review of a whole week`)
       // A double tap applies it once.
@@ -289,7 +289,7 @@ for (const size of Object.keys(SIZES) as (keyof typeof SIZES)[]) {
       await box(page).fill(reply)
       await page.getByTestId('any-ai-review').click()
       await expect(page.getByTestId('review-cancel-note')).toHaveText('Si cancelas, estos cambios se descartan y tu plan queda como está.')
-      await page.getByTestId('review-cancel').click()
+      await page.getByRole('button', { name: 'Cancelar', exact: true }).click()
       await expect(page.getByTestId('proposal-review')).toHaveCount(0)
       await expect.poll(async () => (JSON.parse(await storedRecord(page, 'proposals') ?? '{"records":[]}') as { records: { status: string }[] }).records.map((proposal) => proposal.status)).toEqual(['rejected'])
       await expect(page.getByTestId('proposal-badge')).toHaveCount(0)

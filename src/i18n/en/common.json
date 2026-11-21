@@ -23,5 +23,6 @@
     "clock12": "12-hour",
     "clock24": "24-hour",
     "footer": "Automatic follows your device’s region and appearance. Times look like this: {example}"
-  }
+  },
+  "done": "Done"
 }

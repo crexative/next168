@@ -1,4 +1,4 @@
-import type { Component, InjectionKey } from 'vue'
+import type { Component, InjectionKey, Ref } from 'vue'
 
 // Shell plug-in contract (architecture §7 #14). S0-shell implements the registries; feature slices
 // register their views and settings sections from their own `index.ts` without editing shell files.
@@ -30,6 +30,10 @@ export interface SettingsSectionDefinition {
   titleKey: string
   order: number
 }
+
+// True while the current view is shown as the phone's full-height sheet: its "Listo" leads back, so a view leaves out
+// its own way back to a tab.
+export const SHEET_PRESENTED: InjectionKey<Ref<boolean>> = Symbol('sheetPresented')
 
 export interface ShellRegistry {
   registerView(definition: ViewDefinition): void

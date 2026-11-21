@@ -435,7 +435,7 @@ for (const theme of THEMES) {
         await expect(page.getByTestId('review-approve')).toBeEnabled()
         const footerFits = async (state: string) => {
           await settle(page)
-          for (const id of ['review-approve', 'review-cancel']) {
+          for (const id of ['review-approve']) {
             await expect.soft(page.getByTestId(id), `${state}: ${id} on screen`).toBeInViewport({ ratio: 1 })
             expect.soft((await page.getByTestId(id).boundingBox())!.height, `${state}: ${id} height`).toBeGreaterThanOrEqual(48)
           }
