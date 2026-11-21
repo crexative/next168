@@ -445,7 +445,7 @@ onBeforeUnmount(stopKeepingInView)
 
 <template>
   <ConversationFrame
-    :open="open" :title="t(adding ? 'onboarding.guided.add.title' : 'onboarding.guided.sheetTitle')" :close-label="t('onboarding.guided.close')"
+    :open="open" :title="t(adding ? 'onboarding.guided.add.title' : 'onboarding.guided.sheetTitle')" :close-label="t('onboarding.guided.close')" :leading="adding ? 'close' : undefined"
     :progress-label="t('onboarding.guided.progress', { step: part, total: TOTAL_PARTS })"
     :count-label="t('onboarding.guided.progress', { step: part, total: TOTAL_PARTS })" :part="part" :total="adding ? 0 : TOTAL_PARTS" :locked="locked" :dirty="dirty"
     @close="closeFlow"
