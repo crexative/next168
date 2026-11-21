@@ -339,9 +339,10 @@ dismissUndoWhenChanged(() => planner.document?.workspaceId)
   display: flex;
   gap: 2px;
   max-width: 100%;
-  height: var(--tap-target);
+  /* 3 px around 44 px tabs: every tab is a full target, like the segments. */
+  height: calc(var(--tap-target) + 6px);
   padding: 3px;
-  border-radius: 22px;
+  border-radius: 25px;
   background: var(--fill);
 }
 /* At large text a label shrinks and ellipsizes inside its capsule rather than push the bar past the actions. */

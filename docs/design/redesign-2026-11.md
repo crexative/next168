@@ -49,4 +49,16 @@ a screen not yet redesigned keeps working with the new tokens and shell.
    question per pick; the total grows only when a pick adds a step. This is the one behaviour change in setup besides
    "Siguiente" replacing "Enviar".
 
+8. **"+" without categories.** Week's old "+" hid itself until a category existed. The shell's "+" is always offered
+   while the planner can be written: a task needs no category (it fits any free time), an event needs none, and Rutina
+   opens the guided add, which creates its category.
+
 Anything else in a board that the app cannot do as drawn is raised with the coordinator before it changes behaviour.
+
+## Tokens and styles added ahead of their screens
+
+Slice 1 adds what later slices draw with: `--radius-bubble`, `--warning-label`, `.t-title-1`, `.t-section` and the
+`quiet` button are used by Hoy and the check-in (slice 2); `--tint-soft` and `--fill` by every slice. A token no slice
+uses by slice 8 is removed. The contrast specs measure every text token on `--bg`, `--bg-grouped`, `--surface`,
+`--surface-2` and `--tint-soft` in light and dark; increased contrast is not yet measured for `--tint-soft` and `--fill`
+(follow-up for slice 8).
