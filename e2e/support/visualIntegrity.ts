@@ -607,7 +607,8 @@ export function auditInPage(options: { focusRings: boolean }): string[] {
     if (rect.width < 120 || rect.height < 40) return false
     const style = getComputedStyle(element)
     const radius = Math.min(px(style.borderTopLeftRadius), px(style.borderBottomRightRadius))
-    if (radius < 12 || radius >= Math.min(rect.width, rect.height) / 2 - TOLERANCE) return false
+    // Controls are rounded 12 px and cards 16 px (redesign 2026-11): a 12 px surface is a control track, not a card.
+    if (radius < 14 || radius >= Math.min(rect.width, rect.height) / 2 - TOLERANCE) return false
     const background = style.backgroundColor
     return !transparent(background) && background !== backgroundBehind(element) || px(style.borderTopWidth) > 0 && !transparent(style.borderTopColor)
   }

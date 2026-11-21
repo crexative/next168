@@ -77,9 +77,11 @@ onBeforeUnmount(() => observer?.disconnect())
   pointer-events: none;
 }
 .toolbar[data-collapsed] .toolbar-title { opacity: 1; }
-.toolbar-center { grid-column: 2; display: flex; justify-content: center; min-width: 0; }
+.toolbar-center { grid-column: 2; grid-row: 1; display: flex; justify-content: center; min-width: 0; }
+/* A view may place a leading control here (the check-in's back link, teleported in): it takes the leading column. */
+.toolbar-inner > :deep(:not(.toolbar-title, .toolbar-center, .toolbar-actions)) { grid-column: 1; grid-row: 1; justify-self: start; pointer-events: auto; }
 .toolbar:has(.toolbar-center:not(:empty)) .toolbar-title { display: none; }
-.toolbar-actions { grid-column: 3; justify-self: end; display: flex; align-items: center; gap: var(--space-2); position: relative; }
+.toolbar-actions { grid-column: 3; grid-row: 1; justify-self: end; display: flex; align-items: center; gap: var(--space-2); position: relative; }
 /* The collapsed bar ends on a hairline; a page with its own bar under the toolbar draws the edge there instead (base.css). */
 .toolbar[data-collapsed] { box-shadow: 0 0.5px 0 var(--material-edge); }
 .large-title:focus { outline: none; }

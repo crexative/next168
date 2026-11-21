@@ -121,7 +121,8 @@ onBeforeUnmount(() => document.removeEventListener('pointerdown', onDocumentPoin
 </template>
 
 <style scoped>
-.add-menu { position: relative; display: inline-flex; }
+/* Above the scrim (z 9) wherever the button sits, also in the desktop title row, which makes no layer of its own. */
+.add-menu { position: relative; z-index: 10; display: inline-flex; }
 .add-trigger {
   position: relative;
   z-index: 1;
@@ -156,7 +157,8 @@ onBeforeUnmount(() => document.removeEventListener('pointerdown', onDocumentPoin
   position: absolute;
   z-index: 2;
   width: min(17.5rem, calc(100vw - 2 * var(--page-gutter)));
-  padding: var(--space-1) 0;
+  /* Items are inset 4 px and rounded 12 px (16 − 4), so a focus ring never meets the menu's corner. */
+  padding: var(--space-1);
   overflow: hidden;
   border-radius: var(--radius-card);
   /* Thicker than the bars' material: the menu's text must never compete with the page under it. */
@@ -181,8 +183,9 @@ onBeforeUnmount(() => document.removeEventListener('pointerdown', onDocumentPoin
   gap: var(--space-3);
   width: 100%;
   min-height: 60px;
-  padding: 0 var(--space-4);
+  padding: 0 var(--space-3);
   border: 0;
+  border-radius: var(--radius-control);
   background: transparent;
   color: var(--label);
   text-align: start;

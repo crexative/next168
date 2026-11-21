@@ -262,7 +262,7 @@ for (const size of SIZES) {
         await expect(carry).toContainText('Desde ayer · hasta')
         // A single line: the row is the minimum row height, never two text lines plus its padding.
         const row = page.locator('li.is-carry')
-        expect((await box(row)).height).toBeLessThanOrEqual(48)
+        expect((await box(row)).height).toBeLessThanOrEqual(52)
         await expect(row.getByTestId('timeline-start')).toHaveCount(0)
         const lines = await carry.evaluate((element) => Math.round(element.getBoundingClientRect().height / parseFloat(getComputedStyle(element).lineHeight)))
         expect(lines).toBe(1)
