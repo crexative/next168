@@ -43,10 +43,12 @@ onBeforeUnmount(() => observer?.disconnect())
   margin-bottom: calc(var(--toolbar-height) * -1);
   background: transparent;
   transition: background-color 0.15s;
-  /* Transparent over the title row: only its own controls take presses. */
+  /* Transparent over the title row: only its own controls take presses. Collapsed, it is a bar of material over the
+     page, and the whole bar takes presses so nothing under it is reached (review of #53). */
   pointer-events: none;
 }
-.toolbar-actions { pointer-events: auto; }
+.toolbar[data-collapsed] { pointer-events: auto; }
+.toolbar-center, .toolbar-actions { pointer-events: auto; }
 .toolbar[data-collapsed] {
   background: var(--material);
   -webkit-backdrop-filter: var(--material-filter);
