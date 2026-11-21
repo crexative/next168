@@ -145,5 +145,5 @@ async function remove(): Promise<void> {
 <style scoped>
 .task-form { display: flex; flex-direction: column; gap: var(--space-4); }
 .field { display: flex; flex-direction: column; gap: var(--space-1); min-width: 0; }
-.title { border-color: transparent; border-radius: var(--radius-card); background: var(--surface); padding-inline: var(--card-padding); font-size: 1.375rem; font-weight: 600; }
+.title { border-color: transparent; border-radius: var(--radius-card); background: var(--surface-grouped-raised); padding-inline: var(--card-padding); font-size: 1.375rem; font-weight: 600; }
 </style>

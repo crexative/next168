@@ -506,7 +506,7 @@ defineExpose({ focus: () => field.value?.focus(), submit, canSubmit, dirty })
   padding-block: calc((var(--tap-target) - 1.35em) / 2);
   border-color: transparent;
   border-radius: var(--radius-card);
-  background: var(--surface);
+  background: var(--surface-grouped-raised);
   font-size: 1.375rem;
   font-weight: 600;
   line-height: 1.35;

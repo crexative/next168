@@ -337,7 +337,7 @@ onBeforeUnmount(() => {
 .sheet-panel.is-large { --tap-target: 48px; }
 .sheet-panel.is-full { height: calc(min(var(--vv-height, 100dvh), 100dvh) - var(--safe-top) - var(--space-6)); }
 .sheet-close:disabled { opacity: 0.4; }
-.sheet-panel.is-grouped { background: var(--bg-grouped); }
+.sheet-panel.is-grouped { background: var(--bg-grouped-raised); }
 /* Cancel · title · action: the outer columns share the width so the title stays centred whatever the words. When the
    three do not fit on one line (a narrow screen, large text), the title takes a line of its own under Cancel and the
    action, which stay in reach. The query is in em, so it follows the text size. */

@@ -4,6 +4,10 @@
   /* Plain lists sit on the page (white); grouped screens and sheets use the grey (redesign 2026-11, DIRECTION §5). */
   --bg: #ffffff;
   --bg-grouped: #f2f2f7;
+  /* A grouped form raised over the page (a sheet): its background and its white groups; in dark they lift to the
+     elevated greys, or the sheet would vanish into the black page. */
+  --bg-grouped-raised: var(--bg-grouped);
+  --surface-grouped-raised: var(--surface);
   --surface: #ffffff;
   --surface-2: #f2f2f7;
   /* Quiet fills: control tracks, chips, progress tracks. */
@@ -121,6 +125,8 @@
     --surface-2: #2c2c2e;
     --label: #ffffff;
     --bg-grouped: #000000;
+    --bg-grouped-raised: #1c1c1e;
+    --surface-grouped-raised: #2c2c2e;
     --fill: rgba(118, 118, 128, 0.24);
     --segment-selected: #636366;
     --label-2: #98989f;
@@ -178,6 +184,8 @@
   --surface-2: #2c2c2e;
   --label: #ffffff;
   --bg-grouped: #000000;
+  --bg-grouped-raised: #1c1c1e;
+  --surface-grouped-raised: #2c2c2e;
   --fill: rgba(118, 118, 128, 0.24);
   --segment-selected: #636366;
   --label-2: #98989f;
