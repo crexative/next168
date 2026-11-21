@@ -101,5 +101,28 @@
       "task": "Task",
       "event": "Event"
     }
+  },
+  "talk": {
+    "title": "Change {title}",
+    "question": "What do you want to change about {title}?",
+    "schedule": "Time",
+    "days": "Days",
+    "goal": "Goal",
+    "remove": "Remove",
+    "editAll": "Edit everything",
+    "other": "Something else",
+    "timeQuestion": "When does it start and end?",
+    "daysQuestion": "Which days?",
+    "goalQuestion": "What goal does {category} have?",
+    "goalType": {
+      "none": "No goal",
+      "min": "At least",
+      "max": "At most"
+    },
+    "goalHours": "Hours a week",
+    "removeQuestion": "Remove {title} from your week?",
+    "removeYes": "Remove",
+    "removeNo": "Not now",
+    "perWeek": "{hours} a week"
   }
 }

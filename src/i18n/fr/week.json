@@ -101,5 +101,28 @@
       "task": "Tâche",
       "event": "Événement"
     }
+  },
+  "talk": {
+    "title": "Modifier {title}",
+    "question": "Que veux-tu changer à {title} ?",
+    "schedule": "Horaire",
+    "days": "Jours",
+    "goal": "Objectif",
+    "remove": "Retirer",
+    "editAll": "Tout modifier",
+    "other": "Autre chose",
+    "timeQuestion": "À quelle heure commence-t-il et finit-il ?",
+    "daysQuestion": "Quels jours ?",
+    "goalQuestion": "Quel objectif pour {category} ?",
+    "goalType": {
+      "none": "Sans objectif",
+      "min": "Au moins",
+      "max": "Au plus"
+    },
+    "goalHours": "Heures par semaine",
+    "removeQuestion": "Retirer {title} de ta semaine ?",
+    "removeYes": "Retirer",
+    "removeNo": "Plutôt pas",
+    "perWeek": "{hours} par semaine"
   }
 }
