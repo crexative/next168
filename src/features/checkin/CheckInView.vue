@@ -1,18 +1,24 @@
 <script setup lang="ts">
-import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
+import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref, useId, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { checkInDateFor } from './evening'
 import { assertEntry, CHANGED_ELSEWHERE, snapshotOf } from '@/features/insights/entryGuard'
-import BackButton from '@/features/settings/BackButton.vue'
+import { backTarget } from '@/features/settings/navigationTrail'
 import { actualFor } from '@/features/today/actuals'
-import ItemStatusControl from '@/features/today/ItemStatusControl.vue'
 import { planSince, readPlanSince } from '@/features/today/planSince'
 import { useBlockStatus } from '@/features/today/useBlockStatus'
 import { formatTime } from '@/features/week/localTime'
 import { formatDate } from '@/ui/format'
 import { useNow } from '@/features/week/useNow'
 import { usePlannerStore } from '@/stores/plannerStore'
+import AppMark from '@/ui/AppMark.vue'
 import Button from '@/ui/Button.vue'
+import ConversationFrame from '@/ui/ConversationFrame.vue'
+import QuickReplies from '@/ui/QuickReplies.vue'
+import { announce } from '@/ui/announcer'
+import { openFullScreen } from '@/ui/sheetStack'
+import { formatMinute } from '@/features/week/localTime'
+import { readsAsOne } from '@/features/today/clockPhrase'
 import { displayLocale, rangeText } from '@/ui/format'
 import { blocksToMark } from './blocksToMark'
 import {
@@ -20,10 +26,10 @@ import {
   type CheckInFormState,
 } from './checkInForm'
 import { markCheckInSaved } from './checkinFlash'
-import ChoiceRow from './ChoiceRow.vue'
 import { deriveExercise, tracksExercise } from './exerciseFromPlan'
 import { suggestFromPlan } from './planAnchors'
-import TimeFact from './TimeFact.vue'
+import { minuteToTime, timeToMinute } from './checkInForm'
+import { disableReminder, enableReminder, REMINDER_MINUTE, reminderEnabled, reminderSupported } from './reminder'
 
 const { t, locale } = useI18n()
 const planner = usePlannerStore()
@@ -92,8 +98,6 @@ function range(occurrence: { start: string; end: string }): string {
   return rangeText(formatTime(occurrence.start, displayLocale.value, timeZone.value), formatTime(occurrence.end, displayLocale.value, timeZone.value))
 }
 
-const stressOptions = computed(() => (['1', '2', '3', '4', '5'] as const).map((value) => ({ value, label: value })))
-const stressEnds = computed(() => ({ low: t('checkin.stressLow'), high: t('checkin.stressHigh'), scale: t('checkin.stressScale') }))
 
 async function save(): Promise<void> {
   const snapshot = formSnapshot
@@ -110,8 +114,9 @@ async function save(): Promise<void> {
       : upsertCheckIn(draft.checkIns, next)
   })
   if (result.ok) {
-    // Today shows "Guardado ✓" and takes focus; the form has nothing more to say.
+    // Today shows "Guardado ✓" and takes focus; the conversation ends with its last line, said aloud.
     markCheckInSaved()
+    announce(t('checkin.chat.done'))
     window.location.hash = '#/today'
   } else if (result.reason === CHANGED_ELSEWHERE) {
     planner.dismissError()
@@ -120,150 +125,313 @@ async function save(): Promise<void> {
   }
 }
 
-// The way back sits top-leading in the shell's toolbar, where a back control is expected; without that slot
-// (a bare view) it stays in the page.
-const toolbar = ref<HTMLElement | null>(null)
-const ready = ref(false)
-const backElement = ref<HTMLElement | null>(null)
-const iconOnly = ref(false)
-let resizeObserver: ResizeObserver | undefined
-let titleObserver: MutationObserver | undefined
 
-function fitBackLabel(): void {
-  const container = toolbar.value
-  const back = backElement.value
-  const label = back?.querySelector<HTMLElement>('.back-button span')
-  if (!container || !back || !label) return
-  const left = back.getBoundingClientRect().left
-  let right = container.getBoundingClientRect().right
-  const actions = container.querySelector<HTMLElement>('.toolbar-actions')
-  if (actions) right = Math.min(right, actions.getBoundingClientRect().left)
-  // The tablet's tabs sit in the toolbar's centre: the label stops before them too.
-  const tabs = container.querySelector<HTMLElement>('.toolbar-center > *')
-  if (tabs) right = Math.min(right, tabs.getBoundingClientRect().left)
-  const title = container.querySelector<HTMLElement>('.toolbar-title')
-  if (title && container.closest('.toolbar')?.hasAttribute('data-collapsed')) {
-    const box = title.getBoundingClientRect()
-    const range = document.createRange()
-    range.selectNodeContents(title)
-    // The title's box reserves space on both sides. Its actual letters may be much farther from the back link.
-    const textLeft = typeof range.getBoundingClientRect === 'function' ? range.getBoundingClientRect().left : box.left
-    right = Math.min(right, Math.max(box.left, textLeft))
-  }
-  const style = getComputedStyle(back.querySelector('.back-button')!)
-  const gap = Number.parseFloat(style.columnGap) || 4
-  const padding = Number.parseFloat(style.paddingInlineEnd) || 12
-  const iconWidth = back.querySelector('svg')?.getBoundingClientRect().width || 22
-  const room = Math.max(0, right - left - gap)
-  iconOnly.value = label.getBoundingClientRect().width + iconWidth + gap + padding > room
-  back.style.maxWidth = `${room}px`
+// The check-in as a conversation (R_Cierre, DIRECTION §4): one question at a time, answers ready to tap. What the plan
+// already says (bedtime, wake, the end of work) is drawn as your answers, each tappable to change; only what is still
+// open is asked: the routines not yet marked, then stress, then the note and the save. Every value lives in the same
+// form and is saved by the same commit as before.
+type StepId = 'bedtime' | 'wake' | 'workEnd' | 'stress' | 'final' | `block:${string}`
+type FactId = 'bedtime' | 'wake' | 'workEnd'
+const FACTS: FactId[] = ['bedtime', 'wake', 'workEnd']
+const FACT_KEYS: Record<FactId, string> = { bedtime: 'checkin.bedtime', wake: 'checkin.wake', workEnd: 'checkin.workEnd' }
+
+const skipped = ref(new Set<StepId>())
+const editing = ref<StepId | null>(null)
+// Facts the plan or a saved check-in answered when the conversation opened are told, not asked.
+const toldFacts = ref(new Set<FactId>())
+watch(() => [form.date, fromPlan.value], () => {
+  toldFacts.value = new Set(FACTS.filter((fact) => form[fact] !== ''))
+}, { immediate: true })
+
+const factSteps = computed<FactId[]>(() => FACTS.filter((fact) => fact !== 'workEnd' || showWorkEnd.value))
+const steps = computed<StepId[]>(() => [
+  ...factSteps.value,
+  ...pending.value.map((occurrence) => `block:${keyOf(occurrence)}` as StepId),
+  'stress',
+  'final',
+])
+const occurrenceOf = (step: StepId) => pending.value.find((occurrence) => `block:${keyOf(occurrence)}` === step)
+const actualOf = (step: StepId) => {
+  const occurrence = occurrenceOf(step)
+  return occurrence && planner.document ? actualFor(planner.document.actuals, occurrence) : undefined
 }
-watch(locale, () => { void nextTick(fitBackLabel) })
+
+function answered(step: StepId): boolean {
+  if (step === 'final') return false
+  if (step === 'stress') return form.stress !== ''
+  if (step.startsWith('block:')) return actualOf(step) !== undefined
+  return form[step as FactId] !== ''
+}
+
+const current = computed<StepId>(() => editing.value ?? steps.value.find((step) => !answered(step) && !skipped.value.has(step)) ?? 'final')
+// "Parte N de M" counts what is asked, not what the plan already told.
+const asked = computed(() => steps.value.filter((step) => !(FACTS as string[]).includes(step) || !toldFacts.value.has(step as FactId)))
+const part = computed(() => Math.max(1, asked.value.indexOf(current.value) + 1 || asked.value.length))
+const log = computed(() => steps.value.slice(0, steps.value.indexOf(current.value)).filter((step) => answered(step)))
+
+function time(minute: number | undefined): string {
+  return minute === undefined ? '' : formatMinute(minute, displayLocale.value)
+}
+
+function questionOf(step: StepId): string {
+  if (step === 'stress') return t('checkin.chat.stress')
+  if (step === 'final') return t('checkin.chat.final')
+  const occurrence = occurrenceOf(step)
+  if (occurrence) return t('today.status.menuLabel', { title: occurrence.title })
+  return t(`${FACT_KEYS[step as FactId]}.question`)
+}
+
+function hintOf(step: StepId): string {
+  if (step === 'stress') return t('checkin.stressScale')
+  const occurrence = occurrenceOf(step)
+  return occurrence ? range(occurrence) : ''
+}
+
+// What the person said, in their words: "Anoche te acostaste a las 23:00", "Hecho", "A medias · 30 min", "3".
+function answerOf(step: StepId): string {
+  if (step === 'stress') return form.stress
+  if (step.startsWith('block:')) {
+    const actual = actualOf(step)
+    if (!actual) return ''
+    const status = t(`today.status.${actual.status}`)
+    return actual.status === 'partial' && actual.actualMinutes !== undefined ? `${status} · ${actual.actualMinutes} min` : status
+  }
+  const value = time(timeToMinute(form[step as FactId]))
+  return t(`${FACT_KEYS[step as FactId]}.sentence`, { time: value }, readsAsOne(value) ? 1 : 2)
+}
+
+// A told fact shows only its sentence; an asked turn keeps its question above your answer.
+const showsQuestion = (step: StepId) => !(FACTS as string[]).includes(step) || !toldFacts.value.has(step as FactId)
+const changeLabel = (step: StepId) => `${t('checkin.change')}: ${questionOf(step)} ${answerOf(step)}`
+
+const heading = ref<HTMLElement | null>(null)
+const scroller = ref<HTMLElement | null>(null)
+const questionId = useId()
+async function reveal(): Promise<void> {
+  await nextTick()
+  heading.value?.focus({ preventScroll: true })
+  scroller.value?.scrollTo({ top: scroller.value.scrollHeight })
+}
+watch(current, () => { void reveal() }, { flush: 'post' })
+
+function done(step: StepId): void {
+  if (editing.value === step) editing.value = null
+}
+
+// "Lo veo después" leaves a question open. On an answer being changed it withdraws that answer, so nothing that was
+// said has to stay said (the old form's "Borrar").
+function skip(): void {
+  const step = current.value
+  if (editing.value === step && answered(step)) {
+    if (step === 'stress') form.stress = ''
+    else if (step.startsWith('block:')) { const occurrence = occurrenceOf(step); if (occurrence) void blockStatus.clear(occurrence) }
+    else form[step as FactId] = ''
+  }
+  skipped.value = new Set([...skipped.value, step])
+  editing.value = null
+  partialMinutes.value = null
+}
+
+function change(step: StepId): void {
+  editing.value = step
+  partialMinutes.value = null
+  if ((FACTS as string[]).includes(step)) factDraft.value = form[step as FactId]
+}
+
+// A fact asked or changed: one time field and "Siguiente".
+const factDraft = ref('')
+watch(current, (step) => { if ((FACTS as string[]).includes(step)) factDraft.value = form[step as FactId] }, { immediate: true })
+function saveFact(): void {
+  const step = current.value as FactId
+  if (timeToMinute(factDraft.value) === undefined) return
+  form[step] = minuteToTime(timeToMinute(factDraft.value))
+  done(step)
+}
+
+// A routine: Hecho · A medias · No. "A medias" asks how many minutes, prefilled with half the plan.
+const partialMinutes = ref<number | null>(null)
+function answerBlock(value: string): void {
+  const step = current.value
+  const occurrence = occurrenceOf(step)
+  if (!occurrence) return
+  if (value === 'partial') {
+    partialMinutes.value = actualOf(step)?.actualMinutes ?? Math.round(occurrence.plannedMinutes / 2)
+    return
+  }
+  void blockStatus.record(occurrence, value as 'done' | 'skipped')
+  done(step)
+}
+function savePartial(): void {
+  const step = current.value
+  const occurrence = occurrenceOf(step)
+  if (!occurrence || partialMinutes.value === null) return
+  const minutes = Math.min(occurrence.plannedMinutes, Math.max(0, Math.round(partialMinutes.value)))
+  void blockStatus.record(occurrence, 'partial', minutes)
+  partialMinutes.value = null
+  done(step)
+}
+
+function answerStress(value: string): void {
+  form.stress = value as typeof form.stress
+  done('stress')
+}
+
+const blockReplies = computed(() => [
+  { value: 'done', label: t('today.status.done'), testId: 'answer-done' },
+  { value: 'partial', label: t('today.status.partial'), testId: 'answer-partial' },
+  { value: 'skipped', label: t('today.status.skipped'), testId: 'answer-skipped' },
+])
+const stressReplies = computed(() => (['1', '2', '3', '4', '5'] as const).map((value) => ({ value, label: value, testId: `stress-${value}` })))
+
+// The last turn: an optional note, the reminder (it moved here from Hoy) and "Guardar cierre".
+const noteOpen = ref(false)
+watch(() => form.note, (note) => { if (note) noteOpen.value = true }, { immediate: true })
+const remindAt = computed(() => formatMinute(REMINDER_MINUTE, locale.value))
+const reminderShown = ref(reminderSupported() || reminderEnabled())
+const reminderOn = ref(reminderEnabled())
+const reminderBlocked = ref(false)
+async function toggleReminder(): Promise<void> {
+  if (reminderOn.value) {
+    disableReminder()
+    reminderOn.value = false
+    return
+  }
+  // The permission prompt appears here, from the person's own tap, never on load.
+  const outcome = await enableReminder()
+  reminderOn.value = outcome === 'enabled'
+  reminderBlocked.value = outcome === 'blocked'
+}
+
+// The frame owns the screen while the check-in is open; × leads back to where it was opened from.
+const backTo = computed(() => backTarget('checkin', 'today'))
+const closeLabel = computed(() => t('setup.backTo', { place: t(`app.tabs.${backTo.value}`, t('app.tabs.today')) }))
+function close(): void { window.location.hash = `#/${backTo.value}` }
+let releaseFullScreen: (() => void) | undefined
 onMounted(() => {
-  toolbar.value = document.querySelector<HTMLElement>('.toolbar-inner')
-  ready.value = true
-  void nextTick(() => {
-    fitBackLabel()
-    if (toolbar.value && typeof ResizeObserver !== 'undefined') {
-      resizeObserver = new ResizeObserver(fitBackLabel)
-      resizeObserver.observe(toolbar.value)
-      for (const child of toolbar.value.querySelectorAll('.toolbar-title, .toolbar-center, .toolbar-actions, .back-button span')) resizeObserver.observe(child)
-    }
-    const header = toolbar.value?.closest('.toolbar')
-    if (header) {
-      titleObserver = new MutationObserver(fitBackLabel)
-      titleObserver.observe(header, { attributes: true, attributeFilter: ['data-collapsed'] })
-    }
-  })
-  window.addEventListener('resize', fitBackLabel)
-  document.fonts?.addEventListener?.('loadingdone', fitBackLabel)
+  releaseFullScreen = openFullScreen()
+  void reveal()
 })
-onBeforeUnmount(() => {
-  resizeObserver?.disconnect()
-  titleObserver?.disconnect()
-  window.removeEventListener('resize', fitBackLabel)
-  document.fonts?.removeEventListener?.('loadingdone', fitBackLabel)
-})
+onBeforeUnmount(() => releaseFullScreen?.())
 </script>
 
 <template>
-  <div v-if="planner.document" class="checkin">
-    <Teleport v-if="ready" :to="toolbar ?? 'body'" :disabled="!toolbar">
-      <span ref="backElement" class="toolbar-back" :class="{ 'is-in-toolbar': toolbar }">
-        <BackButton current="checkin" fallback="today" :icon-only="iconOnly" />
-      </span>
-    </Teleport>
-    <form class="checkin-form" :aria-label="t('checkin.title')" @submit.prevent="save">
-      <p class="date-line t-headline t-secondary" data-testid="checkin-date">{{ dateLabel }}</p>
-      <p class="t-subhead t-secondary">{{ t('checkin.intro') }}</p>
-
-      <div class="facts" data-testid="checkin-times">
-        <TimeFact v-model="form.bedtime" test-id="fact-bedtime" sentence-key="checkin.bedtime.sentence" question-key="checkin.bedtime.question" />
-        <TimeFact v-model="form.wake" test-id="fact-wake" sentence-key="checkin.wake.sentence" question-key="checkin.wake.question" />
-        <TimeFact v-if="showWorkEnd" v-model="form.workEnd" test-id="fact-work-end" sentence-key="checkin.workEnd.sentence" question-key="checkin.workEnd.question" />
+  <ConversationFrame
+    :open="!!planner.document" :title="t('checkin.title')" :close-label="closeLabel" leading="close"
+    :progress-label="t('onboarding.guided.progress', { step: part, total: asked.length })"
+    :count-label="t('onboarding.guided.progress', { step: part, total: asked.length })"
+    :part="part" :total="asked.length" :locked="false" :dirty="false"
+    @close="close"
+  >
+    <section class="checkin" data-testid="checkin" :data-step="current">
+      <div ref="scroller" class="scroller">
+        <div class="column">
+          <p class="date-line t-footnote" data-testid="checkin-date">{{ t('checkin.chat.date', { date: dateLabel }) }}</p>
+          <ol class="transcript" role="log" :aria-label="t('checkin.title')">
+            <li v-for="step in log" :key="step" class="turn" :data-step="step">
+              <p v-if="showsQuestion(step)" class="turn-question t-subhead">{{ questionOf(step) }}</p>
+              <button class="answer" type="button" :aria-label="changeLabel(step)" :disabled="!planner.writable" :data-testid="`answer-${step}`" @click="change(step)">
+                {{ answerOf(step) }}
+              </button>
+            </li>
+            <li class="turn is-current">
+              <AppMark class="avatar" :size="32" />
+              <div class="bubble">
+                <h2 :id="questionId" ref="heading" class="ask t-title-2" tabindex="-1" data-setup-initial-focus data-testid="checkin-question">{{ questionOf(current) }}</h2>
+                <p v-if="hintOf(current)" class="hint t-subhead">{{ hintOf(current) }}</p>
+              </div>
+            </li>
+          </ol>
+        </div>
       </div>
-      <p v-if="fromPlan" class="t-footnote t-secondary plan-hint" data-testid="plan-hint">{{ t('checkin.planHint') }}</p>
 
-      <section v-if="pending.length" class="pending" :aria-label="t('checkin.pending.title')" data-testid="checkin-blocks">
-        <h2 class="t-headline">{{ t('checkin.pending.title') }}</h2>
-        <ul class="pending-list">
-          <li v-for="occurrence in pending" :key="keyOf(occurrence)" class="pending-row" data-testid="checkin-block">
-            <span class="pending-text">
-              <span class="t-body">{{ occurrence.title }}</span>
-              <span class="t-footnote t-secondary tabular">{{ range(occurrence) }}</span>
-            </span>
-            <ItemStatusControl
-              class="pending-control"
-              :item-key="keyOf(occurrence)"
-              :title="occurrence.title"
-              :status="actualFor(planner.document.actuals, occurrence)?.status"
-              :actual-minutes="actualFor(planner.document.actuals, occurrence)?.actualMinutes"
-              :planned-minutes="occurrence.plannedMinutes"
-              :writable="planner.writable"
-              @record="(status, minutes) => blockStatus.record(occurrence, status, minutes)"
-              @clear="blockStatus.clear(occurrence)"
-            />
-          </li>
-        </ul>
-        <p class="t-footnote t-secondary">{{ t('checkin.pending.hint') }}</p>
-      </section>
+      <footer class="dock">
+        <div class="column dock-column">
+          <form v-if="(FACTS as string[]).includes(current)" class="fact" @submit.prevent="saveFact">
+            <input v-model="factDraft" class="input fact-input" type="time" :aria-labelledby="questionId" data-testid="fact-input">
+            <Button type="submit" block class="dock-primary" :disabled="!planner.writable || !factDraft">{{ t('onboarding.guided.next') }}</Button>
+          </form>
 
-      <ChoiceRow v-model="form.stress" :options="stressOptions" :label="t('checkin.stress')" :ends="stressEnds" />
+          <template v-else-if="current.startsWith('block:')">
+            <QuickReplies :options="blockReplies" :columns="3" :group-label="questionOf(current)" :current="actualOf(current)?.status" :current-label="t('onboarding.guided.current')" :disabled="!planner.writable" @answer="answerBlock" />
+            <form v-if="partialMinutes !== null" class="minutes" data-testid="checkin-minutes" @submit.prevent="savePartial">
+              <label class="t-footnote t-secondary" :for="`${questionId}-minutes`">{{ t('today.status.minutesLabel', { planned: occurrenceOf(current)?.plannedMinutes ?? 0 }) }}</label>
+              <div class="minutes-row">
+                <input :id="`${questionId}-minutes`" v-model.number="partialMinutes" class="input minutes-input" type="number" inputmode="numeric" min="0" :max="occurrenceOf(current)?.plannedMinutes" step="5">
+                <Button type="submit" variant="tinted">{{ t('today.status.save') }}</Button>
+              </div>
+            </form>
+          </template>
 
-      <label class="field">
-        <span class="t-footnote t-secondary">{{ t('checkin.note') }}</span>
-        <textarea v-model="form.note" class="input note" rows="3" maxlength="280" />
-      </label>
+          <template v-else-if="current === 'stress'">
+            <QuickReplies :options="stressReplies" :columns="5" min-cell="2.75rem" :group-label="`${questionOf('stress')} ${t('checkin.stressScale')}`" :current="form.stress || undefined" :current-label="t('onboarding.guided.current')" :disabled="!planner.writable" @answer="answerStress" />
+            <p class="ends t-footnote t-secondary" aria-hidden="true"><span>{{ t('checkin.stressLow') }}</span><span>{{ t('checkin.stressHigh') }}</span></p>
+          </template>
 
-      <Button type="submit" block :disabled="!planner.writable || !form.date">{{ t('checkin.save') }}</Button>
-      <p v-if="changedElsewhere" class="t-subhead" role="alert">{{ t('checkin.changedElsewhere') }}</p>
-    </form>
-  </div>
+          <template v-else>
+            <label v-if="noteOpen" class="note-field">
+              <span class="t-footnote t-secondary">{{ t('checkin.note') }}</span>
+              <textarea v-model="form.note" class="input note" rows="3" maxlength="280" data-testid="checkin-note" />
+            </label>
+            <Button v-else variant="plain" data-testid="checkin-add-note" @click="noteOpen = true">{{ t('checkin.chat.addNote') }}</Button>
+            <label v-if="reminderShown" class="toggle-row">
+              <span class="t-body">{{ t('checkin.card.remind', { time: remindAt }) }}</span>
+              <input type="checkbox" role="switch" class="switch" :checked="reminderOn" data-testid="checkin-remind" @change="toggleReminder">
+            </label>
+            <p v-if="reminderBlocked" class="t-footnote t-secondary" role="status">{{ t('checkin.card.remindBlocked') }}</p>
+            <Button block class="dock-primary" data-testid="checkin-save" :disabled="!planner.writable || !form.date" @click="save">{{ t('checkin.save') }}</Button>
+          </template>
+          <p v-if="changedElsewhere" class="t-subhead" role="alert">{{ t('checkin.changedElsewhere') }}</p>
+
+          <Button v-if="current !== 'final'" variant="quiet" class="skip" data-testid="checkin-skip" @click="skip">{{ t('onboarding.guided.skip') }}</Button>
+        </div>
+      </footer>
+    </section>
+  </ConversationFrame>
 </template>
 
 <style scoped>
-/* Starts under the large title like Assistant; centred, it drifted away from its own title on wide windows. */
-.checkin { display: flex; flex-direction: column; gap: var(--space-4); max-width: 36rem; padding: 0 var(--page-gutter) var(--space-6); }
-.checkin-form { display: flex; flex-direction: column; gap: var(--group-gap); }
-.date-line { margin: 0; }
-.facts, .pending-list { margin: 0; padding: 0; list-style: none; border-radius: var(--radius-card); background: var(--surface); }
-.facts :deep(.fact + .fact), .pending-row + .pending-row { border-top: 0.5px solid var(--separator); }
-.pending { display: flex; flex-direction: column; gap: var(--space-2); }
-.pending h2, .pending p { margin: 0; }
-.pending-row { display: flex; align-items: center; gap: var(--space-3); padding: var(--space-2) var(--card-padding); }
-.pending-text { display: flex; flex: 1; flex-direction: column; min-width: 0; overflow-wrap: anywhere; }
-.tabular { font-variant-numeric: tabular-nums; }
-.field { display: flex; flex: 1; flex-direction: column; gap: var(--space-1); min-width: 8rem; }
-/* The form sits on the page background, not in a card. */
-.input { background-color: var(--surface); }
-/* The hint is the facts card's footnote: 8 px under it, not a group of its own. */
-.plan-hint { margin: calc(var(--space-2) - var(--group-gap)) 0 0; }
-.note { padding: var(--space-2) var(--space-3); resize: vertical; }
-/* Top-leading in the toolbar row, level with the settings gear on the other side. */
-/* Fit against the visible title and actions, recalculating on collapse, resize and text-size changes. */
-.toolbar-back.is-in-toolbar {
-  position: absolute; inset-block: 0; inset-inline-start: var(--page-gutter); display: flex; align-items: center;
+.checkin { display: flex; flex: 1; flex-direction: column; min-height: 0; }
+.scroller { display: flex; flex: 1 1 auto; flex-direction: column; justify-content: flex-end; min-height: 0; overflow-y: auto; overscroll-behavior: contain; }
+.column { box-sizing: border-box; width: 100%; max-width: var(--column); margin-inline: auto; padding-inline: max(var(--page-gutter), var(--safe-left)) max(var(--page-gutter), var(--safe-right)); }
+.scroller > .column { display: flex; flex-direction: column; gap: var(--space-3); padding-block: var(--space-2) var(--space-4); }
+.date-line { margin: 0 0 var(--space-1); color: var(--label-2); font-weight: 600; text-align: center; }
+.transcript { display: flex; flex-direction: column; gap: var(--space-3); margin: 0; padding: 0; list-style: none; }
+.turn { display: flex; flex-direction: column; align-items: flex-end; gap: var(--space-2); }
+.turn-question { align-self: flex-start; margin: 0; color: var(--label-2); }
+/* Your answers: on the trailing side, in the soft tint, tappable to change. */
+.answer {
+  max-width: 85%;
+  min-height: var(--tap-target);
+  padding: 10px var(--space-4);
+  border: 0;
+  border-radius: 20px 20px 6px 20px;
+  background: var(--tint-soft);
+  color: var(--label);
+  font-size: 1.0625rem;
+  font-weight: 600;
+  text-align: end;
+  overflow-wrap: anywhere;
 }
-.toolbar-back.is-in-toolbar :deep(.back-button span) { white-space: nowrap; }
-.toolbar-back:not(.is-in-toolbar) { display: block; }
+.answer:focus-visible { outline-offset: 2px; }
+.turn.is-current { flex-direction: row; align-items: flex-end; gap: var(--space-3); }
+.avatar { flex: none; margin-block-end: 2px; }
+.bubble { flex: 1 1 auto; min-width: 0; padding: var(--space-4) var(--space-5); border-radius: var(--radius-bubble) var(--radius-bubble) var(--radius-bubble) 6px; background: var(--surface-2); }
+.ask { margin: 0; outline: none; overflow-wrap: anywhere; }
+.hint { margin: var(--space-1) 0 0; color: var(--label-2); }
+/* The dock, pinned at the bottom like a keyboard. */
+.dock { flex: none; border-top: 0.5px solid var(--separator); background: var(--surface); }
+.dock-column { display: flex; flex-direction: column; gap: var(--space-3); padding-block: var(--space-3) calc(var(--space-4) + var(--safe-bottom)); }
+.dock-primary { min-height: 52px; border-radius: 26px; }
+.skip { align-self: flex-start; }
+.fact { display: flex; flex-direction: column; gap: var(--space-3); }
+.fact-input { font-size: 1.375rem; font-variant-numeric: tabular-nums; }
+.minutes { display: flex; flex-direction: column; gap: var(--space-2); }
+.minutes-row { display: flex; align-items: center; gap: var(--space-2); }
+.minutes-input { width: 6rem; font-variant-numeric: tabular-nums; }
+.ends { display: flex; justify-content: space-between; margin: calc(var(--space-1) * -1) var(--space-2) 0; }
+.note-field { display: flex; flex-direction: column; gap: var(--space-1); }
+.note { padding: var(--space-2) var(--space-3); resize: vertical; }
+.toggle-row { display: flex; align-items: center; gap: var(--space-3); min-height: var(--tap-target); }
+.toggle-row > span { flex: 1; }
+.switch { width: 51px; height: 31px; margin: 0; accent-color: var(--tint); }
 </style>

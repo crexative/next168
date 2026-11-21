@@ -1,6 +1,6 @@
 // @vitest-environment happy-dom
 import { afterEach, beforeEach, expect, it, vi } from 'vitest'
-import { h, nextTick } from 'vue'
+import { h, nextTick, ref } from 'vue'
 import { testDocument, fixedNow } from '@/repositories/testSupport'
 import CheckInView from '@/features/checkin/CheckInView.vue'
 import { WebLlmProvider, type WebLlmEngine } from '@/features/assistant/WebLlmProvider'
@@ -8,7 +8,9 @@ import { mountWithPlanner, type Mounted } from '@/features/settings/testSupport'
 import { PERSIST_REQUESTED_KEY } from '@/features/settings/data/storageProtection'
 import OnboardingRoot from './OnboardingRoot.vue'
 
-const screen = { render: () => [h(OnboardingRoot), h(CheckInView)] }
+// The check-in is its own full-screen route: it is on screen only while a test fills it in.
+const checkInShown = ref(false)
+const screen = { render: () => [h(OnboardingRoot), checkInShown.value ? h(CheckInView) : null] }
 const persist = vi.fn().mockResolvedValue(true)
 const storageDescriptor = Object.getOwnPropertyDescriptor(navigator, 'storage')
 let mounted: Mounted | undefined
@@ -64,14 +66,25 @@ async function clickSetup(testId: string, nextScreen: string | null): Promise<vo
 }
 
 // The check-in closes today: there is no date to pick, so a second save edits the same day's entry.
+// The check-in conversation (teleported to the body): leave every question for later, then write the note and save.
 async function saveCheckIn(text: string): Promise<void> {
-  const form = mounted!.host.querySelector<HTMLFormElement>('form.checkin-form')!
-  const note = form.querySelector('textarea')!
+  checkInShown.value = true
+  await nextTick()
+  const step = () => document.body.querySelector<HTMLElement>('[data-testid="checkin"]')?.dataset.step
+  while (step() !== 'final') {
+    document.body.querySelector<HTMLButtonElement>('[data-testid="checkin-skip"]')!.click()
+    await nextTick()
+  }
+  document.body.querySelector<HTMLButtonElement>('[data-testid="checkin-add-note"]')?.click()
+  await nextTick()
+  const note = document.body.querySelector<HTMLTextAreaElement>('[data-testid="checkin-note"]')!
   note.value = text
   note.dispatchEvent(new Event('input'))
   await nextTick()
-  form.dispatchEvent(new Event('submit', { cancelable: true }))
+  document.body.querySelector<HTMLButtonElement>('[data-testid="checkin-save"]')!.click()
   await mounted!.store.settled()
+  await nextTick()
+  checkInShown.value = false
   await nextTick()
 }
 

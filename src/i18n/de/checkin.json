@@ -37,5 +37,12 @@
   },
   "reminder": {
     "body": "Wie war der Tag? Das dauert eine Minute."
+  },
+  "chat": {
+    "stress": "Wie gestresst warst du heute?",
+    "final": "Das ist dein Tagesabschluss.",
+    "done": "Fertig für heute. Erhol dich gut.",
+    "date": "Tagesabschluss · {date}",
+    "addNote": "Notiz hinzufügen"
   }
 }

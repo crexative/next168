@@ -37,5 +37,12 @@
   },
   "reminder": {
     "body": "¿Cómo fue hoy? Te lleva un minuto."
+  },
+  "chat": {
+    "stress": "¿Cómo de estresado estuviste hoy?",
+    "final": "Este es tu cierre de hoy.",
+    "done": "Listo por hoy. Que descanses.",
+    "date": "Cierre del día · {date}",
+    "addNote": "Añadir una nota"
   }
 }
