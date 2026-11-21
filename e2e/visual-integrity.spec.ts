@@ -476,7 +476,8 @@ for (const theme of THEMES) {
         const settings = { ...plannedDocument.settings, locale }
         await start(page, theme, { ...plannedDocument, settings, categories: withGoals(goals), actuals: [done] }, locale)
         await open(page, 'insights')
-        await expect(page.getByTestId('goal-state')).toHaveCount(3)
+        // Three goals, each with its line; only the ones that need attention carry a mark (calm when on track).
+        await expect(page.getByTestId('goal-line')).toHaveCount(3)
         await expect(page.getByTestId('actual-line')).toHaveCount(1)
         await audit(page, `${theme}/${locale}/summary with every goal state`)
       })

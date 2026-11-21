@@ -107,10 +107,10 @@ test.describe('summary: your typical week and goals', () => {
 
     const sleepRow = page.getByTestId('goal-row-c-sleep')
     await expect(sleepRow.getByTestId('goal-line')).toHaveText('35 h of at least 49 h · 14 h to go')
-    await expect(sleepRow.getByTestId('goal-state')).toHaveText('!')
+    await expect(sleepRow.getByTestId('goal-state')).toHaveCount(1)
     const workRow = page.getByTestId('goal-row-c-work')
     await expect(workRow.getByTestId('goal-line')).toHaveText('32 h of at most 40 h · 8 h left')
-    await expect(workRow.getByTestId('goal-state')).toHaveText('✓')
+    await expect(workRow.getByTestId('goal-state')).toHaveCount(0)
     // A category without a goal has no row; the status is one line and one mark, never a chip as well.
     await expect(page.getByTestId('goal-row-c-study')).toHaveCount(0)
     await expect(page.getByTestId('goal-chip')).toHaveCount(0)
@@ -127,7 +127,7 @@ test.describe('summary: your typical week and goals', () => {
     await expect(page.getByTestId('week-bar').getByRole('img', { name: 'Unassigned: 168 h' })).toBeVisible()
     const row = page.getByTestId('goal-row-c-sleep')
     await expect(row.getByTestId('goal-line')).toHaveText('0 h of at least 49 h · 49 h to go')
-    await expect(row.getByTestId('goal-state')).toHaveText('!')
+    await expect(row.getByTestId('goal-state')).toHaveCount(1)
     await expect(page.getByTestId('goal-row-c-work').getByTestId('goal-line')).toHaveText('0 h of at most 40 h · 40 h left')
     await expectNothingClipped(page)
   })
@@ -138,9 +138,9 @@ test.describe('summary: your typical week and goals', () => {
     await start(page, { categories: [easySleep, overWork, study], blocks })
     await openTab(page, 'insights')
     await expect(page.getByTestId('goal-row-c-work').getByTestId('goal-line')).toHaveText('32 h of at most 20 h · 12 h over')
-    await expect(page.getByTestId('goal-row-c-work').getByTestId('goal-state')).toHaveText('!')
+    await expect(page.getByTestId('goal-row-c-work').getByTestId('goal-state')).toHaveCount(1)
     await expect(page.getByTestId('goal-row-c-sleep').getByTestId('goal-line')).toHaveText('35 h of at least 20 h')
-    await expect(page.getByTestId('goal-row-c-sleep').getByTestId('goal-state')).toHaveText('✓')
+    await expect(page.getByTestId('goal-row-c-sleep').getByTestId('goal-state')).toHaveCount(0)
     await expectNothingClipped(page)
   })
 

@@ -138,8 +138,8 @@ function doneText(row: Row): string {
 </template>
 
 <style scoped>
-.insights { display: flex; flex-direction: column; gap: var(--group-gap); padding: 0 var(--page-gutter) var(--space-6); }
-.insights-subtitle { margin: calc(var(--header-gap) * -1) 0 calc(var(--space-5) - var(--group-gap)); font-variant-numeric: tabular-nums; }
+.insights { display: flex; flex-direction: column; gap: var(--section-gap); padding: 0 var(--page-gutter) var(--space-6); }
+.insights-subtitle { margin: calc(var(--header-gap) * -1) 0 calc(var(--space-5) - var(--section-gap)); font-variant-numeric: tabular-nums; }
 .week { display: flex; flex-direction: column; gap: var(--space-3); }
 /* The week's headline: what is free, the figure people come for (R_Resumen). */
 .headline { margin: 0; min-width: 0; overflow-wrap: normal; text-wrap: balance; font-variant-numeric: tabular-nums; }
