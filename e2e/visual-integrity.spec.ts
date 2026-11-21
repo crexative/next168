@@ -504,10 +504,10 @@ for (const theme of THEMES) {
     test('Settings with each appearance choice', async ({ page }) => {
       await start(page, theme, plannedDocument)
       await open(page, 'settings')
-      const group = page.getByRole('radiogroup', { name: 'Appearance' })
+      const appearance = page.getByRole('combobox', { name: 'Appearance' })
       for (const name of ['Light', 'Dark', 'Automatic']) {
-        await group.getByRole('radio', { name, exact: true }).click()
-        await expect(group.getByRole('radio', { name, exact: true })).toHaveAttribute('aria-checked', 'true')
+        await appearance.selectOption({ label: name })
+        await expect(appearance.locator('option:checked')).toHaveText(name)
         await audit(page, `${theme}/settings appearance ${name}`)
       }
     })

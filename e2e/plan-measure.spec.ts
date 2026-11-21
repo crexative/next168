@@ -232,7 +232,7 @@ test.describe('plan and measure', () => {
       window.sessionStorage.setItem('next168-setup-draft', '{}')
     })
     await openTab(page, 'settings')
-    await page.getByRole('radiogroup', { name: 'Appearance' }).getByRole('radio', { name: 'Dark' }).click()
+    await page.getByRole('combobox', { name: 'Appearance' }).selectOption({ label: 'Dark' })
     await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark')
     await openSettingsPage(page, 'data')
     await page.getByRole('button', { name: 'Delete all data…' }).click()
