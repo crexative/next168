@@ -1,6 +1,6 @@
 import { afterEach, expect, it, vi } from 'vitest'
 import { createApp, h, reactive, type App } from 'vue'
-import SetupFrame from './SetupFrame.vue'
+import ConversationFrame from './ConversationFrame.vue'
 
 let app: App | undefined
 
@@ -14,7 +14,7 @@ it('keeps focus already inside the frame when it unlocks', async () => {
   const host = document.createElement('div')
   document.body.append(host)
   app = createApp({
-    render: () => h(SetupFrame, {
+    render: () => h(ConversationFrame, {
       ...state, title: 'Setup', closeLabel: 'Leave', progressLabel: 'Part 1 of 5', countLabel: '1 of 5',
       part: 1, total: 5, dirty: false,
     }, () => [

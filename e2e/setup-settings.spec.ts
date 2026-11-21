@@ -239,8 +239,10 @@ test('onboarding does not ask the browser to protect storage; the first check-in
   expect(await page.evaluate(() => (window as unknown as { __persistCalls: number[] }).__persistCalls.length)).toBe(0)
 
   await page.goto('./#/checkin')
-  // An empty check-in saves nothing, so there must be something in it.
-  await page.locator('textarea').fill('Un buen día')
+  // An empty check-in saves nothing, so there must be something in it: leave every question, then write a note.
+  while (await page.getByTestId('checkin').getAttribute('data-step') !== 'final') await page.getByTestId('checkin-skip').click()
+  await page.getByTestId('checkin-add-note').click()
+  await page.getByTestId('checkin-note').fill('Un buen día')
   await page.getByRole('button', { name: /Guardar/ }).first().click()
   await expect.poll(() => page.evaluate(() => (window as unknown as { __persistCalls: number[] }).__persistCalls.length)).toBe(1)
 })

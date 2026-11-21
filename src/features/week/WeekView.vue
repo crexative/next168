@@ -22,6 +22,7 @@ import type { PressOption } from './pressOption'
 import DayPager from './DayPager.vue'
 import WeekGrid from './WeekGrid.vue'
 import WeekNav from './WeekNav.vue'
+import { weekRangeLabel } from './weekNavigation'
 import WeekOverview from './WeekOverview.vue'
 import type { BusyDetails } from './busyDetails'
 import { removeBlock, restoreBlock, upsertBlock, type BlockDraft } from './blockEditing'
@@ -103,17 +104,19 @@ function showWeek(change: number): void {
 function showToday(): void {
   weekOffset.value = 0
   pagerIndex.value = pagerIndexFor(dates.value, today.value, 0)
-  viewMode.value = 'day'
 }
 
-// Phone only: one day at a time, or all seven days at a glance (one toolbar button switches).
-const viewMode = ref<'day' | 'week'>('day')
-function toggleView(): void {
-  viewMode.value = viewMode.value === 'day' ? 'week' : 'day'
+// "Día · Semana" (R_Semana): a phone opens on one day, a tablet or desktop on the whole week; each can switch, and a
+// view the person chose stays chosen when the width crosses 768 px (rotating a tablet, resizing a window).
+const range = computed(() => weekRangeLabel(dates.value, locale.value, today.value))
+const chosenView = ref<'day' | 'week' | null>(null)
+const viewMode = computed<'day' | 'week'>(() => chosenView.value ?? (isWide.value ? 'week' : 'day'))
+function setView(view: 'day' | 'week'): void {
+  chosenView.value = view
 }
 function pickDay(index: number): void {
   pagerIndex.value = index
-  viewMode.value = 'day'
+  chosenView.value = 'day'
 }
 
 // A task that moved on to another day says so, and Undo keeps it where it was for the rest of the day.
@@ -146,8 +149,9 @@ function choose(options: PressOption[]): void {
 const root = ref<HTMLElement | null>(null)
 // The sticky strips under the head sit below it: they read its height from --week-head-height.
 const head = ref<HTMLElement | null>(null)
+const setHeadHeight = (height: number) => root.value?.style.setProperty('--week-head-height', `${height}px`)
 const headObserver = typeof ResizeObserver === 'undefined' ? null : new ResizeObserver(([entry]) => {
-  root.value?.style.setProperty('--week-head-height', `${entry!.borderBoxSize[0]?.blockSize ?? entry!.contentRect.height}px`)
+  setHeadHeight(entry!.borderBoxSize[0]?.blockSize ?? entry!.contentRect.height)
 })
 watch(head, (element, previous) => {
   if (previous) headObserver?.unobserve(previous)
@@ -162,7 +166,10 @@ watch(hasGrid, async (shown) => {
   const line = root.value?.querySelector('[data-testid="now-line"]')
   if (!line) return
   positioned = true
-  scrollToNow(line)
+  // The observer reports after layout, later than this: measure now so the strips under the head are placed (and
+  // counted as covering the page) before scrolling to the line.
+  if (head.value) setHeadHeight(head.value.getBoundingClientRect().height)
+  scrollToNow(line, root.value!)
 }, { immediate: true, flush: 'post' })
 
 const detailsOpen = ref(false)
@@ -274,27 +281,28 @@ async function remove(blockId: string): Promise<void> {
       </div>
     </EmptyState>
     <template v-else>
-      <!-- The week's range, arrows and free hours stay under the toolbar, so they show on arrival even when the grid
-           opens on the current hour. -->
       <div ref="head" class="week-head sticky-header" data-testid="week-head">
+        <!-- The subtitle says the week and its free hours (R_Semana); free hours count from now, so only this week has them.
+             Announced when the week changes, so a screen reader hears where it landed. It is in the sticky head with the
+             controls: Week opens on the current hour, and the week shown must still be named. -->
+        <!-- A div: the free-hours badge inside is a paragraph of its own. -->
+        <div class="week-subtitle t-subhead t-secondary">
+          <span data-testid="week-range" aria-live="polite">{{ range }}</span><template v-if="isCurrentWeek"><span aria-hidden="true"> · </span><div class="free-hours-slot" data-testid="week-free-hours-slot"><FreeHoursBadge :document="document" :now="now" :framed="false" /></div></template>
+        </div>
+        <!-- The view switch and the arrows stay under the toolbar, so they show on arrival even when the grid opens on the
+             current hour. -->
         <WeekNav
-          :dates="dates"
-          :today="today"
-          :is-current="isCurrentWeek"
-          :view="isWide ? undefined : viewMode"
+          :view="viewMode"
           @previous="showWeek(-1)"
           @next="showWeek(1)"
           @today="showToday"
-          @toggle-view="toggleView"
-        >
-          <!-- Free hours count from now, so they belong to the current week only. -->
-          <template v-if="isCurrentWeek" #free-hours><FreeHoursBadge :document="document" :now="now" :framed="false" /></template>
-        </WeekNav>
+          @set-view="setView"
+        />
         <!-- In the sticky head: Week opens scrolled to the current hour, and the line must stay in view. -->
         <component :is="GoogleCoverageNotice" v-if="GoogleCoverageNotice && googleAvailable" :ranges="googleRanges" />
       </div>
       <WeekGrid
-        v-if="isWide"
+        v-if="isWide && viewMode === 'week'"
         :dates="dates"
         :today="today"
         :segments="segments"
@@ -366,8 +374,14 @@ async function remove(blockId: string): Promise<void> {
 
 <style scoped src="./stickyHeader.css"></style>
 <style scoped>
+.week-subtitle { margin: 0 var(--page-gutter) var(--space-2); font-variant-numeric: tabular-nums; }
+/* The badge is a sentence of the subtitle here, in its colour. */
+.free-hours-slot { display: inline; }
+.free-hours-slot :deep(p) { display: inline; color: inherit; font: inherit; }
 .week-head {
   position: sticky;
+  /* The subtitle sits under the title as on every page (LargeTitle's gap is for content, not the subtitle). */
+  margin-top: calc(var(--header-gap) * -1);
   top: calc(var(--safe-top) + var(--toolbar-height));
   z-index: 6;
   padding-block: var(--space-1);

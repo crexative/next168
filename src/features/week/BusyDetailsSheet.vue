@@ -51,7 +51,8 @@ dd { margin: 0; overflow-wrap: break-word; }
   padding: var(--space-1) 0;
   border: 0;
   background: transparent;
-  color: var(--danger-label);
+  /* A conflict needs attention, not alarm: amber, as in the grid (DIRECTION principle 6). */
+  color: var(--warning-label);
   font-weight: 600;
   text-align: start;
   cursor: pointer;
