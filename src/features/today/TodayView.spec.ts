@@ -21,7 +21,7 @@ describe('TodayView', () => {
     setActivePinia(pinia)
     configurePlannerStore({ repository: createTestRepositories().planner, now: fixedNow, newId: newTestId, locale: () => 'en', timeZone: () => 'UTC' })
     configureCalendarServices({ texts: new IndexedDbCalendarSourceStore(new IDBFactory()), now: fixedNow })
-    registerCalendars({ registerView: vi.fn(), registerSettingsSection: vi.fn() })
+    registerCalendars({ registerView: vi.fn(), registerSettingsSection: vi.fn(), registerAddEntry: vi.fn() })
     const planner = usePlannerStore(), calendars = useCalendarStore()
     await planner.load()
     expect(await planner.commit(draft => {

@@ -193,45 +193,6 @@ describe('WeekView saving', () => {
     expect(globalThis.document.querySelector<HTMLElement>('[role="dialog"] [role="radio"][aria-checked="true"]')!.dataset.categoryId).toBe('work')
   })
 
-  it('offers Task, Event and Routine from "+" with a one-line hint each, and each entry opens its own sheet', async () => {
-    const { planner } = createTestRepositories()
-    configurePlannerStore({ repository: planner, now: fixedNow, newId: newTestId, locale: () => 'en', timeZone: () => 'UTC' })
-    const pinia = createPinia()
-    setActivePinia(pinia)
-    const store = usePlannerStore()
-    await store.load()
-    await store.commit((draft) => { draft.categories.push({ id: 'work', name: 'Work', colorKey: 'blue', goal: { type: 'none', hoursPerWeek: 0 } }) })
-    i18n.global.locale.value = 'en'
-    const host = globalThis.document.createElement('div')
-    globalThis.document.body.append(host)
-    const app = createApp(WeekView)
-    app.use(pinia).use(i18n).mount(host)
-    cleanup = () => { app.unmount(); host.remove() }
-    await tick()
-
-    const trigger = globalThis.document.querySelector<HTMLElement>('[data-testid="week-add"]')!
-    expect(trigger.getAttribute('aria-expanded')).toBe('false')
-    expect(globalThis.document.querySelector('[role="menu"]')).toBeNull()
-    globalThis.document.body.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true }))
-    trigger.click()
-    await tick()
-    expect(trigger.getAttribute('aria-expanded')).toBe('true')
-    globalThis.document.body.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true }))
-    await tick()
-    expect(trigger.getAttribute('aria-expanded')).toBe('false')
-    expect(globalThis.document.querySelector('[role="menu"]')).toBeNull()
-    trigger.click()
-    await tick()
-    const items = [...globalThis.document.querySelectorAll('[role="menuitem"]')]
-    expect(items.map((item) => item.getAttribute('aria-label'))).toEqual(['Task', 'Event', 'Routine'])
-    const hint = (item: Element) => globalThis.document.getElementById(item.getAttribute('aria-describedby')!)?.textContent
-    expect(items.map(hint)).toEqual(['Something to do; finds its own free slot', 'An appointment on a day and time', 'Repeats every week'])
-    globalThis.document.querySelector<HTMLElement>('[data-testid="add-event"]')!.click()
-    await tick()
-    expect(globalThis.document.querySelector('[role="dialog"] h2')?.textContent).toBe('New event')
-    expect(globalThis.document.querySelector('[role="menu"]')).toBeNull()
-  })
-
   it('shows a task as a dashed chunk inside its block and a done block with a visible status', async () => {
     vi.useFakeTimers({ toFake: ['Date'] })
     vi.setSystemTime(new Date('2026-10-21T08:00:00Z'))
@@ -334,9 +295,8 @@ describe('WeekView saving', () => {
     expect(host.querySelector('.pager')).not.toBeNull()
     expect(host.querySelector('.pager')?.getAttribute('data-active-date')).toBe('2026-10-21')
     expect(host.querySelector<HTMLElement>('[data-testid="pager-track"]')?.style.transform).toBe('translateX(calc(-200% + 0px))')
-    // The thumb-zone "+" replaces the toolbar one on a phone.
-    expect(host.querySelector('.fab-anchor [data-testid="week-add"]')).not.toBeNull()
-    expect(globalThis.document.querySelector('#toolbar-actions [data-testid="week-add"]')).toBeNull()
+    // Week draws no "+" of its own: the shell's one adds (features/add).
+    expect(globalThis.document.querySelector('[data-testid="add-entry"]')).toBeNull()
     // One toolbar button switches between a day and the whole week; its name says what it will show.
     const toggle = () => host.querySelector<HTMLElement>('[data-testid="week-view-toggle"]')!
     expect(host.querySelectorAll('[role="radio"]')).toHaveLength(0)
@@ -419,34 +379,6 @@ describe('WeekView wiring', () => {
     const { host } = await mountWeek(() => undefined)
     expect(host.querySelector('[data-testid="setup-week"]')).not.toBeNull()
     expect(host.querySelector('a[href="#/settings"]')).toBeNull()
-  })
-
-  it('adds a task from "+" without choosing a category: it appears in a free slot, outside the routine blocks', async () => {
-    const { host, store } = await mountWeek((draft) => {
-      draft.categories.push(work)
-      // Work covers Wednesday 10:00-13:00; now is 10:15, so the first free time is 13:00.
-      draft.blocks.push({ id: 'focus', categoryId: 'work', title: 'Focus', start: 600, end: 780, days: [3] })
-    })
-    globalThis.document.querySelector<HTMLElement>('[data-testid="week-add"]')!.click()
-    await tick()
-    globalThis.document.querySelector<HTMLElement>('[data-testid="add-task"]')!.click()
-    await tick()
-    const title = globalThis.document.querySelector<HTMLInputElement>('[role="dialog"] [data-testid="task-title"]')!
-    title.value = 'Buy a gift for mum'
-    title.dispatchEvent(new Event('input'))
-    await tick()
-    // A task with no length is a to-do the week never places, so this one gets an hour.
-    ;[...globalThis.document.querySelectorAll<HTMLElement>('[role="dialog"] [role="radio"]')].find((radio) => radio.textContent?.trim() === '1 h')!.click()
-    await tick()
-    globalThis.document.querySelector<HTMLButtonElement>('[role="dialog"] button[type="submit"]')!.click()
-    await store.settled()
-    await tick()
-    expect(store.document!.tasks).toMatchObject([{ title: 'Buy a gift for mum', durationMin: 60 }])
-    expect(store.document!.tasks[0]).not.toHaveProperty('categoryId')
-    const chunk = host.querySelector<HTMLElement>('[data-date="2026-10-21"] [data-testid="week-task"]')!
-    expect(chunk.dataset.startMinute).toBe('780')
-    expect(chunk.getAttribute('aria-label')).toContain('Buy a gift for mum')
-    await vi.waitFor(() => expect(globalThis.document.querySelector('[role="dialog"]')).toBeNull())
   })
 
   it('opens the task sheet when a placed task is tapped, and a change made there moves it', async () => {

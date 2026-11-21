@@ -20,7 +20,7 @@ it('places tasks around imported calendar events, not on top of them', async () 
   setActivePinia(pinia)
   configurePlannerStore({ repository: createTestRepositories().planner, now: fixedNow, newId: newTestId, locale: () => 'en', timeZone: () => 'UTC' })
   configureCalendarServices({ texts: new IndexedDbCalendarSourceStore(new IDBFactory()), now: fixedNow })
-  registerCalendars({ registerView: vi.fn(), registerSettingsSection: vi.fn() })
+  registerCalendars({ registerView: vi.fn(), registerSettingsSection: vi.fn(), registerAddEntry: vi.fn() })
   const planner = usePlannerStore(), calendars = useCalendarStore()
   await planner.load()
   await planner.commit(draft => {
@@ -99,7 +99,7 @@ it('shows a task split around an off-grid busy slot as one row with five-minute 
   setActivePinia(pinia)
   configurePlannerStore({ repository: createTestRepositories().planner, now: fixedNow, newId: newTestId, locale: () => 'en', timeZone: () => 'UTC' })
   configureCalendarServices({ texts: new IndexedDbCalendarSourceStore(new IDBFactory()), now: fixedNow })
-  registerCalendars({ registerView: vi.fn(), registerSettingsSection: vi.fn() })
+  registerCalendars({ registerView: vi.fn(), registerSettingsSection: vi.fn(), registerAddEntry: vi.fn() })
   const planner = usePlannerStore(), calendars = useCalendarStore()
   await planner.load()
   await planner.commit(draft => {

@@ -58,7 +58,7 @@
     "block": "Routine",
     "event": "Événement",
     "task": "Tâche",
-    "taskHint": "À faire ; trouve seule un créneau libre",
+    "taskHint": "À faire. Trouve seule un créneau libre.",
     "eventHint": "Un rendez-vous à jour et heure fixes",
     "blockHint": "Se répète chaque semaine"
   },

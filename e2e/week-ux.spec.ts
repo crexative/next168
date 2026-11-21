@@ -164,12 +164,12 @@ for (const theme of THEMES) {
 
       test('"+" offers Tarea, Evento and Rutina, and an event created there shows in Week', async ({ page }) => {
         await openWeek(page, theme, size)
-        const trigger = page.getByTestId('week-add')
+        const trigger = page.getByTestId('add-entry')
         await expect(trigger).toHaveAttribute('aria-haspopup', 'menu')
         await expect(trigger).toHaveAttribute('aria-expanded', 'false')
         await trigger.click()
         await expect(trigger).toHaveAttribute('aria-expanded', 'true')
-        await expect(page.getByRole('menuitem')).toHaveText([/^TareaAlgo por hacer; busca su hueco libre$/, /^EventoUna cita con día y hora$/, /^RutinaSe repite cada semana$/])
+        await expect(page.getByRole('menuitem')).toHaveText([/^TareaAlgo por hacer\. Busca su hueco\.$/, /^EventoUna cita con día y hora$/, /^RutinaSe repite cada semana$/])
         await expect(page.getByRole('menuitem', { name: 'Rutina', exact: true })).toHaveAccessibleDescription('Se repite cada semana')
         // Keyboard: the first entry has focus; Escape closes and gives focus back.
         await expect(page.getByRole('menuitem', { name: 'Tarea', exact: true })).toBeFocused()
@@ -201,7 +201,7 @@ for (const theme of THEMES) {
 
       test('a routine can still be added from "+" and the menu closes on outside press', async ({ page }) => {
         await openWeek(page, theme, size)
-        await page.getByTestId('week-add').click()
+        await page.getByTestId('add-entry').click()
         await expect(page.getByRole('menu')).toBeVisible()
         await page.getByRole('heading', { level: 1 }).click({ force: true })
         await expect(page.getByRole('menu')).toHaveCount(0)
@@ -216,7 +216,7 @@ for (const theme of THEMES) {
 
       test('axe finds no serious or critical issues with tasks, the menu and the sheet', async ({ page }) => {
         await openWeek(page, theme, size)
-        await page.getByTestId('week-add').click()
+        await page.getByTestId('add-entry').click()
         await expect(page.getByRole('menu')).toBeVisible()
         // The menu fades in: axe must not sample it halfway (contrast is judged on the blended colours).
         await expect(page.getByRole('menu')).toHaveCSS('opacity', '1')
@@ -230,25 +230,25 @@ for (const theme of THEMES) {
   test.describe(`week on a phone (${theme})`, () => {
     test.beforeEach(onlyProject('phone'))
 
-    // Material 3 FAB placement: 56 px, 16 px above the tab bar and 16 px from the trailing edge (the owner, 2026-10-25:
-    // "+" sat too high, over the grid).
-    test('"+" floats in the thumb zone 16 px above the tab bar, and the toolbar has no second one', async ({ page }) => {
+    // The one "+" (redesign 2026-11): 60 px, beside the floating tab bar, 16 px from the edge and the bottom.
+    test('"+" sits beside the floating tab bar, and the toolbar has no second one', async ({ page }) => {
       await openWeek(page, theme, 'phone')
-      const add = page.getByTestId('week-add')
+      const add = page.getByTestId('add-entry')
       await expect(add).toHaveCount(1)
-      await expect(page.locator('#toolbar-actions').getByTestId('week-add')).toHaveCount(0)
+      await expect(page.locator('#toolbar-actions').getByTestId('add-entry')).toHaveCount(0)
       const target = await box(add)
       const tabbar = await box(page.locator('.tabbar'))
-      expect(target.width).toBeCloseTo(56, 0)
-      expect(target.height).toBeCloseTo(56, 0)
-      expect(tabbar.y - (target.y + target.height)).toBeCloseTo(16, 0)
+      expect(target.width).toBeCloseTo(60, 0)
+      expect(target.height).toBeCloseTo(60, 0)
+      expect(target.y + target.height).toBeCloseTo(tabbar.y + tabbar.height, 0)
+      expect(target.x - (tabbar.x + tabbar.width)).toBeCloseTo(16, 0)
       expect(SIZES.phone.width - (target.x + target.width)).toBeCloseTo(16, 0)
     })
 
-    test('the last hours scroll clear of "+", and "+" stacks above the undo toast', async ({ page }) => {
+    test('the last hours scroll clear of the tab bar and "+", and the undo toast stands above them', async ({ page }) => {
       await openWeek(page, theme, 'phone')
       await page.evaluate(() => window.scrollTo({ top: document.documentElement.scrollHeight, behavior: 'instant' }))
-      const add = await box(page.getByTestId('week-add'))
+      const add = await box(page.getByTestId('add-entry'))
       const lastHour = await box(column(page, WEDNESDAY))
       expect(lastHour.y + lastHour.height).toBeLessThanOrEqual(add.y)
 
@@ -257,12 +257,11 @@ for (const theme of THEMES) {
       const toast = page.getByTestId('undo-toast')
       await expect(toast).toBeVisible()
       await page.waitForFunction(() => document.getAnimations().every((animation) => animation.playState !== 'running'))
-      const lifted = await box(page.getByTestId('week-add'))
       const toastBox = await box(toast)
-      expect(toastBox.y - (lifted.y + lifted.height)).toBeCloseTo(16, 0)
+      expect(add.y - (toastBox.y + toastBox.height)).toBeGreaterThanOrEqual(12)
+      expect((await box(page.getByTestId('add-entry'))).y).toBeCloseTo(add.y, 0)
       await toast.getByRole('button', { name: 'Deshacer' }).click()
       await expect(toast).toHaveCount(0)
-      await expect.poll(async () => (await box(page.getByTestId('week-add'))).y).toBeCloseTo(add.y, 0)
     })
 
     test('one toolbar button shows the whole week at a glance and a day opens from it', async ({ page }) => {
@@ -314,10 +313,10 @@ for (const theme of THEMES) {
 test.describe('week on desktop', () => {
   test.beforeEach(onlyProject('desktop'))
 
-  test('"+" sits in the toolbar and there is no floating one', async ({ page }) => {
+  test('"Añadir" sits in the title row and there is no floating one', async ({ page }) => {
     await openWeek(page, 'light', 'desktop')
-    await expect(page.locator('#toolbar-actions').getByTestId('week-add')).toHaveCount(1)
-    await expect(page.locator('.fab-anchor')).toHaveCount(0)
+    await expect(page.locator('.title-trailing').getByTestId('add-entry')).toHaveText('Añadir')
+    await expect(page.locator('[data-floating-add]')).toHaveCount(0)
     await expect(page.getByTestId('week-view-toggle')).toHaveCount(0)
   })
 })
@@ -555,7 +554,7 @@ test.describe('tasks in Week', () => {
     expect(await focusInside(page, 'Nuevo evento')).toBe(true)
     await page.keyboard.press('Escape')
     await expect(sheet).toBeHidden()
-    await expect(page.getByTestId('week-add')).toBeFocused()
+    await expect(page.getByTestId('add-entry')).toBeFocused()
   })
 
   test('the sticky day header is a thick material that hides what scrolls under it, and labels are drawn above the now-line', async ({ page }) => {

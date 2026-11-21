@@ -27,7 +27,7 @@ registerIcons({ 'panel-left': PanelLeft })
 
 const { t } = useI18n()
 const planner = usePlannerStore()
-const { views, tabs } = shell
+const { views, tabs, addEntry } = shell
 
 const { current } = useHashRoute(() => new Set(views.keys()))
 const currentView = computed(() => views.get(current.value) ?? views.get('today'))
@@ -51,6 +51,17 @@ const sidebarVisible = sidebar.visible
 // A persistent, visible sidebar already lists the assistant and Settings; the toolbar shows them otherwise.
 const toolbarEntriesShown = computed(() => !(layout.value === 'persistent' && sidebarVisible.value))
 const overlayOpen = computed(() => layout.value === 'overlay' && sidebarVisible.value)
+// From 768 px the tabs sit in the toolbar whenever the sidebar is not beside the content, so navigation never hides.
+const topTabsShown = computed(() => layout.value !== 'none' && toolbarEntriesShown.value)
+// The one "+" (DIRECTION principle 4), on the four tabs only: beside the phone's tab bar, at the end of the tablet
+// toolbar, in the desktop title row.
+const isTab = computed(() => currentView.value?.tabOrder !== undefined)
+const addPlacement = computed(() => layout.value === 'none' ? 'floating' : layout.value === 'overlay' ? 'toolbar' : 'title')
+// A view of plain lists asks for the white page; every other screen keeps the grouped grey.
+watch(() => currentView.value?.backdrop, (backdrop) => {
+  if (backdrop) document.documentElement.dataset.backdrop = backdrop
+  else delete document.documentElement.dataset.backdrop
+}, { immediate: true })
 // While a full-screen flow owns the screen, everything of the shell behind it is inert. The live announcer and the undo
 // toast's announcement stay outside, so what happens is still heard (the toast's own button is inert, UndoToast.vue).
 const covered = computed(() => anyFullScreenOpen())
@@ -199,6 +210,20 @@ dismissUndoWhenChanged(() => planner.document?.workspaceId)
         <Transition v-else name="view" mode="out-in" @after-leave="scrollToTop" @after-enter="onViewEntered">
           <div v-if="currentView" :key="currentView.id" class="view" :data-view="currentView.id" :data-measure="FULL_WIDTH_VIEWS.has(currentView.id) ? 'full' : 'readable'">
             <LargeTitle :title="t(currentView.titleKey)">
+              <template #center>
+                <nav v-if="topTabsShown" class="top-tabs" :aria-label="t('app.navigation.tabs')" data-testid="top-tabs">
+                  <a
+                    v-for="tab in tabs"
+                    :key="tab.id"
+                    class="top-tab"
+                    :href="viewHash(tab.id)"
+                    :aria-current="current === tab.id ? 'page' : undefined"
+                  >{{ t(tab.titleKey) }}</a>
+                </nav>
+              </template>
+              <template v-if="addEntry && isTab && addPlacement === 'title'" #trailing>
+                <component :is="addEntry.component" :view="currentView.id" placement="title" />
+              </template>
               <template #actions>
                 <span v-show="toolbarEntriesShown" class="toolbar-entries" data-testid="toolbar-entries">
                   <a
@@ -214,6 +239,7 @@ dismissUndoWhenChanged(() => planner.document?.workspaceId)
                     <Icon :name="entry.icon" :size="24" />
                   </a>
                 </span>
+                <component :is="addEntry.component" v-if="addEntry && isTab && addPlacement === 'toolbar'" :view="currentView.id" placement="toolbar" />
               </template>
             </LargeTitle>
             <component :is="currentView.component" />
@@ -230,10 +256,13 @@ dismissUndoWhenChanged(() => planner.document?.workspaceId)
         :href="viewHash(tab.id)"
         :aria-current="current === tab.id ? 'page' : undefined"
       >
-        <Icon :name="tab.icon ?? ''" :size="24" />
+        <Icon :name="tab.icon ?? ''" :size="22" />
         <span>{{ t(tab.titleKey) }}</span>
       </a>
     </nav>
+    <div v-if="addEntry && isTab && addPlacement === 'floating'" class="tabbar-add" :inert="covered || undefined">
+      <component :is="addEntry.component" :view="currentView?.id ?? 'today'" placement="floating" />
+    </div>
     <LiveAnnouncer />
   </div>
 </template>
@@ -242,9 +271,13 @@ dismissUndoWhenChanged(() => planner.document?.workspaceId)
 /* --sidebar-inset is the width the sidebar takes beside the content (0 when hidden or overlaid); fixed bars
    that centre themselves in the content (undo toast, banners) read it too. */
 .shell { --sidebar-inset: 0px; min-height: 100dvh; padding-inline: var(--safe-left) var(--safe-right); }
-.shell[data-layout='persistent'][data-sidebar='shown'] { --sidebar-inset: var(--sidebar-width); }
+.shell[data-layout='persistent'][data-sidebar='shown'] {
+  --sidebar-inset: var(--sidebar-width);
+  /* Nothing else lives in the toolbar here, so the title and "Añadir" take its row (the desktop page toolbar). */
+  --title-top: calc(var(--safe-top) + var(--space-4));
+}
 /* --banners-height is the height of the fixed bottom notices (StatusBanners), so none of them covers the end of a page. */
-.content { padding-bottom: calc(var(--tabbar-height) + var(--safe-bottom) + var(--space-4) + var(--banners-height, 0px)); }
+.content { padding-bottom: calc(var(--tabbar-inset) + var(--space-4) + var(--banners-height, 0px)); }
 .main { outline: none; }
 .view { margin-inline: auto; }
 /* 720 px: one measure for every text and list screen, centred in the space beside the sidebar. */
@@ -252,39 +285,81 @@ dismissUndoWhenChanged(() => planner.document?.workspaceId)
 
 .tabbar {
   position: fixed;
-  inset: auto 0 0;
+  left: calc(var(--safe-left) + var(--tabbar-float));
+  bottom: calc(var(--safe-bottom) + var(--tabbar-float));
   z-index: 20;
-  display: flex;
-  justify-content: center;
-  height: var(--tabbar-inset);
-  padding: 0 var(--safe-right) var(--safe-bottom) var(--safe-left);
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  /* The "+" takes 60 px and a 16 px gap at the trailing end. */
+  width: calc(100% - var(--safe-left) - var(--safe-right) - 2 * var(--tabbar-float) - 60px - var(--tabbar-float));
+  height: var(--tabbar-height);
+  padding: 4px;
+  border: 0.5px solid var(--separator);
+  border-radius: 30px;
   background: var(--material);
   -webkit-backdrop-filter: var(--material-filter);
   backdrop-filter: var(--material-filter);
-  border-top: 0.5px solid var(--separator);
+  box-shadow: var(--shadow-bar);
+}
+.tabbar-add {
+  position: fixed;
+  right: calc(var(--safe-right) + var(--tabbar-float));
+  bottom: calc(var(--safe-bottom) + var(--tabbar-float));
+  z-index: 21;
+  display: flex;
 }
 .tabbar-item {
   position: relative;
   display: flex;
-  flex: 1;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 2px;
-  max-width: 7.5rem;
+  gap: 1px;
   min-width: 0;
   min-height: var(--tap-target);
+  /* A long label (German "Übersicht" at 320 px) ellipsizes inside its own capsule, never running into the next. */
+  padding-inline: 2px;
+  border-radius: 26px;
   color: var(--label-2);
   text-decoration: none;
-  transition: transform 0.1s var(--ease-out);
+  transition: transform 0.1s var(--ease-out), background-color 0.15s;
   touch-action: manipulation;
 }
 .tabbar-item:active { transform: scale(0.97); }
 /* Like the system tab bar, labels stop growing at large text sizes (the icon and the accessible name stay). */
-.tabbar-item span { max-width: 100%; overflow: hidden; font-size: min(0.75rem, 15px); text-overflow: ellipsis; white-space: nowrap; }
-/* The bar touches the screen edges, so its items draw the focus ring inside themselves. */
-.tabbar-item:focus-visible { outline-offset: -2px; border-radius: var(--radius-control); }
-.tabbar-item[aria-current='page'] { color: var(--tint-label); }
+.tabbar-item span { max-width: 100%; overflow: hidden; font-size: min(0.75rem, 15px); font-weight: 600; text-overflow: ellipsis; white-space: nowrap; }
+.tabbar-item:focus-visible { outline-offset: -2px; }
+.tabbar-item[aria-current='page'] { background: var(--tint-soft); color: var(--tint-label); }
+
+/* Tablet (and desktop with the sidebar hidden): the tabs as a capsule in the toolbar. */
+.top-tabs {
+  display: flex;
+  gap: 2px;
+  max-width: 100%;
+  /* 3 px around 44 px tabs: every tab is a full target, like the segments. */
+  height: calc(var(--tap-target) + 6px);
+  padding: 3px;
+  border-radius: 25px;
+  background: var(--fill);
+}
+/* At large text a label shrinks and ellipsizes inside its capsule rather than push the bar past the actions. */
+.top-tab {
+  flex: 0 1 auto;
+  min-width: 0;
+  padding: 0 clamp(10px, 2.2vw, 18px);
+  overflow: hidden;
+  border-radius: 19px;
+  color: var(--label);
+  font-size: min(0.9375rem, 19px);
+  font-weight: 600;
+  line-height: calc(var(--tap-target) - 6px);
+  text-align: center;
+  text-decoration: none;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.top-tab[aria-current='page'] { background: var(--segment-selected); box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12); }
+.top-tab:focus-visible { outline-offset: -2px; }
 
 .toolbar-entries { display: inline-flex; align-items: center; gap: var(--space-2); }
 .toolbar-entry {
@@ -294,7 +369,7 @@ dismissUndoWhenChanged(() => planner.document?.workspaceId)
   width: var(--tap-target);
   height: var(--tap-target);
   border-radius: 50%;
-  color: var(--tint-label);
+  color: var(--label-2);
   text-decoration: none;
   transition: transform 0.1s var(--ease-out), opacity 0.1s;
   touch-action: manipulation;
@@ -320,7 +395,7 @@ dismissUndoWhenChanged(() => planner.document?.workspaceId)
 .view-enter-from, .view-leave-to { opacity: 0; }
 
 @media (min-width: 768px) {
-  .tabbar { display: none; }
+  .tabbar, .tabbar-add { display: none; }
   .content { margin-inline-start: var(--sidebar-inset); padding-bottom: calc(var(--space-8) + var(--banners-height, 0px)); }
 
   /* Same spot whether the sidebar is shown or hidden: the leading edge of the toolbar row. */
@@ -338,7 +413,7 @@ dismissUndoWhenChanged(() => planner.document?.workspaceId)
     border: 0;
     border-radius: var(--radius-control);
     background: transparent;
-    color: var(--tint-label);
+    color: var(--label-2);
     transition: transform 0.1s var(--ease-out), opacity 0.1s;
     touch-action: manipulation;
   }
@@ -402,11 +477,11 @@ dismissUndoWhenChanged(() => planner.document?.workspaceId)
 </style>
 
 <style>
-/* --tabbar-inset is what the tab bar takes from the bottom of the screen, its safe area included: floating controls
-   stand on it instead of adding the bar's height and the safe area again. The tab bar's own height is this value. */
-:root { --tabbar-inset: calc(var(--tabbar-height) + var(--safe-bottom)); }
+/* --tabbar-inset is what the floating tab bar takes from the bottom of the screen (its height, the 16 px it floats and
+   the safe area): floating controls stand on it instead of adding those again. */
+:root { --tabbar-float: 16px; --tabbar-inset: calc(var(--tabbar-height) + var(--tabbar-float) + var(--safe-bottom)); }
 /* No tab bar from 768 px: bottom offsets that clear it collapse to the safe area. */
 @media (min-width: 768px) {
-  :root { --tabbar-height: 0px; }
+  :root { --tabbar-height: 0px; --tabbar-float: 0px; }
 }
 </style>

@@ -48,13 +48,57 @@ test.describe('app shell', () => {
       await expect(page.getByRole('navigation', { name: 'Main navigation' })).toBeHidden()
     } else if (width >= 768) {
       await expect(toolbarSettings).toBeVisible()
-      await expect(page.getByRole('navigation', { name: 'Main navigation' })).toBeHidden()
+      // The tablet keeps its tabs visible in the toolbar (redesign 2026-11); the sidebar still opens from panel-left.
+      await expect(page.getByTestId('top-tabs')).toBeVisible()
+      await expect(page.locator('.tabbar')).toBeHidden()
       await page.getByTestId('sidebar-toggle').click()
       await expect(footer.getByRole('link', { name: 'Settings' })).toBeVisible()
     } else {
       await expect(toolbarSettings).toBeVisible()
       await expect(page.getByRole('navigation', { name: 'Sidebar' })).toBeHidden()
     }
+  })
+
+  // Review of #53: the toolbar let presses through to the title row, so the tablet's tabs could not be pressed. Real
+  // pointer presses (not DOM clicks) on every tab, on a tablet and on a desktop with the sidebar hidden.
+  test('the toolbar tabs take real presses on a tablet and on a desktop with the sidebar hidden', async ({ page }, testInfo) => {
+    test.skip(testInfo.project.name === 'phone' || testInfo.project.name === 'webkit-phone', 'no toolbar tabs on a phone')
+    await page.goto('./#/today')
+    await expect(page.getByRole('heading', { level: 1, name: 'Today' })).toBeVisible()
+    if (page.viewportSize()!.width >= 1024) {
+      await page.getByTestId('sidebar-toggle').click()
+      await expect(page.locator('#app-sidebar')).toBeHidden()
+    }
+    const tabs = page.getByTestId('top-tabs')
+    for (const [name, hash] of [['Tasks', 'tasks'], ['Week', 'week'], ['Summary', 'insights'], ['Today', 'today']] as const) {
+      const tab = tabs.getByRole('link', { name })
+      const box = (await tab.boundingBox())!
+      expect(box.height, `${name} is a full target`).toBeGreaterThanOrEqual(44)
+      await page.mouse.click(box.x + box.width / 2, box.y + box.height / 2)
+      await expect(page).toHaveURL(new RegExp(`#/${hash}$`))
+      await expect(page.getByRole('heading', { level: 1, name })).toBeVisible()
+    }
+  })
+
+  // Review of #53: once the toolbar is collapsed (a bar of material over the page) a press on it must stay on the bar,
+  // never reach the controls scrolled under it.
+  test('a press on the collapsed toolbar never reaches the content under it', async ({ page }) => {
+    await page.setViewportSize({ width: page.viewportSize()!.width, height: 500 })
+    await page.goto('./#/settings')
+    await expect(page.getByRole('heading', { level: 1, name: 'Settings' })).toBeVisible()
+    await page.evaluate(() => window.scrollTo(0, 400))
+    await expect(page.locator('.toolbar[data-collapsed]')).toHaveCount(1)
+    const bar = (await page.locator('.toolbar[data-collapsed]').boundingBox())!
+    // The bar's middle, clear of its icons at the trailing end.
+    const x = bar.x + Math.min(bar.width / 3, 120)
+    const y = bar.y + bar.height - 12
+    const hit = await page.evaluate(([px, py]) => !!document.elementFromPoint(px!, py!)?.closest('.toolbar'), [x, y])
+    expect(hit).toBe(true)
+    const scrolled = await page.evaluate(() => window.scrollY)
+    await page.mouse.click(x, y)
+    await expect(page).toHaveURL(/#\/settings$/)
+    await expect(page.getByRole('dialog')).toHaveCount(0)
+    expect(await page.evaluate(() => window.scrollY)).toBe(scrolled)
   })
 
   test('no horizontal scroll from 320 to 1920 px', async ({ page }, testInfo) => {

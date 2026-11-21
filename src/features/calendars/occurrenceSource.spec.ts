@@ -18,7 +18,7 @@ beforeEach(async () => {
   configurePlannerStore({ repository: createTestRepositories().planner, now: fixedNow, newId: newTestId, locale: () => 'en', timeZone: () => 'UTC' })
   configureCalendarServices({ texts: new IndexedDbCalendarSourceStore(new IDBFactory()), now: fixedNow })
   await usePlannerStore().load()
-  registerCalendars({ registerView: vi.fn(), registerSettingsSection: vi.fn() })
+  registerCalendars({ registerView: vi.fn(), registerSettingsSection: vi.fn(), registerAddEntry: vi.fn() })
   consumer = effectScope()
 })
 afterEach(() => { consumer.stop(); setExternalOccurrenceSource(async () => []) })

@@ -8,7 +8,6 @@ import Button from '@/ui/Button.vue'
 import EmptyState from '@/ui/EmptyState.vue'
 import { useUndoToast } from '@/ui/undoToast'
 import { useMediaQuery } from '@/ui/useMediaQuery'
-import EventSheet from '@/features/calendars/EventSheet.vue'
 import { calendarNames as calendarNamesOf } from '@/features/calendars/calendarLabel'
 import { GoogleCoverageNotice, googleAvailable } from '@/features/calendars/googleCalendar'
 import FreeHoursBadge from '@/features/capacity/FreeHoursBadge.vue'
@@ -16,8 +15,6 @@ import SetupWeekPrompt from '@/features/onboarding/SetupWeekPrompt.vue'
 import { openAdd, setupWeekOffered } from '@/features/onboarding/reopen'
 import { defaultTaskCategoryId } from '@/features/onboarding/templates'
 import TaskSheet from '@/features/tasks/TaskSheet.vue'
-import type { AddKind } from './addKind'
-import AddMenu from './AddMenu.vue'
 import BlockEditorSheet from './BlockEditorSheet.vue'
 import BusyDetailsSheet from './BusyDetailsSheet.vue'
 import PressChooserSheet from './PressChooserSheet.vue'
@@ -169,7 +166,6 @@ watch(hasGrid, async (shown) => {
 const detailsOpen = ref(false)
 const details = ref<BusyDetails | null>(null)
 const editorOpen = ref(false)
-const eventOpen = ref(false)
 const taskOpen = ref(false)
 // The task shown in the sheet; none means a new one.
 const editingTaskId = ref<string | undefined>()
@@ -185,13 +181,6 @@ function openNew(date: string, start: number): void {
     start, end: (start + DEFAULT_BLOCK_MINUTES) % 1440, days: [dayIndexOf(date)],
   }
   editorOpen.value = true
-}
-
-function addFromMenu(kind: AddKind): void {
-  if (!planner.writable) return
-  if (kind === 'event') eventOpen.value = true
-  else if (kind === 'task') openTask(undefined)
-  else openAdd('routine')
 }
 
 function openTask(taskId: string | undefined): void {
@@ -266,11 +255,8 @@ async function remove(blockId: string): Promise<void> {
 </script>
 
 <template>
-  <div v-if="document" ref="root" class="week-view" :class="{ 'has-fab': !isWide && hasCategories && planner.writable }" :style="{ '--hour-height': `${HOUR_HEIGHT_PX}px` }">
+  <div v-if="document" ref="root" class="week-view" :style="{ '--hour-height': `${HOUR_HEIGHT_PX}px` }">
     <p class="visually-hidden" data-testid="block-count" :data-count="blockCount">{{ t('week.summary', { count: blockCount }, blockCount) }}</p>
-    <Teleport v-if="isWide && hasCategories && planner.writable" to="#toolbar-actions" defer>
-      <AddMenu variant="toolbar" placement="below" @choose="addFromMenu" />
-    </Teleport>
 
     <!-- Without the grid (no categories, or nothing to show after a reload) the Google line still says what is missing. -->
     <component :is="GoogleCoverageNotice" v-if="GoogleCoverageNotice && googleAvailable && !hasGrid" :ranges="googleRanges" />
@@ -360,9 +346,6 @@ async function remove(blockId: string): Promise<void> {
     </template>
 
     <!-- Thumb zone: on a phone the toolbar is out of reach, so "+" floats above the tab bar. -->
-    <div v-if="!isWide && hasCategories && planner.writable" class="fab-anchor">
-      <AddMenu variant="fab" placement="above" @choose="addFromMenu" />
-    </div>
 
     <PressChooserSheet v-model:open="chooserOpen" :options="chooserOptions" />
     <BusyDetailsSheet v-if="details" v-model:open="detailsOpen" :details="details" :editable="planner.writable" @select="openConflict" />
@@ -375,33 +358,12 @@ async function remove(blockId: string): Promise<void> {
       @save="save"
       @delete="remove"
     />
-    <EventSheet v-model:open="eventOpen" />
     <TaskSheet v-model:open="taskOpen" :task-id="editingTaskId" />
   </div>
 </template>
 
 <style scoped src="./stickyHeader.css"></style>
 <style scoped>
-/* The floating "+" follows the Material FAB placement: --fab-margin above whatever is docked under it (the tab bar,
-   or a status banner or the undo toast standing on it) and from the screen's trailing edge. Its menu opens above it
-   and scrolls rather than leave the screen. */
-.fab-anchor {
-  --fab-bottom: calc(var(--tabbar-inset) + max(var(--banners-height, 0px), var(--undo-toast-lift, 0px)) + var(--fab-margin));
-  --add-menu-max-height: calc(100dvh - var(--fab-bottom) - var(--fab-size) - var(--space-2) - var(--safe-top) - var(--fab-margin));
-  position: fixed;
-  z-index: 15;
-  /* Flex, not a block: a block would hold the button on a text line, which at large text is taller than the button
-     and puts its bottom wherever the font's baseline falls (1.8 px off on Linux at 300 %). */
-  display: flex;
-  inset-inline-end: calc(var(--fab-margin) + var(--safe-right));
-  bottom: var(--fab-bottom);
-  transition: bottom 0.2s var(--ease-out);
-}
-/* The last hours scroll clear of the "+": the page ends a margin above it. */
-.has-fab { padding-bottom: calc(var(--fab-size) + var(--fab-margin)); }
-@media (prefers-reduced-motion: reduce) {
-  .fab-anchor { transition: none; }
-}
 .week-head {
   position: sticky;
   top: calc(var(--safe-top) + var(--toolbar-height));

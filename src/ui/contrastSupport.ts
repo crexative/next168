@@ -33,5 +33,5 @@ export function mixOver(fill: Rgb, percent: number, surface: Rgb): Rgb {
   return fill.map((channel, index) => channel * alpha + surface[index]! * (1 - alpha)) as Rgb
 }
 
-// Page/grouped background, elevated/card surface, and secondary surface.
-export const SURFACES = ['--bg', '--surface', '--surface-2']
+// Plain page, grouped page (the default until a screen is redesigned), elevated/card surface, and secondary surface.
+export const SURFACES = ['--bg', '--bg-grouped', '--surface', '--surface-2']

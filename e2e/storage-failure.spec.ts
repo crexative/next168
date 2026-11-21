@@ -55,7 +55,7 @@ test('(b) a write that hits the quota blocks editing and exports the last commit
   await expect(page.getByTestId('last-change-not-saved')).toHaveText('Your last change was not saved. Everything before it is safe.')
   await expect(page.getByRole('status').filter({ hasText: 'Added' })).toHaveCount(0)
   // Nothing can reopen it over the error screen: Week and its "+" are gone while it shows.
-  await expect(page.getByTestId('week-add')).toHaveCount(0)
+  await expect(page.getByTestId('add-entry')).toHaveCount(0)
   await page.getByRole('link', { name: 'Tasks' }).first().click()
   await expect(page.getByTestId('storage-error')).toBeVisible()
   await expect(page.getByRole('heading', { level: 1, name: 'Tasks' })).toHaveCount(0)

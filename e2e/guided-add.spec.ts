@@ -285,7 +285,7 @@ test.describe('closing, leaving and conflicts (S2-10, S2-13)', () => {
     await onScreen(page, 'extra:family')
     await page.keyboard.press('Escape')
     await expect(page.getByTestId('setup')).toHaveCount(0)
-    await expect(page.getByTestId('week-add')).toBeFocused()
+    await expect(page.getByTestId('add-entry')).toBeFocused()
     expect(await bytes(page)).toEqual(before)
     await addFromMenu(page, 'Rutina')
     await onScreen(page, 'more')

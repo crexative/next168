@@ -138,6 +138,9 @@ function fitBackLabel(): void {
   let right = container.getBoundingClientRect().right
   const actions = container.querySelector<HTMLElement>('.toolbar-actions')
   if (actions) right = Math.min(right, actions.getBoundingClientRect().left)
+  // The tablet's tabs sit in the toolbar's centre: the label stops before them too.
+  const tabs = container.querySelector<HTMLElement>('.toolbar-center > *')
+  if (tabs) right = Math.min(right, tabs.getBoundingClientRect().left)
   const title = container.querySelector<HTMLElement>('.toolbar-title')
   if (title && container.closest('.toolbar')?.hasAttribute('data-collapsed')) {
     const box = title.getBoundingClientRect()
@@ -164,7 +167,7 @@ onMounted(() => {
     if (toolbar.value && typeof ResizeObserver !== 'undefined') {
       resizeObserver = new ResizeObserver(fitBackLabel)
       resizeObserver.observe(toolbar.value)
-      for (const child of toolbar.value.querySelectorAll('.toolbar-title, .toolbar-actions, .back-button span')) resizeObserver.observe(child)
+      for (const child of toolbar.value.querySelectorAll('.toolbar-title, .toolbar-center, .toolbar-actions, .back-button span')) resizeObserver.observe(child)
     }
     const header = toolbar.value?.closest('.toolbar')
     if (header) {

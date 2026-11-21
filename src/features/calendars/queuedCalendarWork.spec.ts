@@ -199,7 +199,7 @@ describe('a Data import confirmed before a delete-all', () => {
     const { thisTab, texts, planner, deleteAllElsewhere } = await setup([])
     configureCalendarServices({ texts, fetcher: { fetch: async () => feed('unused') }, purgeGuard: thisTab.planner, now: () => NOW })
     const { default: registerCalendars } = await import('./index')
-    registerCalendars({ registerView: () => undefined, registerSettingsSection: () => undefined })
+    registerCalendars({ registerView: () => undefined, registerSettingsSection: () => undefined, registerAddEntry: () => undefined })
     const { buildExportFile } = await import('@/features/settings/data/dataTransfer')
     const imported: PlannerDocument = { ...planner.document!, calendarSources: [removedSource] }
     const bundle = await buildExportFile(imported, { get: async () => feed('Imported'), put: async () => undefined, delete: async () => undefined, list: async () => [] }, { now: () => NOW })

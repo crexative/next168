@@ -35,9 +35,10 @@ describe('tinted fills used with --tint-label / --danger-label', () => {
   it('finds the known 12% buttons and 14% fills in the sources', () => {
     const places = fills.map(({ where, percent }) => `${percent}% ${where.split(':')[0]}`)
     for (const expected of [
-      '12% src/ui/Button.vue', '14% src/app/AppShell.vue', '14% src/features/week/BlockEditorSheet.vue',
+      '12% src/ui/Button.vue', '14% src/features/week/BlockEditorSheet.vue',
     ]) expect(places).toContain(expected)
-    expect(fills.filter((fill) => fill.where.startsWith('src/ui/Button.vue'))).toHaveLength(2)
+    // The tinted button is solid --tint-soft (Button.contrast.spec.ts); only the destructive one mixes its fill.
+    expect(fills.filter((fill) => fill.where.startsWith('src/ui/Button.vue'))).toHaveLength(1)
   })
 
   it('pairs every tinted fill with its own label color', () => {

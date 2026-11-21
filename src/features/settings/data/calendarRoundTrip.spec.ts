@@ -23,7 +23,7 @@ function planner(): PlannerDocument {
 }
 
 describe('calendar sources in export, import and delete-all', () => {
-  const registry: ShellRegistry = { registerView: () => undefined, registerSettingsSection: () => undefined }
+  const registry: ShellRegistry = { registerView: () => undefined, registerSettingsSection: () => undefined, registerAddEntry: () => undefined }
 
   it('registering the calendars feature gives Data settings the IndexedDB source store', async () => {
     configureCalendarServices({ texts: new IndexedDbCalendarSourceStore(new IDBFactory()) })

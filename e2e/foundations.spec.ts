@@ -209,7 +209,7 @@ test.describe('buttons', () => {
 
 test.describe('headings', () => {
   // The Settings list (Categories and goals, General) and its Advanced page share one eyebrow style.
-  test('every Settings group opens with the same eyebrow, inset like the others, and groups are spaced apart', async ({ page }) => {
+  test('every Settings group opens with the same sentence-case title, inset like the others, and groups are spaced apart', async ({ page }) => {
     await startWith(page)
     const pages = [['settings', '#main .home'], ['settings/advanced', '[data-testid="settings-advanced"]']] as const
     const all: { text: string; size: string; weight: string; transform: string; color: string }[] = []
@@ -238,7 +238,7 @@ test.describe('headings', () => {
     }
     const [first] = all
     for (const header of all) {
-      expect.soft(header, `"${header.text}" matches "${first!.text}"`).toMatchObject({ size: first!.size, weight: first!.weight, transform: 'uppercase', color: first!.color })
+      expect.soft(header, `"${header.text}" matches "${first!.text}"`).toMatchObject({ size: '13px', weight: '600', transform: 'none', color: first!.color })
     }
   })
 })

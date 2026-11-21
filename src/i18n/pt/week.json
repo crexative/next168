@@ -58,7 +58,7 @@
     "block": "Rotina",
     "event": "Evento",
     "task": "Tarefa",
-    "taskHint": "Algo a fazer; encontra um horário livre",
+    "taskHint": "Algo a fazer. Encontra um horário livre.",
     "eventHint": "Um compromisso com dia e hora",
     "blockHint": "Repete toda semana"
   },

@@ -607,7 +607,8 @@ export function auditInPage(options: { focusRings: boolean }): string[] {
     if (rect.width < 120 || rect.height < 40) return false
     const style = getComputedStyle(element)
     const radius = Math.min(px(style.borderTopLeftRadius), px(style.borderBottomRightRadius))
-    if (radius < 12 || radius >= Math.min(rect.width, rect.height) / 2 - TOLERANCE) return false
+    // Controls are rounded 12 px and cards 16 px (redesign 2026-11): a 12 px surface is a control track, not a card.
+    if (radius < 14 || radius >= Math.min(rect.width, rect.height) / 2 - TOLERANCE) return false
     const background = style.backgroundColor
     return !transparent(background) && background !== backgroundBehind(element) || px(style.borderTopWidth) > 0 && !transparent(style.borderTopColor)
   }
@@ -1269,10 +1270,12 @@ async function chooserViolations(page: Page, limit: number): Promise<string[]> {
   for (const target of targets) {
     if (pressed >= limit) break
     // Scrolled into view where nothing (a sticky header, large at 200 % text) lies over its centre; skipped if none.
-    const centre = await page.evaluate((index) => {
+    // Two frames after each scroll: the toolbar collapses (and starts taking presses) on its observer's callback.
+    const centre = await page.evaluate(async (index) => {
       const element = document.querySelector<HTMLElement>(`[data-chooser-check="${index}"]`)!
       for (const block of ['center', 'end', 'start'] as const) {
         element.scrollIntoView({ block, inline: 'nearest' })
+        await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)))
         const box = element.getBoundingClientRect()
         const point = { x: box.left + box.width / 2, y: box.top + box.height / 2 }
         if (document.elementFromPoint(point.x, point.y) === element) return point

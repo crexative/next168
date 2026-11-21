@@ -71,7 +71,7 @@ onBeforeUnmount(() => { clearInterval(timer); document.removeEventListener('visi
 .pairing-card { width: min(100%, 28rem); display: grid; gap: var(--space-4); border-radius: var(--radius-card); background: var(--surface); padding: var(--space-6); }
 input { width: 100%; min-height: var(--tap-target); padding: var(--space-2); border: 1px solid var(--field-border); border-radius: var(--radius-control); background: var(--surface-2); color: var(--label); }
 /* A capsule above the tab bar (and above any status notice), not a card; it never sits on content, see the global rule below. */
-.proposal-badge { position: fixed; z-index: 40; inset-inline-end: calc(var(--safe-right) + var(--space-4)); bottom: calc(var(--tabbar-height) + var(--safe-bottom) + var(--space-3) + var(--banners-height, 0px)); display: inline-flex; align-items: center; gap: var(--space-2); max-width: calc(100vw - 2 * var(--space-4)); min-height: var(--tap-target); padding: 0 var(--space-4); border-radius: 999px; background: var(--tint); color: var(--tint-text); font-weight: 600; text-decoration: none; box-shadow: var(--shadow-floating); transition: transform 0.1s var(--ease-out); touch-action: manipulation; }
+.proposal-badge { position: fixed; z-index: 40; inset-inline-end: calc(var(--safe-right) + var(--space-4)); bottom: calc(var(--tabbar-inset) + var(--space-3) + var(--banners-height, 0px)); display: inline-flex; align-items: center; gap: var(--space-2); max-width: calc(100vw - 2 * var(--space-4)); min-height: var(--tap-target); padding: 0 var(--space-4); border-radius: 999px; background: var(--tint); color: var(--tint-text); font-weight: 600; text-decoration: none; box-shadow: var(--shadow-floating); transition: transform 0.1s var(--ease-out); touch-action: manipulation; }
 .proposal-badge:active { transform: scale(0.97); }
 @media (min-width: 1024px) { .proposal-badge { bottom: calc(var(--space-4) + var(--banners-height, 0px)); } }
 @media (prefers-reduced-motion: reduce) { .proposal-badge:active { transform: none; opacity: 0.7; } }
@@ -79,7 +79,7 @@ input { width: 100%; min-height: var(--tap-target); padding: var(--space-2); bor
 
 <style>
 /* The pill floats over the page, so the page keeps room for it at its end: the last row can always be reached and read. */
-html:has(.proposal-badge) .content { padding-bottom: calc(var(--tabbar-height) + var(--safe-bottom) + var(--space-4) + var(--banners-height, 0px) + var(--tap-target) + var(--space-3)); }
+html:has(.proposal-badge) .content { padding-bottom: calc(var(--tabbar-inset) + var(--space-4) + var(--banners-height, 0px) + var(--tap-target) + var(--space-3)); }
 @media (min-width: 1024px) {
   html:has(.proposal-badge) .content { padding-bottom: calc(var(--space-8) + var(--banners-height, 0px) + var(--tap-target) + var(--space-3)); }
 }
