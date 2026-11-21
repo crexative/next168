@@ -15,11 +15,9 @@
     "changedOpen": "Ahora: {title}",
     "alsoNow": "También ahora: {title} · hasta la {time} | También ahora: {title} · hasta las {time}",
     "askAvailable": "Puedes marcar cómo fue {title}",
-    "closeDay": "Cierre del día",
     "readOnly": "Solo lectura en esta pestaña",
     "progress": "Progreso",
     "next": "Después",
-    "nothingNext": "Nada más planificado esta semana",
     "tomorrowAt": "Mañana, {time}",
     "dayAt": "{day}, {time}",
     "within": "En {title}",
@@ -79,8 +77,7 @@
     "subtitle": "{date}"
   },
   "todo": {
-    "title": "Por hacer hoy",
-    "add": "Añadir para hoy"
+    "title": "Por hacer hoy"
   },
   "aside": "Más de hoy",
   "weekGlance": "Esta semana"

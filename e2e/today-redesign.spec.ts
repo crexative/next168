@@ -556,3 +556,22 @@ test('@smoke the Now card, the folded row and the answer buttons work on the dev
   await earlier(page).click()
   await expect(rows(page)).toHaveCount(1)
 })
+
+// Review of #54: with a 12-hour clock ("12:00 p. m.", "11:00 p. m."), every time stays whole inside its column and on
+// screen, at a phone, a tablet and a desktop width; the geometry guard does not look at text off the leading edge.
+for (const width of [390, 820, 1440]) {
+  test(`12-hour times fit their column at ${width} px`, async ({ page }) => {
+    await start(page, { at: '11:50', size: { width, height: 900 } })
+    const times = await page.locator('[data-testid="timeline-item"] .row-time').evaluateAll((columns) => columns.flatMap((column) => {
+      const box = column.getBoundingClientRect()
+      return Array.from(column.querySelectorAll<HTMLElement>('.row-start, .row-end')).map((time) => {
+        const range = document.createRange()
+        range.selectNodeContents(time)
+        const text = range.getBoundingClientRect()
+        return { text: time.textContent?.trim(), inside: text.left >= box.left - 0.5 && text.right <= box.right + 0.5, onScreen: text.left >= 0 }
+      })
+    }))
+    expect(times.some((time) => /p\.\s?m\./.test(time.text ?? ''))).toBe(true)
+    expect(times.filter((time) => !time.inside || !time.onScreen)).toEqual([])
+  })
+}

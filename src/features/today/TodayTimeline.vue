@@ -44,6 +44,10 @@ function color(item: TimelineItem): string {
   return item.kind === 'block' || item.kind === 'task' ? categoryStroke(categoriesById.value.get(item.categoryId)) : 'var(--label-2)'
 }
 
+// The time column fits the day's clock: "12:00 p. m." takes far more room than "12:00" (a 12-hour locale would
+// otherwise run off the leading edge of a phone).
+const twelveHour = computed(() => /\p{L}/u.test(formatTime('2026-01-01T23:00:00.000Z', displayLocale.value, 'UTC')))
+
 const dayBounds = computed(() => {
   const today = localDateOf(props.now, props.timeZone)
   return { start: zonedInstant(today, 0, props.timeZone).getTime(), end: zonedInstant(addLocalDays(today, 1), 0, props.timeZone).getTime() }
@@ -68,9 +72,13 @@ function startLabel(item: TimelineItem): string {
 }
 
 // An item that ends tomorrow (Sueño 23:00–7:00) shows its real end in the time column, so it needs no "Hasta las 7:00"
-// line (REVIEW B1); one that ends later than tomorrow keeps its "Hasta el …" line instead.
+// line (REVIEW B1); one that ends later than tomorrow keeps its "Hasta el …" line instead. Judged by local dates, as
+// continuationHints does, so the two agree across a DST change and at tomorrow's midnight.
 function endsTomorrow(item: TimelineItem): boolean {
-  return endsAfterToday(item) && Date.parse(item.end) <= dayBounds.value.end + 24 * 3_600_000
+  if (!endsAfterToday(item)) return false
+  const tomorrow = addLocalDays(localDateOf(props.now, props.timeZone), 1)
+  const lastCovered = localDateOf(new Date(Date.parse(item.end) - 1), props.timeZone)
+  return lastCovered === tomorrow && localDateOf(item.end, props.timeZone) === tomorrow
 }
 
 function endLabel(item: TimelineItem): string {
@@ -127,7 +135,8 @@ const hiddenBlocks = computed(() => {
 function overlapTitles(item: TimelineItem): string[] {
   if (item.kind === 'block') return liveOverlapTitles(item, props.items, props.now)
   if (item.kind !== 'event' && item.kind !== 'external') return []
-  return hiddenBlocks.value.filter((block) => liveOverlapTitles(block, props.items, props.now).includes(item.title)).map((block) => block.title)
+  // This event itself, not any event of the same title, must cross the hidden routine now or later.
+  return hiddenBlocks.value.filter((block) => liveOverlapTitles(block, [item], props.now).length > 0).map((block) => block.title)
 }
 
 // "Se cruza con Cita médica": information about the day, in the app's language, never an alarm.
@@ -226,7 +235,7 @@ async function toggleEarlier(): Promise<void> {
 </script>
 
 <template>
-  <section ref="section" class="timeline-section" :aria-label="t('today.timeline.label')">
+  <section ref="section" class="timeline-section" :class="{ 'is-12h': twelveHour }" :aria-label="t('today.timeline.label')">
     <h2 class="t-section section-title">{{ t('today.timeline.title') }}</h2>
     <slot name="notice" />
     <ul v-if="allDay.length" class="all-day">
@@ -329,7 +338,8 @@ async function toggleEarlier(): Promise<void> {
 
 <style scoped>
 /* A plain list on the page (R_Hoy): rows run edge to edge with a 16 px inset, hairlines start at the text. */
-.timeline-section { --time-column: 56px; --text-start: calc(var(--page-gutter) + var(--time-column) + var(--space-3) + 4px + var(--space-3)); margin: var(--section-gap) 0 0; container: timeline / inline-size; }
+.timeline-section { --time-column: calc(0.9375rem * 3.75); --text-start: calc(var(--page-gutter) + var(--time-column) + var(--space-3) + 4px + var(--space-3)); margin: var(--section-gap) 0 0; container: timeline / inline-size; }
+.timeline-section.is-12h { --time-column: calc(0.9375rem * 5.9); }
 .section-title { margin: 0 var(--page-gutter) var(--space-2); }
 .all-day { display: flex; flex-wrap: wrap; gap: var(--space-2); margin: 0 var(--page-gutter) var(--space-2); padding: 0; list-style: none; }
 .all-day-item { padding: var(--space-1) var(--space-3); border-radius: var(--radius-control); background: var(--fill); }

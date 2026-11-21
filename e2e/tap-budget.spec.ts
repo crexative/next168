@@ -30,7 +30,6 @@ function strings(locale: Locale) {
     today: tasks.today as string,
     undated: tasks.sections.undated as string,
     todayTodo: today.todo.title as string,
-    todayTodoAdd: today.todo.add as string,
     addAll: (count: number) => fill((capture.preview.addAll as string).split(' | ')[1]!, { count: String(count) }),
     recentDone: tasks.recentDone as string,
     complete: (title: string) => fill(tasks.complete, { title }),

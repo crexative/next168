@@ -142,6 +142,8 @@ function clear(occurrence: DatedOccurrence): void {
       </template>
       <Button v-else variant="tinted" href="#/week">{{ t('today.empty.action') }}</Button>
     </EmptyState>
+    <!-- To-dos for today show whether the day has a plan or not (one just added from "+" › Tarea included). -->
+    <TodayTodo v-if="!hasContent" :today="today" />
     <div v-else class="today-columns">
       <div class="today-main">
         <NowCard

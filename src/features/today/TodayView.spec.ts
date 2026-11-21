@@ -48,6 +48,28 @@ describe('TodayView', () => {
     expect(taskStart()).toBeUndefined()
   })
 
+  // Review of #54: with nothing planned Hoy is its empty state, and a to-do for today (one just added from "+" ›
+  // Tarea with Hoy on) must still be listed under it.
+  it('lists today\'s to-dos under the empty state of a day with no plan', async () => {
+    configurePlannerStore({ repository: createTestRepositories().planner, now: fixedNow, newId: newTestId, locale: () => 'en', timeZone: () => 'UTC' })
+    const pinia = createPinia()
+    setActivePinia(pinia)
+    const store = usePlannerStore()
+    await store.load()
+    await store.commit((draft) => {
+      draft.tasks.push({ id: 'call', title: 'Call the bank', dueDate: '2026-10-24', priority: 2, createdAt: fixedNow().toISOString() })
+    })
+    i18n.global.locale.value = 'en'
+    const host = document.createElement('div')
+    document.body.append(host)
+    const app = createApp(TodayView).use(pinia).use(i18n)
+    app.mount(host)
+    cleanup = () => { app.unmount(); host.remove() }
+    await vi.waitFor(() => expect(host.querySelector('[data-testid="today-todo"]')).not.toBeNull())
+    expect(host.querySelector('.empty-state, [data-testid="empty-state"]')).not.toBeNull()
+    expect(host.querySelector('[data-testid="today-todo-task"]')?.textContent).toContain('Call the bank')
+  })
+
   it('shows a saved event for today even when there are no recurring blocks', async () => {
     configurePlannerStore({ repository: createTestRepositories().planner, now: fixedNow, newId: newTestId, locale: () => 'en', timeZone: () => 'UTC' })
     const pinia = createPinia()
