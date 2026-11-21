@@ -240,7 +240,11 @@ for (const locale of ['es', 'en', 'pt'] as const) {
     test('add from Today with "+" › Tarea: 4 actions', async ({ page }) => {
       await openTasks(page, locale, 'today')
       await page.getByTestId('add-entry').tap()
+      // Each tap waits for what it opened to settle, so a press never lands on something still moving (Linux CI).
+      await expect(page.getByRole('menu')).toHaveCSS('opacity', '1')
       await page.getByTestId('add-task').tap()
+      await expect(page.getByRole('dialog')).toBeVisible()
+      await page.waitForFunction(() => document.getAnimations().every((animation) => animation.playState !== 'running'))
       await page.getByTestId('task-title').tap()
       await page.keyboard.type(phrases.todayAdd)
       await page.keyboard.press('Enter')
