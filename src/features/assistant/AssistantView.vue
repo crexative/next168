@@ -6,7 +6,9 @@ import { localDateOf } from '@/core/time'
 import { externalForAi } from '@/core/aiProjection'
 import { formatBytes } from '@/ui/format'
 import { useExternalOccurrences } from '@/features/week/externalOccurrences'
+import AppMark from '@/ui/AppMark.vue'
 import Button from '@/ui/Button.vue'
+import Icon from '@/ui/Icon.vue'
 import BackButton from '@/features/settings/BackButton.vue'
 import AnyAiPanel from './anyAi/AnyAiPanel.vue'
 import ProposalCard from './ProposalCard.vue'
@@ -71,9 +73,14 @@ async function submit(): Promise<void> {
         <Button v-if="canRetry" variant="tinted" data-testid="assistant-retry" @click="assistant.prepareModel()">{{ t('assistant.retry') }}</Button>
       </div>
       <ol class="messages" aria-live="polite">
+        <!-- One conversation language with setup and the check-in (R_Asistente): your words as your bubbles on the trailing
+             side, Weeklid's beside its mark. -->
         <li v-for="message in assistant.messages.value" :key="message.id" class="message" :class="`is-${message.role}`" :data-role="message.role">
-          <p class="t-body bubble">{{ message.text }}</p>
-          <ProposalCard v-if="message.proposal" :input="message.proposal" :basis="planner.document" />
+          <AppMark v-if="message.role !== 'user'" class="avatar" :size="32" />
+          <div class="said">
+            <p class="t-body bubble">{{ message.text }}</p>
+            <ProposalCard v-if="message.proposal" :input="message.proposal" :basis="planner.document" />
+          </div>
         </li>
       </ol>
       <p v-if="assistant.busy.value === 'asking'" class="t-footnote t-secondary" role="status">{{ t('assistant.chat.thinking') }}</p>
@@ -106,11 +113,11 @@ async function submit(): Promise<void> {
       <label class="sr-only" for="assistant-question">{{ t('assistant.chat.label') }}</label>
       <input id="assistant-question" v-model="question" class="input t-body" type="text" autocomplete="off" enterkeyhint="send" :placeholder="t('assistant.chat.placeholder')" :disabled="!planner.document">
       <Button v-if="assistant.busy.value === 'asking'" variant="tinted" @click="assistant.cancel()">{{ t('assistant.progress.cancel') }}</Button>
-      <Button v-else type="submit" :disabled="!question.trim() || !planner.document">{{ t('assistant.chat.send') }}</Button>
+      <button v-else class="send" type="submit" :aria-label="t('assistant.chat.send')" :disabled="!question.trim() || !planner.document" data-testid="assistant-send"><Icon name="arrow-up" :size="22" /></button>
     </form>
 
     <footer class="notes" data-testid="notes">
-      <p class="t-footnote t-secondary">{{ t('assistant.privacy') }}</p>
+      <p class="t-footnote t-secondary privacy"><Icon name="lock" :size="13" class="lock" />{{ t('assistant.privacy') }}</p>
     </footer>
   </div>
 </template>
@@ -123,19 +130,27 @@ progress { width: 100%; accent-color: var(--tint); }
 .chat { display: flex; flex-direction: column; gap: var(--space-3); }
 /* An empty conversation leaves the flow (no gap) but stays in the page, so its live region announces the first answer. */
 .chat:not(:has(li, p)) { position: absolute; }
-.messages { display: flex; flex-direction: column; gap: var(--space-2); margin: 0; padding: 0; list-style: none; }
-.message { max-width: 90%; }
+.messages { display: flex; flex-direction: column; gap: var(--space-3); margin: 0; padding: 0; list-style: none; }
+.message { display: flex; align-items: flex-end; gap: var(--space-3); max-width: 90%; }
 .message.is-user { align-self: flex-end; }
-.bubble { margin: 0; padding: var(--space-2) var(--space-3); border-radius: var(--radius-card); background: var(--surface); white-space: pre-line; }
-.is-user .bubble { background: var(--tint); color: var(--tint-text); }
+.avatar { flex: none; margin-block-end: 2px; }
+.said { display: flex; flex-direction: column; gap: var(--space-2); min-width: 0; }
+.bubble { margin: 0; padding: var(--space-3) var(--space-4); border-radius: var(--radius-bubble) var(--radius-bubble) var(--radius-bubble) 6px; background: var(--surface-2); white-space: pre-line; overflow-wrap: anywhere; }
+.is-user .bubble { border-radius: 20px 20px 6px 20px; background: var(--tint-soft); color: var(--label); font-weight: 600; }
 .failure-row { display: flex; flex-direction: column; align-items: flex-start; gap: var(--space-2); }
 .failure { margin: 0; color: var(--danger-label); }
 .composer { display: flex; flex-wrap: wrap; gap: var(--space-2); }
 /* The hint stays whole: on a narrow screen the button drops to its own line instead of squeezing the field. */
-.composer .input { flex: 1 1 16rem; min-width: 0; }
+.composer { align-items: center; }
+.composer .input { flex: 1 1 12rem; min-width: 0; border-radius: 22px; padding-inline: var(--space-4); }
 .composer > button { margin-inline-start: auto; }
+/* The send circle (R_Asistente), named "Preguntar". */
+.send { display: inline-flex; flex: none; align-items: center; justify-content: center; width: var(--tap-target); height: var(--tap-target); border: 0; border-radius: 50%; background: var(--tint); color: var(--tint-text); }
+.send:disabled { background: var(--fill); color: var(--label-3); }
+.privacy { display: flex; align-items: flex-start; gap: var(--space-1); }
+.lock { flex: none; margin-top: 2px; }
 .suggestions { display: flex; flex-wrap: wrap; gap: var(--space-2); margin: 0; padding: 0; list-style: none; }
-.suggestion { min-height: var(--tap-target); padding: var(--space-2) var(--space-4); border: 0; border-radius: 999px; background: color-mix(in srgb, var(--tint) 12%, transparent); color: var(--tint-label); text-align: start; transition: transform 0.1s var(--ease-out), opacity 0.1s; touch-action: manipulation; }
+.suggestion { min-height: var(--tap-target); padding: var(--space-2) var(--space-4); border: 1px solid var(--field-border); border-radius: 12px; background: var(--surface); color: var(--label); font-weight: 600; text-align: start; transition: transform 0.1s var(--ease-out), opacity 0.1s; touch-action: manipulation; }
 .suggestion:active:not(:disabled) { transform: scale(0.97); opacity: 0.85; }
 .suggestion:disabled { opacity: 0.4; }
 .notes { display: flex; flex-direction: column; gap: var(--space-1); margin-top: var(--space-2); }
