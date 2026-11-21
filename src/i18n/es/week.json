@@ -58,7 +58,7 @@
     "block": "Rutina",
     "event": "Evento",
     "task": "Tarea",
-    "taskHint": "Algo por hacer; busca su hueco libre",
+    "taskHint": "Algo por hacer. Busca su hueco.",
     "eventHint": "Una cita con día y hora",
     "blockHint": "Se repite cada semana"
   },

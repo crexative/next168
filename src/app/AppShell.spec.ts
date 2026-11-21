@@ -1,4 +1,4 @@
-import { afterEach, beforeEach, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { h, nextTick } from 'vue'
 import { mountWithPlanner, type Mounted } from '@/features/settings/testSupport'
 import AppShell from './AppShell.vue'
@@ -116,4 +116,55 @@ it.each(destinations)('keeps the desktop sidebar visible when %s is selected', a
   await nextTick()
   expect(host.querySelector('.shell')?.getAttribute('data-sidebar')).toBe('shown')
   expect(host.querySelector('.content')?.hasAttribute('inert')).toBe(false)
+})
+
+// One "+" per device and navigation that never hides (redesign 2026-11, principles 4 and DIRECTION §3).
+describe('the one "+" and the tabs', () => {
+  const AddProbe = { props: ['view', 'placement'], render(this: { view: string; placement: string }) { return h('button', { 'data-testid': 'add-probe', 'data-view': this.view, 'data-placement': this.placement }) } }
+  beforeEach(() => shell.registry.registerAddEntry({ component: AddProbe }))
+  afterEach(() => { shell.addEntry.value = null })
+
+  const probes = (host: HTMLElement) => [...host.querySelectorAll<HTMLElement>('[data-testid=add-probe]')].map((probe) => `${probe.dataset.view}:${probe.dataset.placement}`)
+
+  it.each([
+    [390, 'floating', '.tabbar-add'],
+    [900, 'toolbar', '#toolbar-actions'],
+    [1440, 'title', '.title-trailing'],
+  ])('draws exactly one "+" at %i px: %s', async (width, placement, container) => {
+    const host = await mountShell('#/week', width)
+    await nextTick()
+    expect(probes(host)).toEqual([`week:${placement}`])
+    expect(host.querySelector(`${container} [data-testid=add-probe]`)).not.toBeNull()
+  })
+
+  it.each(['settings', 'assistant'])('draws no "+" on %s, which is not a tab', async (id) => {
+    const host = await mountShell(`#/${id}`, 390)
+    await nextTick()
+    expect(probes(host)).toEqual([])
+  })
+
+  it('shows the tabs in the toolbar on a tablet and when the desktop sidebar is hidden, never beside a shown sidebar', async () => {
+    let host = await mountShell('#/tasks', 900)
+    await nextTick()
+    const current = () => host.querySelector('[data-testid=top-tabs] [aria-current=page]')?.textContent?.trim()
+    expect(host.querySelectorAll('[data-testid=top-tabs] a')).toHaveLength(4)
+    expect(current()).toBe('Tasks')
+    mounted?.unmount()
+    host = await mountShell('#/tasks', 1440)
+    await nextTick()
+    expect(host.querySelector('[data-testid=top-tabs]')).toBeNull()
+    host.querySelector<HTMLButtonElement>('[data-testid=sidebar-toggle]')!.click()
+    await nextTick()
+    expect(current()).toBe('Tasks')
+  })
+
+  it('paints the page white only for a view that declares a plain backdrop', async () => {
+    shell.registry.registerView({ id: 'tasks', titleKey: 'app.tabs.tasks', icon: 'list-checks', tabOrder: 2, backdrop: 'plain', component: { render: () => h('p', 'Tasks') } })
+    await mountShell('#/tasks', 390)
+    await nextTick()
+    expect(document.documentElement.dataset.backdrop).toBe('plain')
+    window.location.hash = '#/settings'
+    window.dispatchEvent(new HashChangeEvent('hashchange'))
+    await vi.waitFor(() => expect(document.documentElement.dataset.backdrop).toBeUndefined())
+  })
 })

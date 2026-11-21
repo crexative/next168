@@ -48,7 +48,9 @@ test.describe('app shell', () => {
       await expect(page.getByRole('navigation', { name: 'Main navigation' })).toBeHidden()
     } else if (width >= 768) {
       await expect(toolbarSettings).toBeVisible()
-      await expect(page.getByRole('navigation', { name: 'Main navigation' })).toBeHidden()
+      // The tablet keeps its tabs visible in the toolbar (redesign 2026-11); the sidebar still opens from panel-left.
+      await expect(page.getByTestId('top-tabs')).toBeVisible()
+      await expect(page.locator('.tabbar')).toBeHidden()
       await page.getByTestId('sidebar-toggle').click()
       await expect(footer.getByRole('link', { name: 'Settings' })).toBeVisible()
     } else {

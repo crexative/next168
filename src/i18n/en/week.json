@@ -58,7 +58,7 @@
     "block": "Routine",
     "event": "Event",
     "task": "Task",
-    "taskHint": "Something to do; finds its own free slot",
+    "taskHint": "Something to do. Finds its own free slot.",
     "eventHint": "An appointment on a day and time",
     "blockHint": "Repeats every week"
   },

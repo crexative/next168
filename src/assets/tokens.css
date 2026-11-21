@@ -1,26 +1,35 @@
 :root {
   color-scheme: light dark;
 
-  --bg: #f2f2f7;
+  /* Plain lists sit on the page (white); grouped screens and sheets use the grey (redesign 2026-11, DIRECTION §5). */
+  --bg: #ffffff;
+  --bg-grouped: #f2f2f7;
   --surface: #ffffff;
   --surface-2: #f2f2f7;
+  /* Quiet fills: control tracks, chips, progress tracks. */
+  --fill: rgba(118, 118, 128, 0.12);
   --label: #000000;
-  --label-2: rgba(60, 60, 67, 0.75);
+  /* Solid, so it passes AA on every surface and on the soft tint (5.71 / 5.12 / 4.84:1). */
+  --label-2: #66666b;
   --label-3: rgba(60, 60, 67, 0.3);
-  --separator: rgba(60, 60, 67, 0.29);
+  --separator: rgba(60, 60, 67, 0.2);
   /* Weeklid's coffee-farm green (docs/brand/README.md). Fills and graphics; text in the tint uses --tint-label. */
   --tint: #147745;
   --tint-text: #ffffff;
   /* The brand green's hue and saturation; lightness clears AA over 12-14% tinted fills on every surface. */
-  --tint-label: hsl(149.69697 71.223022% 24.5%);
+  --tint-label: #126b3e;
+  /* Selection and secondary-button fill: the tint at about 12 % on white, as a solid colour. */
+  --tint-soft: #e3efe9;
   /* Maize: the mark's tick only. It is near the warning and yellow category colours, so it never marks UI state. */
   --accent: #c47a00;
   /* The symbol's W stroke: the brand green exactly, in each appearance. */
   --mark: #147745;
   --danger: #ff3b30;
-  --danger-label: hsl(354.139535 100% 39%);
+  --danger-label: #c70013;
   --success: #34c759;
   --warning: #ff9500;
+  /* "Needs attention" text (overdue, over a goal, a conflict): amber, never red. */
+  --warning-label: #9a5b00;
 
   /* Category fills. Every pair, and each against --tint, stays apart (palette spec); pink is magenta so it never reads as red. */
   --cat-blue: #0088ff;
@@ -46,11 +55,14 @@
   /* Text fields and other control outlines: 3:1 on --surface and --surface-2. */
   --field-border: #8a8a8e;
 
-  --scrim: rgba(0, 0, 0, 0.4);
+  --scrim: rgba(0, 0, 0, 0.32);
   /* The select chevron in --label-2; an image cannot read a custom property, so each theme names its own. */
   --chevron-down: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%233c3c43' stroke-opacity='.6' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
-  --shadow-floating: 0 10px 40px rgba(0, 0, 0, 0.18), 0 2px 8px rgba(0, 0, 0, 0.08);
-  /* Bars are a thick material: text scrolling underneath never reads through (86 % + a wide blur). */
+  --shadow-floating: 0 10px 40px rgba(0, 0, 0, 0.16), 0 2px 8px rgba(0, 0, 0, 0.06);
+  /* The floating tab bar and the "+" beside it. */
+  --shadow-bar: 0 6px 24px rgba(0, 0, 0, 0.1), 0 1px 3px rgba(0, 0, 0, 0.06);
+  /* Bars are a thick material: text scrolling underneath never reads through (86 % + a wide blur; the boards draw
+     82 %, which lets 12 px text read through on the floating tab bar). */
   --material: color-mix(in srgb, var(--surface) 86%, transparent);
   --material-filter: blur(30px) saturate(120%);
   --material-edge: var(--separator);
@@ -74,10 +86,12 @@
   --card-padding: 16px;
   --card-padding-block: var(--space-4);
   --row-padding-block: var(--space-3);
-  --row-min-height: 48px;
-  --radius-control: 10px;
-  --radius-card: 14px;
-  --radius-sheet: 22px;
+  --row-min-height: 52px;
+  /* Concentric radii: an inner radius is the outer one minus the padding between them. */
+  --radius-control: 12px;
+  --radius-card: 16px;
+  --radius-bubble: 22px;
+  --radius-sheet: 24px;
 
   --font-sans: system-ui, -apple-system, 'SF Pro Text', 'Segoe UI', Roboto, sans-serif;
 
@@ -86,7 +100,7 @@
   --safe-bottom: env(safe-area-inset-bottom, 0px);
   --safe-left: env(safe-area-inset-left, 0px);
   --toolbar-height: 3.25rem;
-  --tabbar-height: 3.5rem;
+  --tabbar-height: 60px;
   --sidebar-width: 17rem;
   --tap-target: 44px;
   /* Floating action button (Material 3): 56 px, kept 16 px from the screen edge and from the bar under it, 24 px from a
@@ -113,18 +127,22 @@
     --surface: #1c1c1e;
     --surface-2: #2c2c2e;
     --label: #ffffff;
-    --label-2: rgba(235, 235, 245, 0.6);
+    --bg-grouped: #000000;
+    --fill: rgba(118, 118, 128, 0.24);
+    --label-2: #98989f;
     --label-3: rgba(235, 235, 245, 0.3);
-    --separator: rgba(84, 84, 88, 0.65);
+    --separator: rgba(84, 84, 88, 0.6);
     /* The same green lifted for dark: white labels at 4.6:1 and 3:1 against every dark surface. */
     --tint: #18864f;
     --tint-label: #5ad394;
+    --tint-soft: #1b2b25;
     --accent: #ffc93c;
     --mark: #5ad394;
-    --danger-label: hsl(3.350254 100% 72%);
+    --danger-label: #ff7870;
     --danger: #ff453a;
     --success: #30d158;
     --warning: #ff9f0a;
+    --warning-label: #ffb340;
 
     --cat-blue: #1a94ff;
     --cat-green: #30d158;
@@ -147,8 +165,9 @@
     --cat-gray-stroke: #98989d;
     --field-border: #7c7c80;
 
-    --scrim: rgba(0, 0, 0, 0.6);
+    --scrim: rgba(0, 0, 0, 0.56);
     --shadow-floating: 0 10px 40px rgba(0, 0, 0, 0.6);
+    --shadow-bar: 0 6px 24px rgba(0, 0, 0, 0.5);
     --chevron-down: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23ebebf5' stroke-opacity='.6' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
   }
 }
@@ -164,17 +183,21 @@
   --surface: #1c1c1e;
   --surface-2: #2c2c2e;
   --label: #ffffff;
-  --label-2: rgba(235, 235, 245, 0.6);
+  --bg-grouped: #000000;
+  --fill: rgba(118, 118, 128, 0.24);
+  --label-2: #98989f;
   --label-3: rgba(235, 235, 245, 0.3);
-  --separator: rgba(84, 84, 88, 0.65);
+  --separator: rgba(84, 84, 88, 0.6);
   --tint: #18864f;
   --tint-label: #5ad394;
+  --tint-soft: #1b2b25;
   --accent: #ffc93c;
   --mark: #5ad394;
   --danger: #ff453a;
-  --danger-label: hsl(3.350254 100% 72%);
+  --danger-label: #ff7870;
   --success: #30d158;
   --warning: #ff9f0a;
+  --warning-label: #ffb340;
 
   --cat-blue: #1a94ff;
   --cat-green: #30d158;
@@ -197,8 +220,9 @@
   --cat-gray-stroke: #98989d;
   --field-border: #7c7c80;
 
-  --scrim: rgba(0, 0, 0, 0.6);
+  --scrim: rgba(0, 0, 0, 0.56);
   --shadow-floating: 0 10px 40px rgba(0, 0, 0, 0.6);
+  --shadow-bar: 0 6px 24px rgba(0, 0, 0, 0.5);
   --chevron-down: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23ebebf5' stroke-opacity='.6' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
 }
 
@@ -214,6 +238,7 @@
     --material: var(--surface);
     --material-filter: none;
     --label-2: rgba(60, 60, 67, 0.92);
+    --fill: rgba(118, 118, 128, 0.2);
     --label-3: rgba(60, 60, 67, 0.62);
     --separator: var(--label-2);
     --field-border: var(--label);

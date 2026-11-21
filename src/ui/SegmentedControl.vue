@@ -43,8 +43,9 @@ function move(offset: number, event: KeyboardEvent): void {
   flex-wrap: wrap;
   gap: 2px;
   padding: 2px;
-  border-radius: var(--radius-control);
-  background: color-mix(in srgb, var(--label-2) 14%, transparent);
+  /* Segments keep the 44 px target, so the track is 48 px (the boards draw 40). */
+  border-radius: 10px;
+  background: var(--fill);
 }
 .segment {
   flex: 1;

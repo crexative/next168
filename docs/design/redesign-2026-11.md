@@ -1,0 +1,52 @@
+# Minimalist redesign "una pregunta a la vez": implementation plan (#3)
+
+Source of truth: the design direction `DIRECTION.md`, its review `REVIEW.md` and the `R_*` boards (canvas
+https://claude.ai/artifact/56ho5rZV7S96pQHQXrwTUT, 2026-11-20). This file maps every board to the code that renders it,
+lists the slices (one pull request each) and flags where the direction meets real app behaviour. Owner decisions kept:
+"2 elegidas · una pregunta corta por cada una" in setup and soft-green selected day chips.
+
+## Slices
+
+Each slice is one pull request to `main`, built on the previous slice while that one is open (a later pull request
+carries the earlier commits until they merge). `main` deploys on merge, so every slice leaves the whole app coherent:
+a screen not yet redesigned keeps working with the new tokens and shell.
+
+| # | Slice | Boards | Main files |
+| --- | --- | --- | --- |
+| 1 | Tokens, base components, app shell | RedisenoPrincipios (tokens, buttons, tab bar), shell of R_Hoy, R_TabletHoy, R_EscritorioHoy, R_MenuAnadir, R_TabletMenuAnadir, R_EscritorioMenuAnadir | `src/assets/tokens.css`, `src/assets/base.css`, `src/ui/Button.vue`, `src/ui/SegmentedControl.vue`, `src/ui/LargeTitle.vue`, `src/ui/ListGroup.vue`, `src/app/AppShell.vue`, `src/app/contracts.ts`, new `src/features/add/` (the one "+": menu + task/event sheets + routine conversation), `src/features/week/WeekView.vue` (its FAB and toolbar "+" go) |
+| 2 | Hoy, Hoy vacío, Cierre | R_Hoy, R_HoyVacio, R_Cierre, R_TabletHoy, R_EscritorioHoy | `src/features/today/*` (NowCard → Ahora hero, TodayTimeline, TodayTodo), `src/ui/EmptyState.vue` (168 bar), `src/features/checkin/*` (form → conversation reusing `checkInForm.ts`) |
+| 3 | Semana día/semana | R_Semana, R_SemanaCompleta, R_TabletSemana, R_EscritorioSemana | `src/features/week/*` (WeekNav segmented "Día · Semana", day strip, block style, today green) |
+| 4 | Tareas, Nueva tarea, menú añadir | R_Tareas, R_HojaTarea, R_TabletTareas, R_EscritorioTareas | `src/features/tasks/*` (capture moves into the sheet title, warning summary row, "Hechas recientemente" disclosure) |
+| 5 | Resumen | R_Resumen, R_EscritorioResumen | `src/features/insights/*`, `src/features/share/ShareWeekButton.vue` |
+| 6 | Setup (7 parts) and routine edit/new as conversation | R_InicioSueno … R_InicioResumen, R_InicioDesplazamiento, R_InicioEjercicio, R_EditarRutina, R_NuevaRutina | `src/features/onboarding/setup/*` (progress bar, answer bubbles, multi-select "¿A qué más…?", "Siguiente"), `reopen.ts` (edit mode), Week block tap → edit conversation, "Editar todo" → `BlockEditorSheet` |
+| 7 | Asistente, Propuesta, Ajustes | R_Asistente, R_Propuesta, R_Ajustes, R_TabletAjustes | `src/features/assistant/*`, `src/features/proposals/ProposalReviewSheet.vue`, `src/features/settings/*`, `src/app/settings/PreferencesSettings.vue` |
+| 8 | Tablet and desktop leftovers | anything slices 1–7 did not cover | as needed |
+
+## Where the direction meets real behaviour
+
+1. **Page background.** The direction makes `--bg` white and adds `--bg-grouped` (the old grey). Screens built of
+   white cards on grey (Settings, sheets, and every screen not yet redesigned) would lose their grouping on white. The
+   shell paints the page with `--bg-grouped` unless the current view declares a plain backdrop; each slice switches its
+   screens to plain as it removes their cards. When slice 7 lands every tab is plain and only grouped screens keep grey.
+2. **One "+".** Week's FAB and its toolbar "+" become the shell's "+" (phone: round button beside the floating tab bar;
+   tablet: 44 px circle at the end of the toolbar; desktop: "Añadir" in the page title row). Hoy, Semana and Resumen
+   open the menu Tarea · Evento · Rutina; Tareas opens Nueva tarea directly. Rutina keeps today's behaviour (the guided
+   setup in add mode, `openAdd('routine')`). Hoy's inline "Añadir para hoy" row and Tareas' capture field stay until
+   slices 2 and 4 replace them.
+3. **Tablet navigation.** From 768 px the sidebar stays (overlay below 1024, persistent from 1024). The new top tab bar
+   in the toolbar shows whenever the sidebar is not shown beside the content, so navigation is never hidden; "panel-left"
+   still opens the sidebar.
+4. **Hoy shows each thing once (slice 2).** Today the routine that holds the current task (Trabajo) is a row after the
+   now line and the task is a row too. The hero names the routine ("Ahora · En Trabajo") and holds the task; neither
+   repeats in the list. Overdue tasks placed today (Renovar el pasaporte in the real fixture) keep their rows: the boards
+   omit them, the scheduler places them.
+5. **Cierre as a conversation (slice 2).** The check-in keeps its fields (bedtime, wake, work end, exercise, stress,
+   note, the day's routine answers) and its storage; only the presentation becomes turns. Answers the plan already
+   gives are drawn as prefilled bubbles that can be changed.
+6. **Ajustes and Asistente as full-height sheets (slice 7).** Their hash routes (`#/settings/...`, `#/assistant`) stay,
+   so links, back navigation and existing tests keep working; on a phone the route is presented as a sheet over the tab.
+7. **Setup multi-select and "Parte N de 7" (slice 6).** "¿A qué más…?" accepts several picks and asks one short time
+   question per pick; the total grows only when a pick adds a step. This is the one behaviour change in setup besides
+   "Siguiente" replacing "Enviar".
+
+Anything else in a board that the app cannot do as drawn is raised with the coordinator before it changes behaviour.

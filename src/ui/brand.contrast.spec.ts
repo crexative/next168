@@ -1,7 +1,7 @@
 import { readdirSync, readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
-import { SURFACES, contrast, mixOver, rgb, themes } from './contrastSupport'
+import { SURFACES, contrast, rgb, themes } from './contrastSupport'
 
 // The Weeklid palette in the app (docs/brand/README.md): every pairing the brand colours take part in, measured.
 function sourceFiles(directory: string): string[] {
@@ -38,9 +38,8 @@ describe('brand colours', () => {
       const surface = rgb(tokens['--surface']!)
       const label = contrast(rgb(tokens['--danger-label']!), surface)
       expect(label, `${name}: --danger-label on --surface = ${label.toFixed(2)}:1`).toBeGreaterThanOrEqual(4.5)
-      // --label-2 is a translucent grey: it is measured as it lands on the surface.
-      const [, red, green, blue, alpha] = /^rgba\((\d+), (\d+), (\d+), ([\d.]+)\)$/.exec(tokens['--label-2']!)!
-      const ring = contrast(mixOver([Number(red) / 255, Number(green) / 255, Number(blue) / 255], Number(alpha) * 100, surface), surface)
+      // --label-2 is a solid grey (redesign 2026-11).
+      const ring = contrast(rgb(tokens['--label-2']!), surface)
       expect(ring, `${name}: --label-2 on --surface = ${ring.toFixed(2)}:1`).toBeGreaterThanOrEqual(3)
     })
   }

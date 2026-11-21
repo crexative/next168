@@ -841,7 +841,7 @@ async function walk(page: Page, visit: (label: string) => Promise<void>, options
 // round and the summary. From Week "+" › Rutina on a planned week.
 async function walkAdd(page: Page, visit: (label: string) => Promise<void>, options: { custom?: string } = {}): Promise<void> {
   await page.goto('./#/week')
-  await page.getByTestId('week-add').click()
+  await page.getByTestId('add-entry').click()
   await page.getByTestId('add-block').click()
   await onScreen(page, 'more')
   await expect(page.locator('[data-testid=setup][data-mode=add]')).toBeVisible()

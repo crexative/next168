@@ -2,7 +2,7 @@
 import { computed } from 'vue'
 import { resolveIcon } from './icons'
 
-const props = withDefaults(defineProps<{ name: string; size?: number; label?: string }>(), { size: 24 })
+const props = withDefaults(defineProps<{ name: string; size?: number; label?: string; strokeWidth?: number }>(), { size: 24, strokeWidth: 1.5 })
 const component = computed(() => resolveIcon(props.name))
 </script>
 
@@ -11,7 +11,7 @@ const component = computed(() => resolveIcon(props.name))
     :is="component"
     v-if="component"
     :size="size"
-    :stroke-width="1.5"
+    :stroke-width="strokeWidth"
     :aria-hidden="label ? undefined : 'true'"
     :aria-label="label"
     :role="label ? 'img' : undefined"

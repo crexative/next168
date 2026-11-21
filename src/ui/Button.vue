@@ -3,10 +3,11 @@ import { onBeforeUnmount, ref } from 'vue'
 import { watchPressEnd } from './pressEnd'
 
 // One rule for every action: filled for the primary one (hugs its label), tinted for secondary ones, plain for
-// tertiary ones (flush with the content edge). `block` spans the width only on narrow screens; `href` renders a
-// link that looks and behaves like the button (empty-state calls to action, never an underlined link).
+// tertiary ones (flush with the content edge), quiet for a skip ("Lo veo después", "Mejor no"). `block` spans the
+// width only on narrow screens; `href` renders a link that looks and behaves like the button (empty-state calls to
+// action, never an underlined link).
 withDefaults(defineProps<{
-  variant?: 'filled' | 'tinted' | 'plain'
+  variant?: 'filled' | 'tinted' | 'plain' | 'quiet'
   destructive?: boolean
   type?: 'button' | 'submit'
   disabled?: boolean
@@ -63,7 +64,7 @@ onBeforeUnmount(release)
   max-width: 100%;
   min-width: var(--tap-target);
   min-height: var(--tap-target);
-  padding: 0 var(--space-4);
+  padding: 0 var(--space-5);
   border: 0;
   border-radius: var(--radius-control);
   font-size: 1.0625rem;
@@ -77,10 +78,13 @@ onBeforeUnmount(release)
   transition: transform 0.1s var(--ease-out), background-color 0.1s, opacity 0.1s;
   touch-action: manipulation;
 }
+/* Filled and tinted buttons are 50 px tall: the primary action of a screen or sheet. */
+.is-filled, .is-tinted { min-height: 50px; }
 .is-filled { background: var(--tint); color: var(--tint-text); }
-.is-tinted { background: color-mix(in srgb, var(--tint) 12%, transparent); color: var(--tint-label); }
+.is-tinted { background: var(--tint-soft); color: var(--tint-label); }
 /* Tertiary actions sit on the content's leading edge, like text; the 44 px target stays. */
-.is-plain { padding-inline: 0; background: transparent; color: var(--tint-label); }
+.is-plain, .is-quiet { padding-inline: 0; background: transparent; color: var(--tint-label); }
+.is-quiet { color: var(--label-2); font-weight: 400; }
 .is-filled.is-destructive { background: var(--danger); color: #fff; }
 .is-tinted.is-destructive { background: color-mix(in srgb, var(--danger) 12%, transparent); color: var(--danger-label); }
 .is-plain.is-destructive { color: var(--danger-label); }
@@ -89,7 +93,7 @@ onBeforeUnmount(release)
 /* A wide bar only where the thumb needs it; from 480 px up every button hugs its label. */
 @media (max-width: 479px) {
   .is-block { display: flex; width: 100%; }
-  .is-block.is-plain { padding-inline: var(--space-4); }
+  .is-block.is-plain, .is-block.is-quiet { padding-inline: var(--space-4); }
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -97,6 +101,6 @@ onBeforeUnmount(release)
 }
 @media (forced-colors: active) {
   .ui-button { border: 1px solid ButtonText; }
-  .is-plain { border-color: transparent; }
+  .is-plain, .is-quiet { border-color: transparent; }
 }
 </style>

@@ -11,7 +11,8 @@ html {
 body {
   margin: 0;
   min-height: 100dvh;
-  background: var(--bg);
+  /* Grouped screens (cards on grey) by default; a view built as plain lists declares a plain backdrop (AppShell). */
+  background: var(--bg-grouped);
   color: var(--label);
   font-family: var(--font-sans);
   font-size: 1.0625rem;
@@ -72,23 +73,24 @@ input[type='file']::file-selector-button {
 }
 
 .t-large-title { font-size: 2.125rem; line-height: 1.2; font-weight: 700; letter-spacing: -0.02em; }
+.t-title-1 { font-size: 1.75rem; line-height: 1.21; font-weight: 700; letter-spacing: -0.01em; }
 .t-title-2 { font-size: 1.375rem; line-height: 1.27; font-weight: 700; letter-spacing: -0.01em; }
+.t-section { font-size: 1.25rem; line-height: 1.25; font-weight: 600; }
 .t-headline { font-size: 1.0625rem; line-height: 1.3; font-weight: 600; letter-spacing: -0.01em; }
 .t-body { font-size: 1.0625rem; line-height: 1.35; font-weight: 400; }
 .t-subhead { font-size: 0.9375rem; line-height: 1.33; font-weight: 400; }
 .t-footnote { font-size: 0.8125rem; line-height: 1.38; font-weight: 400; letter-spacing: 0.005em; }
-.t-caption { font-size: 0.75rem; line-height: 1.33; font-weight: 500; letter-spacing: 0.01em; }
+.t-caption { font-size: 0.75rem; line-height: 1.33; font-weight: 600; }
 .t-secondary { color: var(--label-2); }
-/* Settings-like pages: every group opens with this eyebrow, inset to the rows' text; explanatory copy is .t-subhead.t-secondary. */
+/* Settings-like pages: every group opens with this title, inset to the rows' text, in sentence case (no uppercase
+   eyebrows anywhere); explanatory copy is .t-subhead.t-secondary. */
 .section-header {
   margin: 0 0 var(--space-2);
   padding-inline: var(--card-padding);
   color: var(--label-2);
   font-size: 0.8125rem;
-  font-weight: 400;
+  font-weight: 600;
   line-height: 1.38;
-  letter-spacing: 0.02em;
-  text-transform: uppercase;
 }
 
 .visually-hidden {
@@ -100,6 +102,8 @@ input[type='file']::file-selector-button {
   clip: rect(0 0 0 0);
   white-space: nowrap;
 }
+
+html[data-backdrop='plain'] body { background: var(--bg); }
 
 html[data-sheet-open] body { overflow: hidden; }
 /* A full-screen flow owns the screen: the page behind it cannot scroll or rubber-band (sheetStack.ts remembers and restores its position). */

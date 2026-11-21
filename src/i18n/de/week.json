@@ -58,7 +58,7 @@
     "block": "Routine",
     "event": "Termin",
     "task": "Aufgabe",
-    "taskHint": "Etwas zu erledigen; findet selbst eine freie Lücke",
+    "taskHint": "Etwas zu erledigen. Findet selbst eine freie Lücke.",
     "eventHint": "Ein Termin mit Tag und Uhrzeit",
     "blockHint": "Wiederholt sich jede Woche"
   },
