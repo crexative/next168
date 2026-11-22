@@ -99,7 +99,9 @@ test.describe('materials', () => {
     expect(bars.head!.shadow).toBe('none')
     expect(bars.strip!.shadow).not.toBe('none')
 
-    // A tab: on a phone Settings is a sheet with its own bar, not the large title's toolbar.
+    // A tab: on a phone Settings is a sheet with its own bar, not the large title's toolbar. Resumen fits a tall
+    // window whole, so a shorter one gives it room to scroll and its toolbar to collapse.
+    await page.setViewportSize({ width: page.viewportSize()!.width, height: 560 })
     await openView(page, 'insights')
     await page.mouse.wheel(0, 400)
     await expect(page.locator('.toolbar[data-collapsed]')).toHaveCount(1)
@@ -503,6 +505,8 @@ test.describe('accessibility plumbing', () => {
   test('increased contrast makes bars solid and field borders full strength', async ({ page }) => {
     await page.emulateMedia({ contrast: 'more' })
     await startWith(page)
+    // Resumen fits a tall window whole: a shorter one lets it scroll and its toolbar collapse.
+    await page.setViewportSize({ width: page.viewportSize()!.width, height: 560 })
     await openView(page, 'insights')
     await page.mouse.wheel(0, 300)
     await expect(page.locator('.toolbar[data-collapsed]')).toHaveCount(1)

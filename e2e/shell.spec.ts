@@ -83,10 +83,13 @@ test.describe('app shell', () => {
   // Review of #53: once the toolbar is collapsed (a bar of material over the page) a press on it must stay on the bar,
   // never reach the controls scrolled under it.
   test('a press on the collapsed toolbar never reaches the content under it', async ({ page }) => {
-    await page.setViewportSize({ width: page.viewportSize()!.width, height: 500 })
+    // Short enough that Resumen (a short page since its redesign) scrolls well past its title.
+    await page.setViewportSize({ width: page.viewportSize()!.width, height: 380 })
     // A tab: on a phone Settings is a sheet with its own bar (no large title to collapse).
     await page.goto('./#/insights')
     await expect(page.getByRole('heading', { level: 1, name: 'Summary' })).toBeVisible()
+    // Scrolled once the page has its content (and room to scroll), not while it is still loading.
+    await expect.poll(() => page.evaluate(() => document.documentElement.scrollHeight - window.innerHeight)).toBeGreaterThan(120)
     await page.evaluate(() => window.scrollTo(0, 400))
     await expect(page.locator('.toolbar[data-collapsed]')).toHaveCount(1)
     const bar = (await page.locator('.toolbar[data-collapsed]').boundingBox())!
