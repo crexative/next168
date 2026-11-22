@@ -182,6 +182,17 @@ describe('the one "+" and the tabs', () => {
     window.dispatchEvent(new HashChangeEvent('hashchange'))
     await vi.waitFor(() => expect(document.documentElement.dataset.backdrop).toBeUndefined())
   })
+
+  it('gives a view the measure it declares, and the readable one otherwise', async () => {
+    shell.registry.registerView({ id: 'tasks', titleKey: 'app.tabs.tasks', icon: 'list-checks', tabOrder: 2, measure: 'wide', component: { render: () => h('p', 'Tasks') } })
+    const host = await mountShell('#/tasks', 1440)
+    await nextTick()
+    expect(host.querySelector('.view')?.getAttribute('data-measure')).toBe('wide')
+    window.location.hash = '#/settings'
+    window.dispatchEvent(new HashChangeEvent('hashchange'))
+    await vi.waitFor(() => expect(host.querySelector('.view')?.getAttribute('data-view')).toBe('settings'))
+    expect(host.querySelector('.view')?.getAttribute('data-measure')).toBe('readable')
+  })
 })
 
 describe('Settings and the assistant as a full-height sheet on a phone (DIRECTION §3)', () => {

@@ -292,14 +292,14 @@ test.describe('colour is never alone', () => {
 })
 
 test.describe('readable measure', () => {
-  test('text and list screens keep one 720 px measure, centred beside the sidebar; Week takes the full width', async ({ page }) => {
+  test('text and list screens keep one 720 px measure (Hoy 1040 px with its aside), centred beside the sidebar; Week takes the full width', async ({ page }) => {
     await startWith(page)
     const rem = 16
     for (const view of ['today', 'tasks', 'insights', 'settings']) {
       await openView(page, view)
       const box = (await page.locator('.view').boundingBox())!
       const main = (await page.locator('#main').boundingBox())!
-      expect.soft(box.width, `${view} width`).toBeLessThanOrEqual(45 * rem + 1)
+      expect.soft(box.width, `${view} width`).toBeLessThanOrEqual((view === 'today' ? 65 : 45) * rem + 1)
       // Centered in the space beside the sidebar.
       expect.soft(Math.abs((box.x - main.x) - (main.x + main.width - box.x - box.width)), `${view} centered`).toBeLessThanOrEqual(1)
     }
@@ -326,13 +326,14 @@ test.describe('time format', () => {
     }
   })
 
-  for (const [choice, expected] of [[null, /^9:00\sAM$/], ['h23', /^09:00$/], ['h12', /^9:00\sAM$/]] as const) {
+  // Today: Gym at 18:00 (Deep work is under way at 10:15, so the Ahora hero holds it instead of a row). Week: Deep work.
+  for (const [choice, expected, gym] of [[null, /^9:00\sAM$/, /^6:00\sPM$/], ['h23', /^09:00$/, /^18:00$/], ['h12', /^9:00\sAM$/, /^6:00\sPM$/]] as const) {
     test(`the 12/24 h choice (${choice ?? 'automatic'}) applies to Today and Week`, async ({ page }) => {
       if (choice) await page.addInitScript((value) => window.localStorage.setItem('next168-hour-cycle', value), choice)
       await startWith(page)
       await openView(page, 'today')
-      const work = page.getByTestId('timeline-item').filter({ hasText: 'Deep work' })
-      await expect(work.getByTestId('timeline-start')).toHaveText(expected)
+      const row = page.getByTestId('timeline-item').filter({ hasText: 'Gym' })
+      await expect(row.getByTestId('timeline-start')).toHaveText(gym)
       await openView(page, 'week')
       const label = await page.locator('[data-date="2026-10-21"] [data-block-id="b-work"]').first().getAttribute('aria-label')
       expect(label?.split(' ').slice(2).join(' ')).toMatch(new RegExp(expected.source.replace(/^\^|\$$/g, '')))
@@ -342,7 +343,7 @@ test.describe('time format', () => {
   test('a Spanish week reads in 24 h with durations as "2 h 30 min"', async ({ page }) => {
     await startWith(page, { ...richDocument, settings: { ...richDocument.settings, locale: 'es' } }, 'es')
     await openView(page, 'today')
-    await expect(page.getByTestId('timeline-item').filter({ hasText: 'Deep work' }).getByTestId('timeline-start')).toHaveText('9:00')
+    await expect(page.getByTestId('timeline-item').filter({ hasText: 'Gym' }).getByTestId('timeline-start')).toHaveText('18:00')
     await expect(page.getByTestId('now-left')).toHaveText('Quedan 4 h 15 min')
     await openView(page, 'tasks')
     await expect(page.locator('#main')).toContainText('2 h 30 min')
@@ -649,7 +650,7 @@ test.describe('language and region settings', () => {
     await openView(page, 'week')
     await expect(page.locator('[data-date]').first()).toHaveAttribute('data-date', '2026-10-18')
     await openView(page, 'today')
-    await expect(page.getByTestId('timeline-item').filter({ hasText: 'Deep work' }).getByTestId('timeline-start')).toHaveText('09:00')
+    await expect(page.getByTestId('timeline-item').filter({ hasText: 'Gym' }).getByTestId('timeline-start')).toHaveText('18:00')
 
     await openView(page, 'settings')
     await page.getByTestId('preference-language').selectOption('es')

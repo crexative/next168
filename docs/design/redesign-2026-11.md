@@ -67,6 +67,12 @@ a screen not yet redesigned keeps working with the new tokens and shell.
 
 Anything else in a board that the app cannot do as drawn is raised with the coordinator before it changes behaviour.
 
+## Tests that read styles
+
+Some layout rules are checked by reading a component's own styles (`ConversationFrame.modal.spec.ts`), because the App
+review's mutant runner has no browser; the e2e still measure the real layout. Rewriting or reformatting those styles
+means updating that spec with them.
+
 ## Open for a later slice
 
 - **Back from "Usar con tu IA" (slice 7).** Choosing "Responder con: Usar con tu IA" in the assistant opens its page in
@@ -84,3 +90,12 @@ Slice 1 adds what later slices draw with: `--radius-bubble`, `--warning-label`, 
 uses by slice 8 is removed. The contrast specs measure every text token on `--bg`, `--bg-grouped`, `--surface`,
 `--surface-2` and `--tint-soft` in light and dark; increased contrast is not yet measured for `--tint-soft` and `--fill`
 (follow-up for slice 8).
+
+## Open for a later slice (from the review of Hoy, #54)
+
+- The hero's "Después" line and the list's "Libre" rows can repeat what the list already says (DIRECTION rule 3, each
+  thing once).
+- During a task the hero does not say what comes next when it is tomorrow.
+- A routine hidden behind a task in the hero cannot be marked in its last minutes from Hoy.
+- In "Por hacer hoy" at 200 % text the task rows keep an empty time column after the times fold above the titles,
+  and "venció el 18 nov" runs 3 px over at 390 px.

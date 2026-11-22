@@ -2,6 +2,7 @@
 import { computed, nextTick, ref, useId, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import Button from '@/ui/Button.vue'
+import QuickReplies from '@/ui/QuickReplies.vue'
 import Icon from '@/ui/Icon.vue'
 import type { ActualStatus } from './actuals'
 
@@ -35,6 +36,17 @@ const question = computed(() => props.askTitle ? t('today.status.menuLabel', { t
 watch(() => props.occurrenceKey, () => { changing.value = false; askingMinutes.value = false })
 watch(() => props.status, () => { changing.value = false; askingMinutes.value = false })
 
+const replies = computed(() => [
+  { value: 'done', label: t('today.status.done'), testId: 'answer-done' },
+  { value: 'partial', label: t('today.status.partial'), testId: 'answer-partial' },
+  { value: 'skipped', label: t('today.status.skipped'), testId: 'answer-skipped' },
+])
+
+function onReply(value: string): void {
+  if (value === 'partial') openMinutes()
+  else choose(value as ActualStatus)
+}
+
 function choose(status: ActualStatus): void {
   askingMinutes.value = false
   emit('record', status)
@@ -61,11 +73,8 @@ function saveMinutes(): void {
     </button>
     <template v-else>
       <p class="ask t-footnote" data-testid="now-ask">{{ question }}</p>
-      <div class="options" role="group" :aria-label="question">
-        <Button type="button" variant="tinted" :disabled="!writable" data-testid="answer-done" @click="choose('done')">{{ t('today.status.done') }}</Button>
-        <Button type="button" variant="plain" :disabled="!writable" data-testid="answer-partial" @click="openMinutes">{{ t('today.status.partial') }}</Button>
-        <Button type="button" variant="plain" :disabled="!writable" data-testid="answer-skipped" @click="choose('skipped')">{{ t('today.status.skipped') }}</Button>
-      </div>
+      <!-- The answers are visible replies, not hidden behind a long press (DIRECTION principle 5). -->
+      <QuickReplies :options="replies" :columns="3" min-cell="5.5rem" :group-label="question" :disabled="!writable" @answer="onReply" />
       <form v-if="askingMinutes" class="minutes" data-testid="now-minutes" @submit.prevent="saveMinutes">
         <label class="t-footnote" :for="inputId">{{ t('today.status.minutesLabel', { planned: plannedMinutes }) }}</label>
         <div class="minutes-row">
@@ -80,9 +89,6 @@ function saveMinutes(): void {
 <style scoped>
 .answer { display: flex; flex-direction: column; gap: var(--space-2); }
 .ask { margin: 0; color: var(--label-2); }
-/* Three buttons share a line while they fit; with large text they stack, one per line, full width. */
-.options { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 5.5rem), 1fr)); gap: var(--control-gap); }
-.options :deep(.ui-button) { width: 100%; padding-inline: var(--space-2); }
 .answered {
   display: inline-flex;
   align-items: center;

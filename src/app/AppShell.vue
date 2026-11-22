@@ -42,8 +42,6 @@ const entries = computed(() => [
 ].filter((entry) => !!entry))
 provide(SHELL_TOOLBAR_ENTRIES, true)
 
-// One readable measure (720 px) for every screen; Week alone takes the full width for its grid.
-const FULL_WIDTH_VIEWS: ReadonlySet<string> = new Set(['week'])
 
 const atLeastTablet = useMediaQuery(OVERLAY_QUERY)
 const atLeastDesktop = useMediaQuery(PERSISTENT_QUERY)
@@ -308,7 +306,7 @@ dismissUndoWhenChanged(() => planner.document?.workspaceId)
         <RecoveryScreen v-if="planner.status === 'corrupt'" />
         <StorageErrorScreen v-else-if="planner.status === 'error' || planner.error === UPGRADE_COPY_FAILED" />
         <Transition v-else name="view" mode="out-in" @after-leave="scrollToTop" @after-enter="onViewEntered">
-          <div v-if="currentView" :key="currentView.id" class="view" :data-view="currentView.id" :data-measure="FULL_WIDTH_VIEWS.has(currentView.id) ? 'full' : 'readable'" :data-presentation="presentation">
+          <div v-if="currentView" :key="currentView.id" class="view" :data-view="currentView.id" :data-measure="currentView.measure ?? 'readable'" :data-presentation="presentation">
             <header v-if="sheetPresented" class="sheet-bar" data-testid="sheet-bar">
               <span v-if="presentation === 'sheet'" class="sheet-grabber" aria-hidden="true" />
               <!-- Focusable by script only: the shell moves focus here after a route change, as with the large title. -->
@@ -386,8 +384,13 @@ dismissUndoWhenChanged(() => planner.document?.workspaceId)
 .content { padding-bottom: calc(var(--tabbar-inset) + var(--space-4) + var(--banners-height, 0px)); }
 .main { outline: none; }
 .view { margin-inline: auto; }
-/* 720 px: one measure for every text and list screen, centred in the space beside the sidebar. */
+/* 720 px: one measure for every text and list screen, centred in the space beside the sidebar; 1040 px for a screen
+   that sets an aside beside its main column on a desktop (Hoy, Resumen). Week takes the full width for its grid. */
 .view[data-measure='readable'] { max-width: 45rem; }
+.view[data-measure='wide'] { max-width: 45rem; }
+@media (min-width: 1024px) {
+  .view[data-measure='wide'] { max-width: 65rem; }
+}
 /* The full-height sheet (phone): a dimmed strip of the screen behind at the top, then the sheet with its bar. */
 .view[data-presentation='sheet'] {
   min-height: calc(100dvh - var(--safe-top) - var(--space-3));
