@@ -5,7 +5,7 @@
   "grid": {
     "allDay": "Toute la journée",
     "allDayItem": "{title}, toute la journée",
-    "conflict": "Conflit",
+    "conflict": "Chevauche",
     "crossesMidnight": "{range} (de nuit)"
   },
   "details": {
@@ -69,8 +69,9 @@
     "today": "Aujourd’hui"
   },
   "view": {
-    "showWeek": "Voir toute la semaine",
-    "showDay": "Voir un jour"
+    "day": "Jour",
+    "week": "Semaine",
+    "label": "Affichage"
   },
   "overview": {
     "days": "Jours de la semaine",

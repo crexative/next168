@@ -246,8 +246,6 @@ test.describe('headings', () => {
 })
 
 test.describe('colour is never alone', () => {
-  const glyphOf = (element: Element) => getComputedStyle(element.querySelector('.category-glyph')!, '::before').content.replace(/^"|"$/g, '')
-
   test('Today rows tell blocks and tasks apart by the line beside them and calendar events by a glyph and their source in words', async ({ page }) => {
     await startWith(page, { ...richDocument, events: [{ id: 'e-dentist', title: 'Dentist', start: '2026-10-21T15:00:00.000Z', end: '2026-10-21T16:00:00.000Z', allDay: false, attendees: [] }] })
     await openView(page, 'today')
@@ -273,19 +271,22 @@ test.describe('colour is never alone', () => {
     expect(rows.find((row) => row.kind === 'event')?.kindWord).toBe('Weeklid calendar:')
   })
 
-  test('Week blocks show the glyph and say the category', async ({ page }) => {
+  // R_Semana draws no glyph before a block title: the block shows its own title, keeps its category's 3 px edge (its ::before; not
+  // colour alone: the title is the visible cue) and says the category in its name.
+  test('Week blocks show their title, a category edge and say the category', async ({ page }) => {
     await startWith(page)
     await openView(page, 'week')
     const gym = page.locator('[data-date="2026-10-21"] [data-block-id="b-gym"]').first()
     await expect(gym).toBeVisible()
     await expect(gym).toHaveAccessibleName(/^Gym .*Exercise$/)
-    expect(await gym.evaluate((element, glyphSource) => (new Function('element', `return (${glyphSource})(element)`) as (element: Element) => string)(element), glyphOf.toString())).toBe('E')
-    const ring = await gym.locator('.category-glyph').evaluate((element) => {
-      const style = getComputedStyle(element)
-      return { width: parseFloat(style.borderTopWidth), color: style.borderTopColor }
+    await expect(gym.locator('.block-title')).toHaveText('Gym')
+    await expect(gym.locator('.category-glyph')).toHaveCount(0)
+    const edge = await gym.evaluate((element) => {
+      const style = getComputedStyle(element, '::before')
+      return { width: parseFloat(style.width), color: style.backgroundColor }
     })
-    expect(ring.width).toBeGreaterThanOrEqual(1)
-    expect(ring.color).not.toBe('rgba(0, 0, 0, 0)')
+    expect(edge.width).toBeGreaterThanOrEqual(3)
+    expect(edge.color).not.toBe('rgba(0, 0, 0, 0)')
   })
 })
 

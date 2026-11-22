@@ -5,13 +5,13 @@
   "grid": {
     "allDay": "Todo el día",
     "allDayItem": "{title}, todo el día",
-    "conflict": "Conflicto",
+    "conflict": "Se cruza",
     "crossesMidnight": "{range} (nocturno)"
   },
   "details": {
     "when": "Cuándo",
     "calendar": "Calendario",
-    "conflictsWith": "Choca con {title}",
+    "conflictsWith": "Se cruza con {title}",
     "ownEvent": "Evento de Weeklid",
     "calendarFallback": "Calendario",
     "location": "Lugar",
@@ -69,8 +69,9 @@
     "today": "Hoy"
   },
   "view": {
-    "showWeek": "Ver toda la semana",
-    "showDay": "Ver un día"
+    "day": "Día",
+    "week": "Semana",
+    "label": "Vista"
   },
   "overview": {
     "days": "Días de la semana",
