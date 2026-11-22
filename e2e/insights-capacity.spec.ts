@@ -246,16 +246,20 @@ test('with forced colours every shape of the key is drawn in the text colour', a
   await openTab(page, 'insights')
   const key = page.getByRole('list', { name: 'Key to the dots' })
   await expect(key).toBeVisible()
-  // Drawn means a fill or an outline that differs from the page's own (forced) background.
+  // Each filled shape is filled with the system text colour (CanvasText) and the ring is outlined with it.
   const drawn = await key.locator('.dot').evaluateAll((dots) => {
-    const page = getComputedStyle(document.body).backgroundColor
-    const shows = (colour: string) => colour !== 'rgba(0, 0, 0, 0)' && colour !== page
+    const probe = document.body.appendChild(document.createElement('span'))
+    probe.style.color = 'CanvasText'
+    const text = getComputedStyle(probe).color
+    probe.remove()
     return dots.map((dot) => {
       const style = getComputedStyle(dot)
-      return shows(style.backgroundColor) || (style.borderTopWidth !== '0px' && shows(style.borderTopColor))
+      return dot.classList.contains('is-empty')
+        ? { fill: style.backgroundColor === 'rgba(0, 0, 0, 0)', edge: style.borderTopWidth !== '0px' && style.borderTopColor === text }
+        : { fill: style.backgroundColor === text, edge: true }
     })
   })
-  expect(drawn).toEqual([true, true, true, true])
+  expect(drawn).toEqual(Array(4).fill({ fill: true, edge: true }))
 })
 
 // Review of #59: the headline's long word ("maintenant") breaks instead of running off a narrow phone at 200 % text.
