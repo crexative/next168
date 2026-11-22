@@ -588,3 +588,47 @@ test.describe('an over-wide word in the next-block title', () => {
     for (const right of lineEnds) expect(right).toBeLessThanOrEqual(rect.x + rect.width + 0.5)
   })
 })
+
+// DIRECTION §4: a conversation is full screen on a phone and a centred 560 px modal on a tablet or a desktop.
+for (const { width, height, modal } of [{ width: 390, height: 844, modal: false }, { width: 820, height: 1180, modal: true }, { width: 1440, height: 900, modal: true }]) {
+  test(`the check-in conversation at ${width}x${height} is ${modal ? 'a centred modal at most 560 px wide' : 'full screen'}`, async ({ page }) => {
+    await page.setViewportSize({ width, height })
+    await page.clock.install({ time: NOW })
+    await seedKey(page, V2_KEY, JSON.stringify(plan))
+    await page.goto('./#/checkin')
+    const frame = page.locator('.setup-frame')
+    await expect(frame).toBeVisible()
+    await page.waitForFunction(() => document.getAnimations().every((animation) => animation.playState !== 'running'))
+    const box = (await frame.boundingBox())!
+    if (modal) {
+      expect(box.width).toBeLessThanOrEqual(560.5)
+      expect(Math.abs(box.x + box.width / 2 - width / 2)).toBeLessThanOrEqual(1)
+      expect(Math.abs(box.y + box.height / 2 - height / 2)).toBeLessThanOrEqual(1)
+    } else {
+      expect([box.x, box.y, box.width]).toEqual([0, 0, width])
+    }
+    await expect(page.locator('main#main')).toHaveAttribute('inert', '')
+  })
+}
+
+// #65 review: a small landscape tablet at 200 % text has no room for a modal; the conversation stays full screen and
+// its question in view.
+test('at 1024x600 with 200 % text the check-in stays full screen with its question in view', async ({ page }) => {
+  await page.setViewportSize({ width: 1024, height: 600 })
+  await page.addInitScript(() => { document.addEventListener('DOMContentLoaded', () => { document.documentElement.style.fontSize = '200%' }) })
+  await page.clock.install({ time: NOW })
+  await seedKey(page, V2_KEY, JSON.stringify(plan))
+  await page.goto('./#/checkin')
+  const frame = page.locator('.setup-frame')
+  await expect(frame).toBeVisible()
+  await page.waitForFunction(() => document.getAnimations().every((animation) => animation.playState !== 'running'))
+  const box = (await frame.boundingBox())!
+  expect([box.x, box.y, box.width, box.height]).toEqual([0, 0, 1024, 600])
+  const question = await page.locator('.setup-frame .is-current .ask').evaluate((element) => {
+    const rect = element.getBoundingClientRect()
+    const dock = element.closest('.setup-frame')!.querySelector('.dock, [data-testid=setup-dock]')?.getBoundingClientRect()
+    return { top: rect.top, bottom: rect.bottom, limit: dock ? dock.top : window.innerHeight }
+  })
+  expect(question.top).toBeGreaterThanOrEqual(0)
+  expect(question.bottom).toBeLessThanOrEqual(question.limit + 1)
+})
