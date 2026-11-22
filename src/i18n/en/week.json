@@ -124,6 +124,12 @@
     "removeQuestion": "Remove {title} from your week?",
     "removeYes": "Remove",
     "removeNo": "Not now",
-    "perWeek": "{hours} a week"
+    "perWeek": "{hours} a week",
+    "removeFrees": "Its {hours} become free.",
+    "goalLine": "{category}: {hours} of {kind} {goal}",
+    "goalKind": {
+      "min": "at least",
+      "max": "at most"
+    }
   }
 }

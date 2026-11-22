@@ -3,7 +3,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import { createPinia, setActivePinia } from 'pinia'
 import { createApp, defineComponent, h, nextTick, type App } from 'vue'
 import { i18n } from '@/i18n'
-import type { Category, TimeBlock } from '@/core/model'
+import type { Category, PlannerDocument, TimeBlock } from '@/core/model'
 import { configurePlannerStore, usePlannerStore } from '@/stores/plannerStore'
 import { createTestRepositories, fixedNow, newTestId } from '@/repositories/testSupport'
 import { useUndoToast } from '@/ui/undoToast'
@@ -12,6 +12,13 @@ import WeekView from './WeekView.vue'
 
 const work: Category = { id: 'work', name: 'Work', colorKey: 'blue', goal: { type: 'max', hoursPerWeek: 45 } }
 const block: TimeBlock = { id: 'b-work', categoryId: 'work', title: 'Work', days: [1, 2, 3, 4, 5], start: 540, end: 1020 }
+const gym: TimeBlock = { id: 'b-gym', categoryId: 'work', title: 'Gym', days: [6], start: 600, end: 660 }
+const plan: PlannerDocument = {
+  schemaVersion: 3, generation: 0, workspaceId: 'w', revision: 1, updatedAt: '2026-10-20T08:00:00.000Z',
+  settings: { locale: 'en', weekStartsOn: 1, timeZone: 'UTC', onboardingDone: true, theme: 'system' },
+  categories: [work], blocks: [block, gym], tasks: [],
+  checkIns: [], actuals: [], events: [], calendarSources: [], appliedProposalIds: [], appliedCaptureIds: [],
+}
 
 let app: App | undefined
 afterEach(() => { useUndoToast().dismiss(); app?.unmount(); app = undefined; document.body.innerHTML = ''; vi.useRealTimers(); i18n.global.locale.value = 'en' })
@@ -19,7 +26,7 @@ afterEach(() => { useUndoToast().dismiss(); app?.unmount(); app = undefined; doc
 const $ = <T extends HTMLElement = HTMLElement>(selector: string) => document.body.querySelector<T>(selector)
 const tap = async (selector: string) => { $(selector)!.click(); await nextTick() }
 
-function talk() {
+function talk(doc: PlannerDocument = plan) {
   setActivePinia(createPinia())
   const changes: RoutineChange[] = []
   const events: string[] = []
@@ -28,7 +35,7 @@ function talk() {
   document.body.append(host)
   app = createApp(defineComponent({
     setup: () => () => h(RoutineConversation, {
-      block, category: work, writable: true,
+      block, category: work, writable: true, document: doc,
       onChange: (change: RoutineChange) => changes.push(change), onClose: () => events.push('close'), onEditAll: () => events.push('editAll'),
     }),
   })).use(i18n)
@@ -52,17 +59,46 @@ describe('a routine changed by talking (R_EditarRutina)', () => {
     const { changes } = talk()
     await tap('[data-testid=talk-time]')
     expect($('[data-testid=talk-question]')!.textContent).toBe('When does it start and end?')
-    expect($('[data-testid=talk-live]')!.textContent).toBe('40 h a week')
+    // Against the goal of Work (at most 45 h), with the hour of Gym it also holds.
+    expect($('[data-testid=talk-live]')!.textContent).toBe('Work: 41 h of at most 45 h')
     await tap('[data-field=start] ~ .times [data-minute="600"]')
     expect($('[data-field=end]')!.getAttribute('aria-expanded')).toBe('true')
     await tap('[data-field=end] ~ .times [data-minute="840"]')
-    expect($('[data-testid=talk-live]')!.textContent).toBe('20 h a week')
+    expect($('[data-testid=talk-live]')!.textContent).toBe('Work: 21 h of at most 45 h')
     await tap('[data-testid=talk-save]')
     expect(changes).toEqual([{ kind: 'block', block: { ...block, start: 600, end: 840 } }])
   })
 
-  it('Days: a preset replaces the days', async () => {
+  it('a change that crosses another routine is not saved and says with which one, as the form does', async () => {
     const { changes } = talk()
+    await tap('[data-testid=talk-days]')
+    await tap('[data-preset=everyDay]')
+    expect($('[data-testid=talk-problem]')!.textContent).toContain('Gym')
+    expect($<HTMLButtonElement>('[data-testid=talk-save]')!.disabled).toBe(true)
+    $('[data-testid=talk-save]')!.click()
+    await nextTick()
+    expect(changes).toEqual([])
+    await tap('[data-preset=weekdays]')
+    expect($('[data-testid=talk-problem]')).toBeNull()
+  })
+
+  it('a picked time moves focus to the end row, where the times went', async () => {
+    talk()
+    await tap('[data-testid=talk-time]')
+    await tap('[data-field=start] ~ .times [data-minute="600"]')
+    await vi.waitFor(() => expect(document.activeElement).toBe($('[data-field=end]')))
+    await tap('[data-field=end] ~ .times [data-minute="840"]')
+    await vi.waitFor(() => expect(document.activeElement).toBe($('[data-field=end]')))
+  })
+
+  it('Quitar says how many hours become free', async () => {
+    talk()
+    await tap('[data-testid=talk-remove]')
+    expect($('[data-testid=talk-freed]')!.textContent).toBe('Its 40 h become free.')
+  })
+
+  it('Days: a preset replaces the days', async () => {
+    const { changes } = talk({ ...plan, blocks: [block] })
     await tap('[data-testid=talk-days]')
     await tap('[data-preset=everyDay]')
     await tap('[data-testid=talk-save]')

@@ -412,3 +412,41 @@ test('GUARD: an empty hour opens "Nueva rutina", a block opens "Editar rutina", 
   await page.getByRole('button', { name: 'Editar Trabajo' }).click()
   await expect(page.getByRole('dialog', { name: 'Editar categoría' })).toBeVisible()
 })
+
+// #62 review: at 200 % text on a phone the routine conversation keeps its question in view and Guardar reachable (the
+// answers scroll in a capped dock, as in the setup).
+for (const size of [{ width: 375, height: 667 }, { width: 390, height: 844 }] as const) {
+  test(`at 200 % text on a ${size.width}x${size.height} phone each step of a routine's conversation keeps its question and Guardar in view`, async ({ page }) => {
+    await page.addInitScript(() => { document.addEventListener('DOMContentLoaded', () => { document.documentElement.style.fontSize = '200%' }) })
+    await start(page, { document: planned(), size })
+    await page.goto('./#/week')
+    for (const step of ['talk-time', 'talk-days', 'talk-goal']) {
+      await page.locator('[data-date="2026-10-26"] [data-block-id="b-work"]').first().click()
+      await expect(page.getByTestId('routine-talk')).toBeVisible()
+      await page.getByTestId(step).click()
+      await page.waitForFunction(() => document.getAnimations().every((animation) => animation.playState !== 'running'))
+      const geometry = await page.evaluate(() => {
+        const question = document.querySelector('[data-testid=talk-question]')!.getBoundingClientRect()
+        const scroller = document.querySelector('[data-testid=routine-talk] .scroller')!.getBoundingClientRect()
+        const save = document.querySelector('[data-testid=talk-save]')!.getBoundingClientRect()
+        return { questionTop: question.top >= scroller.top - 0.5 && question.top < scroller.bottom, questionShown: scroller.height > 40, saveIn: save.top >= 0 && save.bottom <= window.innerHeight + 0.5 }
+      })
+      expect(geometry, step).toEqual({ questionTop: true, questionShown: true, saveIn: true })
+      await page.getByTestId('talk-cancel').or(page.getByTestId('talk-back')).first().click()
+      await page.getByRole('button', { name: 'Cancelar' }).last().click()
+      await expect(page.getByTestId('routine-talk')).toHaveCount(0)
+    }
+  })
+}
+
+test('closing the whole form opened from a routine\'s conversation gives focus back to the routine', async ({ page }) => {
+  await start(page, { document: planned(), size: { width: 1440, height: 900 } })
+  await page.goto('./#/week')
+  const routine = page.locator('[data-date="2026-10-26"] [data-block-id="b-work"]').first()
+  await routine.click()
+  await page.getByTestId('talk-edit-all').click()
+  await expect(page.getByRole('dialog', { name: 'Editar rutina' })).toBeVisible()
+  await page.keyboard.press('Escape')
+  await expect(page.getByRole('dialog')).toHaveCount(0)
+  await expect(routine).toBeFocused()
+})

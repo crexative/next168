@@ -1551,3 +1551,21 @@ test('a summary row asks what to change: Horario opens its times, Quitar asks fi
   await live(page).locator('[data-removed=work]').getByTestId('card-undo').click()
   await expect(live(page).getByTestId('card-work')).toBeVisible()
 })
+
+// #62 review: a refused save opens the row with the problem on its whole form, where the reason shows.
+test('a save refused for a repeated name opens that row on its form, with the reason', async ({ page }) => {
+  await start(page, { document: planned() })
+  await page.goto('./')
+  await openFromSettings(page)
+  await onScreen(page, 'summary')
+  await live(page).getByTestId('card-sleep').click()
+  await live(page).getByTestId('talk-edit-all').click()
+  await live(page).getByTestId('card-name').fill('Trabajo')
+  await live(page).getByTestId('card-done').click()
+  await primary(page).click()
+  const open = live(page).locator('.card.is-open')
+  await expect(open).toHaveCount(1)
+  await expect(open.getByTestId('card-name')).toBeVisible()
+  await expect(open.getByRole('alert')).toBeVisible()
+  await expect(open.getByTestId('card-talk')).toHaveCount(0)
+})

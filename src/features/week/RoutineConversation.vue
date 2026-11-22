@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import { computed, nextTick, onBeforeUnmount, onMounted, onUnmounted, ref, useId, watch } from 'vue'
-import type { Category, DayIndex, Goal, TimeBlock } from '@/core/model'
+import type { Category, DayIndex, Goal, PlannerDocument, TimeBlock } from '@/core/model'
+import { plannedMinutesByCategory } from '@/core/stats'
+import { validateBlockDraft } from './blockEditing'
 import { categoryColor } from '@/features/insights/categoryColor'
 import DayPicker from '@/features/onboarding/setup/DayPicker.vue'
 import TimeChips from '@/features/onboarding/setup/TimeChips.vue'
@@ -22,8 +24,9 @@ registerIcons({ clock: Clock, 'calendar-days': CalendarDays, target: Target, 'tr
 // proposes; Week saves through the same block and category commits as the form, with Deshacer.
 export type RoutineChange = { kind: 'block'; block: TimeBlock } | { kind: 'goal'; categoryId: string; goal: Goal } | { kind: 'remove'; blockId: string }
 
-const props = defineProps<{ block: TimeBlock; category: Category | undefined; writable: boolean }>()
-const emit = defineEmits<{ close: []; change: [change: RoutineChange]; editAll: [] }>()
+// `document` is the plan a change is checked against (overlaps, as the form does); `saveError` is why a save failed.
+const props = defineProps<{ block: TimeBlock; category: Category | undefined; writable: boolean; document: PlannerDocument; saveError?: string | null }>()
+const emit = defineEmits<{ close: []; change: [change: RoutineChange]; editAll: [origin: HTMLElement | null] }>()
 
 const { t, time, duration, days: daysText, locale } = useSetupFormat()
 const questionId = useId()
@@ -57,8 +60,25 @@ const question = computed(() => {
     default: return t('week.talk.question', { title: props.block.title })
   }
 })
-// The consequence of the answer, live: "40 h a la semana".
-const perWeek = computed(() => t('week.talk.perWeek', { hours: duration(weekly(start.value, end.value, days.value)) }))
+// The consequence of the answer, live: "40 h a la semana", or against the category's goal, "Trabajo: 40 h de como
+// máximo 45 h" (R_EditarRutina).
+const perWeek = computed(() => {
+  const goal = props.category?.goal
+  const hours = weekly(start.value, end.value, days.value)
+  if (!props.category || !goal || goal.type === 'none') return t('week.talk.perWeek', { hours: duration(hours) })
+  const others = (plannedMinutesByCategory(props.document)[props.category.id] ?? 0) - weekly(props.block.start, props.block.end, props.block.days as DayIndex[])
+  return t('week.talk.goalLine', { category: props.category.name, hours: duration(Math.max(0, others) + hours), kind: t(`week.talk.goalKind.${goal.type}`), goal: duration(goal.hoursPerWeek * 60) })
+})
+// The new time or days checked like the form (blockEditing): one that crosses another routine is not saved, and says
+// with which one, so the person changes it.
+const problem = computed(() => {
+  if (step.value !== 'time' && step.value !== 'days') return ''
+  const error = validateBlockDraft({ id: props.block.id, title: props.block.title, categoryId: props.block.categoryId, start: start.value, end: end.value, days: [...days.value] }, props.document).errors[0]
+  if (!error) return ''
+  return error.code === 'overlap' ? t('week.editor.errors.overlap', { title: error.blockTitle }) : t(`week.editor.errors.${error.code}`)
+})
+// "¿Quitar Trabajo de tu semana? Sus 40 h quedan libres."
+const freed = computed(() => t('week.talk.removeFrees', { hours: duration(weekly(props.block.start, props.block.end, props.block.days as DayIndex[])) }))
 
 const choices = computed(() => [
   { value: 'time', label: t('week.talk.schedule'), testId: 'talk-time', icon: 'clock' },
@@ -78,6 +98,8 @@ function choose(value: string): void {
   open.value = 'start'
 }
 
+const rows = ref<Record<'start' | 'end', HTMLElement | null>>({ start: null, end: null })
+// The picked chip leaves the page with its list: focus goes to the end's row, so Escape and Tab go on from there.
 function pick(field: 'start' | 'end', minute: number): void {
   if (field === 'start') {
     // The routine keeps its length when its start moves, as in the form.
@@ -88,22 +110,36 @@ function pick(field: 'start' | 'end', minute: number): void {
     end.value = minute
     open.value = null
   }
+  void nextTick(() => rows.value.end?.focus({ preventScroll: true }))
 }
 
 const timeValid = computed(() => start.value !== end.value)
 const goalValid = computed(() => goalType.value === 'none' || (goalHours.value >= 0.5 && goalHours.value <= 168))
 
 function saveTime(): void {
-  if (!timeValid.value) return
+  if (!timeValid.value || problem.value) return
   emit('change', { kind: 'block', block: { ...props.block, start: start.value, end: end.value } })
 }
 function saveDays(): void {
-  if (days.value.length === 0) return
+  if (days.value.length === 0 || problem.value) return
   emit('change', { kind: 'block', block: { ...props.block, days: [...days.value].sort((a, b) => a - b) } })
 }
 function saveGoal(): void {
   if (!props.category || !goalValid.value) return
   emit('change', { kind: 'goal', categoryId: props.category.id, goal: goalType.value === 'none' ? { type: 'none', hoursPerWeek: 0 } : { type: goalType.value, hoursPerWeek: goalHours.value } })
+}
+// Guardar, for the steps that change something: one button in the fixed bar under the answers.
+const saving = computed(() => step.value === 'time' || step.value === 'days' || step.value === 'goal')
+const canSave = computed(() => {
+  if (problem.value) return false
+  if (step.value === 'time') return timeValid.value
+  if (step.value === 'days') return days.value.length > 0
+  return goalValid.value
+})
+function save(): void {
+  if (step.value === 'time') saveTime()
+  else if (step.value === 'days') saveDays()
+  else saveGoal()
 }
 function answerRemove(value: string): void {
   if (value === 'yes') emit('change', { kind: 'remove', blockId: props.block.id })
@@ -111,10 +147,18 @@ function answerRemove(value: string): void {
 }
 
 const heading = ref<HTMLElement | null>(null)
+const scroller = ref<HTMLElement | null>(null)
+// Each step shows its question from the start, however tall the answers under it.
 watch(step, async () => {
   await nextTick()
   heading.value?.focus({ preventScroll: true })
+  scroller.value?.scrollTo({ top: 0 })
 })
+// "Editar todo" hands Week the routine that opened the conversation: Week gives it focus once this conversation (and
+// the inert page behind it) is gone, so the form it opens returns focus there when it closes.
+function editAll(): void {
+  emit('editAll', origin?.isConnected ? origin : null)
+}
 
 let release: (() => void) | undefined
 // Week removes the conversation rather than closing its frame, so it gives focus back itself: to the routine tapped
@@ -141,63 +185,67 @@ onUnmounted(() => {
     <section class="talk" data-testid="routine-talk" :data-step="step">
       <!-- What is being changed, as a capsule under the mark (R_EditarRutina). -->
       <p class="context t-footnote" data-testid="talk-context"><span class="dot" :style="{ background: color }" aria-hidden="true" />{{ context }}</p>
-      <div class="scroller">
+      <div ref="scroller" class="scroller" role="region" tabindex="0" :aria-labelledby="questionId">
         <div class="column">
           <div class="turn">
             <AppMark class="avatar" :size="32" />
             <div class="bubble">
               <h2 :id="questionId" ref="heading" class="ask t-title-2" tabindex="-1" data-setup-initial-focus data-testid="talk-question">{{ question }}</h2>
+              <p v-if="step === 'remove'" class="freed t-body" data-testid="talk-freed">{{ freed }}</p>
             </div>
           </div>
         </div>
       </div>
 
       <footer class="dock">
-        <div class="column dock-column">
-          <template v-if="step === 'choose'">
-            <QuickReplies :options="choices" :columns="2" :group-label="question" :disabled="!writable" @answer="choose" />
-            <Button variant="plain" class="edit-all" data-testid="talk-edit-all" @click="emit('editAll')"><Icon name="pencil" :size="18" /> {{ t('week.talk.editAll') }}</Button>
-          </template>
+        <!-- The answers scroll on their own when they are taller than their share; Guardar and the way back never move. -->
+        <div class="dock-answer">
+          <div class="column dock-column">
+            <template v-if="step === 'choose'">
+              <!-- An icon and its word need 7.5rem: at large text the replies take one column, never "Ho-rario". -->
+              <QuickReplies :options="choices" :columns="2" min-cell="7.5rem" :group-label="question" :disabled="!writable" @answer="choose" />
+              <Button variant="plain" class="edit-all" data-testid="talk-edit-all" @click="editAll"><Icon name="pencil" :size="18" /> {{ t('week.talk.editAll') }}</Button>
+            </template>
 
-          <template v-else-if="step === 'time'">
-            <div class="range" role="group" :aria-labelledby="questionId">
+            <div v-else-if="step === 'time'" class="range" role="group" :aria-labelledby="questionId">
               <div class="field" :class="{ 'is-open': open === 'start' }">
-                <button class="row t-body" type="button" data-field="start" :aria-expanded="open === 'start'" @click="open = open === 'start' ? null : 'start'">
+                <button :ref="(element) => { rows.start = element as HTMLElement | null }" class="row t-body" type="button" data-field="start" :aria-expanded="open === 'start'" @click="open = open === 'start' ? null : 'start'">
                   <span class="label">{{ t('onboarding.guided.range.start') }}</span><span class="value">{{ time(start) }}</span>
                 </button>
                 <TimeChips v-if="open === 'start'" field="start" :value="start" :start="start" :lengths="[60, 120, 240, 480]" @pick="pick('start', $event)" />
               </div>
               <div class="field" :class="{ 'is-open': open === 'end' }">
-                <button class="row t-body" type="button" data-field="end" :aria-expanded="open === 'end'" @click="open = open === 'end' ? null : 'end'">
+                <button :ref="(element) => { rows.end = element as HTMLElement | null }" class="row t-body" type="button" data-field="end" :aria-expanded="open === 'end'" @click="open = open === 'end' ? null : 'end'">
                   <span class="label">{{ t('onboarding.guided.range.end') }}</span><span class="value">{{ time(end) }} <span class="t-secondary">· {{ duration(length(start, end)) }}</span></span>
                 </button>
                 <TimeChips v-if="open === 'end'" field="end" :value="end" :start="start" :lengths="[30, 60, 120, 240, 480]" @pick="pick('end', $event)" />
               </div>
               <p class="live t-footnote" data-testid="talk-live">{{ perWeek }}</p>
             </div>
-            <Button block class="primary" :disabled="!writable || !timeValid" data-testid="talk-save" @click="saveTime">{{ t('common.save') }}</Button>
-          </template>
 
-          <template v-else-if="step === 'days'">
-            <DayPicker :days="days" @change="days = $event" @done="() => {}" />
-            <p class="live t-footnote" data-testid="talk-live">{{ perWeek }}</p>
-            <Button block class="primary" :disabled="!writable || days.length === 0" data-testid="talk-save" @click="saveDays">{{ t('common.save') }}</Button>
-          </template>
+            <template v-else-if="step === 'days'">
+              <DayPicker :days="days" @change="days = $event" @done="() => {}" />
+              <p class="live t-footnote" data-testid="talk-live">{{ perWeek }}</p>
+            </template>
 
-          <template v-else-if="step === 'goal'">
-            <QuickReplies :options="goalChoices" :columns="3" :group-label="question" :current="goalType" :current-label="t('onboarding.guided.current')" :disabled="!writable" @answer="goalType = $event as Goal['type']" />
-            <label v-if="goalType !== 'none'" class="hours">
-              <span class="t-footnote t-secondary">{{ t('week.talk.goalHours') }}</span>
-              <input v-model.number="goalHours" class="input" type="number" inputmode="decimal" min="0.5" max="168" step="0.5" data-testid="talk-goal-hours">
-            </label>
-            <Button block class="primary" :disabled="!writable || !goalValid" data-testid="talk-save" @click="saveGoal">{{ t('common.save') }}</Button>
-          </template>
+            <template v-else-if="step === 'goal'">
+              <QuickReplies :options="goalChoices" :columns="3" :group-label="question" :current="goalType" :current-label="t('onboarding.guided.current')" :disabled="!writable" @answer="goalType = $event as Goal['type']" />
+              <label v-if="goalType !== 'none'" class="hours">
+                <span class="t-footnote t-secondary">{{ t('week.talk.goalHours') }}</span>
+                <input v-model.number="goalHours" class="input" type="number" inputmode="decimal" min="0.5" max="168" step="0.5" data-testid="talk-goal-hours">
+              </label>
+            </template>
 
-          <template v-else>
-            <QuickReplies :options="removeChoices" :columns="2" :group-label="question" :disabled="!writable" @answer="answerRemove" />
-          </template>
-
-          <Button v-if="step !== 'choose'" variant="quiet" class="cancel" data-testid="talk-back" @click="step = 'choose'">{{ t('week.talk.other') }}</Button>
+            <QuickReplies v-else :options="removeChoices" :columns="2" :group-label="question" :disabled="!writable" @answer="answerRemove" />
+          </div>
+        </div>
+        <div class="dock-actions">
+          <div class="column dock-column">
+            <p v-if="problem || saveError" class="problem t-subhead" role="alert" data-testid="talk-problem">⚠ {{ problem || saveError }}</p>
+            <Button v-if="saving" block class="primary" :disabled="!writable || !canSave" data-testid="talk-save" @click="save">{{ t('common.save') }}</Button>
+            <Button v-if="step !== 'choose'" variant="quiet" class="cancel" data-testid="talk-back" @click="step = 'choose'">{{ t('week.talk.other') }}</Button>
+            <Button v-else variant="quiet" class="cancel" data-testid="talk-cancel" @click="emit('close')">{{ t('common.cancel') }}</Button>
+          </div>
         </div>
       </footer>
     </section>
@@ -217,8 +265,18 @@ onUnmounted(() => {
 .avatar { flex: none; margin-block-end: 2px; }
 .bubble { flex: 1 1 auto; min-width: 0; padding: var(--space-4) var(--space-5); border-radius: var(--radius-bubble) var(--radius-bubble) var(--radius-bubble) 6px; background: var(--surface-2); }
 .ask { margin: 0; outline: none; overflow-wrap: anywhere; }
-.dock { flex: none; border-top: 0.5px solid var(--separator); background: var(--surface); }
-.dock-column { display: flex; flex-direction: column; gap: var(--space-3); padding-block: var(--space-3) calc(var(--space-4) + var(--safe-bottom)); }
+/* The scroller takes focus (its text can be scrolled from the keyboard): its ring stays inside it. */
+.scroller:focus-visible { outline-offset: -2px; }
+.dock {
+  flex: 0 1 auto; display: flex; flex-direction: column; min-height: 0; max-height: calc(min(var(--vv-height, 100dvh), 100dvh) * 0.66);
+  border-top: 0.5px solid var(--separator); background: var(--surface);
+}
+.dock-answer { flex: 0 1 auto; min-height: 0; overflow-y: auto; overscroll-behavior: contain; }
+.dock-actions { flex: none; }
+.dock-column { display: flex; flex-direction: column; gap: var(--space-3); padding-block: var(--space-3); }
+.dock-actions > .dock-column { padding-block: 0 calc(var(--space-4) + var(--safe-bottom)); }
+.problem { margin: 0; color: var(--danger-label); overflow-wrap: anywhere; }
+.freed { margin: var(--space-1) 0 0; color: var(--label-2); }
 .primary { min-height: 52px; border-radius: 26px; }
 .cancel { align-self: flex-start; }
 .range { display: flex; flex-direction: column; gap: var(--control-gap); padding: var(--card-padding-block) var(--card-padding); border-radius: var(--radius-card); background: var(--surface-2); }

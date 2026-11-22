@@ -27,8 +27,11 @@ type Mode = 'talk' | 'times' | 'remove' | 'all'
 const mode = ref<Mode>('talk')
 const talkId = useId()
 const root = ref<HTMLElement | null>(null)
-// A row added from "Añadir algo más" has no name yet: it opens on the whole form, its name field first.
-watch(() => props.expanded, (open) => { if (open) mode.value = props.category.name.trim() === '' ? 'all' : 'talk' }, { immediate: true })
+// A row added from "Añadir algo más" has no name yet, and a row opened for a problem (a refused save: a repeated name, a
+// crossing time) must show it: both open on the whole form, where the name and the times say what to fix.
+const hasProblem = computed(() => props.issues.some((issue) => issue.categoryKey === props.category.key))
+watch(() => props.expanded, (open) => { if (open) mode.value = props.category.name.trim() === '' || hasProblem.value ? 'all' : 'talk' }, { immediate: true })
+watch(hasProblem, (problem) => { if (problem && props.expanded) mode.value = 'all' })
 const talkChoices = computed(() => [
   { value: 'time', label: t('week.talk.schedule'), testId: 'talk-time', icon: 'clock' },
   { value: 'days', label: t('week.talk.days'), testId: 'talk-days', icon: 'calendar-days' },
@@ -85,7 +88,7 @@ function onName(name: string): void {
     </button>
     <div v-if="expanded && (mode === 'talk' || mode === 'remove')" class="talk" role="group" :aria-labelledby="talkId" data-testid="card-talk">
       <p :id="talkId" class="talk-question t-body">{{ mode === 'remove' ? t('week.talk.removeQuestion', { title: category.name }) : t('week.talk.question', { title: category.name }) }}</p>
-      <QuickReplies v-if="mode === 'talk'" :options="talkChoices" :columns="talkChoices.length" :group-label="t('week.talk.question', { title: category.name })" @answer="onTalk" />
+      <QuickReplies v-if="mode === 'talk'" :options="talkChoices" :columns="talkChoices.length" min-cell="7.5rem" :group-label="t('week.talk.question', { title: category.name })" @answer="onTalk" />
       <QuickReplies v-else :options="removeChoices" :columns="2" :group-label="t('week.talk.removeQuestion', { title: category.name })" @answer="onRemove" />
       <Button v-if="mode === 'talk'" variant="plain" data-testid="talk-edit-all" @click="go('all')">{{ t('week.talk.editAll') }}</Button>
     </div>
