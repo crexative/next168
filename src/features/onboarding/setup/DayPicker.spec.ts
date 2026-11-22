@@ -1,4 +1,4 @@
-import { afterEach, expect, it } from 'vitest'
+import { afterEach, expect, it, vi } from 'vitest'
 import { createApp, h, nextTick, type App } from 'vue'
 import { createPinia } from 'pinia'
 import type { DayIndex } from '@/core/model'
@@ -34,4 +34,25 @@ it('a preset is the chosen chip and "Choose days" stays plain', async () => {
   const root = await mount([1, 2, 3, 4, 5])
   expect(root.querySelector('[data-preset=weekdays]')!.getAttribute('aria-pressed')).toBe('true')
   expect(root.querySelector('[data-preset=pick]')!.getAttribute('aria-pressed')).toBe('false')
+})
+
+it('Escape puts the seven days away, back on "Choose days", and goes no further while they are open', async () => {
+  const root = await mount([1, 2, 3, 4, 5])
+  const outer = vi.fn()
+  root.addEventListener('keydown', outer)
+  const pick = root.querySelector<HTMLButtonElement>('[data-preset=pick]')!
+  pick.click()
+  await nextTick()
+  const day = root.querySelector<HTMLButtonElement>('[data-day="1"]')!
+  day.focus()
+  day.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true }))
+  await nextTick()
+  await nextTick()
+  expect(root.querySelector('[data-day="1"]')).toBeNull()
+  expect(pick.getAttribute('aria-expanded')).toBe('false')
+  expect(document.activeElement).toBe(pick)
+  expect(outer).not.toHaveBeenCalled()
+  // With the days put away, Escape is the time list's or the sheet's again.
+  pick.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true }))
+  expect(outer).toHaveBeenCalledTimes(1)
 })

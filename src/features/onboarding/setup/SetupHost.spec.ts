@@ -491,6 +491,22 @@ describe('the conversation', () => {
     }
   })
 
+  it('Escape with "Choose days" open puts the days away and keeps the setup open, focus back on "Choose days"', async () => {
+    await mount(firstRun())
+    await click('[data-testid=setup-primary]')
+    await quick('work')
+    await vi.waitFor(() => expect(screen()).toBe('work'))
+    await click('[data-preset=pick]')
+    const day = live('[data-day="1"]')!
+    day.focus()
+    day.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true }))
+    await nextTick()
+    await nextTick()
+    expect(setup()).not.toBeNull()
+    expect(live('[data-day="1"]')).toBeUndefined()
+    expect(window.document.activeElement).toBe(live('[data-preset=pick]'))
+  })
+
   it('on a times question "No fixed hours" rides in the fixed bar beside Next, never under the times; on sleep it is not there', async () => {
     await mount(firstRun())
     const inBar = () => live('.dock-actions [data-testid=setup-secondary]')
