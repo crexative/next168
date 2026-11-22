@@ -7,6 +7,7 @@ import type { PlannerDocument, Task } from '@/core/model'
 import { configurePlannerStore, usePlannerStore } from '@/stores/plannerStore'
 import { createTestRepositories, fixedNow, newTestId, testDocument } from '@/repositories/testSupport'
 import { useUndoToast } from '@/ui/undoToast'
+import { hasUnsavedInput } from '@/ui/unsavedGuard'
 import { LAST_TASK_CATEGORY_KEY } from './lastCategory'
 import TaskSheet from './TaskSheet.vue'
 import { pickWhen, whenValue, whenValues } from './whenTestSupport'
@@ -157,6 +158,17 @@ describe('editing a task', () => {
     expect(isOpen.value).toBe(false)
   })
 
+  it('"During" opens its choices in place and closes once one is picked, showing it on the row', async () => {
+    await open('t-1')
+    const toggle = dialog().querySelector<HTMLButtonElement>('[data-testid=task-when-toggle]')!
+    const list = dialog().querySelector<HTMLElement>('[data-testid=task-when]')!
+    expect(toggle.getAttribute('aria-expanded')).toBe('false')
+    await pickWhen(dialog(), 'c-work')
+    expect(toggle.getAttribute('aria-expanded')).toBe('false')
+    expect(list.style.display).toBe('none')
+    expect(dialog().querySelector('[data-testid=task-when-value]')!.textContent).toBe('Work')
+  })
+
   it('has "Cancel", the title and "Save" in its header (R_HojaTarea), and no ✕ or second Cancel at the foot', async () => {
     await open('t-1')
     const header = dialog().querySelector('[data-testid=sheet-form-header]')!
@@ -187,6 +199,26 @@ describe('adding a task from the sheet', () => {
     await settle(store)
     expect(store.document!.tasks).toEqual([])
     expect(store.error).toBeNull()
+  })
+
+  it('writes nothing when the planner on screen was replaced under the same id and revision after the sheet opened', async () => {
+    const { store } = await open(undefined, { tasks: [] })
+    await settle(store)
+    // A restored backup shown on screen: same workspace, generation and revision, other content; storage untouched.
+    store.document = { ...store.document!, tasks: [{ ...TASK, id: 't-restored', title: 'Restored task' }] }
+    await set(titleField(), 'Stale task')
+    save().click()
+    await settle(store)
+    expect(store.document!.tasks.map((task) => task.title)).not.toContain('Stale task')
+  })
+
+  it('a new task with typed text is unsaved input; an empty one is not', async () => {
+    await open(undefined, { tasks: [] })
+    expect(hasUnsavedInput.value).toBe(false)
+    await set(titleField(), 'Call the bank')
+    expect(hasUnsavedInput.value).toBe(true)
+    await set(titleField(), '   ')
+    expect(hasUnsavedInput.value).toBe(false)
   })
 
   it('starts with no category, offers the last choice first in "During", and needs a title', async () => {
