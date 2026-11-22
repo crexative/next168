@@ -307,7 +307,7 @@ function onColumnClick(event: MouseEvent, blockId?: string): void {
       :data-start-minute="planned.task.startMinute"
       :data-end-minute="planned.task.endMinute"
       :data-late="planned.task.late || undefined"
-      :aria-label="t('week.task.label', { title: planned.task.title, range: taskRange(planned.task) }) + (planned.task.late ? `, ${t('week.task.late')}` : '')"
+      :aria-label="t('week.task.label', { title: planned.task.spokenTitle ?? planned.task.title, range: taskRange(planned.task) }) + (planned.task.late ? `, ${t('week.task.late')}` : '')"
       :title="planned.task.title"
       :disabled="!editable"
       :tabindex="compact ? -1 : undefined"
