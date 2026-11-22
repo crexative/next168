@@ -252,7 +252,6 @@ describe('WeekView saving', () => {
     const range = () => host.querySelector('[data-testid="week-range"]')!.textContent!.replace(/\s/g, ' ')
     const click = async (id: string) => { host.querySelector<HTMLElement>(`[data-testid="${id}"]`)!.click(); await tick() }
     expect(range()).toBe('Oct 19 – 25')
-    // "Today" appears only once another week is shown.
     // "Hoy" is always there beside the arrows (R_Semana).
     expect(host.querySelector('[data-testid="week-today"]')).not.toBeNull()
     expect(host.querySelector('[data-date="2026-10-19"]')).not.toBeNull()
