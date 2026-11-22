@@ -124,7 +124,8 @@
       "nextDay": "(next day)",
       "otherTime": "Other time",
       "add": "Add another time",
-      "remove": "Remove"
+      "remove": "Remove",
+      "weekHours": "{hours} a week"
     },
     "time": {
       "hour": "Hour",
@@ -155,10 +156,8 @@
     "draftUnavailable": "This browser can't keep a draft. Don't reload until you finish.",
     "change": "Change: {question} {answer}",
     "conversation": "Conversation",
-    "send": "Send answer",
     "needFix": "First fix the time that is marked.",
-    "progressShort": "{step} of {total}",
-    "sendShort": "Send"
+    "progressShort": "{step} of {total}"
   },
   "summary": {
     "title": "Your typical week",

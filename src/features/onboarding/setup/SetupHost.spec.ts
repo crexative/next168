@@ -416,11 +416,42 @@ describe('the conversation', () => {
   const turn = (screen: string) => turns().find((element) => element.dataset.answer === screen)!
   const quick = (value: string) => click(`[data-value=${value}]`)
 
+  // Fewer taps (DIRECTION §4): the first range opens on its start; a start picked opens the end; an end picked closes.
+  it('opens on the start time, moves on to the end once a start is picked, and closes once the end is picked', async () => {
+    await mount(firstRun())
+    const expanded = (field: string) => live(`[data-field=${field}]`)!.getAttribute('aria-expanded')
+    expect(expanded('start')).toBe('true')
+    expect(expanded('end')).toBe('false')
+    const start = live('[data-field=start]')!.closest('.field')!.querySelector<HTMLButtonElement>('[data-minute]:not([aria-pressed=true])')!
+    start.click()
+    await nextTick()
+    expect(expanded('start')).toBe('false')
+    expect(expanded('end')).toBe('true')
+    // The start's chips left the page with the focus: it moves to the end's row, whose Escape closes its times.
+    await vi.waitFor(() => expect(window.document.activeElement).toBe(live('[data-field=end]')))
+    live('[data-field=end]')!.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }))
+    await nextTick()
+    expect(expanded('end')).toBe('false')
+    expect(window.document.activeElement).toBe(live('[data-field=end]'))
+    live('[data-field=start]')!.click()
+    await nextTick()
+    live('[data-field=start]')!.closest('.field')!.querySelector<HTMLButtonElement>('[data-testid=other-time]')!.click()
+    await nextTick()
+    live('[data-testid=time-use]')!.click()
+    await nextTick()
+    expect(expanded('end')).toBe('true')
+    await vi.waitFor(() => expect(window.document.activeElement).toBe(live('[data-field=end]')))
+    live('[data-field=end]')!.closest('.field')!.querySelector<HTMLButtonElement>('[data-minute]')!.click()
+    await nextTick()
+    expect(expanded('end')).toBe('false')
+    expect(expanded('start')).toBe('false')
+  })
+
   it('shows English PM and AM in the other-time editor with a 12-hour clock', async () => {
     setHourCycle('h12')
     try {
       await mount(firstRun())
-      await click('[data-field=start]')
+      // The first range opens on its start, its times ready.
       await click('[data-testid=other-time]')
       const period = () => live('[data-testid=time-period]')!.textContent!.trim().replace(/\s/g, ' ')
 
@@ -432,6 +463,47 @@ describe('the conversation', () => {
     } finally {
       setHourCycle('auto')
     }
+  })
+
+  // On a short phone the answers take most of the height: the question's first words show, measured against the
+  // scroller itself (offsetTop counts from the frame, which would scroll past them).
+  it('shows the current question from its start, measured against its own scroller', async () => {
+    const rect = (top: number) => ({ top, bottom: top + 100, left: 0, right: 0, width: 0, height: 100, x: 0, y: top, toJSON: () => ({}) }) as DOMRect
+    vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockImplementation(function (this: HTMLElement) {
+      if (this.classList.contains('setup-scroller')) return rect(100)
+      if (this.classList.contains('is-current')) return rect(400)
+      return rect(0)
+    })
+    vi.spyOn(HTMLElement.prototype, 'offsetTop', 'get').mockReturnValue(900)
+    vi.spyOn(HTMLElement.prototype, 'scrollHeight', 'get').mockReturnValue(2000)
+    vi.spyOn(HTMLElement.prototype, 'clientHeight', 'get').mockReturnValue(500)
+    const original = HTMLElement.prototype.scrollTo
+    const scrollTo = vi.fn()
+    HTMLElement.prototype.scrollTo = scrollTo as unknown as typeof original
+    try {
+      await mount(firstRun())
+      await vi.waitFor(() => expect(scrollTo).toHaveBeenCalled())
+      // 400 - 100 from the scroller's top, 16 px above the question.
+      expect(scrollTo.mock.calls.at(-1)![0]).toMatchObject({ top: 284 })
+    } finally {
+      HTMLElement.prototype.scrollTo = original
+      vi.restoreAllMocks()
+    }
+  })
+
+  it('on a times question "No fixed hours" rides in the fixed bar beside Next, never under the times; on sleep it is not there', async () => {
+    await mount(firstRun())
+    const inBar = () => live('.dock-actions [data-testid=setup-secondary]')
+    const inAnswers = () => live('.dock-answer [data-testid=setup-secondary]')
+    expect(screen()).toBe('sleep')
+    expect(inAnswers()).toBeUndefined()
+    // Sleep has no "No fixed hours": its bar holds only "Later".
+    expect(inBar()?.textContent?.trim()).toBe('Later')
+    await click('[data-testid=setup-primary]')
+    await quick('work')
+    await vi.waitFor(() => expect(screen()).toBe('work'))
+    expect(inBar()).toBeDefined()
+    expect(inAnswers()).toBeUndefined()
   })
 
   it('returns from an earlier answer to the current question without reconfirming later answers', async () => {
@@ -480,20 +552,20 @@ describe('the conversation', () => {
     await click('[data-testid=time-use]')
     await click('[data-testid=setup-primary]')
     expect(screen()).toBe('work')
-    await click('[data-field=start]')
     await click('[data-minute="600"]')
     await click('[data-testid=setup-primary]')
     expect(screen()).toBe('summary')
     expect(JSON.parse(sessionStorage.getItem(DRAFT_KEY)!).answers).toMatchObject({ commute: 'no', exercise: 'no' })
   })
 
-  it.each(['en', 'es', 'fr', 'pt', 'de'] as const)('shows a visible send label and arrow in %s', async (locale) => {
+  // "Siguiente", not "Enviar": nothing leaves the device (DIRECTION §4 improvement 5).
+  it.each(['en', 'es', 'fr', 'pt', 'de'] as const)('shows a visible "Next" label and arrow in %s', async (locale) => {
     await mount(firstRun())
     i18n.global.locale.value = locale
     await nextTick()
     const send = live('[data-testid=setup-primary]')!
-    expect(send.textContent?.trim()).toBe(i18n.global.t('onboarding.guided.sendShort'))
-    expect(send.textContent?.trim()).not.toBe('onboarding.guided.sendShort')
+    expect(send.textContent?.trim()).toBe(i18n.global.t('onboarding.guided.next'))
+    expect(send.textContent?.trim()).not.toBe('onboarding.guided.next')
     expect(send.querySelector('svg')).not.toBeNull()
   })
 
@@ -507,7 +579,8 @@ describe('the conversation', () => {
     expect(icon?.getAttribute('width')).toBe('22')
     expect(icon?.getAttribute('height')).toBe('22')
     expect(icon?.getAttribute('aria-hidden')).toBe('true')
-    expect(send.getAttribute('aria-label')).toBe(i18n.global.t('onboarding.guided.send'))
+    // Its name is the visible word.
+    expect(send.hasAttribute('aria-label')).toBe(false)
   })
 
   it('keeps every answer above the question; changing an earlier one drops what no longer applies and brings it back with that answer', async () => {
@@ -612,8 +685,7 @@ describe('the conversation', () => {
     expect(send().disabled).toBe(false)
     expect(send().getAttribute('aria-describedby')!.split(' ')).toHaveLength(1)
     const reason = () => window.document.getElementById(send().getAttribute('aria-describedby')!.split(' ')[1]!)
-    // A time with no days cannot be sent until it has one.
-    await click('[data-field=days]')
+    // A time with no days cannot be sent until it has one; the days are chips in the card.
     await click('[data-preset=pick]')
     await click('[data-day="6"][aria-pressed=true]')
     expect(send().disabled).toBe(true)

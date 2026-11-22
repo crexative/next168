@@ -5,7 +5,7 @@ import { storedPlanner, storedRecord } from './support/indexedDb'
 import { collectMotion, installMotionSampler } from './support/motionSampler'
 import { visualIntegrityViolations } from './support/visualIntegrity'
 import {
-  bytes, calm, holdCommitLock, live, onScreen, openFromSettings, primary, secondary, setup, skipToSummary, start, storedDoc, tap, writeStoredDocument,
+  bytes, calm, holdCommitLock, live, onScreen, openField, openFromSettings, PHONE, primary, secondary, setup, skipToSummary, start, storedDoc, tap, writeStoredDocument,
 } from './support/setupGuided'
 
 // The guided first-run setup ("Configura tu semana"): one question per screen, one guarded commit at the end, a draft
@@ -34,9 +34,9 @@ async function stored(page: Page): Promise<Doc> {
   return storedPlanner<Doc>(page)
 }
 
-async function openRow(page: Page, category: string, field: 'days' | 'start' | 'end'): Promise<void> {
+async function openRow(page: Page, category: string, field: 'start' | 'end'): Promise<void> {
   await live(page).locator(`[data-category="${category}"] button[aria-expanded]`).first().click()
-  await live(page).locator(`[data-category="${category}"] [data-field=${field}]`).first().click()
+  await openField(live(page).locator(`[data-category="${category}"] [data-field=${field}]`).first())
 }
 
 test.describe('the draft and what it is bound to', () => {
@@ -44,11 +44,11 @@ test.describe('the draft and what it is bound to', () => {
     await start(page)
     await page.goto('./')
     await onScreen(page, 'sleep')
-    await tap(page, 'Enviar respuesta')
+    await tap(page, 'Siguiente')
     await onScreen(page, 'workStudy')
     await tap(page, 'Trabajo')
     await onScreen(page, 'work')
-    await live(page).locator('[data-field=end]').click()
+    await openField(live(page).locator('[data-field=end]'))
     await live(page).locator('[data-minute="1080"]').click()
     await expect(live(page).locator('[data-field=end] .value')).toHaveText('6:00 p. m. · 9 h')
 
@@ -62,7 +62,7 @@ test.describe('the draft and what it is bound to', () => {
   test('A4: a draft from empty storage is not applied to an older build\'s data imported before the reload', async ({ page }) => {
     await start(page)
     await page.goto('./')
-    await tap(page, 'Enviar respuesta')
+    await tap(page, 'Siguiente')
     await tap(page, 'Trabajo')
     await onScreen(page, 'work')
     // An older build's data appears before the reload: the app imports it as a revision-0 document.
@@ -146,7 +146,7 @@ test.describe('one guarded commit', () => {
     await openFromSettings(page)
     const before = await stored(page)
     await live(page).getByTestId('card-work').click()
-    await live(page).locator('[data-category=work] [data-field=end]').first().click()
+    await openField(live(page).locator('[data-category=work] [data-field=end]').first())
     await live(page).locator('[data-minute="1080"]').click()
     await primary(page).click()
     await expect(setup(page)).toHaveCount(0)
@@ -191,7 +191,7 @@ test.describe('closing never writes', () => {
       await page.goto('./')
       await onScreen(page, 'sleep')
       const before = await bytes(page)
-      await tap(page, 'Enviar respuesta')
+      await tap(page, 'Siguiente')
       await tap(page, 'Las dos cosas')
       await onScreen(page, 'work')
       await close(page, path)
@@ -247,7 +247,7 @@ test.describe('closing never writes', () => {
     await onScreen(page, 'summary')
     const before = await bytes(page)
     await live(page).getByTestId('card-work').click()
-    await live(page).locator('[data-category=work] [data-field=end]').first().click()
+    await openField(live(page).locator('[data-category=work] [data-field=end]').first())
     await live(page).locator('[data-minute="1080"]').click()
     await page.reload()
     await onScreen(page, 'summary')
@@ -259,7 +259,7 @@ test.describe('closing never writes', () => {
     await start(page, { document: firstRun() })
     await page.goto('./')
     await onScreen(page, 'sleep')
-    await tap(page, 'Enviar respuesta')
+    await tap(page, 'Siguiente')
     await skipToSummary(page)
     await page.evaluate(() => {
       const remove = Storage.prototype.removeItem
@@ -372,19 +372,19 @@ test.describe('answering', () => {
       if (next !== '') { await onScreen(page, next); await auditScreen(page, next) }
     }
     await auditScreen(page, 'sleep')
-    await step(() => tap(page, 'Enviar respuesta'), 'workStudy')
+    await step(() => tap(page, 'Siguiente'), 'workStudy')
     await step(() => tap(page, 'Trabajo'), 'work')
-    await step(() => tap(page, 'Enviar respuesta'), 'commute')
+    await step(() => tap(page, 'Siguiente'), 'commute')
     await step(() => tap(page, 'Sí'), 'commuteRanges')
-    await step(() => tap(page, 'Enviar respuesta'), 'exercise')
+    await step(() => tap(page, 'Siguiente'), 'exercise')
     await step(() => tap(page, 'Sí'), 'exerciseRanges')
-    await step(() => tap(page, 'Enviar respuesta'), 'more')
+    await step(() => tap(page, 'Siguiente'), 'more')
     await step(() => tap(page, 'Familia'), 'extra:family')
-    await step(() => tap(page, 'Enviar respuesta'), 'more:1')
+    await step(() => tap(page, 'Siguiente'), 'more:1')
     await step(() => tap(page, 'No, eso es todo'), 'summary')
     // Pickers and the time editor never add a second filled button.
     await live(page).getByTestId('card-work').click()
-    await live(page).locator('[data-category=work] [data-field=start]').first().click()
+    await openField(live(page).locator('[data-category=work] [data-field=start]').first())
     await live(page).getByTestId('other-time').click()
     await auditScreen(page, 'summary with the time editor')
     await live(page).getByTestId('card-done').click()
@@ -406,9 +406,9 @@ test.describe('answering', () => {
     page.on('request', (request) => requests.push(`${request.resourceType()} ${request.url()}`))
     await page.getByTestId('setup-week').click()
     await onScreen(page, 'sleep')
-    await tap(page, 'Enviar respuesta')
+    await tap(page, 'Siguiente')
     await tap(page, 'Trabajo')
-    await tap(page, 'Enviar respuesta')
+    await tap(page, 'Siguiente')
     await tap(page, 'Sí')
     await onScreen(page, 'commuteRanges')
     await skipToSummary(page)
@@ -491,10 +491,10 @@ test.describe('answering', () => {
   test('A18: "Otra hora" sets 7:35 a. m. with steppers and a deliberate confirm; Escape cancels', async ({ page }) => {
     await start(page)
     await page.goto('./')
-    await tap(page, 'Enviar respuesta')
+    await tap(page, 'Siguiente')
     await tap(page, 'Trabajo')
     await onScreen(page, 'work')
-    await live(page).locator('[data-field=start]').click()
+    await openField(live(page).locator('[data-field=start]'))
     await live(page).getByTestId('other-time').click()
     const value = live(page).getByTestId('time-value')
     await expect(value).toHaveText('9:00 a. m.')
@@ -506,7 +506,7 @@ test.describe('answering', () => {
     await live(page).getByRole('button', { name: 'Usar 7:35 a. m.' }).click()
     await expect(live(page).locator('[data-field=start] .value')).toHaveText('7:35 a. m.')
 
-    await live(page).locator('[data-field=start]').click()
+    await openField(live(page).locator('[data-field=start]'))
     await live(page).getByTestId('other-time').click()
     await live(page).locator('[data-step=minutes-up]').click()
     await expect(value).toHaveText('7:40 a. m.')
@@ -514,7 +514,7 @@ test.describe('answering', () => {
     await expect(live(page).getByTestId('time-value')).toHaveCount(0)
     await expect(setup(page)).toBeVisible()
     await expect(live(page).locator('[data-field=start] .value')).toHaveText('7:35 a. m.')
-    await tap(page, 'Enviar respuesta')
+    await tap(page, 'Siguiente')
     await skipToSummary(page)
     await primary(page).click()
     await expect(setup(page)).toHaveCount(0)
@@ -530,7 +530,7 @@ test.describe('answering', () => {
     await live(page).locator('[data-testid=setup-primary]').click()
     await live(page).locator('[data-value=work]').click()
     await onScreen(page, 'work')
-    await live(page).locator('[data-field=start]').click()
+    await openField(live(page).locator('[data-field=start]'))
     await live(page).getByTestId('other-time').click()
     await expect(live(page).getByTestId('time-value')).toHaveText('9:00')
     await expect(live(page).getByTestId('time-period')).toHaveCount(0)
@@ -546,7 +546,7 @@ test.describe('answering', () => {
     const before = await bytes(page)
     await live(page).getByTestId('card-work').click()
     await expect(live(page).locator('[data-category=work] [data-field=start] .value')).toHaveText('7:33 a. m.')
-    await live(page).locator('[data-category=work] [data-field=start]').click()
+    await openField(live(page).locator('[data-category=work] [data-field=start]'))
     await live(page).getByTestId('other-time').click()
     await expect(live(page).getByTestId('time-value')).toHaveText('7:33 a. m.')
     await page.keyboard.press('Escape')
@@ -557,12 +557,12 @@ test.describe('answering', () => {
     expect(await bytes(page)).toEqual(before)
   })
 
-  test('A19: Tab explores the quick replies without answering, Enter answers, and the last range can be removed', async ({ page }) => {
+  test('A19: Tab explores the quick replies without answering, Enter answers, and the last range can be cleared', async ({ page }) => {
     await start(page)
     await page.goto('./')
-    await tap(page, 'Enviar respuesta')
+    await tap(page, 'Siguiente')
     await tap(page, 'Trabajo')
-    await tap(page, 'Enviar respuesta')
+    await tap(page, 'Siguiente')
     await onScreen(page, 'commute')
     await live(page).getByRole('button', { name: 'Sí', exact: true }).focus()
     await page.keyboard.press('Tab')
@@ -580,10 +580,10 @@ test.describe('answering', () => {
 
     await live(page).locator('[data-answer=work]').click()
     await onScreen(page, 'work')
-    await expect(live(page).getByTestId('range-remove')).toHaveCount(1)
-    await live(page).getByTestId('range-remove').click()
-    await expect(live(page).locator('[data-range]')).toHaveCount(0)
-    await expect(live(page).getByTestId('range-add')).toBeVisible()
+    // A lone range has no "Quitar" (R_InicioHorario): "Sin horario fijo" clears it.
+    await expect(live(page).getByTestId('range-remove')).toHaveCount(0)
+    await live(page).getByRole('button', { name: 'Sin horario fijo', exact: true }).click()
+    await expect(setup(page)).not.toHaveAttribute('data-screen', 'work')
     await skipToSummary(page)
     await expect(live(page).getByTestId('card-work')).toContainText('Sin horario')
   })
@@ -610,7 +610,7 @@ test.describe('answering', () => {
     await tap(page, 'Lo veo después')
     await onScreen(page, 'more')
     await tap(page, 'Familia')
-    await tap(page, 'Enviar respuesta')
+    await tap(page, 'Siguiente')
     await onScreen(page, 'more:1')
     await tap(page, 'No, eso es todo')
     await onScreen(page, 'summary')
@@ -686,10 +686,10 @@ test.describe('answering', () => {
     await start(page, { document: firstRun() })
     await page.goto('./')
     await onScreen(page, 'sleep')
-    await tap(page, 'Enviar respuesta')
+    await tap(page, 'Siguiente')
     await tap(page, 'Trabajo')
     await onScreen(page, 'work')
-    await tap(page, 'Enviar respuesta')
+    await tap(page, 'Siguiente')
     await skipToSummary(page)
     const before = (await stored(page)).revision
     const release = await holdCommitLock(page)
@@ -782,11 +782,15 @@ async function targetProblems(page: Page): Promise<TargetProblem[]> {
 async function walk(page: Page, visit: (label: string) => Promise<void>, options: { custom?: string } = {}): Promise<void> {
   const pickers = async (label: string) => {
     const range = live(page).locator('[data-range]').first()
-    for (const field of ['days', 'start', 'end'] as const) {
+    // The days are chips in the card (R_InicioHorario); "Elegir días" opens the seven toggles.
+    if (await range.locator('[data-preset=pick]').count() > 0) {
+      await range.locator('[data-preset=pick]').click()
+      await visit(`${label}, days picker`)
+    }
+    for (const field of ['start', 'end'] as const) {
       const row = range.locator(`[data-field=${field}]`)
       if (await row.count() === 0) continue
-      await row.click()
-      if (field === 'days') await live(page).locator('[data-preset=pick]').click()
+      await openField(row)
       await visit(`${label}, ${field} picker`)
       if (field === 'start') {
         await live(page).getByTestId('other-time').click()
@@ -833,7 +837,7 @@ async function walk(page: Page, visit: (label: string) => Promise<void>, options
   await visit('summary')
   await live(page).getByTestId('card-work').click()
   await visit('summary, a card open')
-  await live(page).locator('[data-category=work] [data-field=start]').first().click()
+  await openField(live(page).locator('[data-category=work] [data-field=start]').first())
   await visit('summary, a picker open')
 }
 
@@ -999,7 +1003,7 @@ test.describe('reduced motion', () => {
     await onScreen(page, 'workStudy')
     await press(live(page).locator('[data-value=work]'))
     await onScreen(page, 'work')
-    await live(page).locator('[data-field=days]').click()
+    // The days are chips in the card (R_InicioHorario): nothing to open.
     await page.waitForTimeout(200)
     await live(page).getByTestId('range-add').click()
     await live(page).getByTestId('range-remove').last().click()
@@ -1059,13 +1063,13 @@ test.describe('the conversation', () => {
   test('changing an earlier answer while later ones exist drops what no longer applies, and the same answer brings it back', async ({ page }) => {
     await start(page)
     await page.goto('./')
-    await tap(page, 'Enviar respuesta')
+    await tap(page, 'Siguiente')
     await tap(page, 'Las dos cosas')
     await onScreen(page, 'work')
-    await live(page).locator('[data-field=end]').click()
+    await openField(live(page).locator('[data-field=end]'))
     await live(page).locator('[data-minute="1080"]').click()
-    await tap(page, 'Enviar respuesta')
-    await tap(page, 'Enviar respuesta')
+    await tap(page, 'Siguiente')
+    await tap(page, 'Siguiente')
     await onScreen(page, 'commute')
     // The trip is phrased from the answers before it and starts from the work hours just given.
     await expect(live(page).getByRole('heading', { level: 3 })).toHaveText('¿Te toma tiempo ir al trabajo o a clase?')
@@ -1099,9 +1103,9 @@ test.describe('the conversation', () => {
   test('a reload in the middle brings back the whole conversation and the question on show', async ({ page }) => {
     await start(page)
     await page.goto('./')
-    await tap(page, 'Enviar respuesta')
+    await tap(page, 'Siguiente')
     await tap(page, 'Trabajo')
-    await tap(page, 'Enviar respuesta')
+    await tap(page, 'Siguiente')
     await tap(page, 'No')
     await tap(page, 'Lo veo después')
     await onScreen(page, 'more')
@@ -1163,7 +1167,7 @@ test.describe('"¿Algo más?" asked again (S1)', () => {
     await toMore(page)
     await tap(page, 'Familia')
     await onScreen(page, 'extra:family')
-    await tap(page, 'Enviar respuesta')
+    await tap(page, 'Siguiente')
     await onScreen(page, 'more:1')
     await expect(heading(page)).toHaveText('¿Algo más?')
     for (const name of ['Amigos', 'Tiempo para ti', 'Aprender', 'Otra cosa', 'No, eso es todo']) await expect(reply(page, name)).toBeVisible()
@@ -1184,9 +1188,9 @@ test.describe('"¿Algo más?" asked again (S1)', () => {
     await expect(reply(page, 'No, eso es todo')).toBeVisible()
     await expect(reply(page, 'Nada más')).toHaveCount(0)
     await tap(page, 'Familia')
-    await tap(page, 'Enviar respuesta')
+    await tap(page, 'Siguiente')
     await addTyped(page, 'Práctica de guitarra')
-    await tap(page, 'Enviar respuesta')
+    await tap(page, 'Siguiente')
     await onScreen(page, 'more:2')
     await expect(live(page).locator('[data-answer=more] .turn-answer')).toHaveText('Familia')
     await expect(live(page).locator('[data-answer="more:1"] .turn-answer')).toHaveText('Sí, Práctica de guitarra')
@@ -1197,7 +1201,7 @@ test.describe('"¿Algo más?" asked again (S1)', () => {
     await page.goto('./')
     await toMore(page)
     await addTyped(page, 'Práctica de guitarra')
-    await tap(page, 'Enviar respuesta')
+    await tap(page, 'Siguiente')
     await onScreen(page, 'more:1')
     await expect(heading(page)).toHaveText('¿Algo más?')
     await expect(live(page).locator('[data-answer=more] .turn-answer')).toHaveText('Práctica de guitarra')
@@ -1209,14 +1213,14 @@ test.describe('"¿Algo más?" asked again (S1)', () => {
     await toMore(page)
     const before = (await stored(page)).revision
     await tap(page, 'Familia')
-    await tap(page, 'Enviar respuesta')
+    await tap(page, 'Siguiente')
     await onScreen(page, 'more:1')
     await addTyped(page, 'Práctica de guitarra')
-    await tap(page, 'Enviar respuesta')
+    await tap(page, 'Siguiente')
     await onScreen(page, 'more:2')
     await tap(page, 'Aprender')
     await onScreen(page, 'extra:learning')
-    await tap(page, 'Enviar respuesta')
+    await tap(page, 'Siguiente')
     await onScreen(page, 'more:3')
     await tap(page, 'No, eso es todo')
     await onScreen(page, 'summary')
@@ -1233,7 +1237,7 @@ test.describe('"¿Algo más?" asked again (S1)', () => {
     await page.goto('./')
     await toMore(page)
     await tap(page, 'Familia')
-    await tap(page, 'Enviar respuesta')
+    await tap(page, 'Siguiente')
     await tap(page, 'No, eso es todo')
     await onScreen(page, 'summary')
     await live(page).locator('[data-answer="more:1"]').click()
@@ -1241,7 +1245,7 @@ test.describe('"¿Algo más?" asked again (S1)', () => {
     await expect(reply(page, 'No, eso es todo (actual)')).toBeVisible()
     await tap(page, 'Amigos')
     await onScreen(page, 'extra:friends')
-    await tap(page, 'Enviar respuesta')
+    await tap(page, 'Siguiente')
     await onScreen(page, 'more:2')
     await expect(heading(page)).toHaveText('¿Algo más?')
     await expect(reply(page, 'No, eso es todo')).toBeVisible()
@@ -1253,16 +1257,16 @@ test.describe('"¿Algo más?" asked again (S1)', () => {
     await toMore(page)
     await tap(page, 'Familia')
     await onScreen(page, 'extra:family')
-    await live(page).locator('[data-field=end]').click()
+    await openField(live(page).locator('[data-field=end]'))
     await live(page).locator('[data-minute="780"]').click()
     await expect(live(page).locator('[data-field=end] .value')).toHaveText('1:00 p. m. · 3 h')
-    await tap(page, 'Enviar respuesta')
+    await tap(page, 'Siguiente')
     await onScreen(page, 'more:1')
     await live(page).locator('[data-answer=more]').click()
     await onScreen(page, 'more')
     await tap(page, 'Amigos')
     await onScreen(page, 'extra:friends')
-    await tap(page, 'Enviar respuesta')
+    await tap(page, 'Siguiente')
     await onScreen(page, 'more:1')
     await tap(page, 'Familia')
     await onScreen(page, 'extra:family')
@@ -1274,7 +1278,7 @@ test.describe('"¿Algo más?" asked again (S1)', () => {
     await page.goto('./')
     await toMore(page)
     await tap(page, 'Familia')
-    await tap(page, 'Enviar respuesta')
+    await tap(page, 'Siguiente')
     await tap(page, 'No, eso es todo')
     await onScreen(page, 'summary')
     await live(page).getByTestId('card-family').click()
@@ -1322,7 +1326,7 @@ test.describe('"¿Algo más?" asked again (S1)', () => {
     await page.goto('./')
     await toMore(page)
     await tap(page, 'Familia')
-    await tap(page, 'Enviar respuesta')
+    await tap(page, 'Siguiente')
     await onScreen(page, 'more:1')
     await addTyped(page, 'Práctica de guitarra')
     const screen = (await setup(page).getAttribute('data-screen'))!
@@ -1332,7 +1336,7 @@ test.describe('"¿Algo más?" asked again (S1)', () => {
     await onScreen(page, screen)
     await expect(live(page).locator('[data-answer]')).toHaveText(turns)
     await expect(live(page).getByText('Seguimos donde lo dejaste.')).toBeVisible()
-    await tap(page, 'Enviar respuesta')
+    await tap(page, 'Siguiente')
     await onScreen(page, 'more:2')
     await tap(page, 'Otra cosa')
     await live(page).getByTestId('more-other-name').fill('Clases de baile')
@@ -1347,7 +1351,7 @@ test.describe('"¿Algo más?" asked again (S1)', () => {
     await page.goto('./')
     await toMore(page)
     await tap(page, 'Familia')
-    await tap(page, 'Enviar respuesta')
+    await tap(page, 'Siguiente')
     await onScreen(page, 'more:1')
     const group = live(page).getByRole('group', { name: '¿Algo más?' })
     await expect(group.locator('.reply').first()).toBeFocused()
@@ -1414,6 +1418,77 @@ test.describe('the setup owns the screen (S1-12, N10)', () => {
   })
 })
 
+// #60 review: on the board's own phone and on a desktop, the answers under the times are in view without scrolling
+// (R_InicioHorario, R_InicioSueno): an open time list must not push them out of the dock.
+async function inView(page: Page, testId: string): Promise<void> {
+  // Measured once the frame and the screen have finished arriving (the frame rises 24 px as it opens).
+  await page.waitForFunction(() => document.getAnimations().every((animation) => animation.playState !== 'running'))
+  const fit = await live(page).getByTestId(testId).evaluate((element) => {
+    const box = element.getBoundingClientRect()
+    // Inside the answers' own scroller, or else on the screen.
+    const room = element.closest('[data-testid=setup-dock]')?.getBoundingClientRect() ?? { top: 0, bottom: window.innerHeight }
+    return { top: box.top >= room.top - 0.5 && box.top >= 0, bottom: box.bottom <= room.bottom + 0.5 && box.bottom <= window.innerHeight + 0.5 }
+  })
+  expect(fit, testId).toEqual({ top: true, bottom: true })
+}
+
+for (const size of [PHONE, { width: 375, height: 667 }, { width: 1440, height: 900 }] as const) {
+  test(`the answers under the times are in view without scrolling at ${size.width}x${size.height}`, async ({ page }) => {
+    await start(page, { size, document: firstRun() })
+    await page.goto('./')
+    await onScreen(page, 'sleep')
+    for (const testId of ['setup-primary', 'setup-secondary']) await inView(page, testId)
+    await expect(live(page).locator('[data-chip=split]')).toBeVisible()
+    const split = await live(page).locator('[data-chip=split]').evaluate((element) => {
+      const room = element.closest('[data-testid=setup-dock]')!.getBoundingClientRect()
+      return element.getBoundingClientRect().bottom <= room.bottom + 0.5
+    })
+    expect(split).toBe(true)
+    await live(page).getByTestId('setup-primary').click()
+    await live(page).locator('[data-value=work]').click()
+    await onScreen(page, 'work')
+    for (const testId of ['range-add', 'setup-secondary', 'setup-primary']) await inView(page, testId)
+    // The question itself is read whole above them, from its first word.
+    const question = await live(page).locator('.is-current .ask').evaluate((element) => {
+      const box = element.getBoundingClientRect()
+      const room = element.closest('.setup-scroller')!.getBoundingClientRect()
+      return box.top >= room.top - 0.5 && box.bottom <= room.bottom + 0.5
+    })
+    expect(question).toBe(true)
+  })
+}
+
+test('a removed time gives focus to "Añadir otro horario"; a lone time has no "Quitar"', async ({ page }) => {
+  await start(page, { document: firstRun() })
+  await page.goto('./')
+  await onScreen(page, 'sleep')
+  await live(page).getByTestId('setup-primary').click()
+  await live(page).locator('[data-value=work]').click()
+  await onScreen(page, 'work')
+  // A lone range has no "Quitar"; a second one brings it to both.
+  await expect(live(page).getByTestId('range-remove')).toHaveCount(0)
+  await live(page).getByTestId('range-add').click()
+  await expect(live(page).getByTestId('range-remove')).toHaveCount(2)
+  await live(page).getByTestId('range-remove').last().click()
+  await expect(live(page).getByTestId('range-remove')).toHaveCount(0)
+  await expect(live(page).getByTestId('range-add')).toBeFocused()
+})
+
+// #60 review: from Ajustes the summary is the only way in, with no "Sin horario fijo"; a lone range there keeps
+// "Quitar", so Trabajo can be left without times and keep its category.
+test('from Ajustes a category with one range can be left without times in its summary card', async ({ page }) => {
+  await start(page, { document: planned() })
+  await page.goto('./')
+  await openFromSettings(page)
+  await onScreen(page, 'summary')
+  await live(page).getByTestId('card-work').click()
+  const remove = live(page).locator('[data-category=work] [data-testid=range-remove]')
+  await expect(remove).toHaveCount(1)
+  await remove.click()
+  await expect(live(page).locator('[data-category=work] [data-range]')).toHaveCount(0)
+  await expect(live(page).getByTestId('card-work')).toContainText('Sin horario')
+})
+
 // #65 review: in the centred modal (max-height, not a fixed height) a long conversation still scrolls inside it, the
 // dock and its "Siguiente" stay in the card.
 test('in the 1440x900 modal a long conversation scrolls inside the card, the dock stays in it', async ({ page }) => {
@@ -1434,3 +1509,35 @@ test('in the 1440x900 modal a long conversation scrolls inside the card, the doc
   expect(geometry.height).toBeLessThanOrEqual(geometry.max + 0.5)
   expect(geometry).toMatchObject({ overflows: true, moved: true, primaryInside: true })
 })
+
+// CI of #60: with "Elegir días" open, the work answers outgrew the tablet modal and its frame cut "Siguiente" and its
+// focus ring. The dock takes its share of the modal and its answers scroll; the question stays above it.
+for (const size of [{ width: 820, height: 1180 }, { width: 1180, height: 820 }] as const) {
+  test(`in the ${size.width}x${size.height} tablet modal the work days keep the dock and "Siguiente" inside the frame`, async ({ page }) => {
+    await start(page, { size, document: firstRun() })
+    await page.goto('./')
+    await onScreen(page, 'sleep')
+    await live(page).getByTestId('setup-primary').click()
+    await live(page).locator('[data-value=work]').click()
+    await onScreen(page, 'work')
+    await live(page).locator('[data-preset=pick]').click()
+    await page.waitForFunction(() => document.getAnimations().every((animation) => animation.playState !== 'running'))
+    const primary = live(page).getByTestId('setup-primary')
+    await primary.focus()
+    const geometry = await primary.evaluate((element) => {
+      const frame = element.closest('.setup-frame')!.getBoundingClientRect()
+      const dock = element.closest('.dock')!.getBoundingClientRect()
+      const box = element.getBoundingClientRect()
+      const ring = Number.parseFloat(getComputedStyle(element).outlineOffset) + Number.parseFloat(getComputedStyle(element).outlineWidth)
+      const scroller = element.closest('section.screen')!.querySelector('.setup-scroller')!.getBoundingClientRect()
+      return {
+        modal: frame.height <= 736.5 && frame.top > 0,
+        dockInside: dock.top >= frame.top - 0.5 && dock.bottom <= frame.bottom + 0.5,
+        ringInside: box.bottom + ring <= frame.bottom + 0.5 && box.top - ring >= frame.top - 0.5,
+        questionShown: scroller.height > 0,
+      }
+    })
+    expect(geometry).toEqual({ modal: true, dockInside: true, ringInside: true, questionShown: true })
+    await expect(primary).toBeInViewport({ ratio: 1 })
+  })
+}

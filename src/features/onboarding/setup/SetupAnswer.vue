@@ -92,6 +92,8 @@ function answerQuick(value: string): void {
 const env = { topicName: (topic: TopicId) => t(`onboarding.templates.${TOPICS[topic].nameKey}`) }
 const speaker = { t: (key: string, params?: Record<string, unknown>) => t(key, params ?? {}), rangeLine }
 const replies = computed(() => (round.value === undefined ? undefined : roundReplies(props.state, round.value, speaker)))
+// The ranges of a category other than sleep, whose own answer ("Sin horario fijo") sits in the bar beside "Siguiente".
+const rangesAnswer = computed(() => category.value !== undefined && category.value.topic !== 'sleep' && !quick.value && replies.value === undefined)
 const doneLabel = computed(() => (replies.value?.done.current ? `${replies.value.done.label} ${t('onboarding.guided.current')}` : undefined))
 
 // The name being typed lives in the draft: it is unsaved input, and a reload brings it back with its field open.
@@ -236,17 +238,20 @@ const labels = computed(() => ({
         </div>
 
         <RangeList v-else-if="category" :state="state" :category="category" :labels="labels" />
-        <button v-if="extra?.kind === 'answer'" class="reply-chip t-body" type="button" data-testid="setup-secondary" :disabled="busy" @click="onSecondary">{{ t(extra.key) }}</button>
+        <button v-if="extra?.kind === 'answer' && !rangesAnswer" class="reply-chip t-body" type="button" data-testid="setup-secondary" :disabled="busy" @click="onSecondary">{{ t(extra.key) }}</button>
       </div>
     </div>
     <div v-if="hasActions" class="dock-actions">
       <div class="column actions">
         <button v-if="extra?.kind === 'skip'" class="skip t-body" type="button" data-testid="setup-secondary" :disabled="busy" @click="onSecondary">{{ t(extra.key) }}</button>
+        <!-- "Sin horario fijo" rides in the fixed bar beside "Siguiente", so it is never scrolled away under the times. -->
+        <button v-else-if="extra?.kind === 'answer' && rangesAnswer" class="reply-chip t-body" type="button" data-testid="setup-secondary" :disabled="busy" @click="onSecondary">{{ t(extra.key) }}</button>
         <button
-          v-if="!answersOnTap" class="send" type="button" data-primary data-dock-primary data-testid="setup-primary" :aria-label="t('onboarding.guided.send')"
+          v-if="!answersOnTap" class="send" type="button" data-primary data-dock-primary data-testid="setup-primary"
           :aria-describedby="blocked ? `${questionId} ${reasonId}` : questionId" :disabled="busy || !canContinue" @click="onPrimary"
         >
-          <span>{{ t('onboarding.guided.sendShort') }}</span>
+          <!-- "Siguiente", not "Enviar": nothing leaves the device (DIRECTION §4 improvement 5). -->
+          <span>{{ t('onboarding.guided.next') }}</span>
           <Icon name="send" :size="22" class="send-icon" />
         </button>
         <span v-if="blocked" :id="reasonId" class="visually-hidden" data-testid="send-reason">{{ t(`onboarding.guided.${blocked}`) }}</span>
@@ -256,28 +261,32 @@ const labels = computed(() => ({
 </template>
 
 <style scoped>
-/* Docked like a keyboard: the answer area scrolls on its own when it is taller than its share of the screen, and the
-   actions under it never move. */
+/* Docked like a keyboard: the dock keeps its size (its actions never shrink out of it) up to its share of the frame (the
+   screen, or the tablet modal: ConversationFrame's --frame-room); the answer area scrolls on its own inside it. */
 .dock {
-  flex: 0 1 auto; display: flex; flex-direction: column; min-height: 0; max-height: calc(min(var(--vv-height, 100dvh), 100dvh) * 0.62);
+  flex: none; display: flex; flex-direction: column; min-height: 0; max-height: calc(var(--frame-room, min(var(--vv-height, 100dvh), 100dvh)) * 0.66);
   border-top: 0.5px solid var(--separator); background: var(--surface);
+}
+/* A short phone (375 x 667) gives the answers a little more; the conversation shows the question from its start
+   (SetupConversation's reveal). */
+@media (max-height: 700px) {
+  .dock { max-height: calc(var(--frame-room, min(var(--vv-height, 100dvh), 100dvh)) * 0.72); }
 }
 .dock-answer { flex: 0 1 auto; min-height: 0; overflow-y: auto; overscroll-behavior: contain; }
 .dock-answer > .column { display: flex; flex-direction: column; gap: var(--space-3); padding-block: var(--space-3) var(--space-1); }
 .dock-answer > .column:empty { display: none; }
 .dock-actions { flex: none; }
 .column { box-sizing: border-box; width: 100%; max-width: var(--column); margin-inline: auto; padding-inline: max(var(--page-gutter), var(--safe-left)) max(var(--page-gutter), var(--safe-right)); }
-/* Send is the call to action: the group gap clears it of the answers above and of "Later" beside or above it, and the
-   bar keeps 16 px plus the safe area under it (docs/design/visual-design.md › Spacing). Below 480 px it spans the
-   column like the summary's button; from 480 px it hugs its label at the trailing edge, "Later" on the leading one. */
+/* "Siguiente" is the call to action: the group gap clears it of the answers above and of "Lo veo después" beside it,
+   and the bar keeps 16 px plus the safe area under it (docs/design/visual-design.md › Spacing). */
 .actions {
   display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--group-gap);
   padding-block: var(--group-gap) calc(var(--space-4) + var(--safe-bottom));
 }
 /* An answer that says "none": an outlined chip with the other answers. */
 .reply-chip {
-  align-self: flex-start; min-height: var(--tap-target); max-width: 100%; padding: var(--space-2) var(--space-4); border: 1.5px solid var(--field-border); border-radius: 999px;
-  background: transparent; color: var(--label); font-weight: 600; text-align: center; overflow-wrap: anywhere; hyphens: auto; touch-action: manipulation;
+  align-self: flex-start; min-height: var(--tap-target); max-width: 100%; padding: var(--space-2) var(--space-4); border: 1.5px solid transparent; border-radius: 999px;
+  background: var(--fill); color: var(--label); font-weight: 600; text-align: center; overflow-wrap: anywhere; hyphens: auto; touch-action: manipulation;
   transition: transform 0.1s var(--ease-out), opacity 0.1s;
 }
 .reply-chip:active:not(:disabled) { transform: scale(0.97); }
@@ -302,9 +311,17 @@ const labels = computed(() => ({
 .send:focus-visible { outline-offset: 3px; }
 .send-icon { flex: none; }
 .send-icon:dir(rtl) { transform: scaleX(-1); }
-@media (max-width: 479px) {
-  .send { flex: 1 0 100%; }
-}
+/* "Lo veo después" and "Siguiente" share the row (R_InicioSueno); Siguiente takes the room left, and wraps under it
+   only when the text is large. */
+.send { flex: 1 1 auto; max-width: 15rem; }
+/* On a phone it is the full-width call to action (DIRECTION §4, R_InicioHorario). */
+@media (max-width: 480px) { .send { max-width: none; } }
+/* At large text on a narrow phone the inset stays 20 px, so the button never runs past the column ("Siguiente" is
+   longer than the "Enviar" it replaces). It grows from its own width and never breaks its word. "Sin horario fijo"
+   beside it is a 15 px chip, so the two share one line on a 375 px phone with the 24 px the docked primary keeps
+   clear, also with Linux's wider fonts, and part only when the text is large. */
+.send { flex-basis: min-content; padding-inline: min(var(--space-5), 20px); }
+.actions > .reply-chip { padding-inline: var(--space-3); font-size: 0.9375rem; }
 .other, .add {
   align-self: flex-start; min-height: var(--tap-target); padding: var(--space-2) var(--space-4); border: 2px dashed var(--field-border);
   border-radius: 999px; background: transparent; color: var(--label); font-weight: 600; touch-action: manipulation;

@@ -137,7 +137,9 @@ onBeforeUnmount(() => {
   --tap-target: 48px;
   --column: 40rem;
   position: fixed; inset: var(--vv-top, 0px) 0 auto; z-index: 100; display: flex; flex-direction: column;
-  height: min(var(--vv-height, 100dvh), 100dvh);
+  /* The frame's height, which the docks inside take their share of. */
+  --frame-room: min(var(--vv-height, 100dvh), 100dvh);
+  height: var(--frame-room);
   background: var(--surface); color: var(--label); outline: none;
 }
 .bar { flex: none; padding: var(--safe-top) max(var(--space-2), var(--safe-right)) 0 max(var(--space-2), var(--safe-left)); }
@@ -173,7 +175,8 @@ onBeforeUnmount(() => {
     --column: 35rem;
     --modal-room: min(var(--vv-height, 100dvh), 100dvh);
     inset: auto 0; top: calc(var(--vv-top, 0px) + var(--modal-room) / 2); translate: 0 -50%;
-    margin-inline: auto; width: min(35rem, 100vw - 32px); height: auto; max-height: min(736px, var(--modal-room) - 32px);
+    --frame-room: min(736px, var(--modal-room) - 32px);
+    margin-inline: auto; width: min(35rem, 100vw - 32px); height: auto; max-height: var(--frame-room);
     border-radius: 24px; overflow: hidden;
     box-shadow: 0 0 0 100vmax var(--scrim), 0 16px 48px rgb(0 0 0 / 0.24);
   }

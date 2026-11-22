@@ -124,7 +124,8 @@
       "nextDay": "(no dia seguinte)",
       "otherTime": "Outro horário",
       "add": "Adicionar outro horário",
-      "remove": "Remover"
+      "remove": "Remover",
+      "weekHours": "{hours} por semana"
     },
     "time": {
       "hour": "Hora",
@@ -155,10 +156,8 @@
     "draftUnavailable": "Este navegador não guarda rascunho. Não recarregue até terminar.",
     "change": "Mudar: {question} {answer}",
     "conversation": "Conversa",
-    "send": "Enviar resposta",
     "needFix": "Primeiro corrija o horário marcado.",
-    "progressShort": "{step} de {total}",
-    "sendShort": "Enviar"
+    "progressShort": "{step} de {total}"
   },
   "summary": {
     "title": "Sua semana típica",

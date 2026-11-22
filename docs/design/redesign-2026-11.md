@@ -75,6 +75,10 @@ means updating that spec with them.
 
 ## Open for a later slice
 
+- **Setup's work screen (slice 6a).** R_InicioHorario opens the start times on arrival; the app does so only where the
+  answers under them ("Añadir otro horario", "Sin horario fijo", "Siguiente") stay in view, so on a 390 x 844 phone
+  and a 1440 x 900 desktop the card starts closed, one tap from its times. "Lo veo después" is not on the work screen:
+  leaving work for later needs its own place in the flow (what the summary then shows), not only a button.
 - **Back from "Usar con tu IA" (slice 7).** Choosing "Responder con: Usar con tu IA" in the assistant opens its page in
   Settings (`#/settings/ai`), whose back button goes to Settings, not to the assistant; on a phone the sheet's Listo
   goes to the tab. The assistant is one tap away again from the toolbar, but there is no direct way back. A later slice

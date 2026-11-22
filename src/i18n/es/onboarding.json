@@ -124,7 +124,8 @@
       "nextDay": "(al día siguiente)",
       "otherTime": "Otra hora",
       "add": "Añadir otro horario",
-      "remove": "Quitar"
+      "remove": "Quitar",
+      "weekHours": "{hours} a la semana"
     },
     "time": {
       "hour": "Hora",
@@ -155,10 +156,8 @@
     "draftUnavailable": "Este navegador no guarda borradores. No recargues hasta terminar.",
     "change": "Cambiar: {question} {answer}",
     "conversation": "Conversación",
-    "send": "Enviar respuesta",
     "needFix": "Primero corrige el horario marcado.",
-    "progressShort": "{step} de {total}",
-    "sendShort": "Enviar"
+    "progressShort": "{step} de {total}"
   },
   "summary": {
     "title": "Tu semana tipo",

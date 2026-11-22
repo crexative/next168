@@ -124,7 +124,8 @@
       "nextDay": "(le lendemain)",
       "otherTime": "Autre heure",
       "add": "Ajouter un horaire",
-      "remove": "Retirer"
+      "remove": "Retirer",
+      "weekHours": "{hours} par semaine"
     },
     "time": {
       "hour": "Heure",
@@ -155,10 +156,8 @@
     "draftUnavailable": "Ce navigateur ne garde pas de brouillon. Ne recharge pas avant la fin.",
     "change": "Modifier : {question} {answer}",
     "conversation": "Conversation",
-    "send": "Envoyer la réponse",
     "needFix": "Corrige d'abord l'horaire signalé.",
-    "progressShort": "{step} sur {total}",
-    "sendShort": "Envoyer"
+    "progressShort": "{step} sur {total}"
   },
   "summary": {
     "title": "Ta semaine type",
