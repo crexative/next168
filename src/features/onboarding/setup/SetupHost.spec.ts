@@ -706,6 +706,15 @@ describe('"¿A qué más…?" with several picks', () => {
     expect(screen()).toBe('more')
   }
 
+
+  it('Siguiente with nothing picked is an answer too: the conversation says "No, that\'s all", not "Later"', async () => {
+    await mount(firstRun())
+    for (let index = 0; index < 3; index++) await click('[data-testid=setup-secondary]')
+    expect(screen()).toBe('more')
+    await click('[data-testid=setup-primary]')
+    await vi.waitFor(() => expect(screen()).toBe('summary'))
+    expect(turn('more')!.textContent).toContain('No, that\'s all')
+  })
   it('picks several with chips, then asks the times of each, then shows the summary', async () => {
     await mount(firstRun())
     await toMore()
