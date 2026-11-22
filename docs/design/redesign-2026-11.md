@@ -63,6 +63,12 @@ a screen not yet redesigned keeps working with the new tokens and shell.
 
 Anything else in a board that the app cannot do as drawn is raised with the coordinator before it changes behaviour.
 
+## Open for a later slice
+
+- **Conversation modal width (slice 8).** The centred modal is 35rem wide, so it grows with the text size (about
+  1120 px at 200 % on a 1440 px screen, never more than the screen less 32 px); its margins are pixels. Below 700 px
+  of height (a small landscape tablet) the conversation stays full screen.
+
 ## Tokens and styles added ahead of their screens
 
 Slice 1 adds what later slices draw with: `--radius-bubble`, `--warning-label`, `.t-title-1`, `.t-section` and the
