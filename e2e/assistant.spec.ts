@@ -29,7 +29,9 @@ test.describe('assistant without WebGPU', () => {
     await openAssistant(page)
     await expect(page.getByTestId('suggestions').getByRole('button')).toHaveCount(3)
     await expect(page.getByTestId('assistant-status')).toHaveCount(0)
-    await expect(page.locator('#main')).not.toContainText(/WebGPU|on-device model/i)
+    // "Answer with" names the on-device model as a choice (disabled here); nothing else on the page talks about it.
+    await expect(page.getByRole('combobox', { name: 'Answer with' }).locator('option[value=webllm]')).toHaveAttribute('disabled', '')
+    for (const part of ['chat', 'assistant-dock']) await expect(page.locator(`#main [data-testid=${part}]`)).not.toContainText(/WebGPU|on-device model/i)
     await expect(page.getByRole('button', { name: /Download the model/ })).toHaveCount(0)
     await openAdvanced(page)
     await expect(page.getByTestId('status-webllm')).toHaveText('Not available')

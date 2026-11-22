@@ -157,13 +157,16 @@ async function remove(): Promise<void> {
 
 <template>
   <div v-if="planner.document" class="categories">
-    <ListGroup :header="t('settings.categoriesTitle')" :footer="t('categories.footer')">
-      <li v-if="planner.writable" class="category-row" data-testid="setup-guided-row">
+    <!-- "Tu semana" (R_Ajustes): setting the week up again is a group of its own, above the categories. -->
+    <ListGroup v-if="planner.writable" :header="t('settings.weekTitle')" data-testid="settings-week">
+      <li class="category-row" data-testid="setup-guided-row">
         <button class="category-button" type="button" @click="openSetup()">
           <span class="category-text"><span class="t-body">{{ t('categories.setupWeek') }}</span></span>
           <Icon name="chevron-right" :size="18" class="chevron" />
         </button>
       </li>
+    </ListGroup>
+    <ListGroup :header="t('settings.categoriesTitle')" :footer="t('categories.footer')">
       <li v-for="category in categories" :key="category.id" class="category-row" :data-testid="`category-${category.id}`">
         <button class="category-button" type="button" :aria-label="t('categories.edit', { name: category.name })" @click="openEditor(category)">
           <span class="swatch" :style="{ background: categoryColor(category) }" aria-hidden="true" />
@@ -175,10 +178,13 @@ async function remove(): Promise<void> {
         </button>
       </li>
       <li v-if="categories.length === 0" class="t-subhead t-secondary empty">{{ t('categories.empty') }}</li>
+      <!-- The last row of the group, as in R_Ajustes. -->
+      <li class="category-row add-row">
+        <Button class="add-category" variant="plain" :disabled="!planner.writable" @click="openAdd('category')">
+          <Icon name="plus" :size="20" /> {{ t('categories.add') }}
+        </Button>
+      </li>
     </ListGroup>
-    <Button class="add-category" variant="plain" :disabled="!planner.writable" @click="openAdd('category')">
-      <Icon name="plus" :size="20" /> {{ t('categories.add') }}
-    </Button>
 
     <p v-if="changedElsewhere" class="t-subhead" role="alert">{{ t('categories.changedElsewhere') }}</p>
 
@@ -235,7 +241,7 @@ async function remove(): Promise<void> {
 
 <style scoped>
 /* The list and its Add button are one section: the section gap goes after the button, not between them. */
-.categories { display: flex; flex-direction: column; align-items: stretch; gap: var(--space-2); margin-bottom: var(--section-gap); padding-inline: var(--page-gutter); }
+.categories { display: flex; flex-direction: column; align-items: stretch; gap: 0; margin-bottom: var(--section-gap); padding-inline: var(--page-gutter); }
 .categories > .list-group { margin-bottom: 0; }
 .category-row + .category-row .category-button::before { content: ''; position: absolute; top: 0; right: 0; left: var(--card-padding); border-top: 1px solid var(--separator); }
 .category-button { position: relative; display: flex; align-items: center; gap: var(--space-3); width: 100%; min-height: var(--row-min-height); padding: var(--row-padding-block) var(--card-padding); border: 0; background: transparent; text-align: start; }
@@ -246,7 +252,11 @@ async function remove(): Promise<void> {
 .swatch { width: 14px; height: 14px; border-radius: 50%; flex: none; }
 .empty { padding: var(--row-padding-block) var(--card-padding); }
 /* Leading, under the rows' swatches, like the other plain actions in Settings; centred it floated between sections. */
-.add-category { align-self: flex-start; }
+/* The add row's plain button keeps 8 px from the row above (4 px is neither joined nor apart for the geometry guard)
+   and room for its focus ring inside the card. */
+.add-row { position: relative; display: flex; align-items: center; min-height: var(--row-min-height); padding: var(--space-2) var(--card-padding); }
+.add-row::before { content: ''; position: absolute; top: 0; right: 0; left: var(--card-padding); border-top: 1px solid var(--separator); }
+.add-category { align-self: center; }
 .editor { display: flex; flex-direction: column; gap: var(--space-3); }
 .field { display: flex; flex-direction: column; gap: var(--space-1); }
 .error { color: var(--danger-label); }

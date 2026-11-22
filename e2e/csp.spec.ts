@@ -72,7 +72,8 @@ test.describe('Content Security Policy', () => {
   test('the assistant, the any-AI panel and the share sheet raise no violation', async ({ page }) => {
     await page.goto('./#/assistant')
     await expect(page.getByRole('heading', { level: 1, name: 'Assistant' })).toBeVisible()
-    await page.getByRole('button', { name: /Use with your AI/ }).click()
+    // "Answer with: Use with your AI" opens its page in Settings (R_Asistente).
+    await page.getByRole('combobox', { name: 'Answer with' }).selectOption({ label: 'Use with your AI' })
     await expect(page.getByTestId('any-ai-copy')).toBeVisible()
     await page.getByTestId('any-ai-copy').click()
     await openTab(page, 'insights')

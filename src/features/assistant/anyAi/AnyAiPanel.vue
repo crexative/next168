@@ -20,13 +20,10 @@ import { reviewReply, type ReplyFailure } from './reviewReply'
 
 // Plan with ChatGPT, Claude, Gemini or any chat AI by copy and paste. The AI never touches the plan: its answer
 // becomes a proposal that the person reviews and approves in the same sheet as every other proposal.
-const props = withDefaults(defineProps<{ collapsible?: boolean }>(), { collapsible: false })
-
 const { t, locale } = useI18n()
 const planner = usePlannerStore()
 const ids = { title: useId(), body: useId(), paste: useId(), hint: useId() }
 
-const open = ref(!props.collapsible)
 const reply = ref('')
 const busy = ref(false)
 const copied = ref<'idle' | 'copied' | 'manual'>('idle')
@@ -113,15 +110,14 @@ watch(lastDecision, (decision) => {
 
 <template>
   <section class="any-ai" data-testid="any-ai" :aria-labelledby="ids.title">
-    <component :is="collapsible ? 'button' : 'div'" class="head" :type="collapsible ? 'button' : undefined" :aria-expanded="collapsible ? open : undefined" :aria-controls="collapsible ? ids.body : undefined" data-testid="any-ai-toggle" @click="collapsible && (open = !open)">
+    <div class="head" data-testid="any-ai-head">
       <span class="head-text">
         <span :id="ids.title" class="t-headline">{{ t('connect.anyAi.title') }}</span>
         <span class="t-subhead t-secondary">{{ t('connect.anyAi.subtitle') }}</span>
       </span>
-      <Icon v-if="collapsible" name="chevron-right" :size="18" class="chevron" :class="{ 'is-open': open }" />
-    </component>
+    </div>
 
-    <div v-if="open" :id="ids.body" class="body">
+    <div :id="ids.body" class="body">
       <ol class="steps t-subhead">
         <li>{{ t('connect.anyAi.steps.copy') }}</li>
         <li>{{ t('connect.anyAi.steps.chat') }}</li>
@@ -165,11 +161,7 @@ watch(lastDecision, (decision) => {
 <style scoped>
 .any-ai { display: flex; flex-direction: column; gap: var(--space-3); padding: var(--card-padding-block) var(--card-padding); background: var(--surface); border-radius: var(--radius-card); }
 .head { display: flex; align-items: center; gap: var(--space-3); width: 100%; min-height: var(--tap-target); padding: 0; border: 0; background: transparent; color: var(--label); text-align: start; }
-button.head { touch-action: manipulation; }
-button.head:active { opacity: 0.6; }
 .head-text { display: flex; flex: 1; flex-direction: column; gap: var(--space-1); min-width: 0; overflow-wrap: anywhere; }
-.chevron { flex: none; color: var(--label-3); }
-.chevron.is-open { transform: rotate(90deg); }
 /* Read, copy, paste: three groups, a group gap apart. */
 .body { display: flex; flex-direction: column; gap: var(--group-gap); }
 .steps li { overflow-wrap: anywhere; }

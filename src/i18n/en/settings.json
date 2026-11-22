@@ -21,5 +21,7 @@
     "title": "Your data",
     "subtitle": "Export, import or delete"
   },
-  "categoriesTitle": "Categories and goals"
+  "categoriesTitle": "Categories and goals",
+  "weekTitle": "Your week",
+  "aiRow": "Use with your AI"
 }

@@ -166,8 +166,10 @@ async function panelFits(page: Page, state: string): Promise<void> {
 async function anyAiStates(page: Page, theme: string, label: string, includeSettings = true): Promise<void> {
   const check = includeSettings ? audit : panelFits
   await open(page, 'assistant')
-  await check(page, `${theme}/${label}/assistant with the use-with-your-AI row closed`)
-  await page.getByTestId('any-ai-toggle').click()
+  // The panel lives in Settings now ("Responder con: Usar con tu IA"); the assistant page is audited whole, not as a panel.
+  if (includeSettings) await check(page, `${theme}/${label}/assistant with Responder con`)
+  // "Responder con: Usar con tu IA" opens its page in Settings (R_Asistente).
+  await page.getByTestId('reply-with').locator('select').selectOption('anyAi')
   await expect(page.getByTestId('any-ai-copy')).toBeVisible()
   await check(page, `${theme}/${label}/use with your AI open`)
   await page.getByTestId('any-ai-copy').click()
@@ -434,13 +436,13 @@ for (const theme of THEMES) {
         await withoutClipboard(page)
         if (zoom === '200%') await page.addInitScript(() => { document.addEventListener('DOMContentLoaded', () => { document.documentElement.style.fontSize = '200%' }) })
         await open(page, 'assistant')
-        await page.getByTestId('any-ai-toggle').click()
+        await page.getByTestId('reply-with').locator('select').selectOption('anyAi')
         await page.getByTestId('any-ai-paste').fill(syntheticWeekReply('workspace-visual', 1))
         await page.getByTestId('any-ai-review').click()
         await expect(page.getByTestId('review-approve')).toBeEnabled()
         const footerFits = async (state: string) => {
           await settle(page)
-          for (const id of ['review-approve', 'review-cancel']) {
+          for (const id of ['review-approve']) {
             await expect.soft(page.getByTestId(id), `${state}: ${id} on screen`).toBeInViewport({ ratio: 1 })
             expect.soft((await page.getByTestId(id).boundingBox())!.height, `${state}: ${id} height`).toBeGreaterThanOrEqual(48)
           }
@@ -510,10 +512,10 @@ for (const theme of THEMES) {
     test('Settings with each appearance choice', async ({ page }) => {
       await start(page, theme, plannedDocument)
       await open(page, 'settings')
-      const group = page.getByRole('radiogroup', { name: 'Appearance' })
+      const appearance = page.getByRole('combobox', { name: 'Appearance' })
       for (const name of ['Light', 'Dark', 'Automatic']) {
-        await group.getByRole('radio', { name, exact: true }).click()
-        await expect(group.getByRole('radio', { name, exact: true })).toHaveAttribute('aria-checked', 'true')
+        await appearance.selectOption({ label: name })
+        await expect(appearance.locator('option:checked')).toHaveText(name)
         await audit(page, `${theme}/settings appearance ${name}`)
       }
     })

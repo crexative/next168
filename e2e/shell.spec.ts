@@ -83,9 +83,13 @@ test.describe('app shell', () => {
   // Review of #53: once the toolbar is collapsed (a bar of material over the page) a press on it must stay on the bar,
   // never reach the controls scrolled under it.
   test('a press on the collapsed toolbar never reaches the content under it', async ({ page }) => {
-    await page.setViewportSize({ width: page.viewportSize()!.width, height: 500 })
-    await page.goto('./#/settings')
-    await expect(page.getByRole('heading', { level: 1, name: 'Settings' })).toBeVisible()
+    // Short enough that Resumen (a short page since its redesign) scrolls well past its title.
+    await page.setViewportSize({ width: page.viewportSize()!.width, height: 380 })
+    // A tab: on a phone Settings is a sheet with its own bar (no large title to collapse).
+    await page.goto('./#/insights')
+    await expect(page.getByRole('heading', { level: 1, name: 'Summary' })).toBeVisible()
+    // Scrolled once the page has its content (and room to scroll), not while it is still loading.
+    await expect.poll(() => page.evaluate(() => document.documentElement.scrollHeight - window.innerHeight)).toBeGreaterThan(120)
     await page.evaluate(() => window.scrollTo(0, 400))
     await expect(page.locator('.toolbar[data-collapsed]')).toHaveCount(1)
     const bar = (await page.locator('.toolbar[data-collapsed]').boundingBox())!
@@ -96,7 +100,7 @@ test.describe('app shell', () => {
     expect(hit).toBe(true)
     const scrolled = await page.evaluate(() => window.scrollY)
     await page.mouse.click(x, y)
-    await expect(page).toHaveURL(/#\/settings$/)
+    await expect(page).toHaveURL(/#\/insights$/)
     await expect(page.getByRole('dialog')).toHaveCount(0)
     expect(await page.evaluate(() => window.scrollY)).toBe(scrolled)
   })
@@ -169,7 +173,7 @@ test.describe('app shell', () => {
 
   test('every tab opens scrolled to the top with the large title showing', async ({ page }, testInfo) => {
     test.skip(testInfo.project.name !== 'phone')
-    await openTab(page, 'settings')
+    await openTab(page, 'week')
     // Every view is tall enough to keep the old offset, as populated views are.
     await page.addStyleTag({ content: '.view { min-height: 3000px; }' })
     await page.evaluate(() => window.scrollTo(0, 1500))
