@@ -44,7 +44,31 @@ describe('TodayView', () => {
 
     await calendars.removeSource(planner.document!.calendarSources[0]!.id)
     await vi.waitFor(() => expect(host.textContent).not.toContain('Team meeting'))
-    expect(taskStart()).toBe('12:00\u00a0PM')
+    // Moved to 12:00, it is under way now, so the Ahora hero holds it and the list does not repeat it.
+    expect(host.querySelector('[data-testid="now-title"]')?.textContent?.trim()).toBe('Write report')
+    expect(taskStart()).toBeUndefined()
+  })
+
+  // Review of #54: with nothing planned Hoy is its empty state, and a to-do for today (one just added from "+" ›
+  // Tarea with Hoy on) must still be listed under it.
+  it('lists today\'s to-dos under the empty state of a day with no plan', async () => {
+    configurePlannerStore({ repository: createTestRepositories().planner, now: fixedNow, newId: newTestId, locale: () => 'en', timeZone: () => 'UTC' })
+    const pinia = createPinia()
+    setActivePinia(pinia)
+    const store = usePlannerStore()
+    await store.load()
+    await store.commit((draft) => {
+      draft.tasks.push({ id: 'call', title: 'Call the bank', dueDate: '2026-10-24', priority: 2, createdAt: fixedNow().toISOString() })
+    })
+    i18n.global.locale.value = 'en'
+    const host = document.createElement('div')
+    document.body.append(host)
+    const app = createApp(TodayView).use(pinia).use(i18n)
+    app.mount(host)
+    cleanup = () => { app.unmount(); host.remove() }
+    await vi.waitFor(() => expect(host.querySelector('[data-testid="today-todo"]')).not.toBeNull())
+    expect(host.querySelector('.empty-state, [data-testid="empty-state"]')).not.toBeNull()
+    expect(host.querySelector('[data-testid="today-todo-task"]')?.textContent).toContain('Call the bank')
   })
 
   // crexative/next168#58: each piece of a split task says its part; completing one completes the task, named plainly.

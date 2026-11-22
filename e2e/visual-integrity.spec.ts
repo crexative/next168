@@ -805,12 +805,11 @@ for (const theme of THEMES) {
       await expect(page.getByRole('button', { name: 'Deshacer' }).last()).toBeVisible()
       await audit(page, `${theme}/today: task done with the undo toast`)
 
-      // Evening: the card with the reminder, the form, and Today again after saving.
+      // Evening: the check-in row, the conversation (R_Cierre), and Today again after saving.
       await page.clock.fastForward(9 * 3600_000)
       await expect(page.getByTestId('checkin-card')).toBeVisible()
-      await expect(page.getByRole('button', { name: 'Recordarme a las 22:00' })).toBeVisible()
-      await audit(page, `${theme}/today: check-in card with the reminder`)
-      await page.getByTestId('checkin-card').getByRole('link').click()
+      await audit(page, `${theme}/today: the check-in row in the evening`)
+      await page.getByTestId('checkin-card').click()
       // The check-in is a conversation (R_Cierre): told times, one open question at a time.
       await expect(page.getByTestId('checkin')).toBeVisible()
       await settle(page)
@@ -855,8 +854,9 @@ for (const theme of THEMES) {
           settings: { ...plannedDocument.settings, locale },
           events: [...plannedDocument.events, { id: 'e-visit', title: 'Arzttermin und Rückruf', start: '2026-10-21T09:00:00.000Z', end: '2026-10-21T10:00:00.000Z', allDay: false, attendees: [] }],
         }
-        // The overlap notice shows only while the pair is current or upcoming (Today redesign): 09:30, inside both.
-        await start(page, theme, crowded, locale, new Date('2026-10-21T09:30:00.000Z'))
+        // The overlap notice shows only while the pair is upcoming or current and on a row: at 08:30 both are rows (once
+        // under way they are the Ahora hero and the routine it sits in).
+        await start(page, theme, crowded, locale, new Date('2026-10-21T08:30:00.000Z'))
         await open(page, 'today')
         await expect(page.getByTestId('timeline-overlap').first()).toBeVisible()
         await audit(page, `${theme}/${locale}/320 today: the overlap line`)
@@ -887,8 +887,9 @@ for (const theme of THEMES) {
       const fresh = { ...plannedDocument, checkIns: [], tasks: [], settings: { ...plannedDocument.settings, locale: 'es' } }
       await start(page, theme, fresh, 'es', new Date('2026-10-21T23:30:00.000Z'))
       await open(page, 'today')
-      // With sleep in progress the Now card carries the way in to the check-in, in place of the separate card.
-      await expect(page.getByTestId('now-close-day')).toBeVisible()
+      // With sleep in progress the way in to the check-in is its own row above the day, never in the hero.
+      await expect(page.getByTestId('checkin-card')).toBeVisible()
+      await expect(page.getByTestId('now-close-day')).toHaveCount(0)
       await audit(page, `${theme}/today: plan seen for the first time, sleep in progress`)
       await open(page, 'checkin')
       await audit(page, `${theme}/check-in without a saved entry`)

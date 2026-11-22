@@ -95,17 +95,19 @@ test.describe('phone fixes', () => {
   })
 
   test('the overnight block shows distinct spans for yesterday\'s tail and tonight\'s start', async ({ page }) => {
+    // Before 7:00 yesterday's tail is under way: the Ahora hero holds it, and the list has tonight's start only.
     await openSleepDocument(page, 'today', '2026-10-21T06:49:00Z')
+    await expect(page.getByTestId('now-title')).toHaveText('Sueño')
     const rows = page.getByTestId('timeline-item').filter({ hasText: 'Sueño' })
-    await expect(rows).toHaveCount(2)
-    const texts = await rows.allInnerTexts()
-    expect(texts[0]).not.toBe(texts[1])
-    // Yesterday's tail is one quiet line; tonight's start keeps its two time rows.
-    expect(texts[0]!.replace(/\u00a0/g, ' ')).toContain('Desde ayer · hasta 7:00')
-    expect(texts[1]).toContain('Hasta las 7:00')
-    await expect(rows.nth(0).getByTestId('timeline-start')).toHaveCount(0)
-    await expect(rows.nth(1).getByTestId('timeline-start')).toHaveText(/^23:00$/)
-    // Tonight's sleep reads from its start to its real end ("Hasta las 7:00"), not to midnight.
-    await expect(rows.nth(1).getByTestId('timeline-end')).toHaveCount(0)
+    await expect(rows).toHaveCount(1)
+    await expect(rows.first().getByTestId('timeline-start')).toHaveText(/^23:00$/)
+    // Tonight's sleep reads from its start to its real end (7:00), not to midnight, with no second "Hasta" line.
+    await expect(rows.first().getByTestId('timeline-end')).toHaveText(/^7:00$/)
+    await expect(rows.first().getByTestId('timeline-span-hint')).toHaveCount(0)
+    // After 7:00 the tail is past, one quiet line inside "Antes".
+    await page.clock.setSystemTime(new Date('2026-10-21T07:30:00Z'))
+    await page.clock.runFor(31_000)
+    await page.getByTestId('timeline-earlier').click()
+    await expect(page.getByTestId('timeline-carry')).toContainText('Desde ayer')
   })
 })

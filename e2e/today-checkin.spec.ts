@@ -82,15 +82,15 @@ for (const size of SIZES) {
         await expect(page.getByTestId('free-hours')).toHaveCount(0)
         await expect(page.getByTestId('day-progress')).toHaveCount(0)
         await expect(page.getByText('de 168')).toHaveCount(0)
-        await expect(page.getByText('libres esta semana')).toHaveCount(0)
+        await expect(page.locator('.today-main').getByText('libres esta semana')).toHaveCount(0)
         const rect = await box(subtitle)
         expect(rect.x).toBeGreaterThanOrEqual(0)
         expect(rect.x + rect.width).toBeLessThanOrEqual(size.width)
-        // Mid-block the card only tells the time left and what comes after: no status question yet.
+        // Mid-block the card only tells the time left (the list below says what comes after): no status question yet.
         const card = page.getByTestId('now-card')
         await expect(card.getByTestId('now-title')).toHaveText('Trabajo profundo')
         await expect(card.getByTestId('now-left')).toHaveText('Quedan 45 min')
-        await expect(card.getByTestId('now-next')).toContainText('Después')
+        await expect(card.getByTestId('now-next')).toHaveCount(0)
         await expect(circle(card)).toHaveCount(0)
         await expect(card.getByRole('group')).toHaveCount(0)
         await expect(card.getByRole('button')).toHaveCount(0)
@@ -197,7 +197,8 @@ for (const size of SIZES) {
 
       test('an appointment on top of a block is a quiet line on the block only, and only while the pair is current or upcoming', async ({ page }) => {
         const withAppointment = { ...plan, events: [{ id: 'e-doctor', title: 'Cita médica', start: '2026-10-21T09:00:00.000Z', end: '2026-10-21T10:00:00.000Z', allDay: false, attendees: [] }] }
-        await start(page, size, theme, withAppointment, '2026-10-21T09:30:30.000Z')
+        // Before both start, so both are rows (once under way they are the Ahora hero and its routine).
+        await start(page, size, theme, withAppointment, '2026-10-21T08:30:30.000Z')
         await open(page, 'today', 'Hoy')
         // Matched by their own title: the block's note names the event.
         const work = page.getByTestId('timeline-item').filter({ has: page.locator('.row-title-text', { hasText: 'Trabajo profundo' }) })
@@ -212,7 +213,7 @@ for (const size of SIZES) {
         ])
         expect(note).not.toBe(danger)
         // Once the shared hour is over the notice goes.
-        await page.clock.setSystemTime(new Date('2026-10-21T10:00:00.000Z'))
+        await page.clock.setSystemTime(new Date('2026-10-21T10:00:30.000Z'))
         await page.clock.runFor(30_000)
         await expect(page.getByTestId('timeline-overlap')).toHaveCount(0)
       })
@@ -222,19 +223,18 @@ for (const size of SIZES) {
         await open(page, 'today', 'Hoy')
         const sleep = page.getByTestId('timeline-item').filter({ hasText: 'Dormir' }).last()
         await expect(sleep.getByTestId('timeline-start')).toHaveText('10:00 p. m.')
-        await expect(sleep.getByTestId('timeline-end')).toHaveCount(0)
-        await expect(sleep.getByTestId('timeline-span-hint')).toHaveText('Hasta las 6:00 a. m.')
+        // It ends tomorrow: the real end sits in the time column, with no second "Hasta las" line (REVIEW B1).
+        await expect(sleep.getByTestId('timeline-end')).toHaveText('6:00 a. m.')
+        await expect(sleep.getByTestId('timeline-span-hint')).toHaveCount(0)
         await expect(page.getByText('12:00 a. m.')).toHaveCount(0)
         const task = page.locator('[data-kind="task"]').first()
         await expect(task.getByTestId('timeline-start')).toHaveText('10:35 a. m.')
       })
 
-      test('a task that starts before the next block is listed in "Después" and done in one tap, with undo', async ({ page }) => {
+      test('a task that starts before the next block is the next row of the list and done in one tap, with undo', async ({ page }) => {
         await start(page, size, theme, plan, '2026-10-21T10:15:30.000Z')
         await open(page, 'today', 'Hoy')
-        const next = page.getByTestId('now-next')
-        await expect(next).toContainText('Después')
-        await expect(next).toContainText('Llamar a la abuela')
+        await expect(page.locator('.timeline .is-next .row-title-text')).toContainText('Llamar a la abuela')
         const check = page.locator('[data-kind="task"]').first().getByTestId('status-control')
         await expect(check).toHaveAccessibleName('Marcar como hecho: Llamar a la abuela')
         const rect = await box(check)
@@ -268,12 +268,12 @@ for (const size of SIZES) {
         expect(lines).toBe(1)
       })
 
-      test('free time says Libre, how long it lasts and until when, under "AHORA"', async ({ page }) => {
+      test('free time says Libre, how long it lasts and until when, under "Ahora" in sentence case', async ({ page }) => {
         await start(page, size, theme, plan, '2026-10-21T16:30:00.000Z')
         await open(page, 'today', 'Hoy')
         const card = page.getByTestId('now-card')
         await expect(card.getByTestId('now-eyebrow')).toHaveText('Ahora')
-        await expect(card.getByTestId('now-eyebrow')).toHaveCSS('text-transform', 'uppercase')
+        await expect(card.getByTestId('now-eyebrow')).toHaveCSS('text-transform', 'none')
         await expect(card.getByTestId('now-title')).toHaveText('Libre')
         await expect(card.getByTestId('now-left')).toHaveText('Quedan 1 h 30 min')
         await expect(card.getByTestId('now-until')).toHaveText(/^hasta las 6:00\sp\.\sm\.$/)
@@ -298,17 +298,18 @@ async function toFinal(page: Page): Promise<void> {
 for (const theme of THEMES) {
   test.describe(`check-in, ${theme}`, () => {
     for (const size of SIZES) {
-      test(`${size.name}: card from 20:00, told facts, the day's routines, saved and back on Today`, async ({ page }) => {
+      test(`${size.name}: the row moves up at 20:00, told facts, the day's routines, saved and back on Today`, async ({ page }) => {
         await start(page, size, theme, plan, '2026-10-21T19:59:00.000Z')
         await open(page, 'today', 'Hoy')
-        await expect(page.getByTestId('checkin-card')).toHaveCount(0)
-        await page.clock.fastForward(61_000)
         const card = page.getByTestId('checkin-card')
+        // All day the row closes the list (on a desktop it is in the aside); from 20:00 it comes first on a phone.
         await expect(card).toBeVisible()
+        await page.clock.fastForward(61_000)
         await expect(card).toContainText('Cierre del día')
+        if (size.width < 1024) expect(await card.evaluate((element) => !!(element.compareDocumentPosition(document.querySelector('.timeline-section')!) & Node.DOCUMENT_POSITION_FOLLOWING))).toBe(true)
 
         // Tap 1: open the conversation. The day is a line, not a field; the times from the plan are told as answers.
-        await card.getByRole('link', { name: /Cierre del día/ }).click()
+        await card.click()
         await expect(checkin(page)).toBeVisible()
         await expect(page.getByTestId('checkin-date')).toHaveText('Cierre del día · miércoles, 21 de octubre')
         await expect(page.locator('input[type="date"]')).toHaveCount(0)
@@ -352,7 +353,7 @@ for (const theme of THEMES) {
         await expect(page.getByRole('heading', { level: 1, name: 'Hoy' })).toBeVisible()
         const done = page.getByTestId('checkin-done')
         await expect(done).toHaveText('Guardado ✓ · racha 2')
-        await expect(page.getByTestId('checkin-card').getByRole('link')).toBeFocused()
+        await expect(page.getByTestId('checkin-card')).toBeFocused()
         await expect.poll(async () => (await stored(page)).checkIns.at(-1)).toEqual({ date: '2026-10-21', bedtime: 1320, wake: 360, workEnd: 660, exercise: 'yes', stress: 2 })
         await page.clock.runFor(5000)
         await expect(done).toHaveText('Hecho ✓ · racha 2')
@@ -452,20 +453,26 @@ test.describe('nightly reminder', () => {
       Object.defineProperty(window, 'Notification', { value: FakeNotification, configurable: true })
     }, [permission, answer] as const)
   }
+  // The reminder sits on the check-in's last turn (it moved there from Hoy's card).
+  async function openLastTurn(page: Page): Promise<void> {
+    await open(page, 'checkin', 'Cierre del día')
+    await toFinal(page)
+  }
   const log = (page: Page) => page.evaluate(() => (window as unknown as { __notifications: { asked: number; shown: { title: string; body?: string }[] } }).__notifications)
 
   test('is asked for only on tap and notifies once at 22:00', async ({ page }) => {
     await stubNotifications(page, 'default')
     await start(page, SIZES[0], 'light', plan, '2026-10-21T20:30:00.000Z')
-    await open(page, 'today', 'Hoy')
+    await openLastTurn(page)
     // es-CO reads a 12-hour clock: the reminder follows it (verify4 defect 9 wrote "Recordarme a las 22:00").
-    const remind = page.getByRole('button', { name: /^Recordarme a las 10:00\sp\.\s?m\.$/u })
-    await expect(remind).toHaveAttribute('aria-pressed', 'false')
-    expect((await box(remind)).height).toBeGreaterThanOrEqual(44)
+    const remind = page.getByRole('switch', { name: /^Recordarme a las 10:00\sp\.\s?m\.$/u })
+    await expect(remind).not.toBeChecked()
+    // The whole row is the switch's label: a 44 px target.
+    expect((await box(page.locator('.toggle-row'))).height).toBeGreaterThanOrEqual(44)
     expect((await log(page)).asked).toBe(0)
 
     await remind.click()
-    await expect(remind).toHaveAttribute('aria-pressed', 'true')
+    await expect(remind).toBeChecked()
     expect((await log(page)).asked).toBe(1)
     await page.clock.runFor(60 * 60_000) // 21:30
     expect((await log(page)).shown).toEqual([])
@@ -481,8 +488,8 @@ test.describe('nightly reminder', () => {
   test('reminds a returning user at 22:00 when the check-in is still open (control for the next test)', async ({ page }) => {
     await stubNotifications(page, 'granted', true)
     await start(page, SIZES[0], 'light', plan, '2026-10-21T20:30:00.000Z')
-    await open(page, 'today', 'Hoy')
-    await expect(page.getByTestId('checkin-remind')).toHaveAttribute('aria-pressed', 'true')
+    await openLastTurn(page)
+    await expect(page.getByTestId('checkin-remind')).toBeChecked()
     await page.clock.runFor(2 * 60 * 60_000)
     await expect.poll(async () => (await log(page)).shown).toEqual([{ title: 'Cierre del día', body: '¿Cómo fue hoy? Te lleva un minuto.' }])
   })
@@ -493,7 +500,8 @@ test.describe('nightly reminder', () => {
     await open(page, 'today', 'Hoy')
     await expect(page.getByTestId('checkin-done')).toHaveText('Hecho ✓ · racha 2')
     // Armed for real: the opt-in is on, so only the completed check-in can keep the notification away.
-    await expect(page.getByTestId('checkin-remind')).toHaveAttribute('aria-pressed', 'true')
+    await openLastTurn(page)
+    await expect(page.getByTestId('checkin-remind')).toBeChecked()
     await page.clock.runFor(2 * 60 * 60_000)
     expect((await log(page)).shown).toEqual([])
   })
@@ -511,12 +519,12 @@ test.describe('nightly reminder', () => {
   test('turning the reminder off stops it, and a refused permission says so', async ({ page }) => {
     await stubNotifications(page, 'default')
     await start(page, SIZES[0], 'light', plan, '2026-10-21T20:30:00.000Z')
-    await open(page, 'today', 'Hoy')
+    await openLastTurn(page)
     const remind = page.getByTestId('checkin-remind')
     await remind.click()
-    await expect(remind).toHaveAttribute('aria-pressed', 'true')
+    await expect(remind).toBeChecked()
     await remind.click()
-    await expect(remind).toHaveAttribute('aria-pressed', 'false')
+    await expect(remind).not.toBeChecked()
     await page.clock.runFor(2 * 60 * 60_000)
     expect((await log(page)).shown).toEqual([])
   })
@@ -524,7 +532,7 @@ test.describe('nightly reminder', () => {
   test('says so when the browser refuses the permission', async ({ page }) => {
     await stubNotifications(page, 'default', false, 'denied')
     await start(page, SIZES[0], 'light', plan, '2026-10-21T20:30:00.000Z')
-    await open(page, 'today', 'Hoy')
+    await openLastTurn(page)
     await page.getByTestId('checkin-remind').click()
     await expect(page.getByText('Las notificaciones están bloqueadas en este navegador', { exact: false })).toBeVisible()
     // Nothing is armed: the button is gone because the browser now says "denied".
@@ -536,6 +544,7 @@ test.describe('nightly reminder', () => {
     await start(page, SIZES[0], 'light', withCheckInToday, '2026-10-21T20:30:00.000Z')
     await open(page, 'today', 'Hoy')
     await expect(page.getByTestId('checkin-done')).toHaveText('Hecho ✓ · racha 2')
+    await openLastTurn(page)
     await expect(page.getByTestId('checkin-remind')).toHaveCount(0)
   })
 
@@ -544,9 +553,9 @@ test.describe('nightly reminder', () => {
     test(`offers no reminder where notifications are ${permission === 'denied' ? 'blocked' : 'not supported'}`, async ({ page }) => {
       await stubNotifications(page, permission)
       await start(page, SIZES[0], 'light', plan, '2026-10-21T20:30:00.000Z')
-      await open(page, 'today', 'Hoy')
-      await expect(page.getByTestId('checkin-card')).toBeVisible()
-      await expect(page.getByRole('button', { name: /Recordarme/ })).toHaveCount(0)
+      await openLastTurn(page)
+      await expect(page.getByTestId('checkin-save')).toBeVisible()
+      await expect(page.getByRole('switch', { name: /Recordarme/ })).toHaveCount(0)
     })
   }
 })
@@ -598,6 +607,8 @@ for (const { width, height, modal } of [{ width: 390, height: 844, modal: false 
     await page.goto('./#/checkin')
     const frame = page.locator('.setup-frame')
     await expect(frame).toBeVisible()
+    // Measured once the frame has finished rising in (its entry starts a frame after it appears).
+    await expect(frame).not.toHaveClass(/setup-frame-enter/)
     await page.waitForFunction(() => document.getAnimations().every((animation) => animation.playState !== 'running'))
     const box = (await frame.boundingBox())!
     if (modal) {

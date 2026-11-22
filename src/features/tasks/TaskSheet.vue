@@ -13,7 +13,8 @@ import TaskOptions from './TaskOptions.vue'
 
 // One sheet to add a task ("+" in Week) and to edit one (a tap on its row or on the grid). Delete is a plain text
 // action at the foot, with the same undo toast as a swipe.
-const props = defineProps<{ open: boolean; taskId?: string }>()
+// `dueToday` starts a new task with "Hoy" on: the "+" pressed on Hoy adds for today, as its old inline row did.
+const props = defineProps<{ open: boolean; taskId?: string; dueToday?: boolean }>()
 const emit = defineEmits<{ 'update:open': [open: boolean] }>()
 
 const { t } = useI18n()
@@ -51,7 +52,7 @@ watch(() => props.open, (open) => {
     return
   }
   // A new task fits any free slot unless the person picks a category; the last one chosen is only a suggestion.
-  draft.value = stored.value ? draftFromTask(stored.value) : newDraft()
+  draft.value = stored.value ? draftFromTask(stored.value) : { ...newDraft(), dueToday: !!props.dueToday }
   suggestedCategoryId.value = readLastTaskCategory()
   initial.value = JSON.stringify(draft.value)
   changedElsewhere.value = false
