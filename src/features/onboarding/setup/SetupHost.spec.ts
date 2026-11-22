@@ -465,6 +465,19 @@ describe('the conversation', () => {
     }
   })
 
+  it('on a times question "No fixed hours" rides in the fixed bar beside Next, never under the times; on sleep it is not there', async () => {
+    await mount(firstRun())
+    const inBar = () => live('.dock-actions [data-testid=setup-secondary]')
+    const inAnswers = () => live('.dock-answer [data-testid=setup-secondary]')
+    expect(screen()).toBe('sleep')
+    expect(inAnswers()).toBeUndefined()
+    await click('[data-testid=setup-primary]')
+    await quick('work')
+    await vi.waitFor(() => expect(screen()).toBe('work'))
+    expect(inBar()).toBeDefined()
+    expect(inAnswers()).toBeUndefined()
+  })
+
   it('returns from an earlier answer to the current question without reconfirming later answers', async () => {
     await mount(firstRun())
     await click('[data-testid=setup-primary]')
