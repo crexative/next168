@@ -13,7 +13,8 @@
 .calendar-list li { display: grid; gap: var(--space-1); padding: var(--card-padding-block) var(--card-padding); border-radius: var(--radius-card); background: var(--surface); overflow-wrap: anywhere; }
 .calendar-note { color: var(--label-2); font-size: .9375rem; white-space: pre-line; }
 .calendar-error, .calendar-conflict { color: var(--danger-label); font-size: .9375rem; }
-.calendar-conflict { font-weight: 600; }
+/* A conflict needs attention, not alarm: amber, as in the grid (DIRECTION principle 6); an error stays red. */
+.calendar-conflict { color: var(--warning-label); font-weight: 600; }
 .calendar-actions { display: flex; gap: 0 var(--space-5); flex-wrap: wrap; align-items: center; }
 .calendar-actions > * { max-width: 100%; white-space: normal; overflow-wrap: anywhere; }
 /* Text actions start on the content's leading edge and read alike, whether they are buttons or links. */

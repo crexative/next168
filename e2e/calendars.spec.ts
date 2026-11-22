@@ -157,7 +157,7 @@ test('the routine opened from a conflict\'s details keeps focus, closes on Escap
   await conflict.click()
   const details = page.getByTestId('busy-details')
   await expect(details).toBeVisible()
-  await details.getByRole('button', { name: /Conflicts with/ }).click()
+  await details.getByRole('button', { name: /Overlaps/ }).click()
   const editor = page.getByRole('dialog', { name: 'Edit routine' })
   await expect(editor).toBeVisible()
   await page.waitForTimeout(400)

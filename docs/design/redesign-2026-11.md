@@ -53,6 +53,14 @@ a screen not yet redesigned keeps working with the new tokens and shell.
    while the planner can be written: a task needs no category (it fits any free time), an event needs none, and Rutina
    opens the guided add, which creates its category.
 
+9. **Semana's "Día · Semana" switch (slice 3).** DIRECTION §7 lists `week.view.showDay` / `week.view.showWeek` as the
+   toggle's accessible names. The toggle became a labelled segmented control whose radios are named by their visible
+   words ("Día", "Semana") in the group "Vista", so those two keys are removed. A view the person chose is kept when the
+   width crosses 768 px; until then a phone opens on Día and a wider screen on Semana.
+10. **One word for a conflict (slice 3, REVIEW M2).** "Se cruza" on the block, "Se cruza con {título}" in the event's
+    details and "Se cruza con tu plan" on imported events, in every language; a Weeklid event over a routine is marked
+    too, as Hoy already did.
+
 Anything else in a board that the app cannot do as drawn is raised with the coordinator before it changes behaviour.
 
 ## Tokens and styles added ahead of their screens
