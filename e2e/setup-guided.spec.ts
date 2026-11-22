@@ -1448,6 +1448,13 @@ for (const size of [PHONE, { width: 375, height: 667 }, { width: 1440, height: 9
     await live(page).locator('[data-value=work]').click()
     await onScreen(page, 'work')
     for (const testId of ['range-add', 'setup-secondary', 'setup-primary']) await inView(page, testId)
+    // The question itself is read whole above them, from its first word.
+    const question = await live(page).locator('.is-current .ask').evaluate((element) => {
+      const box = element.getBoundingClientRect()
+      const room = element.closest('.setup-scroller')!.getBoundingClientRect()
+      return box.top >= room.top - 0.5 && box.bottom <= room.bottom + 0.5
+    })
+    expect(question).toBe(true)
   })
 }
 
@@ -1465,4 +1472,19 @@ test('a removed time gives focus to "Añadir otro horario"; a lone time has no "
   await live(page).getByTestId('range-remove').last().click()
   await expect(live(page).getByTestId('range-remove')).toHaveCount(0)
   await expect(live(page).getByTestId('range-add')).toBeFocused()
+})
+
+// #60 review: from Ajustes the summary is the only way in, with no "Sin horario fijo"; a lone range there keeps
+// "Quitar", so Trabajo can be left without times and keep its category.
+test('from Ajustes a category with one range can be left without times in its summary card', async ({ page }) => {
+  await start(page, { document: planned() })
+  await page.goto('./')
+  await openFromSettings(page)
+  await onScreen(page, 'summary')
+  await live(page).getByTestId('card-work').click()
+  const remove = live(page).locator('[data-category=work] [data-testid=range-remove]')
+  await expect(remove).toHaveCount(1)
+  await remove.click()
+  await expect(live(page).locator('[data-category=work] [data-range]')).toHaveCount(0)
+  await expect(live(page).getByTestId('card-work')).toContainText('Sin horario')
 })

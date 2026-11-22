@@ -51,7 +51,7 @@ function onName(name: string): void {
         <Button variant="plain" data-testid="same-name-new" @click="keepSeparate(category); emit('edited')">{{ t('onboarding.guided.add.createAnother') }}</Button>
       </div>
       <p v-else-if="nameIssue" class="error t-body" role="alert">{{ t(`onboarding.guided.errors.${nameIssue.code}`) }}</p>
-      <RangeList :state="state" :category="category" :labels="{ there: t('onboarding.guided.commuteRanges.there'), back: t('onboarding.guided.commuteRanges.back'), bed: t('onboarding.guided.sleep.bed'), wake: t('onboarding.guided.sleep.wake'), weeknights: t('onboarding.guided.sleep.weeknights'), weekend: t('onboarding.guided.sleep.weekend') }" :sleep="category.topic === 'sleep'" />
+      <RangeList :state="state" :category="category" :labels="{ there: t('onboarding.guided.commuteRanges.there'), back: t('onboarding.guided.commuteRanges.back'), bed: t('onboarding.guided.sleep.bed'), wake: t('onboarding.guided.sleep.wake'), weeknights: t('onboarding.guided.sleep.weeknights'), weekend: t('onboarding.guided.sleep.weekend') }" :sleep="category.topic === 'sleep'" lone-removable />
       <p v-if="hasTasks" class="note t-body" data-testid="has-tasks">{{ t('onboarding.summary.hasTasks', { place }) }}</p>
       <Button v-else variant="plain" destructive data-testid="card-remove" @click="emit('remove')">{{ t('onboarding.summary.remove', { name: category.name }) }}</Button>
       <Button variant="tinted" data-testid="card-done" @click="emit('toggle')">{{ t('onboarding.summary.done') }}</Button>
