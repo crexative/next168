@@ -321,7 +321,7 @@ async function toggleEarlier(): Promise<void> {
             <p class="row-title t-body">
               <span class="row-title-text">
                 <Icon v-if="isCalendarItem(entry.item)" name="calendar" :size="14" class="row-glyph" />
-                <span v-if="kindWord(entry.item)" class="visually-hidden">{{ kindWord(entry.item) }}: </span>{{ entry.item.title }}
+                <span v-if="kindWord(entry.item)" class="visually-hidden">{{ kindWord(entry.item) }}: </span><template v-if="entry.item.kind === 'task' && entry.item.spokenTitle"><span aria-hidden="true">{{ entry.item.title }}</span><span class="visually-hidden">{{ entry.item.spokenTitle }}</span></template><template v-else>{{ entry.item.title }}</template>
               </span>
             </p>
             <p v-if="metaText(entry.item)" class="row-note t-footnote t-secondary" aria-hidden="true" data-testid="timeline-meta">{{ metaText(entry.item) }}</p>
@@ -342,9 +342,9 @@ async function toggleEarlier(): Promise<void> {
             v-if="entry.item.kind === 'task'"
             class="row-control"
             :item-key="entry.item.key"
-            :title="entry.item.title"
+            :title="entry.item.taskTitle ?? entry.item.title"
             :writable="writable"
-            @record="emit('completeTask', entry.item.taskId, entry.item.title)"
+            @record="emit('completeTask', entry.item.taskId, entry.item.taskTitle ?? entry.item.title)"
           />
           <ItemStatusControl
             v-else-if="asksStatus(entry.item)"
