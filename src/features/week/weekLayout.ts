@@ -1,6 +1,6 @@
 import { MINUTES_PER_DAY, type ExternalOccurrence, type PlannerDocument, type PlannerEvent, type TaskPlacement } from '@/core/model'
 import { addLocalDays, datedOccurrences, zonedInstant, type DatedOccurrence } from '@/core/time'
-import { chunkIsLate } from '@/core/scheduling'
+import { chunkIsLate, chunkTitle, type PartLabel } from '@/core/scheduling'
 import { localMinuteOf } from './localTime'
 
 export interface DayPart {
@@ -160,22 +160,26 @@ export interface TaskSegment extends DayPart {
   key: string
   taskId: string
   title: string
+  // The piece's name for a screen reader when the task is split ("Llamar al banco, parte 1 de 2").
+  spokenTitle?: string
   // Undefined for a task that fits any free time.
   categoryId: string | undefined
   late: boolean
 }
 
-export function taskSegmentsByDate(placements: readonly TaskPlacement[], tasks: PlannerDocument['tasks'], dates: string[], timeZone: string): Record<string, TaskSegment[]> {
+export function taskSegmentsByDate(placements: readonly TaskPlacement[], tasks: PlannerDocument['tasks'], dates: string[], timeZone: string, partLabel?: PartLabel, partSpoken?: PartLabel): Record<string, TaskSegment[]> {
   const byDate: Record<string, TaskSegment[]> = Object.fromEntries(dates.map((date) => [date, []]))
   const byId = new Map(tasks.map((task) => [task.id, task]))
   for (const placement of placements) {
     const task = byId.get(placement.taskId)
     if (!task || task.doneAt) continue
-    for (const chunk of placement.chunks) {
+    placement.chunks.forEach((chunk, index) => {
+      const title = chunkTitle(task.title, index, placement.chunks.length, partLabel)
+      const spoken = partSpoken && placement.chunks.length > 1 ? { spokenTitle: chunkTitle(task.title, index, placement.chunks.length, partSpoken) } : {}
       for (const part of splitByLocalDay(chunk.start, chunk.end, dates, timeZone)) {
-        byDate[part.date]?.push({ ...part, key: `${task.id}@${chunk.start}@${part.date}`, taskId: task.id, title: task.title, categoryId: task.categoryId, late: chunkIsLate(task, chunk, timeZone) })
+        byDate[part.date]?.push({ ...part, key: `${task.id}@${chunk.start}@${part.date}`, taskId: task.id, title, ...spoken, categoryId: task.categoryId, late: chunkIsLate(task, chunk, timeZone) })
       }
-    }
+    })
   }
   return byDate
 }
