@@ -69,6 +69,10 @@ it('without the model offers only the suggested questions: no question box, no m
   expect(view.querySelectorAll('[data-testid=suggestions] button')).toHaveLength(3)
   expect(view.querySelector('input, textarea')).toBeNull()
   expect(view.querySelector('[data-testid=assistant-status]')).toBeNull()
+  // "Answer with" names the three ways to answer; the model's status and WebGPU stay out of the page.
+  const reply = view.querySelector<HTMLSelectElement>('[data-testid=reply-with] select')!
+  expect([...reply.options].map((option) => [option.textContent, option.disabled])).toEqual([['Quick answers', false], ['On-device model', true], ['Use with your AI', false]])
+  view.querySelector('[data-testid=reply-with]')!.remove()
   expect(view.textContent).not.toMatch(/WebGPU|On-device model|Not available/)
   expect(view.querySelector('.card')).toBeNull()
 })
@@ -154,4 +158,29 @@ it('includes the model size in the storage-full failure and localizes it when th
   i18n.global.locale.value = 'fr'
   await nextTick()
   expect(view.querySelector('[data-testid=assistant-failure]')?.textContent).toContain(formatBytes(WEBLLM_DOWNLOAD_BYTES, 'fr'))
+})
+
+it('"Answer with: Use with your AI" opens that page and leaves the answering choice as it was', async () => {
+  const view = await mountView()
+  const reply = view.querySelector<HTMLSelectElement>('[data-testid=reply-with] select')!
+  expect(reply.value).toBe('rules')
+  reply.value = 'anyAi'
+  reply.dispatchEvent(new Event('change'))
+  await nextTick()
+  expect(window.location.hash).toBe('#/settings/ai')
+  expect(reply.value).toBe('rules')
+  expect(view.querySelector('[data-testid=reply-with] .reply-value')!.textContent).toBe('Quick answers')
+  window.history.replaceState(null, '', '#/')
+})
+
+// The dock rests at the bottom only while it leaves most of the screen to the conversation (review of #64): a dock
+// taller than a third of the window (large text) scrolls with the page instead.
+it.each([[200, true], [400, false]] as const)('a dock %i px tall on an 844 px window rests at the bottom: %s', async (height, docked) => {
+  vi.spyOn(window, 'innerHeight', 'get').mockReturnValue(844)
+  const offset = vi.spyOn(HTMLElement.prototype, 'offsetHeight', 'get').mockImplementation(function (this: HTMLElement) { return this.matches('[data-testid=assistant-dock]') ? height : 0 })
+  const view = await mountView()
+  window.dispatchEvent(new Event('resize'))
+  await nextTick()
+  expect(view.querySelector('[data-testid=assistant-dock]')!.classList.contains('is-docked')).toBe(docked)
+  offset.mockRestore()
 })

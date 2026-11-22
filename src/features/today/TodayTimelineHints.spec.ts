@@ -11,7 +11,8 @@ afterEach(() => { unmount(); i18n.global.locale.value = 'en' })
 describe('TodayTimeline continuation hints', () => {
   it.each([
     ['2026-10-23T22:00:00Z', '2026-10-24T06:00:00Z', ['Since yesterday']],
-    ['2026-10-24T22:00:00Z', '2026-10-25T06:00:00Z', ['Until 6:00 AM']],
+    // Ending tomorrow: the end is in the time column ("6:00 AM"), so no "Until" line (REVIEW B1).
+    ['2026-10-24T22:00:00Z', '2026-10-25T06:00:00Z', []],
     ['2026-10-22T18:00:00Z', '2026-10-27T09:00:00Z', ['Since 22 Thu', 'Until 27 Tue']],
     ['2026-10-24T09:00:00Z', '2026-10-24T18:00:00Z', []],
   ])('renders the hints for %s → %s', async (start, end, expected) => {

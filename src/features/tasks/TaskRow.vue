@@ -5,7 +5,9 @@ import Icon from '@/ui/Icon.vue'
 import './registerIcons'
 import { isHover, watchPressEnd } from '@/ui/pressEnd'
 
-defineProps<{ title: string; subtitle?: string; color: string; completeLabel: string }>()
+// `timeline` lays the row out like Today's list (R_Hoy): an empty time column, a dashed bar in the task's colour, the
+// text, and the circle at the trailing end.
+withDefaults(defineProps<{ title: string; subtitle?: string; color: string; completeLabel: string; variant?: 'list' | 'timeline' }>(), { variant: 'list' })
 // The circle completes; a tap on the text opens the task; a swipe to the left removes it (the screen offers Undo).
 const emit = defineEmits<{ complete: []; open: []; remove: [] }>()
 
@@ -59,7 +61,7 @@ onBeforeUnmount(() => stopWatchingPress?.())
 </script>
 
 <template>
-  <li class="task-row" :class="{ 'is-swiping': offset < 0 }">
+  <li class="task-row" :class="[`is-${variant}`, { 'is-swiping': offset < 0 }]" :style="{ '--task-color': color }">
     <span class="swipe-hint t-subhead" aria-hidden="true"><Icon name="trash-2" :size="18" /> {{ t('tasks.swipeRemove') }}</span>
     <div
       class="task-content"
@@ -69,13 +71,20 @@ onBeforeUnmount(() => stopWatchingPress?.())
       @pointerup="onUp"
       @pointercancel="cancelSwipe"
     >
-      <button class="check" type="button" :aria-label="completeLabel" @click="emit('complete')">
+      <template v-if="variant === 'timeline'">
+        <span class="timeline-time" aria-hidden="true" />
+        <span class="timeline-bar" aria-hidden="true" />
+      </template>
+      <button v-else class="check" type="button" :aria-label="completeLabel" @click="emit('complete')">
         <span class="check-ring" :style="{ borderColor: color }" />
       </button>
       <button class="task-text" type="button" @click="onOpen">
         <span class="t-body title">{{ title }}</span>
         <span v-if="subtitle" class="t-footnote t-secondary">{{ subtitle }}</span>
         <slot />
+      </button>
+      <button v-if="variant === 'timeline'" class="check" type="button" :aria-label="completeLabel" @click="emit('complete')">
+        <span class="check-ring" />
       </button>
     </div>
   </li>
@@ -111,4 +120,9 @@ onBeforeUnmount(() => stopWatchingPress?.())
   text-align: start;
 }
 .title { overflow-wrap: anywhere; }
+/* Today's list: plain rows on the page, grid like the timeline (56 px time, 4 px bar, text, 44 px circle). */
+.is-timeline .task-content { display: grid; grid-template-columns: 56px 4px minmax(0, 1fr) var(--tap-target); gap: var(--space-3); padding: 10px var(--page-gutter); background: var(--bg); }
+.is-timeline + .is-timeline .task-content::before { left: calc(var(--page-gutter) + 56px + 4px + 2 * var(--space-3)); border-top-width: 0.5px; }
+.timeline-bar { align-self: stretch; border-radius: 2px; background: repeating-linear-gradient(to bottom, var(--task-color) 0 5px, transparent 5px 8px); }
+.is-timeline .check-ring { width: 24px; height: 24px; border-color: var(--label-2); }
 </style>

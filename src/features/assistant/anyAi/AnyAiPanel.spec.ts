@@ -1,6 +1,6 @@
 // @vitest-environment happy-dom
 import { afterEach, beforeEach, expect, it, vi } from 'vitest'
-import { defineComponent, h, nextTick } from 'vue'
+import { nextTick } from 'vue'
 import type { ChangeProposal, ExternalOccurrence, ProposalInput } from '@/core/model'
 import { mountWithPlanner, WORK, type Mounted } from '@/features/settings/testSupport'
 import { lastDecision } from '@/features/proposals/reviewState'
@@ -150,24 +150,12 @@ it('ignores a second press while the first review is still being saved', async (
   expect(create).toHaveBeenCalledTimes(1)
 })
 
-it('the collapsible entry starts closed, opens on demand and exposes its state', async () => {
-  mounted = await mountWithPlanner(defineComponent({ render: () => h(AnyAiPanel, { collapsible: true }) }), { categories: [WORK], blocks: [GYM] })
-  const toggle = $<HTMLButtonElement>('any-ai-toggle')!
-  expect(toggle.getAttribute('aria-expanded')).toBe('false')
-  expect($('any-ai-copy')).toBeNull()
-  expect(toggle.textContent).toContain('Use with your AI (ChatGPT, Claude, Gemini…)')
-  toggle.click(); await nextTick()
-  expect(toggle.getAttribute('aria-expanded')).toBe('true')
+it('the panel (its page in Settings) is always open: its title is no toggle', async () => {
+  mounted = await mountWithPlanner(AnyAiPanel, { categories: [WORK], blocks: [GYM] })
+  expect($('any-ai-head')!.tagName).toBe('DIV')
+  expect($('any-ai-head')!.hasAttribute('aria-expanded')).toBe(false)
   expect($('any-ai-copy')).not.toBeNull()
   expect(mounted.host.querySelectorAll('ol li')).toHaveLength(3)
-  toggle.click(); await nextTick()
-  expect($('any-ai-copy')).toBeNull()
-})
-
-it('an open panel (Settings) has no toggle button', async () => {
-  mounted = await mountWithPlanner(AnyAiPanel, { categories: [WORK], blocks: [GYM] })
-  expect($('any-ai-toggle')!.tagName).toBe('DIV')
-  expect($('any-ai-toggle')!.hasAttribute('aria-expanded')).toBe(false)
 })
 
 it('uses the newest read of the imported calendars when an older read finishes last', async () => {

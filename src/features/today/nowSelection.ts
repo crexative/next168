@@ -36,11 +36,11 @@ export function selectNow(items: TimelineItem[], now: Date): NowSelection {
 }
 
 export type NowContextKind = 'taskContext' | 'routineContext' | 'alsoNow'
-export interface NowContext { kind: NowContextKind; title: string; end: string; more: number }
+export interface NowContext { kind: NowContextKind; key: string; title: string; end: string; more: number }
 
 export function nowContext({ primary, others }: NowSelection): NowContext | null {
   const [runnerUp] = others
   if (!primary || !runnerUp) return null
   const kind: NowContextKind = runnerUp.kind !== 'block' ? 'alsoNow' : primary.kind === 'task' ? 'taskContext' : isEvent(primary) ? 'routineContext' : 'alsoNow'
-  return { kind, title: runnerUp.title, end: runnerUp.end, more: others.length - 1 }
+  return { kind, key: runnerUp.key, title: runnerUp.title, end: runnerUp.end, more: others.length - 1 }
 }

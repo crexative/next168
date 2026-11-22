@@ -69,7 +69,7 @@ async function ready(summary: string) {
 }
 
 async function close() {
-  byTestId<HTMLButtonElement>('review-cancel').click()
+  document.body.querySelector<HTMLButtonElement>('.sheet-close')!.click()
   // Wait for dismissal and its asynchronous repository write before asserting retention.
   await vi.waitFor(() => expect($('[role="dialog"]')).toBeNull())
 }

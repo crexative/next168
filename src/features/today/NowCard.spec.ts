@@ -33,7 +33,14 @@ describe('NowCard', () => {
     expect(bar.getAttribute('aria-valuetext')).toBe(text('now-left'))
     expect(host.querySelector<HTMLElement>('.progress-fill')?.style.width).toBe('62.5%')
     expect(host.querySelector<HTMLElement>('.now-card')?.style.getPropertyValue('--block-color')).toBe('var(--cat-blue)')
-    expect(text('now-next')).toMatch(/^Next · 11:00\sAM · Free until 10:00\sPM$/)
+    // Busy: the list right below says what comes next, so the hero does not (redesign principle 3).
+    expect(host.querySelector('[data-testid="now-next"]')).toBeNull()
+    expect(text('now-eyebrow')).toBe('Now')
+  })
+
+  it('names the routine it sits in over the title, without a second end time (R_Hoy, REVIEW M1)', async () => {
+    const { text } = await render('2026-10-21T10:15:00Z', { state: { ...nowStateFor(document, '2026-10-21T10:15:00Z'), context: { kind: 'taskContext', key: 'block:deep', title: 'Work', end: '2026-10-21T17:00:00Z', more: 0 } } })
+    expect(text('now-eyebrow')).toBe('Now · In Work')
   })
 
   it('names tomorrow and formats hours during an overnight block', async () => {
@@ -41,7 +48,6 @@ describe('NowCard', () => {
     expect(text('now-title')).toBe('Sleep')
     // A whole number of hours reads "7 h", never "7 h 0 min".
     expect(text('now-left')).toBe('7 h left')
-    expect(text('now-next')).toMatch(/^Next · Tomorrow, 9:00\sAM · Deep work$/)
   })
 
   it('in a gap says Free, how long it lasts and until when, without a progress bar (check 13)', async () => {
@@ -116,12 +122,20 @@ describe('NowCard', () => {
     expect(host.querySelector('[data-testid="answer-done"]')).toBeNull()
   })
 
-  it('offers the day wrap-up link in place of the question late in the evening', async () => {
+  it('leaves the evening check-in to its own row: no link and no second action in the hero', async () => {
     const { host, text } = await render('2026-10-21T23:30:00Z', {}, document, { closeDayOpen: true })
-    const link = host.querySelector<HTMLAnchorElement>('[data-testid="now-close-day"]')!
-    expect(link.getAttribute('href')).toBe('#/checkin')
-    expect(link.textContent?.trim()).toBe('Day wrap-up')
+    expect(host.querySelector('[data-testid="now-close-day"]')).toBeNull()
+    expect(host.querySelector('[data-testid="now-do"]')).toBeNull()
     expect(text('now-title')).toBe('Sleep')
+  })
+
+  it('makes the task action filled on a phone and tinted where the page has its own filled "Añadir"', async () => {
+    const state = { ...nowStateFor(document, '2026-10-21T10:15:00Z'), action: { kind: 'task' as const, taskId: 'report', title: 'Report' } }
+    const filled = await render('2026-10-21T10:15:00Z', { state })
+    expect(filled.host.querySelector('[data-testid="now-complete"]')?.classList.contains('is-filled')).toBe(true)
+    unmount()
+    const quiet = await render('2026-10-21T10:15:00Z', { state, quietAction: true })
+    expect(quiet.host.querySelector('[data-testid="now-complete"]')?.classList.contains('is-tinted')).toBe(true)
   })
 
   it('agrees the Spanish article with the hour the free time ends at', async () => {
@@ -158,9 +172,9 @@ describe('NowCard', () => {
   })
 })
 
-// The next item is replaced by one with a given title, to exercise how long titles fit.
+// The next item is replaced by one with a given title, to exercise how long titles fit. "Next" shows while free.
 function nextOverride(title: string) {
-  return { state: { ...nowStateFor(document, '2026-10-21T10:15:00Z'), next: { kind: 'item' as const, title, start: '2026-10-21T12:00:00Z' } } }
+  return { state: { ...nowStateFor(document, '2026-10-24T12:00:00Z'), next: { kind: 'item' as const, title, start: '2026-10-24T14:00:00Z' } } }
 }
 
 // Widths model the browser's font measurements; happy-dom does not lay out text. A hyphen probe is as tall as the

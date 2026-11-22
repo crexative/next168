@@ -29,6 +29,6 @@ function choose(kind: AddKind): void {
   <template v-if="available">
     <AddMenu :placement="props.placement" :direct="props.view === 'tasks' ? 'task' : undefined" @choose="choose" />
     <EventSheet v-model:open="eventOpen" />
-    <TaskSheet v-model:open="taskOpen" />
+    <TaskSheet v-model:open="taskOpen" :due-today="props.view === 'today'" />
   </template>
 </template>

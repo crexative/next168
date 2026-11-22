@@ -181,7 +181,7 @@ function onFocusIn(event: FocusEvent): void {
 .resumed { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; column-gap: var(--space-3); text-align: center; }
 .resumed p { margin: 0; color: var(--label-2); }
 /* The summary's own dock. A plain .dock here would also reach SetupAnswer's root (a scoped style reaches a child's
-   root element) and stop that dock from shrinking inside the tablet modal. */
+   root element), which sizes its dock itself. */
 .dock.is-summary { flex: none; border-top: 0.5px solid var(--separator); background: var(--surface); }
 /* The primary keeps the group gap from the conversation above and from "Repasar las preguntas" under it. */
 .actions { display: flex; flex-direction: column; align-items: center; gap: var(--space-1); padding-block: var(--group-gap) calc(var(--space-4) + var(--safe-bottom)); }

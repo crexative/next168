@@ -68,3 +68,16 @@ export function summarizeEntity(value: unknown, context: SummaryContext): Summar
   if (entity.goal && typeof entity.goal === 'object') rows.push(row('goal', goalText(entity.goal as Entity, context)))
   return rows
 }
+
+// One field of a change as R_Propuesta shows it: what it was and what it becomes. A field only one side has was added
+// (a new item) or removed; `changed` is false for a field both sides share with the same value.
+export interface FieldChange { label: string; before?: string; after?: string; changed: boolean }
+
+export function fieldChanges(before: readonly SummaryRow[], after: readonly SummaryRow[]): FieldChange[] {
+  const labels = [...new Set([...after.map((row) => row.label), ...before.map((row) => row.label)])]
+  return labels.map((label) => {
+    const was = before.find((row) => row.label === label)?.value
+    const now = after.find((row) => row.label === label)?.value
+    return { label, ...(was !== undefined ? { before: was } : {}), ...(now !== undefined ? { after: now } : {}), changed: was !== now }
+  })
+}

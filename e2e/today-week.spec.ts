@@ -89,8 +89,9 @@ test.describe('today', () => {
     const card = page.getByTestId('now-card')
     await expect(card.getByTestId('now-title')).toHaveText('Deep work')
     await expect(card.getByTestId('now-left')).toHaveText('45 min left')
-    // Nothing starts when Deep work ends at 11:00: the free time to the gym at 6:00 PM is what comes next.
-    await expect(card.getByTestId('now-next')).toContainText('Free until 6:00 PM')
+    // Busy: the list below the hero says what comes next (free time, then the gym at 6:00 PM), the hero does not repeat it.
+    await expect(card.getByTestId('now-next')).toHaveCount(0)
+    await expect(page.locator('.timeline .is-next .row-title-text')).toContainText('Gym')
     await expect(card.getByRole('progressbar')).toHaveAttribute('aria-valuenow', '63')
     const before = await card.boundingBox()
 
@@ -112,13 +113,11 @@ test.describe('today', () => {
     expect(await card.boundingBox()).toEqual(before)
   })
 
-  test('the Next row names tomorrow during an overnight block', async ({ page }) => {
-    await openSeeded(page, 'today', new Date('2026-10-21T23:00:00.000Z'))
+  test('the Next row names tomorrow while nothing is under way', async ({ page }) => {
+    await openSeeded(page, 'today', new Date('2026-10-21T20:30:00.000Z'))
     const card = page.getByTestId('now-card')
-    await expect(card.getByTestId('now-title')).toHaveText('Sleep')
-    await expect(card.getByTestId('now-left')).toHaveText('7 h left')
-    await expect(card.getByTestId('now-next')).toContainText('Deep work')
-    await expect(card.getByTestId('now-next')).toContainText('Tomorrow, 9:00 AM')
+    await expect(card.getByTestId('now-title')).toHaveText('Free')
+    await expect(card.getByTestId('now-next')).toContainText('Sleep')
   })
 
   test('marking an occurrence done stores its snapshot and survives a reload', async ({ page }) => {
@@ -154,9 +153,9 @@ test.describe('today', () => {
     await expect.poll(async () => (await storedDocument(page)).actuals[0]).toMatchObject({ status: 'partial', actualMinutes: 50, plannedMinutes: 120 })
   })
 
-  test('the check-in card appears in the evening and links to the check-in route', async ({ page }) => {
+  test('the check-in row is there all day and links to the check-in route', async ({ page }) => {
     await openSeeded(page, 'today')
-    await expect(page.getByTestId('checkin-card')).toHaveCount(0)
+    await expect(page.getByTestId('checkin-card')).toHaveAttribute('href', '#/checkin')
     await page.clock.fastForward(11 * 3600_000)
     await expect(page.getByRole('link', { name: /Day wrap-up/ })).toHaveAttribute('href', '#/checkin')
   })

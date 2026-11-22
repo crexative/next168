@@ -285,7 +285,8 @@ onUnmounted(() => {
 .ask { margin: 0; outline: none; overflow-wrap: anywhere; }
 /* The scroller takes focus (its text can be scrolled from the keyboard): its ring stays inside it. */
 .scroller:focus-visible { outline-offset: -2px; }
-/* The dock's share is of the frame (the screen, or the tablet modal: ConversationFrame's --frame-room), as in the setup. */
+/* The dock's share is of the frame (the screen, or the tablet modal: ConversationFrame's --frame-room), as in the setup;
+   it may shrink below that share, which keeps the question in view on a short phone at large text. */
 .dock {
   flex: 0 1 auto; display: flex; flex-direction: column; min-height: 0; max-height: calc(var(--frame-room, min(var(--vv-height, 100dvh), 100dvh)) * 0.66);
   border-top: 0.5px solid var(--separator); background: var(--surface);

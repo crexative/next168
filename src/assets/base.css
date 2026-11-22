@@ -104,6 +104,7 @@ input[type='file']::file-selector-button {
 }
 
 html[data-backdrop='plain'] body { background: var(--bg); }
+html[data-presentation] body { background: var(--sheet-backdrop); }
 
 html[data-sheet-open] body { overflow: hidden; }
 /* A full-screen flow owns the screen: the page behind it cannot scroll or rubber-band (sheetStack.ts remembers and restores its position). */

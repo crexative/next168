@@ -1,9 +1,10 @@
 <script setup lang="ts">
 import { anyFullScreenOpen, anyModalOpen } from '@/ui/sheetStack'
-import { computed, nextTick, onBeforeUnmount, onMounted, provide, ref, watch } from 'vue'
+import { computed, nextTick, onBeforeUnmount, onMounted, provide, ref, useId, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { PanelLeft } from 'lucide-vue-next'
 import BrandLockup from '@/ui/BrandLockup.vue'
+import Button from '@/ui/Button.vue'
 import Icon from '@/ui/Icon.vue'
 import { registerIcons } from '@/ui/icons'
 import LargeTitle from '@/ui/LargeTitle.vue'
@@ -18,10 +19,11 @@ import StorageErrorScreen from './StorageErrorScreen.vue'
 import StorageUpgradeWaiting from './StorageUpgradeWaiting.vue'
 import { UPGRADE_COPY_FAILED } from '@/repositories/storageVersion'
 import StatusBanners from './StatusBanners.vue'
-import { SHELL_TOOLBAR_ENTRIES } from './contracts'
+import { SHEET_PRESENTED, SHELL_TOOLBAR_ENTRIES, type ViewId } from './contracts'
 import { shell } from './registry'
 import { isApplePlatform, isSidebarShortcut, layoutFor, OVERLAY_QUERY, PERSISTENT_QUERY, useSidebar } from './sidebar'
 import { useHashRoute, viewHash } from './useHashRoute'
+import { isTextField, trackTypedText, type TextField } from './typedText'
 
 registerIcons({ 'panel-left': PanelLeft })
 
@@ -40,8 +42,6 @@ const entries = computed(() => [
 ].filter((entry) => !!entry))
 provide(SHELL_TOOLBAR_ENTRIES, true)
 
-// One readable measure (720 px) for every screen; Week alone takes the full width for its grid.
-const FULL_WIDTH_VIEWS: ReadonlySet<string> = new Set(['week'])
 
 const atLeastTablet = useMediaQuery(OVERLAY_QUERY)
 const atLeastDesktop = useMediaQuery(PERSISTENT_QUERY)
@@ -57,6 +57,78 @@ const topTabsShown = computed(() => layout.value !== 'none' && toolbarEntriesSho
 // toolbar, in the desktop title row.
 const isTab = computed(() => currentView.value?.tabOrder !== undefined)
 const addPlacement = computed(() => layout.value === 'none' ? 'floating' : layout.value === 'overlay' ? 'toolbar' : 'title')
+// On a phone, Settings and the assistant open over the tab they came from as a full-height sheet (DIRECTION §3):
+// a grabber, the title in the bar and "Listo" back to that tab; no tab bar and no "+" while it is up. On a tablet
+// Settings is a centred form sheet over the dimmed tab (R_TabletAjustes); desktop keeps the page beside the sidebar.
+const SHEET_VIEWS: ReadonlySet<string> = new Set(['settings', 'assistant'])
+const presentation = computed<'sheet' | 'form' | undefined>(() => {
+  const id = currentView.value?.id
+  if (layout.value === 'none' && id && SHEET_VIEWS.has(id)) return 'sheet'
+  if (layout.value === 'overlay' && id === 'settings') return 'form'
+  return undefined
+})
+const sheetPresented = computed(() => presentation.value !== undefined)
+provide(SHEET_PRESENTED, sheetPresented)
+const lastTab = ref<ViewId>('today')
+watch(currentView, (view) => { if (view?.tabOrder !== undefined) lastTab.value = view.id }, { immediate: true })
+// Listo, Escape and the dimmed strip all close a sheet: back to the tab it came from, with focus on the entry that
+// opened it (onViewEntered).
+let sheetOpener: ViewId | null = null
+function closeSheet(): void {
+  if (!sheetPresented.value || !currentView.value) return
+  sheetOpener = currentView.value.id
+  window.location.hash = viewHash(lastTab.value)
+}
+// Text typed into a sheet and not saved (a pasted AI reply, a calendar URL, a question) is never dropped silently:
+// closing it asks first, "¿Descartar los cambios?" with Descartar and Seguir.
+const typedText = trackTypedText()
+const sheetElement = () => document.querySelector('.view[data-presentation]')
+let stopTypedText: (() => void) | undefined
+onMounted(() => { stopTypedText = typedText.watch(sheetElement) })
+onBeforeUnmount(() => stopTypedText?.())
+const confirmingDiscard = ref(false)
+let fieldToResume: TextField | undefined
+const discardIds = { title: useId(), body: useId() }
+const discardKeep = ref<InstanceType<typeof Button> | null>(null)
+function requestClose(): void {
+  if (!sheetPresented.value) return
+  fieldToResume = typedText.changedField()
+  if (!fieldToResume) {
+    closeSheet()
+    return
+  }
+  confirmingDiscard.value = true
+  void nextTick(() => (discardKeep.value?.$el as HTMLElement | undefined)?.focus())
+}
+function discardTyped(): void {
+  confirmingDiscard.value = false
+  typedText.reset()
+  closeSheet()
+}
+function keepEditing(): void {
+  confirmingDiscard.value = false
+  const field = fieldToResume
+  void nextTick(() => field?.focus())
+}
+// Two buttons: Tab and Shift+Tab stay between them while the question is up.
+function trapDiscardFocus(event: KeyboardEvent): void {
+  if (event.key !== 'Tab') return
+  const buttons = [...(event.currentTarget as HTMLElement).querySelectorAll<HTMLElement>('button')]
+  const at = buttons.indexOf(document.activeElement as HTMLElement)
+  event.preventDefault()
+  buttons[(at + (event.shiftKey ? buttons.length - 1 : 1)) % buttons.length]?.focus()
+}
+// Forgotten only once no sheet is shown: a sheet that becomes a form sheet (a phone turned into a tablet's width) still
+// holds the same page and the same text.
+watch(presentation, (kind) => {
+  if (kind) return
+  typedText.reset()
+  confirmingDiscard.value = false
+})
+watch(presentation, (kind) => {
+  if (kind) document.documentElement.dataset.presentation = kind
+  else delete document.documentElement.dataset.presentation
+}, { immediate: true })
 // A view of plain lists asks for the white page; every other screen keeps the grouped grey.
 watch(() => currentView.value?.backdrop, (backdrop) => {
   if (backdrop) document.documentElement.dataset.backdrop = backdrop
@@ -82,7 +154,17 @@ function toggleSidebar(fromKeyboard: boolean): void {
 function onToggleClick(event: MouseEvent): void { toggleSidebar(event.detail === 0) }
 
 function onKeydown(event: KeyboardEvent): void {
-  if (event.defaultPrevented || layout.value === 'none' || anyModalOpen()) return
+  if (event.defaultPrevented || anyModalOpen()) return
+  if (event.key === 'Escape' && sheetPresented.value) {
+    // An input method composing a word, or a field with text, keeps its own Escape.
+    if (event.isComposing || (isTextField(event.target) && event.target.value !== '')) return
+    event.preventDefault()
+    if (confirmingDiscard.value) keepEditing()
+    else requestClose()
+    return
+  }
+  // Under a presented sheet (the tablet's Settings form) the sidebar cannot open over it: its toggle is hidden too.
+  if (layout.value === 'none' || sheetPresented.value) return
   if (isSidebarShortcut(event, apple)) {
     event.preventDefault()
     toggleSidebar(true)
@@ -144,7 +226,11 @@ function onViewEntered(element: Element): void {
   const active = document.activeElement
   if (active && active !== element && element.contains(active)) return
   if (anyModalOpen()) return
-  element.querySelector<HTMLElement>('h1')?.focus({ preventScroll: true })
+  const opener = sheetOpener
+  sheetOpener = null
+  const entry = opener ? [...document.querySelectorAll<HTMLElement>(`[data-testid="${opener}-entry"]`)].find((candidate) => candidate.getClientRects().length > 0) : undefined
+  const target = entry ?? element.querySelector<HTMLElement>('h1')
+  target?.focus({ preventScroll: true })
   announce(pageTitle.value)
 }
 
@@ -155,7 +241,7 @@ dismissUndoWhenChanged(() => planner.document?.workspaceId)
 <template>
   <div class="shell" :data-layout="layout" :data-sidebar="sidebarVisible ? 'shown' : 'hidden'">
     <button
-      v-if="layout !== 'none'"
+      v-if="layout !== 'none' && !sheetPresented"
       ref="toggleButton"
       class="sidebar-toggle"
       type="button"
@@ -204,12 +290,30 @@ dismissUndoWhenChanged(() => planner.document?.workspaceId)
       <UndoToast />
       <StatusBanners :inert="covered || undefined" />
       <StorageUpgradeWaiting />
-      <main id="main" class="main" tabindex="-1" :inert="covered || undefined">
+      <!-- The dimmed screen around a sheet: a tap there closes it, like the system's sheets. -->
+      <div v-if="sheetPresented" class="sheet-scrim" aria-hidden="true" data-testid="sheet-scrim" @click="requestClose" />
+      <div v-if="confirmingDiscard" class="discard-backdrop" data-testid="discard-confirm">
+        <div class="discard-card" role="alertdialog" aria-modal="true" :aria-labelledby="discardIds.title" :aria-describedby="discardIds.body" @keydown="trapDiscardFocus">
+          <h2 :id="discardIds.title" class="t-headline discard-title">{{ t('common.discardChanges.title') }}</h2>
+          <p :id="discardIds.body" class="t-subhead t-secondary discard-body">{{ t('common.discardChanges.body') }}</p>
+          <div class="discard-actions">
+            <Button ref="discardKeep" variant="tinted" data-testid="discard-keep" @click="keepEditing">{{ t('common.discardChanges.keep') }}</Button>
+            <Button variant="plain" destructive data-testid="discard-confirm-button" @click="discardTyped">{{ t('common.discardChanges.discard') }}</Button>
+          </div>
+        </div>
+      </div>
+      <main id="main" class="main" tabindex="-1" :inert="covered || confirmingDiscard || undefined">
         <RecoveryScreen v-if="planner.status === 'corrupt'" />
         <StorageErrorScreen v-else-if="planner.status === 'error' || planner.error === UPGRADE_COPY_FAILED" />
         <Transition v-else name="view" mode="out-in" @after-leave="scrollToTop" @after-enter="onViewEntered">
-          <div v-if="currentView" :key="currentView.id" class="view" :data-view="currentView.id" :data-measure="FULL_WIDTH_VIEWS.has(currentView.id) ? 'full' : 'readable'">
-            <LargeTitle :title="t(currentView.titleKey)">
+          <div v-if="currentView" :key="currentView.id" class="view" :data-view="currentView.id" :data-measure="currentView.measure ?? 'readable'" :data-presentation="presentation">
+            <header v-if="sheetPresented" class="sheet-bar" data-testid="sheet-bar">
+              <span v-if="presentation === 'sheet'" class="sheet-grabber" aria-hidden="true" />
+              <!-- Focusable by script only: the shell moves focus here after a route change, as with the large title. -->
+              <h1 class="sheet-title t-headline" tabindex="-1">{{ t(currentView.titleKey) }}</h1>
+              <a class="sheet-done t-body" :href="viewHash(lastTab)" data-testid="sheet-done" @click.prevent="requestClose">{{ t('common.done') }}</a>
+            </header>
+            <LargeTitle v-else :title="t(currentView.titleKey)">
               <template #center>
                 <nav v-if="topTabsShown" class="top-tabs" :aria-label="t('app.navigation.tabs')" data-testid="top-tabs">
                   <a
@@ -248,7 +352,7 @@ dismissUndoWhenChanged(() => planner.document?.workspaceId)
       </main>
     </div>
 
-    <nav class="tabbar" :aria-label="t('app.navigation.tabs')" :inert="covered || undefined">
+    <nav v-show="!sheetPresented" class="tabbar" :aria-label="t('app.navigation.tabs')" :inert="covered || undefined">
       <a
         v-for="tab in tabs"
         :key="tab.id"
@@ -280,8 +384,80 @@ dismissUndoWhenChanged(() => planner.document?.workspaceId)
 .content { padding-bottom: calc(var(--tabbar-inset) + var(--space-4) + var(--banners-height, 0px)); }
 .main { outline: none; }
 .view { margin-inline: auto; }
-/* 720 px: one measure for every text and list screen, centred in the space beside the sidebar. */
+/* 720 px: one measure for every text and list screen, centred in the space beside the sidebar; 1040 px for a screen
+   that sets an aside beside its main column on a desktop (Hoy, Resumen). Week takes the full width for its grid. */
 .view[data-measure='readable'] { max-width: 45rem; }
+.view[data-measure='wide'] { max-width: 45rem; }
+@media (min-width: 1024px) {
+  .view[data-measure='wide'] { max-width: 65rem; }
+}
+/* The full-height sheet (phone): a dimmed strip of the screen behind at the top, then the sheet with its bar. */
+.view[data-presentation='sheet'] {
+  min-height: calc(100dvh - var(--safe-top) - var(--space-3));
+  margin-top: calc(var(--safe-top) + var(--space-3));
+  border-radius: 24px 24px 0 0;
+  background: var(--bg-grouped);
+  /* The sheet runs to the bottom of the screen: the room the page keeps under its end is inside the sheet. */
+  padding-bottom: calc(var(--safe-bottom) + var(--space-4) + var(--banners-height, 0px));
+}
+html[data-backdrop='plain'] .view[data-presentation='sheet'] { background: var(--bg); }
+/* The sheet's top margin stays inside the page: collapsed through it, the shell's full height would leave a strip under
+   a short sheet. */
+html[data-presentation] .main { display: flow-root; }
+/* The sheet lies over its scrim, which takes the taps on the dimmed screen around it. */
+.sheet-scrim { position: fixed; inset: 0; z-index: 0; }
+/* "¿Descartar los cambios?": a small centred card over the sheet, which stays inert behind it. */
+.discard-backdrop { position: fixed; inset: 0; z-index: 60; display: grid; place-items: center; padding: var(--space-4); background: rgb(0 0 0 / 0.3); }
+.discard-card { display: flex; flex-direction: column; gap: var(--space-2); width: min(100%, 20rem); padding: var(--space-5) var(--space-4) var(--space-4); border-radius: 14px; background: var(--surface-2); text-align: center; box-shadow: var(--shadow-floating); }
+.discard-title, .discard-body { margin: 0; overflow-wrap: break-word; }
+.discard-actions { display: flex; flex-wrap: wrap; justify-content: center; gap: var(--space-2); margin-top: var(--space-2); }
+.discard-actions > * { flex: 1 1 8rem; }
+.view[data-presentation] { position: relative; z-index: 1; }
+/* The page itself keeps nothing below the sheet (no tab bar under it: --tabbar-inset is 0 below). */
+.shell:has(.view[data-presentation='sheet']) .content { padding-bottom: 0; }
+/* The assistant's own dock carries the safe area: its sheet ends at the dock. */
+.view[data-presentation='sheet'][data-view='assistant'] { display: flex; flex-direction: column; padding-bottom: 0; }
+/* The conversation fills the sheet, so its dock rests on the bottom of the screen. */
+.view[data-presentation='sheet'][data-view='assistant'] > :not(.sheet-bar) { flex: 1; }
+/* A floating pill or toast over a sheet keeps the end of the sheet clear of it. */
+html:has(.proposal-badge) .view[data-presentation='sheet'] { padding-bottom: calc(var(--safe-bottom) + var(--space-4) + var(--banners-height, 0px) + var(--tap-target) + var(--space-3)); }
+html:has([data-testid='undo-toast']) .view[data-presentation='sheet'] { padding-bottom: calc(var(--safe-bottom) + var(--space-3) + var(--banners-height, 0px) + var(--tap-target) + var(--space-6)); }
+/* The tablet's form sheet: 640 wide, 64 from the top, radius 24, on the grouped grey (R_TabletAjustes). */
+.view[data-presentation='form'] {
+  max-width: 40rem;
+  margin: calc(var(--safe-top) + 64px) auto var(--space-8);
+  padding-bottom: var(--space-6);
+  border-radius: 24px;
+  background: var(--bg-grouped);
+}
+.sheet-bar {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  display: grid;
+  /* The sides keep at least "Listo"'s width, so at large text the title wraps between them instead of running into it. */
+  grid-template-columns: minmax(max-content, 1fr) minmax(0, max-content) minmax(max-content, 1fr);
+  align-items: center;
+  column-gap: var(--space-2);
+  min-height: var(--toolbar-height);
+  padding: var(--space-2) var(--page-gutter) 0;
+  border-radius: inherit;
+  background: inherit;
+}
+.sheet-grabber { position: absolute; top: 5px; left: 50%; width: 36px; height: 5px; margin-left: -18px; border-radius: 3px; background: var(--label-3); }
+.sheet-title { grid-column: 2; margin: 0; overflow-wrap: anywhere; text-align: center; outline: none; }
+.sheet-done {
+  grid-column: 3;
+  justify-self: end;
+  display: inline-flex;
+  align-items: center;
+  min-height: var(--tap-target);
+  min-width: var(--tap-target);
+  justify-content: flex-end;
+  color: var(--tint-label);
+  font-weight: 600;
+  text-decoration: none;
+}
 
 .tabbar {
   position: fixed;
@@ -484,4 +660,6 @@ dismissUndoWhenChanged(() => planner.document?.workspaceId)
 @media (min-width: 768px) {
   :root { --tabbar-height: 0px; --tabbar-float: 0px; }
 }
+/* No tab bar under a phone sheet either, so nothing reserves its room. */
+html[data-presentation='sheet'] { --tabbar-height: 0px; --tabbar-float: 0px; }
 </style>

@@ -15,13 +15,13 @@
     "changedOpen": "Ahora: {title}",
     "alsoNow": "También ahora: {title} · hasta la {time} | También ahora: {title} · hasta las {time}",
     "askAvailable": "Puedes marcar cómo fue {title}",
-    "closeDay": "Cierre del día",
     "readOnly": "Solo lectura en esta pestaña",
     "progress": "Progreso",
     "next": "Después",
-    "nothingNext": "Nada más planificado esta semana",
     "tomorrowAt": "Mañana, {time}",
-    "dayAt": "{day}, {time}"
+    "dayAt": "{day}, {time}",
+    "within": "En {title}",
+    "alsoWith": "También {title}"
   },
   "timeline": {
     "label": "Tu día",
@@ -65,7 +65,8 @@
   "empty": {
     "title": "Aún no hay nada planificado",
     "description": "Añade rutinas a tu semana y Hoy mostrará lo que toca ahora y después.",
-    "action": "Planifica tu semana"
+    "action": "Planifica tu semana",
+    "weekBar": "0 h de 168 h"
   },
   "emptyDay": {
     "title": "Un día libre",
@@ -76,7 +77,8 @@
     "subtitle": "{date}"
   },
   "todo": {
-    "title": "Por hacer hoy",
-    "add": "Añadir para hoy"
-  }
+    "title": "Por hacer hoy"
+  },
+  "aside": "Más de hoy",
+  "weekGlance": "Esta semana"
 }

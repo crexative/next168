@@ -140,10 +140,11 @@ test('the Assistant screen keeps a 16 px side gutter', async ({ page }) => {
   await expect(page.getByRole('heading', { level: 1, name: 'Assistant' })).toBeVisible()
   const edges = await page.evaluate(() => {
     const width = window.innerWidth
-    return Array.from(window.document.querySelectorAll('main .composer, main .composer input, main .composer button, main .suggestions, main .back-button, main .notes p:last-child'))
+    return Array.from(window.document.querySelectorAll('main .composer, main .composer input, main .composer button, main .suggestions, main .back-button, main .reply-with, main .notes p:last-child'))
       .map((node) => { const box = node.getBoundingClientRect(); return { name: `${node.tagName}.${node.className}`, left: box.left, right: width - box.right } })
   })
-  // Back control, suggestions and the privacy note (the question box appears only with the on-device model).
+  // "Responder con" (the back control too, wider than a phone), suggestions and the privacy note (the question box
+  // appears only with the on-device model).
   expect(edges.length).toBeGreaterThanOrEqual(3)
   const main = await page.locator('main').evaluate((node) => node.getBoundingClientRect().left)
   for (const edge of edges) {

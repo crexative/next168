@@ -166,8 +166,10 @@ async function panelFits(page: Page, state: string): Promise<void> {
 async function anyAiStates(page: Page, theme: string, label: string, includeSettings = true): Promise<void> {
   const check = includeSettings ? audit : panelFits
   await open(page, 'assistant')
-  await check(page, `${theme}/${label}/assistant with the use-with-your-AI row closed`)
-  await page.getByTestId('any-ai-toggle').click()
+  // The panel lives in Settings now ("Responder con: Usar con tu IA"); the assistant page is audited whole, not as a panel.
+  if (includeSettings) await check(page, `${theme}/${label}/assistant with Responder con`)
+  // "Responder con: Usar con tu IA" opens its page in Settings (R_Asistente).
+  await page.getByTestId('reply-with').locator('select').selectOption('anyAi')
   await expect(page.getByTestId('any-ai-copy')).toBeVisible()
   await check(page, `${theme}/${label}/use with your AI open`)
   await page.getByTestId('any-ai-copy').click()
@@ -437,13 +439,13 @@ for (const theme of THEMES) {
         await withoutClipboard(page)
         if (zoom === '200%') await page.addInitScript(() => { document.addEventListener('DOMContentLoaded', () => { document.documentElement.style.fontSize = '200%' }) })
         await open(page, 'assistant')
-        await page.getByTestId('any-ai-toggle').click()
+        await page.getByTestId('reply-with').locator('select').selectOption('anyAi')
         await page.getByTestId('any-ai-paste').fill(syntheticWeekReply('workspace-visual', 1))
         await page.getByTestId('any-ai-review').click()
         await expect(page.getByTestId('review-approve')).toBeEnabled()
         const footerFits = async (state: string) => {
           await settle(page)
-          for (const id of ['review-approve', 'review-cancel']) {
+          for (const id of ['review-approve']) {
             await expect.soft(page.getByTestId(id), `${state}: ${id} on screen`).toBeInViewport({ ratio: 1 })
             expect.soft((await page.getByTestId(id).boundingBox())!.height, `${state}: ${id} height`).toBeGreaterThanOrEqual(48)
           }
@@ -513,10 +515,10 @@ for (const theme of THEMES) {
     test('Settings with each appearance choice', async ({ page }) => {
       await start(page, theme, plannedDocument)
       await open(page, 'settings')
-      const group = page.getByRole('radiogroup', { name: 'Appearance' })
+      const appearance = page.getByRole('combobox', { name: 'Appearance' })
       for (const name of ['Light', 'Dark', 'Automatic']) {
-        await group.getByRole('radio', { name, exact: true }).click()
-        await expect(group.getByRole('radio', { name, exact: true })).toHaveAttribute('aria-checked', 'true')
+        await appearance.selectOption({ label: name })
+        await expect(appearance.locator('option:checked')).toHaveText(name)
         await audit(page, `${theme}/settings appearance ${name}`)
       }
     })
@@ -811,12 +813,11 @@ for (const theme of THEMES) {
       await expect(page.getByRole('button', { name: 'Deshacer' }).last()).toBeVisible()
       await audit(page, `${theme}/today: task done with the undo toast`)
 
-      // Evening: the card with the reminder, the form, and Today again after saving.
+      // Evening: the check-in row, the conversation (R_Cierre), and Today again after saving.
       await page.clock.fastForward(9 * 3600_000)
       await expect(page.getByTestId('checkin-card')).toBeVisible()
-      await expect(page.getByRole('button', { name: 'Recordarme a las 22:00' })).toBeVisible()
-      await audit(page, `${theme}/today: check-in card with the reminder`)
-      await page.getByTestId('checkin-card').getByRole('link').click()
+      await audit(page, `${theme}/today: the check-in row in the evening`)
+      await page.getByTestId('checkin-card').click()
       // The check-in is a conversation (R_Cierre): told times, one open question at a time.
       await expect(page.getByTestId('checkin')).toBeVisible()
       await settle(page)
@@ -861,8 +862,9 @@ for (const theme of THEMES) {
           settings: { ...plannedDocument.settings, locale },
           events: [...plannedDocument.events, { id: 'e-visit', title: 'Arzttermin und Rückruf', start: '2026-10-21T09:00:00.000Z', end: '2026-10-21T10:00:00.000Z', allDay: false, attendees: [] }],
         }
-        // The overlap notice shows only while the pair is current or upcoming (Today redesign): 09:30, inside both.
-        await start(page, theme, crowded, locale, new Date('2026-10-21T09:30:00.000Z'))
+        // The overlap notice shows only while the pair is upcoming or current and on a row: at 08:30 both are rows (once
+        // under way they are the Ahora hero and the routine it sits in).
+        await start(page, theme, crowded, locale, new Date('2026-10-21T08:30:00.000Z'))
         await open(page, 'today')
         await expect(page.getByTestId('timeline-overlap').first()).toBeVisible()
         await audit(page, `${theme}/${locale}/320 today: the overlap line`)
@@ -893,8 +895,9 @@ for (const theme of THEMES) {
       const fresh = { ...plannedDocument, checkIns: [], tasks: [], settings: { ...plannedDocument.settings, locale: 'es' } }
       await start(page, theme, fresh, 'es', new Date('2026-10-21T23:30:00.000Z'))
       await open(page, 'today')
-      // With sleep in progress the Now card carries the way in to the check-in, in place of the separate card.
-      await expect(page.getByTestId('now-close-day')).toBeVisible()
+      // With sleep in progress the way in to the check-in is its own row above the day, never in the hero.
+      await expect(page.getByTestId('checkin-card')).toBeVisible()
+      await expect(page.getByTestId('now-close-day')).toHaveCount(0)
       await audit(page, `${theme}/today: plan seen for the first time, sleep in progress`)
       await open(page, 'checkin')
       await audit(page, `${theme}/check-in without a saved entry`)
