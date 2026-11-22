@@ -30,7 +30,6 @@ function strings(locale: Locale) {
     today: tasks.today as string,
     undated: tasks.sections.undated as string,
     todayTodo: today.todo.title as string,
-    todayTodoAdd: today.todo.add as string,
     addAll: (count: number) => fill((capture.preview.addAll as string).split(' | ')[1]!, { count: String(count) }),
     recentDone: tasks.recentDone as string,
     complete: (title: string) => fill(tasks.complete, { title }),
@@ -54,7 +53,7 @@ async function openTasks(page: Page, locale: Locale, tab: 'tasks' | 'today' = 't
     sessionStorage.setItem('tap-budget-seeded', '1')
   }, [V2_KEY, planner, locale])
   await page.goto(`./#/${tab}`)
-  await (tab === 'tasks' ? settled(page) : expect(page.getByTestId('today-todo-add')).toBeVisible())
+  await (tab === 'tasks' ? settled(page) : expect(page.getByTestId('add-entry')).toBeVisible())
   if (tab === 'today') await page.waitForFunction(() => document.getAnimations().length === 0)
   // Start state: the list is drawn, no sheet is open, nothing is focused and nothing was counted.
   await expect(page.getByRole('dialog')).toHaveCount(0)
@@ -235,13 +234,21 @@ for (const locale of ['es', 'en', 'pt'] as const) {
       await expect(appointment).toContainText(/9[:.]00/)
     })
 
-    test('add from Today with «Añadir para hoy»: 2 actions', async ({ page }) => {
+    // The inline «Añadir para hoy» row gave way to the one "+" (redesign principle 4). "+" › Tarea on Hoy starts the task
+    // with "Hoy" on; the sheet opens on its title (no focus ring), so the field takes one tap: 4 actions, 2 before.
+    test('add from Today with "+" › Tarea: 4 actions', async ({ page }) => {
       await openTasks(page, locale, 'today')
-      await page.getByTestId('today-todo-add').tap()
+      await page.getByTestId('add-entry').tap()
+      // Each tap waits for what it opened to settle, so a press never lands on something still moving (Linux CI).
+      await expect(page.getByRole('menu')).toHaveCSS('opacity', '1')
+      await page.getByTestId('add-task').tap()
+      await expect(page.getByRole('dialog')).toBeVisible()
+      await page.waitForFunction(() => document.getAnimations().every((animation) => animation.playState !== 'running'))
+      await page.getByTestId('task-title').tap()
       await page.keyboard.type(phrases.todayAdd)
       await page.keyboard.press('Enter')
       await expect(page.getByTestId('today-todo-task').filter({ hasText: phrases.todayAdd })).toBeVisible()
-      await expectBudget(page, 2)
+      await expectBudget(page, 4)
       await page.reload()
       await expect(page.getByTestId('today-todo').getByTestId('today-todo-task').filter({ hasText: phrases.todayAdd })).toBeVisible()
     })

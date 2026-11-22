@@ -116,7 +116,8 @@ for (const size of SIZES) {
         await start(page, { size, theme })
         // 1. After the h1 the first element is the subtitle, and it is the date alone.
         await expect(page.getByTestId('today-subtitle')).toHaveText('viernes, 6 de noviembre')
-        await expect(page.locator('#main')).not.toContainText('libres')
+        // The free hours are not in the header nor the day (the desktop aside's week glance links to Resumen).
+        await expect(page.locator('.today-main')).not.toContainText('libres')
         await expect(page.locator('.today-view > :first-child')).toHaveAttribute('data-testid', 'today-subtitle')
         expect(await page.evaluate(() => document.querySelector('h1')!.compareDocumentPosition(document.querySelector('[data-testid="today-subtitle"]')!) & Node.DOCUMENT_POSITION_FOLLOWING)).toBeTruthy()
         // 2. The Now card is the next region.
@@ -133,8 +134,9 @@ for (const size of SIZES) {
         await goTo(page, '20:30')
         await expect(card(page).getByRole('progressbar')).toHaveCount(0)
         await goTo(page, '19:19')
-        // 4. Next names the free time that follows.
-        await expect(card(page).getByTestId('now-next')).toHaveText(/^Después\s·\s8:00\sp\.\sm\.\s·\sLibre hasta las 11:00\sp\.\sm\.$/)
+        // 4. While something is under way the list right below says what follows; the hero does not repeat it (R_Hoy).
+        await expect(card(page).getByTestId('now-next')).toHaveCount(0)
+        await expect(page.getByTestId('timeline-gap').first()).toHaveText('Libre · 3 h')
         // 5. Nothing to do yet: the Do slot is empty.
         await expect(doSlot(page)).toHaveCount(0)
         await expect(card(page).getByRole('button')).toHaveCount(0)
@@ -144,10 +146,11 @@ for (const size of SIZES) {
         await start(page, { size, theme })
         // 6. Folded: one first row with the count of everything past, and how many still wait for an answer.
         const row = earlier(page)
-        await expect(row).toHaveText(/Antes\s·\s8\s*3 sin marcar/)
+        await expect(row).toHaveText(/Antes\s·\s8\s*·\s3 sin marcar/)
         await expect(row).toHaveAttribute('aria-expanded', 'false')
         expect(await row.getAttribute('aria-controls')).toBeNull()
-        expect(await rows(page).count()).toBe(2)
+        // The current routine is in the Ahora hero, so the list starts after it (principle 3).
+        expect(await rows(page).count()).toBe(1)
         for (const item of await rows(page).all()) {
           expect(await item.evaluate((element) => element.classList.contains('is-past'))).toBe(false)
         }
@@ -158,11 +161,11 @@ for (const size of SIZES) {
           if (node.querySelector('[data-testid="timeline-gap"]')) return `gap:${node.textContent}`
           return `item:${node.querySelector('.row-title-text')?.textContent?.trim()}`
         }))
-        expect(order.map((entry) => norm(entry))).toEqual(['earlier', 'now:Ahora 7:19 p. m.', 'item:Proyecto personal', 'gap:Libre · 3 h', 'item:Sueño'])
+        expect(order.map((entry) => norm(entry))).toEqual(['earlier', 'now:Ahora 7:19 p. m.', 'gap:Libre · 3 h', 'item:Sueño'])
         // Opening: the eight past rows appear in time order and focus lands on the first unanswered ring (Work's).
         await row.click()
         await expect(row).toHaveAttribute('aria-expanded', 'true')
-        await expect(rows(page)).toHaveCount(10)
+        await expect(rows(page)).toHaveCount(9)
         const starts = await rows(page).evaluateAll((nodes) => nodes.map((node) => node.querySelector('[data-testid="timeline-start"]')?.textContent ?? 'carry'))
         expect(starts.slice(0, 8).map((text) => norm(text))).toEqual(['carry', '8:30 a. m.', '9:00 a. m.', '10:00 a. m.', '12:30 p. m.', '5:00 p. m.', '5:30 p. m.', '6:00 p. m.'])
         const focusedRow = await page.evaluate(() => document.activeElement?.closest('[data-testid="timeline-item"]')?.querySelector('.row-title-text')?.textContent?.trim())
@@ -175,21 +178,16 @@ for (const size of SIZES) {
         for (const ring of await unanswered.all()) expect(await ring.evaluate((element) => getComputedStyle(element).borderTopColor)).toBe(label2)
         // Folding again takes the rows away and returns focus to the row.
         await row.click()
-        await expect(rows(page)).toHaveCount(2)
+        await expect(rows(page)).toHaveCount(1)
         await expect(row).toBeFocused()
         // After the 30-minute window the ended side project counts too.
         await goTo(page, '21:00')
-        await expect(row).toHaveText(/Antes\s·\s9\s*4 sin marcar/)
+        await expect(row).toHaveText(/Antes\s·\s9\s*·\s4 sin marcar/)
       })
 
-      test('18:10: the event is Now, the routine is the context, and calendar rows are not interactive (checks 9-10)', async ({ page }) => {
-        await start(page, { size, theme, at: '18:10' })
-        await expect(title(page)).toHaveText('Llamada con cliente')
-        await expect(title(page).locator('svg')).toHaveCount(1)
-        await expect(card(page).getByTestId('now-until')).toHaveText(/^hasta las 6:30\sp\.\sm\.$/)
-        await expect(card(page).getByTestId('now-context')).toHaveText(/^Tu rutina: Ejercicio\s·\shasta las 7:00\sp\.\sm\.$/)
-        await expect(doSlot(page)).toHaveCount(0)
-        // The routine carries the overlap notice once; the event does not repeat it.
+      test('18:10: the event is Now, the routine names where it sits, and calendar rows are not interactive (checks 9-10)', async ({ page }) => {
+        // Before the event: both are rows; the routine carries the overlap notice once and the event does not repeat it.
+        await start(page, { size, theme, at: '17:10' })
         await expect(page.getByTestId('timeline-overlap')).toHaveCount(1)
         await expect(rowTitled(page, 'Ejercicio').getByTestId('timeline-overlap')).toHaveText('Se cruza con Llamada con cliente')
         await expect(rowTitled(page, 'Llamada con cliente').getByTestId('timeline-overlap')).toHaveCount(0)
@@ -205,6 +203,15 @@ for (const size of SIZES) {
         await expect(page.getByRole('dialog')).toHaveCount(0)
         // The press focuses nothing inside the row: it has nothing to focus.
         expect(await eventRow.evaluate((row) => row.contains(document.activeElement))).toBe(false)
+        // 9. During the event it is Now and the routine it sits in is named over the title; neither repeats in the list.
+        await goTo(page, '18:10')
+        await expect(title(page)).toHaveText('Llamada con cliente')
+        await expect(title(page).locator('svg')).toHaveCount(1)
+        await expect(card(page).getByTestId('now-until')).toHaveText(/^hasta las 6:30\sp\.\sm\.$/)
+        await expect(card(page).getByTestId('now-eyebrow')).toHaveText('Ahora · En Ejercicio')
+        await expect(doSlot(page)).toHaveCount(0)
+        await expect(rowTitled(page, 'Llamada con cliente')).toHaveCount(0)
+        await expect(rowTitled(page, 'Ejercicio')).toHaveCount(0)
         // After the event the routine is Now, and the notice is gone.
         await goTo(page, '18:31')
         await expect(title(page)).toHaveText('Ejercicio')
@@ -216,15 +223,15 @@ for (const size of SIZES) {
       test('a late task shows "Atrasada" and the word "Tarde" never appears (check 11)', async ({ page }) => {
         const late = { ...PLAN, tasks: [...PLAN.tasks, { id: 't-late', title: 'Pagar la factura', durationMin: 30, dueDate: '2026-11-05', priority: 1, createdAt: '2026-11-01T08:00:00.000Z' }] }
         await start(page, { size, theme, plan: late, at: '20:10' })
-        await expect(page.locator('.badge.is-late')).toHaveText('Atrasada')
+        await expect(page.getByTestId('timeline-late').first()).toHaveText('Atrasada')
         await expect(page.locator('#main')).not.toContainText('Tarde')
       })
 
       test('the evening link, the morning gap and the task underway (checks 12, 13, 17)', async ({ page }) => {
         await start(page, { size, theme, at: '23:30' })
-        const link = doSlot(page).getByRole('link', { name: 'Cierre del día' })
-        await expect(link).toHaveAttribute('href', '#/checkin')
-        await expect(page.getByTestId('checkin-card')).toHaveCount(0)
+        // 12. In the evening the check-in is its own row (above the list on a phone), never a second action in the hero.
+        await expect(doSlot(page)).toHaveCount(0)
+        await expect(page.getByTestId('checkin-card')).toHaveAttribute('href', '#/checkin')
         // 13. The morning gap says its end once or twice in the card, never as the old sentence.
         await goTo(page, '07:40')
         await expect(title(page)).toHaveText('Libre')
@@ -236,7 +243,7 @@ for (const size of SIZES) {
         await goTo(page, '10:10')
         await expect(title(page)).toHaveText('Informe')
         await expect(card(page).getByTestId('now-left')).toHaveText('Quedan 35 min')
-        await expect(card(page).getByTestId('now-context')).toHaveText(/^En Trabajo\s·\shasta las 5:00\sp\.\sm\.$/)
+        await expect(card(page).getByTestId('now-eyebrow')).toHaveText('Ahora · En Trabajo')
         await expect(doSlot(page).getByRole('button')).toHaveCount(1)
         await doSlot(page).getByRole('button', { name: 'Marcar como hecha' }).click()
         await expect(page.getByRole('status').filter({ hasText: 'Tarea hecha: Informe' })).toBeVisible()
@@ -247,7 +254,8 @@ for (const size of SIZES) {
 
       test('Next counts events, gaps count every kind, and the article agrees with the hour (checks 18, 19, 23)', async ({ page }) => {
         await start(page, { size, theme, at: '12:10' })
-        await expect(card(page).getByTestId('now-next')).toContainText('Almuerzo')
+        // 18. What comes next is the first row after the now-line, drawn a little stronger.
+        await expect(page.locator('.timeline .is-next .row-title-text')).toContainText('Almuerzo')
         await goTo(page, '17:35')
         await expect(title(page)).not.toHaveText('Libre')
         // No free-time row sits under the now-line while the event is under way.
@@ -261,7 +269,7 @@ for (const size of SIZES) {
         await goTo(page, '12:40')
         await expect(title(page)).toHaveText('Almuerzo')
         await expect(card(page).getByTestId('now-until')).toHaveText(/^hasta la 1:00\sp\.\sm\.$/)
-        await expect(card(page).getByTestId('now-context')).toHaveText(/^Tu rutina: Trabajo\s·\shasta las 5:00\sp\.\sm\.$/)
+        await expect(card(page).getByTestId('now-eyebrow')).toHaveText('Ahora · En Trabajo')
         expect(norm(await page.locator('#main').textContent())).not.toMatch(/las 1:00/)
       })
 
@@ -298,10 +306,10 @@ for (const size of SIZES) {
         const trip = { ...PLAN, events: [...PLAN.events, weeklidEvent('e-trip', 'Viaje', '06:00', '21:00')] }
         await start(page, { size, theme, plan: trip, at: '11:00' })
         await expect(title(page)).toHaveText('Trabajo')
-        await expect(card(page).getByTestId('now-context')).toHaveText(/^También ahora: Viaje\s·\shasta las 9:00\sp\.\sm\.$/)
+        await expect(card(page).getByTestId('now-eyebrow')).toHaveText('Ahora · También Viaje')
         await goTo(page, '17:40')
         await expect(title(page)).toHaveText('Llamada con cliente')
-        await expect(card(page).getByTestId('now-context')).toContainText('También ahora: Viaje')
+        await expect(card(page).getByTestId('now-eyebrow')).toContainText('También Viaje')
         await goTo(page, '20:30')
         await expect(title(page)).toHaveText('Viaje')
       })
@@ -310,7 +318,7 @@ for (const size of SIZES) {
         const tie = { ...PLAN, events: [...PLAN.events, weeklidEvent('e-short', 'Sincronización', '17:30', '18:00')] }
         await start(page, { size, theme, plan: tie, at: '17:40' })
         await expect(title(page)).toHaveText('Sincronización')
-        await expect(card(page).getByTestId('now-context')).toHaveText(/^También ahora: Llamada con cliente\s·\shasta las 6:30\sp\.\sm\.$/)
+        await expect(card(page).getByTestId('now-eyebrow')).toHaveText('Ahora · También Llamada con cliente')
         await expectNoSmallTargets(page)
       })
     })
@@ -328,13 +336,15 @@ test.describe('English copy', () => {
     await expect(card(page).getByTestId('now-left')).toHaveText('41 min left')
     await expect(card(page).getByRole('progressbar')).toHaveAttribute('aria-valuetext', '41 min left')
     await expect(card(page).getByTestId('now-until')).toHaveText(/^until 8:00\sPM$/)
-    await expect(card(page).getByTestId('now-next')).toHaveText(/^Next\s·\s8:00\sPM\s·\sFree until 11:00\sPM$/)
+    await goTo(page, '07:40')
+    await expect(card(page).getByTestId('now-next')).toHaveText(/^Next\s·\s8:30\sAM\s·\sTraslado$/)
+    await goTo(page, '17:10')
+    await expect(page.getByTestId('timeline-overlap')).toHaveText('Overlaps with Llamada con cliente')
     await goTo(page, '18:10')
     await expect(card(page).getByTestId('now-until')).toHaveText(/^until 6:30\sPM$/)
-    await expect(card(page).getByTestId('now-context')).toHaveText(/^Your routine: Ejercicio\s·\suntil 7:00\sPM$/)
-    await expect(page.getByTestId('timeline-overlap')).toHaveText('Overlaps with Llamada con cliente')
+    await expect(card(page).getByTestId('now-eyebrow')).toHaveText('Now · In Ejercicio')
     await goTo(page, '10:10')
-    await expect(card(page).getByTestId('now-context')).toHaveText(/^In Trabajo\s·\suntil 5:00\sPM$/)
+    await expect(card(page).getByTestId('now-eyebrow')).toHaveText('Now · In Trabajo')
     await expect(doSlot(page).getByRole('button', { name: 'Mark as done' })).toBeVisible()
     await goTo(page, '11:00')
     await expect(title(page)).toHaveText('Trabajo')
@@ -343,13 +353,13 @@ test.describe('English copy', () => {
   test('a late task chunk shows "Overdue" in English (check 11)', async ({ page }) => {
     const late = { ...PLAN, tasks: [...PLAN.tasks, { id: 't-late', title: 'Pay the bill', durationMin: 30, dueDate: '2026-11-05', priority: 1, createdAt: '2026-11-01T08:00:00.000Z' }] }
     await start(page, { language: 'en', plan: late, at: '20:10' })
-    await expect(page.locator('.badge.is-late')).toHaveText('Overdue')
+    await expect(page.getByTestId('timeline-late').first()).toHaveText('Overdue')
   })
 
   test('a long event is context and a tie goes to the shorter one in English (checks 25, 26)', async ({ page }) => {
     const trip = { ...PLAN, events: [...PLAN.events, weeklidEvent('e-trip', 'Viaje', '06:00', '21:00')] }
     await start(page, { language: 'en', plan: trip, at: '11:00' })
-    await expect(card(page).getByTestId('now-context')).toHaveText(/^Also now: Viaje\s·\suntil 9:00\sPM$/)
+    await expect(card(page).getByTestId('now-eyebrow')).toHaveText('Now · Also Viaje')
   })
 })
 
@@ -439,7 +449,7 @@ test.describe('announcements and accessibility', () => {
       sample()
     })
     await earlier(page).click()
-    await expect(rows(page)).toHaveCount(10)
+    await expect(rows(page)).toHaveCount(9)
     await page.waitForTimeout(500)
     expect(await page.evaluate(() => (window as unknown as { __animated: string[] }).__animated)).toEqual([])
   })
@@ -452,7 +462,7 @@ test.describe('announcements and accessibility', () => {
         if (time === '19:19') {
           await earlier(page).click()
           // The rows grow in over 0.35 s; the audit measures them at rest.
-          await expect(rows(page)).toHaveCount(10)
+          await expect(rows(page)).toHaveCount(9)
           await settled(page)
         }
         expect(await visualIntegrityViolations(page), `visual integrity at ${time}`).toEqual([])
@@ -542,7 +552,30 @@ test('@smoke the Now card, the folded row and the answer buttons work on the dev
   await expect(doSlot(page).getByRole('button')).toHaveText(['Hecho', 'A medias', 'No'])
   await earlier(page).click()
   await expect(earlier(page)).toHaveAttribute('aria-expanded', 'true')
-  await expect(rows(page)).toHaveCount(10)
+  await expect(rows(page)).toHaveCount(9)
   await earlier(page).click()
-  await expect(rows(page)).toHaveCount(2)
+  await expect(rows(page)).toHaveCount(1)
 })
+
+// Review of #54: with a 12-hour clock ("12:00 p. m.", "11:00 p. m."), every time stays whole inside its column and on
+// screen, at a phone, a tablet and a desktop width; the geometry guard does not look at text off the leading edge.
+// "wide font" spaces the letters out, as a wider system font (Linux CI's) draws them: the column must follow.
+for (const width of [390, 820, 1440]) for (const font of ['system font', 'wide font'] as const) {
+  test(`12-hour times fit their column at ${width} px (${font})`, async ({ page }) => {
+    if (font === 'wide font') await page.addInitScript(() => document.addEventListener('DOMContentLoaded', () => {
+      document.head.append(Object.assign(document.createElement('style'), { textContent: '.row-start, .row-end { letter-spacing: 0.12em }' }))
+    }))
+    await start(page, { at: '11:50', size: { width, height: 900 } })
+    const times = await page.locator('[data-testid="timeline-item"] .row-time').evaluateAll((columns) => columns.flatMap((column) => {
+      const box = column.getBoundingClientRect()
+      return Array.from(column.querySelectorAll<HTMLElement>('.row-start, .row-end')).map((time) => {
+        const range = document.createRange()
+        range.selectNodeContents(time)
+        const text = range.getBoundingClientRect()
+        return { text: time.textContent?.trim(), inside: text.left >= box.left - 0.5 && text.right <= box.right + 0.5, onScreen: text.left >= 0 }
+      })
+    }))
+    expect(times.some((time) => /p\.\s?m\./.test(time.text ?? ''))).toBe(true)
+    expect(times.filter((time) => !time.inside || !time.onScreen)).toEqual([])
+  })
+}

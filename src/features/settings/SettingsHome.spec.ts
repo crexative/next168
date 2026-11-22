@@ -19,18 +19,20 @@ const links = () => [...mounted!.host.querySelectorAll('[data-testid=settings-mo
 const filled = () => [...mounted!.host.querySelectorAll('.ui-button.is-filled')].map((button) => button.textContent?.trim())
 const JARGON = /MCP|JSON|WebGPU|snapshot|prompt|workspace-1|Workspace/i
 
-it('orders the list as Categories and goals, General, then Calendars, Your data and Advanced, with no filled button', async () => {
+it('orders the list as Your week, Categories and goals, General, then Calendars, Your data and Advanced, with no filled button', async () => {
   mounted = await mountWithPlanner(SettingsHome, done)
-  expect(headings()).toEqual(['Categories and goals', 'General'])
+  expect(headings()).toEqual(['Your week', 'Categories and goals', 'General'])
   expect(links()).toEqual([
     ['#/settings/calendars', 'Calendars'],
-    ['#/settings/ai', 'Use with your AI (ChatGPT, Claude, Gemini…)'],
+    ['#/settings/ai', 'Use with your AI'],
     ['#/settings/data', 'Your data'],
     ['#/settings/advanced', 'Advanced'],
   ])
   const general = mounted.host.querySelector('[data-testid=general-settings]')!
   expect(general.querySelector('[data-testid=preference-language]')).not.toBeNull()
-  expect([...general.querySelectorAll('[role=radiogroup]')].map((group) => group.getAttribute('aria-label'))).toEqual(['Week starts on', 'Time format', 'Appearance'])
+  // One control for one kind of choice (R_Ajustes): four value rows, each a pop-up named by its label.
+  expect([...general.querySelectorAll('select')].map((select) => select.labels?.[0]?.textContent?.trim())).toEqual(['Language', 'Week starts on', 'Time format', 'Appearance'])
+  expect(general.querySelector('[role=radiogroup]')).toBeNull()
   // Destructive and technical things live one level down.
   expect(mounted.host.textContent).not.toContain('Delete all data')
   expect(mounted.host.textContent).not.toContain('Export backup')
@@ -112,11 +114,18 @@ it.each(SUPPORTED_LOCALES)('%s ends the General footer on the 12 h clock example
   }
 })
 
-it('nudges for a weekly backup, exports from the nudge and then goes quiet', async () => {
+// Calm by default (R_Ajustes): the reminder is an amber line in the "Tus datos" row; its notice and actions are on that page.
+it('reminds in the "Your data" row, and the page exports from its notice and then goes quiet', async () => {
   localStorage.setItem(FIRST_SEEN_KEY, new Date(Date.now() - 10 * 86_400_000).toISOString())
   URL.createObjectURL = vi.fn(() => 'blob:x')
   URL.revokeObjectURL = vi.fn()
   HTMLAnchorElement.prototype.click = vi.fn()
+  mounted = await mountWithPlanner(SettingsHome, done)
+  await nextTick()
+  expect(mounted.host.querySelector('[data-testid=export-nudge]')).toBeNull()
+  expect(mounted.host.querySelector('[data-testid=data-link] [data-testid=settings-link-note]')!.textContent).toBe("You haven't exported a backup yet.")
+  mounted.unmount()
+  window.location.hash = '#/settings/data'
   mounted = await mountWithPlanner(SettingsHome, done)
   await nextTick()
   const nudge = () => mounted!.host.querySelector('[data-testid=export-nudge]')
@@ -128,6 +137,7 @@ it('nudges for a weekly backup, exports from the nudge and then goes quiet', asy
 it.each(SUPPORTED_LOCALES)('%s renders a localized reminder dismiss button and snoozes across visits', async (locale) => {
   const labels = { en: 'Dismiss', es: 'Descartar', fr: 'Ignorer', pt: 'Dispensar', de: 'Ausblenden' }
   localStorage.setItem(FIRST_SEEN_KEY, new Date(Date.now() - 10 * 86_400_000).toISOString())
+  window.location.hash = '#/settings/data'
   mounted = await mountWithPlanner(SettingsHome, done, locale)
   const nudge = mounted.host.querySelector('[data-testid=export-nudge]')!
   const dismiss = nudge.querySelector<HTMLButtonElement>('button:last-child')!

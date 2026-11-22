@@ -57,19 +57,22 @@ async function openOverlay(host: HTMLElement): Promise<void> {
   expectOverlay(host, true)
 }
 
-it.each([768, 900, 1023])('closes the %i px overlay when Settings is selected from a Settings subpage', async (width) => {
-  const host = await mountShell('#/settings/data', width)
+// On a tablet Settings opens as a form sheet over the tab (no sidebar toggle while it is up): chosen from the overlay,
+// the overlay closes and the sheet shows.
+it.each([768, 900, 1023])('closes the %i px overlay when Settings is selected from it', async (width) => {
+  const host = await mountShell('#/week', width)
   await openOverlay(host)
 
   host.querySelector<HTMLAnchorElement>('#app-sidebar a[href="#/settings"]')!.click()
 
   await vi.waitFor(() => expect(window.location.hash).toBe('#/settings'))
   await nextTick()
-  expectOverlay(host, false)
-  expect(host.querySelector('[data-view]')?.getAttribute('data-view')).toBe('settings')
+  expect(host.querySelector('.shell')?.getAttribute('data-sidebar')).toBe('hidden')
+  await vi.waitFor(() => expect(host.querySelector('[data-view]')?.getAttribute('data-view')).toBe('settings'))
+  expect(host.querySelector('[data-view]')?.getAttribute('data-presentation')).toBe('form')
 })
 
-const destinations: ViewId[] = ['today', 'week', 'tasks', 'insights', 'assistant', 'settings']
+const destinations: ViewId[] = ['today', 'week', 'tasks', 'insights', 'assistant']
 
 it.each(destinations)('closes the overlay when the current %s sidebar destination is selected again', async (id) => {
   const host = await mountShell(`#/${id}`)
@@ -115,6 +118,18 @@ it.each(destinations)('keeps the desktop sidebar visible when %s is selected', a
 
   await nextTick()
   expect(host.querySelector('.shell')?.getAttribute('data-sidebar')).toBe('shown')
+  expect(host.querySelector('.content')?.hasAttribute('inert')).toBe(false)
+})
+
+it('on a tablet the sidebar shortcut does nothing while Settings is shown as a form sheet', async () => {
+  const host = await mountShell('#/settings', 900)
+  await nextTick()
+  expect(host.querySelector('.view')?.getAttribute('data-presentation')).toBe('form')
+  window.dispatchEvent(new KeyboardEvent('keydown', { key: '\\', code: 'Backslash', ctrlKey: true, metaKey: true, bubbles: true }))
+  window.dispatchEvent(new KeyboardEvent('keydown', { key: '\\', code: 'Backslash', ctrlKey: true, bubbles: true }))
+  window.dispatchEvent(new KeyboardEvent('keydown', { key: '\\', code: 'Backslash', metaKey: true, bubbles: true }))
+  await nextTick()
+  expect(host.querySelector('.shell')?.getAttribute('data-sidebar')).toBe('hidden')
   expect(host.querySelector('.content')?.hasAttribute('inert')).toBe(false)
 })
 
@@ -166,5 +181,139 @@ describe('the one "+" and the tabs', () => {
     window.location.hash = '#/settings'
     window.dispatchEvent(new HashChangeEvent('hashchange'))
     await vi.waitFor(() => expect(document.documentElement.dataset.backdrop).toBeUndefined())
+  })
+
+  it('gives a view the measure it declares, and the readable one otherwise', async () => {
+    shell.registry.registerView({ id: 'tasks', titleKey: 'app.tabs.tasks', icon: 'list-checks', tabOrder: 2, measure: 'wide', component: { render: () => h('p', 'Tasks') } })
+    const host = await mountShell('#/tasks', 1440)
+    await nextTick()
+    expect(host.querySelector('.view')?.getAttribute('data-measure')).toBe('wide')
+    window.location.hash = '#/settings'
+    window.dispatchEvent(new HashChangeEvent('hashchange'))
+    await vi.waitFor(() => expect(host.querySelector('.view')?.getAttribute('data-view')).toBe('settings'))
+    expect(host.querySelector('.view')?.getAttribute('data-measure')).toBe('readable')
+  })
+})
+
+describe('Settings and the assistant as a full-height sheet on a phone (DIRECTION §3)', () => {
+  it('opens Settings over the tab it came from: a grabber, the title in the bar, "Done" back to that tab, no tab bar', async () => {
+    const host = await mountShell('#/week', 390)
+    await nextTick()
+    expect(host.querySelector('[data-testid=sheet-bar]')).toBeNull()
+    window.location.hash = '#/settings'
+    window.dispatchEvent(new HashChangeEvent('hashchange'))
+    await vi.waitFor(() => expect(host.querySelector('[data-testid=sheet-bar]')).not.toBeNull())
+    expect(host.querySelector('[data-testid=sheet-bar] h1')?.textContent).toBe('Settings')
+    expect(host.querySelector('.large-title')).toBeNull()
+    expect(host.querySelector<HTMLAnchorElement>('[data-testid=sheet-done]')!.getAttribute('href')).toBe('#/week')
+    expect(host.querySelector<HTMLElement>('nav.tabbar')!.style.display).toBe('none')
+    expect(document.documentElement.dataset.presentation).toBe('sheet')
+  })
+
+  it.each([390, 900])('Escape and a tap on the dimmed screen close the sheet back to its tab at %i px', async (width) => {
+    const host = await mountShell('#/week', width)
+    await nextTick()
+    const open = async () => {
+      window.location.hash = '#/settings'
+      window.dispatchEvent(new HashChangeEvent('hashchange'))
+      await vi.waitFor(() => expect(host.querySelector('[data-testid=sheet-scrim]')).not.toBeNull())
+    }
+    const closed = async () => {
+      window.dispatchEvent(new HashChangeEvent('hashchange'))
+      await vi.waitFor(() => expect(host.querySelector('[data-testid=sheet-bar]')).toBeNull())
+      expect(window.location.hash).toBe('#/week')
+    }
+    await open()
+    window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }))
+    await closed()
+    expect(host.querySelector('[data-testid=sheet-scrim]')).toBeNull()
+    await open()
+    host.querySelector<HTMLElement>('[data-testid=sheet-scrim]')!.click()
+    await closed()
+  })
+
+  it('closing a sheet that holds typed text asks first; Seguir keeps it, Descartar closes', async () => {
+    shell.registry.registerView({ id: 'assistant', titleKey: 'common.askAssistant', component: { render: () => h('input', { type: 'text', 'data-testid': 'probe' }) } })
+    const host = await mountShell('#/week', 390)
+    await nextTick()
+    window.location.hash = '#/assistant'
+    window.dispatchEvent(new HashChangeEvent('hashchange'))
+    await vi.waitFor(() => expect(host.querySelector('[data-testid=probe]')).not.toBeNull())
+    const field = host.querySelector<HTMLInputElement>('[data-testid=probe]')!
+    field.focus()
+    field.value = 'a question not sent'
+    field.blur()
+    window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }))
+    await vi.waitFor(() => expect(host.querySelector('[data-testid=discard-confirm]')).not.toBeNull())
+    expect(window.location.hash).toBe('#/assistant')
+    host.querySelector<HTMLElement>('[data-testid=discard-keep]')!.click()
+    await vi.waitFor(() => expect(host.querySelector('[data-testid=discard-confirm]')).toBeNull())
+    expect(field.value).toBe('a question not sent')
+    host.querySelector<HTMLElement>('[data-testid=sheet-scrim]')!.click()
+    await vi.waitFor(() => expect(host.querySelector('[data-testid=discard-confirm]')).not.toBeNull())
+    host.querySelector<HTMLElement>('[data-testid=discard-confirm-button]')!.click()
+    window.dispatchEvent(new HashChangeEvent('hashchange'))
+    await vi.waitFor(() => expect(window.location.hash).toBe('#/week'))
+  })
+
+  it('a phone sheet that becomes the tablet\'s form sheet still asks before dropping its typed text', async () => {
+    shell.registry.registerView({ id: 'settings', titleKey: 'app.tabs.settings', component: { render: () => h('input', { type: 'text', 'data-testid': 'probe' }) } })
+    const listeners = new Map<string, (event: { matches: boolean }) => void>()
+    let width = 390
+    vi.spyOn(window, 'matchMedia').mockImplementation((query) => ({
+      matches: width >= Number(query.match(/min-width: (\d+)px/)?.[1] ?? Infinity), media: query, onchange: null,
+      addListener: vi.fn(), removeListener: vi.fn(), dispatchEvent: vi.fn(), removeEventListener: vi.fn(),
+      addEventListener: (_type: string, listener: (event: { matches: boolean }) => void) => { listeners.set(query, listener) },
+    }) as unknown as MediaQueryList)
+    window.history.replaceState(null, '', '#/settings')
+    mounted = await mountWithPlanner(AppShell)
+    const host = mounted.host
+    await vi.waitFor(() => expect(host.querySelector('.view')?.getAttribute('data-presentation')).toBe('sheet'))
+    const field = host.querySelector<HTMLInputElement>('[data-testid=probe]')!
+    field.focus()
+    field.value = 'typed, not saved'
+    field.blur()
+    width = 820
+    for (const [query, listener] of listeners) listener({ matches: width >= Number(query.match(/min-width: (\d+)px/)?.[1] ?? Infinity) })
+    await vi.waitFor(() => expect(host.querySelector('.view')?.getAttribute('data-presentation')).toBe('form'))
+    window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }))
+    await vi.waitFor(() => expect(host.querySelector('[data-testid=discard-confirm]')).not.toBeNull())
+  })
+
+  it('Escape while an input method composes a word leaves the sheet open', async () => {
+    const host = await mountShell('#/week', 390)
+    await nextTick()
+    window.location.hash = '#/settings'
+    window.dispatchEvent(new HashChangeEvent('hashchange'))
+    await vi.waitFor(() => expect(host.querySelector('[data-testid=sheet-bar]')).not.toBeNull())
+    window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', isComposing: true, bubbles: true }))
+    await nextTick()
+    expect(window.location.hash).toBe('#/settings')
+    expect(host.querySelector('[data-testid=sheet-bar]')).not.toBeNull()
+  })
+
+  it('on a tablet, Settings is a centred form sheet with Listo and no grabber (R_TabletAjustes); the assistant stays a page', async () => {
+    const host = await mountShell('#/tasks', 900)
+    await nextTick()
+    window.location.hash = '#/settings'
+    window.dispatchEvent(new HashChangeEvent('hashchange'))
+    await vi.waitFor(() => expect(host.querySelector('[data-testid=sheet-bar]')).not.toBeNull())
+    expect(host.querySelector('.view')?.getAttribute('data-presentation')).toBe('form')
+    expect(host.querySelector('.sheet-grabber')).toBeNull()
+    expect(host.querySelector<HTMLAnchorElement>('[data-testid=sheet-done]')!.getAttribute('href')).toBe('#/tasks')
+    expect(host.querySelector('[data-testid=sidebar-toggle]')).toBeNull()
+    expect(document.documentElement.dataset.presentation).toBe('form')
+    window.location.hash = '#/assistant'
+    window.dispatchEvent(new HashChangeEvent('hashchange'))
+    await vi.waitFor(() => expect(host.querySelector('[data-testid=sheet-bar]')).toBeNull())
+    expect(document.documentElement.dataset.presentation).toBeUndefined()
+  })
+
+  it.each([1440])('keeps the page with its large title at %i px', async (width) => {
+    const host = await mountShell('#/settings', width)
+    await nextTick()
+    expect(host.querySelector('[data-testid=sheet-bar]')).toBeNull()
+    expect(host.querySelector('.large-title')?.textContent).toBe('Settings')
+    expect(document.documentElement.dataset.presentation).toBeUndefined()
   })
 })

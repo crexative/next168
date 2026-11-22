@@ -11,12 +11,16 @@ import AssistantEntryButton from '@/features/assistant/AssistantEntryButton.vue'
 import CheckInCard from '@/features/checkin/CheckInCard.vue'
 import { consumeSavedFlag } from '@/features/checkin/checkinFlash'
 import { checkInCardVisible, checkInDoneToday } from '@/features/checkin/evening'
+import WeekGlance from '@/features/insights/WeekGlance.vue'
 import SetupWeekPrompt from '@/features/onboarding/SetupWeekPrompt.vue'
 import { setupWeekOffered } from '@/features/onboarding/reopen'
 import { useExternalOccurrences } from '@/features/week/externalOccurrences'
 import { GoogleCoverageNotice, googleAvailable } from '@/features/calendars/googleCalendar'
 import { formatDate } from '@/ui/format'
 import { useNow } from '@/features/week/useNow'
+import { openAdd } from '@/features/onboarding/reopen'
+import { PERSISTENT_QUERY } from '@/app/sidebar'
+import { useMediaQuery } from '@/ui/useMediaQuery'
 import NowCard from './NowCard.vue'
 import TodayTimeline from './TodayTimeline.vue'
 import TodayTodo from './TodayTodo.vue'
@@ -61,7 +65,7 @@ watch(() => (document.value && document.value.blocks.length > 0 ? document.value
 }, { immediate: true })
 const since = computed(() => document.value ? planSince(document.value, stamped.value) : undefined)
 
-// The evening link to the check-in replaces its card while it sits in the Now card's action slot.
+// From 20:00 until it is done the check-in row moves above the day's list; the rest of the day it closes the list.
 const closeDayOpen = computed(() => !!document.value && checkInCardVisible(document.value, now.value) && !checkInDoneToday(document.value, now.value))
 const nowState = computed(() => buildNowState({
   items: timeline.value.items,
@@ -80,6 +84,15 @@ const askedKey = computed(() => {
   if (action?.kind !== 'ask' || Date.parse(action.occurrence.start) > instant || Date.parse(action.occurrence.end) <= instant) return undefined
   return `block:${action.occurrence.blockId}@${action.occurrence.start}`
 })
+// What the Ahora hero shows is not repeated in the list: its item, and the routine it sits in (principle 3).
+const hero = computed(() => {
+  const state = nowState.value
+  if (!state.primary) return undefined
+  return { key: state.primary.key, contextKey: state.context && state.context.kind !== 'alsoNow' ? state.context.key : undefined }
+})
+// On the desktop "Añadir" is the page's filled button, so the hero's action is tinted; the day's extras move to an aside.
+const wide = useMediaQuery(PERSISTENT_QUERY)
+
 useNowAnnouncements(nowState, timeZone, computed(() => document.value !== null && document.value !== undefined))
 
 const toast = useUndoToast()
@@ -120,59 +133,92 @@ function clear(occurrence: DatedOccurrence): void {
 </script>
 
 <template>
-  <div v-if="document" class="today-view">
+  <div v-if="document" class="today-view" :class="{ 'is-wide': wide }">
     <p class="today-subtitle t-subhead t-secondary" data-testid="today-subtitle">{{ subtitle }}</p>
     <AssistantEntryButton />
     <!-- Without a timeline the coverage notice has no "Tu día" heading to sit under; it still shows, above the empty state. -->
     <component :is="GoogleCoverageNotice" v-if="!hasContent && GoogleCoverageNotice && googleAvailable" :ranges="googleRanges" />
-    <EmptyState v-if="!hasContent" icon="sun" :title="t('today.empty.title')" :description="t('today.empty.description')">
-      <!-- The setup wizard is the quick way in; when it cannot be offered, the link to Week remains. -->
-      <SetupWeekPrompt v-if="setupWeekOffered(planner)" />
-      <Button v-else variant="tinted" href="#/week">{{ t('today.empty.action') }}</Button>
-    </EmptyState>
-    <template v-else>
-      <NowCard
-        :state="nowState"
-        :categories="document.categories"
-        :writable="planner.writable"
-        :today="today"
-        :time-zone="timeZone"
-        @record="record"
-        @complete-task="complete"
-      />
-      <CheckInCard v-if="nowState.action?.kind !== 'closeDay'" ref="checkInCard" :document="document" :now="now" />
-      <TodayTimeline
-        v-if="timeline.items.length || timeline.allDay.length"
-        :items="timeline.items"
-        :all-day="timeline.allDay"
-        :actuals="document.actuals"
-        :categories="document.categories"
-        :now="now"
-        :time-zone="timeZone"
-        :writable="planner.writable"
-        :asked-key="askedKey"
-        :plan-since="since"
-        @record="record"
-        @clear="clear"
-        @complete-task="complete"
-      >
-        <template #notice>
-          <component :is="GoogleCoverageNotice" v-if="GoogleCoverageNotice && googleAvailable" :ranges="googleRanges" />
+    <template v-if="!hasContent">
+      <EmptyState :week-bar="t('today.empty.weekBar')" :title="t('today.empty.title')" :description="t('today.empty.description')">
+        <!-- The setup wizard is the quick way in, a single routine the other; when setup cannot be offered, Week remains. -->
+        <template v-if="setupWeekOffered(planner)">
+          <SetupWeekPrompt />
+          <Button variant="plain" data-testid="today-add-routine" @click="openAdd('routine')">{{ t('week.empty.addBlock') }}</Button>
         </template>
-      </TodayTimeline>
-      <template v-else>
-        <component :is="GoogleCoverageNotice" v-if="GoogleCoverageNotice && googleAvailable" :ranges="googleRanges" />
-        <EmptyState icon="calendar-days" :title="t('today.emptyDay.title')" :description="t('today.emptyDay.description')">
-          <Button variant="tinted" href="#/week">{{ t('today.emptyDay.action') }}</Button>
-        </EmptyState>
-      </template>
+        <Button v-else variant="tinted" href="#/week">{{ t('today.empty.action') }}</Button>
+      </EmptyState>
+      <!-- To-dos for today show whether the day has a plan or not (one just added from "+" › Tarea included). -->
+      <TodayTodo :today="today" />
     </template>
-    <TodayTodo :today="today" />
+    <div v-else class="today-columns">
+      <div class="today-main">
+        <NowCard
+          :state="nowState"
+          :categories="document.categories"
+          :writable="planner.writable"
+          :today="today"
+          :time-zone="timeZone"
+          :quiet-action="wide"
+          @record="record"
+          @complete-task="complete"
+        />
+        <CheckInCard v-if="closeDayOpen && !wide" ref="checkInCard" :document="document" :now="now" />
+        <TodayTimeline
+          v-if="timeline.items.length || timeline.allDay.length"
+          :items="timeline.items"
+          :all-day="timeline.allDay"
+          :actuals="document.actuals"
+          :categories="document.categories"
+          :now="now"
+          :time-zone="timeZone"
+          :writable="planner.writable"
+          :asked-key="askedKey"
+          :plan-since="since"
+          :hero="hero"
+          @record="record"
+          @clear="clear"
+          @complete-task="complete"
+        >
+          <template #notice>
+            <component :is="GoogleCoverageNotice" v-if="GoogleCoverageNotice && googleAvailable" :ranges="googleRanges" />
+          </template>
+          <template v-if="!wide" #end>
+            <TodayTodo :today="today" />
+          </template>
+        </TodayTimeline>
+        <template v-else>
+          <component :is="GoogleCoverageNotice" v-if="GoogleCoverageNotice && googleAvailable" :ranges="googleRanges" />
+          <EmptyState icon="calendar-days" :title="t('today.emptyDay.title')" :description="t('today.emptyDay.description')">
+            <Button variant="tinted" href="#/week">{{ t('today.emptyDay.action') }}</Button>
+          </EmptyState>
+          <TodayTodo v-if="!wide" :today="today" />
+        </template>
+        <CheckInCard v-if="!closeDayOpen && !wide" ref="checkInCard" :document="document" :now="now" />
+      </div>
+      <!-- Desktop (R_EscritorioHoy): the check-in, the to-dos and the week at a glance beside the day, never repeated. -->
+      <aside v-if="wide" class="today-aside" :aria-label="t('today.aside')">
+        <CheckInCard ref="checkInCard" :document="document" :now="now" />
+        <TodayTodo :today="today" />
+        <WeekGlance :document="document" :now="now" />
+      </aside>
+    </div>
   </div>
 </template>
 
 <style scoped>
 .today-view { padding-bottom: var(--space-6); }
 /* The subtitle belongs to the title: it takes the header gap under the title and leaves it under itself. */
-.today-subtitle { margin: calc(var(--header-gap) * -1) var(--page-gutter) var(--header-gap); font-variant-numeric: tabular-nums; text-wrap: balance; }
+.today-subtitle { margin: calc(var(--header-gap) * -1) var(--page-gutter) var(--group-gap); font-variant-numeric: tabular-nums; text-wrap: balance; }
+/* Desktop: the day (main) and an aside of 320–360 px that wraps under it below 1200 px of content. */
+.is-wide .today-columns { display: flex; flex-wrap: wrap; gap: var(--section-gap); padding-inline: var(--page-gutter); }
+.is-wide .today-main { flex: 1 1 560px; min-width: 0; }
+.is-wide .today-main :deep(.now-card) { margin-inline: 0; }
+.is-wide .today-main :deep(.timeline-section) { --page-gutter: 0px; }
+.today-aside { display: flex; flex: 1 1 320px; flex-direction: column; gap: var(--group-gap); max-width: 360px; }
+.today-aside :deep(.checkin-card) { margin: 0; }
+.today-aside :deep(.today-todo) { margin-top: 0; }
+.today-aside :deep(.todo-title) { margin-inline: 0; }
+.today-aside :deep(.is-timeline .task-content) { grid-template-columns: minmax(0, 1fr) var(--tap-target); padding-inline: 0; }
+.today-aside :deep(.is-timeline :is(.timeline-time, .timeline-bar)) { display: none; }
+.today-aside :deep(.is-timeline + .is-timeline .task-content::before) { left: 0; }
 </style>

@@ -1,29 +1,15 @@
 <script setup lang="ts">
-import { computed, onMounted, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { usePlannerStore } from '@/stores/plannerStore'
 import Button from '@/ui/Button.vue'
 import Icon from '@/ui/Icon.vue'
 import { downloadBackup } from './exportBackup'
-import { exportNudge, noteFirstVisit, readNudgeInput, snoozeNudge, type Nudge } from './exportReminder'
+import { snoozeNudge } from './exportReminder'
+import { useExportNudge } from './useExportNudge'
 
 const { t } = useI18n()
 const planner = usePlannerStore()
-
-// Re-read after each action; the stored times are not reactive.
-const nudge = ref<Nudge | null>(null)
-
-function refresh(): void {
-  const document = planner.document
-  const hasContent = !!document && (document.categories.length + document.blocks.length + document.tasks.length + document.checkIns.length) > 0
-  nudge.value = exportNudge(readNudgeInput(new Date(), hasContent))
-}
-
-onMounted(() => noteFirstVisit(new Date()))
-// The document loads after the screen mounts, and what is worth saving depends on it.
-watch(() => planner.document, refresh, { immediate: true })
-
-const text = computed(() => (nudge.value?.kind === 'overdue' ? t('settings.exportNudge.overdue', { days: nudge.value.days }) : t('settings.exportNudge.never')))
+const { nudge, text, refresh } = useExportNudge()
 
 async function exportNow(): Promise<void> {
   if (!planner.document) return
