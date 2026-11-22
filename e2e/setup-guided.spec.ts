@@ -558,7 +558,7 @@ test.describe('answering', () => {
     expect(await bytes(page)).toEqual(before)
   })
 
-  test('A19: Tab explores the quick replies without answering, Enter answers, and the last range can be removed', async ({ page }) => {
+  test('A19: Tab explores the quick replies without answering, Enter answers, and the last range can be cleared', async ({ page }) => {
     await start(page)
     await page.goto('./')
     await tap(page, 'Siguiente')
@@ -581,10 +581,10 @@ test.describe('answering', () => {
 
     await live(page).locator('[data-answer=work]').click()
     await onScreen(page, 'work')
-    await expect(live(page).getByTestId('range-remove')).toHaveCount(1)
-    await live(page).getByTestId('range-remove').click()
-    await expect(live(page).locator('[data-range]')).toHaveCount(0)
-    await expect(live(page).getByTestId('range-add')).toBeVisible()
+    // A lone range has no "Quitar" (R_InicioHorario): "Sin horario fijo" clears it.
+    await expect(live(page).getByTestId('range-remove')).toHaveCount(0)
+    await live(page).getByRole('button', { name: 'Sin horario fijo', exact: true }).click()
+    await expect(setup(page)).not.toHaveAttribute('data-screen', 'work')
     await skipToSummary(page)
     await expect(live(page).getByTestId('card-work')).toContainText('Sin horario')
   })
@@ -1425,6 +1425,8 @@ test.describe('the setup owns the screen (S1-12, N10)', () => {
 // #60 review: on the board's own phone and on a desktop, the answers under the times are in view without scrolling
 // (R_InicioHorario, R_InicioSueno): an open time list must not push them out of the dock.
 async function inView(page: Page, testId: string): Promise<void> {
+  // Measured once the frame and the screen have finished arriving (the frame rises 24 px as it opens).
+  await page.waitForFunction(() => document.getAnimations().every((animation) => animation.playState !== 'running'))
   const fit = await live(page).getByTestId(testId).evaluate((element) => {
     const box = element.getBoundingClientRect()
     // Inside the answers' own scroller, or else on the screen.
@@ -1434,7 +1436,7 @@ async function inView(page: Page, testId: string): Promise<void> {
   expect(fit, testId).toEqual({ top: true, bottom: true })
 }
 
-for (const size of [PHONE, { width: 1440, height: 900 }] as const) {
+for (const size of [PHONE, { width: 375, height: 667 }, { width: 1440, height: 900 }] as const) {
   test(`the answers under the times are in view without scrolling at ${size.width}x${size.height}`, async ({ page }) => {
     await start(page, { size, document: firstRun() })
     await page.goto('./')
@@ -1453,16 +1455,18 @@ for (const size of [PHONE, { width: 1440, height: 900 }] as const) {
   })
 }
 
-test('a removed time gives focus to "Añadir otro horario"', async ({ page }) => {
+test('a removed time gives focus to "Añadir otro horario"; a lone time has no "Quitar"', async ({ page }) => {
   await start(page, { document: firstRun() })
   await page.goto('./')
   await onScreen(page, 'sleep')
   await live(page).getByTestId('setup-primary').click()
   await live(page).locator('[data-value=work]').click()
   await onScreen(page, 'work')
+  // A lone range has no "Quitar"; a second one brings it to both.
+  await expect(live(page).getByTestId('range-remove')).toHaveCount(0)
   await live(page).getByTestId('range-add').click()
   await expect(live(page).getByTestId('range-remove')).toHaveCount(2)
   await live(page).getByTestId('range-remove').last().click()
-  await expect(live(page).getByTestId('range-remove')).toHaveCount(1)
+  await expect(live(page).getByTestId('range-remove')).toHaveCount(0)
   await expect(live(page).getByTestId('range-add')).toBeFocused()
 })

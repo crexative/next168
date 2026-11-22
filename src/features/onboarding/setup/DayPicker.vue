@@ -82,6 +82,9 @@ function toggle(day: DayIndex): void {
   padding: var(--space-2) var(--space-3); border: 2px solid var(--field-border); border-radius: var(--radius-control); background: var(--surface);
   color: var(--label); font-weight: 600; touch-action: manipulation; overflow-wrap: anywhere; hyphens: auto;
 }
+/* The presets at 15 px with an 8 px inset, so two share a row on a 390 px phone as on R_InicioHorario, also with
+   Linux's wider fonts. */
+.pick { padding-inline: var(--space-2); font-size: 0.9375rem; }
 .pick[aria-pressed='true'], .toggle[aria-pressed='true'] { border-color: var(--tint); background: color-mix(in srgb, var(--tint) 14%, transparent); color: var(--tint-label); }
 /* Seven toggles wrap to 4 + 3 on a phone (3 + 3 + 1 at 320 px), each wide enough for the check and the short day name
    side by side, so a chosen day never splits its name ("lu / n"). */

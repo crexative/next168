@@ -23,6 +23,9 @@ const props = defineProps<{
   title?: string
   // Hidden while the range is every night (sleep), which needs no question about days.
   hideDays?: boolean
+  // A category's only range has no "Quitar" (R_InicioHorario, R_InicioSueno): "Sin horario fijo" or "Lo veo después"
+  // is that answer.
+  removable?: boolean
 }>()
 const emit = defineEmits<{
   toggle: [field: Field | null]
@@ -102,7 +105,7 @@ function onEscape(event: KeyboardEvent): void {
     </div>
 
     <p class="message t-body" role="status" aria-live="polite" data-testid="range-message"><template v-if="message">⚠ {{ message }}</template></p>
-    <Button variant="plain" data-testid="range-remove" @click="emit('remove')">{{ t('onboarding.guided.range.remove') }}</Button>
+    <Button v-if="removable" variant="plain" data-testid="range-remove" @click="emit('remove')">{{ t('onboarding.guided.range.remove') }}</Button>
   </section>
 </template>
 
