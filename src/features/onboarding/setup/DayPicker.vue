@@ -6,7 +6,7 @@ import { useSetupFormat } from './useSetupFormat'
 
 const props = defineProps<{ days: DayIndex[] }>()
 const emit = defineEmits<{ change: [days: DayIndex[]]; done: [] }>()
-const { t, locale, weekStartsOn } = useSetupFormat()
+const { t, locale, weekStartsOn, days: daysText } = useSetupFormat()
 
 const PRESETS: { id: 'weekdays' | 'everyDay' | 'weekend'; days: DayIndex[] }[] = [
   { id: 'weekdays', days: [1, 2, 3, 4, 5] },
@@ -15,8 +15,9 @@ const PRESETS: { id: 'weekdays' | 'everyDay' | 'weekend'; days: DayIndex[] }[] =
 ]
 const same = (a: readonly number[], b: readonly number[]) => a.length === b.length && [...a].sort().join() === [...b].sort().join()
 const matching = computed(() => PRESETS.find((preset) => same(preset.days, props.days))?.id)
-// "Choose days" is the answer when no preset matches, and it keeps the seven toggles open.
-const picking = ref(matching.value === undefined)
+// "Choose days" is the answer when no preset matches: it then names those days, and the seven toggles open on a tap.
+const picking = ref(false)
+const custom = computed(() => matching.value === undefined)
 
 const options = computed(() => Array.from({ length: 7 }, (_, index) => ((index + weekStartsOn.value) % 7) as DayIndex).map((day) => ({
   day,
@@ -50,9 +51,9 @@ function toggle(day: DayIndex): void {
         <Icon v-if="!picking && matching === preset.id" name="check" :size="18" />
         {{ t(`onboarding.guided.days.${preset.id}`) }}
       </button>
-      <button class="pick t-body" type="button" data-preset="pick" :aria-pressed="picking" :aria-expanded="picking" @click="picking = true">
-        <Icon v-if="picking" name="check" :size="18" />
-        {{ t('onboarding.guided.days.pick') }}
+      <button class="pick t-body" type="button" data-preset="pick" :aria-pressed="picking || custom" :aria-expanded="picking" @click="picking = true">
+        <Icon v-if="picking || custom" name="check" :size="18" />
+        {{ custom && !picking && days.length > 0 ? daysText(days, false, 'short') : t('onboarding.guided.days.pick') }}
       </button>
     </div>
     <div v-if="picking" class="toggles">

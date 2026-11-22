@@ -124,7 +124,8 @@
       "nextDay": "(am nächsten Tag)",
       "otherTime": "Andere Uhrzeit",
       "add": "Weitere Zeit hinzufügen",
-      "remove": "Entfernen"
+      "remove": "Entfernen",
+      "weekHours": "{hours} pro Woche"
     },
     "time": {
       "hour": "Stunde",

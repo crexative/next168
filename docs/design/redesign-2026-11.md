@@ -63,6 +63,13 @@ a screen not yet redesigned keeps working with the new tokens and shell.
 
 Anything else in a board that the app cannot do as drawn is raised with the coordinator before it changes behaviour.
 
+## Open for a later slice
+
+- **Setup's work screen (slice 6a).** R_InicioHorario opens the start times on arrival; the app does so only where the
+  answers under them ("Añadir otro horario", "Sin horario fijo", "Siguiente") stay in view, so on a 390 x 844 phone
+  and a 1440 x 900 desktop the card starts closed, one tap from its times. "Lo veo después" is not on the work screen:
+  leaving work for later needs its own place in the flow (what the summary then shows), not only a button.
+
 ## Tokens and styles added ahead of their screens
 
 Slice 1 adds what later slices draw with: `--radius-bubble`, `--warning-label`, `.t-title-1`, `.t-section` and the
