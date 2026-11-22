@@ -163,6 +163,23 @@ onBeforeUnmount(() => {
 .setup-frame-leave-active { transition: opacity 0.15s; }
 .setup-frame-enter-from { opacity: 0; transform: translateY(24px); }
 .setup-frame-leave-to { opacity: 0; }
+/* Tablet and desktop: a centred modal, 560 px wide, over the dimmed page (DIRECTION §4 anatomy); the page behind is
+   inert while it is open (sheetStack.openFullScreen), so the dimming is drawn, not a layer to press. It is centred in
+   the visible viewport (--vv-top, --vv-height: visualViewportPin), so an on-screen keyboard never covers it, and grows
+   with its conversation up to 736 px (DIRECTION §6). Its margins are pixels, so large text never eats the question;
+   a screen too short for a modal (a small landscape tablet) keeps the full-screen frame. */
+@media (min-width: 768px) and (min-height: 700px) {
+  .setup-frame {
+    --column: 35rem;
+    --modal-room: min(var(--vv-height, 100dvh), 100dvh);
+    inset: auto 0; top: calc(var(--vv-top, 0px) + var(--modal-room) / 2); translate: 0 -50%;
+    margin-inline: auto; width: min(35rem, 100vw - 32px); height: auto; max-height: min(736px, var(--modal-room) - 32px);
+    border-radius: 24px; overflow: hidden;
+    box-shadow: 0 0 0 100vmax var(--scrim), 0 16px 48px rgb(0 0 0 / 0.24);
+  }
+  /* No notch inside a centred card. */
+  .bar { padding-top: 0; }
+}
 @media (prefers-reduced-motion: reduce) {
   .setup-frame-enter-active { transition: opacity 0.2s; }
   .setup-frame-enter-from { transform: none; }

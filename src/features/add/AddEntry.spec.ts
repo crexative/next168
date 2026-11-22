@@ -19,7 +19,7 @@ beforeEach(() => { globalThis.document.body.innerHTML = '' })
 const tick = async () => { for (let i = 0; i < 5; i++) { await nextTick(); await new Promise((resolve) => setTimeout(resolve, 0)) } }
 const work = { id: 'work', name: 'Work', colorKey: 'blue' as const, goal: { type: 'none' as const, hoursPerWeek: 0 } }
 
-async function mountWeek(fill: (draft: PlannerDocument) => void, view: 'week' | 'tasks' = 'week') {
+async function mountWeek(fill: (draft: PlannerDocument) => void, view: 'week' | 'tasks' | 'today' = 'week') {
   vi.useFakeTimers({ toFake: ['Date'] })
   vi.setSystemTime(new Date('2026-10-21T10:15:00Z'))
   const { planner } = createTestRepositories()
@@ -40,6 +40,16 @@ async function mountWeek(fill: (draft: PlannerDocument) => void, view: 'week' | 
 }
 
 describe('AddEntry', () => {
+  // The "+" on Hoy opens Nueva tarea with "Hoy" on; elsewhere it starts with no date.
+  it.each([['today', true], ['week', false]] as const)('from %s, Nueva tarea starts with "Hoy" on: %s', async (view, on) => {
+    await mountWeek((draft) => { draft.categories.push(work) }, view)
+    globalThis.document.querySelector<HTMLElement>('[data-testid="add-entry"]')!.click()
+    await tick()
+    globalThis.document.querySelector<HTMLElement>('[data-testid="add-task"]')!.click()
+    await tick()
+    expect(globalThis.document.querySelector<HTMLInputElement>('[role="dialog"] [data-testid="task-today"]')!.checked).toBe(on)
+  })
+
   it('offers Task, Event and Routine from "+" with a one-line hint each, and each entry opens its own sheet', async () => {
     const { planner } = createTestRepositories()
     configurePlannerStore({ repository: planner, now: fixedNow, newId: newTestId, locale: () => 'en', timeZone: () => 'UTC' })

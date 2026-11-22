@@ -60,6 +60,10 @@ a screen not yet redesigned keeps working with the new tokens and shell.
 10. **One word for a conflict (slice 3, REVIEW M2).** "Se cruza" on the block, "Se cruza con {título}" in the event's
     details and "Se cruza con tu plan" on imported events, in every language; a Weeklid event over a routine is marked
     too, as Hoy already did.
+11. **Resumen's headline [cambia] (slice 5).** The board says "38 h libres esta semana"; the figure counts from now,
+    while the bar's "sin asignar" counts the whole week, so the two would disagree. The headline says "26 h libres desde
+    ahora" (en "from now", fr "à partir de maintenant", pt "a partir de agora", de "ab jetzt"). Hoy and Semana keep
+    "esta semana" in their smaller badge, which stands alone.
 
 11. **Overdue tasks are amber (slice 4).** DIRECTION's task list gives an overdue meta the danger colour, while its
     principle 6 keeps red for what cannot be undone; the app follows principle 6: overdue and "no cabe a tiempo" metas
@@ -69,6 +73,18 @@ a screen not yet redesigned keeps working with the new tokens and shell.
     tap saves. Telling a replaced plan from an ordinary later commit, to let the latter through, is left for later.
 
 Anything else in a board that the app cannot do as drawn is raised with the coordinator before it changes behaviour.
+
+## Tests that read styles
+
+Some layout rules are checked by reading a component's own styles (`ConversationFrame.modal.spec.ts`), because the App
+review's mutant runner has no browser; the e2e still measure the real layout. Rewriting or reformatting those styles
+means updating that spec with them.
+
+## Open for a later slice
+
+- **Conversation modal width (slice 8).** The centred modal is 35rem wide, so it grows with the text size (about
+  1120 px at 200 % on a 1440 px screen, never more than the screen less 32 px); its margins are pixels. Below 700 px
+  of height (a small landscape tablet) the conversation stays full screen.
 
 ## Tokens and styles added ahead of their screens
 

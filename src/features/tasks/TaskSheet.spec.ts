@@ -19,7 +19,7 @@ let app: App | undefined
 let host: HTMLElement
 const closed = vi.fn()
 
-async function open(taskId: string | undefined, overrides: Partial<PlannerDocument> = {}) {
+async function open(taskId: string | undefined, overrides: Partial<PlannerDocument> = {}, dueToday = false) {
   const pinia = createPinia()
   setActivePinia(pinia)
   const repos = createTestRepositories()
@@ -32,7 +32,7 @@ async function open(taskId: string | undefined, overrides: Partial<PlannerDocume
   host = document.createElement('div')
   document.body.append(host)
   app = createApp(defineComponent({
-    setup: () => () => h(TaskSheet, { open: isOpen.value, taskId, 'onUpdate:open': (value: boolean) => { isOpen.value = value; if (!value) closed() } }),
+    setup: () => () => h(TaskSheet, { open: isOpen.value, taskId, dueToday, 'onUpdate:open': (value: boolean) => { isOpen.value = value; if (!value) closed() } }),
   })).use(pinia).use(i18n)
   app.mount(host)
   await nextTick()
@@ -178,6 +178,16 @@ describe('adding a task from the sheet', () => {
     expect(store.document!.tasks[0]).not.toHaveProperty('durationMin')
     // A task for any free slot keeps the suggestion for the next one.
     expect(localStorage.getItem(LAST_TASK_CATEGORY_KEY)).toBe('c-study')
+  })
+
+  // The "+" pressed on Hoy opens a new task with "Hoy" on: added as it is, it is due today.
+  it('opened from Hoy, a new task starts due today', async () => {
+    const { store } = await open(undefined, { tasks: [] }, true)
+    expect(dialog().querySelector<HTMLInputElement>('[data-testid=task-today]')!.checked).toBe(true)
+    await set(titleField(), 'Buy bread')
+    save().click()
+    await settle(store)
+    expect(store.document!.tasks).toMatchObject([{ title: 'Buy bread', dueDate: fixedNow().toISOString().slice(0, 10) }])
   })
 
   it('files a task under the suggested category, the first one offered', async () => {

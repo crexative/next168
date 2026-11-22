@@ -32,8 +32,10 @@ import { planSince, readPlanSince, stampPlanSince } from './planSince'
 import { completeTask, reopenTask } from './taskCompletion'
 import { buildTimeline } from './todayTimeline'
 import { useBlockStatus } from './useBlockStatus'
+import { useTaskPartLabels } from '@/ui/taskParts'
 
 const { t, locale } = useI18n()
+const { partLabel, partSpoken } = useTaskPartLabels()
 const planner = usePlannerStore()
 const now = useNow()
 
@@ -51,8 +53,7 @@ const timeline = computed(() => {
   const busy = external.value.filter((item) => item.busy && !item.allDay).map((item) => ({ start: item.start, end: item.end }))
   const placements = fitTasks({ document: document.value, busy, now: new Date(fitFrom.value), timeZone: timeZone.value })
   return buildTimeline({ document: document.value, today: today.value, timeZone: timeZone.value, external: external.value, placements,
-    partLabel: (title, part, parts) => t('common.taskPart', { title, part, parts }),
-    partSpoken: (title, part, parts) => t('common.taskPartSpoken', { title, part, parts }) })
+    partLabel, partSpoken })
 })
 // Blocks, placed tasks, events and calendar occurrences all count as planned content.
 const hasContent = computed(() => (document.value?.blocks.length ?? 0) > 0 || timeline.value.items.length > 0 || timeline.value.allDay.length > 0)
@@ -104,9 +105,8 @@ onMounted(async () => {
   setTimeout(() => checkInCard.value?.focus(), 0)
 })
 
-async function complete(taskId: string, shown: string): Promise<void> {
-  // Completing a piece completes the task: the toast names the task, not the piece.
-  const title = planner.document?.tasks.find((task) => task.id === taskId)?.title ?? shown
+// Completing a piece completes the task: both of its controls (the row and Now) pass the task's own title.
+async function complete(taskId: string, title: string): Promise<void> {
   const holder: { after?: string } = {}
   const result = await planner.commit((draft) => { holder.after = completeTask(draft, taskId, new Date()) })
   if (!result.ok || holder.after === undefined) return
