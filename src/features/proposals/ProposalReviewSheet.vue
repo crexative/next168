@@ -62,6 +62,16 @@ const summaryContext = computed(() => ({
 const summarize = (value: unknown) => summarizeEntity(value, summaryContext.value)
 // R_Propuesta: a change shows what changes ("18:00–19:00" struck → "7:00–8:00"); the rest is under "Detalles".
 const fieldsOf = (change: { before?: unknown; after?: unknown }) => fieldChanges(summarize(change.before), summarize(change.after))
+// Which routine, task or category a change touches, always on its card: this sheet is the only place a proposal (from
+// an AI, whose summary is not to be trusted) is approved, so a change never hides its target behind "Detalles".
+const targetOf = (change: { before?: unknown; after?: unknown }): string => {
+  const named = (value: unknown) => {
+    if (!value || typeof value !== 'object') return undefined
+    const entity = value as { title?: unknown; name?: unknown }
+    return typeof entity.title === 'string' ? entity.title : typeof entity.name === 'string' ? entity.name : undefined
+  }
+  return named(change.before) ?? named(change.after) ?? ''
+}
 
 async function discardIfPasted(proposal: ProposalReview): Promise<void> {
   if (!proposal.pastedReply) return
@@ -150,6 +160,7 @@ async function decide(approve: boolean) {
         <ul v-if="expanded.has(group.key)" :id="`${groupId}-${group.key}`" class="changes">
           <li v-for="{ index, change } in group.changes" :key="index" class="change">
             <h3 class="t-headline">{{ t(`proposals.operations.${change.op}`) }}</h3>
+            <p v-if="targetOf(change)" class="t-subhead target" data-testid="change-target">{{ targetOf(change) }}</p>
             <dl v-if="fieldsOf(change).some((field) => field.changed)" class="fields" data-testid="change-after">
               <template v-for="field in fieldsOf(change).filter((item) => item.changed)" :key="field.label">
                 <dt class="t-footnote t-secondary">{{ field.label }}</dt>
@@ -191,6 +202,7 @@ async function decide(approve: boolean) {
 </template>
 
 <style scoped>
+.target { margin: calc(var(--space-1) * -1) 0 var(--space-1); color: var(--label-2); overflow-wrap: anywhere; }
 .review { display: flex; flex-direction: column; gap: var(--space-4); }
 .review-head { display: flex; flex-direction: column; gap: var(--space-1); }
 .review-head p { margin: 0; overflow-wrap: anywhere; }

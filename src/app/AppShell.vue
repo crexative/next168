@@ -159,7 +159,8 @@ function onKeydown(event: KeyboardEvent): void {
     else requestClose()
     return
   }
-  if (layout.value === 'none') return
+  // Under a presented sheet (the tablet's Settings form) the sidebar cannot open over it: its toggle is hidden too.
+  if (layout.value === 'none' || sheetPresented.value) return
   if (isSidebarShortcut(event, apple)) {
     event.preventDefault()
     toggleSidebar(true)

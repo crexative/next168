@@ -45,3 +45,14 @@ it('ignores fields outside the sheet and read-only ones', () => {
   expect(typed.changedField()).toBeUndefined()
   stop()
 })
+
+it('a field that saves itself on change (a calendar\'s name) never counts as unsaved', () => {
+  const sheet = sheetWith('<input id="calendar" value="Work" data-saves-on-change>')
+  const typed = trackTypedText()
+  const stop = typed.watch(() => sheet)
+  const field = sheet.querySelector<HTMLInputElement>('#calendar')!
+  field.focus()
+  field.value = 'Personal'
+  expect(typed.changedField()).toBeUndefined()
+  stop()
+})

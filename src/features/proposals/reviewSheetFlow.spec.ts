@@ -95,7 +95,7 @@ it('cancelling a pasted proposal discards it: nothing is applied and nothing sta
   const proposal = await repository.create(focusHour(document.workspaceId), 'import')
   await open(proposal, true)
   expect(byTestId('review-cancel-note')!.textContent).toBe('If you cancel, these changes are discarded and your plan stays as it is.')
-  expect(byTestId('proposal-review')!.textContent).not.toContain('Reject')
+  expect(byTestId('review-reject')).toBeNull()
   window.document.body.querySelector<HTMLButtonElement>('.sheet-close')!.click()
   await vi.waitFor(async () => expect(await repository.list('pending')).toEqual([]))
   expect((await repository.list())[0]!.status).toBe('rejected')
@@ -145,4 +145,16 @@ it('names an existing category when the proposal would duplicate it', async () =
   await vi.waitFor(() => expect(byTestId('review-invalid')).not.toBeNull())
   expect(byTestId('review-invalid')!.textContent!.trim()).toBe('You already have a category called “music”. Ask for a proposal that uses it.')
   expect(byTestId<HTMLButtonElement>('review-approve')!.disabled).toBe(true)
+})
+
+// Review of #64: a change that does not rename its target still says which one it is, on the card.
+it('a change names the category, routine or task it touches on its card, not only in Details', async () => {
+  const { document } = await setup()
+  const proposal = await repository.create({ contractVersion: '1.1' as const, workspaceId: document.workspaceId, baseRevision: 0, summary: 'Goal', ops: [
+    { op: 'update_category_goal' as const, id: 'focus', goal: { type: 'min' as const, hoursPerWeek: 5 } },
+  ] }, 'import')
+  await open(proposal)
+  for (const toggle of window.document.querySelectorAll<HTMLButtonElement>('.group-toggle[aria-expanded="false"]')) toggle.click()
+  await nextTick()
+  expect([...window.document.querySelectorAll('[data-testid="change-target"]')].map((node) => node.textContent)).toEqual(['Focus'])
 })

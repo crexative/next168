@@ -121,6 +121,18 @@ it.each(destinations)('keeps the desktop sidebar visible when %s is selected', a
   expect(host.querySelector('.content')?.hasAttribute('inert')).toBe(false)
 })
 
+it('on a tablet the sidebar shortcut does nothing while Settings is shown as a form sheet', async () => {
+  const host = await mountShell('#/settings', 900)
+  await nextTick()
+  expect(host.querySelector('.view')?.getAttribute('data-presentation')).toBe('form')
+  window.dispatchEvent(new KeyboardEvent('keydown', { key: '\\', code: 'Backslash', ctrlKey: true, metaKey: true, bubbles: true }))
+  window.dispatchEvent(new KeyboardEvent('keydown', { key: '\\', code: 'Backslash', ctrlKey: true, bubbles: true }))
+  window.dispatchEvent(new KeyboardEvent('keydown', { key: '\\', code: 'Backslash', metaKey: true, bubbles: true }))
+  await nextTick()
+  expect(host.querySelector('.shell')?.getAttribute('data-sidebar')).toBe('hidden')
+  expect(host.querySelector('.content')?.hasAttribute('inert')).toBe(false)
+})
+
 // One "+" per device and navigation that never hides (redesign 2026-11, principles 4 and DIRECTION §3).
 describe('the one "+" and the tabs', () => {
   const AddProbe = { props: ['view', 'placement'], render(this: { view: string; placement: string }) { return h('button', { 'data-testid': 'add-probe', 'data-view': this.view, 'data-placement': this.placement }) } }

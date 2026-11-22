@@ -9,6 +9,9 @@ export function isTextField(target: EventTarget | null): target is TextField {
   return target instanceof HTMLInputElement && TEXT_INPUT_TYPES.has(target.type) && !target.readOnly && !target.disabled
 }
 
+// A field that saves itself when it changes (a calendar's name) holds nothing unsaved once it has changed.
+const savesOnChange = (field: TextField) => field.hasAttribute('data-saves-on-change')
+
 export interface TypedText {
   // Starts following the fields inside the root (a sheet) as they take focus.
   watch(root: () => Element | null): () => void
@@ -24,7 +27,7 @@ export function trackTypedText(): TypedText {
     watch(root) {
       const onFocusIn = (event: FocusEvent) => {
         const field = event.target
-        if (!isTextField(field) || !root()?.contains(field) || initial.has(field)) return
+        if (!isTextField(field) || savesOnChange(field) || !root()?.contains(field) || initial.has(field)) return
         initial.set(field, field.value)
         touched.add(field)
       }
