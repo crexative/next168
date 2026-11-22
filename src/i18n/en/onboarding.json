@@ -90,7 +90,9 @@
       "otherLabel": "What is it?",
       "otherPlaceholder": "For example: English class",
       "add": "Add",
-      "duplicate": "It's already on your list."
+      "duplicate": "It's already on your list.",
+      "picked": "{count} picked · one short question | {count} picked · one short question for each",
+      "limit": "You have {max} picked; remove one to add another."
     },
     "again": {
       "question": "Anything else?",

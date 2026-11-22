@@ -5,7 +5,7 @@ import { categoryColor } from '@/features/insights/categoryColor'
 import { formatWholeHours, wholeHourParts } from '@/ui/format'
 import Button from '@/ui/Button.vue'
 import Icon from '@/ui/Icon.vue'
-import { appendFromSummary, canAppend, categoryMinutes, clearRanges, setRemoved, weekTotals, type Issue, type SetupState } from '../setupModel'
+import { appendFromSummary, canAppend, categoryMinutes, clearRanges, setRemoved, weekBar, weekTotals, type Issue, type SetupState } from '../setupModel'
 import { addGoalOverruns } from '../setupCommit'
 import { TOPICS } from '../setupTopics'
 import { summaryRows } from './conversation'
@@ -16,26 +16,34 @@ import { useSetupFormat } from './useSetupFormat'
 const props = defineProps<{
   state: SetupState
   document: PlannerDocument
-  reviewable: boolean
   issues: Issue[]
   message: string
-  showTrust: boolean
 }>()
-const emit = defineEmits<{ review: []; edited: [] }>()
+const emit = defineEmits<{ edited: [] }>()
 const expanded = defineModel<string | null>('expanded', { default: null })
 const { t } = useSetupFormat()
 
+const week = computed(() => weekTotals(props.state))
 const totals = computed(() => {
-  const week = weekTotals(props.state)
-  const [assigned, free] = wholeHourParts([week.covered, 10080 - week.covered])
-  return { assigned: assigned!, free: free!, overlapping: week.overlapping }
+  const [assigned, free] = wholeHourParts([week.value.covered, 10080 - week.value.covered])
+  return { assigned: assigned!, free: free!, overlapping: week.value.overlapping }
 })
 const visibleRows = computed(() => summaryRows(props.state))
-// The 168 h bar (R_InicioResumen): each category's hours in its colour, the hours left hatched.
-const segments = computed(() => visibleRows.value
+// The 168 h bar (R_InicioResumen): each category's hours in its colour, the hours left hatched; overlapping times count
+// once (weekBar), as in the line under it.
+const categoryHours = computed(() => visibleRows.value
   .filter((row) => row.status !== 'removed')
   .map((row) => ({ key: row.category.key, name: row.category.name, minutes: categoryMinutes(props.state, row.category), color: colorOf(row.category.key) }))
-  .filter((segment) => segment.minutes > 0))
+  .filter((part) => part.minutes > 0))
+const bar = computed(() => {
+  const { shares, free } = weekBar(categoryHours.value, week.value)
+  return { segments: categoryHours.value.map((part, index) => ({ ...part, share: shares[index]!.minutes })), free }
+})
+// What the bar draws, said: "Sueño 56 h, Trabajo 40 h, 72 h sin asignar".
+const barLabel = computed(() => [
+  ...categoryHours.value.map((part) => `${part.name} ${formatWholeHours(Math.round(part.minutes / 60))}`),
+  t('onboarding.summary.unassigned', { hours: formatWholeHours(totals.value.free) }),
+].join(', '))
 const place = computed(() => `${t('app.tabs.settings')} › ${t('settings.categoriesTitle')}`)
 const hasTasks = (key: string) => {
   const id = props.state.categories.find((category) => category.key === key)?.categoryId
@@ -94,9 +102,9 @@ async function addMore(): Promise<void> {
 <template>
   <section class="week" data-testid="week-card" :aria-label="t(adding ? 'onboarding.summary.addTitle' : 'onboarding.summary.title')">
     <h4 class="week-title t-title-2">{{ t(adding ? 'onboarding.summary.addTitle' : 'onboarding.summary.title') }}</h4>
-    <div v-if="!adding" class="bar" aria-hidden="true" data-testid="summary-bar">
-      <i v-for="segment in segments" :key="segment.key" class="segment" :data-segment="segment.key" :style="{ flexGrow: segment.minutes, background: segment.color }" />
-      <i v-if="totals.free > 0" class="segment is-free" :style="{ flexGrow: totals.free * 60 }" />
+    <div v-if="!adding" class="bar" role="img" :aria-label="barLabel" data-testid="summary-bar">
+      <i v-for="segment in bar.segments" :key="segment.key" class="segment" :data-segment="segment.key" :style="{ flexGrow: segment.share, background: segment.color }" />
+      <i v-if="bar.free > 0" class="segment is-free" data-segment="free" :style="{ flexGrow: bar.free }" />
     </div>
     <p v-if="!adding" class="counter t-subhead" role="status" data-testid="week-counter">
       <strong>{{ t('onboarding.summary.assigned', { hours: formatWholeHours(totals.assigned) }) }}</strong> · {{ t('onboarding.summary.unassigned', { hours: formatWholeHours(totals.free) }) }}

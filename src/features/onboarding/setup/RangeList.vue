@@ -8,7 +8,8 @@ import RangeCard, { type Field } from './RangeCard.vue'
 import { useSetupFormat } from './useSetupFormat'
 
 // The ranges of one category, one picker open at a time across all of them, and "Add another time".
-const props = defineProps<{ state: SetupState; category: CategoryDraft; labels?: Record<string, string>; sleep?: boolean }>()
+// In the summary a lone range keeps "Quitar": there is no "Sin horario fijo" there to leave a category without times.
+const props = defineProps<{ state: SetupState; category: CategoryDraft; labels?: Record<string, string>; sleep?: boolean; loneRemovable?: boolean }>()
 const { t, duration } = useSetupFormat()
 const root = ref<HTMLElement | null>(null)
 const addButton = ref<InstanceType<typeof Button> | null>(null)
@@ -55,7 +56,7 @@ function add(): void {
       :start-label="sleep ? labels?.bed : undefined"
       :end-label="sleep ? labels?.wake : undefined"
       :hide-days="sleep && range.days.length === 7 && !range.label"
-      :removable="category.ranges.length > 1"
+      :removable="loneRemovable || category.ranges.length > 1"
       @toggle="open = $event === null ? null : { key: range.key, field: $event }"
       @change="change(range.key, $event)"
       @remove="remove(range.key)"

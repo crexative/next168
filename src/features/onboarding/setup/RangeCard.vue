@@ -23,8 +23,8 @@ const props = defineProps<{
   title?: string
   // Hidden while the range is every night (sleep), which needs no question about days.
   hideDays?: boolean
-  // A category's only range has no "Quitar" (R_InicioHorario, R_InicioSueno): "Sin horario fijo" or "Lo veo después"
-  // is that answer.
+  // A category's only range has no "Quitar" in the conversation (R_InicioHorario, R_InicioSueno): "Sin horario fijo"
+  // or "Lo veo después" is that answer. The summary keeps it (RangeList's loneRemovable).
   removable?: boolean
 }>()
 const emit = defineEmits<{

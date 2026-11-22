@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { isKnownScreen, nextScreen, partOf, previousScreen, sequence } from './setupFlow'
-import { addOwnCategory, confirmPicks, emptyState, ensureCategory, finishMore, MAX_PICKS, moreOptions, setAnswer, togglePick, type ScreenId, type SetupState, type Tri, type WorkStudy } from './setupModel'
+import { addOwnCategory, confirmPicks, emptyState, ensureCategory, finishMore, MAX_PICKS, moreOptions, setAnswer, togglePick, weekBar, type ScreenId, type SetupState, type Tri, type WorkStudy } from './setupModel'
 import { env } from './setupFixtures'
 
 const WORK_STUDY: WorkStudy[] = ['unanswered', 'work', 'study', 'both', 'neither']
@@ -138,5 +138,19 @@ describe('the rounds of "Anything else?" (adding a routine)', () => {
     ensureCategory(state, 'learning', 'learning', 'Learning')
     expect(nextScreen(state, 'extra:learning')).toBe('summary')
     expect(previousScreen(state, 'extra:learning')).toBe('more:1')
+  })
+})
+
+// The 168 h bar draws the hours counted once: with a 5 h overlap its parts add up to the assigned hours, not more.
+describe('the summary bar (weekBar)', () => {
+  it('scales each category to the hours counted once and leaves the rest free', () => {
+    const { shares, free } = weekBar([{ key: 'work', minutes: 50 * 60 }, { key: 'study', minutes: 51 * 60 }], { covered: 96 * 60, summed: 101 * 60, overlapping: true })
+    expect(shares.reduce((sum, share) => sum + share.minutes, 0)).toBeCloseTo(96 * 60)
+    expect(shares[0]!.minutes / shares[1]!.minutes).toBeCloseTo(50 / 51)
+    expect(free).toBe(72 * 60)
+  })
+
+  it('without overlaps draws each category as it is', () => {
+    expect(weekBar([{ key: 'sleep', minutes: 56 * 60 }], { covered: 56 * 60, summed: 56 * 60, overlapping: false })).toEqual({ shares: [{ key: 'sleep', minutes: 56 * 60 }], free: 112 * 60 })
   })
 })

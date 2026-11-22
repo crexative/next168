@@ -63,7 +63,10 @@ async function reveal(arriving: boolean): Promise<void> {
   const element = scroller.value
   const current = element?.querySelector<HTMLElement>('.exchange.is-current')
   if (!element || !current) return
-  const top = Math.max(0, Math.min(element.scrollHeight - element.clientHeight, current.offsetTop - 16))
+  // Measured against the scroller itself (offsetTop counts from the frame), so on a short phone the question's first
+  // words, not its last, are what shows when the answers take most of the height.
+  const offset = current.getBoundingClientRect().top - element.getBoundingClientRect().top + element.scrollTop
+  const top = Math.max(0, Math.min(element.scrollHeight - element.clientHeight, offset - 16))
   element.scrollTo({ top, behavior: prefersReducedMotion() ? 'auto' : 'smooth' })
 }
 
@@ -114,8 +117,8 @@ function onFocusIn(event: FocusEvent): void {
         <p v-if="screen === 'sleep' && showTrust" class="trust t-footnote" data-testid="setup-trust"><Icon name="lock" :size="13" class="trust-icon" />{{ t('onboarding.guided.trust') }}</p>
         <Transition name="say" appear>
           <SetupSummary
-            v-if="summary" v-model:expanded="expanded" :state="state" :document="document" :reviewable="reviewable" :issues="issues" :message="message"
-            :show-trust="showTrust" @review="emit('review')" @edited="emit('edited')"
+            v-if="summary" v-model:expanded="expanded" :state="state" :document="document" :issues="issues" :message="message"
+            @edited="emit('edited')"
           />
         </Transition>
       </div>

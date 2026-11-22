@@ -90,7 +90,9 @@
       "otherLabel": "¿Qué es?",
       "otherPlaceholder": "Por ejemplo: clases de inglés",
       "add": "Añadir",
-      "duplicate": "Ya está en tu lista."
+      "duplicate": "Ya está en tu lista.",
+      "picked": "{count} elegida · una pregunta corta | {count} elegidas · una pregunta corta por cada una",
+      "limit": "Ya elegiste {max}; quita una para añadir otra."
     },
     "again": {
       "question": "¿Algo más?",
