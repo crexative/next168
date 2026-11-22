@@ -57,7 +57,9 @@ it('a whole week reads as a one-line summary first, with every group closed and 
   expect(byTestId('review-overview')!.textContent).toBe('8 new categories\u00a0· 32 routines\u00a0· 3 tasks')
   expect(window.document.querySelectorAll('.change')).toHaveLength(0)
   const footer = byTestId('sheet-actions')!
-  expect([...footer.querySelectorAll('button')].map((button) => button.textContent!.trim())).toEqual(['Approve', 'Cancel'])
+  // Two outcomes (R_Propuesta): Approve then Reject; the sheet's ✕ is named Cancel.
+  expect([...footer.querySelectorAll('button')].map((button) => button.textContent!.trim())).toEqual(['Approve', 'Reject'])
+  expect(window.document.body.querySelector('.sheet-close')!.getAttribute('aria-label')).toBe('Cancel')
   expect(footer.closest('.sheet-body')).toBeNull()
 
   const routines = byTestId('review-group-routines')!.querySelector<HTMLButtonElement>('.group-toggle')!
@@ -83,7 +85,7 @@ it('closing a saved import keeps it pending', async () => {
   const { document } = await setup()
   const proposal = await repository.create(focusHour(document.workspaceId), 'import')
   await open(proposal)
-  byTestId<HTMLButtonElement>('review-cancel')!.click()
+  window.document.body.querySelector<HTMLButtonElement>('.sheet-close')!.click()
   await vi.waitFor(() => expect($('[role="dialog"]')).toBeNull())
   expect((await repository.list('pending')).map((item) => item.id)).toEqual([proposal.id])
 })
@@ -93,8 +95,8 @@ it('cancelling a pasted proposal discards it: nothing is applied and nothing sta
   const proposal = await repository.create(focusHour(document.workspaceId), 'import')
   await open(proposal, true)
   expect(byTestId('review-cancel-note')!.textContent).toBe('If you cancel, these changes are discarded and your plan stays as it is.')
-  expect(byTestId('proposal-review')!.textContent).not.toContain('Reject')
-  byTestId<HTMLButtonElement>('review-cancel')!.click()
+  expect(byTestId('review-reject')).toBeNull()
+  window.document.body.querySelector<HTMLButtonElement>('.sheet-close')!.click()
   await vi.waitFor(async () => expect(await repository.list('pending')).toEqual([]))
   expect((await repository.list())[0]!.status).toBe('rejected')
   expect(planner.document!.blocks).toEqual([])
@@ -113,11 +115,11 @@ it.each(['mcp', 'assistant'] as const)('a proposal from %s stays pending in Prop
   const proposal = await repository.create(focusHour(document.workspaceId), source)
   await open(proposal)
   expect(byTestId('review-cancel-note')!.textContent).toBe('If you cancel, the proposal stays pending in Proposals.')
-  byTestId<HTMLButtonElement>('review-cancel')!.click()
+  window.document.body.querySelector<HTMLButtonElement>('.sheet-close')!.click()
   await vi.waitFor(() => expect($('[role="dialog"]')).toBeNull())
   expect((await repository.list('pending')).map((item) => item.id)).toEqual([proposal.id])
   await open(proposal)
-  ;[...window.document.querySelectorAll<HTMLButtonElement>('[data-testid="proposal-review"] button')].find((button) => button.textContent!.trim() === 'Reject')!.click()
+  window.document.querySelector<HTMLButtonElement>('[data-testid="review-reject"]')!.click()
   await vi.waitFor(async () => expect(await repository.list('pending')).toEqual([]))
 })
 
@@ -143,4 +145,16 @@ it('names an existing category when the proposal would duplicate it', async () =
   await vi.waitFor(() => expect(byTestId('review-invalid')).not.toBeNull())
   expect(byTestId('review-invalid')!.textContent!.trim()).toBe('You already have a category called “music”. Ask for a proposal that uses it.')
   expect(byTestId<HTMLButtonElement>('review-approve')!.disabled).toBe(true)
+})
+
+// Review of #64: a change that does not rename its target still says which one it is, on the card.
+it('a change names the category, routine or task it touches on its card, not only in Details', async () => {
+  const { document } = await setup()
+  const proposal = await repository.create({ contractVersion: '1.1' as const, workspaceId: document.workspaceId, baseRevision: 0, summary: 'Goal', ops: [
+    { op: 'update_category_goal' as const, id: 'focus', goal: { type: 'min' as const, hoursPerWeek: 5 } },
+  ] }, 'import')
+  await open(proposal)
+  for (const toggle of window.document.querySelectorAll<HTMLButtonElement>('.group-toggle[aria-expanded="false"]')) toggle.click()
+  await nextTick()
+  expect([...window.document.querySelectorAll('[data-testid="change-target"]')].map((node) => node.textContent)).toEqual(['Focus'])
 })

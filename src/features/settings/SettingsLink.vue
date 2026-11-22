@@ -1,8 +1,9 @@
 <script setup lang="ts">
 import Icon from '@/ui/Icon.vue'
 
-// One row of the Settings list that opens a page one level down.
-defineProps<{ href: string; title: string; subtitle: string }>()
+// One row of the Settings list that opens a page one level down. `note`: something that needs attention, in amber under
+// the subtitle (the export reminder on "Tus datos", R_Ajustes).
+defineProps<{ href: string; title: string; subtitle?: string; note?: string }>()
 </script>
 
 <template>
@@ -10,7 +11,8 @@ defineProps<{ href: string; title: string; subtitle: string }>()
     <a class="settings-link" :href="href">
       <span class="link-text">
         <span class="t-body">{{ title }}</span>
-        <span class="t-footnote t-secondary">{{ subtitle }}</span>
+        <span v-if="subtitle" class="t-footnote t-secondary">{{ subtitle }}</span>
+        <span v-if="note" class="t-footnote note" data-testid="settings-link-note">{{ note }}</span>
       </span>
       <Icon name="chevron-right" :size="18" class="link-chevron" />
     </a>
@@ -27,4 +29,5 @@ li + li .settings-link::before { content: ''; position: absolute; top: 0; right:
 /* Long words break instead of spilling at large text sizes. */
 .link-text > span { overflow-wrap: anywhere; hyphens: auto; }
 .link-chevron { color: var(--label-3); }
+.note { color: var(--warning-label); }
 </style>

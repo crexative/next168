@@ -1,4 +1,4 @@
-import type { Component, InjectionKey } from 'vue'
+import type { Component, InjectionKey, Ref } from 'vue'
 
 // Shell plug-in contract (architecture §7 #14). S0-shell implements the registries; feature slices
 // register their views and settings sections from their own `index.ts` without editing shell files.
@@ -12,6 +12,7 @@ export interface ViewDefinition {
   icon?: string           // lucide icon name; views without icon are not in the tab bar
   tabOrder?: number       // present only for Today, Week, Tasks, Insights
   backdrop?: 'plain'      // the page is plain lists on white; without it the page is grouped (cards on grey)
+  measure?: 'wide' | 'full' // 1040 px (two columns on a desktop) or the whole width; without it one 720 px column
 }
 
 // Where the shell draws the one "+" (redesign 2026-11, principle 4): beside the phone's floating tab bar, at the end of
@@ -30,6 +31,10 @@ export interface SettingsSectionDefinition {
   titleKey: string
   order: number
 }
+
+// True while the current view is shown as the phone's full-height sheet: its "Listo" leads back, so a view leaves out
+// its own way back to a tab.
+export const SHEET_PRESENTED: InjectionKey<Ref<boolean>> = Symbol('sheetPresented')
 
 export interface ShellRegistry {
   registerView(definition: ViewDefinition): void

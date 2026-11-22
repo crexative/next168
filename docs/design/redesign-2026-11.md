@@ -67,12 +67,22 @@ a screen not yet redesigned keeps working with the new tokens and shell.
 
 Anything else in a board that the app cannot do as drawn is raised with the coordinator before it changes behaviour.
 
+## Tests that read styles
+
+Some layout rules are checked by reading a component's own styles (`ConversationFrame.modal.spec.ts`), because the App
+review's mutant runner has no browser; the e2e still measure the real layout. Rewriting or reformatting those styles
+means updating that spec with them.
+
 ## Open for a later slice
 
 - **Setup's work screen (slice 6a).** R_InicioHorario opens the start times on arrival; the app does so only where the
   answers under them ("Añadir otro horario", "Sin horario fijo", "Siguiente") stay in view, so on a 390 x 844 phone
   and a 1440 x 900 desktop the card starts closed, one tap from its times. "Lo veo después" is not on the work screen:
   leaving work for later needs its own place in the flow (what the summary then shows), not only a button.
+- **Back from "Usar con tu IA" (slice 7).** Choosing "Responder con: Usar con tu IA" in the assistant opens its page in
+  Settings (`#/settings/ai`), whose back button goes to Settings, not to the assistant; on a phone the sheet's Listo
+  goes to the tab. The assistant is one tap away again from the toolbar, but there is no direct way back. A later slice
+  should give that page a way back to where it was opened from.
 - **Conversation modal width (slice 8).** The centred modal is 35rem wide, so it grows with the text size (about
   1120 px at 200 % on a 1440 px screen, never more than the screen less 32 px); its margins are pixels. Below 700 px
   of height (a small landscape tablet) the conversation stays full screen.
@@ -84,3 +94,12 @@ Slice 1 adds what later slices draw with: `--radius-bubble`, `--warning-label`, 
 uses by slice 8 is removed. The contrast specs measure every text token on `--bg`, `--bg-grouped`, `--surface`,
 `--surface-2` and `--tint-soft` in light and dark; increased contrast is not yet measured for `--tint-soft` and `--fill`
 (follow-up for slice 8).
+
+## Open for a later slice (from the review of Hoy, #54)
+
+- The hero's "Después" line and the list's "Libre" rows can repeat what the list already says (DIRECTION rule 3, each
+  thing once).
+- During a task the hero does not say what comes next when it is tomorrow.
+- A routine hidden behind a task in the hero cannot be marked in its last minutes from Hoy.
+- In "Por hacer hoy" at 200 % text the task rows keep an empty time column after the times fold above the titles,
+  and "venció el 18 nov" runs 3 px over at 390 px.

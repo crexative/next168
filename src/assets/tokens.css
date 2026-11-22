@@ -4,6 +4,8 @@
   /* Plain lists sit on the page (white); grouped screens and sheets use the grey (redesign 2026-11, DIRECTION §5). */
   --bg: #ffffff;
   --bg-grouped: #f2f2f7;
+  /* Behind a full-height sheet: the screen it covers, dimmed. */
+  --sheet-backdrop: #c7c7cc;
   --surface: #ffffff;
   --surface-2: #f2f2f7;
   /* Quiet fills: control tracks, chips, progress tracks. */
@@ -123,6 +125,7 @@
     --surface-2: #2c2c2e;
     --label: #ffffff;
     --bg-grouped: #000000;
+    --sheet-backdrop: #3a3a3c;
     --fill: rgba(118, 118, 128, 0.24);
     --segment-selected: #636366;
     --label-2: #98989f;
@@ -181,6 +184,7 @@
   --surface-2: #2c2c2e;
   --label: #ffffff;
   --bg-grouped: #000000;
+  --sheet-backdrop: #3a3a3c;
   --fill: rgba(118, 118, 128, 0.24);
   --segment-selected: #636366;
   --label-2: #98989f;

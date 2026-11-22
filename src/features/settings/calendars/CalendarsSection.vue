@@ -93,7 +93,7 @@ function syncTime(iso: string): string { return formatDateTime(iso, displayLocal
     <p v-if="sources.length === 0" class="calendar-note">{{ t('calendars.noSources') }}</p>
     <ul class="calendar-list">
       <li v-for="source in sources" :key="source.id" class="calendar-source" data-testid="calendar-source">
-        <label>{{ t('calendars.sourceName') }}<input :value="source.name" :aria-label="t('calendars.renameSource', { name: source.name })" maxlength="80" :disabled="!planner.writable || calendars.pending > 0" @change="changeName(source, $event)"></label>
+        <label>{{ t('calendars.sourceName') }}<input :value="source.name" :aria-label="t('calendars.renameSource', { name: source.name })" data-saves-on-change maxlength="80" :disabled="!planner.writable || calendars.pending > 0" @change="changeName(source, $event)"></label>
         <label>{{ t('calendars.color') }}<select :value="source.colorKey" :disabled="!planner.writable || calendars.pending > 0" @change="changeColor(source, $event)"><option v-for="color in COLOR_KEYS" :key="color" :value="color">{{ t(`calendars.colors.${color}`) }}</option></select></label>
         <p v-if="source.lastSyncedAt" class="calendar-note">{{ t('calendars.lastSync', { time: syncTime(source.lastSyncedAt) }) }}</p>
         <p v-if="source.lastError" role="alert" class="calendar-error">{{ t(source.lastError) }}</p>
