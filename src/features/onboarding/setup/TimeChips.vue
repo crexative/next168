@@ -55,7 +55,7 @@ const editing = ref(false)
 }
 .time[aria-pressed='true'] { border-width: 1.5px; border-color: var(--tint); background: color-mix(in srgb, var(--tint) 14%, transparent); color: var(--tint-label); }
 /* Its words wrap inside the cell with wider fonts or large text, never past it. */
-.other { border-color: transparent; background: transparent; color: var(--tint-label); overflow-wrap: normal; text-align: center; }
+.other { padding-inline: var(--space-1); border-color: transparent; background: transparent; color: var(--tint-label); overflow-wrap: normal; text-align: center; }
 /* The time editor takes the whole row under the chips, not one cell of the grid. */
 .times > :deep(.editor) { grid-column: 1 / -1; }
 </style>

@@ -92,6 +92,8 @@ function answerQuick(value: string): void {
 const env = { topicName: (topic: TopicId) => t(`onboarding.templates.${TOPICS[topic].nameKey}`) }
 const speaker = { t: (key: string, params?: Record<string, unknown>) => t(key, params ?? {}), rangeLine }
 const replies = computed(() => (round.value === undefined ? undefined : roundReplies(props.state, round.value, speaker)))
+// The ranges of a category other than sleep, where the screen's own answer sits beside "Añadir otro horario".
+const rangesAnswer = computed(() => category.value !== undefined && category.value.topic !== 'sleep' && !quick.value && replies.value === undefined)
 const doneLabel = computed(() => (replies.value?.done.current ? `${replies.value.done.label} ${t('onboarding.guided.current')}` : undefined))
 
 // The name being typed lives in the draft: it is unsaved input, and a reload brings it back with its field open.
@@ -235,8 +237,12 @@ const labels = computed(() => ({
           </div>
         </div>
 
-        <RangeList v-else-if="category" :state="state" :category="category" :labels="labels" />
-        <button v-if="extra?.kind === 'answer'" class="reply-chip t-body" type="button" data-testid="setup-secondary" :disabled="busy" @click="onSecondary">{{ t(extra.key) }}</button>
+        <RangeList v-else-if="category" :state="state" :category="category" :labels="labels">
+          <template v-if="extra?.kind === 'answer'" #actions>
+            <button class="reply-chip t-body" type="button" data-testid="setup-secondary" :disabled="busy" @click="onSecondary">{{ t(extra.key) }}</button>
+          </template>
+        </RangeList>
+        <button v-if="extra?.kind === 'answer' && !rangesAnswer" class="reply-chip t-body" type="button" data-testid="setup-secondary" :disabled="busy" @click="onSecondary">{{ t(extra.key) }}</button>
       </div>
     </div>
     <div v-if="hasActions" class="dock-actions">
@@ -305,6 +311,8 @@ const labels = computed(() => ({
 /* "Lo veo después" and "Siguiente" share the row (R_InicioSueno); Siguiente takes the room left, and wraps under it
    only when the text is large. */
 .send { flex: 1 1 auto; max-width: 15rem; }
+/* On a phone it is the full-width call to action (DIRECTION §4, R_InicioHorario). */
+@media (max-width: 480px) { .send { max-width: none; } }
 .other, .add {
   align-self: flex-start; min-height: var(--tap-target); padding: var(--space-2) var(--space-4); border: 2px dashed var(--field-border);
   border-radius: 999px; background: transparent; color: var(--label); font-weight: 600; touch-action: manipulation;

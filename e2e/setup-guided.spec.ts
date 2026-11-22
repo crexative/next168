@@ -5,7 +5,7 @@ import { storedPlanner, storedRecord } from './support/indexedDb'
 import { collectMotion, installMotionSampler } from './support/motionSampler'
 import { visualIntegrityViolations } from './support/visualIntegrity'
 import {
-  bytes, calm, holdCommitLock, live, onScreen, openField, openFromSettings, primary, secondary, setup, skipToSummary, start, storedDoc, tap, writeStoredDocument,
+  bytes, calm, holdCommitLock, live, onScreen, openField, openFromSettings, PHONE, primary, secondary, setup, skipToSummary, start, storedDoc, tap, writeStoredDocument,
 } from './support/setupGuided'
 
 // The guided first-run setup ("Configura tu semana"): one question per screen, one guarded commit at the end, a draft
@@ -1416,4 +1416,49 @@ test.describe('the setup owns the screen (S1-12, N10)', () => {
     expect((await stored(page)).blocks.map((block) => block.id)).not.toContain('b-gym')
     await expect(page.getByTestId('undo-toast')).toHaveCount(1)
   })
+})
+
+// #60 review: on the board's own phone and on a desktop, the answers under the times are in view without scrolling
+// (R_InicioHorario, R_InicioSueno): an open time list must not push them out of the dock.
+async function inView(page: Page, testId: string): Promise<void> {
+  const fit = await live(page).getByTestId(testId).evaluate((element) => {
+    const box = element.getBoundingClientRect()
+    // Inside the answers' own scroller, or else on the screen.
+    const room = element.closest('[data-testid=setup-dock]')?.getBoundingClientRect() ?? { top: 0, bottom: window.innerHeight }
+    return { top: box.top >= room.top - 0.5 && box.top >= 0, bottom: box.bottom <= room.bottom + 0.5 && box.bottom <= window.innerHeight + 0.5 }
+  })
+  expect(fit, testId).toEqual({ top: true, bottom: true })
+}
+
+for (const size of [PHONE, { width: 1440, height: 900 }] as const) {
+  test(`the answers under the times are in view without scrolling at ${size.width}x${size.height}`, async ({ page }) => {
+    await start(page, { size, document: firstRun() })
+    await page.goto('./')
+    await onScreen(page, 'sleep')
+    for (const testId of ['setup-primary', 'setup-secondary']) await inView(page, testId)
+    await expect(live(page).locator('[data-chip=split]')).toBeVisible()
+    const split = await live(page).locator('[data-chip=split]').evaluate((element) => {
+      const room = element.closest('[data-testid=setup-dock]')!.getBoundingClientRect()
+      return element.getBoundingClientRect().bottom <= room.bottom + 0.5
+    })
+    expect(split).toBe(true)
+    await live(page).getByTestId('setup-primary').click()
+    await live(page).locator('[data-value=work]').click()
+    await onScreen(page, 'work')
+    for (const testId of ['range-add', 'setup-secondary', 'setup-primary']) await inView(page, testId)
+  })
+}
+
+test('a removed time gives focus to "Añadir otro horario"', async ({ page }) => {
+  await start(page, { document: firstRun() })
+  await page.goto('./')
+  await onScreen(page, 'sleep')
+  await live(page).getByTestId('setup-primary').click()
+  await live(page).locator('[data-value=work]').click()
+  await onScreen(page, 'work')
+  await live(page).getByTestId('range-add').click()
+  await expect(live(page).getByTestId('range-remove')).toHaveCount(2)
+  await live(page).getByTestId('range-remove').last().click()
+  await expect(live(page).getByTestId('range-remove')).toHaveCount(1)
+  await expect(live(page).getByTestId('range-add')).toBeFocused()
 })

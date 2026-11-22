@@ -10,7 +10,7 @@ import DayPicker from './DayPicker.vue'
 import TimeChips from './TimeChips.vue'
 import { useSetupFormat } from './useSetupFormat'
 
-export type Field = 'days' | 'start' | 'end'
+export type Field = 'start' | 'end'
 
 const props = defineProps<{
   state: SetupState
@@ -59,11 +59,14 @@ function close(field: Field): void {
   focusRow(field)
 }
 
-// Fewer taps (DIRECTION §4): picking the start opens the end with its times; picking the end closes the card.
+// Fewer taps (DIRECTION §4): picking the start opens the end with its times, focus on the end's row (the start's
+// chips leave the page); picking the end closes the card.
 function pick(field: 'start' | 'end', minute: number): void {
   emit('change', field === 'start' ? { start: minute } : { end: minute })
-  if (field === 'start') emit('toggle', 'end')
-  else close(field)
+  if (field === 'start') {
+    emit('toggle', 'end')
+    focusRow('end')
+  } else close(field)
 }
 
 // Escape closes the open picker first; only then may the sheet itself.
