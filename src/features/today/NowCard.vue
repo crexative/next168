@@ -41,6 +41,8 @@ const color = computed(() => {
 const progressPercent = computed(() => Math.round(Math.min(1, Math.max(0, props.state.progress ?? 0)) * 1000) / 10)
 
 const title = computed(() => primary.value?.title ?? t('today.now.free'))
+// A piece of a split task is heard with its part in words (taskParts.ts).
+const spokenTitle = computed(() => primary.value?.kind === 'task' ? primary.value.spokenTitle : undefined)
 const left = computed(() => props.state.minutesLeft === null ? '' : t('common.duration.left', { duration: formatDuration(props.state.minutesLeft) }))
 const until = computed(() => props.state.endsAt ? untilClock(t, 'today.now.until', time(props.state.endsAt)) : '')
 
@@ -75,7 +77,7 @@ function time(instant: string): string {
     <p class="t-footnote now-eyebrow" data-testid="now-eyebrow">{{ t('today.now.eyebrow') }}</p>
     <div :key="state.key" class="now-body">
       <h2 class="t-title-2 now-title" data-testid="now-title">
-        <Icon v-if="isEvent" name="calendar" :size="14" class="now-glyph" />{{ title }}
+        <Icon v-if="isEvent" name="calendar" :size="14" class="now-glyph" /><template v-if="spokenTitle"><span aria-hidden="true">{{ title }}</span><span class="visually-hidden">{{ spokenTitle }}</span></template><template v-else>{{ title }}</template>
       </h2>
       <p v-if="left" class="now-meta">
         <span class="t-headline tabular" data-testid="now-left">{{ left }}</span>

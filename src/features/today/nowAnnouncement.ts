@@ -61,7 +61,7 @@ export function useNowAnnouncements(state: Ref<NowState>, timeZone: Ref<string>,
     const current = state.value
     const changed = key !== previous.key
       ? {
-          title: current.primary?.title ?? t('today.now.free'),
+          title: (current.primary?.kind === 'task' ? current.primary.spokenTitle : undefined) ?? current.primary?.title ?? t('today.now.free'),
           until: current.endsAt ? formatTime(current.endsAt, displayLocale.value, timeZone.value) : undefined,
         }
       : undefined

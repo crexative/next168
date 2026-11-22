@@ -1487,4 +1487,24 @@ test('from Ajustes a category with one range can be left without times in its su
   await remove.click()
   await expect(live(page).locator('[data-category=work] [data-range]')).toHaveCount(0)
   await expect(live(page).getByTestId('card-work')).toContainText('Sin horario')
+
+// #65 review: in the centred modal (max-height, not a fixed height) a long conversation still scrolls inside it, the
+// dock and its "Siguiente" stay in the card.
+test('in the 1440x900 modal a long conversation scrolls inside the card, the dock stays in it', async ({ page }) => {
+  await start(page, { size: { width: 1440, height: 900 } })
+  await page.goto('./')
+  await onScreen(page, 'sleep')
+  await skipToSummary(page)
+  await page.waitForFunction(() => document.getAnimations().every((animation) => animation.playState !== 'running'))
+  const geometry = await page.evaluate(() => {
+    const frame = document.querySelector('.setup-frame')!.getBoundingClientRect()
+    const scroller = document.querySelector<HTMLElement>('[data-testid=setup] section.screen:not([aria-hidden=true]) .setup-scroller')!
+    const before = scroller.scrollTop
+    scroller.scrollTop = 0
+    const moved = scroller.scrollTop !== before
+    const primary = document.querySelector('[data-testid=setup] section.screen:not([aria-hidden=true]) [data-primary]')!.getBoundingClientRect()
+    return { height: frame.height, max: 736, overflows: scroller.scrollHeight > scroller.clientHeight + 1, moved, primaryInside: primary.top >= frame.top && primary.bottom <= frame.bottom }
+  })
+  expect(geometry.height).toBeLessThanOrEqual(geometry.max + 0.5)
+  expect(geometry).toMatchObject({ overflows: true, moved: true, primaryInside: true })
 })

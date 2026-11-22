@@ -8,5 +8,6 @@ export default function registerInsights(registry: ShellRegistry): void {
     titleKey: 'app.tabs.insights',
     icon: 'chart-no-axes-column',
     tabOrder: 3,
+    backdrop: 'plain',
   })
 }

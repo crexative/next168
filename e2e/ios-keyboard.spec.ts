@@ -20,8 +20,8 @@ declare global {
   interface Window { __keyboard: (height: number, offsetTop: number) => void; __scrollIntoViewCalls: number }
 }
 
-async function startOnPhone(page: Page): Promise<void> {
-  await start(page, { document: planned(), size: SIZE })
+async function startOnPhone(page: Page, size: { width: number; height: number } = SIZE): Promise<void> {
+  await start(page, { document: planned(), size })
   await page.addInitScript(() => {
     const target = new EventTarget()
     const state = { height: window.innerHeight, offsetTop: 0 }
@@ -215,3 +215,23 @@ test.describe('P0-4: a typed name that is already an activity is never a silent 
     await expect(live(page).getByTestId('same-name')).toHaveCount(0)
   })
 })
+
+// #65 review: on a tablet the conversation is a centred modal, and it too stays above the on-screen keyboard.
+for (const { width, height, keyboardHeight } of [{ width: 820, height: 1180, keyboardHeight: 360 }, { width: 1180, height: 820, keyboardHeight: 420 }, { width: 1024, height: 768, keyboardHeight: 400 }]) {
+  test(`on a ${width}x${height} tablet the modal conversation keeps the field and its Añadir above the keyboard`, async ({ page }) => {
+    await startOnPhone(page, { width, height })
+    await openCategoryAdd(page)
+    await openOtherField(page)
+    const visible = height - keyboardHeight
+    await keyboard(page, visible, 0)
+    const band = await page.evaluate(() => {
+      const rect = (selector: string) => { const box = document.querySelector(selector)!.getBoundingClientRect(); return { top: box.top, bottom: box.bottom } }
+      return { frame: rect('.setup-frame'), field: rect('[data-testid=more-other-name]'), add: rect('[data-testid=more-other-add]'), width: document.querySelector('.setup-frame')!.getBoundingClientRect().width }
+    })
+    expect(band.width).toBeLessThanOrEqual(560.5)
+    expect(band.frame.top).toBeGreaterThanOrEqual(-1)
+    expect(band.frame.bottom).toBeLessThanOrEqual(visible + 1)
+    expect(band.field.top).toBeGreaterThanOrEqual(band.frame.top)
+    expect(band.add.bottom).toBeLessThanOrEqual(visible + 1)
+  })
+}

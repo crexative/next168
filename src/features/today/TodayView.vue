@@ -28,8 +28,10 @@ import { planSince, readPlanSince, stampPlanSince } from './planSince'
 import { completeTask, reopenTask } from './taskCompletion'
 import { buildTimeline } from './todayTimeline'
 import { useBlockStatus } from './useBlockStatus'
+import { useTaskPartLabels } from '@/ui/taskParts'
 
 const { t, locale } = useI18n()
+const { partLabel, partSpoken } = useTaskPartLabels()
 const planner = usePlannerStore()
 const now = useNow()
 
@@ -46,7 +48,8 @@ const timeline = computed(() => {
   if (!document.value) return { items: [], allDay: [] }
   const busy = external.value.filter((item) => item.busy && !item.allDay).map((item) => ({ start: item.start, end: item.end }))
   const placements = fitTasks({ document: document.value, busy, now: new Date(fitFrom.value), timeZone: timeZone.value })
-  return buildTimeline({ document: document.value, today: today.value, timeZone: timeZone.value, external: external.value, placements })
+  return buildTimeline({ document: document.value, today: today.value, timeZone: timeZone.value, external: external.value, placements,
+    partLabel, partSpoken })
 })
 // Blocks, placed tasks, events and calendar occurrences all count as planned content.
 const hasContent = computed(() => (document.value?.blocks.length ?? 0) > 0 || timeline.value.items.length > 0 || timeline.value.allDay.length > 0)
@@ -89,6 +92,7 @@ onMounted(async () => {
   setTimeout(() => checkInCard.value?.focus(), 0)
 })
 
+// Completing a piece completes the task: both of its controls (the row and Now) pass the task's own title.
 async function complete(taskId: string, title: string): Promise<void> {
   const holder: { after?: string } = {}
   const result = await planner.commit((draft) => { holder.after = completeTask(draft, taskId, new Date()) })
