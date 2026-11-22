@@ -60,6 +60,10 @@ a screen not yet redesigned keeps working with the new tokens and shell.
 10. **One word for a conflict (slice 3, REVIEW M2).** "Se cruza" on the block, "Se cruza con {título}" in the event's
     details and "Se cruza con tu plan" on imported events, in every language; a Weeklid event over a routine is marked
     too, as Hoy already did.
+11. **Resumen's headline [cambia] (slice 5).** The board says "38 h libres esta semana"; the figure counts from now,
+    while the bar's "sin asignar" counts the whole week, so the two would disagree. The headline says "26 h libres desde
+    ahora" (en "from now", fr "à partir de maintenant", pt "a partir de agora", de "ab jetzt"). Hoy and Semana keep
+    "esta semana" in their smaller badge, which stands alone.
 
 Anything else in a board that the app cannot do as drawn is raised with the coordinator before it changes behaviour.
 
