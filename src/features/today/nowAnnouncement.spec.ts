@@ -95,6 +95,18 @@ beforeEach(() => {
     expect(spoken).toHaveLength(1)
   })
 
+  it('speaks a piece of a split task with its part in words', async () => {
+    const state = mount('19:55')
+    await settle()
+    const shown = stateAt('20:00')
+    const piece = { kind: 'task', key: 't:report:0', taskId: 'report', categoryId: 'work', late: false, start: shown.endsAt, end: shown.endsAt,
+      title: '1/2 Informe', taskTitle: 'Informe', spokenTitle: '1/2 Informe, parte 1 de 2' }
+    state.value = { ...shown, key: 'piece', primary: piece as unknown as NowState['primary'] }
+    await settle()
+    expect(spoken).toHaveLength(1)
+    expect(spoken[0]).toMatch(/^Ahora: 1\/2 Informe, parte 1 de 2/)
+  })
+
   it('announces a boundary once, however many refreshes follow it', async () => {
     const state = mount('19:55')
     for (const time of ['20:00', '20:01', '20:05', '20:10']) { state.value = stateAt(time); await settle() }

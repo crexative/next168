@@ -33,6 +33,7 @@ import { keepWhereTheyWere, useTaskPlacements, type MovedNotice } from './taskPl
 import { useNow } from './useNow'
 import { HOUR_HEIGHT_PX, allDayByDate, blockSegmentsByDate, busySegmentsByDate, taskSegmentsByDate } from './weekLayout'
 import { pagerIndexFor, shiftWeek } from './weekNavigation'
+import { useTaskPartLabels } from '@/ui/taskParts'
 
 const DEFAULT_BLOCK_MINUTES = 60
 // Tasks are fitted over the visible week and at most this many days ahead.
@@ -74,8 +75,7 @@ const { placements, notice, recompute } = useTaskPlacements(() => document.value
   : null)
 
 const segments = computed(() => document.value ? blockSegmentsByDate(document.value, dates.value, timeZone.value) : {})
-const partLabel = (title: string, part: number, parts: number) => t('common.taskPart', { title, part, parts })
-const partSpoken = (title: string, part: number, parts: number) => t('common.taskPartSpoken', { title, part, parts })
+const { partLabel, partSpoken } = useTaskPartLabels()
 const taskSegments = computed(() => document.value ? taskSegmentsByDate(placements.value, document.value.tasks, dates.value, timeZone.value, partLabel, partSpoken) : {})
 const calendarNames = computed(() => calendarNamesOf(document.value))
 const busy = computed(() => busySegmentsByDate(external.value, document.value?.events ?? [], dates.value, timeZone.value, calendarNames.value))

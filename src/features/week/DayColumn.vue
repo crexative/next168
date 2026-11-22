@@ -192,7 +192,7 @@ const presses = computed<Presses>(() => {
       key: `t:${planned.task.key}`, top: planned.top, bottom: planned.bottom, ...across(planned),
       ...(planned.hostKey ? { hostKey: `b:${planned.hostKey}` } : {}),
       ...(planned.outline ? { outline: true } : {}),
-      option: { key: `t:${planned.task.key}`, kind: 'task' as const, title: planned.task.title, range: taskRange(planned.task), activate: () => emit('select-task', planned.task.taskId), anchor: () => itemControl(`t:${planned.task.key}`) },
+      option: { key: `t:${planned.task.key}`, kind: 'task' as const, title: planned.task.title, spokenTitle: planned.task.spokenTitle, range: taskRange(planned.task), activate: () => emit('select-task', planned.task.taskId), anchor: () => itemControl(`t:${planned.task.key}`) },
     })),
   ]
   const bounds = { width, height: 24 * props.hourHeight }
@@ -239,7 +239,6 @@ function onColumnClick(event: MouseEvent, blockId?: string): void {
       <span class="t-caption" data-role="caption" />
       <span data-role="taskTitle" />
       <span data-role="compact" data-min-text />
-      <span data-role="blockTitle" />
       <span class="item-glyph"><CategoryMark :category="undefined" data-glyph-probe="category" /></span>
       <span class="item-glyph is-smallest"><CategoryMark :category="undefined" data-glyph-probe="category-min" /></span>
       <span><Icon name="triangle-alert" :size="12" data-glyph-probe="warning" /></span>
