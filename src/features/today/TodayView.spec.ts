@@ -73,8 +73,8 @@ describe('TodayView', () => {
     await vi.waitFor(() => expect(shown()).toEqual(['1/2 Write report', '2/2 Write report']))
     expect(spoken()).toEqual(['Task:', 'Write report, part 1 of 2', 'Task:', 'Write report, part 2 of 2'])
     const action = host.querySelector<HTMLButtonElement>('[data-kind="task"] .row-control button')!
-    expect(action.getAttribute('aria-label')).not.toMatch(/of\u00a02/)
-    expect(action.getAttribute('aria-label')).toContain('Write report')
+    // The action and the toast name the task itself, not the piece.
+    expect(action.getAttribute('aria-label')).toBe('Mark Write report as done')
     action.click()
     await store.settled()
     await vi.waitFor(() => expect(useUndoToast().toast.value?.message).toBe('Task done: Write report'))
