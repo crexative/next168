@@ -6,6 +6,7 @@ import { MAX_FIXED_MIN, MAX_TASK_MIN, MIN_TASK_MIN } from '@/core/model'
 import { localDateOf } from '@/core/time'
 import { usePlannerStore } from '@/stores/plannerStore'
 import { announce } from '@/ui/announcer'
+import { fitToContent } from '@/ui/fitToContent'
 import Button from '@/ui/Button.vue'
 import Icon from '@/ui/Icon.vue'
 import { addLocalDays } from '@/core/time'
@@ -326,24 +327,14 @@ function onRowKeydown(event: KeyboardEvent): void {
 }
 
 // The field grows with its content (a paste or dictation with line breaks), up to a few lines, then scrolls.
-function grow(): void {
-  const element = field.value
-  if (!element) return
-  element.style.height = 'auto'
-  element.style.height = `${element.scrollHeight}px`
-}
-watch(text, () => void nextTick(grow))
+watch(text, () => void nextTick(() => fitToContent(field.value)))
 
 // Row titles wrap instead of being cut: each row field is as tall as its title.
-function fit(element: HTMLTextAreaElement): void {
-  element.style.height = 'auto'
-  element.style.height = `${element.scrollHeight}px`
-}
 function growRow(event: Event): void {
-  fit(event.target as HTMLTextAreaElement)
+  fitToContent(event.target as HTMLTextAreaElement)
 }
 const root = ref<HTMLFormElement | null>(null)
-watch(rows, () => void nextTick(() => root.value?.querySelectorAll<HTMLTextAreaElement>('.row-title').forEach(fit)))
+watch(rows, () => void nextTick(() => root.value?.querySelectorAll<HTMLTextAreaElement>('.row-title').forEach(fitToContent)))
 
 const statusText = computed(() => {
   switch (submission.state.value) {
@@ -510,7 +501,7 @@ defineExpose({ focus: () => field.value?.focus(), submit, canSubmit, dirty })
 .add { display: flex; flex-direction: column; gap: var(--space-2); }
 .field { display: flex; flex: 1; flex-direction: column; gap: var(--space-1); min-width: 0; }
 /* The form is the sheet's grouped page; the title is a large white field without a border that grows with its lines
-   (grow()), up to a few, then scrolls. */
+   (fitToContent), up to a few, then scrolls. */
 .capture-field {
   min-height: var(--tap-target);
   max-height: 12em;

@@ -130,6 +130,33 @@ describe('editing a task', () => {
     expect(store.document!.tasks).toEqual([TASK])
   })
 
+  it('a long title wraps instead of being cut: its field is as tall as its lines', async () => {
+    const scrollHeight = vi.spyOn(HTMLTextAreaElement.prototype, 'scrollHeight', 'get').mockReturnValue(30)
+    await open('t-1')
+    const field = titleField()
+    expect(field.tagName).toBe('TEXTAREA')
+    await nextTick()
+    expect(field.style.height).toBe('30px')
+    scrollHeight.mockReturnValue(60)
+    await set(field, 'Write the quarterly report for the board and the team')
+    await nextTick()
+    expect(field.style.height).toBe('60px')
+    scrollHeight.mockRestore()
+  })
+
+  it('the title stays one line of text: Return saves, and a pasted line break becomes a space', async () => {
+    const { store, isOpen } = await open('t-1')
+    await set(titleField(), 'Read two\nchapters')
+    expect(titleField().value).toBe('Read two chapters')
+    const enter = new KeyboardEvent('keydown', { key: 'Enter', bubbles: true, cancelable: true })
+    titleField().dispatchEvent(enter)
+    expect(enter.defaultPrevented).toBe(true)
+    await store.settled()
+    await nextTick()
+    expect(store.document!.tasks[0]!.title).toBe('Read two chapters')
+    expect(isOpen.value).toBe(false)
+  })
+
   it('has "Cancel", the title and "Save" in its header (R_HojaTarea), and no ✕ or second Cancel at the foot', async () => {
     await open('t-1')
     const header = dialog().querySelector('[data-testid=sheet-form-header]')!

@@ -343,7 +343,8 @@ onBeforeUnmount(() => {
    action, which stay in reach. The query is in em, so it follows the text size. */
 .sheet-grab { container: sheet-head / inline-size; }
 .sheet-header.is-form {
-  display: grid; grid-template-areas: 'cancel title action'; grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  /* The sides never get narrower than their words ("Hinzufügen" in a wide font); the title wraps between them. */
+  display: grid; grid-template-areas: 'cancel title action'; grid-template-columns: minmax(max-content, 1fr) minmax(0, max-content) minmax(max-content, 1fr);
   gap: 0 var(--space-2); padding: 0 var(--space-2);
 }
 .sheet-header.is-form .sheet-title { grid-area: title; min-width: 0; text-align: center; overflow-wrap: break-word; }
