@@ -63,6 +63,12 @@ a screen not yet redesigned keeps working with the new tokens and shell.
 
 Anything else in a board that the app cannot do as drawn is raised with the coordinator before it changes behaviour.
 
+## Tests that read styles
+
+Some layout rules are checked by reading a component's own styles (`ConversationFrame.modal.spec.ts`), because the App
+review's mutant runner has no browser; the e2e still measure the real layout. Rewriting or reformatting those styles
+means updating that spec with them.
+
 ## Tokens and styles added ahead of their screens
 
 Slice 1 adds what later slices draw with: `--radius-bubble`, `--warning-label`, `.t-title-1`, `.t-section` and the
