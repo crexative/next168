@@ -82,6 +82,34 @@ describe('a routine changed by talking (R_EditarRutina)', () => {
     expect($('[data-testid=talk-problem]')).toBeNull()
   })
 
+  it('an answer not saved in one step never leaks into the next: each checks exactly what it would save', async () => {
+    // Gym on Monday 17:30-19:00 beside Work Monday to Friday 9-17.
+    const monday = { ...plan, blocks: [block, { ...gym, days: [1], start: 1050, end: 1140 }] }
+    const first = talk(monday)
+    // Days › weekends (not saved) › Horario from 10:00: what would be saved is Monday to Friday 10:00-18:00, which
+    // crosses Gym on Monday; the weekends left behind must not hide it.
+    await tap('[data-testid=talk-days]')
+    await tap('[data-preset=weekend]')
+    await tap('[data-testid=talk-back]')
+    await tap('[data-testid=talk-time]')
+    await tap('[data-field=start] ~ .times [data-minute="600"]')
+    expect($('[data-testid=talk-problem]')!.textContent).toContain('Gym')
+    $('[data-testid=talk-save]')!.click()
+    await nextTick()
+    expect(first.changes).toEqual([])
+    app!.unmount(); document.body.innerHTML = ''
+    // Horario 10:00-18:00 crosses Gym (not saved); then Days › every day at the routine's own 9-17 crosses nothing.
+    const second = talk(monday)
+    await tap('[data-testid=talk-time]')
+    await tap('[data-field=start] ~ .times [data-minute="600"]')
+    await tap('[data-testid=talk-back]')
+    await tap('[data-testid=talk-days]')
+    await tap('[data-preset=everyDay]')
+    expect($('[data-testid=talk-problem]')).toBeNull()
+    await tap('[data-testid=talk-save]')
+    expect(second.changes).toEqual([{ kind: 'block', block: { ...block, days: [0, 1, 2, 3, 4, 5, 6] } }])
+  })
+
   it('a picked time moves focus to the end row, where the times went', async () => {
     talk()
     await tap('[data-testid=talk-time]')

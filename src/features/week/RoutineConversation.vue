@@ -64,19 +64,28 @@ const question = computed(() => {
 // máximo 45 h" (R_EditarRutina).
 const perWeek = computed(() => {
   const goal = props.category?.goal
-  const hours = weekly(start.value, end.value, days.value)
+  const hours = weekly(candidate.value.start, candidate.value.end, candidate.value.days)
   if (!props.category || !goal || goal.type === 'none') return t('week.talk.perWeek', { hours: duration(hours) })
   const others = (plannedMinutesByCategory(props.document)[props.category.id] ?? 0) - weekly(props.block.start, props.block.end, props.block.days as DayIndex[])
   return t('week.talk.goalLine', { category: props.category.name, hours: duration(Math.max(0, others) + hours), kind: t(`week.talk.goalKind.${goal.type}`), goal: duration(goal.hoursPerWeek * 60) })
 })
 // The new time or days checked like the form (blockEditing): one that crosses another routine is not saved, and says
-// with which one, so the person changes it.
+// with which one, so the person changes it. What is checked is exactly what Guardar would write: the new time on the
+// routine's days, or the new days at its times.
+const candidate = computed(() => step.value === 'days'
+  ? { start: props.block.start, end: props.block.end, days: [...days.value] as DayIndex[] }
+  : { start: start.value, end: end.value, days: [...props.block.days] as DayIndex[] })
 const problem = computed(() => {
   if (step.value !== 'time' && step.value !== 'days') return ''
-  const error = validateBlockDraft({ id: props.block.id, title: props.block.title, categoryId: props.block.categoryId, start: start.value, end: end.value, days: [...days.value] }, props.document).errors[0]
+  const error = validateBlockDraft({ id: props.block.id, title: props.block.title, categoryId: props.block.categoryId, ...candidate.value }, props.document).errors[0]
   if (!error) return ''
   return error.code === 'overlap' ? t('week.editor.errors.overlap', { title: error.blockTitle }) : t(`week.editor.errors.${error.code}`)
 })
+// A failed save says why until the person changes something and tries again.
+const failureSeen = ref(false)
+watch(() => props.saveError, () => { failureSeen.value = false })
+watch([start, end, days, goalType, goalHours, step], () => { failureSeen.value = true })
+const failure = computed(() => (failureSeen.value ? null : props.saveError))
 // "¿Quitar Trabajo de tu semana? Sus 40 h quedan libres."
 const freed = computed(() => t('week.talk.removeFrees', { hours: duration(weekly(props.block.start, props.block.end, props.block.days as DayIndex[])) }))
 
@@ -92,10 +101,19 @@ const removeChoices = computed(() => [
   { value: 'no', label: t('week.talk.removeNo'), testId: 'talk-remove-no' },
 ])
 
+// Each question starts from the routine as it is: an answer not saved in one step never leaks into the next.
+function resetDraft(): void {
+  start.value = props.block.start
+  end.value = props.block.end
+  days.value = [...props.block.days] as DayIndex[]
+  goalType.value = props.category?.goal.type ?? 'none'
+  goalHours.value = props.category?.goal.hoursPerWeek || 1
+  open.value = 'start'
+}
 function choose(value: string): void {
   if (value === 'goal' && !props.category) return
+  resetDraft()
   step.value = value as Step
-  open.value = 'start'
 }
 
 const rows = ref<Record<'start' | 'end', HTMLElement | null>>({ start: null, end: null })
@@ -241,9 +259,9 @@ onUnmounted(() => {
         </div>
         <div class="dock-actions">
           <div class="column dock-column">
-            <p v-if="problem || saveError" class="problem t-subhead" role="alert" data-testid="talk-problem">⚠ {{ problem || saveError }}</p>
+            <p v-if="problem || failure" class="problem t-subhead" role="alert" data-testid="talk-problem">⚠ {{ problem || failure }}</p>
             <Button v-if="saving" block class="primary" :disabled="!writable || !canSave" data-testid="talk-save" @click="save">{{ t('common.save') }}</Button>
-            <Button v-if="step !== 'choose'" variant="quiet" class="cancel" data-testid="talk-back" @click="step = 'choose'">{{ t('week.talk.other') }}</Button>
+            <Button v-if="step !== 'choose'" variant="quiet" class="cancel" data-testid="talk-back" @click="resetDraft(); step = 'choose'">{{ t('week.talk.other') }}</Button>
             <Button v-else variant="quiet" class="cancel" data-testid="talk-cancel" @click="emit('close')">{{ t('common.cancel') }}</Button>
           </div>
         </div>
