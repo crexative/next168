@@ -25,7 +25,7 @@ const planned = () => onboardedDocument({
 })
 const firstRun = () => onboardedDocument({ workspaceId: 'ws-first-run', settings: { locale: 'es', weekStartsOn: 1, timeZone: 'America/Bogota', onboardingDone: false, theme: 'system' } })
 
-async function start(page: Page, size: (typeof SIZES)[number], theme: (typeof THEMES)[number], document: unknown): Promise<void> {
+async function start(page: Page, size: { width: number; height: number }, theme: (typeof THEMES)[number], document: unknown): Promise<void> {
   await page.setViewportSize(size)
   await page.emulateMedia({ colorScheme: theme })
   await page.clock.install({ time: NOW })
@@ -306,5 +306,74 @@ for (const theme of THEMES) {
     await expect(sheet.getByTestId('change-before')).toHaveCount(0)
     await calm(page)
     expect(await visualIntegrityViolations(page)).toEqual([])
+  })
+}
+
+// #64 review: the phone sheet ran short of the bottom (the tab bar's reserve stayed while the bar was hidden), and the
+// assistant's dock, sticky at every size, left the answers a strip at 200 % text.
+async function scrollToEnd(page: Page): Promise<void> {
+  await page.evaluate(() => window.scrollTo({ top: document.documentElement.scrollHeight, behavior: 'instant' }))
+  await page.waitForFunction(() => Math.abs(window.scrollY + window.innerHeight - document.documentElement.scrollHeight) <= 1)
+}
+const bottomOf = (page: Page, selector: string) => page.locator(selector).evaluate((element) => element.getBoundingClientRect().bottom)
+const viewportHeight = (page: Page) => page.evaluate(() => window.innerHeight)
+
+for (const route of ['settings', 'assistant'] as const) {
+  test(`on a phone the ${route} sheet runs to the bottom of the screen when scrolled to its end`, async ({ page }) => {
+    await start(page, SIZES[0], 'light', planned())
+    await page.goto('./#/week')
+    await page.locator(`[data-testid=${route}-entry]:visible`).click()
+    await expect(page.getByTestId('sheet-bar')).toBeVisible()
+    await calm(page)
+    await scrollToEnd(page)
+    const height = await viewportHeight(page)
+    expect(Math.abs(await bottomOf(page, '.view[data-presentation=sheet]') - height)).toBeLessThanOrEqual(1)
+    if (route === 'assistant') expect(Math.abs(await bottomOf(page, '[data-testid=assistant-dock]') - height)).toBeLessThanOrEqual(1)
+  })
+}
+
+for (const scale of ['100%', '200%'] as const) {
+  test(`on a phone at ${scale} text the newest answer is in view above the assistant's dock`, async ({ page }) => {
+    await page.addInitScript((size) => { document.addEventListener('DOMContentLoaded', () => { document.documentElement.style.fontSize = size }) }, scale)
+    await start(page, SIZES[0], 'light', planned())
+    await page.goto('./#/assistant')
+    const suggestions = page.getByTestId('suggestions').getByRole('button')
+    for (const index of [0, 1]) {
+      await suggestions.nth(index).click()
+      await expect(page.locator('.messages > li[data-role=assistant]')).toHaveCount(index + 1)
+    }
+    await calm(page)
+    const answer = page.locator('.messages > li').last()
+    const { top, bottom, dockTop, docked } = await answer.evaluate((element) => {
+      const dock = document.querySelector<HTMLElement>('[data-testid=assistant-dock]')!
+      const box = element.getBoundingClientRect()
+      return { top: box.top, bottom: box.bottom, dockTop: dock.getBoundingClientRect().top, docked: getComputedStyle(dock).position === 'sticky' }
+    })
+    const height = await viewportHeight(page)
+    expect(top).toBeGreaterThanOrEqual(0)
+    expect(bottom).toBeLessThanOrEqual((docked ? Math.min(dockTop, height) : height) + 1)
+    // At 200 % the dock takes more than a third of the phone, so it scrolls with the page instead of covering it.
+    expect(docked).toBe(scale === '100%')
+  })
+}
+
+for (const size of [SIZES[0], { width: 820, height: 1180 }] as const) {
+  test(`Escape and a tap on the dimmed screen close Settings at ${size.width} px, with focus back on its entry`, async ({ page }) => {
+    await start(page, size, 'light', planned())
+    await page.goto('./#/week')
+    const entry = page.locator('[data-testid=settings-entry]:visible')
+    await entry.click()
+    await expect(page.getByTestId('sheet-bar')).toBeVisible()
+    await page.keyboard.press('Escape')
+    await expect(page.getByTestId('sheet-bar')).toHaveCount(0)
+    await expect(page).toHaveURL(/#\/week$/)
+    await expect(entry).toBeFocused()
+    await entry.click()
+    await expect(page.getByTestId('sheet-bar')).toBeVisible()
+    await calm(page)
+    await page.mouse.click(8, 8)
+    await expect(page.getByTestId('sheet-bar')).toHaveCount(0)
+    await expect(page).toHaveURL(/#\/week$/)
+    await expect(entry).toBeFocused()
   })
 }

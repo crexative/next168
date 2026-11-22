@@ -9,14 +9,14 @@ import Button from '@/ui/Button.vue'
 import Icon from '@/ui/Icon.vue'
 import { registerIcons } from '@/ui/icons'
 import { ArrowRight } from 'lucide-vue-next'
-
-registerIcons({ 'arrow-right': ArrowRight })
 import Sheet from '@/ui/Sheet.vue'
 import { refreshPending } from './pending'
 import { getProposalRepository } from './repository'
 import { fieldChanges, summarizeEntity } from './changeSummary'
 import { EXPANDED_UP_TO, groupChanges, type ChangeGroupKey } from './changeGroups'
 import { lastDecision, reviewing, type ProposalReview } from './reviewState'
+
+registerIcons({ 'arrow-right': ArrowRight })
 
 const { t, locale } = useI18n()
 const planner = usePlannerStore()

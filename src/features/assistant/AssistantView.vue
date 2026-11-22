@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, inject, onMounted, ref } from 'vue'
+import { computed, inject, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { SHEET_PRESENTED } from '@/app/contracts'
 import { AI_HASH } from '@/features/settings/route'
@@ -44,6 +44,34 @@ const suggestions = computed(() => SUGGESTIONS.map((key) => ({ key, text: t(`ass
 // download card shows here only after the person chose the model there.
 const canType = computed(() => assistant.active.value === 'webllm')
 const showSuggestions = computed(() => !canType.value || assistant.messages.value.length === 0)
+
+// The dock rests at the bottom like a chat's only while it leaves most of the screen to the conversation: at large
+// text its suggestions and privacy line can take half of a phone, and then it scrolls with the page instead.
+const MAX_DOCK_SHARE = 0.35
+const dock = ref<HTMLElement | null>(null)
+const docked = ref(true)
+const dockHeight = ref(0)
+const fitDock = () => {
+  if (!dock.value) return
+  dockHeight.value = dock.value.offsetHeight
+  docked.value = dockHeight.value <= window.innerHeight * MAX_DOCK_SHARE
+}
+let dockResized: ResizeObserver | undefined
+onMounted(() => {
+  fitDock()
+  window.addEventListener('resize', fitDock)
+  if (typeof ResizeObserver !== 'undefined' && dock.value) {
+    dockResized = new ResizeObserver(fitDock)
+    dockResized.observe(dock.value)
+  }
+})
+onBeforeUnmount(() => { window.removeEventListener('resize', fitDock); dockResized?.disconnect() })
+// The newest answer is brought into view, clear of the dock when it rests at the bottom.
+const messagesList = ref<HTMLElement | null>(null)
+watch(() => assistant.messages.value.length, async () => {
+  await nextTick()
+  messagesList.value?.lastElementChild?.scrollIntoView({ block: 'nearest' })
+})
 // "Responder con" (R_Asistente): one pop-up under the title instead of the two cards. Quick answers and the on-device
 // model answer here; "Usar con tu IA" is the way to ask anything with the AI you already use, on its own page.
 const ANY_AI = 'anyAi'
@@ -85,7 +113,7 @@ async function submit(): Promise<void> {
 </script>
 
 <template>
-  <div class="assistant">
+  <div class="assistant" :style="{ '--assistant-dock-height': docked ? `${dockHeight}px` : '0px' }">
     <BackButton v-if="!inSheet" current="assistant" fallback="today" />
     <label class="reply-with t-subhead" data-testid="reply-with">
       <span class="t-secondary">{{ t('assistant.settings.provider') }}:</span>
@@ -100,7 +128,7 @@ async function submit(): Promise<void> {
         <p class="t-subhead failure" role="alert" data-testid="assistant-failure">{{ failureMessage }}</p>
         <Button v-if="canRetry" variant="tinted" data-testid="assistant-retry" @click="assistant.prepareModel()">{{ t('assistant.retry') }}</Button>
       </div>
-      <ol class="messages" aria-live="polite">
+      <ol ref="messagesList" class="messages" aria-live="polite">
         <!-- One conversation language with setup and the check-in (R_Asistente): your words as your bubbles on the trailing
              side, Weeklid's beside its mark. -->
         <li v-for="message in assistant.messages.value" :key="message.id" class="message" :class="`is-${message.role}`" :data-role="message.role">
@@ -114,7 +142,7 @@ async function submit(): Promise<void> {
       <p v-if="assistant.busy.value === 'asking'" class="t-footnote t-secondary" role="status">{{ t('assistant.chat.thinking') }}</p>
     </section>
 
-    <div class="dock" data-testid="assistant-dock">
+    <div ref="dock" class="dock" :class="{ 'is-docked': docked }" data-testid="assistant-dock">
     <ul v-if="showSuggestions" class="suggestions" :aria-label="t('assistant.suggestions.label')" data-testid="suggestions">
       <li v-for="suggestion in suggestions" :key="suggestion.key">
         <button class="suggestion t-subhead" type="button" :disabled="!planner.document || assistant.busy.value === 'asking'" @click="ask(suggestion.text)">{{ suggestion.text }}</button>
@@ -164,9 +192,10 @@ async function submit(): Promise<void> {
 .reply-with:has(.reply-select:focus-visible) { outline: 2px solid var(--tint); outline-offset: 2px; border-radius: 10px; }
 /* The conversation rests on the dock, like a chat. */
 .chat { flex: 1; justify-content: flex-end; }
+.dock.is-docked { position: sticky; bottom: 0; }
+/* Clear of the docked bar when an answer is brought into view. */
+.messages > li { scroll-margin-bottom: var(--assistant-dock-height, 0px); }
 .dock {
-  position: sticky;
-  bottom: 0;
   margin-top: auto;
   display: flex;
   flex-direction: column;

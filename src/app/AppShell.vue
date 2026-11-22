@@ -71,6 +71,15 @@ const sheetPresented = computed(() => presentation.value !== undefined)
 provide(SHEET_PRESENTED, sheetPresented)
 const lastTab = ref<ViewId>('today')
 watch(currentView, (view) => { if (view?.tabOrder !== undefined) lastTab.value = view.id }, { immediate: true })
+// Listo, Escape and the dimmed strip all close a sheet: back to the tab it came from, with focus on the entry that
+// opened it (onViewEntered).
+let sheetOpener: ViewId | null = null
+function rememberOpener(): void { if (sheetPresented.value && currentView.value) sheetOpener = currentView.value.id }
+function closeSheet(): void {
+  if (!sheetPresented.value) return
+  rememberOpener()
+  window.location.hash = viewHash(lastTab.value)
+}
 watch(presentation, (kind) => {
   if (kind) document.documentElement.dataset.presentation = kind
   else delete document.documentElement.dataset.presentation
@@ -100,7 +109,13 @@ function toggleSidebar(fromKeyboard: boolean): void {
 function onToggleClick(event: MouseEvent): void { toggleSidebar(event.detail === 0) }
 
 function onKeydown(event: KeyboardEvent): void {
-  if (event.defaultPrevented || layout.value === 'none' || anyModalOpen()) return
+  if (event.defaultPrevented || anyModalOpen()) return
+  if (event.key === 'Escape' && sheetPresented.value) {
+    event.preventDefault()
+    closeSheet()
+    return
+  }
+  if (layout.value === 'none') return
   if (isSidebarShortcut(event, apple)) {
     event.preventDefault()
     toggleSidebar(true)
@@ -162,7 +177,11 @@ function onViewEntered(element: Element): void {
   const active = document.activeElement
   if (active && active !== element && element.contains(active)) return
   if (anyModalOpen()) return
-  element.querySelector<HTMLElement>('h1')?.focus({ preventScroll: true })
+  const opener = sheetOpener
+  sheetOpener = null
+  const entry = opener ? [...document.querySelectorAll<HTMLElement>(`[data-testid="${opener}-entry"]`)].find((candidate) => candidate.getClientRects().length > 0) : undefined
+  const target = entry ?? element.querySelector<HTMLElement>('h1')
+  target?.focus({ preventScroll: true })
   announce(pageTitle.value)
 }
 
@@ -222,6 +241,8 @@ dismissUndoWhenChanged(() => planner.document?.workspaceId)
       <UndoToast />
       <StatusBanners :inert="covered || undefined" />
       <StorageUpgradeWaiting />
+      <!-- The dimmed screen around a sheet: a tap there closes it, like the system's sheets. -->
+      <div v-if="sheetPresented" class="sheet-scrim" aria-hidden="true" data-testid="sheet-scrim" @click="closeSheet" />
       <main id="main" class="main" tabindex="-1" :inert="covered || undefined">
         <RecoveryScreen v-if="planner.status === 'corrupt'" />
         <StorageErrorScreen v-else-if="planner.status === 'error' || planner.error === UPGRADE_COPY_FAILED" />
@@ -231,7 +252,7 @@ dismissUndoWhenChanged(() => planner.document?.workspaceId)
               <span v-if="presentation === 'sheet'" class="sheet-grabber" aria-hidden="true" />
               <!-- Focusable by script only: the shell moves focus here after a route change, as with the large title. -->
               <h1 class="sheet-title t-headline" tabindex="-1">{{ t(currentView.titleKey) }}</h1>
-              <a class="sheet-done t-body" :href="viewHash(lastTab)" data-testid="sheet-done">{{ t('common.done') }}</a>
+              <a class="sheet-done t-body" :href="viewHash(lastTab)" data-testid="sheet-done" @click="rememberOpener">{{ t('common.done') }}</a>
             </header>
             <LargeTitle v-else :title="t(currentView.titleKey)">
               <template #center>
@@ -310,10 +331,27 @@ dismissUndoWhenChanged(() => planner.document?.workspaceId)
 .view[data-presentation='sheet'] {
   min-height: calc(100dvh - var(--safe-top) - var(--space-3));
   margin-top: calc(var(--safe-top) + var(--space-3));
-  border-radius: 12px 12px 0 0;
+  border-radius: 24px 24px 0 0;
   background: var(--bg-grouped);
+  /* The sheet runs to the bottom of the screen: the room the page keeps under its end is inside the sheet. */
+  padding-bottom: calc(var(--safe-bottom) + var(--space-4) + var(--banners-height, 0px));
 }
 html[data-backdrop='plain'] .view[data-presentation='sheet'] { background: var(--bg); }
+/* The sheet's top margin stays inside the page: collapsed through it, the shell's full height would leave a strip under
+   a short sheet. */
+html[data-presentation] .main { display: flow-root; }
+/* The sheet lies over its scrim, which takes the taps on the dimmed screen around it. */
+.sheet-scrim { position: fixed; inset: 0; z-index: 0; }
+.view[data-presentation] { position: relative; z-index: 1; }
+/* The page itself keeps nothing below the sheet (no tab bar under it: --tabbar-inset is 0 below). */
+.shell:has(.view[data-presentation='sheet']) .content { padding-bottom: 0; }
+/* The assistant's own dock carries the safe area: its sheet ends at the dock. */
+.view[data-presentation='sheet'][data-view='assistant'] { display: flex; flex-direction: column; padding-bottom: 0; }
+/* The conversation fills the sheet, so its dock rests on the bottom of the screen. */
+.view[data-presentation='sheet'][data-view='assistant'] > :not(.sheet-bar) { flex: 1; }
+/* A floating pill or toast over a sheet keeps the end of the sheet clear of it. */
+html:has(.proposal-badge) .view[data-presentation='sheet'] { padding-bottom: calc(var(--safe-bottom) + var(--space-4) + var(--banners-height, 0px) + var(--tap-target) + var(--space-3)); }
+html:has([data-testid='undo-toast']) .view[data-presentation='sheet'] { padding-bottom: calc(var(--safe-bottom) + var(--space-3) + var(--banners-height, 0px) + var(--tap-target) + var(--space-6)); }
 /* The tablet's form sheet: 640 wide, 64 from the top, radius 24, on the grouped grey (R_TabletAjustes). */
 .view[data-presentation='form'] {
   max-width: 40rem;
@@ -552,4 +590,6 @@ html[data-backdrop='plain'] .view[data-presentation='sheet'] { background: var(-
 @media (min-width: 768px) {
   :root { --tabbar-height: 0px; --tabbar-float: 0px; }
 }
+/* No tab bar under a phone sheet either, so nothing reserves its room. */
+html[data-presentation='sheet'] { --tabbar-height: 0px; --tabbar-float: 0px; }
 </style>

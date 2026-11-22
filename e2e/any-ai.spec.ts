@@ -125,7 +125,7 @@ for (const theme of THEMES) {
         await expect(page).toHaveURL(/#\/settings\/ai$/)
         await expect(page.getByTestId('any-ai-copy')).toBeVisible()
         await expect(page.getByRole('heading', { name: 'Claude Desktop o Claude Code (en este equipo)' })).toHaveCount(0)
-        await expect(page.getByTestId('any-ai-toggle')).not.toHaveAttribute('aria-expanded', /.*/)
+        await expect(page.getByTestId('any-ai-head')).not.toHaveAttribute('aria-expanded', /.*/)
         await noViolations(page, `${theme}/${size}/settings connect section`)
       })
 

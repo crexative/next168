@@ -55,6 +55,13 @@ a screen not yet redesigned keeps working with the new tokens and shell.
 
 Anything else in a board that the app cannot do as drawn is raised with the coordinator before it changes behaviour.
 
+## Open for a later slice
+
+- **Back from "Usar con tu IA" (slice 7).** Choosing "Responder con: Usar con tu IA" in the assistant opens its page in
+  Settings (`#/settings/ai`), whose back button goes to Settings, not to the assistant; on a phone the sheet's Listo
+  goes to the tab. The assistant is one tap away again from the toolbar, but there is no direct way back. A later slice
+  should give that page a way back to where it was opened from.
+
 ## Tokens and styles added ahead of their screens
 
 Slice 1 adds what later slices draw with: `--radius-bubble`, `--warning-label`, `.t-title-1`, `.t-section` and the

@@ -187,6 +187,28 @@ describe('Settings and the assistant as a full-height sheet on a phone (DIRECTIO
     expect(document.documentElement.dataset.presentation).toBe('sheet')
   })
 
+  it.each([390, 900])('Escape and a tap on the dimmed screen close the sheet back to its tab at %i px', async (width) => {
+    const host = await mountShell('#/week', width)
+    await nextTick()
+    const open = async () => {
+      window.location.hash = '#/settings'
+      window.dispatchEvent(new HashChangeEvent('hashchange'))
+      await vi.waitFor(() => expect(host.querySelector('[data-testid=sheet-scrim]')).not.toBeNull())
+    }
+    const closed = async () => {
+      window.dispatchEvent(new HashChangeEvent('hashchange'))
+      await vi.waitFor(() => expect(host.querySelector('[data-testid=sheet-bar]')).toBeNull())
+      expect(window.location.hash).toBe('#/week')
+    }
+    await open()
+    window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }))
+    await closed()
+    expect(host.querySelector('[data-testid=sheet-scrim]')).toBeNull()
+    await open()
+    host.querySelector<HTMLElement>('[data-testid=sheet-scrim]')!.click()
+    await closed()
+  })
+
   it('on a tablet, Settings is a centred form sheet with Listo and no grabber (R_TabletAjustes); the assistant stays a page', async () => {
     const host = await mountShell('#/tasks', 900)
     await nextTick()
