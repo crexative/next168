@@ -22,5 +22,5 @@ export function useSetupFormat() {
   const rangeLine = (category: CategoryDraft, range: RangeDraft) => `${rangeDays(category, range)} · ${timeRangeText(range.start, range.end, locale.value)}`
   const slotLine = (slot: Slot) => `${days(slot.days)} · ${timeRangeText(slot.start, slot.end, locale.value)}`
 
-  return { t, locale, weekStartsOn, uses12h, time, duration, days, rangeDays, rangeLine, slotLine }
+  return { t, locale, weekStartsOn, uses12h, time, duration, days, rangeLine, slotLine }
 }

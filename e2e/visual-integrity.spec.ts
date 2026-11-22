@@ -551,8 +551,9 @@ for (const theme of THEMES) {
       // The days are preset chips in the card (R_InicioHorario); "Elegir días" opens the days in place.
       await live.locator('[data-preset=pick]').click()
       await audit(page, `${theme}/setup work days`)
-      // The start time is open from the first view of the card.
-      await expect(live.locator('[data-field=start]')).toHaveAttribute('aria-expanded', 'true')
+      // The start's times open on the first view only where they leave the answers under them in view.
+      const startRow = live.locator('[data-field=start]')
+      if (await startRow.getAttribute('aria-expanded') !== 'true') await startRow.click()
       await live.getByTestId('other-time').click()
       await audit(page, `${theme}/setup time editor`)
       await page.keyboard.press('Escape')

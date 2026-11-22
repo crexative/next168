@@ -124,7 +124,8 @@
       "nextDay": "(next day)",
       "otherTime": "Other time",
       "add": "Add another time",
-      "remove": "Remove"
+      "remove": "Remove",
+      "weekHours": "{hours} a week"
     },
     "time": {
       "hour": "Hour",
