@@ -216,6 +216,10 @@ test.describe('A-5 stays connected', () => {
   test('after the return from Google and after every reload: one token and one read, no consent, the parameter stripped', async ({ context }) => {
     const rig = await newRig(context, newWorld())
     await boot(rig.page)
+    // The page asks for a token as it opens (and is told it is not connected) before the person can reach Google. Wait
+    // for that ask: completing the consent while it is still on its way lets this first page read too, which is not
+    // the flow under test (a slower boot made that window wide enough to hit, review of #54).
+    await expect.poll(() => rig.server.count('token')).toBe(1)
     await returnFromGoogle(rig)
     await connectedTo(rig.page)
     expect(rig.page.url()).not.toContain('google=')
