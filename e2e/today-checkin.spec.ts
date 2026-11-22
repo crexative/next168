@@ -402,11 +402,27 @@ test.describe('check-in answers can be withdrawn', () => {
     await answerOf(page, 'stress').click()
     await expect(page.getByTestId('stress-3')).toHaveAttribute('aria-pressed', 'true')
     await page.getByTestId('checkin-skip').click()
-    await expect(answerOf(page, 'stress')).toHaveCount(0)
+    await expect(answerOf(page, 'stress')).toHaveText('Sin responder')
     await toFinal(page)
     await page.getByRole('button', { name: 'Guardar cierre' }).click()
     await expect(page).toHaveURL(/#\/today$/)
     await expect.poll(async () => (await stored(page)).checkIns.at(-1)).toEqual({ date: '2026-10-21', bedtime: 1320, wake: 360, exercise: 'yes' })
+  })
+})
+
+test.describe('check-in focus', () => {
+  test('each answer moves focus to the next question, so a screen reader hears it and Tab starts from it', async ({ page }) => {
+    await start(page, SIZES[0], 'light', plan, '2026-10-21T20:30:00.000Z')
+    await open(page, 'checkin', 'Cierre del día')
+    const question = page.getByTestId('checkin-question')
+    await expect(question).toBeFocused()
+    const first = await checkin(page).getAttribute('data-step')
+    await page.getByTestId('checkin-skip').click()
+    await expect(checkin(page)).not.toHaveAttribute('data-step', first!)
+    await expect(question).toBeFocused()
+    await toFinal(page)
+    await expect(question).toHaveText('Este es tu cierre de hoy.')
+    await expect(question).toBeFocused()
   })
 })
 

@@ -88,6 +88,13 @@ it('draws every word of an unmeasured column and marks the column for the whole-
   expect(root.querySelector('[data-testid="week-task"] .task-title')?.textContent).toBe('Report')
 })
 
+it('a block\'s title carries no inline category mark: the category is said in its own line, the mark is not repeated', () => {
+  const { root } = column({})
+  const title = root.querySelector('.block[data-block-id="deep"] .block-title')!
+  expect(title.querySelector('.category-glyph, .block-mark')).toBeNull()
+  expect(title.textContent?.trim()).toBe('Deep work')
+})
+
 it('marks a done block as done (dimmed with a check) and only a skipped one as struck through', () => {
   const actual = (blockId: string, status: 'done' | 'skipped' | 'partial') => ({
     date: DATE, blockId, categoryId: blockId === 'deep' ? 'work' : 'gym', plannedStartAt: blockId === 'deep' ? `${DATE}T09:00:00.000Z` : `${DATE}T12:00:00.000Z`,
@@ -168,4 +175,21 @@ it('passes an event\'s location and notes to its details', () => {
   const { root, emitted } = column({ busy })
   root.querySelector<HTMLElement>('.busy')!.click()
   expect(emitted.inspect).toMatchObject([{ title: 'Cita médica', location: 'Consultorio 3', notes: 'En ayunas' }])
+})
+
+it('marks a Weeklid event over a routine as a conflict too, as Hoy and the event details do', () => {
+  const date = '2026-10-21'
+  const document = plannerDocument({ blocks: [deepWork] })
+  const segments = blockSegmentsByDate(document, [date], 'UTC')[date]!
+  const busy = busySegmentsByDate([], [
+    { id: 'own', title: 'Team meeting', start: `${date}T10:00:00Z`, end: `${date}T11:00:00Z`, allDay: false, attendees: [] },
+  ], [date], 'UTC')[date]!
+  host = window.document.createElement('div')
+  window.document.body.append(host)
+  app = createApp(DayColumn, { date, label: date, segments, busy, categories: document.categories, timeZone: 'UTC', nowMinute: null, editable: true }).use(i18n)
+  app.mount(host)
+
+  const event = host.querySelector<HTMLElement>('.busy')!
+  expect(event.classList.contains('is-conflict')).toBe(true)
+  expect(event.querySelector('[data-testid="calendar-conflict"]')?.textContent).toContain('Overlaps')
 })

@@ -685,7 +685,7 @@ for (const theme of THEMES) {
       await page.keyboard.press('Escape')
       await expect(page.getByRole('dialog')).toHaveCount(0)
       if (testInfo.project.name === 'phone') {
-        await page.getByTestId('week-view-toggle').click()
+        await page.getByTestId('week-view').getByRole('radio').nth(1).click()
         await expect(page.getByTestId('week-overview')).toBeVisible()
         await audit(page, `${theme}/es/week overview`)
       }
@@ -816,6 +816,7 @@ for (const theme of THEMES) {
       await expect(page.getByTestId('checkin-card')).toBeVisible()
       await audit(page, `${theme}/today: the check-in row in the evening`)
       await page.getByTestId('checkin-card').click()
+      // The check-in is a conversation (R_Cierre): told times, one open question at a time.
       await expect(page.getByTestId('checkin')).toBeVisible()
       await settle(page)
       await audit(page, `${theme}/check-in prefilled from the plan`)

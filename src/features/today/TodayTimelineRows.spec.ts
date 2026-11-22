@@ -139,6 +139,17 @@ describe('TodayTimeline rows', () => {
     expect(rowOf(host, 'Sleep').querySelector('[data-testid="timeline-span-hint"]')).toBeNull()
   })
 
+  // App review of #54: "ends tomorrow" is judged by local dates, like the hint under the title; an item that runs to
+  // tomorrow's midnight ends the day after, so it keeps its "until" line rather than an end time of 12:00 AM.
+  it('treats an item that runs to tomorrow\'s midnight as going on past tomorrow', async () => {
+    const host = await render({ items: [...items, {
+      kind: 'event' as const, key: 'event:retreat', title: 'Retreat', start: '2026-10-21T20:00:00.000Z', end: '2026-10-23T00:00:00.000Z',
+    }] })
+    const row = [...host.querySelectorAll<HTMLElement>('[data-testid="timeline-item"]')].find((item) => item.querySelector('.row-title-text')?.textContent?.trim().endsWith('Retreat'))!
+    expect(row.querySelector('[data-testid="timeline-end"]')).toBeNull()
+    expect(row.querySelector('[data-testid="timeline-span-hint"]')?.textContent).toMatch(/Thu/)
+  })
+
   it('says what a routine overlaps with in amber (needs attention, never red), and only on the routine', async () => {
     const dentist = { kind: 'event' as const, key: 'event:dentist', title: 'Dentist', start: '2026-10-21T10:00:00.000Z', end: '2026-10-21T10:30:00.000Z' }
     const standup = { kind: 'event' as const, key: 'event:standup', title: 'Standup', start: '2026-10-21T10:20:00.000Z', end: '2026-10-21T10:40:00.000Z' }
@@ -165,6 +176,18 @@ describe('TodayTimeline rows', () => {
     expect(rowOf(host, 'Dentist').querySelector('[data-testid="timeline-overlap"]')?.textContent).toBe('Overlaps with Deep work')
     // Free time starts when the hero's task ends (10:30), not at now; the routine around it does not hide free time.
     expect([...host.querySelectorAll('[data-testid="timeline-gap"]')].map((gap) => gap.textContent?.replace(/\s/g, ' '))).toEqual(['Free · 10 min'])
+  })
+
+  // App review of #54: the routine in the hero lends its overlap only to the event that crosses it, not to every event
+  // of the same name.
+  it('gives the hidden routine\'s overlap only to the event that crosses it, not to a namesake later in the day', async () => {
+    const work = items.find((item) => item.title === 'Deep work')!
+    const report = { ...task, key: 'task:r@9', title: 'Report', start: '2026-10-21T09:00:00.000Z', end: '2026-10-21T10:30:00.000Z' }
+    const crossing = { kind: 'event' as const, key: 'event:dentist-1', title: 'Dentist', start: '2026-10-21T10:40:00.000Z', end: '2026-10-21T10:50:00.000Z' }
+    const later = { kind: 'event' as const, key: 'event:dentist-2', title: 'Dentist', start: '2026-10-21T15:00:00.000Z', end: '2026-10-21T15:30:00.000Z' }
+    const host = await render({ items: [work, report, crossing, later], now: new Date('2026-10-21T09:15:00Z'), hero: { key: report.key, contextKey: work.key } })
+    const notes = [...host.querySelectorAll<HTMLElement>('[data-testid="timeline-item"]')].filter((row) => row.textContent?.includes('Dentist')).map((row) => row.querySelector('[data-testid="timeline-overlap"]')?.textContent ?? null)
+    expect(notes).toEqual(['Overlaps with Deep work', null])
   })
 
   it('shows no overlap notice once the shared time has passed', async () => {

@@ -15,11 +15,9 @@
     "changedOpen": "Jetzt: {title}",
     "alsoNow": "Auch jetzt: {title} · bis {time}",
     "askAvailable": "Du kannst markieren, wie {title} lief",
-    "closeDay": "Tagesabschluss",
     "readOnly": "In diesem Tab nur lesbar",
     "progress": "Fortschritt",
     "next": "Danach",
-    "nothingNext": "Diese Woche ist nichts weiter geplant",
     "tomorrowAt": "Morgen, {time}",
     "dayAt": "{day}, {time}",
     "within": "In {title}",
@@ -79,8 +77,7 @@
     "subtitle": "{date}"
   },
   "todo": {
-    "title": "Heute zu tun",
-    "add": "Für heute hinzufügen"
+    "title": "Heute zu tun"
   },
   "aside": "Mehr für heute",
   "weekGlance": "Diese Woche"

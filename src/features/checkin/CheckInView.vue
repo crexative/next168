@@ -26,6 +26,7 @@ import {
   type CheckInFormState,
 } from './checkInForm'
 import { markCheckInSaved } from './checkinFlash'
+import { draftKey, dropDraft, keepDraft, takeDraft } from './checkInDraft'
 import { deriveExercise, tracksExercise } from './exerciseFromPlan'
 import { suggestFromPlan } from './planAnchors'
 import { minuteToTime, timeToMinute } from './checkInForm'
@@ -51,10 +52,26 @@ const worksThatDay = ref(true)
 // True while the shown times were taken from the plan rather than from a saved check-in.
 const fromPlan = ref(false)
 const showWorkEnd = computed(() => worksThatDay.value || form.workEnd !== '')
+// The form as loaded (before a kept draft), so the conversation knows what is unsaved and what the plan told.
+const pristine = ref<CheckInFormState | null>(null)
+// Answers brought back from a draft kept on close: the conversation says they are not saved yet.
+const restored = ref(false)
+const dirty = computed(() => !!pristine.value && JSON.stringify(form) !== JSON.stringify(pristine.value))
+const currentDraftKey = () => draftKey(planner.document?.workspaceId ?? '', date.value, formSnapshot)
 
 function entryFor(on: string) {
   return planner.document?.checkIns.find((checkIn) => checkIn.date === on)
 }
+
+// Where the conversation is: questions left for later, the answer being changed, what is typed in its field, Partly's
+// minutes and the note's field. A load (opening, a change elsewhere, a refused save) drops whatever was half-typed
+// against the old values; questions left for later stay so, with those a kept draft brings back.
+const skipped = ref(new Set<StepId>())
+const editing = ref<StepId | null>(null)
+const factDraft = ref('')
+const partialMinutes = ref<number | null>(null)
+const noteOpen = ref(false)
+const loads = ref(0)
 
 function load(): void {
   const entry = entryFor(date.value)
@@ -63,6 +80,15 @@ function load(): void {
   fromPlan.value = !entry && ('bedtime' in suggestion || 'wake' in suggestion || 'workEnd' in suggestion)
   Object.assign(form, entry ? formFromCheckIn(date.value, entry) : withPlanTimes(formFromCheckIn(date.value, entry), suggestion))
   formSnapshot = snapshotOf(entry)
+  pristine.value = { ...form }
+  const kept = takeDraft(currentDraftKey())
+  if (kept) Object.assign(form, kept.form)
+  restored.value = !!kept
+  skipped.value = new Set([...skipped.value, ...((kept?.later ?? []) as StepId[])])
+  editing.value = null
+  partialMinutes.value = null
+  noteOpen.value = form.note !== ''
+  loads.value += 1
   loaded = true
 }
 
@@ -114,6 +140,10 @@ async function save(): Promise<void> {
       : upsertCheckIn(draft.checkIns, next)
   })
   if (result.ok) {
+    // What was saved is no longer unsaved, even when the stored entry did not change (every answer withdrawn on a
+    // day with no entry): otherwise leaving would keep the draft just dropped.
+    pristine.value = { ...form }
+    dropDraft()
     // Today shows "Guardado ✓" and takes focus; the conversation ends with its last line, said aloud.
     markCheckInSaved()
     announce(t('checkin.chat.done'))
@@ -135,12 +165,11 @@ type FactId = 'bedtime' | 'wake' | 'workEnd'
 const FACTS: FactId[] = ['bedtime', 'wake', 'workEnd']
 const FACT_KEYS: Record<FactId, string> = { bedtime: 'checkin.bedtime', wake: 'checkin.wake', workEnd: 'checkin.workEnd' }
 
-const skipped = ref(new Set<StepId>())
-const editing = ref<StepId | null>(null)
 // Facts the plan or a saved check-in answered when the conversation opened are told, not asked.
 const toldFacts = ref(new Set<FactId>())
-watch(() => [form.date, fromPlan.value], () => {
-  toldFacts.value = new Set(FACTS.filter((fact) => form[fact] !== ''))
+// Recomputed from every load, also a reload after a refused save, never from answers typed since.
+watch(pristine, (loadedForm) => {
+  toldFacts.value = new Set(FACTS.filter((fact) => (loadedForm?.[fact] ?? '') !== ''))
 }, { immediate: true })
 
 const factSteps = computed<FactId[]>(() => FACTS.filter((fact) => fact !== 'workEnd' || showWorkEnd.value))
@@ -166,8 +195,14 @@ function answered(step: StepId): boolean {
 const current = computed<StepId>(() => editing.value ?? steps.value.find((step) => !answered(step) && !skipped.value.has(step)) ?? 'final')
 // "Parte N de M" counts what is asked, not what the plan already told.
 const asked = computed(() => steps.value.filter((step) => !(FACTS as string[]).includes(step) || !toldFacts.value.has(step as FactId)))
-const part = computed(() => Math.max(1, asked.value.indexOf(current.value) + 1 || asked.value.length))
-const log = computed(() => steps.value.slice(0, steps.value.indexOf(current.value)).filter((step) => answered(step)))
+// A told fact being changed is not a part: the count shows the next part asked after it.
+const part = computed(() => {
+  const position = steps.value.indexOf(current.value)
+  return Math.min(asked.value.length, asked.value.filter((step) => steps.value.indexOf(step) < position).length + 1)
+})
+// Everything before the current question stays reachable: answers to change, and questions left for later ("Sin
+// responder") to answer before saving.
+const log = computed(() => steps.value.slice(0, steps.value.indexOf(current.value)).filter((step) => answered(step) || skipped.value.has(step)))
 
 function time(minute: number | undefined): string {
   return minute === undefined ? '' : formatMinute(minute, displayLocale.value)
@@ -189,6 +224,7 @@ function hintOf(step: StepId): string {
 
 // What the person said, in their words: "Anoche te acostaste a las 23:00", "Hecho", "A medias · 30 min", "3".
 function answerOf(step: StepId): string {
+  if (!answered(step)) return t('checkin.chat.unanswered')
   if (step === 'stress') return form.stress
   if (step.startsWith('block:')) {
     const actual = actualOf(step)
@@ -201,8 +237,8 @@ function answerOf(step: StepId): string {
 }
 
 // A told fact shows only its sentence; an asked turn keeps its question above your answer.
-const showsQuestion = (step: StepId) => !(FACTS as string[]).includes(step) || !toldFacts.value.has(step as FactId)
-const changeLabel = (step: StepId) => `${t('checkin.change')}: ${questionOf(step)} ${answerOf(step)}`
+const showsQuestion = (step: StepId) => !answered(step) || !(FACTS as string[]).includes(step) || !toldFacts.value.has(step as FactId)
+const changeLabel = (step: StepId) => `${t(answered(step) ? 'checkin.change' : 'checkin.chat.answer')}: ${questionOf(step)} ${answerOf(step)}`
 
 const heading = ref<HTMLElement | null>(null)
 const scroller = ref<HTMLElement | null>(null)
@@ -238,9 +274,8 @@ function change(step: StepId): void {
   if ((FACTS as string[]).includes(step)) factDraft.value = form[step as FactId]
 }
 
-// A fact asked or changed: one time field and "Siguiente".
-const factDraft = ref('')
-watch(current, (step) => { if ((FACTS as string[]).includes(step)) factDraft.value = form[step as FactId] }, { immediate: true })
+// A fact asked or changed: one time field and "Siguiente", filled with the form's value (again after a reload).
+watch([current, loads], ([step]) => { if ((FACTS as string[]).includes(step)) factDraft.value = form[step as FactId] }, { immediate: true })
 function saveFact(): void {
   const step = current.value as FactId
   if (timeToMinute(factDraft.value) === undefined) return
@@ -248,8 +283,7 @@ function saveFact(): void {
   done(step)
 }
 
-// A routine: Hecho · A medias · No. "A medias" asks how many minutes, prefilled with half the plan.
-const partialMinutes = ref<number | null>(null)
+// A routine: Hecho · A medias · No. "A medias" asks how many minutes, prefilled with half the plan (partialMinutes).
 function answerBlock(value: string): void {
   const step = current.value
   const occurrence = occurrenceOf(step)
@@ -258,6 +292,8 @@ function answerBlock(value: string): void {
     partialMinutes.value = actualOf(step)?.actualMinutes ?? Math.round(occurrence.plannedMinutes / 2)
     return
   }
+  // Hecho or No after A medias: the minutes field belongs to this routine and must not open on the next one.
+  partialMinutes.value = null
   void blockStatus.record(occurrence, value as 'done' | 'skipped')
   done(step)
 }
@@ -265,8 +301,8 @@ function savePartial(): void {
   const step = current.value
   const occurrence = occurrenceOf(step)
   if (!occurrence || partialMinutes.value === null) return
-  const minutes = Math.min(occurrence.plannedMinutes, Math.max(0, Math.round(partialMinutes.value)))
-  void blockStatus.record(occurrence, 'partial', minutes)
+  // recordActual keeps the minutes within 0 and the planned length.
+  void blockStatus.record(occurrence, 'partial', partialMinutes.value)
   partialMinutes.value = null
   done(step)
 }
@@ -283,8 +319,7 @@ const blockReplies = computed(() => [
 ])
 const stressReplies = computed(() => (['1', '2', '3', '4', '5'] as const).map((value) => ({ value, label: value, testId: `stress-${value}` })))
 
-// The last turn: an optional note, the reminder (it moved here from Hoy) and "Guardar cierre".
-const noteOpen = ref(false)
+// The last turn: an optional note (noteOpen), the reminder (it moved here from Hoy) and "Guardar cierre".
 watch(() => form.note, (note) => { if (note) noteOpen.value = true }, { immediate: true })
 const remindAt = computed(() => formatMinute(REMINDER_MINUTE, locale.value))
 // As on the old card: offered where notifications work and the day is still open, and kept while it is armed.
@@ -308,14 +343,25 @@ async function toggleReminder(): Promise<void> {
 
 // The frame owns the screen while the check-in is open; × leads back to where it was opened from.
 const backTo = computed(() => backTarget('checkin', 'today'))
-const closeLabel = computed(() => t('setup.backTo', { place: t(`app.tabs.${backTo.value}`, t('app.tabs.today')) }))
-function close(): void { window.location.hash = `#/${backTo.value}` }
+// The × names where it leads: a tab, the assistant or the proposals (the check-in can be opened from each).
+const PLACE_KEYS: Partial<Record<string, string>> = { assistant: 'assistant.title', proposals: 'proposals.title' }
+const closeLabel = computed(() => t('setup.backTo', { place: t(PLACE_KEYS[backTo.value] ?? `app.tabs.${backTo.value}`, t('app.tabs.today')) }))
+function keepUnsaved(): void {
+  if (dirty.value) keepDraft(currentDraftKey(), { ...form }, [...skipped.value])
+}
+function close(): void {
+  keepUnsaved()
+  window.location.hash = `#/${backTo.value}`
+}
 let releaseFullScreen: (() => void) | undefined
 onMounted(() => {
   releaseFullScreen = openFullScreen()
   void reveal()
 })
-onBeforeUnmount(() => releaseFullScreen?.())
+onBeforeUnmount(() => {
+  keepUnsaved()
+  releaseFullScreen?.()
+})
 </script>
 
 <template>
@@ -323,17 +369,19 @@ onBeforeUnmount(() => releaseFullScreen?.())
     :open="!!planner.document" :title="t('checkin.title')" :close-label="closeLabel" leading="close"
     :progress-label="t('onboarding.guided.progress', { step: part, total: asked.length })"
     :count-label="t('onboarding.guided.progress', { step: part, total: asked.length })"
-    :part="part" :total="asked.length" :locked="false" :dirty="false"
+    :part="part" :total="asked.length" :locked="false" :dirty="dirty"
     @close="close"
   >
     <section class="checkin" data-testid="checkin" :data-step="current">
       <div ref="scroller" class="scroller">
         <div class="column">
           <p class="date-line t-footnote" data-testid="checkin-date">{{ t('checkin.chat.date', { date: dateLabel }) }}</p>
-          <ol class="transcript" role="log" :aria-label="t('checkin.title')">
+          <p v-if="restored && dirty" class="unsaved t-footnote" data-testid="checkin-unsaved">{{ t('checkin.chat.unsaved') }}</p>
+          <div role="log" :aria-label="t('checkin.title')">
+          <ol class="transcript">
             <li v-for="step in log" :key="step" class="turn" :data-step="step">
               <p v-if="showsQuestion(step)" class="turn-question t-subhead">{{ questionOf(step) }}</p>
-              <button class="answer" type="button" :aria-label="changeLabel(step)" :disabled="!planner.writable" :data-testid="`answer-${step}`" @click="change(step)">
+              <button class="answer" :class="{ 'is-open': !answered(step) }" type="button" :aria-label="changeLabel(step)" :disabled="!planner.writable" :data-testid="`answer-${step}`" @click="change(step)">
                 {{ answerOf(step) }}
               </button>
             </li>
@@ -345,6 +393,7 @@ onBeforeUnmount(() => releaseFullScreen?.())
               </div>
             </li>
           </ol>
+          </div>
         </div>
       </div>
 
@@ -401,6 +450,7 @@ onBeforeUnmount(() => releaseFullScreen?.())
 .column { box-sizing: border-box; width: 100%; max-width: var(--column); margin-inline: auto; padding-inline: max(var(--page-gutter), var(--safe-left)) max(var(--page-gutter), var(--safe-right)); }
 .scroller > .column { display: flex; flex-direction: column; gap: var(--space-3); padding-block: var(--space-2) var(--space-4); }
 .date-line { margin: 0 0 var(--space-1); color: var(--label-2); font-weight: 600; text-align: center; }
+.unsaved { margin: 0; color: var(--warning-label); text-align: center; }
 .transcript { display: flex; flex-direction: column; gap: var(--space-3); margin: 0; padding: 0; list-style: none; }
 .turn { display: flex; flex-direction: column; align-items: flex-end; gap: var(--space-2); }
 .turn-question { align-self: flex-start; margin: 0; color: var(--label-2); }
@@ -419,6 +469,8 @@ onBeforeUnmount(() => releaseFullScreen?.())
   overflow-wrap: anywhere;
 }
 .answer:focus-visible { outline-offset: 2px; }
+/* A question left for later: an outlined bubble, not yet an answer. */
+.answer.is-open { border: 1px dashed var(--label-2); background: transparent; color: var(--label-2); font-weight: 400; }
 .turn.is-current { flex-direction: row; align-items: flex-end; gap: var(--space-3); }
 .avatar { flex: none; margin-block-end: 2px; }
 .bubble { flex: 1 1 auto; min-width: 0; padding: var(--space-4) var(--space-5); border-radius: var(--radius-bubble) var(--radius-bubble) var(--radius-bubble) 6px; background: var(--surface-2); }

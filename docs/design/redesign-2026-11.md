@@ -53,6 +53,14 @@ a screen not yet redesigned keeps working with the new tokens and shell.
    while the planner can be written: a task needs no category (it fits any free time), an event needs none, and Rutina
    opens the guided add, which creates its category.
 
+9. **Semana's "Día · Semana" switch (slice 3).** DIRECTION §7 lists `week.view.showDay` / `week.view.showWeek` as the
+   toggle's accessible names. The toggle became a labelled segmented control whose radios are named by their visible
+   words ("Día", "Semana") in the group "Vista", so those two keys are removed. A view the person chose is kept when the
+   width crosses 768 px; until then a phone opens on Día and a wider screen on Semana.
+10. **One word for a conflict (slice 3, REVIEW M2).** "Se cruza" on the block, "Se cruza con {título}" in the event's
+    details and "Se cruza con tu plan" on imported events, in every language; a Weeklid event over a routine is marked
+    too, as Hoy already did.
+
 Anything else in a board that the app cannot do as drawn is raised with the coordinator before it changes behaviour.
 
 ## Tokens and styles added ahead of their screens
@@ -62,3 +70,12 @@ Slice 1 adds what later slices draw with: `--radius-bubble`, `--warning-label`, 
 uses by slice 8 is removed. The contrast specs measure every text token on `--bg`, `--bg-grouped`, `--surface`,
 `--surface-2` and `--tint-soft` in light and dark; increased contrast is not yet measured for `--tint-soft` and `--fill`
 (follow-up for slice 8).
+
+## Open for a later slice (from the review of Hoy, #54)
+
+- The hero's "Después" line and the list's "Libre" rows can repeat what the list already says (DIRECTION rule 3, each
+  thing once).
+- During a task the hero does not say what comes next when it is tomorrow.
+- A routine hidden behind a task in the hero cannot be marked in its last minutes from Hoy.
+- In "Por hacer hoy" at 200 % text the task rows keep an empty time column after the times fold above the titles,
+  and "venció el 18 nov" runs 3 px over at 390 px.

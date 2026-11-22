@@ -43,6 +43,9 @@
     "final": "This is your wrap-up for today.",
     "done": "All set for today. Rest well.",
     "date": "Day wrap-up · {date}",
-    "addNote": "Add a note"
+    "addNote": "Add a note",
+    "unanswered": "Not answered",
+    "answer": "Answer",
+    "unsaved": "Your earlier answers are not saved yet."
   }
 }

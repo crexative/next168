@@ -15,11 +15,9 @@
     "changedOpen": "Now: {title}",
     "alsoNow": "Also now: {title} · until {time}",
     "askAvailable": "You can mark how {title} went",
-    "closeDay": "Day wrap-up",
     "readOnly": "Read-only in this tab",
     "progress": "Progress",
     "next": "Next",
-    "nothingNext": "Nothing else planned this week",
     "tomorrowAt": "Tomorrow, {time}",
     "dayAt": "{day}, {time}",
     "within": "In {title}",
@@ -79,8 +77,7 @@
     "subtitle": "{date}"
   },
   "todo": {
-    "title": "To do today",
-    "add": "Add for today"
+    "title": "To do today"
   },
   "aside": "More for today",
   "weekGlance": "This week"

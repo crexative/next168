@@ -34,7 +34,7 @@
   "overlay": "Eventos do calendário",
   "untitled": "Evento sem título",
   "free": "Livre",
-  "conflict": "Conflito com o seu plano",
+  "conflict": "Sobrepõe-se ao seu plano",
   "size": "Este calendário excede o limite de 5 MB.",
   "frequency": "Não são suportadas recorrências por segundo ou minuto.",
   "timezone": "Este calendário usa um fuso horário desconhecido. Exporte-o com uma definição VTIMEZONE.",
