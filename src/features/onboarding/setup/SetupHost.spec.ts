@@ -465,6 +465,47 @@ describe('the conversation', () => {
     }
   })
 
+  // On a short phone the answers take most of the height: the question's first words show, measured against the
+  // scroller itself (offsetTop counts from the frame, which would scroll past them).
+  it('shows the current question from its start, measured against its own scroller', async () => {
+    const rect = (top: number) => ({ top, bottom: top + 100, left: 0, right: 0, width: 0, height: 100, x: 0, y: top, toJSON: () => ({}) }) as DOMRect
+    vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockImplementation(function (this: HTMLElement) {
+      if (this.classList.contains('setup-scroller')) return rect(100)
+      if (this.classList.contains('is-current')) return rect(400)
+      return rect(0)
+    })
+    vi.spyOn(HTMLElement.prototype, 'offsetTop', 'get').mockReturnValue(900)
+    vi.spyOn(HTMLElement.prototype, 'scrollHeight', 'get').mockReturnValue(2000)
+    vi.spyOn(HTMLElement.prototype, 'clientHeight', 'get').mockReturnValue(500)
+    const original = HTMLElement.prototype.scrollTo
+    const scrollTo = vi.fn()
+    HTMLElement.prototype.scrollTo = scrollTo as unknown as typeof original
+    try {
+      await mount(firstRun())
+      await vi.waitFor(() => expect(scrollTo).toHaveBeenCalled())
+      // 400 - 100 from the scroller's top, 16 px above the question.
+      expect(scrollTo.mock.calls.at(-1)![0]).toMatchObject({ top: 284 })
+    } finally {
+      HTMLElement.prototype.scrollTo = original
+      vi.restoreAllMocks()
+    }
+  })
+
+  it('on a times question "No fixed hours" rides in the fixed bar beside Next, never under the times; on sleep it is not there', async () => {
+    await mount(firstRun())
+    const inBar = () => live('.dock-actions [data-testid=setup-secondary]')
+    const inAnswers = () => live('.dock-answer [data-testid=setup-secondary]')
+    expect(screen()).toBe('sleep')
+    expect(inAnswers()).toBeUndefined()
+    // Sleep has no "No fixed hours": its bar holds only "Later".
+    expect(inBar()?.textContent?.trim()).toBe('Later')
+    await click('[data-testid=setup-primary]')
+    await quick('work')
+    await vi.waitFor(() => expect(screen()).toBe('work'))
+    expect(inBar()).toBeDefined()
+    expect(inAnswers()).toBeUndefined()
+  })
+
   it('returns from an earlier answer to the current question without reconfirming later answers', async () => {
     await mount(firstRun())
     await click('[data-testid=setup-primary]')
