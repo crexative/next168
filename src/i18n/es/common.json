@@ -23,5 +23,7 @@
     "clock12": "12 horas",
     "clock24": "24 horas",
     "footer": "Automático sigue la región y el modo de tu dispositivo. Las horas se ven así: {example}"
-  }
+  },
+  "taskPart": "{part}/{parts} {title}",
+  "taskPartSpoken": "{title}, parte {part} de {parts}"
 }

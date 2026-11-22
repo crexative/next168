@@ -23,7 +23,7 @@ function pick(option: PressOption): void {
     <ul class="choices" data-testid="press-chooser">
       <li v-for="option in options" :key="option.key">
         <button type="button" class="choice" data-testid="press-choice" :data-choice-key="option.key" @click="pick(option)">
-          <span class="choice-title t-body">{{ option.title }}</span>
+          <span class="choice-title t-body"><template v-if="option.spokenTitle"><span aria-hidden="true">{{ option.title }}</span><span class="visually-hidden">{{ option.spokenTitle }}</span></template><template v-else>{{ option.title }}</template></span>
           <span class="choice-detail t-footnote">{{ t(`week.chooser.kind.${option.kind}`) }}&nbsp;· {{ option.range }}</span>
         </button>
       </li>

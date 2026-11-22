@@ -439,6 +439,40 @@ for (const size of [{ width: 375, height: 667 }, { width: 390, height: 844 }] as
   })
 }
 
+// #60/#62: in the tablet modal the routine conversation's dock takes its share of the modal, not of the screen behind
+// it, so the question stays in view above it and Guardar inside the card.
+for (const size of [{ width: 820, height: 1180 }, { width: 1180, height: 820 }] as const) {
+  test(`at 200 % text in the ${size.width}x${size.height} tablet modal each step of a routine's conversation keeps its question and Guardar in the card`, async ({ page }) => {
+    await page.addInitScript(() => { document.addEventListener('DOMContentLoaded', () => { document.documentElement.style.fontSize = '200%' }) })
+    await start(page, { document: planned(), size })
+    await page.goto('./#/week')
+    for (const step of ['talk-time', 'talk-days', 'talk-goal']) {
+      await page.locator('[data-date="2026-10-26"] [data-block-id="b-work"]').first().click()
+      await expect(page.getByTestId('routine-talk')).toBeVisible()
+      await page.getByTestId(step).click()
+      await page.waitForFunction(() => document.getAnimations().every((animation) => animation.playState !== 'running'))
+      const geometry = await page.evaluate(() => {
+        const frame = document.querySelector('[data-testid=routine-talk]')!.closest('.setup-frame')!.getBoundingClientRect()
+        const question = document.querySelector('[data-testid=talk-question]')!.getBoundingClientRect()
+        const scroller = document.querySelector('[data-testid=routine-talk] .scroller')!.getBoundingClientRect()
+        const dock = document.querySelector('[data-testid=routine-talk] .dock')!.getBoundingClientRect()
+        const save = document.querySelector('[data-testid=talk-save]')!.getBoundingClientRect()
+        return {
+          modal: frame.height <= 736.5,
+          questionTop: question.top >= scroller.top - 0.5 && question.top < scroller.bottom,
+          questionShown: scroller.height > 40,
+          dockInside: dock.top >= frame.top - 0.5 && dock.bottom <= frame.bottom + 0.5,
+          saveInside: save.top >= frame.top && save.bottom <= frame.bottom + 0.5,
+        }
+      })
+      expect(geometry, step).toEqual({ modal: true, questionTop: true, questionShown: true, dockInside: true, saveInside: true })
+      await page.getByTestId('talk-cancel').or(page.getByTestId('talk-back')).first().click()
+      await page.getByRole('button', { name: 'Cancelar' }).last().click()
+      await expect(page.getByTestId('routine-talk')).toHaveCount(0)
+    }
+  })
+}
+
 test('closing the whole form opened from a routine\'s conversation gives focus back to the routine', async ({ page }) => {
   await start(page, { document: planned(), size: { width: 1440, height: 900 } })
   await page.goto('./#/week')

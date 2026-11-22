@@ -2,7 +2,7 @@
 import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 import type { PlannerDocument } from '@/core/model'
-import { formatHours } from '@/ui/format'
+import { freeHoursText } from './freeHoursText'
 import { freeHoursWhole } from './freeHours'
 
 // `framed` draws the badge as its own pill; a parent that groups it with other figures turns it off and supplies the surface.
@@ -15,7 +15,7 @@ const freeHours = computed(() => freeHoursWhole(props.document, props.now, timeZ
 
 <template>
   <p class="free-hours t-subhead" :class="{ 'is-framed': framed }" data-testid="free-hours">
-    {{ t('capacity.badge', { hours: formatHours(freeHours), count: freeHours }) }}
+    {{ freeHoursText(t, 'capacity.badge', freeHours) }}
   </p>
 </template>
 

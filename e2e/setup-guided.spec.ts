@@ -1569,3 +1569,56 @@ test('a save refused for a repeated name opens that row on its form, with the re
   await expect(open.getByRole('alert')).toBeVisible()
   await expect(open.getByTestId('card-talk')).toHaveCount(0)
 })
+
+// #65 review: in the centred modal (max-height, not a fixed height) a long conversation still scrolls inside it, the
+// dock and its "Siguiente" stay in the card.
+test('in the 1440x900 modal a long conversation scrolls inside the card, the dock stays in it', async ({ page }) => {
+  await start(page, { size: { width: 1440, height: 900 } })
+  await page.goto('./')
+  await onScreen(page, 'sleep')
+  await skipToSummary(page)
+  await page.waitForFunction(() => document.getAnimations().every((animation) => animation.playState !== 'running'))
+  const geometry = await page.evaluate(() => {
+    const frame = document.querySelector('.setup-frame')!.getBoundingClientRect()
+    const scroller = document.querySelector<HTMLElement>('[data-testid=setup] section.screen:not([aria-hidden=true]) .setup-scroller')!
+    const before = scroller.scrollTop
+    scroller.scrollTop = 0
+    const moved = scroller.scrollTop !== before
+    const primary = document.querySelector('[data-testid=setup] section.screen:not([aria-hidden=true]) [data-primary]')!.getBoundingClientRect()
+    return { height: frame.height, max: 736, overflows: scroller.scrollHeight > scroller.clientHeight + 1, moved, primaryInside: primary.top >= frame.top && primary.bottom <= frame.bottom }
+  })
+  expect(geometry.height).toBeLessThanOrEqual(geometry.max + 0.5)
+  expect(geometry).toMatchObject({ overflows: true, moved: true, primaryInside: true })
+})
+
+// CI of #60: with "Elegir días" open, the work answers outgrew the tablet modal and its frame cut "Siguiente" and its
+// focus ring. The dock takes its share of the modal and its answers scroll; the question stays above it.
+for (const size of [{ width: 820, height: 1180 }, { width: 1180, height: 820 }] as const) {
+  test(`in the ${size.width}x${size.height} tablet modal the work days keep the dock and "Siguiente" inside the frame`, async ({ page }) => {
+    await start(page, { size, document: firstRun() })
+    await page.goto('./')
+    await onScreen(page, 'sleep')
+    await live(page).getByTestId('setup-primary').click()
+    await live(page).locator('[data-value=work]').click()
+    await onScreen(page, 'work')
+    await live(page).locator('[data-preset=pick]').click()
+    await page.waitForFunction(() => document.getAnimations().every((animation) => animation.playState !== 'running'))
+    const primary = live(page).getByTestId('setup-primary')
+    await primary.focus()
+    const geometry = await primary.evaluate((element) => {
+      const frame = element.closest('.setup-frame')!.getBoundingClientRect()
+      const dock = element.closest('.dock')!.getBoundingClientRect()
+      const box = element.getBoundingClientRect()
+      const ring = Number.parseFloat(getComputedStyle(element).outlineOffset) + Number.parseFloat(getComputedStyle(element).outlineWidth)
+      const scroller = element.closest('section.screen')!.querySelector('.setup-scroller')!.getBoundingClientRect()
+      return {
+        modal: frame.height <= 736.5 && frame.top > 0,
+        dockInside: dock.top >= frame.top - 0.5 && dock.bottom <= frame.bottom + 0.5,
+        ringInside: box.bottom + ring <= frame.bottom + 0.5 && box.top - ring >= frame.top - 0.5,
+        questionShown: scroller.height > 0,
+      }
+    })
+    expect(geometry).toEqual({ modal: true, dockInside: true, ringInside: true, questionShown: true })
+    await expect(primary).toBeInViewport({ ratio: 1 })
+  })
+}
