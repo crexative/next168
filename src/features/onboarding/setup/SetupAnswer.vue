@@ -92,7 +92,7 @@ function answerQuick(value: string): void {
 const env = { topicName: (topic: TopicId) => t(`onboarding.templates.${TOPICS[topic].nameKey}`) }
 const speaker = { t: (key: string, params?: Record<string, unknown>) => t(key, params ?? {}), rangeLine }
 const replies = computed(() => (round.value === undefined ? undefined : roundReplies(props.state, round.value, speaker)))
-// The ranges of a category other than sleep, where the screen's own answer sits beside "Añadir otro horario".
+// The ranges of a category other than sleep, whose own answer ("Sin horario fijo") sits in the bar beside "Siguiente".
 const rangesAnswer = computed(() => category.value !== undefined && category.value.topic !== 'sleep' && !quick.value && replies.value === undefined)
 const doneLabel = computed(() => (replies.value?.done.current ? `${replies.value.done.label} ${t('onboarding.guided.current')}` : undefined))
 
@@ -237,17 +237,15 @@ const labels = computed(() => ({
           </div>
         </div>
 
-        <RangeList v-else-if="category" :state="state" :category="category" :labels="labels">
-          <template v-if="extra?.kind === 'answer'" #actions>
-            <button class="reply-chip t-body" type="button" data-testid="setup-secondary" :disabled="busy" @click="onSecondary">{{ t(extra.key) }}</button>
-          </template>
-        </RangeList>
+        <RangeList v-else-if="category" :state="state" :category="category" :labels="labels" />
         <button v-if="extra?.kind === 'answer' && !rangesAnswer" class="reply-chip t-body" type="button" data-testid="setup-secondary" :disabled="busy" @click="onSecondary">{{ t(extra.key) }}</button>
       </div>
     </div>
     <div v-if="hasActions" class="dock-actions">
       <div class="column actions">
         <button v-if="extra?.kind === 'skip'" class="skip t-body" type="button" data-testid="setup-secondary" :disabled="busy" @click="onSecondary">{{ t(extra.key) }}</button>
+        <!-- "Sin horario fijo" rides in the fixed bar beside "Siguiente", so it is never scrolled away under the times. -->
+        <button v-else-if="extra?.kind === 'answer' && rangesAnswer" class="reply-chip t-body" type="button" data-testid="setup-secondary" :disabled="busy" @click="onSecondary">{{ t(extra.key) }}</button>
         <button
           v-if="!answersOnTap" class="send" type="button" data-primary data-dock-primary data-testid="setup-primary"
           :aria-describedby="blocked ? `${questionId} ${reasonId}` : questionId" :disabled="busy || !canContinue" @click="onPrimary"
@@ -266,8 +264,12 @@ const labels = computed(() => ({
 /* Docked like a keyboard: the answer area scrolls on its own when it is taller than its share of the screen, and the
    actions under it never move. */
 .dock {
-  flex: 0 1 auto; display: flex; flex-direction: column; min-height: 0; max-height: calc(min(var(--vv-height, 100dvh), 100dvh) * 0.62);
+  flex: 0 1 auto; display: flex; flex-direction: column; min-height: 0; max-height: calc(min(var(--vv-height, 100dvh), 100dvh) * 0.66);
   border-top: 0.5px solid var(--separator); background: var(--surface);
+}
+/* A short phone (375 x 667) gives the answers a little more: the question above still shows whole. */
+@media (max-height: 700px) {
+  .dock { max-height: calc(min(var(--vv-height, 100dvh), 100dvh) * 0.72); }
 }
 .dock-answer { flex: 0 1 auto; min-height: 0; overflow-y: auto; overscroll-behavior: contain; }
 .dock-answer > .column { display: flex; flex-direction: column; gap: var(--space-3); padding-block: var(--space-3) var(--space-1); }
@@ -313,6 +315,12 @@ const labels = computed(() => ({
 .send { flex: 1 1 auto; max-width: 15rem; }
 /* On a phone it is the full-width call to action (DIRECTION §4, R_InicioHorario). */
 @media (max-width: 480px) { .send { max-width: none; } }
+/* At large text on a narrow phone the inset stays 20 px, so the button never runs past the column ("Siguiente" is
+   longer than the "Enviar" it replaces). It grows from its own width and never breaks its word. "Sin horario fijo"
+   beside it is a 15 px chip, so the two share one line on a 375 px phone with the 24 px the docked primary keeps
+   clear, also with Linux's wider fonts, and part only when the text is large. */
+.send { flex-basis: min-content; padding-inline: min(var(--space-5), 20px); }
+.actions > .reply-chip { padding-inline: var(--space-3); font-size: 0.9375rem; }
 .other, .add {
   align-self: flex-start; min-height: var(--tap-target); padding: var(--space-2) var(--space-4); border: 2px dashed var(--field-border);
   border-radius: 999px; background: transparent; color: var(--label); font-weight: 600; touch-action: manipulation;
