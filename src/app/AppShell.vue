@@ -1,9 +1,10 @@
 <script setup lang="ts">
 import { anyFullScreenOpen, anyModalOpen } from '@/ui/sheetStack'
-import { computed, nextTick, onBeforeUnmount, onMounted, provide, ref, watch } from 'vue'
+import { computed, nextTick, onBeforeUnmount, onMounted, provide, ref, useId, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { PanelLeft } from 'lucide-vue-next'
 import BrandLockup from '@/ui/BrandLockup.vue'
+import Button from '@/ui/Button.vue'
 import Icon from '@/ui/Icon.vue'
 import { registerIcons } from '@/ui/icons'
 import LargeTitle from '@/ui/LargeTitle.vue'
@@ -22,6 +23,7 @@ import { SHEET_PRESENTED, SHELL_TOOLBAR_ENTRIES, type ViewId } from './contracts
 import { shell } from './registry'
 import { isApplePlatform, isSidebarShortcut, layoutFor, OVERLAY_QUERY, PERSISTENT_QUERY, useSidebar } from './sidebar'
 import { useHashRoute, viewHash } from './useHashRoute'
+import { isTextField, trackTypedText, type TextField } from './typedText'
 
 registerIcons({ 'panel-left': PanelLeft })
 
@@ -74,12 +76,51 @@ watch(currentView, (view) => { if (view?.tabOrder !== undefined) lastTab.value =
 // Listo, Escape and the dimmed strip all close a sheet: back to the tab it came from, with focus on the entry that
 // opened it (onViewEntered).
 let sheetOpener: ViewId | null = null
-function rememberOpener(): void { if (sheetPresented.value && currentView.value) sheetOpener = currentView.value.id }
 function closeSheet(): void {
-  if (!sheetPresented.value) return
-  rememberOpener()
+  if (!sheetPresented.value || !currentView.value) return
+  sheetOpener = currentView.value.id
   window.location.hash = viewHash(lastTab.value)
 }
+// Text typed into a sheet and not saved (a pasted AI reply, a calendar URL, a question) is never dropped silently:
+// closing it asks first, "¿Descartar los cambios?" with Descartar and Seguir.
+const typedText = trackTypedText()
+const sheetElement = () => document.querySelector('.view[data-presentation]')
+let stopTypedText: (() => void) | undefined
+onMounted(() => { stopTypedText = typedText.watch(sheetElement) })
+onBeforeUnmount(() => stopTypedText?.())
+const confirmingDiscard = ref(false)
+let fieldToResume: TextField | undefined
+const discardIds = { title: useId(), body: useId() }
+const discardKeep = ref<InstanceType<typeof Button> | null>(null)
+function requestClose(): void {
+  if (!sheetPresented.value) return
+  fieldToResume = typedText.changedField()
+  if (!fieldToResume) {
+    closeSheet()
+    return
+  }
+  confirmingDiscard.value = true
+  void nextTick(() => (discardKeep.value?.$el as HTMLElement | undefined)?.focus())
+}
+function discardTyped(): void {
+  confirmingDiscard.value = false
+  typedText.reset()
+  closeSheet()
+}
+function keepEditing(): void {
+  confirmingDiscard.value = false
+  const field = fieldToResume
+  void nextTick(() => field?.focus())
+}
+// Two buttons: Tab and Shift+Tab stay between them while the question is up.
+function trapDiscardFocus(event: KeyboardEvent): void {
+  if (event.key !== 'Tab') return
+  const buttons = [...(event.currentTarget as HTMLElement).querySelectorAll<HTMLElement>('button')]
+  const at = buttons.indexOf(document.activeElement as HTMLElement)
+  event.preventDefault()
+  buttons[(at + (event.shiftKey ? buttons.length - 1 : 1)) % buttons.length]?.focus()
+}
+watch(presentation, () => { typedText.reset(); confirmingDiscard.value = false })
 watch(presentation, (kind) => {
   if (kind) document.documentElement.dataset.presentation = kind
   else delete document.documentElement.dataset.presentation
@@ -111,8 +152,11 @@ function onToggleClick(event: MouseEvent): void { toggleSidebar(event.detail ===
 function onKeydown(event: KeyboardEvent): void {
   if (event.defaultPrevented || anyModalOpen()) return
   if (event.key === 'Escape' && sheetPresented.value) {
+    // An input method composing a word, or a field with text, keeps its own Escape.
+    if (event.isComposing || (isTextField(event.target) && event.target.value !== '')) return
     event.preventDefault()
-    closeSheet()
+    if (confirmingDiscard.value) keepEditing()
+    else requestClose()
     return
   }
   if (layout.value === 'none') return
@@ -242,8 +286,18 @@ dismissUndoWhenChanged(() => planner.document?.workspaceId)
       <StatusBanners :inert="covered || undefined" />
       <StorageUpgradeWaiting />
       <!-- The dimmed screen around a sheet: a tap there closes it, like the system's sheets. -->
-      <div v-if="sheetPresented" class="sheet-scrim" aria-hidden="true" data-testid="sheet-scrim" @click="closeSheet" />
-      <main id="main" class="main" tabindex="-1" :inert="covered || undefined">
+      <div v-if="sheetPresented" class="sheet-scrim" aria-hidden="true" data-testid="sheet-scrim" @click="requestClose" />
+      <div v-if="confirmingDiscard" class="discard-backdrop" data-testid="discard-confirm">
+        <div class="discard-card" role="alertdialog" aria-modal="true" :aria-labelledby="discardIds.title" :aria-describedby="discardIds.body" @keydown="trapDiscardFocus">
+          <h2 :id="discardIds.title" class="t-headline discard-title">{{ t('common.discardChanges.title') }}</h2>
+          <p :id="discardIds.body" class="t-subhead t-secondary discard-body">{{ t('common.discardChanges.body') }}</p>
+          <div class="discard-actions">
+            <Button ref="discardKeep" variant="tinted" data-testid="discard-keep" @click="keepEditing">{{ t('common.discardChanges.keep') }}</Button>
+            <Button variant="plain" destructive data-testid="discard-confirm-button" @click="discardTyped">{{ t('common.discardChanges.discard') }}</Button>
+          </div>
+        </div>
+      </div>
+      <main id="main" class="main" tabindex="-1" :inert="covered || confirmingDiscard || undefined">
         <RecoveryScreen v-if="planner.status === 'corrupt'" />
         <StorageErrorScreen v-else-if="planner.status === 'error' || planner.error === UPGRADE_COPY_FAILED" />
         <Transition v-else name="view" mode="out-in" @after-leave="scrollToTop" @after-enter="onViewEntered">
@@ -252,7 +306,7 @@ dismissUndoWhenChanged(() => planner.document?.workspaceId)
               <span v-if="presentation === 'sheet'" class="sheet-grabber" aria-hidden="true" />
               <!-- Focusable by script only: the shell moves focus here after a route change, as with the large title. -->
               <h1 class="sheet-title t-headline" tabindex="-1">{{ t(currentView.titleKey) }}</h1>
-              <a class="sheet-done t-body" :href="viewHash(lastTab)" data-testid="sheet-done" @click="rememberOpener">{{ t('common.done') }}</a>
+              <a class="sheet-done t-body" :href="viewHash(lastTab)" data-testid="sheet-done" @click.prevent="requestClose">{{ t('common.done') }}</a>
             </header>
             <LargeTitle v-else :title="t(currentView.titleKey)">
               <template #center>
@@ -342,6 +396,12 @@ html[data-backdrop='plain'] .view[data-presentation='sheet'] { background: var(-
 html[data-presentation] .main { display: flow-root; }
 /* The sheet lies over its scrim, which takes the taps on the dimmed screen around it. */
 .sheet-scrim { position: fixed; inset: 0; z-index: 0; }
+/* "¿Descartar los cambios?": a small centred card over the sheet, which stays inert behind it. */
+.discard-backdrop { position: fixed; inset: 0; z-index: 60; display: grid; place-items: center; padding: var(--space-4); background: rgb(0 0 0 / 0.3); }
+.discard-card { display: flex; flex-direction: column; gap: var(--space-2); width: min(100%, 20rem); padding: var(--space-5) var(--space-4) var(--space-4); border-radius: 14px; background: var(--surface-2); text-align: center; box-shadow: var(--shadow-floating); }
+.discard-title, .discard-body { margin: 0; overflow-wrap: break-word; }
+.discard-actions { display: flex; flex-wrap: wrap; justify-content: center; gap: var(--space-2); margin-top: var(--space-2); }
+.discard-actions > * { flex: 1 1 8rem; }
 .view[data-presentation] { position: relative; z-index: 1; }
 /* The page itself keeps nothing below the sheet (no tab bar under it: --tabbar-inset is 0 below). */
 .shell:has(.view[data-presentation='sheet']) .content { padding-bottom: 0; }

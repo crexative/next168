@@ -379,3 +379,67 @@ for (const size of [SIZES[0], { width: 820, height: 1180 }] as const) {
     await expect(entry).toBeFocused()
   })
 }
+
+// #64 review: Escape and the dimmed screen must not drop text typed into a sheet without asking.
+test('a sheet with unsaved text asks before closing; Escape in a field with text stays in the field', async ({ page }) => {
+  await start(page, SIZES[0], 'light', planned())
+  await page.goto('./#/week')
+  await page.locator('[data-testid=settings-entry]:visible').click()
+  await expect(page.getByTestId('sheet-bar')).toBeVisible()
+  await page.getByTestId('ai-link').click()
+  await expect(page).toHaveURL(/#\/settings\/ai$/)
+  const paste = page.getByTestId('any-ai-paste')
+  await paste.fill('{"summary": "Mover el gimnasio"}')
+  await paste.press('Escape')
+  await expect(page.getByTestId('sheet-bar')).toBeVisible()
+  await expect(page.getByTestId('discard-confirm')).toHaveCount(0)
+  await calm(page)
+  // The dimmed strip is above the sheet, at the top of the page.
+  await page.evaluate(() => window.scrollTo({ top: 0, behavior: 'instant' }))
+  await page.mouse.click(8, 8)
+  const ask = page.getByRole('alertdialog', { name: '¿Descartar los cambios?' })
+  await expect(ask).toBeVisible()
+  await expect(page.getByTestId('discard-keep')).toBeFocused()
+  await page.getByTestId('discard-keep').click()
+  await expect(ask).toHaveCount(0)
+  await expect(paste).toBeFocused()
+  await expect(paste).toHaveValue('{"summary": "Mover el gimnasio"}')
+  await page.getByTestId('sheet-done').click()
+  await expect(ask).toBeVisible()
+  await page.keyboard.press('Escape')
+  await expect(ask).toHaveCount(0)
+  await expect(page).toHaveURL(/#\/settings\/ai$/)
+  await page.mouse.click(8, 8)
+  await page.getByTestId('discard-confirm-button').click()
+  await expect(page).toHaveURL(/#\/week$/)
+  await expect(page.getByTestId('sheet-bar')).toHaveCount(0)
+})
+
+test('a sheet closes at once when nothing typed is left: an emptied field asks nothing', async ({ page }) => {
+  await start(page, SIZES[0], 'light', planned())
+  await page.goto('./#/settings/ai')
+  const paste = page.getByTestId('any-ai-paste')
+  await paste.fill('texto')
+  await paste.fill('')
+  await paste.press('Escape')
+  await expect(page.getByTestId('discard-confirm')).toHaveCount(0)
+  await expect(page).toHaveURL(/#\/today$/)
+})
+
+// Nothing under a phone sheet reserves the floating tab bar's room (AppShell's global rule on html).
+test('under a phone sheet the tab bar reserve is zero; on a tab it is the bar and its float', async ({ page }) => {
+  await start(page, SIZES[0], 'light', planned())
+  const reserve = () => page.evaluate(() => {
+    const probe = document.body.appendChild(document.createElement('div'))
+    probe.style.cssText = 'position:absolute;height:var(--tabbar-inset)'
+    const height = probe.getBoundingClientRect().height
+    probe.remove()
+    return height
+  })
+  await page.goto('./#/week')
+  await expect(page.locator('nav.tabbar')).toBeVisible()
+  expect(await reserve()).toBe(76)
+  await page.goto('./#/settings')
+  await expect(page.getByTestId('sheet-bar')).toBeVisible()
+  expect(await reserve()).toBe(0)
+})

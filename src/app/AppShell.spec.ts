@@ -209,6 +209,18 @@ describe('Settings and the assistant as a full-height sheet on a phone (DIRECTIO
     await closed()
   })
 
+  it('Escape while an input method composes a word leaves the sheet open', async () => {
+    const host = await mountShell('#/week', 390)
+    await nextTick()
+    window.location.hash = '#/settings'
+    window.dispatchEvent(new HashChangeEvent('hashchange'))
+    await vi.waitFor(() => expect(host.querySelector('[data-testid=sheet-bar]')).not.toBeNull())
+    window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', isComposing: true, bubbles: true }))
+    await nextTick()
+    expect(window.location.hash).toBe('#/settings')
+    expect(host.querySelector('[data-testid=sheet-bar]')).not.toBeNull()
+  })
+
   it('on a tablet, Settings is a centred form sheet with Listo and no grabber (R_TabletAjustes); the assistant stays a page', async () => {
     const host = await mountShell('#/tasks', 900)
     await nextTick()
