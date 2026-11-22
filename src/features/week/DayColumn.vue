@@ -239,7 +239,7 @@ function onColumnClick(event: MouseEvent, blockId?: string): void {
       <span class="t-caption" data-role="caption" />
       <span data-role="taskTitle" />
       <span data-role="compact" data-min-text />
-      <span data-role="blockTitle" data-lead="mark" />
+      <span data-role="blockTitle" />
       <span class="item-glyph"><CategoryMark :category="undefined" data-glyph-probe="category" /></span>
       <span class="item-glyph is-smallest"><CategoryMark :category="undefined" data-glyph-probe="category-min" /></span>
       <span><Icon name="triangle-alert" :size="12" data-glyph-probe="warning" /></span>
@@ -394,7 +394,6 @@ function onColumnClick(event: MouseEvent, blockId?: string): void {
 /* Labels are drawn above the now-line (z-index 2): the line crosses the fill of a block, never its words. */
 .block-title, .block-detail, .block-status, .task-title, .task-icon { position: relative; z-index: 3; }
 /* Inline marks sit at the top of their line and are no taller than it, so they never make a line taller than measured. */
-.block-mark { margin-inline-end: 1px; vertical-align: top; }
 .block-status { color: var(--label-on-fill); }
 .block-status :deep(svg), .task-icon { vertical-align: top; }
 
