@@ -55,17 +55,18 @@ it('day toggles are at least 4.25em wide', () => {
 })
 
 // CI of #60: with "Elegir días" open, the answer dock outgrew the 736 px modal and the frame cut "Siguiente". The dock's
-// share is of the frame, and it can shrink (its answers scroll) because no parent rule fixes its size. setup-guided
-// measures the same in a tablet browser.
+// share is of the frame; it keeps its size there (its answers scroll inside it, its actions never shrink out of it), and
+// that size is its own, not a parent's rule. setup-guided measures the same in a tablet browser, visual-integrity on a
+// 320 px phone at 200 % text.
 describe('the guided setup dock inside the modal', () => {
   const styles = (text: string) => text.slice(text.indexOf('<style scoped>'), text.indexOf('</style>'))
   it('takes its share of the frame, not of the screen behind the modal', () => {
     expect(declarations(block(css, '.setup-frame {'))['--frame-room']).toBe('min(var(--vv-height, 100dvh), 100dvh)')
     const dock = declarations(block(styles(setupAnswer), '.dock {'))
     expect(dock['max-height']).toBe('calc(var(--frame-room, min(var(--vv-height, 100dvh), 100dvh)) * 0.66)')
-    expect(dock.flex).toBe('0 1 auto')
+    expect(dock.flex).toBe('none')
   })
-  it('is not fixed in size by the conversation, whose own rule is for the summary dock only', () => {
+  it('is not sized by the conversation, whose own rule is for the summary dock only', () => {
     expect(styles(setupConversation)).not.toMatch(/(^|\n)\.dock \{/)
     expect(declarations(block(styles(setupConversation), '.dock.is-summary {')).flex).toBe('none')
   })

@@ -261,10 +261,10 @@ const labels = computed(() => ({
 </template>
 
 <style scoped>
-/* Docked like a keyboard: the answer area scrolls on its own when it is taller than its share of the frame (the screen,
-   or the tablet modal: ConversationFrame's --frame-room), and the actions under it never move. */
+/* Docked like a keyboard: the dock keeps its size (its actions never shrink out of it) up to its share of the frame (the
+   screen, or the tablet modal: ConversationFrame's --frame-room); the answer area scrolls on its own inside it. */
 .dock {
-  flex: 0 1 auto; display: flex; flex-direction: column; min-height: 0; max-height: calc(var(--frame-room, min(var(--vv-height, 100dvh), 100dvh)) * 0.66);
+  flex: none; display: flex; flex-direction: column; min-height: 0; max-height: calc(var(--frame-room, min(var(--vv-height, 100dvh), 100dvh)) * 0.66);
   border-top: 0.5px solid var(--separator); background: var(--surface);
 }
 /* A short phone (375 x 667) gives the answers a little more; the conversation shows the question from its start

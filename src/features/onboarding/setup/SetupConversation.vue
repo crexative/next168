@@ -178,7 +178,7 @@ function onFocusIn(event: FocusEvent): void {
 .resumed { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; column-gap: var(--space-3); text-align: center; }
 .resumed p { margin: 0; color: var(--label-2); }
 /* The summary's own dock. A plain .dock here would also reach SetupAnswer's root (a scoped style reaches a child's
-   root element) and stop that dock from shrinking inside the tablet modal. */
+   root element), which sizes its dock itself. */
 .dock.is-summary { flex: none; border-top: 0.5px solid var(--separator); background: var(--surface); }
 .actions { display: flex; justify-content: center; padding-block: var(--group-gap) calc(var(--space-4) + var(--safe-bottom)); }
 .actions :deep(.ui-button) { width: 100%; min-height: 52px; border-radius: 26px; overflow-wrap: anywhere; hyphens: auto; }
