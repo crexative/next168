@@ -36,6 +36,8 @@ async function stored(page: Page): Promise<Doc> {
 
 async function openRow(page: Page, category: string, field: 'start' | 'end'): Promise<void> {
   await live(page).locator(`[data-category="${category}"] button[aria-expanded]`).first().click()
+  // The row asks what to change; Horario opens its times.
+  await live(page).locator(`[data-category="${category}"]`).getByTestId('talk-time').click()
   await openField(live(page).locator(`[data-category="${category}"] [data-field=${field}]`).first())
 }
 
@@ -146,6 +148,8 @@ test.describe('one guarded commit', () => {
     await openFromSettings(page)
     const before = await stored(page)
     await live(page).getByTestId('card-work').click()
+    // A row opens its edit conversation; "Editar todo" is the whole form.
+    await live(page).getByTestId('talk-edit-all').click()
     await openField(live(page).locator('[data-category=work] [data-field=end]').first())
     await live(page).locator('[data-minute="1080"]').click()
     await primary(page).click()
@@ -247,6 +251,8 @@ test.describe('closing never writes', () => {
     await onScreen(page, 'summary')
     const before = await bytes(page)
     await live(page).getByTestId('card-work').click()
+    // A row opens its edit conversation; "Editar todo" is the whole form.
+    await live(page).getByTestId('talk-edit-all').click()
     await openField(live(page).locator('[data-category=work] [data-field=end]').first())
     await live(page).locator('[data-minute="1080"]').click()
     await page.reload()
@@ -385,6 +391,8 @@ test.describe('answering', () => {
     await step(() => tap(page, 'Siguiente'), 'summary')
     // Pickers and the time editor never add a second filled button.
     await live(page).getByTestId('card-work').click()
+    // A row opens its edit conversation; "Editar todo" is the whole form.
+    await live(page).getByTestId('talk-edit-all').click()
     await openField(live(page).locator('[data-category=work] [data-field=start]').first())
     await live(page).getByTestId('other-time').click()
     await auditScreen(page, 'summary with the time editor')
@@ -447,6 +455,8 @@ test.describe('answering', () => {
       await check(next)
     }
     await live(page).getByTestId('card-work').click()
+    // A row opens its edit conversation; "Editar todo" is the whole form.
+    await live(page).getByTestId('talk-edit-all').click()
     await check('summary, a card open')
     expect(warnings).toEqual([])
   })
@@ -546,6 +556,8 @@ test.describe('answering', () => {
     await openFromSettings(page)
     const before = await bytes(page)
     await live(page).getByTestId('card-work').click()
+    // A row opens its edit conversation; "Editar todo" is the whole form.
+    await live(page).getByTestId('talk-edit-all').click()
     await expect(live(page).locator('[data-category=work] [data-field=start] .value')).toHaveText('7:33 a. m.')
     await openField(live(page).locator('[data-category=work] [data-field=start]'))
     await live(page).getByTestId('other-time').click()
@@ -618,6 +630,7 @@ test.describe('answering', () => {
     const card = live(page).getByTestId('card-family')
     const text = (await card.textContent())!
     await card.click()
+    await live(page).getByTestId('talk-edit-all').click()
     await live(page).getByRole('button', { name: 'Quitar Familia' }).click()
     await expect(live(page).getByTestId('removed-note')).toHaveText('«Familia» quitado.')
     await live(page).getByRole('button', { name: 'Deshacer' }).click()
@@ -631,6 +644,8 @@ test.describe('answering', () => {
     await page.goto('./')
     await openFromSettings(page)
     await live(page).getByTestId('card-exercise').click()
+    // A row opens its edit conversation; "Editar todo" is the whole form.
+    await live(page).getByTestId('talk-edit-all').click()
     await expect(live(page).getByTestId('has-tasks')).toHaveText('Tiene tareas. Para quitarlo, ve a Ajustes › Categorías y metas.')
     await expect(live(page).getByTestId('card-remove')).toHaveCount(0)
     await live(page).getByTestId('summary-review').click()
@@ -663,6 +678,8 @@ test.describe('answering', () => {
     await page.getByTestId('setup-guided-row').getByRole('button').click()
     await onScreen(page, 'summary')
     await live(page).getByTestId('card-exercise').click()
+    // A row opens its edit conversation; "Editar todo" is the whole form.
+    await live(page).getByTestId('talk-edit-all').click()
     await live(page).locator('[data-category=exercise]').getByTestId('range-add').click()
     await expect(page.getByTestId('undo-toast')).toBeVisible()
     await primary(page).click()
@@ -840,6 +857,8 @@ async function walk(page: Page, visit: (label: string) => Promise<void>, options
   await onScreen(page, 'summary')
   await visit('summary')
   await live(page).getByTestId('card-work').click()
+  // A row opens its edit conversation; "Editar todo" is the whole form.
+  await live(page).getByTestId('talk-edit-all').click()
   await visit('summary, a card open')
   await openField(live(page).locator('[data-category=work] [data-field=start]').first())
   await visit('summary, a picker open')
@@ -977,6 +996,7 @@ test('A13: valid legacy content (31 categories, 11 ranges in one, two equal name
   await openFromSettings(page)
   const card = live(page).locator('[data-category]').filter({ hasText: 'Cosa 30' })
   await card.getByRole('button', { expanded: false }).first().click()
+  await card.getByTestId('talk-time').click()
   await card.locator('[data-field=end]').first().click()
   const option = card.locator('.times [data-minute]').nth(1)
   const minute = Number(await option.getAttribute('data-minute'))
@@ -1301,6 +1321,8 @@ test.describe('"¿A qué más…?" with several picks (S1)', () => {
     await tap(page, 'Siguiente')
     await onScreen(page, 'summary')
     await live(page).getByTestId('card-family').click()
+    // A row opens its edit conversation; "Editar todo" is the whole form.
+    await live(page).getByTestId('talk-edit-all').click()
     await live(page).getByRole('button', { name: 'Quitar Familia' }).click()
     await expect(live(page).getByTestId('removed-note')).toHaveText('«Familia» quitado.')
     await live(page).getByRole('button', { name: 'Deshacer' }).click()
@@ -1486,9 +1508,46 @@ test('from Ajustes a category with one range can be left without times in its su
   await openFromSettings(page)
   await onScreen(page, 'summary')
   await live(page).getByTestId('card-work').click()
+  // A row opens its edit conversation; "Editar todo" is the whole form.
+  await live(page).getByTestId('talk-edit-all').click()
   const remove = live(page).locator('[data-category=work] [data-testid=range-remove]')
   await expect(remove).toHaveCount(1)
   await remove.click()
   await expect(live(page).locator('[data-category=work] [data-range]')).toHaveCount(0)
   await expect(live(page).getByTestId('card-work')).toContainText('Sin horario')
+})
+
+// #61 review (decision for #62): a summary row opens the same edit conversation as a routine in Week (R_EditarRutina).
+test('a summary row asks what to change: Horario opens its times, Quitar asks first, "Editar todo" is the whole form', async ({ page }) => {
+  await start(page, { document: planned() })
+  await page.goto('./')
+  await openFromSettings(page)
+  await onScreen(page, 'summary')
+  const card = live(page).locator('[data-category=work]')
+  await live(page).getByTestId('card-work').click()
+  await expect(card.getByTestId('card-talk')).toContainText('¿Qué quieres cambiar de Trabajo?')
+  await expect(card.getByTestId('card-name')).toHaveCount(0)
+  await expect(live(page).getByTestId('card-work')).toHaveAttribute('aria-expanded', 'true')
+  // Horario: the range card, then Listo closes the row.
+  await card.getByTestId('talk-time').click()
+  await expect(card.locator('[data-field=start]')).toBeVisible()
+  await card.getByTestId('card-done').click()
+  await expect(card.getByTestId('card-talk')).toHaveCount(0)
+  // Quitar asks; "Mejor no" goes back to the question.
+  await live(page).getByTestId('card-work').click()
+  await card.getByTestId('talk-remove').click()
+  await expect(card.getByTestId('card-talk')).toContainText('¿Quitar Trabajo de tu semana?')
+  await card.getByTestId('talk-remove-no').click()
+  await expect(card.getByTestId('card-talk')).toContainText('¿Qué quieres cambiar de Trabajo?')
+  // "Editar todo": the name and the times together.
+  await card.getByTestId('talk-edit-all').click()
+  await expect(card.getByTestId('card-name')).toBeVisible()
+  await card.getByTestId('card-done').click()
+  // Quitar, confirmed: the row says so and offers Deshacer.
+  await live(page).getByTestId('card-work').click()
+  await card.getByTestId('talk-remove').click()
+  await card.getByTestId('talk-remove-yes').click()
+  await expect(live(page).locator('[data-removed=work]')).toBeVisible()
+  await live(page).locator('[data-removed=work]').getByTestId('card-undo').click()
+  await expect(live(page).getByTestId('card-work')).toBeVisible()
 })

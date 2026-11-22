@@ -239,6 +239,8 @@ for (const theme of THEMES) {
             expect(target.height).toBeGreaterThanOrEqual(48)
           }
           await live.getByTestId('card-commute').click()
+          // A row opens its edit conversation; "Editar todo" is the whole form.
+          await live.getByTestId('talk-edit-all').click()
           await live.locator('[data-category=commute] [data-field=end]').first().click()
           await audit(page, `${theme}/${locale}/${width}/wider fonts/setup summary with a picker`)
         })
@@ -347,6 +349,8 @@ for (const theme of THEMES) {
         await settled()
         await audit(page, `${theme}/${locale}/360/setup summary`)
         await live.getByTestId('card-sleep').click()
+        // A row opens its edit conversation; "Editar todo" is the whole form.
+        await live.getByTestId('talk-edit-all').click()
         await audit(page, `${theme}/${locale}/360/setup summary, sleep open`)
       })
     }
@@ -585,6 +589,8 @@ for (const theme of THEMES) {
       await settled()
       await audit(page, `${theme}/setup summary`)
       await live.getByTestId('card-work').click()
+      // A row opens its edit conversation; "Editar todo" is the whole form.
+      await live.getByTestId('talk-edit-all').click()
       await audit(page, `${theme}/setup summary with a card open`)
     })
 

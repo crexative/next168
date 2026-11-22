@@ -1,7 +1,10 @@
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, nextTick, ref, useId, watch } from 'vue'
 import Button from '@/ui/Button.vue'
 import Icon from '@/ui/Icon.vue'
+import { registerIcons } from '@/ui/icons'
+import QuickReplies from '@/ui/QuickReplies.vue'
+import { CalendarDays, Clock, Trash2 } from 'lucide-vue-next'
 import { formatWholeHours } from '@/ui/format'
 import { addToStored, categoryMinutes, keepSeparate, renameDraft, sameNameAsStored, type CategoryDraft, type Issue, type SetupState } from '../setupModel'
 import OtherThingField from './OtherThingField.vue'
@@ -15,6 +18,38 @@ const props = defineProps<{
 }>()
 const emit = defineEmits<{ toggle: []; remove: []; edited: [] }>()
 const { t, duration, rangeLine } = useSetupFormat()
+registerIcons({ clock: Clock, 'calendar-days': CalendarDays, 'trash-2': Trash2 })
+
+// Tapping a row opens the same edit conversation as a routine in Week (DIRECTION §4 improvement 6, R_EditarRutina):
+// "¿Qué quieres cambiar de Trabajo?" with Horario, Días and Quitar; "Editar todo" keeps the whole form one tap away.
+// Horario and Días continue with the range card; Quitar asks first ("Mejor no" goes back).
+type Mode = 'talk' | 'times' | 'remove' | 'all'
+const mode = ref<Mode>('talk')
+const talkId = useId()
+const root = ref<HTMLElement | null>(null)
+// A row added from "Añadir algo más" has no name yet: it opens on the whole form, its name field first.
+watch(() => props.expanded, (open) => { if (open) mode.value = props.category.name.trim() === '' ? 'all' : 'talk' }, { immediate: true })
+const talkChoices = computed(() => [
+  { value: 'time', label: t('week.talk.schedule'), testId: 'talk-time', icon: 'clock' },
+  { value: 'days', label: t('week.talk.days'), testId: 'talk-days', icon: 'calendar-days' },
+  ...(props.hasTasks ? [] : [{ value: 'remove', label: t('week.talk.remove'), testId: 'talk-remove', icon: 'trash-2', destructive: true }]),
+])
+const removeChoices = computed(() => [
+  { value: 'yes', label: t('week.talk.removeYes'), testId: 'talk-remove-yes', destructive: true },
+  { value: 'no', label: t('week.talk.removeNo'), testId: 'talk-remove-no' },
+])
+// Each step puts focus on its first control, so the conversation goes on from the keyboard too.
+function go(next: Mode): void {
+  mode.value = next
+  void nextTick(() => root.value?.querySelector<HTMLElement>('.body button, .body input, .talk button')?.focus({ preventScroll: true }))
+}
+function onTalk(value: string): void {
+  go(value === 'remove' ? 'remove' : 'times')
+}
+function onRemove(value: string): void {
+  if (value === 'yes') emit('remove')
+  else go('talk')
+}
 
 const minutes = computed(() => categoryMinutes(props.state, props.category))
 // Whole hours from ten hours up, "h min" below: a figure a child can read.
@@ -24,6 +59,11 @@ const nameIssue = computed(() => props.issues.find((issue) => issue.categoryKey 
 // Add mode: a new activity named like a stored one is never a silent copy; the person picks what happens.
 const sameStored = computed(() => sameNameAsStored(props.state, props.category))
 
+const labels = computed(() => ({
+  there: t('onboarding.guided.commuteRanges.there'), back: t('onboarding.guided.commuteRanges.back'), bed: t('onboarding.guided.sleep.bed'),
+  wake: t('onboarding.guided.sleep.wake'), weeknights: t('onboarding.guided.sleep.weeknights'), weekend: t('onboarding.guided.sleep.weekend'),
+}))
+
 function onName(name: string): void {
   renameDraft(props.category, name)
   emit('edited')
@@ -31,7 +71,7 @@ function onName(name: string): void {
 </script>
 
 <template>
-  <li class="card" :data-category="category.key" :class="{ 'is-open': expanded }">
+  <li ref="root" class="card" :data-category="category.key" :class="{ 'is-open': expanded }">
     <button class="head" type="button" :aria-expanded="expanded" :data-testid="`card-${category.key}`" @click="emit('toggle')">
       <span class="dot" aria-hidden="true" :style="{ background: color }" />
       <span class="text">
@@ -43,7 +83,17 @@ function onName(name: string): void {
       </span>
       <Icon name="chevron-right" :size="18" class="chevron" />
     </button>
-    <div v-if="expanded" class="body">
+    <div v-if="expanded && (mode === 'talk' || mode === 'remove')" class="talk" role="group" :aria-labelledby="talkId" data-testid="card-talk">
+      <p :id="talkId" class="talk-question t-body">{{ mode === 'remove' ? t('week.talk.removeQuestion', { title: category.name }) : t('week.talk.question', { title: category.name }) }}</p>
+      <QuickReplies v-if="mode === 'talk'" :options="talkChoices" :columns="talkChoices.length" :group-label="t('week.talk.question', { title: category.name })" @answer="onTalk" />
+      <QuickReplies v-else :options="removeChoices" :columns="2" :group-label="t('week.talk.removeQuestion', { title: category.name })" @answer="onRemove" />
+      <Button v-if="mode === 'talk'" variant="plain" data-testid="talk-edit-all" @click="go('all')">{{ t('week.talk.editAll') }}</Button>
+    </div>
+    <div v-else-if="expanded && mode === 'times'" class="body">
+      <RangeList :state="state" :category="category" :labels="labels" :sleep="category.topic === 'sleep'" lone-removable />
+      <Button variant="tinted" data-testid="card-done" @click="emit('toggle')">{{ t('onboarding.summary.done') }}</Button>
+    </div>
+    <div v-else-if="expanded" class="body">
       <OtherThingField :model-value="category.name" :label="t('onboarding.summary.name')" :invalid="!!nameIssue" test-id="card-name" @update:model-value="onName" />
       <div v-if="sameStored" class="same-name" data-testid="same-name">
         <p class="note t-body" role="status">{{ t('onboarding.guided.add.sameName', { name: sameStored.name }) }}</p>
@@ -51,7 +101,7 @@ function onName(name: string): void {
         <Button variant="plain" data-testid="same-name-new" @click="keepSeparate(category); emit('edited')">{{ t('onboarding.guided.add.createAnother') }}</Button>
       </div>
       <p v-else-if="nameIssue" class="error t-body" role="alert">{{ t(`onboarding.guided.errors.${nameIssue.code}`) }}</p>
-      <RangeList :state="state" :category="category" :labels="{ there: t('onboarding.guided.commuteRanges.there'), back: t('onboarding.guided.commuteRanges.back'), bed: t('onboarding.guided.sleep.bed'), wake: t('onboarding.guided.sleep.wake'), weeknights: t('onboarding.guided.sleep.weeknights'), weekend: t('onboarding.guided.sleep.weekend') }" :sleep="category.topic === 'sleep'" lone-removable />
+      <RangeList :state="state" :category="category" :labels="labels" :sleep="category.topic === 'sleep'" lone-removable />
       <p v-if="hasTasks" class="note t-body" data-testid="has-tasks">{{ t('onboarding.summary.hasTasks', { place }) }}</p>
       <Button v-else variant="plain" destructive data-testid="card-remove" @click="emit('remove')">{{ t('onboarding.summary.remove', { name: category.name }) }}</Button>
       <Button variant="tinted" data-testid="card-done" @click="emit('toggle')">{{ t('onboarding.summary.done') }}</Button>
@@ -61,6 +111,10 @@ function onName(name: string): void {
 
 <style scoped>
 .card { list-style: none; }
+/* The edit conversation in the row: the question, its replies, and "Editar todo" under them. */
+.talk { display: flex; flex-direction: column; gap: var(--space-3); padding: 0 var(--card-padding) var(--card-padding-block); }
+.talk-question { margin: 0; font-weight: 600; }
+.talk > :deep(.ui-button) { align-self: flex-start; }
 /* The rows read as one grouped list, but each tap target keeps 8 px from the next: 4 px of margin on either side of
    the separator, taken from the row's padding. */
 .head { border-radius: inherit; display: flex; align-items: center; gap: var(--space-3); width: 100%; min-height: var(--tap-target); margin-block: var(--space-1); padding: calc(var(--row-padding-block) - var(--space-1)) var(--card-padding); border: 0; background: transparent; color: var(--label); text-align: start; touch-action: manipulation; }
