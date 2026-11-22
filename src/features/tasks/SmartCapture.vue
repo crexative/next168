@@ -14,7 +14,7 @@ import { useUndoToast } from '@/ui/undoToast'
 import { useNow } from '@/features/week/useNow'
 import { useCaptureSubmission } from './captureSubmission'
 import { readLastTaskCategory, rememberTaskCategory } from './lastCategory'
-import { undoCapture, type CaptureBinding, type CapturedTask, type CaptureReceipt } from './personActions'
+import { bindingCurrent, undoCapture, type CaptureBinding, type CapturedTask, type CaptureReceipt } from './personActions'
 import { ANY_FREE_TIME, clockText, minuteOf, newDraft, plannerToday, resolveWhen, taskFields, type TaskDraft } from './taskDraft'
 import TaskOptions from './TaskOptions.vue'
 import './registerIcons'
@@ -212,7 +212,14 @@ async function addOne(): Promise<void> {
   if (!canAdd.value || typedElsewhere()) return
   const row = rowOf(effective.value)
   const categoryId = row.categoryId
-  const receipt = await submission.submit([row], await sheetBinding ?? await submission.bind())
+  const binding = await sheetBinding ?? await submission.bind()
+  // Content replaced since the sheet opened (another window, a restored backup): refused once, said, and bound anew.
+  if (binding && !(await bindingCurrent(binding))) {
+    submission.state.value = 'changed'
+    bindSheet()
+    return
+  }
+  const receipt = await submission.submit([row], binding)
   if (submission.state.value === 'changed') bindSheet()
   if (!receipt) return
   if (categoryId && categoryId !== ANY_FREE_TIME) {

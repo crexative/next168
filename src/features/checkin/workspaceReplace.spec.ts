@@ -8,6 +8,7 @@ import { configurePlannerStore, usePlannerStore } from '@/stores/plannerStore'
 import { createTestRepositories, fixedNow, newTestId, testDocument } from '@/repositories/testSupport'
 import CheckInView from './CheckInView.vue'
 import CategorySettings from '@/features/settings/categories/CategorySettings.vue'
+import SmartCapture from '@/features/tasks/SmartCapture.vue'
 import TasksView from '@/features/tasks/TasksView.vue'
 import { useUndoToast } from '@/ui/undoToast'
 import DataSettings from '@/features/settings/data/DataSettings.vue'
@@ -105,9 +106,10 @@ describe('other forms after the workspace is replaced', () => {
     expect(document.body.querySelector('.sheet-root.is-shown')).toBeNull()
   })
 
+  // Nueva tarea is its own sheet now (SmartCapture), no longer a box at the top of Tareas.
   it('does not let a task typed in the old workspace be added to the new one', async () => {
     const category = { id: 'c-old', name: 'Old', colorKey: 'blue' as const, goal: { type: 'none' as const, hoursPerWeek: 0 } }
-    const { store } = await setup(TasksView, { ...workspace('ws-a'), revision: 1, categories: [category] })
+    const { store } = await setup(SmartCapture, { ...workspace('ws-a'), revision: 1, categories: [category] })
     const title = host.querySelector<HTMLTextAreaElement>('form.add textarea')!
     title.value = 'Stale task'
     title.dispatchEvent(new Event('input'))
@@ -152,7 +154,7 @@ describe('content replaced under the same workspace id (restored backup)', () =>
 
   it('does not let a queued task be added to a different document with the same id and revision', async () => {
     const category = { id: 'c-old', name: 'Old', colorKey: 'blue' as const, goal: { type: 'none' as const, hoursPerWeek: 0 } }
-    const { store } = await setup(TasksView, { ...workspace('ws-a'), revision: 1, categories: [category] })
+    const { store } = await setup(SmartCapture, { ...workspace('ws-a'), revision: 1, categories: [category] })
     const title = host.querySelector<HTMLTextAreaElement>('form.add textarea')!
     title.value = 'Stale task'
     title.dispatchEvent(new Event('input'))
@@ -230,7 +232,7 @@ describe('forms bind to their own entry, confirmations to the content hash', () 
   const task = { id: 't-1', title: 'Existing', categoryId: 'c-1', durationMin: 30, priority: 2 as const, createdAt: '2026-10-01T00:00:00.000Z' }
 
   it('keeps an unsaved quick-add draft when another task is completed', async () => {
-    const { store } = await setup(TasksView, { ...workspace('ws-a'), revision: 1, categories: [category], tasks: [task] })
+    const { store } = await setup(SmartCapture, { ...workspace('ws-a'), revision: 1, categories: [category], tasks: [task] })
     const title = host.querySelector<HTMLTextAreaElement>('form.add textarea')!
     title.value = 'Unsaved draft'
     title.dispatchEvent(new Event('input'))
@@ -240,7 +242,13 @@ describe('forms bind to their own entry, confirmations to the content hash', () 
     await nextTick()
     expect(store.document?.tasks[0]?.doneAt).toBeDefined()
     expect(title.value).toBe('Unsaved draft')
-    host.querySelector('form')!.dispatchEvent(new Event('submit', { cancelable: true }))
+    // Nueva tarea is bound as it opened: the change refuses the first save, says so and keeps the draft; the next saves.
+    host.querySelector('form.add')!.dispatchEvent(new Event('submit', { cancelable: true }))
+    await flush(store)
+    expect(store.document?.tasks.map((candidate) => candidate.title)).not.toContain('Unsaved draft')
+    expect(title.value).toBe('Unsaved draft')
+    expect(host.querySelector('[data-testid=capture-status]')!.textContent).toContain('Your plan changed while you were typing.')
+    host.querySelector('form.add')!.dispatchEvent(new Event('submit', { cancelable: true }))
     await flush(store)
     expect(store.document?.tasks.map((candidate) => candidate.title)).toContain('Unsaved draft')
   })
