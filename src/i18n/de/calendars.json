@@ -34,7 +34,7 @@
   "overlay": "Kalendertermine",
   "untitled": "Termin ohne Titel",
   "free": "Frei",
-  "conflict": "Konflikt mit deinem Plan",
+  "conflict": "Überschneidet sich mit deinem Plan",
   "size": "Dieser Kalender überschreitet die Grenze von 5 MB.",
   "frequency": "Wiederholungen pro Sekunde oder Minute werden nicht unterstützt.",
   "timezone": "Dieser Kalender nutzt eine unbekannte Zeitzone. Exportiere ihn mit einer VTIMEZONE-Definition.",
