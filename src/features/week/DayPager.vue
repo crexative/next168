@@ -264,13 +264,14 @@ onBeforeUnmount(() => {
   width: min(2rem, 40px);
   height: min(2rem, 40px);
   border-radius: 50%;
-  font-size: min(1.25rem, 22px);
-  font-weight: 700;
+  font-size: min(1.0625rem, 20px);
+  font-weight: 600;
   font-variant-numeric: tabular-nums;
 }
-.is-today .strip-weekday, .is-today .strip-number { color: var(--danger-label); }
-.strip-day[aria-pressed='true'] .strip-number { background: var(--label); color: var(--surface); }
-.strip-day.is-today[aria-pressed='true'] .strip-number { background: var(--danger); color: #fff; }
+.is-today .strip-weekday, .is-today .strip-number { color: var(--tint-label); }
+/* The day shown is filled in green (R_Semana); today keeps its green label when another day is shown. */
+.strip-day[aria-pressed='true'] .strip-number { background: var(--tint); color: var(--tint-text); }
+.strip-weekday { font-weight: 600; }
 
 .pager-viewport { overflow: hidden; overflow: clip visible; touch-action: pan-y; padding-top: var(--space-2); }
 .pager-track { display: flex; will-change: transform; transition-property: none; }

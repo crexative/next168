@@ -82,7 +82,7 @@ for (const [weekday, date, minutes] of [['Friday', '2026-10-23', 30], ['Thursday
     expect(blockBox!.x + blockBox!.width, 'block ends before the event starts').toBeLessThanOrEqual(busyBox!.x + 0.5)
     // The mark is never clipped by the overlay (it keeps a non-colour cue: icon, text kept as the accessible name).
     expect(await busy.locator('[data-testid=calendar-conflict] svg').count()).toBe(1)
-    await expect(busy.locator('[data-testid=calendar-conflict]')).toContainText('Conflict')
+    await expect(busy.locator('[data-testid=calendar-conflict]')).toContainText('Overlaps')
   })
 }
 

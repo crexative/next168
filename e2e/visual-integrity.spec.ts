@@ -677,7 +677,7 @@ for (const theme of THEMES) {
       await page.keyboard.press('Escape')
       await expect(page.getByRole('dialog')).toHaveCount(0)
       if (testInfo.project.name === 'phone') {
-        await page.getByTestId('week-view-toggle').click()
+        await page.getByTestId('week-view').getByRole('radio').nth(1).click()
         await expect(page.getByTestId('week-overview')).toBeVisible()
         await audit(page, `${theme}/es/week overview`)
       }

@@ -42,9 +42,10 @@ const root = ref<HTMLElement | null>(null)
 const probes = ref<HTMLElement | null>(null)
 const measure = useColumnMeasure(root, probes, () => !props.compact)
 
-// A calendar event conflicts when it overlaps a planned block of the same day; one marked free never does.
+// An event, imported or Weeklid's own, conflicts when it overlaps a planned block of the same day (as on Hoy, and as
+// its details say); one marked free never does.
 const conflicting = computed(() => new Set(props.busy
-  .filter((item) => item.kind === 'external' && !item.free && props.segments.some((segment) => segment.startMinute < item.endMinute && item.startMinute < segment.endMinute))
+  .filter((item) => !item.free && props.segments.some((segment) => segment.startMinute < item.endMinute && item.startMinute < segment.endMinute))
   .map((item) => item.key)))
 
 const STATUS_ICON = { done: 'check', skipped: 'x', partial: 'minus' } as const
@@ -238,7 +239,7 @@ function onColumnClick(event: MouseEvent, blockId?: string): void {
       <span class="t-caption" data-role="caption" />
       <span data-role="taskTitle" />
       <span data-role="compact" data-min-text />
-      <span data-role="blockTitle" data-lead="mark"><CategoryMark class="block-mark" :category="undefined" />{{ ' ' }}</span>
+      <span data-role="blockTitle" />
       <span class="item-glyph"><CategoryMark :category="undefined" data-glyph-probe="category" /></span>
       <span class="item-glyph is-smallest"><CategoryMark :category="undefined" data-glyph-probe="category-min" /></span>
       <span><Icon name="triangle-alert" :size="12" data-glyph-probe="warning" /></span>
@@ -285,7 +286,7 @@ function onColumnClick(event: MouseEvent, blockId?: string): void {
       :tabindex="compact ? -1 : undefined"
       @click.stop="onColumnClick($event, segment.occurrence.blockId)"
     >
-      <span v-if="segment.show.title" class="block-title" :class="{ 'is-hyphenated': segment.show.hyphenate, 'is-small-text': segment.show.small }"><CategoryMark v-if="segment.show.mark" class="block-mark" :category="categoriesById.get(segment.occurrence.categoryId)" />{{ segment.show.mark ? ' ' : '' }}{{ drawn(segment.show, segment.occurrence.title).words }}<span v-if="drawn(segment.show, segment.occurrence.title).cut" class="cut" data-cut aria-hidden="true">{{ ELLIPSIS }}</span></span>{{ ' ' }}
+      <span v-if="segment.show.title" class="block-title" :class="{ 'is-hyphenated': segment.show.hyphenate, 'is-small-text': segment.show.small }">{{ drawn(segment.show, segment.occurrence.title).words }}<span v-if="drawn(segment.show, segment.occurrence.title).cut" class="cut" data-cut aria-hidden="true">{{ ELLIPSIS }}</span></span>{{ ' ' }}
       <span v-if="segment.show.time" class="block-detail block-time">{{ timeRange(segment) }}</span>{{ ' ' }}
       <span v-if="segment.show.category" class="block-detail block-category">{{ categoryLine(segment) }}</span>{{ ' ' }}
       <span v-if="statuses.get(segment.key)" class="block-status t-caption" :class="{ 'visually-hidden': !segment.show.status }" data-testid="block-status"><template v-if="segment.show.statusIcon"><Icon :name="STATUS_ICON[statuses.get(segment.key)!]" :size="12" />{{ ' ' }}</template>{{ statusText(segment) }}</span>
@@ -341,6 +342,7 @@ function onColumnClick(event: MouseEvent, blockId?: string): void {
    the probes above, so the plan measures exactly what is drawn: whole words, never an ellipsis or a clamp. */
 .block-title, [data-role='blockTitle'] { font-size: 0.8125rem; font-weight: 600; line-height: 1.25; }
 .block-detail, [data-role='blockDetail'] { font-size: 0.75rem; line-height: 1.25; font-variant-numeric: tabular-nums; }
+.block-detail { color: var(--label-on-fill); }
 .task-text, [data-role='taskTitle'] { font-size: 0.75rem; font-weight: 500; line-height: 1.1; letter-spacing: 0.01em; }
 /* The small caption size (11 px at 100 % text): a short box's title on a tight line, centred, before the box becomes
    a mark. Same weight and tracking as the caption. */
@@ -369,7 +371,7 @@ function onColumnClick(event: MouseEvent, blockId?: string): void {
   gap: 1px;
   overflow: hidden;
   border: 0;
-  border-radius: 6px;
+  border-radius: 8px;
   background: color-mix(in srgb, var(--block-color) var(--cat-fill-strength), var(--surface));
   color: var(--label);
   text-align: start;
@@ -392,8 +394,7 @@ function onColumnClick(event: MouseEvent, blockId?: string): void {
 /* Labels are drawn above the now-line (z-index 2): the line crosses the fill of a block, never its words. */
 .block-title, .block-detail, .block-status, .task-title, .task-icon { position: relative; z-index: 3; }
 /* Inline marks sit at the top of their line and are no taller than it, so they never make a line taller than measured. */
-.block-mark { margin-inline-end: 1px; vertical-align: top; }
-.block-status { color: var(--label-2); }
+.block-status { color: var(--label-on-fill); }
 .block-status :deep(svg), .task-icon { vertical-align: top; }
 
 .busy {
@@ -401,9 +402,10 @@ function onColumnClick(event: MouseEvent, blockId?: string): void {
   display: block;
   overflow: hidden;
   padding: 1px 2px;
-  border: 1px dashed var(--label-2);
-  border-radius: 6px;
-  background: repeating-linear-gradient(135deg, color-mix(in srgb, var(--label-2) 10%, transparent) 0 4px, transparent 4px 8px);
+  /* A calendar event: an outlined card over the plan (R_Semana); one marked free is a dashed outline. */
+  border: 1px solid var(--label-2);
+  border-radius: 8px;
+  background: var(--surface);
   /* Events paint above planned blocks and tasks and open their details when tapped. */
   z-index: 2;
   color: var(--label);
@@ -411,12 +413,14 @@ function onColumnClick(event: MouseEvent, blockId?: string): void {
   cursor: pointer;
 }
 /* A calendar event marked free: drawn as an outline only, with no hatching; it takes no time from the plan. */
-.busy.is-free { border-style: solid; background: transparent; }
+.busy.is-free { border-style: dashed; background: transparent; }
 .is-conflict {
-  border-color: var(--danger);
-  background: repeating-linear-gradient(135deg, color-mix(in srgb, var(--label-2) 10%, var(--surface)) 0 4px, var(--surface) 4px 8px);
+  /* A conflict needs attention, not alarm: amber, never red (DIRECTION principle 6), dark enough for 3:1 as a border. */
+  border-color: var(--warning-label);
+  background: var(--surface);
 }
-.conflict-mark { display: inline-flex; align-items: center; gap: 2px; vertical-align: top; color: var(--danger-label); }
+/* Drawn at the caption weight it is measured at (dayColumnPlan.ts › busyShow): a bolder word would not fit its box. */
+.conflict-mark { display: inline-flex; align-items: center; gap: 2px; vertical-align: top; color: var(--warning-label); }
 /* A conflict with no room for words keeps its ⚠, centred like a glyph (dayColumnPlan.ts measures it there). */
 .busy.is-icon-only { display: flex; align-items: center; justify-content: center; padding: 0; }
 /* A conflict too narrow for "⚠ title" on one line draws its ⚠ on a line of its own above the title (ICON_PX + 1 px). */
@@ -450,7 +454,7 @@ function onColumnClick(event: MouseEvent, blockId?: string): void {
    there opens the routine (the task stays reachable by keyboard here and from Tasks). */
 .task-box.is-outline { inset: 1px; background: transparent; }
 .task-chunk.is-outline { pointer-events: none; }
-.task-box.is-late { border-color: var(--danger); color: var(--danger-label); }
+.task-box.is-late { border-color: var(--warning-label); color: var(--warning-label); }
 
 /* One visual, one meaning: done is dimmed with its check mark; only "No" is struck through. */
 .block.is-done { opacity: 0.6; }
@@ -470,7 +474,8 @@ function onColumnClick(event: MouseEvent, blockId?: string): void {
   z-index: 2;
   height: 2px;
   margin-top: -1px;
-  background: var(--danger);
+  /* Green means now (DIRECTION principle 6). */
+  background: var(--tint);
   pointer-events: none;
 }
 .now-line::before {
@@ -481,7 +486,7 @@ function onColumnClick(event: MouseEvent, blockId?: string): void {
   width: 10px;
   height: 10px;
   border-radius: 50%;
-  background: var(--danger);
+  background: var(--tint);
 }
 
 @media (prefers-reduced-motion: reduce) {
