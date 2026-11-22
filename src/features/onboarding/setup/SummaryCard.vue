@@ -76,7 +76,7 @@ function onName(name: string): void {
 .line::first-letter { text-transform: uppercase; }
 .body { display: flex; flex-direction: column; gap: var(--space-3); align-items: stretch; padding: 0 var(--card-padding) var(--card-padding-block); }
 /* Inside a card the ranges sit flat on the card's own surface: no second inset eating the width. */
-.body :deep(.range) { padding-inline: 0; }
+.body :deep(.range) { padding-inline: 0; background: transparent; }
 .body > :deep(.ui-button) { align-self: flex-start; }
 .error { margin: 0; color: var(--danger-label); }
 .line.warn { color: var(--label); }
