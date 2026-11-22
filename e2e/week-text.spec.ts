@@ -56,10 +56,21 @@ async function auditEverySize(page: Page, label: string, phone: number, seed: nu
       await auditWeek(page, `${label} ${await theme()} ${width} px ${percent} %`, 7, titles)
     }
   }
+  // The day pages on a wide screen ("Día" chosen there), where an item is widest and a conflict draws its word.
+  for (const percent of [100, 200]) {
+    for (const width of [1024, 1920]) {
+      await setTextSize(page, percent)
+      await page.setViewportSize({ width, height: 900 })
+      await settled(page)
+      await page.getByTestId('week-view').getByRole('radio').nth(0).click()
+      await auditWeek(page, `${label} ${await theme()} ${width} px ${percent} % (day pages)`, 7, titles)
+      await page.getByTestId('week-view').getByRole('radio').nth(1).click()
+    }
+  }
   await setTextSize(page, 100)
   await page.setViewportSize({ width: phone, height: 720 })
   await settled(page)
-  await page.getByTestId('week-view-toggle').click()
+  await page.getByTestId('week-view').getByRole('radio').nth(1).click()
   await expect(page.getByTestId('week-overview')).toBeVisible()
   await auditWeek(page, `${label} ${await theme()} ${phone} px overview`, 7, titles)
 }

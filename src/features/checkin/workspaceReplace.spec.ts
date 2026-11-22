@@ -50,23 +50,38 @@ async function setup(component: object, first: PlannerDocument) {
   return ctx
 }
 
+// The check-in is a conversation teleported to the body; its note and "Save" are on the last turn.
+const checkinStep = () => document.body.querySelector<HTMLElement>('[data-testid="checkin"]')?.dataset.step
+// Bounded: a walk that only awaits ticks never yields to vitest's timer, so a stuck conversation must fail, not hang.
+async function toFinal(): Promise<void> {
+  for (let taps = 0; checkinStep() !== 'final'; taps++) {
+    if (taps === 12) throw new Error(`the check-in did not move past "${checkinStep()}" in 12 taps`)
+    document.body.querySelector<HTMLButtonElement>('[data-testid="checkin-skip"]')!.click()
+    await nextTick()
+  }
+}
+const checkinNote = () => document.body.querySelector<HTMLTextAreaElement>('[data-testid="checkin-note"]')!
+const saveCheckIn = () => document.body.querySelector<HTMLButtonElement>('[data-testid="checkin-save"]')!.click()
+
 describe('check-in form after the workspace is replaced', () => {
   it('shows the entry of the imported workspace instead of the previous values', async () => {
     const { store } = await setup(CheckInView, { ...workspace('ws-a', 'old note'), revision: 1 })
-    const note = () => host.querySelector<HTMLTextAreaElement>('textarea')!
-    expect(note().value).toBe('old note')
+    await toFinal()
+    expect(checkinNote().value).toBe('old note')
 
     store.document = workspace('ws-b', 'imported note')
     await nextTick()
-    expect(note().value).toBe('imported note')
+    await toFinal()
+    expect(checkinNote().value).toBe('imported note')
   })
 
   it('refuses to commit a form that was prepared for the previous workspace', async () => {
     const { store } = await setup(CheckInView, { ...workspace('ws-a', 'old note'), revision: 1 })
+    await toFinal()
     const imported = { ...workspace('ws-b', 'imported note'), revision: 1 }
     store.document = imported
     // The watcher has not flushed yet: this is a save prepared before the switch.
-    host.querySelector('form')!.dispatchEvent(new Event('submit', { cancelable: true }))
+    saveCheckIn()
     await store.settled()
     expect(store.document?.workspaceId).toBe('ws-b')
     expect(store.document?.checkIns).toEqual([{ date: TODAY, note: 'imported note' }])
@@ -115,19 +130,21 @@ async function flush(store: { settled(): Promise<void> }): Promise<void> {
 describe('content replaced under the same workspace id (restored backup)', () => {
   it('reloads the check-in form with the restored entry', async () => {
     const { store } = await setup(CheckInView, { ...workspace('ws-a', 'old displayed note'), revision: 1 })
-    const note = () => host.querySelector<HTMLTextAreaElement>('textarea')!
-    expect(note().value).toBe('old displayed note')
+    await toFinal()
+    expect(checkinNote().value).toBe('old displayed note')
 
     store.document = { ...workspace('ws-a', 'restored backup note'), revision: 2 }
     await nextTick()
-    expect(note().value).toBe('restored backup note')
+    await toFinal()
+    expect(checkinNote().value).toBe('restored backup note')
   })
 
   it('does not let a queued check-in submission overwrite the restored entry', async () => {
     const { store } = await setup(CheckInView, { ...workspace('ws-a', 'old displayed note'), revision: 1 })
+    await toFinal()
     // Same id, same revision: only the stored entry tells the two documents apart.
     store.document = { ...workspace('ws-a', 'restored backup note'), revision: 1 }
-    host.querySelector('form')!.dispatchEvent(new Event('submit', { cancelable: true }))
+    saveCheckIn()
     await store.settled()
     expect(store.document?.checkIns).toEqual([{ date: TODAY, note: 'restored backup note' }])
     expect(store.document?.revision).toBe(1)
@@ -230,28 +247,30 @@ describe('forms bind to their own entry, confirmations to the content hash', () 
 
   it('keeps the check-in form through an unrelated commit but reloads it when its own entry changes', async () => {
     const { store } = await setup(CheckInView, { ...workspace('ws-a', 'stored note'), revision: 1 })
-    const note = () => host.querySelector<HTMLTextAreaElement>('textarea')!
-    note().value = 'typed note'
-    note().dispatchEvent(new Event('input'))
+    await toFinal()
+    checkinNote().value = 'typed note'
+    checkinNote().dispatchEvent(new Event('input'))
     const result = await store.commit((draft) => { draft.settings.weekStartsOn = 0 })
     expect(result.ok).toBe(true)
     await nextTick()
-    expect(note().value).toBe('typed note')
+    expect(checkinNote().value).toBe('typed note')
 
     // Same workspace id, revision and write time: only the entry itself differs.
     store.document = { ...store.document!, checkIns: [{ date: TODAY, note: 'replaced note' }] }
     await nextTick()
-    expect(note().value).toBe('replaced note')
+    await toFinal()
+    expect(checkinNote().value).toBe('replaced note')
   })
 
   it('refuses a check-in save when its entry changed and says so', async () => {
     const { store } = await setup(CheckInView, { ...workspace('ws-a', 'stored note'), revision: 1 })
+    await toFinal()
     store.document = { ...store.document!, checkIns: [{ date: TODAY, note: 'replaced note' }] }
-    host.querySelector('form')!.dispatchEvent(new Event('submit', { cancelable: true }))
+    saveCheckIn()
     await store.settled()
     await nextTick()
     expect(store.document?.checkIns).toEqual([{ date: TODAY, note: 'replaced note' }])
-    expect(host.querySelector('[role=alert]')?.textContent).toContain('changed elsewhere')
+    expect(document.body.querySelector('[data-testid="checkin"] [role=alert]')?.textContent).toContain('changed elsewhere')
     expect(store.error).toBeNull()
   })
 

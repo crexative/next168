@@ -163,7 +163,7 @@ for (const theme of THEMES) {
 
         await page.goto('./#/week')
         await expect(page.getByRole('heading', { level: 1, name: 'Semana' })).toBeVisible()
-        if (size === 'phone') await page.getByTestId('week-view-toggle').click()
+        if (size === 'phone') await page.getByTestId('week-view').getByRole('radio').nth(1).click()
         await expect(page.locator('.day-column[data-date="2026-10-22"] [data-block-id="b-gym"]')).toHaveCount(1)
         await expect(page.locator('.day-column[data-date="2026-10-20"] [data-block-id="b-gym"]')).toHaveCount(0)
       })
