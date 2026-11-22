@@ -55,22 +55,20 @@ function add(): void {
       :start-label="sleep ? labels?.bed : undefined"
       :end-label="sleep ? labels?.wake : undefined"
       :hide-days="sleep && range.days.length === 7 && !range.label"
+      :removable="category.ranges.length > 1"
       @toggle="open = $event === null ? null : { key: range.key, field: $event }"
       @change="change(range.key, $event)"
       @remove="remove(range.key)"
     />
     <p v-if="!sleep" class="week-hours t-footnote" data-testid="range-week-hours">{{ weekHours }}</p>
-    <!-- "Añadir otro horario" and the screen's own way out ("Sin horario fijo") share a row (R_InicioHorario). -->
-    <div class="range-actions">
-      <Button ref="addButton" variant="plain" data-testid="range-add" @click="add"><Icon name="plus" :size="20" /> {{ t('onboarding.guided.range.add') }}</Button>
-      <slot name="actions" />
-    </div>
+    <Button ref="addButton" variant="plain" data-testid="range-add" @click="add"><Icon name="plus" :size="20" /> {{ t('onboarding.guided.range.add') }}</Button>
   </div>
 </template>
 
 <style scoped>
 .ranges { display: flex; flex-direction: column; gap: var(--space-3); align-items: stretch; }
 .week-hours { margin: calc(var(--space-1) * -1) 0 0; padding-inline: var(--card-padding); color: var(--label-2); font-variant-numeric: tabular-nums; }
-.range-actions { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--space-2) var(--space-3); }
-.range-actions > :deep(.ui-button) { overflow-wrap: anywhere; hyphens: auto; }
+/* On a short phone (375 x 667) the times and "Añadir otro horario" come first: each range's row already shows its hours. */
+@media (max-height: 700px) { .week-hours { display: none; } }
+.ranges > :deep(.ui-button) { align-self: flex-start; overflow-wrap: anywhere; hyphens: auto; }
 </style>
