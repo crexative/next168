@@ -107,10 +107,10 @@ test.describe('summary: your typical week and goals', () => {
 
     const sleepRow = page.getByTestId('goal-row-c-sleep')
     await expect(sleepRow.getByTestId('goal-line')).toHaveText('35 h of at least 49 h · 14 h to go')
-    await expect(sleepRow.getByTestId('goal-state')).toHaveText('!')
+    await expect(sleepRow.getByTestId('goal-state')).toHaveCount(1)
     const workRow = page.getByTestId('goal-row-c-work')
     await expect(workRow.getByTestId('goal-line')).toHaveText('32 h of at most 40 h · 8 h left')
-    await expect(workRow.getByTestId('goal-state')).toHaveText('✓')
+    await expect(workRow.getByTestId('goal-state')).toHaveCount(0)
     // A category without a goal has no row; the status is one line and one mark, never a chip as well.
     await expect(page.getByTestId('goal-row-c-study')).toHaveCount(0)
     await expect(page.getByTestId('goal-chip')).toHaveCount(0)
@@ -127,7 +127,7 @@ test.describe('summary: your typical week and goals', () => {
     await expect(page.getByTestId('week-bar').getByRole('img', { name: 'Unassigned: 168 h' })).toBeVisible()
     const row = page.getByTestId('goal-row-c-sleep')
     await expect(row.getByTestId('goal-line')).toHaveText('0 h of at least 49 h · 49 h to go')
-    await expect(row.getByTestId('goal-state')).toHaveText('!')
+    await expect(row.getByTestId('goal-state')).toHaveCount(1)
     await expect(page.getByTestId('goal-row-c-work').getByTestId('goal-line')).toHaveText('0 h of at most 40 h · 40 h left')
     await expectNothingClipped(page)
   })
@@ -138,9 +138,9 @@ test.describe('summary: your typical week and goals', () => {
     await start(page, { categories: [easySleep, overWork, study], blocks })
     await openTab(page, 'insights')
     await expect(page.getByTestId('goal-row-c-work').getByTestId('goal-line')).toHaveText('32 h of at most 20 h · 12 h over')
-    await expect(page.getByTestId('goal-row-c-work').getByTestId('goal-state')).toHaveText('!')
+    await expect(page.getByTestId('goal-row-c-work').getByTestId('goal-state')).toHaveCount(1)
     await expect(page.getByTestId('goal-row-c-sleep').getByTestId('goal-line')).toHaveText('35 h of at least 20 h')
-    await expect(page.getByTestId('goal-row-c-sleep').getByTestId('goal-state')).toHaveText('✓')
+    await expect(page.getByTestId('goal-row-c-sleep').getByTestId('goal-state')).toHaveCount(0)
     await expectNothingClipped(page)
   })
 
@@ -213,3 +213,84 @@ test.describe('category colours', () => {
     expect(stored.categories.at(-1)).toMatchObject({ name: 'Reading', colorKey: 'blue' })
   })
 })
+
+// REVIEW M3 and principle 6: the key's shapes say the state; only "needs attention" is in colour (amber), the rest
+// are the secondary label colour, and "no data" is an outline. Checked on the drawn colours, not on class names.
+test('the key to the day shapes draws only "needs attention" in amber', async ({ page }) => {
+  const today = '2026-10-26'
+  await start(page, { categories: [sleep, work, study], blocks, checkIns: [{ date: '2026-10-25', bedtime: 1380, wake: 420, stress: 2 }, { date: today, bedtime: 60, wake: 300, stress: 5 }] })
+  await openTab(page, 'insights')
+  const key = page.getByRole('list', { name: 'Key to the dots' })
+  await expect(key).toBeVisible()
+  const drawn = await key.locator('.dot').evaluateAll((dots) => {
+    const token = (name: string) => { const probe = document.createElement('i'); probe.style.color = `var(${name})`; document.body.append(probe); const value = getComputedStyle(probe).color; probe.remove(); return value }
+    const label2 = token('--label-2'), amber = token('--warning-label')
+    return dots.map((dot) => {
+      const style = getComputedStyle(dot)
+      const fill = style.backgroundColor
+      return { fill: fill === label2 ? 'label-2' : fill === amber ? 'amber' : fill === 'rgba(0, 0, 0, 0)' ? 'none' : fill, edge: style.borderTopColor === label2 && style.borderTopWidth !== '0px' ? 'label-2' : 'none' }
+    })
+  })
+  expect(drawn).toEqual([
+    { fill: 'label-2', edge: 'none' },
+    { fill: 'label-2', edge: 'none' },
+    { fill: 'amber', edge: 'none' },
+    { fill: 'none', edge: 'label-2' },
+  ])
+})
+
+// Review of #59: with forced colours every shape of the key stays drawn, the diamond included.
+test('with forced colours every shape of the key is drawn in the text colour', async ({ page }) => {
+  await page.emulateMedia({ forcedColors: 'active' })
+  await start(page, { categories: [sleep, work, study], blocks, checkIns: [{ date: '2026-10-25', bedtime: 1380, wake: 420, stress: 2 }, { date: '2026-10-26', bedtime: 60, wake: 300, stress: 5 }] })
+  await openTab(page, 'insights')
+  const key = page.getByRole('list', { name: 'Key to the dots' })
+  await expect(key).toBeVisible()
+  // Each filled shape is filled with the system text colour (CanvasText) and the ring is outlined with it.
+  const drawn = await key.locator('.dot').evaluateAll((dots) => {
+    const probe = document.body.appendChild(document.createElement('span'))
+    probe.style.color = 'CanvasText'
+    const text = getComputedStyle(probe).color
+    probe.remove()
+    return dots.map((dot) => {
+      const style = getComputedStyle(dot)
+      return dot.classList.contains('is-empty')
+        ? { fill: style.backgroundColor === 'rgba(0, 0, 0, 0)', edge: style.borderTopWidth !== '0px' && style.borderTopColor === text }
+        : { fill: style.backgroundColor === text, edge: true }
+    })
+  })
+  expect(drawn).toEqual(Array(4).fill({ fill: true, edge: true }))
+})
+
+// Review of #59: the headline's long word ("maintenant") breaks instead of running off a narrow phone at 200 % text.
+test('the headline fits a 320 px phone at 200 % text in French', async ({ page }) => {
+  await page.setViewportSize({ width: 320, height: 640 })
+  await page.addInitScript(() => { document.addEventListener('DOMContentLoaded', () => { document.documentElement.style.fontSize = '200%' }) })
+  await start(page, { settings: { ...onboardedDocument().settings, locale: 'fr' }, categories: [sleep, work, study], blocks })
+  await page.addInitScript(() => window.localStorage.setItem('next168-language', 'fr'))
+  await page.goto('./#/insights')
+  const headline = page.getByTestId('free-hours-live')
+  await expect(headline).toContainText('maintenant')
+  const fit = await headline.evaluate((element) => ({ scroll: element.scrollWidth, client: element.clientWidth, right: element.getBoundingClientRect().right }))
+  expect(fit.scroll).toBeLessThanOrEqual(fit.client)
+  expect(fit.right).toBeLessThanOrEqual(320)
+})
+
+// Review of #59: the seven day marks of a measure stay inside a 320 px phone at 200 % and 300 % text.
+for (const scale of ['200%', '300%'] as const) {
+  test(`the measures' day marks fit a 320 px phone at ${scale} text`, async ({ page }) => {
+    await page.setViewportSize({ width: 320, height: 640 })
+    await page.addInitScript((size) => { document.addEventListener('DOMContentLoaded', () => { document.documentElement.style.fontSize = size }) }, scale)
+    await start(page, { categories: [sleep, work, study], blocks, checkIns: [{ date: '2026-10-25', bedtime: 1380, wake: 420, stress: 2 }, { date: '2026-10-26', bedtime: 60, wake: 300, stress: 5 }] })
+    await page.goto('./#/insights')
+    const rows = page.locator('.measures .dots')
+    await expect(rows.first()).toBeVisible()
+    const fits = await rows.evaluateAll((lists) => lists.map((list) => {
+      const box = list.getBoundingClientRect()
+      const marks = Array.from(list.children, (item) => item.getBoundingClientRect())
+      return { scroll: list.scrollWidth <= list.clientWidth, inside: box.left >= 0 && box.right <= 320, marks: marks.every((mark) => mark.left >= box.left - 0.5 && mark.right <= box.right + 0.5) }
+    }))
+    expect(fits.length).toBeGreaterThan(0)
+    for (const fit of fits) expect(fit).toEqual({ scroll: true, inside: true, marks: true })
+  })
+}

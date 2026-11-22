@@ -41,3 +41,28 @@ describe('a piece of a task is late only when it ends after the due date', () =>
     expect(byDate['2026-10-26']!.map((segment) => segment.late)).toEqual([true])
   })
 })
+
+// crexative/next168#58: the pieces of a split task read as the same task drawn twice. Each says which part it is.
+describe('a split task says which part each piece is', () => {
+  // The part comes first: a narrow piece cuts the end of its title, and the part is what tells the pieces apart.
+  const label = (title: string, part: number, parts: number) => `${part} of ${parts} · ${title}`
+  const single: TaskPlacement = { ...placement, taskId: 'small', chunks: [placement.chunks[0]!] }
+  const small = { ...task, id: 'small', title: 'Llamar al banco', durationMin: 30 }
+  const both = { ...document, tasks: [task, small] }
+
+  it('Semana titles every piece with its part, and leaves a task in one piece as it is', () => {
+    const byDate = taskSegmentsByDate([placement, single], both.tasks, ['2026-10-25', '2026-10-26'], ZONE, label)
+    expect(byDate['2026-10-25']!.map((segment) => segment.title)).toEqual(['1 of 3 · Informe largo', '2 of 3 · Informe largo', 'Llamar al banco'])
+    expect(byDate['2026-10-26']!.map((segment) => segment.title)).toEqual(['3 of 3 · Informe largo'])
+  })
+
+  it('Hoy counts the parts over the whole task, not just today\'s pieces', () => {
+    const { items } = buildTimeline({ document: both, today: '2026-10-25', timeZone: ZONE, external: [], placements: [placement, single], partLabel: label })
+    expect(items.filter((item) => item.kind === 'task').map((item) => item.title)).toEqual(['1 of 3 · Informe largo', 'Llamar al banco', '2 of 3 · Informe largo'])
+  })
+
+  it('without a label (the assistant\'s reading of the day) the pieces keep the task\'s title', () => {
+    const { items } = buildTimeline({ document, today: '2026-10-25', timeZone: ZONE, external: [], placements: [placement] })
+    expect(items.filter((item) => item.kind === 'task').map((item) => item.title)).toEqual(['Informe largo', 'Informe largo'])
+  })
+})

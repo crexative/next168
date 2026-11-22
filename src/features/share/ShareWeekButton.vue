@@ -11,7 +11,7 @@ const open = ref(false)
 
 <template>
   <div class="share-entry">
-    <Button variant="tinted" data-testid="share-week" @click="open = true">
+    <Button variant="plain" data-testid="share-week" @click="open = true">
       <Icon name="share" :size="20" />{{ t('share.entry') }}
     </Button>
     <ShareWeekSheet v-model:open="open" />
