@@ -34,7 +34,7 @@
   "overlay": "Eventos del calendario",
   "untitled": "Evento sin título",
   "free": "Libre",
-  "conflict": "Conflicto con tu plan",
+  "conflict": "Se cruza con tu plan",
   "size": "Este calendario supera el límite de 5 MB.",
   "frequency": "No se admiten recurrencias por segundo o minuto.",
   "timezone": "Este calendario usa una zona horaria desconocida. Expórtalo con una definición VTIMEZONE.",

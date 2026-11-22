@@ -125,8 +125,9 @@ for (const theme of THEMES) {
         const today = page.getByTestId('week-today')
         await expect(range).toHaveText(RANGE_THIS_WEEK)
         await expect(range).toHaveAttribute('aria-live', 'polite')
-        // "Hoy" is only there when another week is shown.
-        await expect(today).toHaveCount(0)
+        // "Hoy" stays in the control row (R_Semana), also on this week; this week's subtitle adds its free hours.
+        await expect(today).toBeVisible()
+        await expect(page.getByTestId('week-free-hours-slot')).toHaveCount(1)
 
         await page.getByRole('button', { name: 'Semana siguiente' }).click()
         await expect(range).toHaveText(/^26( de)? oct.*1( de)? nov/)
@@ -145,7 +146,6 @@ for (const theme of THEMES) {
         await expect(today).toBeVisible()
         await today.click()
         await expect(range).toHaveText(RANGE_THIS_WEEK)
-        await expect(today).toHaveCount(0)
         await expect(page.getByTestId('now-line')).toHaveCount(1)
         if (size === 'phone') await expect(page.locator('.pager')).toHaveAttribute('data-active-date', WEDNESDAY)
 
@@ -158,8 +158,8 @@ for (const theme of THEMES) {
         const away = await box(page.getByRole('button', { name: 'Hoy', exact: true }))
         expect(away.width).toBeGreaterThanOrEqual(44)
         expect(away.height).toBeGreaterThanOrEqual(44)
-        // One compact toolbar: the range with the free hours under it, not a card of its own.
-        await expect(page.getByTestId('week-free-hours-slot')).toHaveCount(1)
+        // The free hours count from now: another week's subtitle is its range alone.
+        await expect(page.getByTestId('week-free-hours-slot')).toHaveCount(0)
       })
 
       test('"+" offers Tarea, Evento and Rutina, and an event created there shows in Week', async ({ page }) => {
@@ -264,18 +264,20 @@ for (const theme of THEMES) {
       await expect(toast).toHaveCount(0)
     })
 
-    test('one toolbar button shows the whole week at a glance and a day opens from it', async ({ page }) => {
+    test('the "Día · Semana" switch shows the whole week at a glance and a day opens from it', async ({ page }) => {
       await openWeek(page, theme, 'phone')
-      const toggle = page.getByTestId('week-view-toggle')
-      await expect(page.getByRole('radiogroup', { name: 'Vista' })).toHaveCount(0)
-      await expect(toggle).toHaveAccessibleName('Ver toda la semana')
+      const views = page.getByRole('radiogroup', { name: 'Vista' })
+      const week = views.getByRole('radio', { name: 'Semana' })
+      await expect(views.getByRole('radio', { name: 'Día' })).toHaveAttribute('aria-checked', 'true')
       await expect(page.getByTestId('week-overview')).toHaveCount(0)
-      const toggleBox = await box(toggle)
-      expect(toggleBox.width).toBeGreaterThanOrEqual(44)
-      expect(toggleBox.height).toBeGreaterThanOrEqual(44)
+      for (const radio of await views.getByRole('radio').all()) {
+        const target = await box(radio)
+        expect(target.width).toBeGreaterThanOrEqual(44)
+        expect(target.height).toBeGreaterThanOrEqual(44)
+      }
 
-      await toggle.click()
-      await expect(toggle).toHaveAccessibleName('Ver un día')
+      await week.click()
+      await expect(week).toHaveAttribute('aria-checked', 'true')
       const overview = page.getByTestId('week-overview')
       await expect(overview).toBeVisible()
       await expect(overview.locator('.day-column')).toHaveCount(7)
@@ -305,19 +307,72 @@ for (const theme of THEMES) {
       await overview.getByRole('button', { name: 'Abrir jueves, 22 de octubre' }).click()
       await expect(page.locator('.pager')).toHaveAttribute('data-active-date', '2026-10-22')
       await expect(page.getByTestId('week-overview')).toHaveCount(0)
-      await expect(toggle).toHaveAccessibleName('Ver toda la semana')
+      await expect(views.getByRole('radio', { name: 'Día' })).toHaveAttribute('aria-checked', 'true')
     })
   })
 }
 
+// The week opens on the current hour, which must land below the sticky header (toolbar, range, switch and day strip),
+// not under it: toBeInViewport would accept a line the header covers.
+test.describe('week opens on now', () => {
+  test.beforeEach(onlyProject('phone'))
+
+  for (const { width, height, percent } of [{ width: 390, height: 844, percent: 200 }, { width: 375, height: 667, percent: 150 }, { width: 390, height: 844, percent: 100 },
+    // A phone on its side at 150 %: the header leaves little room, so the day strip under it must be counted (review of #56).
+    { width: 667, height: 375, percent: 150 }]) {
+    test(`the now line is below the sticky header at ${width}x${height}, ${percent} % text`, async ({ page }) => {
+      await page.addInitScript((value) => { document.addEventListener('DOMContentLoaded', () => { document.documentElement.style.fontSize = `${value}%` }) }, percent)
+      await openWeek(page, 'light', 'phone')
+      await page.setViewportSize({ width, height })
+      await page.reload()
+      // Measure only once Week is on screen and has scrolled to now: the head, the day strip and the line all drawn
+      // (review of #56: measured earlier, a header not yet mounted counted as nothing and a hidden line could pass).
+      const nowLine = page.getByTestId('now-line').first()
+      await expect(nowLine).toBeVisible()
+      await expect(page.getByTestId('week-head')).toBeVisible()
+      await expect(page.locator('.pager-head')).toBeVisible()
+      await expect.poll(() => page.evaluate(() => window.scrollY)).toBeGreaterThan(0)
+      await page.waitForFunction(() => document.getAnimations().length === 0)
+      const covered = await page.evaluate(() => Math.max(0, ...Array.from(document.querySelectorAll<HTMLElement>('.toolbar, [data-testid=week-head], .pager-head'))
+        .filter((element) => element.getClientRects().length > 0 && ['sticky', 'fixed'].includes(getComputedStyle(element).position))
+        .map((element) => element.getBoundingClientRect().bottom)))
+      const line = (await nowLine.boundingBox())!
+      // What shows ends at the floating tab bar on a phone (review of #56: on its side the line went behind it).
+      const bar = await page.locator('nav.tabbar').boundingBox()
+      const bottom = bar && bar.height > 0 ? bar.y : height
+      // In the visible part of the page, not at its edge: on arrival the strips under the head are counted too.
+      expect(line.y, `now line at ${line.y.toFixed(0)} px, header ends at ${covered.toFixed(0)} px`).toBeGreaterThan(covered + (bottom - covered) / 4)
+      expect(line.y + line.height, `now line at ${line.y.toFixed(0)} px, tab bar at ${bottom.toFixed(0)} px`).toBeLessThan(bottom)
+    })
+  }
+})
+
 test.describe('week on desktop', () => {
   test.beforeEach(onlyProject('desktop'))
+
+  test('a view the person chose stays chosen when the width crosses 768 px and back', async ({ page }) => {
+    await openWeek(page, 'light', 'desktop')
+    const views = page.getByRole('radiogroup', { name: 'Vista' })
+    // Each resize is awaited until the page has seen the width change and drawn it.
+    const resize = async (width: number) => {
+      await page.setViewportSize({ width, height: 900 })
+      await page.waitForFunction((wide) => matchMedia('(min-width: 768px)').matches === wide, width >= 768)
+      await page.evaluate(() => new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve))))
+    }
+    await expect(views.getByRole('radio', { name: 'Semana' })).toHaveAttribute('aria-checked', 'true')
+    await views.getByRole('radio', { name: 'Día' }).click()
+    await resize(700)
+    await expect(views.getByRole('radio', { name: 'Día' })).toHaveAttribute('aria-checked', 'true')
+    await resize(1440)
+    await expect(views.getByRole('radio', { name: 'Día' })).toHaveAttribute('aria-checked', 'true')
+    await expect(page.locator('.pager')).toHaveCount(1)
+  })
 
   test('"Añadir" sits in the title row and there is no floating one', async ({ page }) => {
     await openWeek(page, 'light', 'desktop')
     await expect(page.locator('.title-trailing').getByTestId('add-entry')).toHaveText('Añadir')
     await expect(page.locator('[data-floating-add]')).toHaveCount(0)
-    await expect(page.getByTestId('week-view-toggle')).toHaveCount(0)
+    await expect(page.getByRole('radiogroup', { name: 'Vista' }).getByRole('radio', { name: 'Semana' })).toHaveAttribute('aria-checked', 'true')
   })
 })
 
@@ -625,7 +680,7 @@ test.describe('week overview', () => {
       tasks: [], actuals: [],
     })
     await openWeek(page, 'light', 'phone', document)
-    await page.getByTestId('week-view-toggle').click()
+    await page.getByTestId('week-view').getByRole('radio').nth(1).click()
     const overview = page.getByTestId('week-overview')
     const labels = await overview.locator('.time-axis .hour-label').allTextContents()
     expect(labels.filter(Boolean)).toEqual(['6a', '12p', '6p'])
