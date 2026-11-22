@@ -292,7 +292,8 @@ const labels = computed(() => ({
   flex: 0 1 auto; display: flex; flex-direction: column; min-height: 0; max-height: calc(min(var(--vv-height, 100dvh), 100dvh) * 0.66);
   border-top: 0.5px solid var(--separator); background: var(--surface);
 }
-/* A short phone (375 x 667) gives the answers a little more: the question above still shows whole. */
+/* A short phone (375 x 667) gives the answers a little more; the conversation shows the question from its start
+   (SetupConversation's reveal). */
 @media (max-height: 700px) {
   .dock { max-height: calc(min(var(--vv-height, 100dvh), 100dvh) * 0.72); }
 }
