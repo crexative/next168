@@ -1,17 +1,21 @@
 // @vitest-environment happy-dom
-import { afterEach, describe, expect, it } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 import { createApp, h, nextTick, reactive, type App } from 'vue'
 import { createPinia, setActivePinia } from 'pinia'
 import { i18n } from '@/i18n'
 import { addRange, emptyState, ensureCategory, suggestRanges, type SetupState } from '../setupModel'
 import RangeList from './RangeList.vue'
+import { registerIcons } from '@/ui/icons'
+import { ChevronDown, ChevronUp, Clock, Moon, Sunrise } from 'lucide-vue-next'
+
+registerIcons({ 'chevron-down': ChevronDown, 'chevron-up': ChevronUp, clock: Clock, moon: Moon, sunrise: Sunrise })
 
 // The ranges of one category in the conversation (R_InicioHorario): "Quitar" only where it leaves a time, focus after a
 // removal, and the category's hours a week.
 let app: App | undefined
 let host: HTMLElement | undefined
 
-async function mount(options: { topic?: 'work' | 'sleep'; ranges?: number; loneRemovable?: boolean } = {}) {
+async function mount(options: { topic?: 'work' | 'sleep'; ranges?: number; loneRemovable?: boolean; inDock?: boolean } = {}) {
   const pinia = createPinia()
   setActivePinia(pinia)
   i18n.global.locale.value = 'en'
@@ -21,8 +25,10 @@ async function mount(options: { topic?: 'work' | 'sleep'; ranges?: number; loneR
   suggestRanges(state, category)
   while (category.ranges.length < (options.ranges ?? 1)) addRange(state, category)
   host = document.createElement('div')
+  if (options.inDock) host.dataset.testid = 'setup-dock'
   document.body.append(host)
-  app = createApp({ render: () => h(RangeList, { state, category, sleep: topic === 'sleep', loneRemovable: options.loneRemovable }) }).use(pinia).use(i18n)
+  const labels = topic === 'sleep' ? { bed: 'Bedtime', wake: 'Wake up' } : undefined
+  app = createApp({ render: () => h(RangeList, { state, category, labels, sleep: topic === 'sleep', loneRemovable: options.loneRemovable }) }).use(pinia).use(i18n)
   app.mount(host)
   await nextTick()
   return { category }
@@ -60,5 +66,55 @@ describe('the ranges of a category in the conversation', () => {
     app!.unmount(); host!.remove()
     await mount({ topic: 'sleep' })
     expect(host!.querySelector('[data-testid=range-week-hours]')).toBeNull()
+  })
+
+  it('the first time opens on its start, unless its open times would push the answers out of the dock', async () => {
+    await mount({ ranges: 1, inDock: true })
+    expect(host!.querySelector('[data-field=start]')!.getAttribute('aria-expanded')).toBe('true')
+    app!.unmount(); host!.remove()
+    vi.spyOn(HTMLElement.prototype, 'scrollHeight', 'get').mockReturnValue(900)
+    vi.spyOn(HTMLElement.prototype, 'clientHeight', 'get').mockReturnValue(400)
+    await mount({ ranges: 1, inDock: true })
+    await nextTick()
+    expect(host!.querySelector('[data-field=start]')!.getAttribute('aria-expanded')).toBe('false')
+    vi.restoreAllMocks()
+  })
+
+  const iconOf = (field: string) => host!.querySelector(`[data-field=${field}]`)!.querySelectorAll('svg')
+  const icons = (field: string) => [...iconOf(field)].map((svg) => svg.getAttribute('class') ?? '').join(' ')
+
+  it('choosing a set of days opens the start times', async () => {
+    await mount({ ranges: 1 })
+    const start = () => host!.querySelector('[data-field=start]')!
+    ;(start() as HTMLButtonElement).click()
+    await nextTick()
+    expect(start().getAttribute('aria-expanded')).toBe('false')
+    host!.querySelector<HTMLButtonElement>('[data-preset=weekend]')!.click()
+    await nextTick()
+    expect(start().getAttribute('aria-expanded')).toBe('true')
+  })
+
+  it('the open time\'s chevron points up and the closed one down', async () => {
+    await mount({ ranges: 1 })
+    expect(icons('start')).toContain('lucide-chevron-up')
+    expect(icons('end')).toContain('lucide-chevron-down')
+  })
+
+  it('bedtime and wake-up carry a moon and a sunrise; other times a clock', async () => {
+    await mount({ topic: 'sleep' })
+    expect(icons('start')).toContain('lucide-moon')
+    expect(icons('end')).toContain('lucide-sunrise')
+    app!.unmount(); host!.remove()
+    await mount({ topic: 'work' })
+    expect(icons('start')).toContain('lucide-clock')
+    expect(icons('end')).toContain('lucide-clock')
+  })
+
+  it('"Add another time" opens the new time on its start, and only that one', async () => {
+    await mount({ ranges: 1 })
+    host!.querySelector<HTMLButtonElement>('[data-testid=range-add]')!.click()
+    await nextTick()
+    const starts = [...host!.querySelectorAll('[data-field=start]')].map((row) => row.getAttribute('aria-expanded'))
+    expect(starts).toEqual(['false', 'true'])
   })
 })
