@@ -122,7 +122,7 @@ test.describe('plan and measure', () => {
     await add.click()
 
     // One calm amber row; the reason is in its fixes.
-    await expect(page.getByTestId('warnings-toggle')).toHaveText('1 task does not fit this week')
+    await expect(page.getByTestId('warnings-toggle')).toHaveText('1 task does not fit in time')
     await page.getByTestId('warnings-toggle').click()
     const warning = page.getByTestId('overflow-text')
     await expect(warning).toContainText('1 h missing in Study')

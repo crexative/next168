@@ -45,6 +45,8 @@ const field = ref<HTMLTextAreaElement | null>(null)
 // Choices made with a control (they win over anything typed), and which of them the person actually touched.
 const form = ref<TaskDraft>(freshForm())
 const durationTouched = ref(false)
+// «Hoy» set by the person (on or off): the default from Hoy's «+» no longer applies.
+const todayChosen = ref(false)
 // Keys of chips given back to the title, and values the person changed with ✎, by chip key.
 const suppressed = ref<string[]>([])
 const chipValues = ref<Record<string, string | number>>({})
@@ -87,8 +89,9 @@ const effective = computed<TaskDraft>(() => {
     if (span.field === 'duration') draft.durationMin = Number(value)
   }
   if (!manual.value.date && draft.dueDate === '' && parsed.value.fields.dueDate) draft.dueDate = parsed.value.fields.dueDate
-  // Today's add row: a task with no date of its own is due today (a typed «mañana» still wins).
-  if (props.dueToday && !draft.dueToday && draft.dueDate === '') draft.dueToday = true
+  // Opened from Hoy: a task with no date of its own is due today (a typed «mañana» still wins), until the person sets
+  // «Hoy» themselves: switched off, it stays off and the task is saved with no date.
+  if (props.dueToday && !todayChosen.value && !draft.dueToday && draft.dueDate === '') draft.dueToday = true
   return draft
 })
 
@@ -163,6 +166,7 @@ watch(lines, (next) => {
 function patch(change: Partial<TaskDraft>): void {
   const next = { ...form.value }
   if ('durationMin' in change) { next.durationMin = change.durationMin; durationTouched.value = true }
+  if ('dueToday' in change) todayChosen.value = true
   if ('dueDate' in change || 'dueToday' in change) {
     next.dueDate = change.dueDate ?? next.dueDate
     next.dueToday = change.dueToday ?? next.dueToday
@@ -184,6 +188,7 @@ function resetBox(): void {
   text.value = ''
   form.value = freshForm()
   durationTouched.value = false
+  todayChosen.value = false
   suppressed.value = []
   chipValues.value = {}
   editing.value = null
@@ -445,7 +450,7 @@ defineExpose({ focus: () => field.value?.focus(), submit, canSubmit, dirty })
     </div>
 
     <div v-if="detailsOpen" class="details" role="group" :aria-label="t('tasks.add.details')" data-testid="task-details">
-      <TaskOptions :draft="shownDraft" :categories="categories" :time-zone="timeZone" :suggested-category-id="suggestedCategoryId" standard-lengths @patch="patch" />
+      <TaskOptions :draft="shownDraft" :categories="categories" :time-zone="timeZone" :suggested-category-id="suggestedCategoryId" @patch="patch" />
     </div>
 
     <section v-if="multiLine" :id="ids.preview" class="preview" :aria-label="t('capture.preview.label')" data-testid="capture-preview">

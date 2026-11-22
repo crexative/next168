@@ -22,12 +22,10 @@
   "add": {
     "title": "Aufgabe hinzufügen",
     "titleLabel": "Aufgabe",
-    "titlePlaceholder": "Aufgabe hinzufügen…",
     "duration": "Dauer",
     "category": "Während",
     "dueDate": "Fällig am",
     "priority": "Priorität",
-    "submit": "Aufgabe hinzufügen",
     "details": "Details zu dieser Aufgabe",
     "more": "Weitere Optionen",
     "when": "Wann?",
@@ -80,6 +78,6 @@
   },
   "overdueSince": "war fällig am {date}",
   "pending": "{count} offen | {count} offen",
-  "doesNotFit": "{count} Aufgabe passt diese Woche nicht | {count} Aufgaben passen diese Woche nicht",
+  "doesNotFit": "{count} Aufgabe passt nicht rechtzeitig | {count} Aufgaben passen nicht rechtzeitig",
   "rowDoesNotFit": "Passt diese Woche nicht"
 }

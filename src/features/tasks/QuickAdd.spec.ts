@@ -1,6 +1,6 @@
 // @vitest-environment happy-dom
 import { afterEach, beforeEach, expect, it, vi } from 'vitest'
-import { createApp, nextTick } from 'vue'
+import { createApp, defineComponent, h, nextTick } from 'vue'
 import { createPinia, setActivePinia } from 'pinia'
 import { i18n } from '@/i18n'
 import { configurePlannerStore, usePlannerStore } from '@/stores/plannerStore'
@@ -142,6 +142,25 @@ it('"Today" tapped before midnight and added after it is due the new day (verify
   expect(todayChip().checked).toBe(true)
   await submit()
   expect(mounted.store.document!.tasks).toMatchObject([{ title: 'Jog', dueDate: '2026-10-26' }])
+})
+
+it('a length typed in the title that is not a chip shows under "Other", chosen', async () => {
+  mounted = await mountWithPlanner(SmartCapture, { ...done, categories: [WORK] })
+  await type('Call mum 45 min')
+  const other = [...details()!.querySelectorAll<HTMLLabelElement>('[data-testid=task-length] label')].find((chip) => chip.querySelector('input')?.value === 'other')!.querySelector('input')!
+  expect(other.checked).toBe(true)
+})
+
+it('opened from Hoy, «Hoy» starts on and, switched off, stays off: the task is saved with no date', async () => {
+  mounted = await mountWithPlanner(defineComponent({ render: () => h(SmartCapture, { dueToday: true }) }), { ...done, categories: [WORK] })
+  await type('Something with no date')
+  expect(todayChip().checked).toBe(true)
+  todayChip().click()
+  await nextTick()
+  expect(todayChip().checked).toBe(false)
+  await submit()
+  expect(mounted.store.document!.tasks).toMatchObject([{ title: 'Something with no date' }])
+  expect(mounted.store.document!.tasks[0]).not.toHaveProperty('dueDate')
 })
 
 it('"Today" in one tap makes the task due today; Enter still adds with no other tap', async () => {

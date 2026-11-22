@@ -79,6 +79,8 @@ const submitButton = (page: Page) => page.getByTestId('task-add')
 async function openNewTask(page: Page): Promise<void> {
   await page.getByTestId('add-entry').tap()
   await expect(titleField(page)).toBeFocused()
+  // Taps land once the sheet has finished sliding in: one landing on the moving sheet would count twice.
+  await page.waitForFunction(() => document.getAnimations().length === 0)
 }
 // Adding closes the sheet.
 const added = (page: Page) => expect(page.getByRole('dialog')).toHaveCount(0)

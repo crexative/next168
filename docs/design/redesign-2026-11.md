@@ -61,6 +61,13 @@ a screen not yet redesigned keeps working with the new tokens and shell.
     details and "Se cruza con tu plan" on imported events, in every language; a Weeklid event over a routine is marked
     too, as Hoy already did.
 
+11. **Overdue tasks are amber (slice 4).** DIRECTION's task list gives an overdue meta the danger colour, while its
+    principle 6 keeps red for what cannot be undone; the app follows principle 6: overdue and "no cabe a tiempo" metas
+    are amber.
+12. **Nueva tarea after a change elsewhere (slice 4).** The sheet is bound to the plan as it opened: any change to the
+    plan meanwhile (another window, a restored backup) refuses the first save, says so and keeps the draft; the next
+    tap saves. Telling a replaced plan from an ordinary later commit, to let the latter through, is left for later.
+
 Anything else in a board that the app cannot do as drawn is raised with the coordinator before it changes behaviour.
 
 ## Tokens and styles added ahead of their screens

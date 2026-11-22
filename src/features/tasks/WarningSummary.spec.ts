@@ -47,8 +47,8 @@ const text = (element: Element | null) => element?.textContent?.replace(/\s+/g, 
 
 // Calm by default (R_Tareas): one amber row with the count; its fixes open in place.
 it.each([
-  [1, '1 tarea no cabe esta semana'],
-  [4, '4 tareas no caben esta semana'],
+  [1, '1 tarea no cabe a tiempo'],
+  [4, '4 tareas no caben a tiempo'],
 ] as const)('says in one closed row that %i tasks do not fit, and opens their fixes there', async (count, expected) => {
   mounted = await mountWithPlanner(TasksView, planner(count, 0), 'es')
   const toggle = find('[data-testid=warnings-toggle]')!

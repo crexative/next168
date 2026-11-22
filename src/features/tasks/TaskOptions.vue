@@ -35,6 +35,8 @@ const ids = { length: useId(), other: useId(), when: useId(), whenList: useId(),
 const STANDARD = DURATION_CHIPS as readonly number[]
 // "Otra" is chosen when the person picked it, or when the task's length is not one of the chips (45 min shows there).
 const otherPicked = ref(props.draft.durationMin !== undefined && !STANDARD.includes(props.draft.durationMin))
+// A length typed in the title ("45 min") that is not a chip shows under "Otra", chosen.
+watch(() => props.draft.durationMin, (minutes) => { if (minutes !== undefined && !STANDARD.includes(minutes)) otherPicked.value = true })
 const lengthValue = computed(() => (otherPicked.value ? 'other' : props.draft.durationMin === undefined ? UNTIMED : String(props.draft.durationMin)))
 const lengthOptions = computed(() => [
   { value: UNTIMED, label: t('tasks.add.untimed') },

@@ -213,7 +213,7 @@ for (const theme of THEMES) {
       test('an overdue task offers one-tap fixes; "Hacerla hoy" puts it today and Deshacer brings the date back', async ({ page }) => {
         await openOnSunday(page, theme, size, [trotar('2026-10-24')])
         // One calm amber row; its fixes open in place.
-        await expect(page.getByTestId('warnings-toggle')).toHaveText('1 tarea no cabe esta semana')
+        await expect(page.getByTestId('warnings-toggle')).toHaveText('1 tarea no cabe a tiempo')
         await page.getByTestId('warnings-toggle').click()
         const card = page.getByTestId('warning-jog')
         await expect(card.getByTestId('late-text')).toHaveText('Cae después de su fecha límite (24 oct).')

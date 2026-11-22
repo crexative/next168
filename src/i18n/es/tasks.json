@@ -22,12 +22,10 @@
   "add": {
     "title": "Añadir tarea",
     "titleLabel": "Tarea",
-    "titlePlaceholder": "Añadir tarea…",
     "duration": "Duración",
     "category": "Durante",
     "dueDate": "Fecha límite",
     "priority": "Prioridad",
-    "submit": "Añadir tarea",
     "details": "Detalles de esta tarea",
     "more": "Más opciones",
     "when": "¿Cuándo?",
@@ -80,6 +78,6 @@
   },
   "overdueSince": "venció el {date}",
   "pending": "{count} pendiente | {count} pendientes",
-  "doesNotFit": "{count} tarea no cabe esta semana | {count} tareas no caben esta semana",
+  "doesNotFit": "{count} tarea no cabe a tiempo | {count} tareas no caben a tiempo",
   "rowDoesNotFit": "No cabe esta semana"
 }

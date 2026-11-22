@@ -22,12 +22,10 @@
   "add": {
     "title": "Ajouter une tâche",
     "titleLabel": "Tâche",
-    "titlePlaceholder": "Ajouter une tâche…",
     "duration": "Durée",
     "category": "Pendant",
     "dueDate": "Échéance",
     "priority": "Priorité",
-    "submit": "Ajouter la tâche",
     "details": "Détails de cette tâche",
     "more": "Plus d'options",
     "when": "Quand ?",
@@ -80,6 +78,6 @@
   },
   "overdueSince": "prévue le {date}",
   "pending": "{count} à faire | {count} à faire",
-  "doesNotFit": "{count} tâche ne tient pas cette semaine | {count} tâches ne tiennent pas cette semaine",
+  "doesNotFit": "{count} tâche ne tient pas à temps | {count} tâches ne tiennent pas à temps",
   "rowDoesNotFit": "Ne tient pas cette semaine"
 }

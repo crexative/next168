@@ -22,12 +22,10 @@
   "add": {
     "title": "Add task",
     "titleLabel": "Task",
-    "titlePlaceholder": "Add task…",
     "duration": "Duration",
     "category": "During",
     "dueDate": "Due date",
     "priority": "Priority",
-    "submit": "Add task",
     "details": "Details for this task",
     "more": "More options",
     "when": "When?",
@@ -80,6 +78,6 @@
   },
   "overdueSince": "was due {date}",
   "pending": "{count} to do | {count} to do",
-  "doesNotFit": "{count} task does not fit this week | {count} tasks do not fit this week",
+  "doesNotFit": "{count} task does not fit in time | {count} tasks do not fit in time",
   "rowDoesNotFit": "Does not fit this week"
 }

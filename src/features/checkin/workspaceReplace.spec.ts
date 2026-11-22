@@ -9,6 +9,7 @@ import { createTestRepositories, fixedNow, newTestId, testDocument } from '@/rep
 import CheckInView from './CheckInView.vue'
 import CategorySettings from '@/features/settings/categories/CategorySettings.vue'
 import SmartCapture from '@/features/tasks/SmartCapture.vue'
+import { pickWhen, whenValue } from '@/features/tasks/whenTestSupport'
 import TasksView from '@/features/tasks/TasksView.vue'
 import { useUndoToast } from '@/ui/undoToast'
 import DataSettings from '@/features/settings/data/DataSettings.vue'
@@ -160,10 +161,8 @@ describe('content replaced under the same workspace id (restored backup)', () =>
     title.dispatchEvent(new Event('input'))
     await nextTick()
     // Filed "during Old": the form is bound to that stored category, which the restored document changed.
-    const when = host.querySelector<HTMLSelectElement>('[data-testid=task-when]')!
-    when.value = 'c-old'
-    when.dispatchEvent(new Event('change'))
-    await nextTick()
+    await pickWhen(host, 'c-old')
+    expect(whenValue(host)).toBe('c-old')
     store.document = { ...workspace('ws-a'), revision: 1, updatedAt: '2026-01-01T00:00:00.000Z', categories: [{ ...category, name: 'Replaced' }] }
     host.querySelector('form')!.dispatchEvent(new Event('submit', { cancelable: true }))
     await flush(store)
