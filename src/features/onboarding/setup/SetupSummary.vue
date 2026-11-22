@@ -125,6 +125,9 @@ async function addMore(): Promise<void> {
 <style scoped>
 /* The week, as the last message: a grey card with the 168 h bar and the list of what goes in it (R_InicioResumen). */
 .week { display: flex; flex-direction: column; gap: var(--space-3); padding: var(--card-padding-block) var(--card-padding); border-radius: 20px; background: var(--surface-2); }
+/* On a phone the week uses the column's full width, as before: inside a second inset an open category's label and
+   value would no longer share one line at 360 px. The bar and the list keep their own shapes. */
+@media (max-width: 40rem) { .week { padding: 0; border-radius: 0; background: transparent; } }
 .bar { display: flex; gap: 2px; height: 28px; overflow: hidden; border-radius: 8px; }
 .segment { display: block; flex: 0 1 auto; flex-basis: 0; min-width: 0; }
 .segment.is-free { background: repeating-linear-gradient(135deg, var(--fill) 0 4px, transparent 4px 8px); box-shadow: inset 0 0 0 1px var(--separator); }
