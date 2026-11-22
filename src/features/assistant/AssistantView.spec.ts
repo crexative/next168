@@ -172,3 +172,15 @@ it('"Answer with: Use with your AI" opens that page and leaves the answering cho
   expect(view.querySelector('[data-testid=reply-with] .reply-value')!.textContent).toBe('Quick answers')
   window.history.replaceState(null, '', '#/')
 })
+
+// The dock rests at the bottom only while it leaves most of the screen to the conversation (review of #64): a dock
+// taller than a third of the window (large text) scrolls with the page instead.
+it.each([[200, true], [400, false]] as const)('a dock %i px tall on an 844 px window rests at the bottom: %s', async (height, docked) => {
+  vi.spyOn(window, 'innerHeight', 'get').mockReturnValue(844)
+  const offset = vi.spyOn(HTMLElement.prototype, 'offsetHeight', 'get').mockImplementation(function (this: HTMLElement) { return this.matches('[data-testid=assistant-dock]') ? height : 0 })
+  const view = await mountView()
+  window.dispatchEvent(new Event('resize'))
+  await nextTick()
+  expect(view.querySelector('[data-testid=assistant-dock]')!.classList.contains('is-docked')).toBe(docked)
+  offset.mockRestore()
+})

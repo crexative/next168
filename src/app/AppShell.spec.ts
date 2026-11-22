@@ -221,6 +221,54 @@ describe('Settings and the assistant as a full-height sheet on a phone (DIRECTIO
     await closed()
   })
 
+  it('closing a sheet that holds typed text asks first; Seguir keeps it, Descartar closes', async () => {
+    shell.registry.registerView({ id: 'assistant', titleKey: 'common.askAssistant', component: { render: () => h('input', { type: 'text', 'data-testid': 'probe' }) } })
+    const host = await mountShell('#/week', 390)
+    await nextTick()
+    window.location.hash = '#/assistant'
+    window.dispatchEvent(new HashChangeEvent('hashchange'))
+    await vi.waitFor(() => expect(host.querySelector('[data-testid=probe]')).not.toBeNull())
+    const field = host.querySelector<HTMLInputElement>('[data-testid=probe]')!
+    field.focus()
+    field.value = 'a question not sent'
+    field.blur()
+    window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }))
+    await vi.waitFor(() => expect(host.querySelector('[data-testid=discard-confirm]')).not.toBeNull())
+    expect(window.location.hash).toBe('#/assistant')
+    host.querySelector<HTMLElement>('[data-testid=discard-keep]')!.click()
+    await vi.waitFor(() => expect(host.querySelector('[data-testid=discard-confirm]')).toBeNull())
+    expect(field.value).toBe('a question not sent')
+    host.querySelector<HTMLElement>('[data-testid=sheet-scrim]')!.click()
+    await vi.waitFor(() => expect(host.querySelector('[data-testid=discard-confirm]')).not.toBeNull())
+    host.querySelector<HTMLElement>('[data-testid=discard-confirm-button]')!.click()
+    window.dispatchEvent(new HashChangeEvent('hashchange'))
+    await vi.waitFor(() => expect(window.location.hash).toBe('#/week'))
+  })
+
+  it('a phone sheet that becomes the tablet\'s form sheet still asks before dropping its typed text', async () => {
+    shell.registry.registerView({ id: 'settings', titleKey: 'app.tabs.settings', component: { render: () => h('input', { type: 'text', 'data-testid': 'probe' }) } })
+    const listeners = new Map<string, (event: { matches: boolean }) => void>()
+    let width = 390
+    vi.spyOn(window, 'matchMedia').mockImplementation((query) => ({
+      matches: width >= Number(query.match(/min-width: (\d+)px/)?.[1] ?? Infinity), media: query, onchange: null,
+      addListener: vi.fn(), removeListener: vi.fn(), dispatchEvent: vi.fn(), removeEventListener: vi.fn(),
+      addEventListener: (_type: string, listener: (event: { matches: boolean }) => void) => { listeners.set(query, listener) },
+    }) as unknown as MediaQueryList)
+    window.history.replaceState(null, '', '#/settings')
+    mounted = await mountWithPlanner(AppShell)
+    const host = mounted.host
+    await vi.waitFor(() => expect(host.querySelector('.view')?.getAttribute('data-presentation')).toBe('sheet'))
+    const field = host.querySelector<HTMLInputElement>('[data-testid=probe]')!
+    field.focus()
+    field.value = 'typed, not saved'
+    field.blur()
+    width = 820
+    for (const [query, listener] of listeners) listener({ matches: width >= Number(query.match(/min-width: (\d+)px/)?.[1] ?? Infinity) })
+    await vi.waitFor(() => expect(host.querySelector('.view')?.getAttribute('data-presentation')).toBe('form'))
+    window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }))
+    await vi.waitFor(() => expect(host.querySelector('[data-testid=discard-confirm]')).not.toBeNull())
+  })
+
   it('Escape while an input method composes a word leaves the sheet open', async () => {
     const host = await mountShell('#/week', 390)
     await nextTick()
