@@ -120,7 +120,13 @@ function trapDiscardFocus(event: KeyboardEvent): void {
   event.preventDefault()
   buttons[(at + (event.shiftKey ? buttons.length - 1 : 1)) % buttons.length]?.focus()
 }
-watch(presentation, () => { typedText.reset(); confirmingDiscard.value = false })
+// Forgotten only once no sheet is shown: a sheet that becomes a form sheet (a phone turned into a tablet's width) still
+// holds the same page and the same text.
+watch(presentation, (kind) => {
+  if (kind) return
+  typedText.reset()
+  confirmingDiscard.value = false
+})
 watch(presentation, (kind) => {
   if (kind) document.documentElement.dataset.presentation = kind
   else delete document.documentElement.dataset.presentation

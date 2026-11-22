@@ -443,3 +443,14 @@ test('under a phone sheet the tab bar reserve is zero; on a tab it is the bar an
   await expect(page.getByTestId('sheet-bar')).toBeVisible()
   expect(await reserve()).toBe(0)
 })
+
+// Review of #64: a sheet that becomes a form sheet (a phone turned to a tablet's width) still remembers the text typed.
+test('text typed in the phone sheet still asks before closing once the window is as wide as a tablet', async ({ page }) => {
+  await start(page, SIZES[0], 'light', planned())
+  await page.goto('./#/settings/ai')
+  await page.getByTestId('any-ai-paste').fill('{"summary": "Mover el gimnasio"}')
+  await page.setViewportSize({ width: 820, height: 1180 })
+  await expect(page.locator('.view')).toHaveAttribute('data-presentation', 'form')
+  await page.getByTestId('sheet-done').click()
+  await expect(page.getByRole('alertdialog', { name: '¿Descartar los cambios?' })).toBeVisible()
+})
