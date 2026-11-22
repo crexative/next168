@@ -692,6 +692,53 @@ describe('"¿A qué más…?" with several picks', () => {
     expect(turn('more:1')).toBeUndefined()
   })
 
+  it('says how many are picked and what they bring, live under the chips (owner decision)', async () => {
+    await mount(firstRun())
+    await toMore()
+    const picked = () => live('[data-testid=more-picked]')
+    expect(picked()).toBeUndefined()
+    await click('[data-chip="family"]')
+    expect(picked()!.textContent).toBe('1 picked · one short question')
+    await click('[data-chip="friends"]')
+    expect(picked()!.textContent).toBe('2 picked · one short question for each')
+    expect(picked()!.getAttribute('role')).toBe('status')
+  })
+
+  it('a typed name past the limit of picks says so, not that it is already on the list', async () => {
+    await mount(firstRun())
+    await toMore()
+    const add = async (name: string) => {
+      if (!live('[data-testid=more-other-name]')) await click('[data-testid=more-other]')
+      const field = live('[data-testid=more-other-name]') as unknown as HTMLTextAreaElement
+      field.value = name
+      field.dispatchEvent(new Event('input'))
+      await nextTick()
+      await click('[data-testid=more-other-add]')
+    }
+    for (let index = 1; index <= 20; index++) await add(`Thing ${index}`)
+    expect(live('[data-testid=more-picked]')!.textContent).toBe('20 picked · one short question for each')
+    await add('One more')
+    expect(live('[data-testid=more-refusal]')!.textContent).toBe('You have 20 picked; remove one to add another.')
+  })
+
+  it('a name typed in "Other" and not yet added goes in with the picks on Siguiente', async () => {
+    await mount(firstRun())
+    await toMore()
+    await click('[data-chip="family"]')
+    await click('[data-testid=more-other]')
+    const field = live('[data-testid=more-other-name]') as unknown as HTMLTextAreaElement
+    field.value = 'Guitar'
+    field.dispatchEvent(new Event('input'))
+    await nextTick()
+    await send()
+    expect(screen()).toBe('extra:family')
+    await send()
+    expect(screen()).not.toBe('summary')
+    for (let guard = 0; guard < 3 && screen() !== 'summary'; guard++) await send()
+    expect(screen()).toBe('summary')
+    expect(turn('more')!.textContent).toContain('Family, Guitar')
+  })
+
   it('"No, that\'s all" picks nothing and goes to the summary', async () => {
     await mount(firstRun())
     await toMore()

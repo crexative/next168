@@ -117,8 +117,8 @@ function onFocusIn(event: FocusEvent): void {
         <p v-if="screen === 'sleep' && showTrust" class="trust t-footnote" data-testid="setup-trust"><Icon name="lock" :size="13" class="trust-icon" />{{ t('onboarding.guided.trust') }}</p>
         <Transition name="say" appear>
           <SetupSummary
-            v-if="summary" v-model:expanded="expanded" :state="state" :document="document" :reviewable="reviewable" :issues="issues" :message="message"
-            :show-trust="showTrust" @review="emit('review')" @edited="emit('edited')"
+            v-if="summary" v-model:expanded="expanded" :state="state" :document="document" :issues="issues" :message="message"
+            @edited="emit('edited')"
           />
         </Transition>
       </div>

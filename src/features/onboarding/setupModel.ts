@@ -197,6 +197,8 @@ export function categoryMinutes(state: SetupState, category: CategoryDraft): num
   return category.ranges.reduce((sum, range) => sum + slotMinutes(blockSlot(category, range)), 0)
 }
 
+const WEEK_MINUTES = 7 * 24 * 60
+
 export interface WeekTotals { covered: number; summed: number; overlapping: boolean }
 
 export function weekTotals(state: SetupState): WeekTotals {
@@ -204,6 +206,13 @@ export function weekTotals(state: SetupState): WeekTotals {
   const covered = coveredMinutes(slots)
   const summed = slots.reduce((sum, slot) => sum + slotMinutes(slot), 0)
   return { covered, summed, overlapping: summed > covered }
+}
+
+// The 168 h bar: each category's share of the hours counted once, so overlapping times are not drawn twice and the
+// bar agrees with "96 h asignadas · 72 h sin asignar"; the rest of the week is the free part.
+export function weekBar(parts: readonly { key: string; minutes: number }[], totals: WeekTotals): { shares: { key: string; minutes: number }[]; free: number } {
+  const scale = totals.summed > 0 ? totals.covered / totals.summed : 0
+  return { shares: parts.map((part) => ({ key: part.key, minutes: part.minutes * scale })), free: WEEK_MINUTES - totals.covered }
 }
 
 // ---------- Suggestions ----------

@@ -2,7 +2,7 @@
 import { computed, nextTick, ref, useId, watch } from 'vue'
 import Icon from '@/ui/Icon.vue'
 import {
-  acceptRanges, addTyped, clearPending, confirmPicks, nameKey, clearRanges, finishMore, moreOptions, multiPick, pick, picksOf, rangeProblem, roundIndex, setAnswer, setPendingInto, setPendingName, setSleepSplit, togglePick,
+  acceptRanges, addTyped, clearPending, confirmPicks, MAX_PICKS, nameKey, clearRanges, finishMore, moreOptions, multiPick, pick, picksOf, rangeProblem, roundIndex, setAnswer, setPendingInto, setPendingName, setSleepSplit, togglePick,
   type ScreenId, type SetupState, type Tri, type WorkStudy,
 } from '../setupModel'
 import { TOPICS, type TopicId } from '../setupTopics'
@@ -62,6 +62,14 @@ function done(): void {
 function onPrimary(): void {
   if (!canContinue.value) return
   if (screen.value === 'sleep') setAnswer(props.state, 'sleep', 'yes')
+  // A name typed in "Otra cosa" and not yet added goes in with the picks, as its own button adds it (fewer taps); one
+  // already picked is simply kept, and one past the limit keeps the question and says why.
+  if (multi.value && otherOpen.value && otherName.value.trim() !== '') {
+    if (pickTyped(otherName.value.trim()) === undefined && refusal.value !== 'duplicate') return
+    clearPending(props.state)
+    otherOpen.value = false
+    refusal.value = null
+  }
   if (multi.value) confirmPicks(props.state)
   if (category.value) acceptRanges(category.value)
   done()
@@ -110,7 +118,7 @@ const otherName = computed({
   get: () => props.state.pending?.name ?? '',
   set: (name: string) => {
     setPendingName(props.state, name)
-    duplicate.value = false
+    refusal.value = null
   },
 })
 const otherOpen = ref(otherName.value !== '')
@@ -130,7 +138,8 @@ const intoId = useId()
 const storedId = useId()
 // The first question of an add session has no "nothing else": leaving is the frame's ‹.
 const showDone = computed(() => !(props.state.add && round.value === 0))
-const duplicate = ref(false)
+// Why a typed name was not added: already on the list, or the picks are at their limit.
+const refusal = ref<'duplicate' | 'limit' | null>(null)
 const otherForm = ref<HTMLFormElement | null>(null)
 const otherField = ref<InstanceType<typeof OtherThingField> | null>(null)
 
@@ -155,7 +164,7 @@ function openOther(): void {
 // Escape in the field puts it away (and what was typed), back to the button that opened it; the setup stays.
 function closeOther(): void {
   clearPending(props.state)
-  duplicate.value = false
+  refusal.value = null
   otherOpen.value = false
   void nextTick(() => root.value?.querySelector<HTMLElement>('[data-testid="more-other"]')?.focus({ preventScroll: true }))
 }
@@ -173,28 +182,36 @@ function createAnother(): void {
   addOther()
 }
 
+// Adds a typed name to the several picks and puts the field away; refused (already picked, or at the limit), it says
+// why and keeps the field. Returns the item's key when it is now picked.
+function pickTyped(name: string): string | undefined {
+  const named = addTyped(props.state, name)
+  if (picksOf(props.state).includes(named.key) || !togglePick(props.state, named.key, env)) {
+    refusal.value = picksOf(props.state).includes(named.key) ? 'duplicate' : 'limit'
+    emit('edited')
+    return undefined
+  }
+  clearPending(props.state)
+  otherOpen.value = false
+  emit('edited')
+  return named.key
+}
+
 function addOther(): void {
   const name = otherName.value.trim()
   if (name === '' || round.value === undefined) return
   // Several picks: the named item joins the chips, picked, and the question stays for more.
   if (multi.value) {
-    const named = addTyped(props.state, name)
-    if (picksOf(props.state).includes(named.key) || !togglePick(props.state, named.key, env)) {
-      duplicate.value = true
-      emit('edited')
-      return
-    }
-    clearPending(props.state)
-    otherOpen.value = false
-    emit('edited')
+    const key = pickTyped(name)
+    if (key === undefined) return
     // The field is gone: focus goes to the chip just added, so it is neither lost nor left on the page behind.
-    void nextTick(() => root.value?.querySelector<HTMLElement>(`[data-chip="${CSS.escape(named.key)}"]`)?.focus({ preventScroll: true }))
+    void nextTick(() => root.value?.querySelector<HTMLElement>(`[data-chip="${CSS.escape(key)}"]`)?.focus({ preventScroll: true }))
     return
   }
   // A name already on the list picks that item when it is free; one picked in another round says so.
   const named = addTyped(props.state, name)
   if (!pick(props.state, round.value, named.key, env)) {
-    duplicate.value = true
+    refusal.value = 'duplicate'
     emit('edited')
     return
   }
@@ -230,6 +247,8 @@ const labels = computed(() => ({
 
         <div v-else-if="multi || replies" class="round" role="group" :aria-label="groupLabel">
           <ChoiceChips v-if="multi" :chips="multiChips" :selected="picksOf(state)" :group-label="groupLabel" data-testid="more-chips" @toggle="toggleMore" />
+          <!-- Owner decision (R_InicioMas): the picks so far and what they bring, "2 elegidas · una pregunta corta por cada una". -->
+          <p v-if="multi && picksOf(state).length > 0" class="picked t-footnote" role="status" data-testid="more-picked">{{ t('onboarding.guided.more.picked', { count: picksOf(state).length }, picksOf(state).length) }}</p>
           <QuickReplies v-if="replies && replies.options.length > 0" :options="replies.options" :current="replies.current" :current-label="t('onboarding.guided.current')" @answer="choose" />
           <div v-if="replies && replies.stored.length > 0" class="stored" role="group" :aria-labelledby="storedId" data-testid="add-stored">
             <p :id="storedId" class="stored-label t-footnote">{{ t('onboarding.guided.add.yours') }}</p>
@@ -251,7 +270,7 @@ const labels = computed(() => ({
                 <p class="t-body note" role="status" data-testid="same-name-note">{{ t('onboarding.guided.add.sameName', { name: sameStored.name }) }}</p>
                 <button class="other t-body" type="button" data-testid="more-other-new" :disabled="busy" @click="createAnother">{{ t('onboarding.guided.add.createAnother') }}</button>
               </template>
-              <p v-if="duplicate" class="t-body note" role="status">{{ t('onboarding.guided.more.duplicate') }}</p>
+              <p v-if="refusal" class="t-body note" role="status" data-testid="more-refusal">{{ refusal === 'limit' ? t('onboarding.guided.more.limit', { max: MAX_PICKS }) : t('onboarding.guided.more.duplicate') }}</p>
             </form>
             <button
               v-if="showDone && replies" class="reply-chip done t-body" :class="{ 'is-current': replies.done.current }" type="button" data-testid="more-done" :aria-label="doneLabel"
@@ -367,6 +386,7 @@ const labels = computed(() => ({
 /* The round's answer when it is asked again, marked like a quick reply's. */
 .reply-chip.is-current { border-color: var(--tint); background: color-mix(in srgb, var(--tint) 12%, transparent); }
 .note { margin: 0; color: var(--label-2); }
+.picked { margin: 0; color: var(--label-2); }
 @media (prefers-reduced-motion: reduce) {
   .send:active:not(:disabled), .reply-chip:active:not(:disabled) { transform: none; opacity: 0.7; }
 }
