@@ -44,6 +44,8 @@
   --cat-red: #ff3b30;
   --cat-gray: #8e8e93;
   --cat-fill-strength: 16%;
+  /* Secondary text on a category fill (Week blocks): label-2 holds 4.5:1 there in light, not on dark fills. */
+  --label-on-fill: var(--label-2);
   /* Category rings, bars and glyph outlines: the same hue at 3:1 or more on every surface. */
   --cat-blue-stroke: #0088ff;
   --cat-green-stroke: #2a9f47;
@@ -148,6 +150,7 @@
     --cat-red: #ff453a;
     --cat-gray: #98989d;
     --cat-fill-strength: 28%;
+    --label-on-fill: rgba(255, 255, 255, 0.8);
     --cat-blue-stroke: #1a94ff;
     --cat-green-stroke: #30d158;
     --cat-orange-stroke: #ff9f0a;
@@ -204,6 +207,7 @@
   --cat-red: #ff453a;
   --cat-gray: #98989d;
   --cat-fill-strength: 28%;
+  --label-on-fill: rgba(255, 255, 255, 0.8);
   --cat-blue-stroke: #1a94ff;
   --cat-green-stroke: #30d158;
   --cat-orange-stroke: #ff9f0a;

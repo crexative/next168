@@ -53,10 +53,17 @@ a screen not yet redesigned keeps working with the new tokens and shell.
    while the planner can be written: a task needs no category (it fits any free time), an event needs none, and Rutina
    opens the guided add, which creates its category.
 
-9. **Resumen's headline [cambia] (slice 5).** The board says "38 h libres esta semana"; the figure counts from now,
-   while the bar's "sin asignar" counts the whole week, so the two would disagree. The headline says "26 h libres desde
-   ahora" (en "from now", fr "à partir de maintenant", pt "a partir de agora", de "ab jetzt"). Hoy and Semana keep
-   "esta semana" in their smaller badge, which stands alone.
+9. **Semana's "Día · Semana" switch (slice 3).** DIRECTION §7 lists `week.view.showDay` / `week.view.showWeek` as the
+   toggle's accessible names. The toggle became a labelled segmented control whose radios are named by their visible
+   words ("Día", "Semana") in the group "Vista", so those two keys are removed. A view the person chose is kept when the
+   width crosses 768 px; until then a phone opens on Día and a wider screen on Semana.
+10. **One word for a conflict (slice 3, REVIEW M2).** "Se cruza" on the block, "Se cruza con {título}" in the event's
+    details and "Se cruza con tu plan" on imported events, in every language; a Weeklid event over a routine is marked
+    too, as Hoy already did.
+11. **Resumen's headline [cambia] (slice 5).** The board says "38 h libres esta semana"; the figure counts from now,
+    while the bar's "sin asignar" counts the whole week, so the two would disagree. The headline says "26 h libres desde
+    ahora" (en "from now", fr "à partir de maintenant", pt "a partir de agora", de "ab jetzt"). Hoy and Semana keep
+    "esta semana" in their smaller badge, which stands alone.
 
 Anything else in a board that the app cannot do as drawn is raised with the coordinator before it changes behaviour.
 

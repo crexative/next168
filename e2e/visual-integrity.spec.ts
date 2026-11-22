@@ -94,6 +94,12 @@ async function open(page: Page, view: string): Promise<void> {
   await settle(page)
 }
 
+// The check-in conversation's last turn (note, reminder, save): every open question left for later.
+async function skipToCheckInEnd(page: Page): Promise<void> {
+  for (let guard = 0; guard < 12 && await page.getByTestId('checkin').getAttribute('data-step') !== 'final'; guard++) await page.getByTestId('checkin-skip').click()
+  await expect(page.getByTestId('checkin')).toHaveAttribute('data-step', 'final')
+}
+
 async function audit(page: Page, state: string): Promise<void> {
   await settle(page)
   expect.soft(await visualIntegrityViolations(page), state).toEqual([])
@@ -358,8 +364,9 @@ for (const theme of THEMES) {
         await page.getByTestId('measures-empty').getByRole('link').scrollIntoViewIfNeeded()
         await audit(page, `${theme}/${locale}/320/200%/Summary with no check-ins`)
         await page.getByTestId('measures-empty').getByRole('link').click()
-        await expect(page.getByTestId('back-button')).toBeVisible()
-        await expect(page.locator('.view-enter-active, .view-leave-active')).toHaveCount(0)
+        // The check-in is a conversation over the screen: its ×, question and dock fit at 320 px and 200 % text.
+        await expect(page.getByTestId('checkin')).toBeVisible()
+        await settle(page)
         await audit(page, `${theme}/${locale}/320/200%/check-in from Summary`)
       })
     }
@@ -384,18 +391,16 @@ for (const theme of THEMES) {
       await audit(page, `${theme}/de/320/200%/wide fonts/Summary with no check-ins`)
     })
 
-    // The collapsed toolbar title beside the check-in's back link at 320 px: "Bilan du jour" ran 4 px into "Aujourd'hui"
-    // whenever the page had scrolled far enough to show it (the run-together rule caught it now and then).
+    // The check-in conversation at 320 px in every language: the told times, the question and the dock fit.
     for (const locale of LOCALES) {
-      test(`the check-in's collapsed toolbar title clear of its back link at 320 px (${locale})`, async ({ page }, testInfo) => {
+      test(`the check-in conversation fits at 320 px (${locale})`, async ({ page }, testInfo) => {
         test.skip(testInfo.project.name !== 'phone', 'the narrow-width regression runs in the phone project')
         await page.setViewportSize({ width: 320, height: 640 })
         await start(page, theme, { ...plannedDocument, settings: { ...plannedDocument.settings, locale } }, locale)
         await open(page, 'checkin')
-        await expect(page.getByTestId('back-button')).toBeVisible()
-        await page.evaluate(() => window.scrollTo(0, document.scrollingElement!.scrollHeight))
-        await expect(page.locator('.toolbar[data-collapsed]')).toHaveCount(1)
-        await audit(page, `${theme}/${locale}/320/check-in with the collapsed toolbar title`)
+        await expect(page.getByTestId('checkin')).toBeVisible()
+        await settle(page)
+        await audit(page, `${theme}/${locale}/320/check-in conversation`)
       })
     }
 
@@ -673,7 +678,7 @@ for (const theme of THEMES) {
       await page.keyboard.press('Escape')
       await expect(page.getByRole('dialog')).toHaveCount(0)
       if (testInfo.project.name === 'phone') {
-        await page.getByTestId('week-view-toggle').click()
+        await page.getByTestId('week-view').getByRole('radio').nth(1).click()
         await expect(page.getByTestId('week-overview')).toBeVisible()
         await audit(page, `${theme}/es/week overview`)
       }
@@ -745,7 +750,9 @@ for (const theme of THEMES) {
       await page.keyboard.press('Escape')
 
       await open(page, 'checkin')
-      await page.getByLabel('Note').fill('A long evening note that wraps across more than one line to check the text area.')
+      await skipToCheckInEnd(page)
+      await page.getByTestId('checkin-add-note').click()
+      await page.getByTestId('checkin-note').fill('A long evening note that wraps across more than one line to check the text area.')
       await audit(page, `${theme}/check-in filled`)
     })
 
@@ -803,21 +810,25 @@ for (const theme of THEMES) {
       await expect(page.getByRole('button', { name: 'Recordarme a las 22:00' })).toBeVisible()
       await audit(page, `${theme}/today: check-in card with the reminder`)
       await page.getByTestId('checkin-card').getByRole('link').click()
-      await expect(page.getByRole('heading', { level: 1, name: 'Cierre del día' })).toBeVisible()
-      await expect(page.locator('.view-enter-active, .view-leave-active')).toHaveCount(0)
+      // The check-in is a conversation (R_Cierre): told times, one open question at a time.
+      await expect(page.getByTestId('checkin')).toBeVisible()
+      await settle(page)
       await audit(page, `${theme}/check-in prefilled from the plan`)
-      await page.getByTestId('fact-wake').getByRole('button').click()
-      await expect(page.getByLabel('¿A qué hora te levantaste hoy?')).toBeVisible()
+      await page.getByTestId('answer-wake').click()
+      await expect(page.getByTestId('fact-input')).toBeVisible()
       await audit(page, `${theme}/check-in editing a time`)
-      const gym = page.getByTestId('checkin-block').filter({ hasText: 'Gym' })
-      await expect(gym).toBeVisible()
-      await gym.getByTestId('status-control').click({ button: 'right' })
-      await expect(page.getByRole('menu')).toBeVisible()
-      await audit(page, `${theme}/check-in with a block menu open`)
-      await page.getByRole('menuitem', { name: 'No', exact: true }).click()
-      await expect(gym.getByTestId('status-control')).toHaveAttribute('data-status', 'skipped')
-      await page.getByRole('radiogroup', { name: 'Estrés hoy' }).getByRole('radio', { name: '2' }).click()
-      await audit(page, `${theme}/check-in answered`)
+      await page.getByRole('button', { name: 'Siguiente' }).click()
+      for (let guard = 0; guard < 8 && (await page.getByTestId('checkin-question').textContent()) !== '¿Cómo fue Gym?'; guard++) await page.getByTestId('checkin-skip').click()
+      await expect(page.getByTestId('checkin-question')).toHaveText('¿Cómo fue Gym?')
+      await page.getByTestId('answer-partial').click()
+      await expect(page.getByTestId('checkin-minutes')).toBeVisible()
+      await audit(page, `${theme}/check-in with the minutes field`)
+      await page.getByTestId('answer-skipped').click()
+      await expect.poll(async () => (await page.getByTestId('checkin-question').textContent())?.trim()).toBe('¿Cómo de estresado estuviste hoy?')
+      await audit(page, `${theme}/check-in asking stress`)
+      await page.getByTestId('stress-2').click()
+      await expect(page.getByRole('switch', { name: 'Recordarme a las 22:00' })).toBeVisible()
+      await audit(page, `${theme}/check-in last turn with the reminder`)
       await page.getByRole('button', { name: 'Guardar cierre' }).click()
       await expect(page.getByTestId('checkin-done')).toContainText('Guardado ✓')
       await audit(page, `${theme}/today: check-in saved`)
@@ -859,12 +870,14 @@ for (const theme of THEMES) {
         await audit(page, `${theme}/${locale}/320 today: status menu`)
         await page.keyboard.press('Escape')
         await open(page, 'checkin')
-        await expect(page.getByTestId('checkin-block').first()).toBeVisible()
-        await audit(page, `${theme}/${locale}/320 check-in: sentences, blocks and stress`)
-        await page.getByTestId('fact-bedtime').getByRole('button').click()
+        await expect(page.getByTestId('checkin-question')).toBeVisible()
+        await settle(page)
+        await audit(page, `${theme}/${locale}/320 check-in: told times and the first open question`)
+        await page.getByTestId('answer-bedtime').click()
         await audit(page, `${theme}/${locale}/320 check-in: editing a time`)
-        await page.getByTestId('checkin-block').first().getByTestId('status-control').click({ button: 'right' })
-        await page.getByRole('menuitem').first().click()
+        await page.getByTestId('fact-input').press('Enter')
+        await expect(page.getByTestId('answer-partial')).toBeVisible()
+        await page.getByTestId('answer-partial').click()
         await audit(page, `${theme}/${locale}/320 check-in: minutes field`)
       })
     }

@@ -129,6 +129,17 @@ describe('events and routines share the column', () => {
     expect(at(30, 5)).toEqual({ icon: false, word: false, title: false })
   })
 
+  // #56: beside the ⚠ in the small caption size a conflict's title is never hyphenated (the browser drew it unbroken
+  // where a probe of the same text broke it), even where hyphenating would fit more of it.
+  it('never hyphenates a conflict\'s small title beside the ⚠', () => {
+    const measure = measureAt(150)
+    const hyphenating = { ...measure, metrics: { ...measure.metrics, hyphenatedLines: (text: string, role: string) => role === 'compact' && text.startsWith('Vendorcall') ? 1 : null } }
+    const at = (with_: ColumnMeasure) => plan({ blocks: [block('b', 540, 600)], events: [event('Vendorcallreview', 540, 560)], measure: with_ }).busy[0]!.show
+    // Hyphenation offered or not, the small title beside the ⚠ is the same: it is never used there.
+    expect(at(hyphenating)).toEqual(at(measure))
+    expect(at(hyphenating).hyphenate).toBeFalsy()
+  })
+
   it('draws the ⚠ on a line of its own above a title that does not fit beside it', () => {
     // 100 px column, two lanes: 40 px of text room, 56 px tall. "⚠ Vendor" (54 px) does not fit a line; under a 13 px ⚠
     // line, "Vendor" / "call" does.

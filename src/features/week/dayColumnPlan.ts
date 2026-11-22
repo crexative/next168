@@ -201,8 +201,9 @@ function busyShow(words: BusyWords, box: { width: number; height: number }, smal
     if (fit) return shown(fit, { icon: true, ...extra })
   }
   if (smallBox.width >= ICON_PX - 0.01 && smallBox.height >= ICON_PX - 0.01) {
-    // Beside the ⚠, centred on its line, in the small caption size.
-    const small = fitTitle({ text: words.title, role: 'compact' }, { width: smallBox.width - ICON_PX - SMALL_ICON_GAP_PX, height: smallBox.height }, metrics)
+    // Beside the ⚠, centred on its line, in the small caption size; never hyphenated there, as for a task: the browser
+    // drew "Pausa……" unbroken beside the ⚠ where a probe of the same text broke it.
+    const small = fitTitle({ text: words.title, role: 'compact' }, { width: smallBox.width - ICON_PX - SMALL_ICON_GAP_PX, height: smallBox.height }, { ...metrics, hyphenatedLines: undefined })
     return small ? shown(small, { icon: true, small: true }) : { icon: true, word: false, title: false }
   }
   return alone()

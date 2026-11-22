@@ -181,18 +181,21 @@ test.describe('plan and measure', () => {
 
     await page.goto('./#/checkin')
     await expect(page.getByRole('heading', { level: 1, name: 'Day wrap-up' })).toBeVisible()
-    // Each time is a sentence; tapping it opens its time.
-    for (const [testId, question, value] of [
-      ['fact-bedtime', 'When did you go to bed last night?', '23:00'],
-      ['fact-wake', 'When did you wake up today?', '07:00'],
-      ['fact-work-end', 'When did you finish work today?', '22:00'],
+    // The conversation tells each time from the plan; tapping one asks it again (R_Cierre).
+    for (const [step, question, value] of [
+      ['bedtime', 'When did you go to bed last night?', '23:00'],
+      ['wake', 'When did you wake up today?', '07:00'],
+      ['workEnd', 'When did you finish work today?', '22:00'],
     ] as const) {
-      await page.getByTestId(testId).getByRole('button').click()
-      const field = page.getByLabel(question)
-      await field.fill(value)
-      await field.press('Enter')
+      const told = page.getByTestId(`answer-${step}`)
+      if (await told.count()) await told.click()
+      while (await page.getByTestId('checkin').getAttribute('data-step') !== step) await page.getByTestId('checkin-skip').click()
+      await expect(page.getByTestId('checkin-question')).toHaveText(question)
+      await page.getByTestId('fact-input').fill(value)
+      await page.getByRole('button', { name: 'Next', exact: true }).click()
     }
-    await page.getByRole('radio', { name: '4', exact: true }).click()
+    while (await page.getByTestId('checkin').getAttribute('data-step') !== 'stress') await page.getByTestId('checkin-skip').click()
+    await page.getByTestId('stress-4').click()
     await page.getByRole('button', { name: 'Save wrap-up' }).click()
 
     // Saving returns to Today; the measures are one tap away.
@@ -204,9 +207,9 @@ test.describe('plan and measure', () => {
     expect((await storedDocument(page)).checkIns).toEqual([{ date: '2026-10-26', bedtime: 1380, wake: 420, workEnd: 1320, stress: 4 }])
 
     await page.goto('./#/checkin')
-    await expect(page.getByTestId('fact-bedtime')).toContainText('11:00')
-    await page.getByTestId('fact-bedtime').getByRole('button').click()
-    await expect(page.getByLabel('When did you go to bed last night?')).toHaveValue('23:00')
+    await expect(page.getByTestId('answer-bedtime')).toContainText('11:00')
+    await page.getByTestId('answer-bedtime').click()
+    await expect(page.getByTestId('fact-input')).toHaveValue('23:00')
   })
 
   test('export, delete all and import restores an identical document', async ({ page }, testInfo) => {

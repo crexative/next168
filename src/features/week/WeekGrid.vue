@@ -91,7 +91,7 @@ const hasAllDay = computed(() => props.dates.some((date) => (props.allDay[date]?
 /* Seven days share the header: like the system calendar (and the phone's day strip), it stops growing at large text
    sizes, so "MON" and "TUE" never run into each other in a narrow column. */
 .day-heading { min-width: 0; }
-.weekday { color: var(--label-2); text-transform: uppercase; font-size: min(0.75rem, 13px); }
+.weekday { color: var(--label-2); font-size: min(0.75rem, 13px); font-weight: 600; }
 .day-number {
   display: inline-flex;
   align-items: center;
@@ -103,8 +103,9 @@ const hasAllDay = computed(() => props.dates.some((date) => (props.allDay[date]?
   font-weight: 700;
   font-variant-numeric: tabular-nums;
 }
-.is-today .weekday { color: var(--danger-label); }
-.is-today .day-number { background: var(--danger); color: #fff; }
+.is-today .weekday { color: var(--tint-label); }
+/* Green is today (DIRECTION principle 6). */
+.is-today .day-number { background: var(--tint); color: var(--tint-text); }
 .grid-body { padding-top: var(--space-2); }
 .grid-body > .is-today { background-color: color-mix(in srgb, var(--tint) 5%, transparent); }
 </style>

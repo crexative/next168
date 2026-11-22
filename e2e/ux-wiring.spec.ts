@@ -100,7 +100,8 @@ for (const size of Object.keys(SIZES) as (keyof typeof SIZES)[]) {
         await open(page, 'today', 'Hoy')
         await page.goto('./#/checkin')
         await expect(page.getByRole('heading', { level: 1, name: 'Cierre del día' })).toBeVisible()
-        const back = page.getByRole('link', { name: 'Volver a Hoy' })
+        // The check-in is a conversation over the screen; its × goes back.
+        const back = page.getByRole('button', { name: 'Volver a Hoy' })
         await expect(back).toBeVisible()
         await audit(page, `${size}/${theme}/check-in with back`)
         await back.click()
