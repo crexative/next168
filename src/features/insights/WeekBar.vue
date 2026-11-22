@@ -19,7 +19,8 @@ const segments = computed(() => capacity.value.segments.map((segment) => {
 // Assigned and unassigned hours are rounded together, so the two figures always add up to the 168.
 const roundedHours = computed(() => wholeHourParts([capacity.value.plannedMinutes, capacity.value.availableMinutes]) as [number, number])
 const unassignedDuration = computed(() => formatWholeHours(roundedHours.value[1]))
-const headline = computed(() => {
+// "130 h asignadas · 38 h sin asignar": the counter under the legend (R_Resumen); the page's headline is the free hours.
+const counter = computed(() => {
   const [assigned] = roundedHours.value
   return inlineSeparators(t('insights.bar.summary', { assigned: formatWholeHours(assigned), unassigned: unassignedDuration.value }))
 })
@@ -27,9 +28,7 @@ const weekLabel = computed(() => formatTotal(WEEK_MINUTES))
 </script>
 
 <template>
-  <section class="week-bar" :aria-label="t('insights.bar.title')">
-    <h2 class="t-headline week-bar-title">{{ t('insights.bar.title') }}</h2>
-    <p class="summary t-title-2" data-testid="capacity-available">{{ headline }}</p>
+  <div class="week-bar">
     <div class="cells" :style="{ gap: `min(2px, ${capacity.gapPercent}%)` }" role="group" :aria-label="`${t('insights.bar.title')} (${weekLabel})`" data-testid="week-bar">
       <i
         v-for="segment in segments"
@@ -50,39 +49,38 @@ const weekLabel = computed(() => formatTotal(WEEK_MINUTES))
       />
     </div>
     <ul class="legend" :aria-label="t('insights.bar.legend')" data-testid="capacity-legend">
-      <li v-for="segment in segments" :key="segment.categoryId" class="legend-item t-footnote" :data-testid="`legend-${segment.categoryId}`">
+      <li v-for="segment in segments" :key="segment.categoryId" class="legend-item t-subhead" :data-testid="`legend-${segment.categoryId}`">
         <span class="swatch" :style="{ background: segment.color }" aria-hidden="true" />
         <span class="legend-name">{{ segment.name }}</span>
-        <span class="t-secondary">{{ segment.duration }}</span>
+        <span class="t-secondary hours">{{ segment.duration }}</span>
       </li>
-      <li class="legend-item t-footnote" data-testid="legend-available">
+      <li class="legend-item t-subhead" data-testid="legend-available">
         <span class="swatch is-available" aria-hidden="true" />
         <span class="legend-name">{{ t('insights.bar.unassignedName') }}</span>
-        <span class="t-secondary">{{ unassignedDuration }}</span>
+        <span class="t-secondary hours">{{ unassignedDuration }}</span>
       </li>
     </ul>
+    <p class="t-footnote t-secondary counter" data-testid="capacity-available">{{ counter }}</p>
     <p v-if="capacity.overbooked" class="t-footnote t-secondary" data-testid="capacity-overlap">{{ t('insights.bar.overlap') }}</p>
     <slot />
-  </section>
+  </div>
 </template>
 
 <style scoped>
-.week-bar { display: flex; flex-direction: column; gap: var(--space-2); padding: var(--card-padding-block) var(--card-padding); background: var(--surface); border-radius: var(--radius-card); }
-/* Words wrap between words and never inside one, so the figure stays readable at 200 % text. */
-/* Like the week's day strip, the headline stops growing at large text (32 px): at 320 px and 200 % text a German word
-   ("zugewiesen", 289 px at 40 px with Linux's DejaVu Sans) would otherwise be wider than the line, and the figures never
-   break inside a word. */
-.summary { margin: 0; min-width: 0; overflow-wrap: normal; font-size: min(1.375rem, 32px); text-wrap: balance; font-variant-numeric: tabular-nums; }
-/* The section title is a label, not a figure: a word wider than the line ("Standardwoche") is hyphenated in the page's
-   language. */
-.week-bar-title { hyphens: auto; }
+.week-bar { display: flex; flex-direction: column; gap: var(--space-3); }
+/* The 168 h bar (R_Resumen): segments in category colour with 2 px gaps of the page, the unassigned hours hatched. */
 .cells { display: flex; height: 28px; overflow: hidden; border-radius: 8px; }
 .segment { display: block; flex: 0 1 auto; flex-basis: 0; min-width: 0; }
-.is-available { background: var(--surface-2); box-shadow: inset 0 0 0 1px var(--separator); }
-.legend { display: flex; flex-direction: column; gap: var(--space-1); margin: var(--space-1) 0 0; padding: 0; list-style: none; }
-/* With large text the hours move under the name instead of squeezing it until a word breaks. */
+.is-available { background: repeating-linear-gradient(135deg, var(--fill) 0 4px, transparent 4px 8px); box-shadow: inset 0 0 0 1px var(--separator); }
+/* Two columns of "● Sueño 56 h"; one column when the text is large. */
+.legend { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(10rem, 100%), 1fr)); gap: var(--space-1) var(--space-4); margin: 0; padding: 0; list-style: none; }
 .legend-item { display: flex; flex-wrap: wrap; align-items: center; gap: 0 var(--space-2); min-width: 0; }
 .legend-name { flex: 1 1 6rem; min-width: 0; overflow-wrap: break-word; }
-.swatch { width: 10px; height: 10px; border-radius: 50%; flex: none; }
-.swatch.is-available { background: var(--surface-2); box-shadow: inset 0 0 0 1px var(--separator); }
+.hours { font-variant-numeric: tabular-nums; }
+.swatch { width: 8px; height: 8px; border-radius: 50%; flex: none; }
+.swatch.is-available { width: 10px; height: 10px; background: repeating-linear-gradient(135deg, var(--label-2) 0 1.5px, transparent 1.5px 3px); box-shadow: inset 0 0 0 1px var(--label-2); }
+.counter { margin: 0; font-variant-numeric: tabular-nums; }
+@media (forced-colors: active) {
+  .segment { border: 1px solid CanvasText; }
+}
 </style>

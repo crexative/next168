@@ -30,5 +30,7 @@
     "body": "Lo que escribiste aquí no se guardó.",
     "discard": "Descartar",
     "keep": "Seguir"
-  }
+  },
+  "taskPart": "{part}/{parts} {title}",
+  "taskPartSpoken": "{title}, parte {part} de {parts}"
 }

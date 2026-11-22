@@ -30,5 +30,7 @@
     "body": "Was du hier geschrieben hast, ist nicht gespeichert.",
     "discard": "Verwerfen",
     "keep": "Weiter bearbeiten"
-  }
+  },
+  "taskPart": "{part}/{parts} {title}",
+  "taskPartSpoken": "{title}, Teil {part} von {parts}"
 }

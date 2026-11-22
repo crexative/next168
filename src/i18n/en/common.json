@@ -30,5 +30,7 @@
     "body": "What you wrote here has not been saved.",
     "discard": "Discard",
     "keep": "Keep editing"
-  }
+  },
+  "taskPart": "{part}/{parts} {title}",
+  "taskPartSpoken": "{title}, part {part} of {parts}"
 }

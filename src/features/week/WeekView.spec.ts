@@ -29,6 +29,37 @@ async function newBlockFromEmptyHour(): Promise<void> {
   await tick()
 }
 
+// crexative/next168#58: a task the scheduler splits reads as its parts, not as the same task drawn twice.
+describe('WeekView: a split task', () => {
+  it('titles each piece with its part ("1/2 Report"), and names it in words for a screen reader', async () => {
+    vi.useFakeTimers({ toFake: ['Date'] })
+    vi.setSystemTime(new Date('2026-10-21T08:00:00Z'))
+    const { planner } = createTestRepositories()
+    configurePlannerStore({ repository: planner, now: fixedNow, newId: newTestId, locale: () => 'en', timeZone: () => 'UTC' })
+    const pinia = createPinia()
+    setActivePinia(pinia)
+    const store = usePlannerStore()
+    await store.load()
+    // Two 30-minute stretches of Work on Wednesday: the one-hour report fits in neither alone.
+    await store.commit((draft) => {
+      draft.categories.push({ id: 'work', name: 'Work', colorKey: 'blue', goal: { type: 'none', hoursPerWeek: 0 } })
+      draft.blocks.push({ id: 'early', categoryId: 'work', title: 'Work', start: 540, end: 570, days: [3] })
+      draft.blocks.push({ id: 'late', categoryId: 'work', title: 'Work', start: 660, end: 690, days: [3] })
+      draft.tasks.push({ id: 'report', title: 'Report', categoryId: 'work', durationMin: 60, dueDate: '2026-10-21', priority: 1, createdAt: '2026-10-20T08:00:00.000Z' })
+    })
+    i18n.global.locale.value = 'en'
+    const host = globalThis.document.createElement('div')
+    globalThis.document.body.append(host)
+    const app = createApp(WeekView).use(pinia).use(i18n)
+    app.mount(host)
+    cleanup = () => { app.unmount(); host.remove() }
+    await tick()
+    const pieces = [...host.querySelectorAll<HTMLElement>('[data-date="2026-10-21"] [data-testid="week-task"]')]
+    expect(pieces.map((piece) => piece.getAttribute('title'))).toEqual(['1/2 Report', '2/2 Report'])
+    expect(pieces.map((piece) => piece.getAttribute('aria-label')?.split(',').slice(0, 2).join(','))).toEqual(['Task: 1/2 Report, part 1 of 2', 'Task: 2/2 Report, part 2 of 2'])
+  })
+})
+
 describe('WeekView saving', () => {
   it('shows the moved-task notice on reopen and Undo restores its expired slot', async () => {
     vi.useFakeTimers({ toFake: ['Date'] })
@@ -252,7 +283,6 @@ describe('WeekView saving', () => {
     const range = () => host.querySelector('[data-testid="week-range"]')!.textContent!.replace(/\s/g, ' ')
     const click = async (id: string) => { host.querySelector<HTMLElement>(`[data-testid="${id}"]`)!.click(); await tick() }
     expect(range()).toBe('Oct 19 – 25')
-    // "Today" appears only once another week is shown.
     // "Hoy" is always there beside the arrows (R_Semana).
     expect(host.querySelector('[data-testid="week-today"]')).not.toBeNull()
     expect(host.querySelector('[data-date="2026-10-19"]')).not.toBeNull()

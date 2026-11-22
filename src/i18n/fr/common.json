@@ -30,5 +30,7 @@
     "body": "Ce que tu as écrit ici n’a pas été enregistré.",
     "discard": "Abandonner",
     "keep": "Continuer"
-  }
+  },
+  "taskPart": "{part}/{parts} {title}",
+  "taskPartSpoken": "{title}, partie {part} sur {parts}"
 }
