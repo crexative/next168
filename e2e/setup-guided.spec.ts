@@ -1487,6 +1487,7 @@ test('from Ajustes a category with one range can be left without times in its su
   await remove.click()
   await expect(live(page).locator('[data-category=work] [data-range]')).toHaveCount(0)
   await expect(live(page).getByTestId('card-work')).toContainText('Sin horario')
+})
 
 // #65 review: in the centred modal (max-height, not a fixed height) a long conversation still scrolls inside it, the
 // dock and its "Siguiente" stay in the card.
