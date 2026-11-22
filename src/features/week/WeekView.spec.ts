@@ -56,7 +56,7 @@ describe('WeekView: a split task', () => {
     await tick()
     const pieces = [...host.querySelectorAll<HTMLElement>('[data-date="2026-10-21"] [data-testid="week-task"]')]
     expect(pieces.map((piece) => piece.getAttribute('title'))).toEqual(['1/2 Report', '2/2 Report'])
-    expect(pieces.map((piece) => piece.getAttribute('aria-label')?.split(',').slice(0, 2).join(','))).toEqual(['Task: Report, part 1 of 2', 'Task: Report, part 2 of 2'])
+    expect(pieces.map((piece) => piece.getAttribute('aria-label')?.split(',').slice(0, 2).join(','))).toEqual(['Task: 1/2 Report, part 1 of 2', 'Task: 2/2 Report, part 2 of 2'])
   })
 })
 
