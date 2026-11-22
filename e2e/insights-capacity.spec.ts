@@ -271,3 +271,22 @@ test('the headline fits a 320 px phone at 200 % text in French', async ({ page }
   expect(fit.scroll).toBeLessThanOrEqual(fit.client)
   expect(fit.right).toBeLessThanOrEqual(320)
 })
+
+// Review of #59: the seven day marks of a measure stay inside a 320 px phone at 200 % and 300 % text.
+for (const scale of ['200%', '300%'] as const) {
+  test(`the measures' day marks fit a 320 px phone at ${scale} text`, async ({ page }) => {
+    await page.setViewportSize({ width: 320, height: 640 })
+    await page.addInitScript((size) => { document.addEventListener('DOMContentLoaded', () => { document.documentElement.style.fontSize = size }) }, scale)
+    await start(page, { categories: [sleep, work, study], blocks, checkIns: [{ date: '2026-10-25', bedtime: 1380, wake: 420, stress: 2 }, { date: '2026-10-26', bedtime: 60, wake: 300, stress: 5 }] })
+    await page.goto('./#/insights')
+    const rows = page.locator('.measures .dots')
+    await expect(rows.first()).toBeVisible()
+    const fits = await rows.evaluateAll((lists) => lists.map((list) => {
+      const box = list.getBoundingClientRect()
+      const marks = Array.from(list.children, (item) => item.getBoundingClientRect())
+      return { scroll: list.scrollWidth <= list.clientWidth, inside: box.left >= 0 && box.right <= 320, marks: marks.every((mark) => mark.left >= box.left - 0.5 && mark.right <= box.right + 0.5) }
+    }))
+    expect(fits.length).toBeGreaterThan(0)
+    for (const fit of fits) expect(fit).toEqual({ scroll: true, inside: true, marks: true })
+  })
+}

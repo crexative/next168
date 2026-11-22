@@ -106,8 +106,9 @@ const tiles = computed(() => {
 .row-head { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 0 var(--space-3); }
 .name { margin: 0; font-weight: 400; min-width: 0; overflow-wrap: break-word; }
 .value { margin: 0; font-weight: 600; font-variant-numeric: tabular-nums; }
-.dots { display: flex; justify-content: space-between; margin: 0; padding: 0 var(--space-2); list-style: none; }
-.dot-item { display: flex; flex-direction: column; align-items: center; gap: 2px; min-width: var(--space-5); }
+/* Seven marks share the row at any text size: the inset stays 8 px and a mark's width is at most a seventh of it. */
+.dots { display: flex; justify-content: space-between; margin: 0; padding: 0 8px; list-style: none; }
+.dot-item { display: flex; flex-direction: column; align-items: center; gap: 2px; min-width: min(var(--space-5), 100% / 7); }
 /* Shapes carry the state; only "needs attention" is in colour: circle = bien, rounded square = justo, diamond =
    requiere atención (amber, the label tone: 3:1 on the page), ring = sin datos. */
 .dot { display: inline-block; flex: none; width: 10px; height: 10px; border-radius: 50%; box-sizing: border-box; background: var(--label-2); }
