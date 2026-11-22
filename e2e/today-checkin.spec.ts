@@ -607,6 +607,8 @@ for (const { width, height, modal } of [{ width: 390, height: 844, modal: false 
     await page.goto('./#/checkin')
     const frame = page.locator('.setup-frame')
     await expect(frame).toBeVisible()
+    // Measured once the frame has finished rising in (its entry starts a frame after it appears).
+    await expect(frame).not.toHaveClass(/setup-frame-enter/)
     await page.waitForFunction(() => document.getAnimations().every((animation) => animation.playState !== 'running'))
     const box = (await frame.boundingBox())!
     if (modal) {
