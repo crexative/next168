@@ -29,7 +29,7 @@ interface ActionInput {
 
 export function nowAction({ selection, items, actuals, since, now, today, timeZone, closeDayOpen }: ActionInput): NowAction | null {
   const { primary, others } = selection
-  if (primary?.kind === 'task') return { kind: 'task', taskId: primary.taskId, title: primary.title }
+  if (primary?.kind === 'task') return { kind: 'task', taskId: primary.taskId, title: primary.taskTitle ?? primary.title }
   const answered = (item: BlockItem) => actualFor(actuals, item.occurrence)
   const ask = (item: BlockItem): NowAction => ({ kind: 'ask', occurrence: item.occurrence, actual: answered(item), own: item.key === primary?.key })
 

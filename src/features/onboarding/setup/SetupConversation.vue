@@ -124,7 +124,7 @@ function onFocusIn(event: FocusEvent): void {
       </div>
     </div>
 
-    <footer v-if="summary" class="dock">
+    <footer v-if="summary" class="dock is-summary">
       <!-- "Crear mi semana", then "Repasar las preguntas" and the trust line under it (R_InicioResumen). -->
       <div class="column actions">
         <Button data-primary data-dock-primary data-testid="setup-primary" block :disabled="busy" @click="emit('submit')">{{ state.add ? t('onboarding.summary.addSave') : first ? t('onboarding.summary.start') : t('onboarding.summary.save') }}</Button>
@@ -180,7 +180,9 @@ function onFocusIn(event: FocusEvent): void {
 .trust-icon { flex: none; }
 .resumed { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; column-gap: var(--space-3); text-align: center; }
 .resumed p { margin: 0; color: var(--label-2); }
-.dock { flex: none; border-top: 0.5px solid var(--separator); background: var(--surface); }
+/* The summary's own dock. A plain .dock here would also reach SetupAnswer's root (a scoped style reaches a child's
+   root element) and stop that dock from shrinking inside the tablet modal. */
+.dock.is-summary { flex: none; border-top: 0.5px solid var(--separator); background: var(--surface); }
 /* The primary keeps the group gap from the conversation above and from "Repasar las preguntas" under it. */
 .actions { display: flex; flex-direction: column; align-items: center; gap: var(--space-1); padding-block: var(--group-gap) calc(var(--space-4) + var(--safe-bottom)); }
 .actions > [data-testid=summary-review] { margin-block-start: calc(var(--group-gap) - var(--space-1)); }

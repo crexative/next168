@@ -60,6 +60,10 @@ a screen not yet redesigned keeps working with the new tokens and shell.
 10. **One word for a conflict (slice 3, REVIEW M2).** "Se cruza" on the block, "Se cruza con {título}" in the event's
     details and "Se cruza con tu plan" on imported events, in every language; a Weeklid event over a routine is marked
     too, as Hoy already did.
+11. **Resumen's headline [cambia] (slice 5).** The board says "38 h libres esta semana"; the figure counts from now,
+    while the bar's "sin asignar" counts the whole week, so the two would disagree. The headline says "26 h libres desde
+    ahora" (en "from now", fr "à partir de maintenant", pt "a partir de agora", de "ab jetzt"). Hoy and Semana keep
+    "esta semana" in their smaller badge, which stands alone.
 
 Anything else in a board that the app cannot do as drawn is raised with the coordinator before it changes behaviour.
 
@@ -69,6 +73,9 @@ Anything else in a board that the app cannot do as drawn is raised with the coor
   answers under them ("Añadir otro horario", "Sin horario fijo", "Siguiente") stay in view, so on a 390 x 844 phone
   and a 1440 x 900 desktop the card starts closed, one tap from its times. "Lo veo después" is not on the work screen:
   leaving work for later needs its own place in the flow (what the summary then shows), not only a button.
+- **Conversation modal width (slice 8).** The centred modal is 35rem wide, so it grows with the text size (about
+  1120 px at 200 % on a 1440 px screen, never more than the screen less 32 px); its margins are pixels. Below 700 px
+  of height (a small landscape tablet) the conversation stays full screen.
 
 ## Tokens and styles added ahead of their screens
 

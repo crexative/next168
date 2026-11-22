@@ -10,8 +10,7 @@
     "unassignedName": "Unassigned",
     "unassignedSegment": "Unassigned: {duration}",
     "overlap": "Some routines overlap, so the bar is capped at 168 h.",
-    "legend": "Assigned hours per category",
-    "live": "{hours} h free left this week."
+    "legend": "Assigned hours per category"
   },
   "goals": {
     "deletedCategory": "Deleted category",
@@ -41,6 +40,15 @@
       "amber": "borderline",
       "bad": "needs attention",
       "none": "no data"
+    },
+    "key": "Key to the dots",
+    "stateName": {
+      "good": "Good",
+      "amber": "Borderline",
+      "bad": "Needs attention",
+      "none": "No data"
     }
-  }
+  },
+  "subtitle": "Week of {range}",
+  "headline": "{hours} h free from now"
 }
