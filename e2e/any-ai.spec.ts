@@ -78,14 +78,15 @@ async function settled(page: Page): Promise<void> {
 }
 
 // The way a person gets there: the assistant entry (the toolbar icon on a phone, the sidebar footer row on wider
-// screens), then the "Usar con tu IA" row.
+// screens), then "Responder con: Usar con tu IA" (R_Asistente), which opens its page in Settings.
 async function openFromAssistant(page: Page): Promise<void> {
   await page.goto('./#/today')
   if (page.viewportSize()!.width < 768) await page.getByTestId('assistant-entry').click()
   else await page.getByTestId('sidebar-footer').getByRole('link', { name: 'Asistente' }).click()
   await expect(page.getByRole('heading', { level: 1, name: 'Asistente' })).toBeVisible()
   await settled(page)
-  await page.getByRole('button', { name: /Usar con tu IA/ }).click()
+  await page.getByRole('combobox', { name: 'Responder con' }).selectOption({ label: 'Usar con tu IA' })
+  await expect(page).toHaveURL(/#\/settings\/ai$/)
   await expect(page.getByTestId('any-ai-copy')).toBeVisible()
 }
 
@@ -125,7 +126,7 @@ for (const theme of THEMES) {
         await expect(page).toHaveURL(/#\/settings\/ai$/)
         await expect(page.getByTestId('any-ai-copy')).toBeVisible()
         await expect(page.getByRole('heading', { name: 'Claude Desktop o Claude Code (en este equipo)' })).toHaveCount(0)
-        await expect(page.getByTestId('any-ai-toggle')).not.toHaveAttribute('aria-expanded', /.*/)
+        await expect(page.getByTestId('any-ai-head')).not.toHaveAttribute('aria-expanded', /.*/)
         await noViolations(page, `${theme}/${size}/settings connect section`)
       })
 
@@ -256,7 +257,7 @@ for (const size of Object.keys(SIZES) as (keyof typeof SIZES)[]) {
       // Approve is in the footer, on screen without scrolling the 43 changes.
       await expect(page.getByTestId('review-approve')).toBeEnabled()
       await expect(page.getByTestId('review-approve')).toBeInViewport({ ratio: 1 })
-      await expect(page.getByTestId('review-cancel')).toBeInViewport({ ratio: 1 })
+      await expect(page.getByTestId('review-cancel-note')).toBeInViewport({ ratio: 1 })
       expect((await storedPlanner<{ categories: unknown[] }>(page)).categories).toHaveLength(0)
       await noViolations(page, `${size}/review of a whole week`)
       // A double tap applies it once.
@@ -291,7 +292,7 @@ for (const size of Object.keys(SIZES) as (keyof typeof SIZES)[]) {
       await box(page).fill(reply)
       await page.getByTestId('any-ai-review').click()
       await expect(page.getByTestId('review-cancel-note')).toHaveText('Si cancelas, estos cambios se descartan y tu plan queda como está.')
-      await page.getByTestId('review-cancel').click()
+      await page.getByRole('button', { name: 'Cancelar', exact: true }).click()
       await expect(page.getByTestId('proposal-review')).toHaveCount(0)
       await expect.poll(async () => (JSON.parse(await storedRecord(page, 'proposals') ?? '{"records":[]}') as { records: { status: string }[] }).records.map((proposal) => proposal.status)).toEqual(['rejected'])
       await expect(page.getByTestId('proposal-badge')).toHaveCount(0)

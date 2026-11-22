@@ -24,6 +24,13 @@
     "clock24": "24 heures",
     "footer": "Automatique suit la région et l’apparence de ton appareil. Les heures s’affichent ainsi : {example}"
   },
+  "done": "OK",
+  "discardChanges": {
+    "title": "Abandonner tes modifications ?",
+    "body": "Ce que tu as écrit ici n’a pas été enregistré.",
+    "discard": "Abandonner",
+    "keep": "Continuer"
+  },
   "taskPart": "{part}/{parts} {title}",
   "taskPartSpoken": "{title}, partie {part} sur {parts}"
 }

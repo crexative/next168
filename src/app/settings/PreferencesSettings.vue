@@ -4,15 +4,15 @@ import { useI18n } from 'vue-i18n'
 import { availableLocales, isSupportedLocale, setLocale } from '@/i18n'
 import { usePlannerStore } from '@/stores/plannerStore'
 import ListGroup from '@/ui/ListGroup.vue'
-import SegmentedControl from '@/ui/SegmentedControl.vue'
 import { appearance, setAppearance, type Appearance } from '@/ui/appearance'
 import { displayLocale, formatClock, hourCycle, setHourCycle, type HourCycle } from '@/ui/format'
 
-// General: language, first day of the week, 12/24 h clock and appearance, set once on the Settings list.
+// General: language, first day of the week, 12/24 h clock and appearance, set once on the Settings list. One control
+// for one kind of choice (R_Ajustes): four value rows, each with the platform's pop-up.
 // Language and week start belong to the planner document; the clock and appearance are preferences of this device.
 const { t, locale } = useI18n()
 const planner = usePlannerStore()
-const languageId = useId()
+const ids = { language: useId(), week: useId(), clock: useId(), appearance: useId() }
 
 const language = computed(() => isSupportedLocale(planner.document?.settings.locale) ? planner.document!.settings.locale : locale.value)
 const weekStart = computed(() => String(planner.document?.settings.weekStartsOn ?? 1) as '0' | '1')
@@ -50,22 +50,28 @@ async function chooseWeekStart(value: '0' | '1'): Promise<void> {
   <div v-if="planner.document" class="preferences" data-testid="general-settings">
     <ListGroup :header="t('common.preferences.title')" :footer="t('common.preferences.footer', { example })">
       <li class="preference">
-        <label :for="languageId" class="t-body">{{ t('common.preferences.language') }}</label>
-        <select :id="languageId" class="input language" :value="language" :disabled="!planner.writable" data-testid="preference-language" @change="chooseLanguage">
+        <label :for="ids.language" class="t-body">{{ t('common.preferences.language') }}</label>
+        <select :id="ids.language" class="value t-body" :value="language" :disabled="!planner.writable" data-testid="preference-language" @change="chooseLanguage">
           <option v-for="option in availableLocales" :key="option.code" :value="option.code" :lang="option.code">{{ option.name }}</option>
         </select>
       </li>
-      <li class="preference is-stacked">
-        <span class="t-body" aria-hidden="true">{{ t('common.preferences.weekStart') }}</span>
-        <SegmentedControl :model-value="weekStart" :options="weekOptions" :label="t('common.preferences.weekStart')" @update:model-value="chooseWeekStart" />
+      <li class="preference">
+        <label :for="ids.week" class="t-body">{{ t('common.preferences.weekStart') }}</label>
+        <select :id="ids.week" class="value t-body" :value="weekStart" :disabled="!planner.writable" data-testid="preference-week-start" @change="chooseWeekStart(($event.target as HTMLSelectElement).value as '0' | '1')">
+          <option v-for="option in weekOptions" :key="option.value" :value="option.value">{{ option.label }}</option>
+        </select>
       </li>
-      <li class="preference is-stacked">
-        <span class="t-body" aria-hidden="true">{{ t('common.preferences.clock') }}</span>
-        <SegmentedControl :model-value="hourCycle" :options="clockOptions" :label="t('common.preferences.clock')" @update:model-value="setHourCycle" />
+      <li class="preference">
+        <label :for="ids.clock" class="t-body">{{ t('common.preferences.clock') }}</label>
+        <select :id="ids.clock" class="value t-body" :value="hourCycle" data-testid="preference-clock" @change="setHourCycle(($event.target as HTMLSelectElement).value as HourCycle)">
+          <option v-for="option in clockOptions" :key="option.value" :value="option.value">{{ option.label }}</option>
+        </select>
       </li>
-      <li class="preference is-stacked" data-testid="appearance-settings">
-        <span class="t-body" aria-hidden="true">{{ t('settings.appearance.title') }}</span>
-        <SegmentedControl :model-value="appearance" :options="appearanceOptions" :label="t('settings.appearance.title')" @update:model-value="setAppearance" />
+      <li class="preference" data-testid="appearance-settings">
+        <label :for="ids.appearance" class="t-body">{{ t('settings.appearance.title') }}</label>
+        <select :id="ids.appearance" class="value t-body" :value="appearance" data-testid="preference-appearance" @change="setAppearance(($event.target as HTMLSelectElement).value as Appearance)">
+          <option v-for="option in appearanceOptions" :key="option.value" :value="option.value">{{ option.label }}</option>
+        </select>
       </li>
     </ListGroup>
   </div>
@@ -91,6 +97,8 @@ async function chooseWeekStart(value: '0' | '1'): Promise<void> {
   left: var(--card-padding);
   border-top: 1px solid var(--separator);
 }
-.is-stacked { flex-direction: column; align-items: stretch; }
-.language { max-width: 100%; }
+/* The value is the row's pop-up: secondary text with its chevron at the trailing end; with large text it moves under
+   the label instead of truncating. */
+.value { max-width: 100%; min-height: var(--tap-target); margin-inline-start: auto; border: 0; border-radius: var(--radius-control); background-color: transparent; color: var(--label-2); text-align: end; cursor: pointer; }
+.value:disabled { opacity: 0.6; }
 </style>

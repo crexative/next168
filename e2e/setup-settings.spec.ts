@@ -26,7 +26,7 @@ const planned = () => onboardedDocument({
 })
 const firstRun = () => onboardedDocument({ workspaceId: 'ws-first-run', settings: { locale: 'es', weekStartsOn: 1, timeZone: 'America/Bogota', onboardingDone: false, theme: 'system' } })
 
-async function start(page: Page, size: (typeof SIZES)[number], theme: (typeof THEMES)[number], document: unknown): Promise<void> {
+async function start(page: Page, size: { width: number; height: number }, theme: (typeof THEMES)[number], document: unknown): Promise<void> {
   await page.setViewportSize(size)
   await page.emulateMedia({ colorScheme: theme })
   await page.clock.install({ time: NOW })
@@ -101,10 +101,10 @@ for (const size of SIZES) {
       await start(page, size, theme, planned())
       await page.goto('./#/settings')
       await expect(page.getByRole('heading', { level: 1, name: 'Ajustes' })).toBeVisible()
-      await expect(page.locator('main .home h2')).toHaveText(['Categorías y metas', 'General'])
+      await expect(page.locator('main .home h2')).toHaveText(['Tu semana', 'Categorías y metas', 'General'])
       const general = page.getByTestId('general-settings')
       await expect(general.getByLabel('Idioma')).toBeVisible()
-      for (const name of ['La semana empieza el', 'Formato de hora', 'Apariencia']) await expect(general.getByRole('radiogroup', { name })).toBeVisible()
+      for (const name of ['La semana empieza el', 'Formato de hora', 'Apariencia']) await expect(general.getByRole('combobox', { name })).toBeVisible()
       await expect(general.locator('.list-footer')).not.toContainText('m..')
       await expect(page.getByTestId('settings-more').getByRole('link')).toHaveText([/^Calendarios/, /^Usar con tu IA/, /^Tus datos/, /^Avanzado/])
       await expect(page.getByRole('button', { name: /Borrar todos los datos/ })).toHaveCount(0)
@@ -169,7 +169,13 @@ for (const size of SIZES) {
     test(`settings: a weekly backup nudge appears and an export silences it (${label})`, async ({ page }) => {
       await start(page, size, theme, planned())
       await page.addInitScript(() => window.localStorage.setItem('next168-first-seen', '2026-10-01T00:00:00.000Z'))
+      // Calm by default (R_Ajustes): the reminder is one amber line in the "Tus datos" row; its export is on that page.
       await page.goto('./#/settings')
+      await expect(page.getByTestId('data-link')).toContainText('Aún no has exportado una copia de tu semana.')
+      await expect(page.getByTestId('export-nudge')).toHaveCount(0)
+      await calm(page)
+      expect(await visualIntegrityViolations(page)).toEqual([])
+      await page.getByTestId('data-link').click()
       const nudge = page.getByTestId('export-nudge')
       await expect(nudge).toContainText('Aún no has exportado una copia de tu semana.')
       await calm(page)
@@ -178,6 +184,8 @@ for (const size of SIZES) {
       await nudge.getByRole('button', { name: 'Exportar copia' }).click()
       await download
       await expect(nudge).toHaveCount(0)
+      await page.goto('./#/settings')
+      await expect(page.getByTestId('data-link')).not.toContainText('Aún no has exportado')
     })
 
     test(`assistant without the model: back control and the three suggestions, no question box, status only in Advanced (${label})`, async ({ page }) => {
@@ -185,7 +193,8 @@ for (const size of SIZES) {
       await page.goto('./#/tasks')
       await page.goto('./#/assistant')
       await expect(page.getByRole('heading', { level: 1, name: 'Asistente' })).toBeVisible()
-      const back = page.getByTestId('back-button')
+      // On a phone the assistant is a sheet over the tab it came from: "Listo" leads back; wider, the back control does.
+      const back = size.width < 768 ? page.getByTestId('sheet-done') : page.getByTestId('back-button')
       await expect(back).toHaveAttribute('href', '#/tasks')
       const suggestions = page.getByTestId('suggestions').getByRole('button')
       await expect(suggestions).toHaveCount(3)
@@ -211,10 +220,21 @@ for (const size of SIZES) {
 }
 
 test('assistant back control falls back to Hoy when the page was opened directly', async ({ page }) => {
-  await start(page, SIZES[0], 'light', planned())
+  await start(page, SIZES[1], 'light', planned())
   await page.goto('./#/assistant')
   await expect(page.getByTestId('back-button')).toHaveAttribute('href', '#/today')
   await expect(page.getByTestId('back-button')).toHaveAccessibleName('Volver a Hoy')
+})
+
+test('on a phone the assistant opened directly is a sheet whose "Listo" leads to Hoy, with no tab bar under it', async ({ page }) => {
+  await start(page, SIZES[0], 'light', planned())
+  await page.goto('./#/assistant')
+  await expect(page.getByTestId('sheet-done')).toHaveAttribute('href', '#/today')
+  await expect(page.getByTestId('back-button')).toHaveCount(0)
+  await expect(page.locator('nav.tabbar')).toBeHidden()
+  await page.getByTestId('sheet-done').click()
+  await expect(page.getByRole('heading', { level: 1, name: 'Hoy' })).toBeVisible()
+  await expect(page.locator('nav.tabbar')).toBeVisible()
 })
 
 test('onboarding does not ask the browser to protect storage; the first check-in does', async ({ page }) => {
@@ -285,8 +305,153 @@ for (const theme of THEMES) {
     const sheet = page.getByRole('dialog', { name: 'Revisar propuesta' })
     await expect(sheet.getByTestId('change-after')).toContainText('Estudio')
     await expect(sheet.getByTestId('review-loading')).toHaveCount(0)
-    await expect(sheet.locator('.side')).toHaveCount(2)
+    // A new routine has no "before": every field reads as new, nothing struck through.
+    await expect(sheet.getByTestId('change-before')).toHaveCount(0)
     await calm(page)
     expect(await visualIntegrityViolations(page)).toEqual([])
   })
 }
+
+// #64 review: the phone sheet ran short of the bottom (the tab bar's reserve stayed while the bar was hidden), and the
+// assistant's dock, sticky at every size, left the answers a strip at 200 % text.
+async function scrollToEnd(page: Page): Promise<void> {
+  await page.evaluate(() => window.scrollTo({ top: document.documentElement.scrollHeight, behavior: 'instant' }))
+  await page.waitForFunction(() => Math.abs(window.scrollY + window.innerHeight - document.documentElement.scrollHeight) <= 1)
+}
+const bottomOf = (page: Page, selector: string) => page.locator(selector).evaluate((element) => element.getBoundingClientRect().bottom)
+const viewportHeight = (page: Page) => page.evaluate(() => window.innerHeight)
+
+for (const route of ['settings', 'assistant'] as const) {
+  test(`on a phone the ${route} sheet runs to the bottom of the screen when scrolled to its end`, async ({ page }) => {
+    await start(page, SIZES[0], 'light', planned())
+    await page.goto('./#/week')
+    await page.locator(`[data-testid=${route}-entry]:visible`).click()
+    await expect(page.getByTestId('sheet-bar')).toBeVisible()
+    await calm(page)
+    await scrollToEnd(page)
+    const height = await viewportHeight(page)
+    expect(Math.abs(await bottomOf(page, '.view[data-presentation=sheet]') - height)).toBeLessThanOrEqual(1)
+    if (route === 'assistant') expect(Math.abs(await bottomOf(page, '[data-testid=assistant-dock]') - height)).toBeLessThanOrEqual(1)
+  })
+}
+
+for (const scale of ['100%', '200%'] as const) {
+  test(`on a phone at ${scale} text the newest answer is in view above the assistant's dock`, async ({ page }) => {
+    await page.addInitScript((size) => { document.addEventListener('DOMContentLoaded', () => { document.documentElement.style.fontSize = size }) }, scale)
+    await start(page, SIZES[0], 'light', planned())
+    await page.goto('./#/assistant')
+    const suggestions = page.getByTestId('suggestions').getByRole('button')
+    for (const index of [0, 1]) {
+      await suggestions.nth(index).click()
+      await expect(page.locator('.messages > li[data-role=assistant]')).toHaveCount(index + 1)
+    }
+    await calm(page)
+    const answer = page.locator('.messages > li').last()
+    const { top, bottom, dockTop, docked } = await answer.evaluate((element) => {
+      const dock = document.querySelector<HTMLElement>('[data-testid=assistant-dock]')!
+      const box = element.getBoundingClientRect()
+      return { top: box.top, bottom: box.bottom, dockTop: dock.getBoundingClientRect().top, docked: getComputedStyle(dock).position === 'sticky' }
+    })
+    const height = await viewportHeight(page)
+    expect(top).toBeGreaterThanOrEqual(0)
+    expect(bottom).toBeLessThanOrEqual((docked ? Math.min(dockTop, height) : height) + 1)
+    // At 200 % the dock takes more than a third of the phone, so it scrolls with the page instead of covering it.
+    expect(docked).toBe(scale === '100%')
+  })
+}
+
+for (const size of [SIZES[0], { width: 820, height: 1180 }] as const) {
+  test(`Escape and a tap on the dimmed screen close Settings at ${size.width} px, with focus back on its entry`, async ({ page }) => {
+    await start(page, size, 'light', planned())
+    await page.goto('./#/week')
+    const entry = page.locator('[data-testid=settings-entry]:visible')
+    await entry.click()
+    await expect(page.getByTestId('sheet-bar')).toBeVisible()
+    await page.keyboard.press('Escape')
+    await expect(page.getByTestId('sheet-bar')).toHaveCount(0)
+    await expect(page).toHaveURL(/#\/week$/)
+    await expect(entry).toBeFocused()
+    await entry.click()
+    await expect(page.getByTestId('sheet-bar')).toBeVisible()
+    await calm(page)
+    await page.mouse.click(8, 8)
+    await expect(page.getByTestId('sheet-bar')).toHaveCount(0)
+    await expect(page).toHaveURL(/#\/week$/)
+    await expect(entry).toBeFocused()
+  })
+}
+
+// #64 review: Escape and the dimmed screen must not drop text typed into a sheet without asking.
+test('a sheet with unsaved text asks before closing; Escape in a field with text stays in the field', async ({ page }) => {
+  await start(page, SIZES[0], 'light', planned())
+  await page.goto('./#/week')
+  await page.locator('[data-testid=settings-entry]:visible').click()
+  await expect(page.getByTestId('sheet-bar')).toBeVisible()
+  await page.getByTestId('ai-link').click()
+  await expect(page).toHaveURL(/#\/settings\/ai$/)
+  const paste = page.getByTestId('any-ai-paste')
+  await paste.fill('{"summary": "Mover el gimnasio"}')
+  await paste.press('Escape')
+  await expect(page.getByTestId('sheet-bar')).toBeVisible()
+  await expect(page.getByTestId('discard-confirm')).toHaveCount(0)
+  await calm(page)
+  // The dimmed strip is above the sheet, at the top of the page.
+  await page.evaluate(() => window.scrollTo({ top: 0, behavior: 'instant' }))
+  await page.mouse.click(8, 8)
+  const ask = page.getByRole('alertdialog', { name: '¿Descartar los cambios?' })
+  await expect(ask).toBeVisible()
+  await expect(page.getByTestId('discard-keep')).toBeFocused()
+  await page.getByTestId('discard-keep').click()
+  await expect(ask).toHaveCount(0)
+  await expect(paste).toBeFocused()
+  await expect(paste).toHaveValue('{"summary": "Mover el gimnasio"}')
+  await page.getByTestId('sheet-done').click()
+  await expect(ask).toBeVisible()
+  await page.keyboard.press('Escape')
+  await expect(ask).toHaveCount(0)
+  await expect(page).toHaveURL(/#\/settings\/ai$/)
+  await page.mouse.click(8, 8)
+  await page.getByTestId('discard-confirm-button').click()
+  await expect(page).toHaveURL(/#\/week$/)
+  await expect(page.getByTestId('sheet-bar')).toHaveCount(0)
+})
+
+test('a sheet closes at once when nothing typed is left: an emptied field asks nothing', async ({ page }) => {
+  await start(page, SIZES[0], 'light', planned())
+  await page.goto('./#/settings/ai')
+  const paste = page.getByTestId('any-ai-paste')
+  await paste.fill('texto')
+  await paste.fill('')
+  await paste.press('Escape')
+  await expect(page.getByTestId('discard-confirm')).toHaveCount(0)
+  await expect(page).toHaveURL(/#\/today$/)
+})
+
+// Nothing under a phone sheet reserves the floating tab bar's room (AppShell's global rule on html).
+test('under a phone sheet the tab bar reserve is zero; on a tab it is the bar and its float', async ({ page }) => {
+  await start(page, SIZES[0], 'light', planned())
+  const reserve = () => page.evaluate(() => {
+    const probe = document.body.appendChild(document.createElement('div'))
+    probe.style.cssText = 'position:absolute;height:var(--tabbar-inset)'
+    const height = probe.getBoundingClientRect().height
+    probe.remove()
+    return height
+  })
+  await page.goto('./#/week')
+  await expect(page.locator('nav.tabbar')).toBeVisible()
+  expect(await reserve()).toBe(76)
+  await page.goto('./#/settings')
+  await expect(page.getByTestId('sheet-bar')).toBeVisible()
+  expect(await reserve()).toBe(0)
+})
+
+// Review of #64: a sheet that becomes a form sheet (a phone turned to a tablet's width) still remembers the text typed.
+test('text typed in the phone sheet still asks before closing once the window is as wide as a tablet', async ({ page }) => {
+  await start(page, SIZES[0], 'light', planned())
+  await page.goto('./#/settings/ai')
+  await page.getByTestId('any-ai-paste').fill('{"summary": "Mover el gimnasio"}')
+  await page.setViewportSize({ width: 820, height: 1180 })
+  await expect(page.locator('.view')).toHaveAttribute('data-presentation', 'form')
+  await page.getByTestId('sheet-done').click()
+  await expect(page.getByRole('alertdialog', { name: '¿Descartar los cambios?' })).toBeVisible()
+})

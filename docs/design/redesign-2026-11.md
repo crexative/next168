@@ -82,6 +82,10 @@ means updating that spec with them.
 
 ## Open for a later slice
 
+- **Back from "Usar con tu IA" (slice 7).** Choosing "Responder con: Usar con tu IA" in the assistant opens its page in
+  Settings (`#/settings/ai`), whose back button goes to Settings, not to the assistant; on a phone the sheet's Listo
+  goes to the tab. The assistant is one tap away again from the toolbar, but there is no direct way back. A later slice
+  should give that page a way back to where it was opened from.
 - **Conversation modal width (slice 8).** The centred modal is 35rem wide, so it grows with the text size (about
   1120 px at 200 % on a 1440 px screen, never more than the screen less 32 px); its margins are pixels. Below 700 px
   of height (a small landscape tablet) the conversation stays full screen.

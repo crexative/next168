@@ -7,12 +7,16 @@ import { failureReason, isStorageFailure } from '@/repositories/storageCommit'
 import { usePlannerStore } from '@/stores/plannerStore'
 import Button from '@/ui/Button.vue'
 import Icon from '@/ui/Icon.vue'
+import { registerIcons } from '@/ui/icons'
+import { ArrowRight } from 'lucide-vue-next'
 import Sheet from '@/ui/Sheet.vue'
 import { refreshPending } from './pending'
 import { getProposalRepository } from './repository'
-import { summarizeEntity } from './changeSummary'
+import { fieldChanges, summarizeEntity } from './changeSummary'
 import { EXPANDED_UP_TO, groupChanges, type ChangeGroupKey } from './changeGroups'
 import { lastDecision, reviewing, type ProposalReview } from './reviewState'
+
+registerIcons({ 'arrow-right': ArrowRight })
 
 const { t, locale } = useI18n()
 const planner = usePlannerStore()
@@ -56,6 +60,18 @@ const summaryContext = computed(() => ({
   t: (key: string, params?: Record<string, unknown>) => t(key, params ?? {}),
 }))
 const summarize = (value: unknown) => summarizeEntity(value, summaryContext.value)
+// R_Propuesta: a change shows what changes ("18:00–19:00" struck → "7:00–8:00"); the rest is under "Detalles".
+const fieldsOf = (change: { before?: unknown; after?: unknown }) => fieldChanges(summarize(change.before), summarize(change.after))
+// Which routine, task or category a change touches, always on its card: this sheet is the only place a proposal (from
+// an AI, whose summary is not to be trusted) is approved, so a change never hides its target behind "Detalles".
+const targetOf = (change: { before?: unknown; after?: unknown }): string => {
+  const named = (value: unknown) => {
+    if (!value || typeof value !== 'object') return undefined
+    const entity = value as { title?: unknown; name?: unknown }
+    return typeof entity.title === 'string' ? entity.title : typeof entity.name === 'string' ? entity.name : undefined
+  }
+  return named(change.before) ?? named(change.after) ?? ''
+}
 
 async function discardIfPasted(proposal: ProposalReview): Promise<void> {
   if (!proposal.pastedReply) return
@@ -114,12 +130,11 @@ async function decide(approve: boolean) {
 </script>
 
 <template>
-  <Sheet v-model:open="open" :title="t('proposals.review')">
+  <Sheet v-model:open="open" :title="t('proposals.review')" :close-label="t('proposals.cancel')">
     <div v-if="reviewing" class="review" data-testid="proposal-review">
       <header class="review-head">
-        <p class="t-headline">{{ reviewing.summary }}</p>
+        <p class="t-title-2">{{ reviewing.summary }}</p>
         <p v-if="overview" class="t-subhead overview" data-testid="review-overview">{{ overview }}</p>
-        <p class="t-footnote t-secondary" data-testid="review-cancel-note">{{ t(pasted ? 'proposals.discardOnCancel' : 'proposals.keepOnCancel') }}</p>
       </header>
       <p v-if="!preview" class="t-subhead t-secondary" role="status" data-testid="review-loading">{{ t('proposals.loading') }}</p>
       <p v-else-if="!preview.valid" class="notice is-error t-subhead" role="alert" data-testid="review-invalid">
@@ -145,40 +160,61 @@ async function decide(approve: boolean) {
         <ul v-if="expanded.has(group.key)" :id="`${groupId}-${group.key}`" class="changes">
           <li v-for="{ index, change } in group.changes" :key="index" class="change">
             <h3 class="t-headline">{{ t(`proposals.operations.${change.op}`) }}</h3>
-            <div class="diff">
-              <section v-for="side in (['before', 'after'] as const)" :key="side" class="side" :class="`is-${side}`" :aria-label="t(`proposals.${side}`)">
-                <h4 class="t-caption t-secondary">{{ t(`proposals.${side}`) }}</h4>
-                <dl v-if="summarize(change[side]).length" class="summary" :data-testid="`change-${side}`">
-                  <template v-for="row in summarize(change[side])" :key="row.label"><dt class="t-footnote t-secondary">{{ row.label }}</dt><dd class="t-subhead">{{ row.value }}</dd></template>
-                </dl>
-                <p v-else class="t-subhead t-secondary">{{ t('proposals.nothing') }}</p>
-              </section>
-            </div>
+            <p v-if="targetOf(change)" class="t-subhead target" data-testid="change-target">{{ targetOf(change) }}</p>
+            <dl v-if="fieldsOf(change).some((field) => field.changed)" class="fields" data-testid="change-after">
+              <template v-for="field in fieldsOf(change).filter((item) => item.changed)" :key="field.label">
+                <dt class="t-footnote t-secondary">{{ field.label }}</dt>
+                <dd class="field-value">
+                  <template v-if="field.before !== undefined">
+                    <span class="visually-hidden">{{ t('proposals.before') }}: </span><s class="was t-subhead" data-testid="change-before">{{ field.before }}</s>
+                  </template>
+                  <Icon v-if="field.before !== undefined && field.after !== undefined" name="arrow-right" :size="16" class="to" />
+                  <template v-if="field.after !== undefined">
+                    <span class="visually-hidden">{{ t('proposals.after') }}: </span><span class="now t-body">{{ field.after }}</span>
+                  </template>
+                </dd>
+              </template>
+            </dl>
+            <p v-else class="t-subhead t-secondary">{{ t('proposals.nothing') }}</p>
             <div class="raw">
               <button class="raw-toggle t-footnote" type="button" :aria-expanded="rawOpen.has(index)" @click="toggleRaw(index)">{{ t('proposals.details') }}</button>
-              <pre v-if="rawOpen.has(index)">{{ JSON.stringify({ before: change.before, after: change.after }, null, 2) }}</pre>
+              <template v-if="rawOpen.has(index)">
+                <dl v-if="fieldsOf(change).some((field) => !field.changed)" class="fields is-same">
+                  <template v-for="field in fieldsOf(change).filter((item) => !item.changed)" :key="field.label"><dt class="t-footnote t-secondary">{{ field.label }}</dt><dd class="t-subhead">{{ field.after }}</dd></template>
+                </dl>
+                <pre>{{ JSON.stringify({ before: change.before, after: change.after }, null, 2) }}</pre>
+              </template>
             </div>
           </li>
         </ul>
       </section>
       <p v-if="message" class="t-subhead" role="status">{{ message }}</p>
-      <Button v-if="!pasted" class="reject" variant="plain" destructive :disabled="busy" @click="decide(false)">{{ t('proposals.reject') }}</Button>
     </div>
     <template #footer>
+      <!-- Two outcomes (R_Propuesta): Aprobar, then Rechazar; the sheet's × is Cancelar, and the note says what it keeps. -->
       <div class="actions">
-        <Button :disabled="busy || !preview?.valid" data-testid="review-approve" @click="decide(true)">{{ t('proposals.approve') }}</Button>
-        <Button variant="plain" :disabled="busy" data-testid="review-cancel" @click="open = false">{{ t('proposals.cancel') }}</Button>
+        <Button block :disabled="busy || !preview?.valid" data-testid="review-approve" @click="decide(true)">{{ t('proposals.approve') }}</Button>
+        <Button v-if="!pasted" class="reject" variant="plain" destructive :disabled="busy" data-testid="review-reject" @click="decide(false)">{{ t('proposals.reject') }}</Button>
+        <p class="t-footnote t-secondary cancel-note" data-testid="review-cancel-note">{{ t(pasted ? 'proposals.discardOnCancel' : 'proposals.keepOnCancel') }}</p>
       </div>
     </template>
   </Sheet>
 </template>
 
 <style scoped>
+.target { margin: calc(var(--space-1) * -1) 0 var(--space-1); color: var(--label-2); overflow-wrap: anywhere; }
 .review { display: flex; flex-direction: column; gap: var(--space-4); }
 .review-head { display: flex; flex-direction: column; gap: var(--space-1); }
 .review-head p { margin: 0; overflow-wrap: anywhere; }
 .changes { display: flex; flex-direction: column; gap: var(--space-3); margin: 0; padding: 0; list-style: none; }
-.change { padding: var(--space-3); background: var(--surface-2); border-radius: var(--radius-card); }
+.change { padding: var(--card-padding-block) var(--card-padding); background: var(--surface); border: 0.5px solid var(--separator); border-radius: 16px; }
+.fields { display: grid; gap: 2px var(--space-3); margin: 0; }
+.fields dd { margin: 0 0 var(--space-2); overflow-wrap: anywhere; }
+.field-value { display: flex; flex-wrap: wrap; align-items: baseline; gap: var(--space-1) var(--space-2); }
+.was { color: var(--label-2); }
+.now { font-weight: 600; font-variant-numeric: tabular-nums; }
+.to { flex: none; align-self: center; color: var(--label-2); }
+.to:dir(rtl) { transform: scaleX(-1); }
 .change > * + * { margin-top: var(--space-2); }
 .change h3 { margin: 0; overflow-wrap: anywhere; hyphens: auto; }
 .diff { display: grid; gap: var(--space-2); grid-template-columns: minmax(0, 1fr); }
@@ -192,12 +228,13 @@ dl.summary { display: grid; gap: 2px; margin: 0; }
 pre { margin: 0; font-size: 0.8125rem; white-space: pre-wrap; overflow-wrap: anywhere; background: var(--surface); padding: var(--space-2); border-radius: var(--radius-control); }
 .empty-category { margin: 0; overflow-wrap: anywhere; }
 .warnings { display: flex; flex-direction: column; gap: var(--space-2); margin: 0; padding: 0; list-style: none; }
-.notice { display: flex; align-items: flex-start; gap: var(--space-2); margin: 0; padding: var(--space-3); border-radius: var(--radius-control); background: color-mix(in srgb, var(--warning) 18%, var(--surface)); }
+.notice { display: flex; align-items: flex-start; gap: var(--space-2); margin: 0; color: var(--warning-label); }
+.notice.is-error { padding: var(--space-3); border-radius: var(--radius-control); color: var(--label); }
 .notice.is-error { background: color-mix(in srgb, var(--danger) 14%, var(--surface)); }
 .notice-icon { flex: none; margin-top: 1px; }
-/* Cancel leads and Approve trails; when they no longer fit side by side, Approve wraps onto the top line. */
-.actions { display: flex; flex-direction: row-reverse; flex-wrap: wrap; gap: var(--space-2); }
-.actions > * { flex: 1 1 8rem; min-height: 48px; }
+.actions { display: flex; flex-direction: column; align-items: stretch; gap: var(--space-2); }
+.actions > :deep(.ui-button) { min-height: 50px; }
+.cancel-note { margin: 0; text-align: center; overflow-wrap: anywhere; }
 .review-head .overview { font-weight: 600; }
 .group { display: flex; flex-direction: column; gap: var(--space-2); }
 .group-toggle { display: flex; align-items: center; gap: var(--space-2); width: 100%; min-height: 48px; padding: 0 min(var(--space-3), 12px); border: 0; border-radius: var(--radius-control); background: var(--surface-2); color: var(--label); text-align: start; touch-action: manipulation; }
@@ -207,7 +244,6 @@ pre { margin: 0; font-size: 0.8125rem; white-space: pre-wrap; overflow-wrap: any
 .group-count { flex: none; }
 .chevron { flex: none; color: var(--label-3); }
 .chevron.is-open { transform: rotate(90deg); }
-.reject { align-self: flex-start; }
 @media (min-width: 480px) {
   .diff { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }

@@ -2,6 +2,7 @@ import type { PlannerDocument } from '@/core/model'
 import { calendarSourceStore } from './calendarSourceHook'
 import { buildExportFile } from './dataTransfer'
 import { recordExport } from './exportReminder'
+import { noteExported } from './useExportNudge'
 
 // Builds the export file, hands it to the browser as a download and remembers when that happened.
 export async function downloadBackup(document: PlannerDocument): Promise<string> {
@@ -15,5 +16,6 @@ export async function downloadBackup(document: PlannerDocument): Promise<string>
   link.remove()
   setTimeout(() => URL.revokeObjectURL(url), 10_000)
   recordExport(new Date())
+  noteExported()
   return fileName
 }

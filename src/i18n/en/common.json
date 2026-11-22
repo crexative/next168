@@ -24,6 +24,13 @@
     "clock24": "24-hour",
     "footer": "Automatic follows your device’s region and appearance. Times look like this: {example}"
   },
+  "done": "Done",
+  "discardChanges": {
+    "title": "Discard your changes?",
+    "body": "What you wrote here has not been saved.",
+    "discard": "Discard",
+    "keep": "Keep editing"
+  },
   "taskPart": "{part}/{parts} {title}",
   "taskPartSpoken": "{title}, part {part} of {parts}"
 }

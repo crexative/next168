@@ -99,7 +99,10 @@ test.describe('materials', () => {
     expect(bars.head!.shadow).toBe('none')
     expect(bars.strip!.shadow).not.toBe('none')
 
-    await openView(page, 'settings/advanced')
+    // A tab: on a phone Settings is a sheet with its own bar, not the large title's toolbar. Resumen fits a tall
+    // window whole, so a shorter one gives it room to scroll and its toolbar to collapse.
+    await page.setViewportSize({ width: page.viewportSize()!.width, height: 560 })
+    await openView(page, 'insights')
     await page.mouse.wheel(0, 400)
     await expect(page.locator('.toolbar[data-collapsed]')).toHaveCount(1)
     expect(await page.locator('.toolbar').evaluate((element) => getComputedStyle(element).boxShadow)).not.toBe('none')
@@ -503,7 +506,9 @@ test.describe('accessibility plumbing', () => {
   test('increased contrast makes bars solid and field borders full strength', async ({ page }) => {
     await page.emulateMedia({ contrast: 'more' })
     await startWith(page)
-    await openView(page, 'settings/advanced')
+    // Resumen fits a tall window whole: a shorter one lets it scroll and its toolbar collapse.
+    await page.setViewportSize({ width: page.viewportSize()!.width, height: 560 })
+    await openView(page, 'insights')
     await page.mouse.wheel(0, 300)
     await expect(page.locator('.toolbar[data-collapsed]')).toHaveCount(1)
     await page.waitForFunction(() => document.getAnimations().every((animation) => animation.playState !== 'running'))
@@ -638,8 +643,8 @@ test.describe('language and region settings', () => {
   test('language, first day of the week and 12/24 h are chosen in Settings and kept after a reload', async ({ page }) => {
     await startWith(page)
     await openView(page, 'settings')
-    await page.getByRole('radiogroup', { name: 'Week starts on' }).getByRole('radio', { name: 'Sunday' }).click()
-    await page.getByRole('radiogroup', { name: 'Time format' }).getByRole('radio', { name: '24-hour' }).click()
+    await page.getByRole('combobox', { name: 'Week starts on' }).selectOption({ label: 'Sunday' })
+    await page.getByRole('combobox', { name: 'Time format' }).selectOption({ label: '24-hour' })
     await expect(page.locator('#main')).toContainText('Times look like this: 14:30')
 
     await openView(page, 'week')
@@ -654,8 +659,8 @@ test.describe('language and region settings', () => {
 
     await page.reload()
     await expect(page.getByRole('heading', { level: 1, name: 'Ajustes' })).toBeVisible()
-    await expect(page.getByRole('radiogroup', { name: 'La semana empieza el' }).getByRole('radio', { name: 'Domingo' })).toHaveAttribute('aria-checked', 'true')
-    await expect(page.getByRole('radiogroup', { name: 'Formato de hora' }).getByRole('radio', { name: '24 horas' })).toHaveAttribute('aria-checked', 'true')
+    await expect(page.getByRole('combobox', { name: 'La semana empieza el' }).locator('option:checked')).toHaveText('Domingo')
+    await expect(page.getByRole('combobox', { name: 'Formato de hora' }).locator('option:checked')).toHaveText('24 horas')
   })
 })
 

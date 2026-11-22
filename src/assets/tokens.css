@@ -8,6 +8,8 @@
      elevated greys, or the sheet would vanish into the black page. */
   --bg-grouped-raised: var(--bg-grouped);
   --surface-grouped-raised: var(--surface);
+  /* Behind a full-height sheet: the screen it covers, dimmed. */
+  --sheet-backdrop: #c7c7cc;
   --surface: #ffffff;
   --surface-2: #f2f2f7;
   /* Quiet fills: control tracks, chips, progress tracks. */
@@ -129,6 +131,7 @@
     --bg-grouped: #000000;
     --bg-grouped-raised: #1c1c1e;
     --surface-grouped-raised: #2c2c2e;
+    --sheet-backdrop: #3a3a3c;
     --fill: rgba(118, 118, 128, 0.24);
     --segment-selected: #636366;
     --label-2: #98989f;
@@ -189,6 +192,7 @@
   --bg-grouped: #000000;
   --bg-grouped-raised: #1c1c1e;
   --surface-grouped-raised: #2c2c2e;
+  --sheet-backdrop: #3a3a3c;
   --fill: rgba(118, 118, 128, 0.24);
   --segment-selected: #636366;
   --label-2: #98989f;
