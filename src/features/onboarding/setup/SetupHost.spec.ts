@@ -630,6 +630,39 @@ describe('the conversation', () => {
     expect(live('[data-testid=week-card]')).toBeDefined()
   })
 
+  // R_InicioResumen: the week as one bar of its categories' hours and what is left, then the dock's actions.
+  async function openSummary(extra: Partial<PlannerDocument>, options: { withoutGuard?: boolean } = {}): Promise<void> {
+    await mount(firstRun({ settings: { ...testDocument().settings, onboardingDone: true }, ...extra }), options)
+    setupRequest.value += 1
+    await waitForSetup()
+    await vi.waitFor(() => expect(screen()).toBe('summary'))
+  }
+
+  it('the summary bar has one segment per category with hours, in proportion, then the hours left, and says so', async () => {
+    const STUDY = { id: 'c-study', name: 'Study', colorKey: 'orange' as const, icon: '📚', goal: { type: 'none' as const, hoursPerWeek: 0 } }
+    await openSummary({ categories: [WORK, STUDY], blocks: [WORK_BLOCK] })
+    const bar = live('[data-testid=summary-bar]')!
+    const segments = [...bar.querySelectorAll<HTMLElement>('[data-segment]')]
+    // Study has no hours: no segment. Work is 5 x 8 h = 2400 minutes of the week's 10080.
+    expect(segments.map((segment) => segment.dataset.segment)).toEqual(['work', 'free'])
+    expect(segments.map((segment) => Number(segment.style.flexGrow))).toEqual([2400, 7680])
+    expect(bar.getAttribute('aria-label')).toBe('Work 40 h, 128 h unassigned')
+  })
+
+  it('"Go through the questions" is offered only for a week with times, and the trust line only in the browser', async () => {
+    await openSummary({ categories: [WORK], blocks: [WORK_BLOCK] })
+    expect(live('[data-testid=summary-review]')).toBeDefined()
+    expect(live('[data-testid=setup-trust]')).toBeDefined()
+    app!.unmount()
+    window.document.body.innerHTML = ''
+    // A first week (nothing stored yet) reached by its questions, with the companion: neither is there.
+    await mount(firstRun(), { withoutGuard: true })
+    for (let guard = 0; guard < 8 && screen() !== 'summary'; guard++) await click(live('[data-testid=more-done]') ? '[data-testid=more-done]' : '[data-testid=setup-secondary]')
+    await vi.waitFor(() => expect(screen()).toBe('summary'))
+    expect(live('[data-testid=summary-review]')).toBeUndefined()
+    expect(live('[data-testid=setup-trust]')).toBeUndefined()
+  })
+
   it('Send is the validation: grey with its reason while there is nothing to send, in colour once there is', async () => {
     await mount(firstRun())
     await click('[data-testid=setup-secondary]')
