@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import { computed, nextTick, ref } from 'vue'
 import type { DayIndex } from '@/core/model'
 import Icon from '@/ui/Icon.vue'
 import { useSetupFormat } from './useSetupFormat'
@@ -31,13 +31,23 @@ function choose(preset: (typeof PRESETS)[number]): void {
   emit('done')
 }
 
+// Escape puts the seven days away first, back on "Elegir días"; only then may the time list or the sheet close.
+const pickButton = ref<HTMLButtonElement | null>(null)
+function onEscape(event: KeyboardEvent): void {
+  if (!picking.value) return
+  event.stopPropagation()
+  event.preventDefault()
+  picking.value = false
+  void nextTick(() => pickButton.value?.focus())
+}
+
 function toggle(day: DayIndex): void {
   emit('change', props.days.includes(day) ? props.days.filter((item) => item !== day) : [...props.days, day])
 }
 </script>
 
 <template>
-  <div class="days" role="group" :aria-label="t('onboarding.guided.range.days')">
+  <div class="days" role="group" :aria-label="t('onboarding.guided.range.days')" @keydown.esc="onEscape">
     <div class="presets">
       <button
         v-for="preset in PRESETS"
@@ -51,7 +61,7 @@ function toggle(day: DayIndex): void {
         <Icon v-if="!picking && matching === preset.id" name="check" :size="18" />
         {{ t(`onboarding.guided.days.${preset.id}`) }}
       </button>
-      <button class="pick t-body" type="button" data-preset="pick" :aria-pressed="picking || custom" :aria-expanded="picking" @click="picking = true">
+      <button ref="pickButton" class="pick t-body" type="button" data-preset="pick" :aria-pressed="picking || custom" :aria-expanded="picking" @click="picking = true">
         <Icon v-if="picking || custom" name="check" :size="18" />
         {{ custom && !picking && days.length > 0 ? daysText(days, false, 'short') : t('onboarding.guided.days.pick') }}
       </button>
