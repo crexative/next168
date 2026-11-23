@@ -106,6 +106,14 @@ make a tests-only change a standard one. They become one helper once it does (#7
   1120 px at 200 % on a 1440 px screen, never more than the screen less 32 px); its margins are pixels. Below 700 px
   of height (a small landscape tablet) the conversation stays full screen.
 
+## Performance margins
+
+- **First tap on Tareas' "+" (slice 4, #69).** Before the redesign "+" put focus in a capture field already on the page;
+  now it opens Nueva tarea, the R_HojaTarea sheet with the whole form. perf-tasks' first tap (pointer down to the
+  field taking focus, 4x CPU) went from 15-30 ms to 75-180 ms in a Linux container and 136-260 ms on CI, against a
+  budget of 300 ms. Deferring the sheet's planner fingerprint until after paint did not change it; the cost is the sheet
+  itself. A later slice that adds to that sheet should measure this first.
+
 ## Tokens and styles added ahead of their screens
 
 Slice 1 adds what later slices draw with: `--radius-bubble`, `--warning-label`, `.t-title-1`, `.t-section` and the
