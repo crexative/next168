@@ -26,7 +26,7 @@ afterEach(() => { useUndoToast().dismiss(); app?.unmount(); app = undefined; doc
 const $ = <T extends HTMLElement = HTMLElement>(selector: string) => document.body.querySelector<T>(selector)
 const tap = async (selector: string) => { $(selector)!.click(); await nextTick() }
 
-function talk(doc: PlannerDocument = plan) {
+function talk(doc: PlannerDocument = plan, routine: TimeBlock = block) {
   setActivePinia(createPinia())
   const changes: RoutineChange[] = []
   const events: string[] = []
@@ -35,7 +35,7 @@ function talk(doc: PlannerDocument = plan) {
   document.body.append(host)
   app = createApp(defineComponent({
     setup: () => () => h(RoutineConversation, {
-      block, category: work, writable: true, document: doc,
+      block: routine, category: work, writable: true, document: doc,
       onChange: (change: RoutineChange) => changes.push(change), onClose: () => events.push('close'), onEditAll: () => events.push('editAll'),
     }),
   })).use(i18n)
@@ -150,6 +150,34 @@ describe('a routine changed by talking (R_EditarRutina)', () => {
       { kind: 'goal', categoryId: 'work', goal: { type: 'min', hoursPerWeek: 30 } },
       { kind: 'goal', categoryId: 'work', goal: { type: 'none', hoursPerWeek: 0 } },
     ])
+  })
+
+  // Guardar is the one gate of each step: disabled while what it would save is not valid.
+  it('Guardar stays off for a goal outside 0.5-168 hours, and on inside it', async () => {
+    talk()
+    await tap('[data-testid=talk-goal]')
+    await tap('[data-testid=talk-goal-min]')
+    const hours = $<HTMLInputElement>('[data-testid=talk-goal-hours]')!
+    const saveOff = async (value: string) => { hours.value = value; hours.dispatchEvent(new Event('input')); await nextTick(); return $<HTMLButtonElement>('[data-testid=talk-save]')!.disabled }
+    expect(await saveOff('0')).toBe(true)
+    expect(await saveOff('200')).toBe(true)
+    expect(await saveOff('30')).toBe(false)
+  })
+
+  it('Guardar stays off with no day chosen', async () => {
+    talk()
+    await tap('[data-testid=talk-days]')
+    await tap('[data-preset=pick]')
+    for (const day of [1, 2, 3, 4, 5]) await tap(`[data-day="${day}"]`)
+    expect($<HTMLButtonElement>('[data-testid=talk-save]')!.disabled).toBe(true)
+    await tap('[data-day="1"]')
+    expect($<HTMLButtonElement>('[data-testid=talk-save]')!.disabled).toBe(false)
+  })
+
+  it('Guardar stays off for a time that ends when it starts', async () => {
+    talk({ ...plan, blocks: [gym] }, { ...block, end: block.start })
+    await tap('[data-testid=talk-time]')
+    expect($<HTMLButtonElement>('[data-testid=talk-save]')!.disabled).toBe(true)
   })
 
   it('Remove: asks first; "Not now" goes back without removing', async () => {

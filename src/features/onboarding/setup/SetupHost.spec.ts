@@ -22,6 +22,7 @@ import SetupHost from './SetupHost.vue'
 import { registerIcons } from '@/ui/icons'
 import { ArrowRight } from 'lucide-vue-next'
 import { setHourCycle } from '@/ui/format'
+import { announcement } from '@/ui/announcer'
 
 // The guided setup's lifecycle on a real store and repository: what a draft is applied to, the single guarded commit,
 // what a refused commit shows, and what nothing may do while a save is pending.
@@ -784,6 +785,19 @@ describe('the conversation', () => {
     await click('[data-testid=setup-primary]')
     await vi.waitFor(() => expect(live('[data-category=learning] [data-testid=card-name]')).toBeDefined())
     expect(live('[data-category=learning] [data-testid=card-talk]')).toBeUndefined()
+  })
+
+  it('a save refused for a crossing time says with whom and when, not only that times overlap', async () => {
+    const STUDY = { id: 'c-study', name: 'Study', colorKey: 'orange' as const, icon: '📚', goal: { type: 'none' as const, hoursPerWeek: 0 } }
+    const saturday = { id: 'b-study', categoryId: 'c-study', title: 'Study', days: [6] as PlannerDocument['blocks'][number]['days'], start: 600, end: 720 }
+    await openSummary({ categories: [WORK, STUDY], blocks: [WORK_BLOCK, saturday] })
+    await click('[data-testid=card-learning]')
+    await click('[data-category=learning] [data-testid=talk-time]')
+    // Study moves to the weekdays, 10:00-12:00: it crosses Work.
+    await click('[data-category=learning] [data-preset=weekdays]')
+    await click('[data-category=learning] [data-testid=card-done]')
+    await click('[data-testid=setup-primary]')
+    await vi.waitFor(() => expect(announcement.value).toMatch(/^Clashes with Work: .+\.$/), { timeout: 2000 })
   })
 
   it('adding a routine closes with ✕; the setup itself goes back with ‹', async () => {

@@ -131,29 +131,24 @@ function pick(field: 'start' | 'end', minute: number): void {
   void nextTick(() => rows.value.end?.focus({ preventScroll: true }))
 }
 
-const timeValid = computed(() => start.value !== end.value)
 const goalValid = computed(() => goalType.value === 'none' || (goalHours.value >= 0.5 && goalHours.value <= 168))
 
 function saveTime(): void {
-  if (!timeValid.value || problem.value) return
   emit('change', { kind: 'block', block: { ...props.block, start: start.value, end: end.value } })
 }
 function saveDays(): void {
-  if (days.value.length === 0 || problem.value) return
   emit('change', { kind: 'block', block: { ...props.block, days: [...days.value].sort((a, b) => a - b) } })
 }
 function saveGoal(): void {
-  if (!props.category || !goalValid.value) return
+  if (!props.category) return
   emit('change', { kind: 'goal', categoryId: props.category.id, goal: goalType.value === 'none' ? { type: 'none', hoursPerWeek: 0 } : { type: goalType.value, hoursPerWeek: goalHours.value } })
 }
-// Guardar, for the steps that change something: one button in the fixed bar under the answers.
+// Guardar, for the steps that change something: one button in the fixed bar under the answers. It is the one gate:
+// disabled while what it would save is not valid, so the save functions below check nothing again.
 const saving = computed(() => step.value === 'time' || step.value === 'days' || step.value === 'goal')
-const canSave = computed(() => {
-  if (problem.value) return false
-  if (step.value === 'time') return timeValid.value
-  if (step.value === 'days') return days.value.length > 0
-  return goalValid.value
-})
+// A time or a set of days is checked by the routine's own validation (problem: crossing, no length, no day); a goal by
+// its hours.
+const canSave = computed(() => !problem.value && (step.value !== 'goal' || goalValid.value))
 function save(): void {
   if (step.value === 'time') saveTime()
   else if (step.value === 'days') saveDays()
