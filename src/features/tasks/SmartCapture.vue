@@ -1,11 +1,12 @@
 <script setup lang="ts">
-import { computed, nextTick, ref, useId, watch } from 'vue'
+import { computed, nextTick, onMounted, ref, useId, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { normalizeCaptureText, parseCapture, type CaptureSpan } from '@/core/capture'
 import { MAX_FIXED_MIN, MAX_TASK_MIN, MIN_TASK_MIN } from '@/core/model'
 import { localDateOf } from '@/core/time'
 import { usePlannerStore } from '@/stores/plannerStore'
 import { announce } from '@/ui/announcer'
+import { fitToContent } from '@/ui/fitToContent'
 import Button from '@/ui/Button.vue'
 import Icon from '@/ui/Icon.vue'
 import { addLocalDays } from '@/core/time'
@@ -14,7 +15,7 @@ import { useUndoToast } from '@/ui/undoToast'
 import { useNow } from '@/features/week/useNow'
 import { useCaptureSubmission } from './captureSubmission'
 import { readLastTaskCategory, rememberTaskCategory } from './lastCategory'
-import { undoCapture, type CaptureBinding, type CapturedTask, type CaptureReceipt } from './personActions'
+import { bindingCurrent, undoCapture, type CaptureBinding, type CapturedTask, type CaptureReceipt } from './personActions'
 import { ANY_FREE_TIME, clockText, minuteOf, newDraft, plannerToday, resolveWhen, taskFields, type TaskDraft } from './taskDraft'
 import TaskOptions from './TaskOptions.vue'
 import './registerIcons'
@@ -23,7 +24,10 @@ import './registerIcons'
 // dates, times and lengths the closed L0 grammar is sure of shown as chips the person can change (✎) or give back to
 // the title (✕). Two or more lines (a paste, Shift+Enter or dictation with line breaks): nothing is inferred; the
 // preview offers one task per line, titles only, or the whole text as one task. No model is involved.
-const props = withDefaults(defineProps<{ dueToday?: boolean; label?: string }>(), { dueToday: false, label: undefined })
+// It is the body of the Nueva tarea sheet (R_HojaTarea): a large title field with its hint, the options always shown,
+// and the sheet's header "Añadir" submitting through `submit()`.
+// `formId` lets the sheet's header "Añadir" be this form's submit button, so Enter in any field submits as in a form.
+const props = withDefaults(defineProps<{ dueToday?: boolean; label?: string; formId?: string }>(), { dueToday: false, label: undefined, formId: undefined })
 const emit = defineEmits<{ added: [count: number] }>()
 
 const MAX_LINES = 20
@@ -42,6 +46,8 @@ const field = ref<HTMLTextAreaElement | null>(null)
 // Choices made with a control (they win over anything typed), and which of them the person actually touched.
 const form = ref<TaskDraft>(freshForm())
 const durationTouched = ref(false)
+// «Hoy» set by the person (on or off): the default from Hoy's «+» no longer applies.
+const todayChosen = ref(false)
 // Keys of chips given back to the title, and values the person changed with ✎, by chip key.
 const suppressed = ref<string[]>([])
 const chipValues = ref<Record<string, string | number>>({})
@@ -84,12 +90,13 @@ const effective = computed<TaskDraft>(() => {
     if (span.field === 'duration') draft.durationMin = Number(value)
   }
   if (!manual.value.date && draft.dueDate === '' && parsed.value.fields.dueDate) draft.dueDate = parsed.value.fields.dueDate
-  // Today's add row: a task with no date of its own is due today (a typed «mañana» still wins).
-  if (props.dueToday && !draft.dueToday && draft.dueDate === '') draft.dueToday = true
+  // Opened from Hoy: a task with no date of its own is due today (a typed «mañana» still wins), until the person sets
+  // «Hoy» themselves: switched off, it stays off and the task is saved with no date.
+  if (props.dueToday && !todayChosen.value && !draft.dueToday && draft.dueDate === '') draft.dueToday = true
   return draft
 })
 
-const detailsOpen = computed(() => !multiLine.value && text.value.trim().length > 0)
+const detailsOpen = computed(() => !multiLine.value)
 const shownDraft = computed<TaskDraft>(() => ({ ...effective.value, categoryId: resolveWhen(categories.value, effective.value.categoryId) }))
 const busy = computed(() => ['saving', 'checking', 'unverified'].includes(submission.state.value))
 const canAdd = computed(() => planner.writable && !busy.value && !multiLine.value && parsed.value.title.trim().length > 0)
@@ -160,6 +167,7 @@ watch(lines, (next) => {
 function patch(change: Partial<TaskDraft>): void {
   const next = { ...form.value }
   if ('durationMin' in change) { next.durationMin = change.durationMin; durationTouched.value = true }
+  if ('dueToday' in change) todayChosen.value = true
   if ('dueDate' in change || 'dueToday' in change) {
     next.dueDate = change.dueDate ?? next.dueDate
     next.dueToday = change.dueToday ?? next.dueToday
@@ -181,6 +189,7 @@ function resetBox(): void {
   text.value = ''
   form.value = freshForm()
   durationTouched.value = false
+  todayChosen.value = false
   suppressed.value = []
   chipValues.value = {}
   editing.value = null
@@ -196,11 +205,28 @@ function typedElsewhere(): boolean {
   return true
 }
 
+// In the sheet the task is bound to the planner as the sheet opened (as its form always was): a category or anything
+// else changed elsewhere meanwhile refuses the save once, says so, and the next tap saves on the planner as it is now.
+// The planner is read at once (bindToPlanner reads it before any await); its fingerprint may still be on its way.
+let sheetBinding: Promise<CaptureBinding | null> = Promise.resolve(null)
+function bindSheet(): void {
+  sheetBinding = submission.bind()
+}
+onMounted(bindSheet)
+
 async function addOne(): Promise<void> {
   if (!canAdd.value || typedElsewhere()) return
   const row = rowOf(effective.value)
   const categoryId = row.categoryId
-  const receipt = await submission.submit([row], await submission.bind())
+  const binding = await sheetBinding ?? await submission.bind()
+  // Content replaced since the sheet opened (another window, a restored backup): refused once, said, and bound anew.
+  if (binding && !(await bindingCurrent(binding))) {
+    submission.state.value = 'changed'
+    bindSheet()
+    return
+  }
+  const receipt = await submission.submit([row], binding)
+  if (submission.state.value === 'changed') bindSheet()
   if (!receipt) return
   if (categoryId && categoryId !== ANY_FREE_TIME) {
     rememberTaskCategory(categoryId)
@@ -213,6 +239,8 @@ async function addOne(): Promise<void> {
 // is cleared, the result is announced, and Undo is offered for exactly the tasks of its receipt.
 function added(receipt: CaptureReceipt, message: string): void {
   resetBox()
+  // What was just added is now part of the planner the next task is bound to.
+  bindSheet()
   rows.value = []
   announce(message)
   toast.show({
@@ -299,24 +327,14 @@ function onRowKeydown(event: KeyboardEvent): void {
 }
 
 // The field grows with its content (a paste or dictation with line breaks), up to a few lines, then scrolls.
-function grow(): void {
-  const element = field.value
-  if (!element) return
-  element.style.height = 'auto'
-  element.style.height = `${element.scrollHeight}px`
-}
-watch(text, () => void nextTick(grow))
+watch(text, () => void nextTick(() => fitToContent(field.value)))
 
 // Row titles wrap instead of being cut: each row field is as tall as its title.
-function fit(element: HTMLTextAreaElement): void {
-  element.style.height = 'auto'
-  element.style.height = `${element.scrollHeight}px`
-}
 function growRow(event: Event): void {
-  fit(event.target as HTMLTextAreaElement)
+  fitToContent(event.target as HTMLTextAreaElement)
 }
 const root = ref<HTMLFormElement | null>(null)
-watch(rows, () => void nextTick(() => root.value?.querySelectorAll<HTMLTextAreaElement>('.row-title').forEach(fit)))
+watch(rows, () => void nextTick(() => root.value?.querySelectorAll<HTMLTextAreaElement>('.row-title').forEach(fitToContent)))
 
 const statusText = computed(() => {
   switch (submission.state.value) {
@@ -329,11 +347,18 @@ const statusText = computed(() => {
   }
 })
 
-defineExpose({ focus: () => field.value?.focus() })
+// What the sheet's header action does: one task, or every chosen line of a multi-line paste.
+const canSubmit = computed(() => (multiLine.value ? !busy.value && !tooManyLines.value && chosen.value.length > 0 : canAdd.value))
+const dirty = computed(() => text.value.trim().length > 0)
+function submit(): void {
+  void (multiLine.value ? addAll() : addOne())
+}
+
+defineExpose({ focus: () => field.value?.focus(), submit, canSubmit, dirty })
 </script>
 
 <template>
-  <form ref="root" class="add" :aria-label="label ?? t('tasks.add.title')" novalidate @submit.prevent="multiLine ? undefined : addOne()">
+  <form :id="formId" ref="root" class="add" :aria-label="label ?? t('tasks.add.title')" novalidate @submit.prevent="submit">
     <label class="field" :for="ids.field">
       <span class="visually-hidden">{{ t('tasks.add.titleLabel') }}</span>
       <textarea
@@ -344,8 +369,9 @@ defineExpose({ focus: () => field.value?.focus() })
         rows="1"
         autocomplete="off"
         :enterkeyhint="multiLine ? 'enter' : 'done'"
-        :placeholder="t('capture.placeholder')"
-        :aria-describedby="spans.length ? ids.chips : ids.hint"
+        :placeholder="t('tasks.add.titleLabel')"
+        :aria-describedby="spans.length ? `${ids.chips} ${ids.hint}` : ids.hint"
+        data-autofocus
         :readonly="busy"
         :aria-busy="busy || undefined"
         data-testid="capture-field"
@@ -354,7 +380,7 @@ defineExpose({ focus: () => field.value?.focus() })
         @compositionend="composing = false"
       />
     </label>
-    <p :id="ids.hint" class="visually-hidden">{{ t('capture.dictationHint') }}</p>
+    <p :id="ids.hint" class="t-footnote t-secondary hint">{{ t('tasks.add.manyHint') }}</p>
 
     <div v-if="spans.length && !multiLine" :id="ids.chips" class="chips" role="group" :aria-label="t('capture.chip.group')" data-testid="capture-chips">
       <span v-for="span in spans" :key="span.key" class="chip" :data-field="span.field" data-testid="capture-chip">
@@ -415,10 +441,7 @@ defineExpose({ focus: () => field.value?.focus() })
     </div>
 
     <div v-if="detailsOpen" class="details" role="group" :aria-label="t('tasks.add.details')" data-testid="task-details">
-      <TaskOptions :draft="shownDraft" :categories="categories" :time-zone="timeZone" :suggested-category-id="suggestedCategoryId" standard-lengths @patch="patch" />
-      <Button type="submit" block :disabled="!canAdd">
-        <Icon name="plus" :size="20" /> {{ t('tasks.add.submit') }}
-      </Button>
+      <TaskOptions :draft="shownDraft" :categories="categories" :time-zone="timeZone" :suggested-category-id="suggestedCategoryId" @patch="patch" />
     </div>
 
     <section v-if="multiLine" :id="ids.preview" class="preview" :aria-label="t('capture.preview.label')" data-testid="capture-preview">
@@ -475,19 +498,26 @@ defineExpose({ focus: () => field.value?.focus() })
 </template>
 
 <style scoped>
-.add { display: flex; flex-direction: column; gap: var(--space-3); padding: var(--card-padding-block) var(--card-padding); background: var(--surface); border-radius: var(--radius-card); }
+.add { display: flex; flex-direction: column; gap: var(--space-2); }
 .field { display: flex; flex: 1; flex-direction: column; gap: var(--space-1); min-width: 0; }
+/* The form is the sheet's grouped page; the title is a large white field without a border that grows with its lines
+   (fitToContent), up to a few, then scrolls. */
 .capture-field {
-  padding-inline: min(var(--space-3), 12px);
   min-height: var(--tap-target);
   max-height: 12em;
+  padding-inline: var(--card-padding);
+  padding-block: calc((var(--tap-target) - 1.35em) / 2);
+  border-color: transparent;
+  border-radius: var(--radius-card);
+  background: var(--surface-grouped-raised);
+  font-size: 1.375rem;
+  font-weight: 600;
+  line-height: 1.35;
   resize: none;
   overflow-y: auto;
-  line-height: 1.35;
-  /* One line until there is more: the height follows the content (grow()). */
-  padding-block: calc((var(--tap-target) - 1.35em) / 2);
 }
-.details { display: flex; flex-direction: column; gap: var(--space-3); }
+.hint { padding-inline: var(--space-1); }
+.details { display: flex; flex-direction: column; gap: var(--space-3); margin-top: var(--space-3); }
 .chips { display: flex; flex-wrap: wrap; gap: var(--space-2); }
 .chip {
   display: inline-flex;

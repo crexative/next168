@@ -22,17 +22,14 @@
   "add": {
     "title": "Adicionar tarefa",
     "titleLabel": "Tarefa",
-    "titlePlaceholder": "Adicionar tarefa…",
     "duration": "Duração",
-    "category": "Categoria",
+    "category": "Durante",
     "dueDate": "Prazo",
     "priority": "Prioridade",
-    "submit": "Adicionar tarefa",
     "details": "Detalhes desta tarefa",
     "more": "Mais opções",
     "when": "Quando?",
     "anyFreeTime": "Em qualquer horário livre",
-    "during": "Durante {category}",
     "today": "Hoje",
     "untimed": "Sem tempo",
     "at": "Hora fixa",
@@ -40,7 +37,10 @@
     "minutesPlaceholder": "Minutos",
     "notes": "Notas",
     "fixedTooLong": "Uma tarefa com hora fixa dura no máximo {hours} h.",
-    "links": "Links das notas"
+    "links": "Links das notas",
+    "otherLength": "Outra",
+    "moreHint": "Prazo, hora fixa, prioridade e notas.",
+    "manyHint": "Cole ou dite várias, uma por linha."
   },
   "priority": {
     "1": "Alta",
@@ -54,7 +54,8 @@
   "sheet": {
     "new": "Nova tarefa",
     "edit": "Editar tarefa",
-    "delete": "Remover tarefa"
+    "delete": "Remover tarefa",
+    "add": "Adicionar"
   },
   "outside": {
     "noBlockToday": "Hoje você não tem bloco de {category}; coloquei no seu tempo livre.",
@@ -75,5 +76,8 @@
     "undated": "Sem data",
     "showAll": "Ver todas ({count})"
   },
-  "overdueSince": "venceu em {date}"
+  "overdueSince": "venceu em {date}",
+  "pending": "{count} pendente | {count} pendentes",
+  "doesNotFit": "{count} tarefa não cabe a tempo | {count} tarefas não cabem a tempo",
+  "rowDoesNotFit": "Não cabe esta semana"
 }

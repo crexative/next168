@@ -22,17 +22,14 @@
   "add": {
     "title": "Add task",
     "titleLabel": "Task",
-    "titlePlaceholder": "Add task…",
     "duration": "Duration",
-    "category": "Category",
+    "category": "During",
     "dueDate": "Due date",
     "priority": "Priority",
-    "submit": "Add task",
     "details": "Details for this task",
     "more": "More options",
     "when": "When?",
     "anyFreeTime": "Any free slot",
-    "during": "During {category}",
     "today": "Today",
     "untimed": "No time",
     "at": "Fixed time",
@@ -40,7 +37,10 @@
     "minutesPlaceholder": "Minutes",
     "notes": "Notes",
     "fixedTooLong": "A fixed-time task lasts at most {hours} h.",
-    "links": "Links in the notes"
+    "links": "Links in the notes",
+    "otherLength": "Other",
+    "moreHint": "Due date, fixed time, priority and notes.",
+    "manyHint": "Paste or dictate several, one per line."
   },
   "priority": {
     "1": "High",
@@ -54,7 +54,8 @@
   "sheet": {
     "new": "New task",
     "edit": "Edit task",
-    "delete": "Delete task"
+    "delete": "Delete task",
+    "add": "Add"
   },
   "outside": {
     "noBlockToday": "You have no {category} block today, so it went in your free time.",
@@ -75,5 +76,8 @@
     "undated": "No date",
     "showAll": "See all ({count})"
   },
-  "overdueSince": "was due {date}"
+  "overdueSince": "was due {date}",
+  "pending": "{count} to do | {count} to do",
+  "doesNotFit": "{count} task does not fit in time | {count} tasks do not fit in time",
+  "rowDoesNotFit": "Does not fit this week"
 }

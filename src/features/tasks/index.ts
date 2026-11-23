@@ -8,5 +8,6 @@ export default function registerTasks(registry: ShellRegistry): void {
     titleKey: 'app.tabs.tasks',
     icon: 'list-checks',
     tabOrder: 2,
+    backdrop: 'plain',
   })
 }
