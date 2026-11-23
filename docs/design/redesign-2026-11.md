@@ -113,6 +113,10 @@ make a tests-only change a standard one. They become one helper once it does (#7
   field taking focus, 4x CPU) went from 15-30 ms to 75-180 ms in a Linux container and 136-260 ms on CI, against a
   budget of 300 ms. Deferring the sheet's planner fingerprint until after paint did not change it; the cost is the sheet
   itself. A later slice that adds to that sheet should measure this first.
+- **Tareas populated on CI (#69).** Two CI runs of #69 measured Tareas usable later than main's four (200 tasks: 2712 and
+  3542 ms against 1739-2474; 1000: 6187 and 8306 against 3679-5318), which a Mac and a Linux container did not
+  reproduce (equal medians over six runs). A third CI run, rule fixed before it ran, gave 2027 / 4496 ms, inside main's
+  range, so it was taken as the runner's noise. The CI budget (3000 ms at 200 tasks) leaves main about 500 ms.
 
 ## Tokens and styles added ahead of their screens
 
