@@ -86,7 +86,7 @@ async function openNewTask(page: Page): Promise<void> {
 const added = (page: Page) => expect(page.getByRole('dialog')).toHaveCount(0)
 // Any open task's row, in whichever section it is filed.
 const row = (page: Page, title: string) => page.locator('[data-testid=placed-task], [data-testid=undated-task], [data-testid=overdue-task], [data-testid=later-task]').filter({ hasText: title })
-const group = (page: Page, header: string) => page.locator('section.list-group').filter({ has: page.locator('h2', { hasText: new RegExp(`^${escape(header)}`) }) })
+const group = (page: Page, header: string) => page.locator('section.group').filter({ has: page.locator('h2', { hasText: new RegExp(`^${escape(header)}`) }) })
 
 async function expectBudget(page: Page, budget: number): Promise<void> {
   const observed = await tapCount(page)
@@ -166,7 +166,8 @@ for (const locale of LOCALES) {
       await added(page)
       await expectBudget(page, 4)
       await reload(page)
-      await expect(row(page, 'Comprar pan')).toContainText(loose(text.due('2026-10-30')))
+      // Filed under its day (30 Oct): the group says the date, so the row does not repeat it.
+      await expect(page.locator('section.group').filter({ has: page.locator('h2', { hasText: /30/ }) }).filter({ hasText: 'Comprar pan' })).toHaveCount(1)
     })
 
     test('complete a visible task: 1 action', async ({ page }) => {
@@ -205,11 +206,14 @@ for (const locale of LOCALES) {
       await expect(page.getByTestId('done-task').filter({ hasText: 'Comprar pan' })).toBeAttached()
     })
 
-    test('use a warning\'s fix «Hacerla hoy»: 1 action', async ({ page }) => {
+    // Calm by default (R_Tareas, DIRECTION §3): the warnings are one closed row; its fixes are one tap away, so a fix
+    // takes 2 actions (it took 1 with the cards always open).
+    test('use a warning\'s fix «Hacerla hoy»: 2 actions', async ({ page }) => {
       await openTasks(page, locale)
+      await page.getByTestId('warnings-toggle').tap()
       await page.getByTestId('warning-t-bill').getByTestId('fix-today').tap()
       await expect(page.getByTestId('warning-t-bill')).toHaveCount(0)
-      await expectBudget(page, 1)
+      await expectBudget(page, 2)
       await reload(page)
       await expect(page.getByTestId('warning-t-bill')).toHaveCount(0)
       await expect(group(page, text.today).getByTestId('placed-task').filter({ hasText: 'Pagar la luz' })).toBeVisible()

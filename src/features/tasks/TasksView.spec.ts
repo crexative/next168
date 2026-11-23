@@ -43,22 +43,37 @@ it('places tasks around imported calendar events, not on top of them', async () 
   await vi.waitFor(() => expect(host.textContent).toMatch(/12:00\s?PM\u2060–\u20601:00\s?PM/))
 })
 
-// Nueva tarea is the sheet now ("+" › Tarea): the page itself has no capture box.
-it('has no capture box: a task is added from Nueva tarea', async () => {
+// R_Tareas: the count is the subtitle, there is no capture box on the page (it is Nueva tarea's title), group titles
+// carry no counts, and "Hechas recientemente · 1" starts closed.
+it('says how many are pending, has no capture box, and keeps done tasks behind a closed disclosure', async () => {
   const pinia = createPinia()
   setActivePinia(pinia)
   configurePlannerStore({ repository: createTestRepositories().planner, now: fixedNow, newId: newTestId, locale: () => 'en', timeZone: () => 'UTC' })
   const planner = usePlannerStore()
   await planner.load()
-  await planner.commit(draft => { draft.tasks.push({ id: 'a', title: 'Call the bank', priority: 2, createdAt: fixedNow().toISOString() }) })
+  await planner.commit(draft => {
+    draft.tasks.push({ id: 'a', title: 'Call the bank', priority: 2, createdAt: fixedNow().toISOString() })
+    draft.tasks.push({ id: 'b', title: 'Read a chapter', priority: 2, createdAt: fixedNow().toISOString() })
+    draft.tasks.push({ id: 'c', title: 'Pay the bill', priority: 2, createdAt: fixedNow().toISOString(), doneAt: fixedNow().toISOString() })
+  })
   i18n.global.locale.value = 'en'
   const host = document.createElement('div')
   document.body.append(host)
   const app = createApp(TasksView).use(pinia).use(i18n)
   app.mount(host)
   cleanup = () => { app.unmount(); host.remove() }
-  await vi.waitFor(() => expect(host.textContent).toContain('Call the bank'))
+  await nextTick()
+  expect(host.querySelector('[data-testid=tasks-subtitle]')!.textContent).toBe('2 to do')
   expect(host.querySelector('textarea, [data-testid=capture-field]')).toBeNull()
+  expect([...host.querySelectorAll('.group-title')].map(node => node.textContent)).toEqual(['No date'])
+  const toggle = host.querySelector<HTMLButtonElement>('[data-testid=done-toggle]')!
+  expect(toggle.textContent?.replace(/\s+/g, ' ').trim()).toBe('Recently done · 1')
+  expect(toggle.getAttribute('aria-expanded')).toBe('false')
+  expect(host.querySelector<HTMLElement>('#task-done-list')!.style.display).toBe('none')
+  toggle.click()
+  await nextTick()
+  expect(host.querySelector<HTMLElement>('#task-done-list')!.style.display).toBe('')
+  expect(host.querySelector('[data-testid=done-task]')!.textContent).toContain('Pay the bill')
 })
 
 it('places a task with no category in time no routine covers, and keeps it out of a block of another category', async () => {
