@@ -138,7 +138,7 @@ const DONE_KEY = 'onboarding.guided.again.done'
 export interface RoundReplies {
   // New ideas first; what the week already has (adding a routine) after them, in a group of its own.
   options: { value: string; label: string }[]
-  stored: { value: string; label: string }[]
+  stored: { value: string; label: string; dot?: string }[]
   // The round's answer when it is asked again: a pick, or the way out.
   current?: string
   done: { label: string; current: boolean }
@@ -150,7 +150,8 @@ export function roundReplies(state: SetupState, round: number, speaker: Speaker)
   const all = roundOptions(state, round).map((key) => ({ value: key, label: pickLabel(state, key, speaker) }))
   return {
     options: all.filter((option) => !isIntoKey(option.value)),
-    stored: all.filter((option) => isIntoKey(option.value)),
+    stored: all.filter((option) => isIntoKey(option.value))
+      .map((option) => ({ ...option, dot: state.add?.stored.find((category) => intoKey(category.id) === option.value)?.color })),
     current: picks[round],
     done: { label: speaker.t(DONE_KEY), current: doneCurrent },
   }

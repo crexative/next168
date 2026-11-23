@@ -1,5 +1,6 @@
 import { MINUTES_PER_DAY, MINUTES_PER_WEEK, type DayIndex, type Goal, type PlannerDocument, type TimeBlock } from '@/core/model'
 import { occurrences, overlaps } from '@/core/time'
+import { categoryColor } from '@/features/insights/categoryColor'
 import {
   ADD_TOPICS, COMMUTE_FALLBACK, EXTRA_TOPICS, OWN_DEFAULT, STUDY_WITH_WORK, TOPICS, TOPIC_IDS, type GoalKind, type TopicId, type TopicRange,
 } from './setupTopics'
@@ -54,7 +55,8 @@ export interface CategoryDraft {
 }
 
 // Add mode: what the week already holds, read-only context for overlaps, placement and the "Goes in" choice.
-export interface StoredRef { id: string; name: string; topic?: TopicId }
+// `color`: the category's colour, for its dot among the replies (R_NuevaRutina).
+export interface StoredRef { id: string; name: string; topic?: TopicId; color?: string }
 export interface FixedSlot extends Slot { categoryId: string; name: string }
 export type AddEntry = 'routine' | 'category'
 export interface AddContext { entry: AddEntry; stored: StoredRef[]; fixed: FixedSlot[] }
@@ -707,7 +709,7 @@ export function createAddState(document: PlannerDocument, entry: AddEntry, env: 
   const stored: StoredRef[] = document.categories.map((category) => {
     const topic = topicOf(category, taken, env)
     if (topic) taken.add(topic)
-    return { id: category.id, name: category.name, ...(topic ? { topic } : {}) }
+    return { id: category.id, name: category.name, color: categoryColor(category), ...(topic ? { topic } : {}) }
   })
   const names = new Map(document.categories.map((category) => [category.id, category.name]))
   const fixed = document.blocks.map((block) => ({ categoryId: block.categoryId, name: names.get(block.categoryId) ?? '', days: [...block.days], start: block.start, end: block.end }))

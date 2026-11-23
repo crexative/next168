@@ -3,6 +3,7 @@ import source from './ConversationFrame.vue?raw'
 import dayPicker from '@/features/onboarding/setup/DayPicker.vue?raw'
 import setupAnswer from '@/features/onboarding/setup/SetupAnswer.vue?raw'
 import setupConversation from '@/features/onboarding/setup/SetupConversation.vue?raw'
+import routineConversation from '@/features/week/RoutineConversation.vue?raw'
 
 // The modal frame's contract (DIRECTION §4, review of #65), read from the component's own styles: the e2e
 // (today-checkin, ios-keyboard, setup-guided) measure it in a browser; this check fails at once when a rule is lost,
@@ -65,6 +66,11 @@ describe('the guided setup dock inside the modal', () => {
     const dock = declarations(block(styles(setupAnswer), '.dock {'))
     expect(dock['max-height']).toBe('calc(var(--frame-room, min(var(--vv-height, 100dvh), 100dvh)) * 0.66)')
     expect(dock.flex).toBe('none')
+  })
+  it('the routine conversation\'s dock takes the same share of the frame', () => {
+    const dock = declarations(block(styles(routineConversation), '.dock {'))
+    expect(dock['max-height']).toBe('calc(var(--frame-room, min(var(--vv-height, 100dvh), 100dvh)) * 0.66)')
+    expect(dock.flex).toBe('0 1 auto')
   })
   it('is not sized by the conversation, whose own rule is for the summary dock only', () => {
     expect(styles(setupConversation)).not.toMatch(/(^|\n)\.dock \{/)

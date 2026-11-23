@@ -102,5 +102,34 @@
       "task": "Tarea",
       "event": "Evento"
     }
+  },
+  "talk": {
+    "title": "Cambiar {title}",
+    "question": "¿Qué quieres cambiar de {title}?",
+    "schedule": "Horario",
+    "days": "Días",
+    "goal": "Meta",
+    "remove": "Quitar",
+    "editAll": "Editar todo",
+    "other": "Otra cosa",
+    "timeQuestion": "¿A qué hora empieza y termina?",
+    "daysQuestion": "¿Qué días?",
+    "goalQuestion": "¿Qué meta tiene {category}?",
+    "goalType": {
+      "none": "Sin meta",
+      "min": "Al menos",
+      "max": "Como máximo"
+    },
+    "goalHours": "Horas a la semana",
+    "removeQuestion": "¿Quitar {title} de tu semana?",
+    "removeYes": "Quitar",
+    "removeNo": "Mejor no",
+    "perWeek": "{hours} a la semana",
+    "removeFrees": "Sus {hours} quedan libres.",
+    "goalLine": "{category}: {hours} de {kind} {goal}",
+    "goalKind": {
+      "min": "al menos",
+      "max": "como máximo"
+    }
   }
 }

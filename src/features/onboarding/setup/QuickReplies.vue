@@ -1,14 +1,15 @@
 <script setup lang="ts">
 // A row of plain buttons that answer on activation (tap, Enter, Space). Tab only moves focus, so exploring never
 // navigates; nothing here runs on a timer. Without a group label the row belongs to a group around it.
-export interface QuickReply { value: string; label: string }
+// `pills`: names as wide as their words, with the category's dot when it has one (adding a routine, R_NuevaRutina).
+export interface QuickReply { value: string; label: string; dot?: string }
 
-defineProps<{ options: QuickReply[]; current?: string; currentLabel: string; groupLabel?: string }>()
+defineProps<{ options: QuickReply[]; current?: string; currentLabel: string; groupLabel?: string; pills?: boolean }>()
 defineEmits<{ answer: [value: string] }>()
 </script>
 
 <template>
-  <div class="replies" :role="groupLabel ? 'group' : undefined" :aria-label="groupLabel">
+  <div class="replies" :class="{ 'is-pills': pills }" :role="groupLabel ? 'group' : undefined" :aria-label="groupLabel">
     <button
       v-for="option in options"
       :key="option.value"
@@ -19,7 +20,7 @@ defineEmits<{ answer: [value: string] }>()
       :aria-label="option.value === current ? `${option.label} ${currentLabel}` : undefined"
       @click="$emit('answer', option.value)"
     >
-      {{ option.label }}
+      <span v-if="option.dot" class="dot" :style="{ background: option.dot }" aria-hidden="true" />{{ option.label }}
     </button>
   </div>
 </template>
@@ -34,4 +35,7 @@ defineEmits<{ answer: [value: string] }>()
 .reply:active { transform: scale(0.97); }
 .reply.is-current { border-color: var(--tint); background: color-mix(in srgb, var(--tint) 12%, transparent); }
 @media (prefers-reduced-motion: reduce) { .reply:active { transform: none; opacity: 0.7; } }
+.is-pills .reply { flex: 0 1 auto; display: inline-flex; align-items: center; gap: var(--space-2); max-width: 100%; border-width: 1px; border-radius: 999px; text-align: start; }
+.dot { flex: none; width: 10px; height: 10px; border-radius: 50%; }
+@media (forced-colors: active) { .dot { forced-color-adjust: none; } }
 </style>
