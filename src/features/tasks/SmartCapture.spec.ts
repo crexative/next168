@@ -161,6 +161,15 @@ describe('P1-10: a multi-line paste', () => {
     expect(tasks()).toEqual([])
   })
 
+  // Nueva tarea's header "Añadir" submits the capture's form (form=): with a pasted list it adds every checked line.
+  it('submitting the form with a pasted list adds all its lines, as the sheet\'s header Añadir does', async () => {
+    await mount()
+    await type(FIVE)
+    host().querySelector<HTMLFormElement>('form.add')!.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }))
+    await settle()
+    expect(tasks().map((task) => task.title)).toEqual(['Llamar a mamá mañana', 'Pagar luz el 5', '- comprar pan', 'no olvidar la reunión de las 9am', 'Revisar «el lunes» de Cortázar'])
+  })
+
   it('«Dejar como una tarea» joins the lines with «; » into the one-line box', async () => {
     await mount()
     await type('Comprar pan\r\nLeche')
