@@ -189,7 +189,6 @@ function pickTyped(name: string): string | undefined {
   const exists = props.state.categories.some((category) => category.into === undefined && nameKey(category.name) === nameKey(name) && statusOf(props.state, category) !== 'removed')
   if (!exists && picksOf(props.state).length >= MAX_PICKS) {
     refusal.value = 'limit'
-    emit('edited')
     return undefined
   }
   const named = addTyped(props.state, name)
