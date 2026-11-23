@@ -172,6 +172,8 @@ test.describe('buttons', () => {
     }
     await openView(page, 'week')
     await page.locator('[data-block-id="b-gym"]').first().click()
+    // A routine opens as a conversation (R_EditarRutina); the whole form is "Edit all".
+    await page.getByTestId('talk-edit-all').click()
     const save = page.getByRole('dialog').getByRole('button', { name: 'Save', exact: true })
     await expect(save).toBeVisible()
     const [saveBox, bodyBox] = await Promise.all([save.boundingBox(), page.locator('.sheet-body').boundingBox()])
@@ -411,6 +413,8 @@ test.describe('accessibility plumbing', () => {
     await page.clock.resume()
     await openView(page, 'week')
     await page.locator('[data-date="2026-10-21"] [data-block-id="b-gym"]').first().click()
+    // A routine opens as a conversation (R_EditarRutina); the whole form is "Editar todo".
+    await page.getByTestId('talk-edit-all').click()
     await page.getByRole('dialog').getByRole('button', { name: 'Delete routine' }).click()
     await expect(page.locator('.toast')).toBeVisible()
     // The toast's 15 s run on the page clock, which also ticks in real time: stop it here, so only `runFor` spends the

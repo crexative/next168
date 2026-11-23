@@ -16,6 +16,8 @@ import { openAdd, setupWeekOffered } from '@/features/onboarding/reopen'
 import { defaultTaskCategoryId } from '@/features/onboarding/templates'
 import TaskSheet from '@/features/tasks/TaskSheet.vue'
 import BlockEditorSheet from './BlockEditorSheet.vue'
+import RoutineConversation, { type RoutineChange } from './RoutineConversation.vue'
+import { announce } from '@/ui/announcer'
 import BusyDetailsSheet from './BusyDetailsSheet.vue'
 import PressChooserSheet from './PressChooserSheet.vue'
 import type { PressOption } from './pressOption'
@@ -220,7 +222,67 @@ watch(shownItemKeys, (shown) => {
   }
 })
 
+// A tap on a routine opens it as a conversation (R_EditarRutina); "Editar todo" there opens the whole form.
+const talking = ref<string | null>(null)
+// Why the conversation's last save failed, shown in it; a new conversation starts without one.
+const talkError = ref<string | null>(null)
+watch(talking, () => { talkError.value = null })
+const talkingBlock = computed(() => document.value?.blocks.find((item) => item.id === talking.value))
+const talkingCategory = computed(() => document.value?.categories.find((category) => category.id === talkingBlock.value?.categoryId))
 function openExisting(blockId: string): void {
+  if (!planner.writable || !document.value?.blocks.some((item) => item.id === blockId)) return
+  talking.value = blockId
+}
+async function editAll(origin: HTMLElement | null): Promise<void> {
+  const blockId = talking.value
+  talking.value = null
+  await nextTick()
+  origin?.focus({ preventScroll: true })
+  if (blockId) openEditor(blockId)
+}
+// A change said in the conversation is saved like the form's, and Deshacer puts back what was there.
+async function applyChange(change: RoutineChange): Promise<void> {
+  const before = document.value
+  if (!before) return
+  const blockIndex = before.blocks.findIndex((item) => item.id === talking.value)
+  const block = before.blocks[blockIndex]
+  if (!block) return
+  if (change.kind === 'remove') {
+    talking.value = null
+    await remove(change.blockId)
+    return
+  }
+  const category = before.categories.find((item) => item.id === (change.kind === 'goal' ? change.categoryId : block.categoryId))
+  const previousGoal = category ? { ...category.goal } : undefined
+  const result = await planner.commit((next) => {
+    if (change.kind === 'block') upsertBlock(next, change.block)
+    else {
+      const target = next.categories.find((item) => item.id === change.categoryId)
+      if (target) target.goal = change.goal
+    }
+  })
+  if (!result.ok) {
+    talkError.value = t('week.editor.errors.saveFailed', { reason: result.reason })
+    return
+  }
+  talking.value = null
+  const message = t('onboarding.summary.saved')
+  announce(message)
+  undoToast.show({
+    message,
+    onUndo: () => {
+      void planner.commit((next) => {
+        if (change.kind === 'block') upsertBlock(next, block)
+        else {
+          const target = next.categories.find((item) => item.id === change.categoryId)
+          if (target && previousGoal) target.goal = previousGoal
+        }
+      })
+    },
+  })
+}
+
+function openEditor(blockId: string): void {
   const block = document.value?.blocks.find((item) => item.id === blockId)
   if (!block || !planner.writable) return
   saveError.value = null
@@ -232,7 +294,7 @@ function openExisting(blockId: string): void {
 // the event when the editor closes.
 function openConflict(blockId: string): void {
   detailsOpen.value = false
-  openExisting(blockId)
+  openEditor(blockId)
 }
 
 async function save(block: TimeBlock): Promise<void> {
@@ -369,6 +431,18 @@ async function remove(blockId: string): Promise<void> {
       @delete="remove"
     />
     <TaskSheet v-model:open="taskOpen" :task-id="editingTaskId" />
+    <RoutineConversation
+      v-if="talkingBlock"
+      :key="talkingBlock.id"
+      :block="talkingBlock"
+      :category="talkingCategory"
+      :writable="planner.writable"
+      :document="document!"
+      :save-error="talkError"
+      @close="talking = null"
+      @edit-all="editAll"
+      @change="applyChange"
+    />
   </div>
 </template>
 

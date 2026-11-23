@@ -244,6 +244,8 @@ for (const theme of THEMES) {
             expect(target.height).toBeGreaterThanOrEqual(48)
           }
           await live.getByTestId('card-commute').click()
+          // A row opens its edit conversation; "Editar todo" is the whole form.
+          await live.getByTestId('talk-edit-all').click()
           await live.locator('[data-category=commute] [data-field=end]').first().click()
           await audit(page, `${theme}/${locale}/${width}/wider fonts/setup summary with a picker`)
         })
@@ -354,6 +356,8 @@ for (const theme of THEMES) {
         await settled()
         await audit(page, `${theme}/${locale}/360/setup summary`)
         await live.getByTestId('card-sleep').click()
+        // A row opens its edit conversation; "Editar todo" is the whole form.
+        await live.getByTestId('talk-edit-all').click()
         await audit(page, `${theme}/${locale}/360/setup summary, sleep open`)
       })
     }
@@ -593,6 +597,8 @@ for (const theme of THEMES) {
       await settled()
       await audit(page, `${theme}/setup summary`)
       await live.getByTestId('card-work').click()
+      // A row opens its edit conversation; "Editar todo" is the whole form.
+      await live.getByTestId('talk-edit-all').click()
       await audit(page, `${theme}/setup summary with a card open`)
     })
 
@@ -992,6 +998,8 @@ test.describe('Week readability', () => {
       })
       expect(own, 'the routine has an area of its own').not.toBeNull()
       await routine.click({ position: own! })
+      // A routine opens as a conversation (R_EditarRutina); the whole form is "Editar todo".
+      await page.getByTestId('talk-edit-all').click()
       await expect(page.getByRole('dialog').getByRole('heading', { name: 'Edit routine' })).toBeVisible()
     })
   }

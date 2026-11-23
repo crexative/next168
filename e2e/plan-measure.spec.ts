@@ -83,6 +83,8 @@ test.describe('plan and measure', () => {
     await expect(page.getByTestId('week-counter')).toHaveText(/^99 h assigned · 69 h unassigned$/)
     // Everything is editable in the summary: rename Work.
     await setup.getByTestId('card-work').click()
+    // A row opens its edit conversation; "Editar todo" is the whole form.
+    await setup.getByTestId('talk-edit-all').click()
     await setup.getByTestId('card-name').fill('Day job')
     await setup.getByTestId('card-done').click()
     await setup.getByRole('button', { name: 'Create my week', exact: true }).click()
