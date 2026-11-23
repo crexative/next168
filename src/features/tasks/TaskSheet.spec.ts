@@ -236,6 +236,44 @@ describe('Nueva tarea and Editar tarea, in detail', () => {
   })
 })
 
+// Review of #71: a workspace replaced under an open Nueva tarea (another window restores a backup) refuses the first
+// Añadir, says so, keeps what was typed, and the next Añadir saves into the workspace now on screen; with something
+// stored when the sheet opened (its content is compared) and with nothing stored yet (the commit refuses it).
+describe('a workspace replaced under an open Nueva tarea', () => {
+  for (const storedFirst of [true, false]) {
+    it(`refuses once, says so, keeps the text, and the next Añadir saves into the new one (${storedFirst ? 'something' : 'nothing'} stored when it opened)`, async () => {
+      const pinia = createPinia()
+      setActivePinia(pinia)
+      const repos = createTestRepositories()
+      configurePlannerStore({ repository: repos.planner, now: fixedNow, newId: newTestId, locale: () => 'en', timeZone: () => 'UTC' })
+      if (storedFirst) await repos.planner.save({ ...testDocument({ workspaceId: 'ws-a' }), categories: [WORK, STUDY], tasks: [], revision: 1 }, 0)
+      const store = usePlannerStore()
+      await store.load()
+      i18n.global.locale.value = 'en'
+      host = document.createElement('div')
+      document.body.append(host)
+      app = createApp(defineComponent({ setup: () => () => h(TaskSheet, { open: true }) })).use(pinia).use(i18n)
+      app.mount(host)
+      await settle(store)
+      // Another window writes another workspace and this one shows it.
+      await repos.planner.save({ ...testDocument({ workspaceId: 'ws-b' }), categories: [WORK, STUDY], tasks: [], revision: storedFirst ? 2 : 1 }, storedFirst ? 1 : 0)
+      await store.load()
+      await settle(store)
+      expect(store.document!.workspaceId).toBe('ws-b')
+      await set(titleField(), 'Call the bank')
+      save().click()
+      await settle(store)
+      expect(store.document!.tasks).toEqual([])
+      expect(dialog().querySelector('[data-testid=capture-status]')!.textContent).toBe(i18n.global.t('capture.status.changed'))
+      expect(titleField().value).toBe('Call the bank')
+      save().click()
+      await settle(store)
+      expect(store.document!.workspaceId).toBe('ws-b')
+      expect(store.document!.tasks.map((task) => task.title)).toEqual(['Call the bank'])
+    })
+  }
+})
+
 describe('adding a task from the sheet', () => {
   it('adds one task when the button is pressed twice before the first save finishes', async () => {
     const { store } = await open(undefined, { tasks: [] })
