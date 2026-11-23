@@ -816,8 +816,12 @@ describe('"¿A qué más…?" with several picks', () => {
     }
     for (let index = 1; index <= 20; index++) await add(`Thing ${index}`)
     expect(live('[data-testid=more-picked]')!.textContent).toBe('20 picked · one short question for each')
+    const chips = () => [...window.document.body.querySelectorAll('[data-testid=setup] [data-testid=more-chips] [data-chip]')].length
+    const before = chips()
     await add('One more')
     expect(live('[data-testid=more-refusal]')!.textContent).toBe('You have 20 picked; remove one to add another.')
+    // Refused, the name leaves no unpicked chip behind (review of #61).
+    expect(chips()).toBe(before)
   })
 
   it('a name typed in "Other" and not yet added goes in with the picks on Siguiente', async () => {
