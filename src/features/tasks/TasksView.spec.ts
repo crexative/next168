@@ -10,6 +10,7 @@ import { configureCalendarServices, useCalendarStore } from '@/features/calendar
 import { IndexedDbCalendarSourceStore } from '@/features/calendars/calendarSourceStore'
 import { setExternalOccurrenceSource } from '@/features/week/externalOccurrences'
 import TasksView from './TasksView.vue'
+import { categoryColor } from '@/features/insights/categoryColor'
 
 let cleanup = () => undefined as void
 beforeEach(() => { vi.useFakeTimers({ toFake: ['Date'] }); vi.setSystemTime(fixedNow()) })
@@ -74,6 +75,41 @@ it('says how many are pending, has no capture box, and keeps done tasks behind a
   await nextTick()
   expect(host.querySelector<HTMLElement>('#task-done-list')!.style.display).toBe('')
   expect(host.querySelector('[data-testid=done-task]')!.textContent).toContain('Pay the bill')
+})
+
+// R_Tareas rows (review of #69): today's group is just "Today"; a row names its due date only when the group is
+// another day; a to-do with nothing else to say says "No time"; an uncategorised task's ring is label-2, not a colour.
+it('titles today\'s group "Today", leaves out a due date the group already says, and says "No time" for a bare to-do', async () => {
+  const pinia = createPinia()
+  setActivePinia(pinia)
+  configurePlannerStore({ repository: createTestRepositories().planner, now: fixedNow, newId: newTestId, locale: () => 'en', timeZone: () => 'UTC' })
+  const planner = usePlannerStore()
+  await planner.load()
+  await planner.commit(draft => {
+    draft.tasks.push({ id: 'a', title: 'Due today', durationMin: 30, dueDate: '2026-10-24', priority: 2, createdAt: fixedNow().toISOString() })
+    draft.tasks.push({ id: 'b', title: 'Due tomorrow', durationMin: 30, dueDate: '2026-10-25', priority: 2, createdAt: fixedNow().toISOString() })
+    draft.tasks.push({ id: 'c', title: 'Bare to-do', priority: 2, createdAt: fixedNow().toISOString() })
+    draft.categories.push({ id: 'home', name: 'Home', colorKey: 'green', goal: { type: 'none', hoursPerWeek: 0 } })
+    draft.tasks.push({ id: 'd', title: 'Filed at home', categoryId: 'home', priority: 2, createdAt: fixedNow().toISOString() })
+  })
+  i18n.global.locale.value = 'en'
+  const host = document.createElement('div')
+  document.body.append(host)
+  const app = createApp(TasksView).use(pinia).use(i18n)
+  app.mount(host)
+  cleanup = () => { app.unmount(); host.remove() }
+  await nextTick()
+  const row = (title: string) => [...host.querySelectorAll<HTMLElement>('li.task-row')].find(node => node.textContent?.includes(title))!
+  const meta = (title: string) => row(title).querySelector('.meta')?.textContent?.replace(/\s+/g, ' ').trim()
+  expect([...host.querySelectorAll('.group-title')].map(node => node.textContent)).toContain('Today')
+  expect(row('Due today').closest('section')!.querySelector('.group-title')!.textContent).toBe('Today')
+  expect(row('Due tomorrow').closest('section')!.querySelector('.group-title')!.textContent).toBe('Today')
+  expect(meta('Due today')).not.toMatch(/\bdue\b/)
+  expect(meta('Due tomorrow')).toMatch(/\bdue\b/)
+  expect(meta('Bare to-do')).toBe('No time')
+  expect(row('Bare to-do').querySelector<HTMLElement>('.check-ring')!.style.borderColor).toBe('var(--label-2)')
+  // A task filed under a category takes that category's colour.
+  expect(row('Filed at home').querySelector<HTMLElement>('.check-ring')!.style.borderColor).toBe(categoryColor({ colorKey: 'green' }))
 })
 
 it('places a task with no category in time no routine covers, and keeps it out of a block of another category', async () => {

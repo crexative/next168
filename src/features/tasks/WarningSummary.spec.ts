@@ -124,6 +124,8 @@ it('a task that does not fit says so in its own row, after its category and leng
   // The row in the list, not the warning card (the card is in the closed warnings row).
   const rows = [...mounted.host.querySelectorAll<HTMLElement>('li:not(.warning)')].filter((element) => text(element)?.includes('Tarea 0'))
   expect(rows.map((row) => text(row)?.replace(/^Eliminar/, ''))).toEqual(['Tarea 0Familia · 15 min · No cabe esta semana'])
+  // Its line is drawn in the warning colour.
+  expect(rows[0]!.querySelector('.meta')!.classList.contains('is-attention')).toBe(true)
 })
 
 it('a warning card says how much does not fit, with its hint, only for a task that does not fit', async () => {
