@@ -40,10 +40,12 @@ const bar = computed(() => {
   return { segments: categoryHours.value.map((part, index) => ({ ...part, share: shares[index]!.minutes })), free }
 })
 // What the bar draws, said: "Sueño 56 h, Trabajo 40 h, 72 h sin asignar".
+// Each category's hours as set; where times overlap they add up to more than the week, so the label says why (the
+// drawn segments are scaled to count those hours once).
 const barLabel = computed(() => [
   ...categoryHours.value.map((part) => `${part.name} ${formatWholeHours(Math.round(part.minutes / 60))}`),
   t('onboarding.summary.unassigned', { hours: formatWholeHours(totals.value.free) }),
-].join(', '))
+].join(', ') + (week.value.overlapping ? `. ${t('onboarding.summary.overlapping')}` : ''))
 const place = computed(() => `${t('app.tabs.settings')} › ${t('settings.categoriesTitle')}`)
 const hasTasks = (key: string) => {
   const id = props.state.categories.find((category) => category.key === key)?.categoryId

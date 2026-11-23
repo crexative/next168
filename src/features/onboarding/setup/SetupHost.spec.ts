@@ -706,6 +706,13 @@ describe('the conversation', () => {
     expect(bar.getAttribute('aria-label')).toBe('Work 40 h, 128 h unassigned')
   })
 
+  it('where times overlap, the bar\'s spoken hours say that overlapping hours count once (review of #61)', async () => {
+    const STUDY = { id: 'c-study', name: 'Study', colorKey: 'orange' as const, icon: '📚', goal: { type: 'none' as const, hoursPerWeek: 0 } }
+    const overlapping = { id: 'b-study', categoryId: 'c-study', title: 'Study', days: [1] as PlannerDocument['blocks'][number]['days'], start: 600, end: 720 }
+    await openSummary({ categories: [WORK, STUDY], blocks: [WORK_BLOCK, overlapping] })
+    expect(live('[data-testid=summary-bar]')!.getAttribute('aria-label')).toBe('Work 40 h, Study 2 h, 128 h unassigned. Some times overlap. Overlapping hours count once.')
+  })
+
   it('"Go through the questions" is offered only for a week with times, and the trust line only in the browser', async () => {
     await openSummary({ categories: [WORK], blocks: [WORK_BLOCK] })
     expect(live('[data-testid=summary-review]')).toBeDefined()
