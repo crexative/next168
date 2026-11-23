@@ -54,6 +54,23 @@ describe('Sheet', () => {
     expect(document.activeElement?.textContent).toBe('T')
   })
 
+  // Nueva tarea starts with typing: a form marks its field data-autofocus, and the sheet focuses that on open.
+  it('focuses a field marked data-autofocus instead of the title when it opens', async () => {
+    const formOpen = ref(false)
+    const root = document.createElement('div')
+    document.body.appendChild(root)
+    const i18n = createI18n({ legacy: false, locale: 'en', messages: { en: { common: { close: 'Close', dragHandle: 'Drag' } } } })
+    const form = createApp(defineComponent({
+      render: () => h(Sheet, { open: formOpen.value, title: 'New task' }, { default: () => h('input', { 'data-autofocus': '', 'data-testid': 'first' }) }),
+    }))
+    form.use(i18n).mount(root)
+    formOpen.value = true
+    await nextTick()
+    await vi.advanceTimersByTimeAsync(10)
+    expect(document.activeElement?.getAttribute('data-testid')).toBe('first')
+    form.unmount()
+  })
+
   it('still removes the sheet after an uninterrupted close', async () => {
     open.value = true
     await nextTick()
@@ -176,5 +193,42 @@ describe('Sheet drag on a phone', () => {
     fire(grab, 'pointermove', 260, 1)
     expect(panel.style.transform).toBe('translateY(0px)')
     expect(document.querySelector('.sheet-root')).not.toBeNull()
+  })
+})
+
+// The form header (R_HojaTarea): Cancel · title · the sheet's action, on a phone, where a sheet otherwise has a foot.
+describe('Sheet with a form header', () => {
+  async function mountForm(props: { grouped?: boolean; locked?: boolean } = {}) {
+    window.matchMedia = ((query: string) => ({ matches: false, media: query, addEventListener: () => undefined, removeEventListener: () => undefined })) as unknown as typeof window.matchMedia
+    const formOpen = ref(true)
+    const root = document.createElement('div')
+    document.body.appendChild(root)
+    const i18n = createI18n({ legacy: false, locale: 'en', messages: { en: { common: { close: 'Close', dragHandle: 'Drag', cancel: 'Cancel' } } } })
+    const form = createApp(defineComponent({
+      render: () => h(Sheet, { open: formOpen.value, title: 'New task', ...props }, { default: () => h('p', 'body'), action: () => h('button', { type: 'button' }, 'Add') }),
+    }))
+    form.use(i18n).mount(root)
+    await nextTick()
+    await vi.advanceTimersByTimeAsync(10)
+    return form
+  }
+
+  it('has Cancel and the action in its header, and no foot with a second Cancel', async () => {
+    const form = await mountForm()
+    expect(document.querySelector('[data-testid=sheet-form-header]')).not.toBeNull()
+    expect(document.querySelector('.sheet-footer')).toBeNull()
+    form.unmount()
+  })
+
+  it('a grouped sheet draws its panel as the grouped page', async () => {
+    const form = await mountForm({ grouped: true })
+    expect(document.querySelector('.sheet-panel')!.classList.contains('is-grouped')).toBe(true)
+    form.unmount()
+  })
+
+  it('a locked sheet cannot be cancelled from its header', async () => {
+    const form = await mountForm({ locked: true })
+    expect(document.querySelector<HTMLButtonElement>('[data-testid=sheet-cancel]')!.disabled).toBe(true)
+    form.unmount()
   })
 })
