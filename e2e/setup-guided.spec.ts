@@ -7,7 +7,17 @@ import { visualIntegrityViolations } from './support/visualIntegrity'
 import {
   bytes, calm, holdCommitLock, live, onScreen, openField, openFromSettings, PHONE, primary, secondary, setup, skipToSummary, start, storedDoc, tap, writeStoredDocument,
 } from './support/setupGuided'
-import { frameSettled } from './support/conversationFrame'
+
+// A conversation (ConversationFrame) rises 24 px in as it opens. Vue puts its entry class on in one frame and starts
+// the transition in the next, so in between document.getAnimations() is empty while the frame is still low (CI of #61).
+// Measure the frame, or anything against the screen, after this. The same function lives in e2e/today-checkin.spec.ts;
+// they can become one shared helper once e2e/support/ counts as test code for the merge guard.
+async function frameSettled(page: Page): Promise<void> {
+  const frame = page.locator('.setup-frame')
+  await expect(frame).toBeVisible()
+  await expect(frame).not.toHaveClass(/setup-frame-enter/)
+  await page.waitForFunction(() => document.getAnimations().every((animation) => animation.playState !== 'running'))
+}
 
 // The guided first-run setup ("Configura tu semana"): one question per screen, one guarded commit at the end, a draft
 // that survives a reload, and closing that never writes. es-CO, America/Bogota, Monday 2026-10-26 10:15, 390x844.
