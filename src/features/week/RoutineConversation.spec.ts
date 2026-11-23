@@ -224,4 +224,32 @@ describe('Week saves what the conversation says, with Deshacer', () => {
     await store.settled()
     expect(store.document!.blocks[0]).toMatchObject({ start: 540, end: 1020 })
   })
+
+  it('Guardar tapped twice while the first save is on its way saves once (review of #62)', async () => {
+    const { planner } = createTestRepositories()
+    configurePlannerStore({ repository: planner, now: fixedNow, newId: newTestId, locale: () => 'en', timeZone: () => 'UTC' })
+    const pinia = createPinia()
+    setActivePinia(pinia)
+    const store = usePlannerStore()
+    await store.load()
+    await store.commit((draft) => { draft.categories.push(work); draft.blocks.push(block) })
+    i18n.global.locale.value = 'en'
+    const host = document.createElement('div')
+    document.body.append(host)
+    app = createApp(WeekView).use(pinia).use(i18n)
+    app.mount(host)
+    for (let i = 0; i < 5; i++) { await nextTick(); await new Promise((resolve) => setTimeout(resolve, 0)) }
+    host.querySelector<HTMLButtonElement>('[data-block-id="b-work"]')!.click()
+    await nextTick()
+    await tap('[data-testid=talk-time]')
+    await tap('[data-field=start] ~ .times [data-minute="600"]')
+    const commit = vi.spyOn(store, 'commit')
+    const save = $<HTMLButtonElement>('[data-testid=talk-save]')!
+    save.click()
+    save.click()
+    await store.settled()
+    await nextTick()
+    expect(commit).toHaveBeenCalledTimes(1)
+    expect(store.document!.blocks[0]).toMatchObject({ start: 600, end: 1080 })
+  })
 })

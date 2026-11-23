@@ -240,8 +240,19 @@ async function editAll(origin: HTMLElement | null): Promise<void> {
   origin?.focus({ preventScroll: true })
   if (blockId) openEditor(blockId)
 }
-// A change said in the conversation is saved like the form's, and Deshacer puts back what was there.
+// A change said in the conversation is saved like the form's, and Deshacer puts back what was there. Like the form's
+// save, a second Guardar while the first is on its way does nothing (one change, one Deshacer).
+const applying = ref(false)
 async function applyChange(change: RoutineChange): Promise<void> {
+  if (applying.value) return
+  applying.value = true
+  try {
+    await applyChangeNow(change)
+  } finally {
+    applying.value = false
+  }
+}
+async function applyChangeNow(change: RoutineChange): Promise<void> {
   const before = document.value
   if (!before) return
   const blockIndex = before.blocks.findIndex((item) => item.id === talking.value)
