@@ -1552,3 +1552,20 @@ for (const size of [{ width: 820, height: 1180 }, { width: 1180, height: 820 }] 
     await expect(primary).toBeInViewport({ ratio: 1 })
   })
 }
+
+// Review of #65: a centred modal touches no edge of the screen, so its dock and sides keep no safe area; the
+// full-screen frame on a phone keeps the screen's own. The safe area is set by hand (no browser here has a notch).
+for (const { size, modal } of [{ size: { width: 820, height: 1180 }, modal: true }, { size: PHONE, modal: false }] as const) {
+  test(`at ${size.width}x${size.height} the dock ${modal ? 'keeps no safe area inside the modal' : 'keeps the screen\'s safe area'}`, async ({ page }) => {
+    await start(page, { size, document: firstRun() })
+    await page.goto('./')
+    await onScreen(page, 'sleep')
+    await page.addStyleTag({ content: ':root { --safe-bottom: 34px; --safe-left: 44px; --safe-right: 44px; }' })
+    const padding = await live(page).locator('.dock-actions .actions').evaluate((element) => {
+      const style = getComputedStyle(element)
+      return { bottom: parseFloat(style.paddingBottom), left: parseFloat(style.paddingLeft) }
+    })
+    expect(padding.bottom).toBe(modal ? 16 : 50)
+    expect(padding.left >= 44).toBe(!modal)
+  })
+}

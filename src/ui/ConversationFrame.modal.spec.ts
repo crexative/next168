@@ -58,6 +58,16 @@ it('day toggles are at least 4.25em wide', () => {
 // share is of the frame; it keeps its size there (its answers scroll inside it, its actions never shrink out of it), and
 // that size is its own, not a parent's rule. setup-guided measures the same in a tablet browser, visual-integrity on a
 // 320 px phone at 200 % text.
+describe('the safe area inside the modal', () => {
+  it('is zero inside the centred card, which touches no edge of the screen', () => {
+    const frame = declarations(block(block(css, MODAL_QUERY), '.setup-frame {'))
+    expect([frame['--safe-top'], frame['--safe-right'], frame['--safe-bottom'], frame['--safe-left']]).toEqual(['0px', '0px', '0px', '0px'])
+  })
+  it('stays the screen\'s own outside the modal (the full-screen frame on a phone)', () => {
+    expect(declarations(block(css, '.setup-frame {'))['--safe-bottom']).toBeUndefined()
+  })
+})
+
 describe('the guided setup dock inside the modal', () => {
   const styles = (text: string) => text.slice(text.indexOf('<style scoped>'), text.indexOf('</style>'))
   it('takes its share of the frame, not of the screen behind the modal', () => {
