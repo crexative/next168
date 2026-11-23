@@ -81,6 +81,11 @@ answered turns as trailing bubbles, the lock on the trust line, the 32 px avatar
 routine conversation's tablet e2e protects its outcome but does not tell the old dock rule apart (that dock may
 shrink); the rule is held by the style spec (#62).
 
+The routine conversation keeps an answer from one step out of the next in two ways: each step's check (`candidate`)
+takes only that step's own field, and `resetDraft()` puts the draft back to what is stored whenever a step is chosen
+or left. Either alone is enough, so its test ("never leaks into the next") cannot tell them apart; both stay, because
+`resetDraft()` also gives each step a fresh start (its goal, its open time list) (review of #62).
+
 `frameSettled` (wait for a conversation to finish rising in before measuring it) lives twice, in `today-checkin.spec.ts`
 and `setup-guided.spec.ts`: the merge guard does not count `e2e/support/` as test code, so a shared helper there would
 make a tests-only change a standard one. They become one helper once it does (#70).
