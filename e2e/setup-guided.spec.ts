@@ -8,6 +8,17 @@ import {
   bytes, calm, holdCommitLock, live, onScreen, openField, openFromSettings, PHONE, primary, secondary, setup, skipToSummary, start, storedDoc, tap, writeStoredDocument,
 } from './support/setupGuided'
 
+// A conversation (ConversationFrame) rises 24 px in as it opens. Vue puts its entry class on in one frame and starts
+// the transition in the next, so in between document.getAnimations() is empty while the frame is still low (CI of #61).
+// Measure the frame, or anything against the screen, after this. The same function lives in e2e/today-checkin.spec.ts;
+// they can become one shared helper once e2e/support/ counts as test code for the merge guard.
+async function frameSettled(page: Page): Promise<void> {
+  const frame = page.locator('.setup-frame')
+  await expect(frame).toBeVisible()
+  await expect(frame).not.toHaveClass(/setup-frame-enter/)
+  await page.waitForFunction(() => document.getAnimations().every((animation) => animation.playState !== 'running'))
+}
+
 // The guided first-run setup ("Configura tu semana"): one question per screen, one guarded commit at the end, a draft
 // that survives a reload, and closing that never writes. es-CO, America/Bogota, Monday 2026-10-26 10:15, 390x844.
 test.use({ locale: 'es-CO', timezoneId: 'America/Bogota', launchOptions: { args: ['--disable-features=WebGPU'] } })
@@ -1422,7 +1433,7 @@ test.describe('the setup owns the screen (S1-12, N10)', () => {
 // (R_InicioHorario, R_InicioSueno): an open time list must not push them out of the dock.
 async function inView(page: Page, testId: string): Promise<void> {
   // Measured once the frame and the screen have finished arriving (the frame rises 24 px as it opens).
-  await page.waitForFunction(() => document.getAnimations().every((animation) => animation.playState !== 'running'))
+  await frameSettled(page)
   const fit = await live(page).getByTestId(testId).evaluate((element) => {
     const box = element.getBoundingClientRect()
     // Inside the answers' own scroller, or else on the screen.
@@ -1496,7 +1507,7 @@ test('in the 1440x900 modal a long conversation scrolls inside the card, the doc
   await page.goto('./')
   await onScreen(page, 'sleep')
   await skipToSummary(page)
-  await page.waitForFunction(() => document.getAnimations().every((animation) => animation.playState !== 'running'))
+  await frameSettled(page)
   const geometry = await page.evaluate(() => {
     const frame = document.querySelector('.setup-frame')!.getBoundingClientRect()
     const scroller = document.querySelector<HTMLElement>('[data-testid=setup] section.screen:not([aria-hidden=true]) .setup-scroller')!
@@ -1521,7 +1532,7 @@ for (const size of [{ width: 820, height: 1180 }, { width: 1180, height: 820 }] 
     await live(page).locator('[data-value=work]').click()
     await onScreen(page, 'work')
     await live(page).locator('[data-preset=pick]').click()
-    await page.waitForFunction(() => document.getAnimations().every((animation) => animation.playState !== 'running'))
+    await frameSettled(page)
     const primary = live(page).getByTestId('setup-primary')
     await primary.focus()
     const geometry = await primary.evaluate((element) => {
