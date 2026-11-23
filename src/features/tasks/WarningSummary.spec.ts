@@ -45,6 +45,23 @@ const find = (selector: string) => mounted!.host.querySelector<HTMLElement>(sele
 const cards = () => [...mounted!.host.querySelectorAll<HTMLElement>('li.warning')]
 const text = (element: Element | null) => element?.textContent?.replace(/\s+/g, ' ').trim()
 
+// Calm by default (R_Tareas): one amber row with the count; its fixes open in place.
+it.each([
+  [1, '1 tarea no cabe a tiempo'],
+  [4, '4 tareas no caben a tiempo'],
+] as const)('says in one closed row that %i tasks do not fit, and opens their fixes there', async (count, expected) => {
+  mounted = await mountWithPlanner(TasksView, planner(count, 0), 'es')
+  const toggle = find('[data-testid=warnings-toggle]')!
+  expect(text(toggle)).toBe(expected)
+  expect(toggle.getAttribute('aria-expanded')).toBe('false')
+  expect(find('#task-warning-list')!.style.display).toBe('none')
+  toggle.click()
+  await nextTick()
+  expect(toggle.getAttribute('aria-expanded')).toBe('true')
+  expect(find('#task-warning-list')!.style.display).toBe('')
+  expect(cards()[0]!.querySelector('[data-testid=fix-edit]')).not.toBeNull()
+})
+
 it.each([
   [1, 'Y 1 más no cabe en los próximos 7 días.'],
   [2, 'Y 2 más no caben en los próximos 7 días.'],
@@ -99,4 +116,42 @@ it('A8: the first card\'s fix is worked out and works with no «Ver todas» when
   await nextTick()
   expect(mounted.store.document!.tasks[0]!.dueDate).toBe('2026-10-25')
   expect(find('[data-testid=warning-t0000]')).toBeNull()
+})
+
+// Review pass of #69: what the list says about a task that does not fit, inside and outside the warnings row.
+it('a task that does not fit says so in its own row, after its category and length', async () => {
+  mounted = await mountWithPlanner(TasksView, planner(1, 0), 'es')
+  // The row in the list, not the warning card (the card is in the closed warnings row).
+  const rows = [...mounted.host.querySelectorAll<HTMLElement>('li:not(.warning)')].filter((element) => text(element)?.includes('Tarea 0'))
+  expect(rows.map((row) => text(row)?.replace(/^Eliminar/, ''))).toEqual(['Tarea 0Familia · 15 min · No cabe esta semana'])
+  // Its line is drawn in the warning colour.
+  expect(rows[0]!.querySelector('.meta')!.classList.contains('is-attention')).toBe(true)
+})
+
+it('a warning card says how much does not fit, with its hint, only for a task that does not fit', async () => {
+  const late: Task = { id: 'late', title: 'Pagar luz', durationMin: 15, priority: 2, dueDate: '2026-10-24', createdAt: '2026-10-01T00:00:00.000Z' }
+  const doc = planner(1, 0)
+  mounted = await mountWithPlanner(TasksView, { ...doc, tasks: [...doc.tasks!, late] }, 'es')
+  find('[data-testid=warnings-toggle]')!.click()
+  await nextTick()
+  const card = (id: string) => find(`[data-testid=warning-${id}]`)!
+  expect(card('t0000').querySelector('[data-testid=overflow-text]')).not.toBeNull()
+  expect(card('t0000').querySelector('.warning-hint')).not.toBeNull()
+  expect(card('late').querySelector('[data-testid=late-text]')).not.toBeNull()
+  expect(card('late').querySelector('[data-testid=overflow-text]')).toBeNull()
+  expect(card('late').querySelector('.warning-hint')).toBeNull()
+})
+
+it('"Ver todas" shows past the first ten undated tasks only when there are more, and then shows them all', async () => {
+  // A task with no length is a to-do, listed under «Sin fecha».
+  const todos = (count: number) => ({ ...planner(0, count), tasks: planner(0, count).tasks!.map((task) => ({ ...task, durationMin: undefined })) })
+  mounted = await mountWithPlanner(TasksView, todos(10), 'es')
+  expect(find('[data-testid=show-all-undated]')).toBeNull()
+  mounted.unmount()
+  mounted = await mountWithPlanner(TasksView, todos(11), 'es')
+  expect(mounted.host.querySelectorAll('[data-testid=undated-task]')).toHaveLength(10)
+  find('[data-testid=show-all-undated]')!.click()
+  await nextTick()
+  expect(mounted.host.querySelectorAll('[data-testid=undated-task]')).toHaveLength(11)
+  expect(find('[data-testid=show-all-undated]')).toBeNull()
 })
