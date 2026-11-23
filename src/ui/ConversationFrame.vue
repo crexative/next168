@@ -179,6 +179,12 @@ onBeforeUnmount(() => {
     margin-inline: auto; width: min(35rem, 100vw - 32px); height: auto; max-height: var(--frame-room);
     border-radius: 24px; overflow: hidden;
     box-shadow: 0 0 0 100vmax var(--scrim), 0 16px 48px rgb(0 0 0 / 0.24);
+    /* A centred card touches no edge of the screen: no notch, home indicator or rounded corner reaches it, so what is
+       inside (its bar, columns and docks) keeps no safe area. */
+    --safe-top: 0px;
+    --safe-right: 0px;
+    --safe-bottom: 0px;
+    --safe-left: 0px;
   }
   /* No notch inside a centred card. */
   .bar { padding-top: 0; }

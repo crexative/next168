@@ -707,6 +707,13 @@ describe('the conversation', () => {
     expect(bar.getAttribute('aria-label')).toBe('Work 40 h, 128 h unassigned')
   })
 
+  it('where times overlap, the bar\'s spoken hours say that overlapping hours count once (review of #61)', async () => {
+    const STUDY = { id: 'c-study', name: 'Study', colorKey: 'orange' as const, icon: '📚', goal: { type: 'none' as const, hoursPerWeek: 0 } }
+    const overlapping = { id: 'b-study', categoryId: 'c-study', title: 'Study', days: [1] as PlannerDocument['blocks'][number]['days'], start: 600, end: 720 }
+    await openSummary({ categories: [WORK, STUDY], blocks: [WORK_BLOCK, overlapping] })
+    expect(live('[data-testid=summary-bar]')!.getAttribute('aria-label')).toBe('Work 40 h, Study 2 h, 128 h unassigned. Some times overlap. Overlapping hours count once.')
+  })
+
   it('"Go through the questions" is offered only for a week with times, and the trust line only in the browser', async () => {
     await openSummary({ categories: [WORK], blocks: [WORK_BLOCK] })
     expect(live('[data-testid=summary-review]')).toBeDefined()
@@ -907,8 +914,15 @@ describe('"¿A qué más…?" with several picks', () => {
     }
     for (let index = 1; index <= 20; index++) await add(`Thing ${index}`)
     expect(live('[data-testid=more-picked]')!.textContent).toBe('20 picked · one short question for each')
+    const chips = () => [...window.document.body.querySelectorAll('[data-testid=setup] [data-testid=more-chips] [data-chip]')].length
+    const before = chips()
     await add('One more')
     expect(live('[data-testid=more-refusal]')!.textContent).toBe('You have 20 picked; remove one to add another.')
+    // Refused, the name leaves no unpicked chip behind (review of #61).
+    expect(chips()).toBe(before)
+    // A name already picked keeps its own answer at the limit: it is on the list, not past the limit.
+    await add('Thing 3')
+    expect(live('[data-testid=more-refusal]')!.textContent).toBe("It's already on your list.")
   })
 
   it('a name typed in "Other" and not yet added goes in with the picks on Siguiente', async () => {

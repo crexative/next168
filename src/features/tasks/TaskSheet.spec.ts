@@ -203,14 +203,18 @@ describe('Nueva tarea and Editar tarea, in detail', () => {
     expect(dialog().querySelector('[data-testid=task-note-links]')!.textContent).toContain('https://example.com/agenda')
   })
 
-  it('Return while a word is being composed (an input method) does not save the edit', async () => {
+  it('Return while a word is being composed (an input method) does not save the edit, nor Safari\'s Return that ends it', async () => {
     const { store } = await open('t-1')
     await set(titleField(), 'Read two chapters')
-    const enter = new KeyboardEvent('keydown', { key: 'Enter', bubbles: true, cancelable: true, isComposing: true })
-    titleField().dispatchEvent(enter)
-    await store.settled()
-    await nextTick()
-    expect(enter.defaultPrevented).toBe(false)
+    const composing = new KeyboardEvent('keydown', { key: 'Enter', bubbles: true, cancelable: true, isComposing: true })
+    // Safari: the Return that confirms the word has isComposing false and keyCode 229.
+    const safari = new KeyboardEvent('keydown', { key: 'Enter', bubbles: true, cancelable: true, keyCode: 229 })
+    for (const enter of [composing, safari]) {
+      titleField().dispatchEvent(enter)
+      await store.settled()
+      await nextTick()
+      expect(enter.defaultPrevented).toBe(false)
+    }
     expect(store.document!.tasks[0]!.title).toBe('Read a chapter')
   })
 

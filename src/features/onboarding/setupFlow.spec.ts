@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { isKnownScreen, nextScreen, partOf, previousScreen, sequence } from './setupFlow'
-import { addOwnCategory, confirmPicks, emptyState, ensureCategory, finishMore, MAX_PICKS, moreOptions, setAnswer, togglePick, weekBar, type ScreenId, type SetupState, type Tri, type WorkStudy } from './setupModel'
+import { addOwnCategory, addTyped, confirmPicks, emptyState, ensureCategory, finishMore, MAX_PICKS, moreOptions, sameTypedName, setAnswer, setRemoved, togglePick, weekBar, type ScreenId, type SetupState, type Tri, type WorkStudy } from './setupModel'
 import { env } from './setupFixtures'
 
 const WORK_STUDY: WorkStudy[] = ['unanswered', 'work', 'study', 'both', 'neither']
@@ -152,5 +152,31 @@ describe('the summary bar (weekBar)', () => {
 
   it('without overlaps draws each category as it is', () => {
     expect(weekBar([{ key: 'sleep', minutes: 56 * 60 }], { covered: 56 * 60, summed: 56 * 60, overlapping: false })).toEqual({ shares: [{ key: 'sleep', minutes: 56 * 60 }], free: 112 * 60 })
+  })
+})
+
+// A typed name joins the setup's own category of that name, never a removed one nor one filed into a stored activity.
+describe('a typed name and the categories the setup already has', () => {
+  it('joins the category of the same name, whatever its case and spacing', () => {
+    const state = emptyState()
+    const guitar = addTyped(state, 'Guitar')
+    expect(sameTypedName(state, '  guitar ')).toBe(guitar)
+    expect(addTyped(state, 'GUITAR')).toBe(guitar)
+  })
+
+  it('does not join a removed category: the name makes a new one', () => {
+    const state = emptyState()
+    const guitar = addTyped(state, 'Guitar')
+    setRemoved(state, guitar.key, true)
+    expect(sameTypedName(state, 'Guitar')).toBeUndefined()
+    expect(addTyped(state, 'Guitar').key).not.toBe(guitar.key)
+  })
+
+  it('does not join a category filed into a stored activity', () => {
+    const state = emptyState()
+    const filed = addTyped(state, 'Guitar')
+    filed.into = 'stored-1'
+    expect(sameTypedName(state, 'Guitar')).toBeUndefined()
+    expect(addTyped(state, 'Guitar')).not.toBe(filed)
   })
 })

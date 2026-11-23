@@ -76,7 +76,8 @@ function onTitleInput(event: Event): void {
   if (/[\r\n]/.test(element.value)) draft.value = { ...draft.value, title: element.value.replace(/[\r\n]+/g, ' ') }
 }
 function submitOnReturn(event: KeyboardEvent): void {
-  if (event.isComposing) return
+  // Safari ends an input method's word with a Return that has isComposing false and keyCode 229, as SmartCapture knows.
+  if (event.isComposing || event.keyCode === 229) return
   event.preventDefault()
   ;(event.target as HTMLTextAreaElement).form?.requestSubmit()
 }

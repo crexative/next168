@@ -217,11 +217,6 @@ async function decide(approve: boolean) {
 .to:dir(rtl) { transform: scaleX(-1); }
 .change > * + * { margin-top: var(--space-2); }
 .change h3 { margin: 0; overflow-wrap: anywhere; hyphens: auto; }
-.diff { display: grid; gap: var(--space-2); grid-template-columns: minmax(0, 1fr); }
-.side { display: flex; flex-direction: column; gap: var(--space-1); padding: var(--space-2) var(--space-3); border-radius: var(--radius-control); background: var(--surface); }
-.side h4 { margin: 0; text-transform: uppercase; }
-/* What the change leaves behind carries a tint edge, so before and after read apart without colour alone (the heading names them). */
-.side.is-after { box-shadow: inset 3px 0 0 var(--tint); }
 dl.summary { display: grid; gap: 2px; margin: 0; }
 .summary dd { margin: 0 0 var(--space-1); overflow-wrap: anywhere; }
 .raw-toggle { display: inline-flex; align-items: center; min-height: var(--tap-target); padding: 0; border: 0; background: transparent; color: var(--tint-label); }
@@ -244,8 +239,5 @@ pre { margin: 0; font-size: 0.8125rem; white-space: pre-wrap; overflow-wrap: any
 .group-count { flex: none; }
 .chevron { flex: none; color: var(--label-3); }
 .chevron.is-open { transform: rotate(90deg); }
-@media (min-width: 480px) {
-  .diff { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-}
 @media (prefers-reduced-motion: reduce) { .group-toggle:active { opacity: 0.7; } }
 </style>

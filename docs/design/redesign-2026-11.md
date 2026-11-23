@@ -78,7 +78,24 @@ Anything else in a board that the app cannot do as drawn is raised with the coor
 
 Some layout rules are checked by reading a component's own styles (`ConversationFrame.modal.spec.ts`), because the App
 review's mutant runner has no browser; the e2e still measure the real layout. Rewriting or reformatting those styles
-means updating that spec with them.
+means updating that spec with them. It holds the modal's size and place, `--frame-room` (the frame's height, which the
+setup's and the routine conversation's docks take their share of), the docks' own sizing and the zero safe area inside
+the centred card.
+
+Covered only by e2e for now, because the review's runner cannot run Playwright: Hoy's WeekGlance and the TaskRow
+timeline variant (#67), and the purely visual changes of the setup's work screen (time chips as a three-column grid,
+answered turns as trailing bubbles, the lock on the trust line, the 32 px avatar, the day chips' padding; #60). The
+routine conversation's tablet e2e protects its outcome but does not tell the old dock rule apart (that dock may
+shrink); the rule is held by the style spec (#62).
+
+The routine conversation keeps an answer from one step out of the next in two ways: each step's check (`candidate`)
+takes only that step's own field, and `resetDraft()` puts the draft back to what is stored whenever a step is chosen
+or left. Either alone is enough, so its test ("never leaks into the next") cannot tell them apart; both stay, because
+`resetDraft()` also gives each step a fresh start (its goal, its open time list) (review of #62).
+
+`frameSettled` (wait for a conversation to finish rising in before measuring it) lives twice, in `today-checkin.spec.ts`
+and `setup-guided.spec.ts`: the merge guard does not count `e2e/support/` as test code, so a shared helper there would
+make a tests-only change a standard one. They become one helper once it does (#70).
 
 ## Open for a later slice
 
@@ -95,6 +112,18 @@ means updating that spec with them.
 - **Conversation modal width (slice 8).** The centred modal is 35rem wide, so it grows with the text size (about
   1120 px at 200 % on a 1440 px screen, never more than the screen less 32 px); its margins are pixels. Below 700 px
   of height (a small landscape tablet) the conversation stays full screen.
+
+## Performance margins
+
+- **First tap on Tareas' "+" (slice 4, #69).** Before the redesign "+" put focus in a capture field already on the page;
+  now it opens Nueva tarea, the R_HojaTarea sheet with the whole form. perf-tasks' first tap (pointer down to the
+  field taking focus, 4x CPU) went from 15-30 ms to 75-180 ms in a Linux container and 136-260 ms on CI, against a
+  budget of 300 ms. Deferring the sheet's planner fingerprint until after paint did not change it; the cost is the sheet
+  itself. A later slice that adds to that sheet should measure this first.
+- **Tareas populated on CI (#69).** Two CI runs of #69 measured Tareas usable later than main's four (200 tasks: 2712 and
+  3542 ms against 1739-2474; 1000: 6187 and 8306 against 3679-5318), which a Mac and a Linux container did not
+  reproduce (equal medians over six runs). A third CI run, rule fixed before it ran, gave 2027 / 4496 ms, inside main's
+  range, so it was taken as the runner's noise. The CI budget (3000 ms at 200 tasks) leaves main about 500 ms.
 
 ## Tokens and styles added ahead of their screens
 

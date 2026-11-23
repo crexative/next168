@@ -118,12 +118,14 @@ function categoryOf(task: Task): Category | undefined {
 }
 
 // Category, length, a fixed start that is not shown as a range, and the due date unless it is the day of the group the
-// row is in; "Sin tiempo" for a to-do with nothing else to say. A task that does not fit says so in its own meta.
+// row is in; "Sin tiempo" for a to-do with nothing else to say. A task with no place at all this week also says so in
+// its row (a partly placed one keeps its line, in the warning colour; the warnings row says what is missing).
+const unplacedIds = computed(() => new Set(plan.value?.unplaced.map((task) => task.id) ?? []))
 function describe(task: Task, withTime = false, groupDate?: string): string {
-  if (overflowing.value.has(task.id)) return joinInline([categoryOf(task)?.name ?? '', task.durationMin === undefined ? '' : formatDuration(task.durationMin), t('tasks.rowDoesNotFit')])
   const parts = [categoryOf(task)?.name ?? '', task.durationMin === undefined ? '' : formatDuration(task.durationMin)]
   if (withTime && task.at !== undefined) parts.push(formatMinuteOfDay(task.at, displayLocale.value))
   if (task.dueDate && task.dueDate !== groupDate) parts.push(unbreakable(t('tasks.due', { date: dueLabel(task.dueDate) })))
+  if (unplacedIds.value.has(task.id)) parts.push(t('tasks.rowDoesNotFit'))
   return joinInline(parts) || t('tasks.add.untimed')
 }
 
