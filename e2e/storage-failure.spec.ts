@@ -78,6 +78,8 @@ test('(b) the same failure saving the setup closes it too, keeping its draft clo
   const setup = page.getByTestId('setup')
   await expect(setup).toHaveAttribute('data-screen', 'summary')
   await setup.getByTestId('card-work').click()
+  // A row opens its edit conversation; "Editar todo" is the whole form.
+  await setup.getByTestId('talk-edit-all').click()
   await setup.locator('[data-category=work]').getByTestId('range-add').click()
   await page.evaluate(() => {
     IDBObjectStore.prototype.put = function () { throw new DOMException('quota', 'QuotaExceededError') }

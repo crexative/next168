@@ -87,6 +87,8 @@ make a tests-only change a standard one. They become one helper once it does (#7
 
 ## Open for a later slice
 
+- **Meta in the routine conversation (slice 6c).** R_EditarRutina asks the goal's hours with chips; the app keeps a
+  number field under "Al menos" and "Como máximo" for now.
 - **Setup's work screen (slice 6a).** R_InicioHorario opens the start times on arrival; the app does so only where the
   answers under them ("Añadir otro horario", "Sin horario fijo", "Siguiente") stay in view, so on a 390 x 844 phone
   and a 1440 x 900 desktop the card starts closed, one tap from its times. "Lo veo después" is not on the work screen:

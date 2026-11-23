@@ -1,4 +1,5 @@
 import { beforeAll, describe, expect, it } from 'vitest'
+import { categoryColor } from '@/features/insights/categoryColor'
 import { i18n } from '@/i18n'
 import {
   addOwnCategory, createAddState, emptyState, finishMore, pick, prepareScreen, setAnswer, togglePick, type ScreenId, type SetupState, type Tri, type WorkStudy,
@@ -226,5 +227,12 @@ describe('adding after setup: what the summary says (polish 1)', () => {
     const replies = roundReplies(state, 0, speaker)
     expect(replies.options.map((option) => option.label)).toEqual(['Trabajo', 'Estudio', 'Ejercicio', 'Familia', 'Amigos', 'Tiempo para ti', 'Aprender'])
     expect(replies.stored.map((option) => option.label)).toEqual(['Sueño'])
+  })
+
+  it('gives what the week already has its category colour, for its dot (R_NuevaRutina); new ideas have none', () => {
+    const document = documentWith([category('c-sleep', 'Sueño', { icon: '😴' })])
+    const replies = roundReplies(createAddState(document, 'routine', env), 0, speaker)
+    expect(replies.stored.map((option) => option.dot)).toEqual([categoryColor(document.categories[0]!)])
+    expect(replies.options.every((option) => !('dot' in option))).toBe(true)
   })
 })

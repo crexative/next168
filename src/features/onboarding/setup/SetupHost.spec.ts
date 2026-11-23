@@ -22,6 +22,7 @@ import SetupHost from './SetupHost.vue'
 import { registerIcons } from '@/ui/icons'
 import { ArrowRight } from 'lucide-vue-next'
 import { setHourCycle } from '@/ui/format'
+import { announcement } from '@/ui/announcer'
 
 // The guided setup's lifecycle on a real store and repository: what a draft is applied to, the single guarded commit,
 // what a refused commit shows, and what nothing may do while a save is pending.
@@ -725,6 +726,96 @@ describe('the conversation', () => {
     await vi.waitFor(() => expect(screen()).toBe('summary'))
     expect(live('[data-testid=summary-review]')).toBeUndefined()
     expect(live('[data-testid=setup-trust]')).toBeUndefined()
+  })
+
+  // #61 review (decision for #62): a summary row opens the same edit conversation as a routine in Week (R_EditarRutina).
+  it('a summary row asks what to change; Remove asks first, "Not now" goes back, and Remove confirmed removes it', async () => {
+    await openSummary({ categories: [WORK], blocks: [WORK_BLOCK] })
+    await click('[data-testid=card-work]')
+    const talk = () => live('[data-category=work] [data-testid=card-talk]')
+    expect(talk()!.textContent).toContain('What do you want to change about Work?')
+    expect(live('[data-category=work] [data-testid=card-name]')).toBeUndefined()
+    await click('[data-category=work] [data-testid=talk-remove]')
+    expect(talk()!.textContent).toContain('Remove Work from your week?')
+    await click('[data-category=work] [data-testid=talk-remove-no]')
+    expect(talk()!.textContent).toContain('What do you want to change about Work?')
+    await click('[data-category=work] [data-testid=talk-remove]')
+    await click('[data-category=work] [data-testid=talk-remove-yes]')
+    await vi.waitFor(() => expect(live('[data-removed=work]')).toBeDefined())
+  })
+
+  it('a row whose category has tasks offers no Remove', async () => {
+    const task = { id: 't-1', title: 'Report', categoryId: 'c-work', priority: 1 as const, createdAt: '2026-10-24T08:00:00.000Z' }
+    await openSummary({ categories: [WORK], blocks: [WORK_BLOCK], tasks: [task] })
+    await click('[data-testid=card-work]')
+    expect(live('[data-category=work] [data-testid=card-talk]')).toBeDefined()
+    expect(live('[data-category=work] [data-testid=talk-remove]')).toBeUndefined()
+  })
+
+  it('a save refused for a repeated name opens that row on its whole form, with the reason', async () => {
+    const STUDY = { id: 'c-study', name: 'Study', colorKey: 'orange' as const, icon: '📚', goal: { type: 'none' as const, hoursPerWeek: 0 } }
+    const studyBlock = { id: 'b-study', categoryId: 'c-study', title: 'Study', days: [6] as PlannerDocument['blocks'][number]['days'], start: 600, end: 720 }
+    await openSummary({ categories: [WORK, STUDY], blocks: [WORK_BLOCK, studyBlock] })
+    await click('[data-testid=card-learning]')
+    await click('[data-category=learning] [data-testid=talk-edit-all]')
+    const name = live('[data-category=learning] [data-testid=card-name]') as unknown as HTMLInputElement
+    name.value = 'Work'
+    name.dispatchEvent(new Event('input'))
+    await nextTick()
+    await click('[data-category=learning] [data-testid=card-done]')
+    await click('[data-testid=setup-primary]')
+    const open = () => live('.card.is-open')
+    await vi.waitFor(() => expect(open()?.querySelector('[data-testid=card-name]')).not.toBeNull())
+    expect(open()!.querySelector('[role=alert]')).not.toBeNull()
+    expect(open()!.querySelector('[data-testid=card-talk]')).toBeNull()
+    // Closed and opened again while the problem stands, it opens on its form again, not on the question.
+    await click('[data-category=learning] [data-testid=card-done]')
+    await click('[data-testid=card-learning]')
+    expect(live('[data-category=learning] [data-testid=card-name]')).toBeDefined()
+    expect(live('[data-category=learning] [data-testid=card-talk]')).toBeUndefined()
+  })
+
+  it('a row open on its question moves to its form when a save is refused for it', async () => {
+    const STUDY = { id: 'c-study', name: 'Study', colorKey: 'orange' as const, icon: '📚', goal: { type: 'none' as const, hoursPerWeek: 0 } }
+    const studyBlock = { id: 'b-study', categoryId: 'c-study', title: 'Study', days: [6] as PlannerDocument['blocks'][number]['days'], start: 600, end: 720 }
+    await openSummary({ categories: [WORK, STUDY], blocks: [WORK_BLOCK, studyBlock] })
+    await click('[data-testid=card-learning]')
+    await click('[data-category=learning] [data-testid=talk-edit-all]')
+    const name = live('[data-category=learning] [data-testid=card-name]') as unknown as HTMLInputElement
+    name.value = 'Work'
+    name.dispatchEvent(new Event('input'))
+    await nextTick()
+    await click('[data-category=learning] [data-testid=card-done]')
+    // Opened again before saving: no problem yet, so it asks what to change.
+    await click('[data-testid=card-learning]')
+    expect(live('[data-category=learning] [data-testid=card-talk]')).toBeDefined()
+    await click('[data-testid=setup-primary]')
+    await vi.waitFor(() => expect(live('[data-category=learning] [data-testid=card-name]')).toBeDefined())
+    expect(live('[data-category=learning] [data-testid=card-talk]')).toBeUndefined()
+  })
+
+  it('a save refused for a crossing time says with whom and when, not only that times overlap', async () => {
+    const STUDY = { id: 'c-study', name: 'Study', colorKey: 'orange' as const, icon: '📚', goal: { type: 'none' as const, hoursPerWeek: 0 } }
+    const saturday = { id: 'b-study', categoryId: 'c-study', title: 'Study', days: [6] as PlannerDocument['blocks'][number]['days'], start: 600, end: 720 }
+    await openSummary({ categories: [WORK, STUDY], blocks: [WORK_BLOCK, saturday] })
+    await click('[data-testid=card-learning]')
+    await click('[data-category=learning] [data-testid=talk-time]')
+    // Study moves to the weekdays, 10:00-12:00: it crosses Work.
+    await click('[data-category=learning] [data-preset=weekdays]')
+    await click('[data-category=learning] [data-testid=card-done]')
+    await click('[data-testid=setup-primary]')
+    await vi.waitFor(() => expect(announcement.value).toMatch(/^Clashes with Work: .+\.$/), { timeout: 2000 })
+  })
+
+  it('adding a routine closes with ✕; the setup itself goes back with ‹', async () => {
+    await mount(firstRun())
+    expect(setup()!.closest('[role=dialog]')!.querySelector('.setup-close svg')!.getAttribute('class')).toContain('lucide-chevron-left')
+    app!.unmount()
+    window.document.body.innerHTML = ''
+    await mount(firstRun({ settings: { ...testDocument().settings, onboardingDone: true }, categories: [WORK], blocks: [WORK_BLOCK] }))
+    openAdd('routine')
+    await waitForSetup()
+    expect(setup()!.closest('[role=dialog]')!.querySelector('.setup-close svg')!.getAttribute('class')).toContain('lucide-x')
   })
 
   it('Send is the validation: grey with its reason while there is nothing to send, in colour once there is', async () => {

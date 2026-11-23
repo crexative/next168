@@ -256,10 +256,10 @@ const labels = computed(() => ({
           <ChoiceChips v-if="multi" :chips="multiChips" :selected="picksOf(state)" :group-label="groupLabel" data-testid="more-chips" @toggle="toggleMore" />
           <!-- Owner decision (R_InicioMas): the picks so far and what they bring, "2 elegidas · una pregunta corta por cada una". -->
           <p v-if="multi && picksOf(state).length > 0" class="picked t-footnote" role="status" data-testid="more-picked">{{ t('onboarding.guided.more.picked', { count: picksOf(state).length }, picksOf(state).length) }}</p>
-          <QuickReplies v-if="replies && replies.options.length > 0" :options="replies.options" :current="replies.current" :current-label="t('onboarding.guided.current')" @answer="choose" />
+          <QuickReplies v-if="replies && replies.options.length > 0" :options="replies.options" :current="replies.current" :current-label="t('onboarding.guided.current')" :pills="!!state.add" @answer="choose" />
           <div v-if="replies && replies.stored.length > 0" class="stored" role="group" :aria-labelledby="storedId" data-testid="add-stored">
             <p :id="storedId" class="stored-label t-footnote">{{ t('onboarding.guided.add.yours') }}</p>
-            <QuickReplies :options="replies.stored" :current="replies.current" :current-label="t('onboarding.guided.current')" @answer="choose" />
+            <QuickReplies :options="replies.stored" :current="replies.current" :current-label="t('onboarding.guided.current')" pills @answer="choose" />
           </div>
           <div class="round-more">
             <button v-if="!otherOpen" class="other t-body" type="button" data-testid="more-other" :disabled="busy" @click="openOther">{{ t('onboarding.guided.more.other') }}</button>

@@ -25,6 +25,8 @@ import SetupConversation from './SetupConversation.vue'
 import ConversationFrame from '@/ui/ConversationFrame.vue'
 import { keepInView } from '@/ui/keepInView'
 import { afterViewportPin } from '@/ui/visualViewportPin'
+import { withoutDoubledPeriod } from '@/ui/sentence'
+import { useSetupFormat } from './useSetupFormat'
 
 // The guided setup's lifecycle: when it opens, what it is bound to, the draft that survives a reload, the single guarded
 // commit at the end, and what happens when storage is no longer what the flow opened on. Closing never writes.
@@ -41,6 +43,7 @@ interface Baseline {
 type Phase = 'closed' | 'screen' | 'conflict'
 
 const { t } = useI18n()
+const { slotLine } = useSetupFormat()
 const planner = usePlannerStore()
 const undoToast = useUndoToast()
 const env: SetupEnv = { topicName: (topic) => t(`onboarding.templates.${TOPICS[topic].nameKey}`) }
@@ -387,7 +390,16 @@ function focusFirstIssue(list: Issue[]): void {
   const first = list[0]
   if (!first || !flow.value) return
   expanded.value = first.categoryKey
-  announce(['nameRequired', 'nameDuplicate', 'destinationGone'].includes(first.code) ? t(`onboarding.guided.errors.${first.code}`) : t('onboarding.guided.errors.overlap', { name: '', when: '' }))
+  announce(issueText(first))
+}
+
+// What a refused save says first: the issue's own sentence, with whom and when for a crossing time ("Se cruza con
+// Sueño: todas las noches · 23:00–7:00."), never an empty "Se cruza con : .".
+function issueText(issue: Issue): string {
+  if (issue.code !== 'overlap') return t(`onboarding.guided.errors.${issue.code}`)
+  if (!issue.with) return t('onboarding.summary.overlapping')
+  const other = flow.value?.categories.find((category) => category.key === issue.with!.categoryKey)
+  return withoutDoubledPeriod(t('onboarding.guided.errors.overlap', { name: issue.with.name ?? other?.name ?? '', when: slotLine(issue.with.slot) }))
 }
 
 // Storage is no longer what the flow opened on. Nothing is written: the draft is dropped, the planner is reloaded, and
@@ -445,7 +457,7 @@ onBeforeUnmount(stopKeepingInView)
 
 <template>
   <ConversationFrame
-    :open="open" :title="t(adding ? 'onboarding.guided.add.title' : 'onboarding.guided.sheetTitle')" :close-label="t('onboarding.guided.close')"
+    :open="open" :title="t(adding ? 'onboarding.guided.add.title' : 'onboarding.guided.sheetTitle')" :close-label="t('onboarding.guided.close')" :leading="adding ? 'close' : undefined"
     :progress-label="t('onboarding.guided.progress', { step: part, total: TOTAL_PARTS })"
     :count-label="t('onboarding.guided.progress', { step: part, total: TOTAL_PARTS })" :part="part" :total="adding ? 0 : TOTAL_PARTS" :locked="locked" :dirty="dirty"
     @close="closeFlow"

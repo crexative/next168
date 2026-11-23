@@ -2,7 +2,9 @@
 // Quick replies (redesign 2026-11, DIRECTION §6): the likely answers to one question, ready to tap. One tap answers;
 // nothing here runs on a timer, and Tab only moves focus. The current answer is marked in the soft tint and named
 // for screen readers. `columns` lays them out in a grid (2 on a phone, 3 for Hecho · A medias · No, 5 for a scale).
-export interface QuickReply { value: string; label: string; destructive?: boolean; testId?: string }
+import Icon from './Icon.vue'
+
+export interface QuickReply { value: string; label: string; destructive?: boolean; testId?: string; icon?: string }
 
 withDefaults(defineProps<{
   options: QuickReply[]
@@ -32,7 +34,7 @@ defineEmits<{ answer: [value: string] }>()
       :aria-label="option.value === current && currentLabel ? `${option.label} ${currentLabel}` : undefined"
       @click="$emit('answer', option.value)"
     >
-      {{ option.label }}
+      <Icon v-if="option.icon" class="reply-icon" :name="option.icon" :size="18" />{{ option.label }}
     </button>
   </div>
 </template>
@@ -65,6 +67,7 @@ defineEmits<{ answer: [value: string] }>()
 .quick-reply:disabled { opacity: 0.4; cursor: not-allowed; }
 .quick-reply.is-current { border-color: var(--tint); background: var(--tint-soft); color: var(--tint-label); }
 .quick-reply.is-destructive { color: var(--danger-label); }
+.reply-icon { flex: none; margin-inline-end: var(--space-2); vertical-align: -3px; }
 @media (prefers-reduced-motion: reduce) { .quick-reply:active { transform: none; opacity: 0.7; } }
 @media (forced-colors: active) { .quick-reply { border-color: ButtonText; } }
 </style>
