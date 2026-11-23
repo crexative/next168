@@ -11,7 +11,7 @@ import { replaceContent } from '@/features/settings/data/dataTransfer'
 import { createTestRepositories, MemoryStore, mutexRunner, testDocument } from '@/repositories/testSupport'
 import { configurePlannerStore, usePlannerStore, type PlannerRepositoryWithExtras } from '@/stores/plannerStore'
 import { Workspace } from '../../../companion/src/workspace'
-import { addCapturedTasks, bindToPlanner, captureAttempt, reconcileCapture, undoCapture } from './personActions'
+import { addCapturedTasks, bindingCurrent, bindToPlanner, captureAttempt, reconcileCapture, undoCapture } from './personActions'
 
 const work = { id: 'work', name: 'Trabajo', colorKey: 'blue' as const, goal: { type: 'none' as const, hoursPerWeek: 0 } }
 const existing = { id: 't-existing', title: 'Existing', priority: 2 as const, createdAt: '2026-10-20T08:00:00.000Z' }
@@ -312,3 +312,15 @@ for (const mode of ['browser', 'companion'] as const) {
     })
   })
 }
+
+// Nueva tarea checks the planner on screen before it saves: with no planner on screen there is nothing to save into.
+it('a binding is not current while no planner is on screen', async () => {
+  setActivePinia(createPinia())
+  configurePlannerStore({ repository: createTestRepositories().planner, now: () => new Date('2026-10-26T13:00:00Z'), newId: () => 'id', locale: () => 'en', timeZone: () => 'UTC' })
+  const store = usePlannerStore()
+  await store.load()
+  const binding = (await bindToPlanner())!
+  expect(await bindingCurrent(binding)).toBe(true)
+  store.document = null
+  expect(await bindingCurrent(binding)).toBe(false)
+})

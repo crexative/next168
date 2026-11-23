@@ -1,5 +1,4 @@
 {
-  "placeholder": "Ajouter une tâche… (ou en coller ou dicter plusieurs)",
   "dictationHint": "Écris, colle ou dicte avec le micro du clavier.",
   "field": {
     "date": "Date",

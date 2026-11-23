@@ -161,6 +161,27 @@ describe('P1-10: a multi-line paste', () => {
     expect(tasks()).toEqual([])
   })
 
+  // Nueva tarea's header "Añadir" submits the capture's form (form=): with a pasted list it adds every checked line.
+  it('submitting the form with a pasted list adds all its lines, as the sheet\'s header Añadir does', async () => {
+    await mount()
+    await type(FIVE)
+    host().querySelector<HTMLFormElement>('form.add')!.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }))
+    await settle()
+    expect(tasks().map((task) => task.title)).toEqual(['Llamar a mamá mañana', 'Pagar luz el 5', '- comprar pan', 'no olvidar la reunión de las 9am', 'Revisar «el lunes» de Cortázar'])
+  })
+
+  it('a row title being edited grows with its lines, as the box does', async () => {
+    await mount()
+    await type(FIVE)
+    const scrollHeight = vi.spyOn(HTMLTextAreaElement.prototype, 'scrollHeight', 'get').mockReturnValue(64)
+    const title = byTestId<HTMLTextAreaElement>('capture-row-title')[0]!
+    title.value = 'Llamar a mamá mañana y preguntar por la cita del médico'
+    title.dispatchEvent(new Event('input'))
+    await nextTick()
+    expect(title.style.height).toBe('64px')
+    scrollHeight.mockRestore()
+  })
+
   it('«Dejar como una tarea» joins the lines with «; » into the one-line box', async () => {
     await mount()
     await type('Comprar pan\r\nLeche')

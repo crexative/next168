@@ -12,11 +12,14 @@ import { anyFullScreenOpen, closedSheet, closingSheet, droppedSheet, openSheet, 
 // A phone sheet ends with a dismiss button within the thumb's reach (`dismissLabel`, default "Cancel");
 // `noDismiss` leaves it out for a sheet whose own actions already include one. A `footer` slot replaces it with the
 // sheet's own actions, pinned below the scrolling body at every width.
+// An `action` slot gives the sheet an iOS form header instead: "Cancel" leading, the title centred, the sheet's own
+// action (Add, Save) trailing, above the keyboard; no ✕ and no dismiss button at the foot. `grouped`: the panel is the
+// grouped background, for forms drawn as white groups on it.
 // `fullHeight`: a tall panel whose body is the only scroller (a guided flow). `largeTargets`: 48 px controls for the whole
 // panel. `closeLabel`: what the ✕ is named. `locked`: nothing closes it (a save is pending).
 const props = defineProps<{
   open: boolean; title: string; dirty?: boolean; dismissLabel?: string; noDismiss?: boolean
-  fullHeight?: boolean; largeTargets?: boolean; closeLabel?: string; locked?: boolean
+  fullHeight?: boolean; largeTargets?: boolean; closeLabel?: string; locked?: boolean; grouped?: boolean
 }>()
 const emit = defineEmits<{ 'update:open': [open: boolean] }>()
 
@@ -226,8 +229,9 @@ watch(() => props.open && (rendered.value || !anyFullScreenOpen()), async (open)
     rendered.value = true
     await animateIn(interrupted ? offset : undefined)
     if (disposed) return
-    // The title, not the first control: opening a sheet must not light up a focus ring on its close button.
-    ;(heading.value ?? panel.value)?.focus({ preventScroll: true })
+    // The title, not the first control: opening a sheet must not light up a focus ring on its close button. A form that
+    // starts with typing (Nueva tarea) marks its field `data-autofocus`, which takes focus instead.
+    ;(panel.value?.querySelector<HTMLElement>('[data-autofocus]') ?? heading.value ?? panel.value)?.focus({ preventScroll: true })
   } else if (rendered.value) {
     endPress()
     dragStart = undefined
@@ -270,7 +274,7 @@ onBeforeUnmount(() => {
       <div
         ref="panel"
         class="sheet-panel"
-        :class="{ 'is-full': fullHeight, 'is-large': largeTargets }"
+        :class="{ 'is-full': fullHeight, 'is-large': largeTargets, 'is-grouped': grouped }"
         :aria-busy="locked || undefined"
         role="dialog"
         aria-modal="true"
@@ -287,7 +291,12 @@ onBeforeUnmount(() => {
           @lostpointercapture="onLostCapture"
         >
           <span class="sheet-handle" :title="t('common.dragHandle')" aria-hidden="true" />
-          <div class="sheet-header">
+          <div v-if="$slots.action" class="sheet-header is-form" data-testid="sheet-form-header">
+            <button class="sheet-cancel t-body" type="button" :disabled="locked" data-testid="sheet-cancel" @click="requestClose">{{ dismissLabel ?? t('common.cancel') }}</button>
+            <h2 :id="titleId" ref="heading" class="sheet-title t-headline" tabindex="-1">{{ title }}</h2>
+            <span class="sheet-action"><slot name="action" /></span>
+          </div>
+          <div v-else class="sheet-header">
             <h2 :id="titleId" ref="heading" class="sheet-title t-headline" tabindex="-1">{{ title }}</h2>
             <button class="sheet-close" type="button" :aria-label="closeLabel ?? t('common.close')" :disabled="locked" @click="requestClose">
               <Icon name="x" :size="20" />
@@ -297,7 +306,7 @@ onBeforeUnmount(() => {
         <div class="sheet-body"><slot /></div>
         <!-- A sheet's own decision (Approve and Cancel) stays in reach at every width while the body scrolls. -->
         <div v-if="$slots.footer" class="sheet-footer is-actions" data-testid="sheet-actions"><slot name="footer" /></div>
-        <div v-else-if="!isCentered && !noDismiss" class="sheet-footer">
+        <div v-else-if="!isCentered && !noDismiss && !$slots.action" class="sheet-footer">
           <button class="sheet-dismiss t-body" type="button" @click="requestClose">{{ dismissLabel ?? t('common.cancel') }}</button>
         </div>
       </div>
@@ -328,6 +337,44 @@ onBeforeUnmount(() => {
 .sheet-panel.is-large { --tap-target: 48px; }
 .sheet-panel.is-full { height: calc(min(var(--vv-height, 100dvh), 100dvh) - var(--safe-top) - var(--space-6)); }
 .sheet-close:disabled { opacity: 0.4; }
+.sheet-panel.is-grouped { background: var(--bg-grouped-raised); }
+/* Cancel · title · action: the outer columns share the width so the title stays centred whatever the words. When the
+   three do not fit on one line (a narrow screen, large text), the title takes a line of its own under Cancel and the
+   action, which stay in reach. The query is in em, so it follows the text size. */
+.sheet-grab { container: sheet-head / inline-size; }
+.sheet-header.is-form {
+  /* The sides never get narrower than their words ("Hinzufügen" in a wide font); the title wraps between them. */
+  display: grid; grid-template-areas: 'cancel title action'; grid-template-columns: minmax(max-content, 1fr) minmax(0, max-content) minmax(max-content, 1fr);
+  gap: 0 var(--space-2); padding: 0 var(--space-2);
+}
+.sheet-header.is-form .sheet-title { grid-area: title; min-width: 0; text-align: center; overflow-wrap: break-word; }
+.sheet-cancel { grid-area: cancel; }
+.sheet-action { grid-area: action; }
+@container sheet-head (max-width: 22em) {
+  /* Cancel and the action share a line while they fit (the action wraps under Cancel, at the end, when they do not);
+     the title takes the line under them. */
+  .sheet-header.is-form { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; }
+  .sheet-cancel { order: 1; }
+  .sheet-action { order: 2; margin-inline-start: auto; }
+  .sheet-header.is-form .sheet-title { order: 3; flex: 1 0 100%; padding-block-end: var(--space-1); }
+}
+.sheet-cancel { justify-self: start; min-width: var(--tap-target); min-height: var(--tap-target); padding: 0 var(--space-2); border: 0; background: transparent; color: var(--label-2); text-align: start; }
+.sheet-cancel:disabled { opacity: 0.4; }
+.sheet-action { display: flex; justify-content: flex-end; min-width: 0; }
+.sheet-cancel:focus-visible { outline-offset: -2px; }
+.sheet-action :slotted(button) {
+  min-width: var(--tap-target);
+  min-height: var(--tap-target);
+  padding: 0 var(--space-2);
+  border: 0;
+  background: transparent;
+  color: var(--tint-label);
+  font-size: 1.0625rem;
+  font-weight: 600;
+  text-align: end;
+}
+.sheet-action :slotted(button:disabled) { color: var(--label-3); }
+.sheet-action :slotted(button:focus-visible) { outline-offset: -2px; }
 .sheet-grab { touch-action: none; padding-top: var(--space-2); cursor: grab; }
 .sheet-title:focus { outline: none; }
 .sheet-handle { display: block; width: 36px; height: 5px; margin: 0 auto var(--space-1); border-radius: 3px; background: var(--label-3); }

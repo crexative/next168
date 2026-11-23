@@ -1,18 +1,23 @@
 <script setup lang="ts">
-import { computed, ref, useId, watch } from 'vue'
+import { computed, nextTick, ref, useId, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import type { Task } from '@/core/model'
 import { assertEntry, CHANGED_ELSEWHERE, snapshotOf } from '@/features/insights/entryGuard'
 import { usePlannerStore } from '@/stores/plannerStore'
 import Button from '@/ui/Button.vue'
+import { fitToContent } from '@/ui/fitToContent'
 import Sheet from '@/ui/Sheet.vue'
 import { readLastTaskCategory, rememberTaskCategory } from './lastCategory'
 import { useTaskActions } from './taskActions'
 import { draftFromTask, draftProblem, newDraft, plannerToday, taskFields, type TaskDraft } from './taskDraft'
+import SmartCapture from './SmartCapture.vue'
 import TaskOptions from './TaskOptions.vue'
 
-// One sheet to add a task ("+" in Week) and to edit one (a tap on its row or on the grid). Delete is a plain text
-// action at the foot, with the same undo toast as a swipe.
+// One sheet to add a task ("+" › Tarea, "+" on Tareas) and to edit one (a tap on its row or on the grid), drawn as
+// R_HojaTarea: "Cancelar", the title and the sheet's action ("Añadir", "Guardar") in the header, above the keyboard.
+// A new task is the capture (SmartCapture): it reads dates, times and lengths typed in its title, and a paste or
+// dictation of several lines adds one task per line. Delete is a plain text action at the foot of an edit, with the
+// same undo toast as a swipe.
 // `dueToday` starts a new task with "Hoy" on: the "+" pressed on Hoy adds for today, as its old inline row did.
 const props = defineProps<{ open: boolean; taskId?: string; dueToday?: boolean }>()
 const emit = defineEmits<{ 'update:open': [open: boolean] }>()
@@ -21,6 +26,8 @@ const { t } = useI18n()
 const planner = usePlannerStore()
 const actions = useTaskActions()
 const fieldId = useId()
+const formId = useId()
+const capture = ref<InstanceType<typeof SmartCapture> | null>(null)
 
 const draft = ref<TaskDraft>(newDraft())
 const initial = ref('')
@@ -37,7 +44,7 @@ let bound: { workspaceId: string; task: string | undefined; category: string | u
 const stored = computed(() => planner.document?.tasks.find((candidate) => candidate.id === props.taskId))
 const isEditing = computed(() => props.taskId !== undefined)
 const categories = computed(() => planner.document?.categories ?? [])
-const dirty = computed(() => JSON.stringify(draft.value) !== initial.value)
+const dirty = computed(() => (isEditing.value ? JSON.stringify(draft.value) !== initial.value : !!capture.value?.dirty))
 const canSave = computed(() => planner.writable && draft.value.title.trim().length > 0 && !saving.value && !draftProblem(draft.value))
 
 function categorySnapshot(categoryId: string): string | undefined {
@@ -59,6 +66,20 @@ watch(() => props.open, (open) => {
   generation.value += 1
   bound = { workspaceId: document.workspaceId, task: snapshotOf(stored.value), category: categorySnapshot(draft.value.categoryId) }
 }, { immediate: true })
+
+// The title wraps instead of being cut (a long title on a phone): its field is as tall as its lines. It is one line
+// of text, so Return saves, as in the input it replaces, and a pasted line break becomes a space.
+const titleField = ref<HTMLTextAreaElement | null>(null)
+watch([() => draft.value.title, () => props.open], () => void nextTick(() => fitToContent(titleField.value)), { immediate: true })
+function onTitleInput(event: Event): void {
+  const element = event.target as HTMLTextAreaElement
+  if (/[\r\n]/.test(element.value)) draft.value = { ...draft.value, title: element.value.replace(/[\r\n]+/g, ' ') }
+}
+function submitOnReturn(event: KeyboardEvent): void {
+  if (event.isComposing) return
+  event.preventDefault()
+  ;(event.target as HTMLTextAreaElement).form?.requestSubmit()
+}
 
 // The category the form files the task under is part of what it was loaded from: the snapshot follows the choice
 // shown, so picking another category is fine while a category replaced under the form is refused at save.
@@ -118,18 +139,20 @@ async function remove(): Promise<void> {
 </script>
 
 <template>
-  <Sheet :open="open" :title="t(isEditing ? 'tasks.sheet.edit' : 'tasks.sheet.new')" :dirty="dirty" no-dismiss @update:open="emit('update:open', $event)">
-    <form class="task-form" novalidate :aria-label="t(isEditing ? 'tasks.sheet.edit' : 'tasks.sheet.new')" @submit.prevent="save">
+  <Sheet :open="open" :title="t(isEditing ? 'tasks.sheet.edit' : 'tasks.sheet.new')" :dirty="dirty" grouped @update:open="emit('update:open', $event)">
+    <template #action>
+      <button v-if="isEditing" type="submit" :form="formId" :disabled="!canSave" data-testid="task-save">{{ t('common.save') }}</button>
+      <button v-else type="submit" :form="formId" :disabled="!capture?.canSubmit" data-testid="task-add">{{ t('tasks.sheet.add') }}</button>
+    </template>
+    <SmartCapture v-if="!isEditing" ref="capture" :form-id="formId" :due-today="dueToday" :label="t('tasks.sheet.new')" @added="emit('update:open', false)" />
+    <form v-else :id="formId" class="task-form" novalidate :aria-label="t('tasks.sheet.edit')" @submit.prevent="save">
       <label class="field" :for="`${fieldId}-title`">
-        <span class="t-footnote t-secondary">{{ t('tasks.add.titleLabel') }}</span>
-        <input :id="`${fieldId}-title`" v-model="draft.title" class="input" type="text" maxlength="120" autocomplete="off" :placeholder="t('tasks.add.titlePlaceholder')" data-testid="task-title">
+        <span class="visually-hidden">{{ t('tasks.add.titleLabel') }}</span>
+        <textarea :id="`${fieldId}-title`" ref="titleField" v-model="draft.title" class="input title" rows="1" maxlength="120" autocomplete="off" enterkeyhint="done" :placeholder="t('tasks.add.titleLabel')" data-testid="task-title" @input="onTitleInput" @keydown.enter="submitOnReturn" />
       </label>
       <TaskOptions :key="generation" :draft="draft" :categories="categories" :time-zone="timeZone" :suggested-category-id="suggestedCategoryId" @patch="draft = { ...draft, ...$event }" />
       <p v-if="changedElsewhere" class="t-subhead" role="alert">{{ t('tasks.changedElsewhere') }}</p>
-      <div class="actions">
-        <Button type="submit" block :disabled="!canSave">{{ t(isEditing ? 'common.save' : 'tasks.add.submit') }}</Button>
-        <Button v-if="isEditing" variant="plain" destructive block :disabled="saving" data-testid="task-delete" @click="remove">{{ t('tasks.sheet.delete') }}</Button>
-      </div>
+      <Button variant="plain" destructive block :disabled="saving" data-testid="task-delete" @click="remove">{{ t('tasks.sheet.delete') }}</Button>
     </form>
   </Sheet>
 </template>
@@ -137,5 +160,10 @@ async function remove(): Promise<void> {
 <style scoped>
 .task-form { display: flex; flex-direction: column; gap: var(--space-4); }
 .field { display: flex; flex-direction: column; gap: var(--space-1); min-width: 0; }
-.actions { display: flex; flex-direction: column; gap: var(--space-2); }
+.title {
+  min-height: var(--tap-target); max-height: 12em;
+  padding-inline: var(--card-padding); padding-block: calc((var(--tap-target) - 1.35em) / 2);
+  border-color: transparent; border-radius: var(--radius-card); background: var(--surface-grouped-raised);
+  font-size: 1.375rem; font-weight: 600; line-height: 1.35; resize: none; overflow-wrap: anywhere;
+}
 </style>

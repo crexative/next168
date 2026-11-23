@@ -4,6 +4,7 @@ import { V2_KEY, seedKey } from './fixtures'
 import { storedPlanner, storedRecord } from './support/indexedDb'
 import { visualIntegrityViolations } from './support/visualIntegrity'
 import { SYNTHETIC_RANGE_COUNT, syntheticWeekReply } from '../src/features/assistant/anyAi/syntheticWeek'
+import { openNewTask } from './support/newTask'
 
 // "Usar con tu IA" (#3): copy a prompt, paste the AI's whole reply, review and approve. Spanish, 390x844 and
 // 1440x900, both themes. The browser never talks to an AI: the clipboard is stubbed and replies are typed in.
@@ -195,8 +196,9 @@ for (const theme of THEMES) {
         // The plan changes after the copy: a task is added.
         await page.goto('./#/tasks')
         await expect(page.getByRole('heading', { level: 1, name: 'Tareas' })).toBeVisible()
-        await page.getByTestId('capture-field').fill('Llamar al banco')
-        await page.getByTestId('capture-field').press('Enter')
+        const { field } = await openNewTask(page)
+        await field.fill('Llamar al banco')
+        await field.press('Enter')
         await expect.poll(async () => (await storedPlanner<{ revision: number }>(page)).revision).toBe(2)
 
         await openFromAssistant(page)
@@ -312,8 +314,9 @@ for (const size of Object.keys(SIZES) as (keyof typeof SIZES)[]) {
       const other = await context.newPage()
       await other.goto('./#/tasks')
       await expect(other.getByRole('heading', { level: 1, name: 'Tareas' })).toBeVisible()
-      await other.getByTestId('capture-field').fill('Llamar al banco')
-      await other.getByTestId('capture-field').press('Enter')
+      const { field } = await openNewTask(other)
+      await field.fill('Llamar al banco')
+      await field.press('Enter')
       await expect.poll(async () => (await storedPlanner<{ revision: number }>(other)).revision).toBe(binding.revision + 1)
 
       await page.getByTestId('review-approve').click()

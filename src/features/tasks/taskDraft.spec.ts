@@ -71,11 +71,12 @@ describe('turning a draft into a task and back', () => {
 
   it('opens "More options" only when something beyond the defaults is already set', () => {
     expect(hasExtraOptions(newDraft())).toBe(false)
-    expect(hasExtraOptions(newDraft('work'))).toBe(true)
+    // The category and the length are always on screen ("Durante", the length chips with "Otra").
+    expect(hasExtraOptions(newDraft('work'))).toBe(false)
     expect(hasExtraOptions({ ...newDraft(), dueDate: '2026-10-30' })).toBe(true)
     expect(hasExtraOptions({ ...newDraft(), priority: '1' })).toBe(true)
     expect(hasExtraOptions({ ...newDraft(), durationMin: 60 })).toBe(false)
-    expect(hasExtraOptions({ ...newDraft(), durationMin: 45 })).toBe(true)
+    expect(hasExtraOptions({ ...newDraft(), durationMin: 45 })).toBe(false)
     expect(hasExtraOptions({ ...newDraft(), at: '09:00' })).toBe(true)
     expect(hasExtraOptions({ ...newDraft(), notes: 'x' })).toBe(true)
   })

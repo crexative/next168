@@ -4,6 +4,7 @@ import { auditFloatingActionButtonInPage } from './support/fabPlacement'
 import { visualIntegrityViolations } from './support/visualIntegrity'
 import { itemsMissingTitles, openClassicRoutine, seededTitles } from './support/week'
 import { syntheticWeekReply } from '../src/features/assistant/anyAi/syntheticWeek'
+import { openNewTask } from './support/newTask'
 
 // Every tab and every sheet, at the three project widths (1440 / 768 / 375 px) and in both themes:
 // no control, focus ring or text is clipped, select chevrons sit inside their padding and controls in a
@@ -128,7 +129,9 @@ async function auditSheet(page: Page, state: string): Promise<void> {
   const hugging = await page.evaluate(() => {
     if (window.innerWidth >= 480) return []
     const dialogs = document.querySelectorAll('[role="dialog"]')
-    const buttons = Array.from(dialogs[dialogs.length - 1]?.querySelectorAll<HTMLElement>('button[type="submit"]') ?? []).filter((button) => button.getClientRects().length > 0)
+    // A form header's action ("Añadir", "Guardar" above the keyboard, R_HojaTarea) is a text button by design.
+    const buttons = Array.from(dialogs[dialogs.length - 1]?.querySelectorAll<HTMLElement>('button[type="submit"]') ?? [])
+      .filter((button) => button.getClientRects().length > 0 && !button.closest('[data-testid=sheet-form-header]'))
     return buttons.flatMap((button) => {
       const form = button.parentElement!
       const style = getComputedStyle(form)
@@ -276,12 +279,14 @@ for (const theme of THEMES) {
           await page.getByTestId('add-entry').click()
           await page.getByTestId('add-task').click()
           const sheet = page.getByRole('dialog')
-          await expect(sheet.getByTestId('task-title')).toBeVisible()
+          await expect(sheet.getByTestId('capture-field')).toBeVisible()
           await widenInputFonts(page)
           await auditSheet(page, `${theme}/${locale}/${width}/wider fonts/new task`)
-          await sheet.getByTestId('task-more').click()
+          await sheet.getByTestId('task-when-toggle').click()
           await expect(sheet.getByTestId('task-when')).toBeVisible()
-          await auditSheet(page, `${theme}/${locale}/${width}/wider fonts/new task with more options`)
+          await sheet.getByTestId('task-more').click()
+          await expect(sheet.getByTestId('task-due')).toBeVisible()
+          await auditSheet(page, `${theme}/${locale}/${width}/wider fonts/new task with its choices and more options`)
           await page.keyboard.press('Escape')
           await expect(page.getByRole('dialog')).toHaveCount(0)
           await openClassicRoutine(page)
@@ -597,17 +602,18 @@ for (const theme of THEMES) {
       await audit(page, `${theme}/setup summary with a card open`)
     })
 
-    test('tasks quick add with its details, the task sheet, and the assistant page', async ({ page }) => {
+    test('Nueva tarea with its options, the task sheet, and the assistant page', async ({ page }) => {
       await start(page, theme, plannedDocument)
       await open(page, 'tasks')
       await audit(page, `${theme}/tasks list`)
-      await page.getByPlaceholder('Add a task… (or paste or dictate several)').fill('Reply to the long email thread')
-      await expect(page.getByTestId('task-details')).toBeVisible()
-      await audit(page, `${theme}/tasks quick add with details`)
-      await page.getByTestId('task-more').click()
-      await expect(page.getByTestId('task-when')).toBeVisible()
-      await audit(page, `${theme}/tasks quick add with more options`)
-      await page.getByPlaceholder('Add a task… (or paste or dictate several)').fill('')
+      const { sheet, field } = await openNewTask(page)
+      await field.fill('Reply to the long email thread')
+      await auditSheet(page, `${theme}/new task with its options`)
+      await sheet.getByTestId('task-more').click()
+      await expect(sheet.getByTestId('task-due')).toBeVisible()
+      await auditSheet(page, `${theme}/new task with more options`)
+      await sheet.getByTestId('sheet-cancel').click()
+      await expect(page.getByRole('dialog')).toHaveCount(0)
       await page.getByTestId('placed-task').first().locator('.task-text').click()
       await auditSheet(page, `${theme}/task sheet`)
       await page.keyboard.press('Escape')

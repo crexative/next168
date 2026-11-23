@@ -18,7 +18,6 @@ import { planTasks, recentDone, type PlacedEntry } from './grouping'
 import { useTaskActions } from './taskActions'
 import { plannerToday } from './taskDraft'
 import { outsideCategoryReason, warningFixes, type FitContext, type WarningFixes } from './warningFixes'
-import SmartCapture from './SmartCapture.vue'
 import TaskRow from './TaskRow.vue'
 import TaskSheet from './TaskSheet.vue'
 
@@ -164,8 +163,6 @@ async function moveDue(task: Task, date: string): Promise<void> {
 
 <template>
   <div v-if="document && plan" class="tasks">
-    <SmartCapture />
-
     <section v-if="warnings.length" class="warnings" :aria-label="t('tasks.warnings')" data-testid="task-warnings">
       <ul>
         <li v-for="warning in warnings" :key="warning.task.id" class="warning" :data-testid="`warning-${warning.task.id}`">

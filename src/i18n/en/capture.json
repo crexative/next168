@@ -1,5 +1,4 @@
 {
-  "placeholder": "Add a task… (or paste or dictate several)",
   "dictationHint": "Type, paste, or dictate with your keyboard's microphone.",
   "field": {
     "date": "Date",

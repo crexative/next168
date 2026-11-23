@@ -22,17 +22,14 @@
   "add": {
     "title": "Aufgabe hinzufügen",
     "titleLabel": "Aufgabe",
-    "titlePlaceholder": "Aufgabe hinzufügen…",
     "duration": "Dauer",
-    "category": "Kategorie",
+    "category": "Während",
     "dueDate": "Fällig am",
     "priority": "Priorität",
-    "submit": "Aufgabe hinzufügen",
     "details": "Details zu dieser Aufgabe",
     "more": "Weitere Optionen",
     "when": "Wann?",
     "anyFreeTime": "In jeder freien Lücke",
-    "during": "Während {category}",
     "today": "Heute",
     "untimed": "Ohne Zeit",
     "at": "Feste Uhrzeit",
@@ -40,7 +37,10 @@
     "minutesPlaceholder": "Minuten",
     "notes": "Notizen",
     "fixedTooLong": "Eine Aufgabe mit fester Uhrzeit dauert höchstens {hours} h.",
-    "links": "Links in den Notizen"
+    "links": "Links in den Notizen",
+    "otherLength": "Andere",
+    "moreHint": "Fälligkeit, feste Uhrzeit, Priorität und Notizen.",
+    "manyHint": "Füge mehrere ein oder diktiere sie, eine pro Zeile."
   },
   "priority": {
     "1": "Hoch",
@@ -54,7 +54,8 @@
   "sheet": {
     "new": "Neue Aufgabe",
     "edit": "Aufgabe bearbeiten",
-    "delete": "Aufgabe entfernen"
+    "delete": "Aufgabe entfernen",
+    "add": "Hinzufügen"
   },
   "outside": {
     "noBlockToday": "Du hast heute keinen {category}-Block, also liegt sie in deiner freien Zeit.",
@@ -75,5 +76,8 @@
     "undated": "Ohne Datum",
     "showAll": "Alle anzeigen ({count})"
   },
-  "overdueSince": "war fällig am {date}"
+  "overdueSince": "war fällig am {date}",
+  "pending": "{count} offen | {count} offen",
+  "doesNotFit": "{count} Aufgabe passt nicht rechtzeitig | {count} Aufgaben passen nicht rechtzeitig",
+  "rowDoesNotFit": "Passt diese Woche nicht"
 }

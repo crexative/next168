@@ -104,8 +104,8 @@ export function draftProblem(draft: TaskDraft): 'fixedTooLong' | undefined {
   return draft.at !== '' && draft.durationMin !== undefined && draft.durationMin > MAX_FIXED_MIN ? 'fixedTooLong' : undefined
 }
 
-// Optional details a person already set: the "More options" start open so nothing chosen earlier is hidden.
+// Optional details a person already set under "Más opciones" (due date, fixed time, priority, notes): it starts open so
+// nothing chosen earlier is hidden. The length and "Durante" are always on screen.
 export function hasExtraOptions(draft: TaskDraft): boolean {
-  return draft.categoryId !== ANY_FREE_TIME || draft.dueDate !== '' || draft.priority !== DEFAULT_PRIORITY || draft.at !== '' || draft.notes !== ''
-    || (draft.durationMin !== undefined && !(DURATION_CHIPS as readonly number[]).includes(draft.durationMin))
+  return draft.dueDate !== '' || draft.priority !== DEFAULT_PRIORITY || draft.at !== '' || draft.notes !== ''
 }

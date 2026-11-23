@@ -85,6 +85,16 @@ export async function bindToPlanner(): Promise<CaptureBinding | null> {
   }
 }
 
+// Whether the planner on screen is still the one `binding` was taken from. A form bound when it opened (Nueva tarea)
+// must not save into content replaced meanwhile, even under the same id and revision (a restored backup): like the
+// other forms it compares what is on screen now, not only what storage holds. Another workspace, generation or
+// revision is refused by the commit itself (commitPersonOps), so only the content is compared here.
+export async function bindingCurrent(binding: CaptureBinding): Promise<boolean> {
+  const document = usePlannerStore().document
+  if (!document) return false
+  return binding.storedFingerprint === 'absent' || (await documentFingerprint(structuredClone(toRaw(document)))) === binding.storedFingerprint
+}
+
 // An attempt for `rows`, its ops checked against the strict contract the AI routes use. Throws on an invalid row.
 export function captureAttempt(rows: readonly CapturedTask[]): CaptureAttempt {
   const ops = rows.map((row) => proposalOpSchema.parse({

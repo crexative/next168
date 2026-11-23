@@ -43,31 +43,22 @@ it('places tasks around imported calendar events, not on top of them', async () 
   await vi.waitFor(() => expect(host.textContent).toMatch(/12:00\s?PM\u2060–\u20601:00\s?PM/))
 })
 
-it('offers a quickly added task "any free slot" by default, with Work but not Sleep as a choice', async () => {
+// Nueva tarea is the sheet now ("+" › Tarea): the page itself has no capture box.
+it('has no capture box: a task is added from Nueva tarea', async () => {
   const pinia = createPinia()
   setActivePinia(pinia)
   configurePlannerStore({ repository: createTestRepositories().planner, now: fixedNow, newId: newTestId, locale: () => 'en', timeZone: () => 'UTC' })
   const planner = usePlannerStore()
   await planner.load()
-  await planner.commit(draft => {
-    draft.categories.push({ id: 'sleep', name: 'Sleep', colorKey: 'purple', icon: '😴', goal: { type: 'min', hoursPerWeek: 49 } })
-    draft.categories.push({ id: 'work', name: 'Work', colorKey: 'blue', goal: { type: 'none', hoursPerWeek: 0 } })
-  })
+  await planner.commit(draft => { draft.tasks.push({ id: 'a', title: 'Call the bank', priority: 2, createdAt: fixedNow().toISOString() }) })
   i18n.global.locale.value = 'en'
   const host = document.createElement('div')
   document.body.append(host)
   const app = createApp(TasksView).use(pinia).use(i18n)
   app.mount(host)
   cleanup = () => { app.unmount(); host.remove() }
-  const when = () => host.querySelector<HTMLSelectElement>('[data-testid=task-when]')
-  // "When?" appears once there is a title to file.
-  expect(when()).toBeNull()
-  const title = host.querySelector<HTMLTextAreaElement>('form.add textarea')!
-  title.value = 'Call the bank'
-  title.dispatchEvent(new Event('input'))
-  await vi.waitFor(() => expect(when()).not.toBeNull())
-  expect(when()!.value).toBe('')
-  expect([...when()!.options].map(option => option.value)).toEqual(['', 'work'])
+  await vi.waitFor(() => expect(host.textContent).toContain('Call the bank'))
+  expect(host.querySelector('textarea, [data-testid=capture-field]')).toBeNull()
 })
 
 it('places a task with no category in time no routine covers, and keeps it out of a block of another category', async () => {

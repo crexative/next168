@@ -22,17 +22,14 @@
   "add": {
     "title": "Ajouter une tâche",
     "titleLabel": "Tâche",
-    "titlePlaceholder": "Ajouter une tâche…",
     "duration": "Durée",
-    "category": "Catégorie",
+    "category": "Pendant",
     "dueDate": "Échéance",
     "priority": "Priorité",
-    "submit": "Ajouter la tâche",
     "details": "Détails de cette tâche",
     "more": "Plus d'options",
     "when": "Quand ?",
     "anyFreeTime": "Tout créneau libre",
-    "during": "Pendant {category}",
     "today": "Aujourd'hui",
     "untimed": "Sans durée",
     "at": "Heure fixe",
@@ -40,7 +37,10 @@
     "minutesPlaceholder": "Minutes",
     "notes": "Notes",
     "fixedTooLong": "Une tâche à heure fixe dure au plus {hours} h.",
-    "links": "Liens des notes"
+    "links": "Liens des notes",
+    "otherLength": "Autre",
+    "moreHint": "Échéance, heure fixe, priorité et notes.",
+    "manyHint": "Collez ou dictez-en plusieurs, une par ligne."
   },
   "priority": {
     "1": "Haute",
@@ -54,7 +54,8 @@
   "sheet": {
     "new": "Nouvelle tâche",
     "edit": "Modifier la tâche",
-    "delete": "Supprimer la tâche"
+    "delete": "Supprimer la tâche",
+    "add": "Ajouter"
   },
   "outside": {
     "noBlockToday": "Tu n'as pas de bloc {category} aujourd'hui ; je l'ai mise dans ton temps libre.",
@@ -75,5 +76,8 @@
     "undated": "Sans date",
     "showAll": "Tout voir ({count})"
   },
-  "overdueSince": "prévue le {date}"
+  "overdueSince": "prévue le {date}",
+  "pending": "{count} à faire | {count} à faire",
+  "doesNotFit": "{count} tâche ne tient pas à temps | {count} tâches ne tiennent pas à temps",
+  "rowDoesNotFit": "Ne tient pas cette semaine"
 }
