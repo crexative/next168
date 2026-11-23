@@ -117,3 +117,39 @@ it('A8: the first card\'s fix is worked out and works with no «Ver todas» when
   expect(mounted.store.document!.tasks[0]!.dueDate).toBe('2026-10-25')
   expect(find('[data-testid=warning-t0000]')).toBeNull()
 })
+
+// Review pass of #69: what the list says about a task that does not fit, inside and outside the warnings row.
+it('a task that does not fit says so in its own row, after its category and length', async () => {
+  mounted = await mountWithPlanner(TasksView, planner(1, 0), 'es')
+  // The row in the list, not the warning card (the card is in the closed warnings row).
+  const rows = [...mounted.host.querySelectorAll<HTMLElement>('li:not(.warning)')].filter((element) => text(element)?.includes('Tarea 0'))
+  expect(rows.map((row) => text(row)?.replace(/^Eliminar/, ''))).toEqual(['Tarea 0Familia · 15 min · No cabe esta semana'])
+})
+
+it('a warning card says how much does not fit, with its hint, only for a task that does not fit', async () => {
+  const late: Task = { id: 'late', title: 'Pagar luz', durationMin: 15, priority: 2, dueDate: '2026-10-24', createdAt: '2026-10-01T00:00:00.000Z' }
+  const doc = planner(1, 0)
+  mounted = await mountWithPlanner(TasksView, { ...doc, tasks: [...doc.tasks!, late] }, 'es')
+  find('[data-testid=warnings-toggle]')!.click()
+  await nextTick()
+  const card = (id: string) => find(`[data-testid=warning-${id}]`)!
+  expect(card('t0000').querySelector('[data-testid=overflow-text]')).not.toBeNull()
+  expect(card('t0000').querySelector('.warning-hint')).not.toBeNull()
+  expect(card('late').querySelector('[data-testid=late-text]')).not.toBeNull()
+  expect(card('late').querySelector('[data-testid=overflow-text]')).toBeNull()
+  expect(card('late').querySelector('.warning-hint')).toBeNull()
+})
+
+it('"Ver todas" shows past the first ten undated tasks only when there are more, and then shows them all', async () => {
+  // A task with no length is a to-do, listed under «Sin fecha».
+  const todos = (count: number) => ({ ...planner(0, count), tasks: planner(0, count).tasks!.map((task) => ({ ...task, durationMin: undefined })) })
+  mounted = await mountWithPlanner(TasksView, todos(10), 'es')
+  expect(find('[data-testid=show-all-undated]')).toBeNull()
+  mounted.unmount()
+  mounted = await mountWithPlanner(TasksView, todos(11), 'es')
+  expect(mounted.host.querySelectorAll('[data-testid=undated-task]')).toHaveLength(10)
+  find('[data-testid=show-all-undated]')!.click()
+  await nextTick()
+  expect(mounted.host.querySelectorAll('[data-testid=undated-task]')).toHaveLength(11)
+  expect(find('[data-testid=show-all-undated]')).toBeNull()
+})
