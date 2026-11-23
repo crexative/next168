@@ -1,6 +1,6 @@
 import { createApp, type App } from 'vue'
 import { getActivePinia } from 'pinia'
-import { ArrowRight, ChevronLeft, Clock } from 'lucide-vue-next'
+import { ArrowRight, ChevronDown, ChevronLeft, ChevronUp, Clock, Lock, Moon, Sunrise } from 'lucide-vue-next'
 import type { ShellRegistry } from '@/app/contracts'
 import { i18n } from '@/i18n'
 import registerSettings from '@/features/settings/register'
@@ -29,6 +29,6 @@ function mountOnboarding(): void {
 // `features/<name>/index.ts` one level deep and `features/settings/` is shared with other slices.
 export default function registerOnboarding(registry: ShellRegistry): void {
   registerSettings(registry)
-  registerIcons({ send: ArrowRight, 'chevron-left': ChevronLeft, clock: Clock })
+  registerIcons({ send: ArrowRight, 'chevron-left': ChevronLeft, 'chevron-down': ChevronDown, 'chevron-up': ChevronUp, clock: Clock, lock: Lock, moon: Moon, sunrise: Sunrise })
   if (typeof document !== 'undefined') queueMicrotask(mountOnboarding)
 }

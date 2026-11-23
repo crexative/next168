@@ -46,13 +46,16 @@ const editing = ref(false)
 </template>
 
 <style scoped>
-.times { display: flex; flex-wrap: wrap; gap: var(--space-2); }
+/* Three to a row (R_InicioSueno), fewer when the text is large; "Otra hora" is a plain action in the last cell. */
+.times { display: grid; grid-template-columns: repeat(auto-fill, minmax(max(5.5rem, 30%), 1fr)); gap: var(--space-2); }
 .time {
-  display: inline-flex; align-items: center; gap: var(--space-1); min-height: var(--tap-target); max-width: 100%; padding: var(--space-2) var(--space-3);
-  border: 2px solid var(--field-border); border-radius: var(--radius-control); background: var(--surface); color: var(--label);
+  display: inline-flex; align-items: center; justify-content: center; gap: var(--space-1); min-height: var(--tap-target); max-width: 100%; padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--field-border); border-radius: 10px; background: var(--surface); color: var(--label);
   font-weight: 600; font-variant-numeric: tabular-nums; touch-action: manipulation; text-align: start; overflow-wrap: anywhere;
 }
-.time[aria-pressed='true'] { border-color: var(--tint); background: color-mix(in srgb, var(--tint) 14%, transparent); color: var(--tint-label); }
-.other { border-style: dashed; }
-.times > :deep(.editor) { flex: 1 1 100%; }
+.time[aria-pressed='true'] { border-width: 1.5px; border-color: var(--tint); background: color-mix(in srgb, var(--tint) 14%, transparent); color: var(--tint-label); }
+/* Its words wrap inside the cell with wider fonts or large text, never past it. */
+.other { padding-inline: var(--space-1); border-color: transparent; background: transparent; color: var(--tint-label); min-width: 0; overflow-wrap: normal; text-align: center; }
+/* The time editor takes the whole row under the chips, not one cell of the grid. */
+.times > :deep(.editor) { grid-column: 1 / -1; }
 </style>

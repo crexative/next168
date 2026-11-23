@@ -221,17 +221,17 @@ for (const theme of THEMES) {
             await expect(setup.locator('section.screen[aria-hidden=true]')).toHaveCount(0)
           }
           await audit(page, `${theme}/${locale}/${width}/wider fonts/setup commute`)
-          // "Anything else?" one at a time: each extra, its times, and the question again.
-          for (const [index, topic] of ['family', 'friends', 'me', 'learning'].entries()) {
-            await live.locator(`[data-value=${topic}]`).click()
+          // "Anything else?" takes several picks at once, then one short time question for each.
+          const topics = ['family', 'friends', 'me', 'learning']
+          for (const topic of topics) await live.locator(`[data-chip=${topic}]`).click()
+          await expect(setup).toHaveAttribute('data-screen', 'more')
+          await audit(page, `${theme}/${locale}/${width}/wider fonts/setup more, four picks`)
+          for (const topic of topics) {
+            await live.getByTestId('setup-primary').click()
             await expect(setup).toHaveAttribute('data-screen', `extra:${topic}`)
             await expect(setup.locator('section.screen[aria-hidden=true]')).toHaveCount(0)
-            await live.getByTestId('setup-primary').click()
-            await expect(setup).toHaveAttribute('data-screen', `more:${index + 1}`)
-            await expect(setup.locator('section.screen[aria-hidden=true]')).toHaveCount(0)
-            if (index === 0) await audit(page, `${theme}/${locale}/${width}/wider fonts/setup more:1`)
           }
-          await live.getByTestId('more-done').click()
+          await live.getByTestId('setup-primary').click()
           await expect(setup).toHaveAttribute('data-screen', 'summary')
           if (locale === 'es') await expect(live.locator('[data-category] .name')).toContainText(['Sueño', 'Trabajo', 'Estudio', 'Desplazamientos'])
           await audit(page, `${theme}/${locale}/${width}/wider fonts/setup summary`)
@@ -341,16 +341,15 @@ for (const theme of THEMES) {
         }
         await live.getByTestId('setup-primary').click()
         await expect(setup).toHaveAttribute('data-screen', 'more')
-        for (const [index, topic] of ['family', 'friends', 'me', 'learning'].entries()) {
-          await settled()
-          await live.locator(`[data-value=${topic}]`).click()
+        await settled()
+        const topics = ['family', 'friends', 'me', 'learning']
+        for (const topic of topics) await live.locator(`[data-chip=${topic}]`).click()
+        for (const topic of topics) {
+          await live.getByTestId('setup-primary').click()
           await expect(setup).toHaveAttribute('data-screen', `extra:${topic}`)
           await settled()
-          await live.getByTestId('setup-primary').click()
-          await expect(setup).toHaveAttribute('data-screen', `more:${index + 1}`)
         }
-        await settled()
-        await live.getByTestId('more-done').click()
+        await live.getByTestId('setup-primary').click()
         await expect(setup).toHaveAttribute('data-screen', 'summary')
         await settled()
         await audit(page, `${theme}/${locale}/360/setup summary`)
@@ -552,21 +551,22 @@ for (const theme of THEMES) {
       const settled = () => expect(setup.locator('section.screen[aria-hidden=true]')).toHaveCount(0)
       await expect(setup).toHaveAttribute('data-screen', 'sleep')
       await auditSheet(page, `${theme}/setup sleep`)
-      await live.getByRole('button', { name: 'Enviar respuesta', exact: true }).click()
+      await live.getByRole('button', { name: 'Siguiente', exact: true }).click()
       await live.getByRole('button', { name: 'Trabajo', exact: true }).click()
       await expect(setup).toHaveAttribute('data-screen', 'work')
       await settled()
       await audit(page, `${theme}/setup work`)
-      await live.locator('[data-field=days]').click()
+      // The days are preset chips in the card (R_InicioHorario); "Elegir días" opens the days in place.
       await live.locator('[data-preset=pick]').click()
       await audit(page, `${theme}/setup work days`)
-      await page.keyboard.press('Escape')
-      await live.locator('[data-field=start]').click()
+      // The start's times open on the first view only where they leave the answers under them in view.
+      const startRow = live.locator('[data-field=start]')
+      if (await startRow.getAttribute('aria-expanded') !== 'true') await startRow.click()
       await live.getByTestId('other-time').click()
       await audit(page, `${theme}/setup time editor`)
       await page.keyboard.press('Escape')
       await page.keyboard.press('Escape')
-      await live.getByRole('button', { name: 'Enviar respuesta', exact: true }).click()
+      await live.getByRole('button', { name: 'Siguiente', exact: true }).click()
       await expect(setup).toHaveAttribute('data-screen', 'commute')
       await settled()
       await audit(page, `${theme}/setup commute`)
@@ -574,7 +574,7 @@ for (const theme of THEMES) {
       await live.locator('[data-answer=work]').click()
       await expect(setup).toHaveAttribute('data-screen', 'work')
       await audit(page, `${theme}/setup work reopened from the conversation`)
-      await live.getByRole('button', { name: 'Enviar respuesta', exact: true }).click()
+      await live.getByRole('button', { name: 'Siguiente', exact: true }).click()
       await expect(setup).toHaveAttribute('data-screen', 'commute')
       await live.getByRole('button', { name: 'No', exact: true }).click()
       await live.getByRole('button', { name: 'No', exact: true }).click()

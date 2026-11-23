@@ -5,7 +5,7 @@ import {
 } from './draftStorage'
 import { planSetupCommit } from './setupCommit'
 import { isKnownScreen, sequence } from './setupFlow'
-import { createState, emptyState, ensureCategory, MAX_PICKS, pick, statusOf, suggestRanges, type SetupState } from './setupModel'
+import { createState, emptyState, ensureCategory, MAX_PICKS, pick, statusOf, togglePick, suggestRanges, type SetupState } from './setupModel'
 import { block, category, documentWith, env } from './setupFixtures'
 import legacyDrafts from './__fixtures__/legacyDraftsV2.json'
 
@@ -73,16 +73,28 @@ describe('what a saved draft accepts (A2)', () => {
 })
 
 describe('keeping and dropping the draft', () => {
-  it('keeps the rounds and a name typed but not added (S1-10, N3)', () => {
+  it('keeps the picks and a name typed but not added (S1-10, N3)', () => {
+    const storage = memory()
+    const state = sampleState()
+    togglePick(state, 'family', env)
+    togglePick(state, 'friends', env)
+    state.screen = 'more'
+    state.pending = { name: 'Guitar' }
+    saveDraft(draftOf(state, stored, true), storage)
+    const loaded = loadDraft(storage)!
+    expect(loaded).toMatchObject({ version: 3, screen: 'more', pending: { name: 'Guitar' }, answers: { more: ['family', 'friends'], moreDone: false } })
+  })
+
+  // Setup asked "¿Algo más?" one pick per round before it took several at once: such a draft reopens on the one
+  // question with every pick, instead of being dropped.
+  it('reopens a setup draft saved on a later round of "¿Algo más?" on the one question, every pick kept', () => {
     const storage = memory()
     const state = sampleState()
     pick(state, 0, 'family', env)
     pick(state, 1, 'friends', env)
     state.screen = 'more:2'
-    state.pending = { name: 'Guitar' }
     saveDraft(draftOf(state, stored, true), storage)
-    const loaded = loadDraft(storage)!
-    expect(loaded).toMatchObject({ version: 3, screen: 'more:2', pending: { name: 'Guitar' }, answers: { more: ['family', 'friends'], moreDone: false } })
+    expect(loadDraft(storage)).toMatchObject({ version: 3, screen: 'more', answers: { more: ['family', 'friends'] } })
   })
 
   it('comes back as it was saved', () => {
@@ -219,19 +231,19 @@ describe('a version 2 draft keeps the commit it was made for (S1-8)', () => {
     expect(state.answers).toMatchObject({ more: ['learning'], moreDone: true })
   })
 
-  it('(d): reopened "more" lands on the first round with both picks kept and the rounds still open', () => {
+  it('(d): reopened "more" lands on the question with both picks kept, each with its times to ask', () => {
     const state = migrated('d')
     expect(state.screen).toBe('more')
     expect(state.answers).toMatchObject({ more: ['friends', 'custom:6'], moreDone: false })
-    expect(sequence(state).slice(-6)).toEqual(['more', 'extra:friends', 'more:1', 'extra:custom:6', 'more:2', 'summary'])
+    expect(sequence(state).slice(-4)).toEqual(['more', 'extra:friends', 'extra:custom:6', 'summary'])
   })
 
-  it('(e): keeps all 21 picks, with no round open after them', () => {
+  it('(e): keeps all 21 picks, each with its times, and no round after them', () => {
     const state = migrated('e')
     expect(state.answers.more).toHaveLength(21)
     expect(MAX_PICKS).toBe(20)
-    expect(isKnownScreen(state, 'more:20')).toBe(true)
-    expect(isKnownScreen(state, 'more:21')).toBe(false)
+    expect(isKnownScreen(state, 'more:1')).toBe(false)
+    expect(sequence(state).filter((screen) => screen.startsWith('extra:'))).toHaveLength(21)
     expect(sequence(state).at(-2)).toBe('extra:custom:37')
   })
 

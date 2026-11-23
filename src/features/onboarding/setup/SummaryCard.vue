@@ -41,7 +41,7 @@ function onName(name: string): void {
         <span v-for="range in category.ranges" :key="range.key" class="line t-body">{{ rangeLine(category, range) }}</span>
         <span v-if="warning" class="line warn t-body" data-testid="card-warning">⚠ {{ warning }}</span>
       </span>
-      <Icon name="chevron-right" :size="18" />
+      <Icon name="chevron-right" :size="18" class="chevron" />
     </button>
     <div v-if="expanded" class="body">
       <OtherThingField :model-value="category.name" :label="t('onboarding.summary.name')" :invalid="!!nameIssue" test-id="card-name" @update:model-value="onName" />
@@ -51,7 +51,7 @@ function onName(name: string): void {
         <Button variant="plain" data-testid="same-name-new" @click="keepSeparate(category); emit('edited')">{{ t('onboarding.guided.add.createAnother') }}</Button>
       </div>
       <p v-else-if="nameIssue" class="error t-body" role="alert">{{ t(`onboarding.guided.errors.${nameIssue.code}`) }}</p>
-      <RangeList :state="state" :category="category" :labels="{ there: t('onboarding.guided.commuteRanges.there'), back: t('onboarding.guided.commuteRanges.back'), bed: t('onboarding.guided.sleep.bed'), wake: t('onboarding.guided.sleep.wake'), weeknights: t('onboarding.guided.sleep.weeknights'), weekend: t('onboarding.guided.sleep.weekend') }" :sleep="category.topic === 'sleep'" />
+      <RangeList :state="state" :category="category" :labels="{ there: t('onboarding.guided.commuteRanges.there'), back: t('onboarding.guided.commuteRanges.back'), bed: t('onboarding.guided.sleep.bed'), wake: t('onboarding.guided.sleep.wake'), weeknights: t('onboarding.guided.sleep.weeknights'), weekend: t('onboarding.guided.sleep.weekend') }" :sleep="category.topic === 'sleep'" lone-removable />
       <p v-if="hasTasks" class="note t-body" data-testid="has-tasks">{{ t('onboarding.summary.hasTasks', { place }) }}</p>
       <Button v-else variant="plain" destructive data-testid="card-remove" @click="emit('remove')">{{ t('onboarding.summary.remove', { name: category.name }) }}</Button>
       <Button variant="tinted" data-testid="card-done" @click="emit('toggle')">{{ t('onboarding.summary.done') }}</Button>
@@ -60,18 +60,23 @@ function onName(name: string): void {
 </template>
 
 <style scoped>
-.card { list-style: none; border-radius: var(--radius-card); background: var(--surface-2); }
-.head { border-radius: inherit; display: flex; align-items: center; gap: var(--space-3); width: 100%; min-height: var(--tap-target); padding: var(--row-padding-block) var(--card-padding); border: 0; background: transparent; color: var(--label); text-align: start; touch-action: manipulation; }
+.card { list-style: none; }
+/* The rows read as one grouped list, but each tap target keeps 8 px from the next: 4 px of margin on either side of
+   the separator, taken from the row's padding. */
+.head { border-radius: inherit; display: flex; align-items: center; gap: var(--space-3); width: 100%; min-height: var(--tap-target); margin-block: var(--space-1); padding: calc(var(--row-padding-block) - var(--space-1)) var(--card-padding); border: 0; background: transparent; color: var(--label); text-align: start; touch-action: manipulation; }
 .head:focus-visible { outline-offset: -2px; }
-.dot { flex: none; width: 14px; height: 14px; border-radius: 50%; }
+.chevron { flex: none; color: var(--label-3); }
+.dot { flex: none; align-self: flex-start; width: 8px; height: 8px; margin-block-start: 0.55em; border-radius: 50%; }
 .text { display: flex; flex: 1; flex-direction: column; gap: var(--space-1); min-width: 0; }
 .top { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; column-gap: var(--space-3); }
 .name { font-weight: 600; min-width: 0; overflow-wrap: anywhere; }
-.amount { flex: none; font-variant-numeric: tabular-nums; }
-.line { color: var(--label-2); overflow-wrap: anywhere; font-variant-numeric: tabular-nums; }
+.amount { flex: none; font-weight: 600; font-variant-numeric: tabular-nums; }
+.line { color: var(--label-2); font-size: 0.8125rem; overflow-wrap: anywhere; font-variant-numeric: tabular-nums; }
+/* A range line is a reply of its own: "Todas las noches · 23:00–7:00". */
+.line::first-letter { text-transform: uppercase; }
 .body { display: flex; flex-direction: column; gap: var(--space-3); align-items: stretch; padding: 0 var(--card-padding) var(--card-padding-block); }
 /* Inside a card the ranges sit flat on the card's own surface: no second inset eating the width. */
-.body :deep(.range) { padding-inline: 0; }
+.body :deep(.range) { padding-inline: 0; background: transparent; }
 .body > :deep(.ui-button) { align-self: flex-start; }
 .error { margin: 0; color: var(--danger-label); }
 .line.warn { color: var(--label); }

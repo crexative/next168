@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { isKnownScreen, nextScreen, partOf, previousScreen, sequence } from './setupFlow'
-import { addOwnCategory, emptyState, ensureCategory, MAX_PICKS, setAnswer, type ScreenId, type SetupState, type Tri, type WorkStudy } from './setupModel'
+import { addOwnCategory, confirmPicks, emptyState, ensureCategory, finishMore, MAX_PICKS, moreOptions, setAnswer, togglePick, weekBar, type ScreenId, type SetupState, type Tri, type WorkStudy } from './setupModel'
 import { env } from './setupFixtures'
 
 const WORK_STUDY: WorkStudy[] = ['unanswered', 'work', 'study', 'both', 'neither']
@@ -34,9 +34,9 @@ function expected(state: SetupState): ScreenId[] {
   }
   screens.push('exercise')
   if (exercise === 'yes') screens.push('exerciseRanges')
-  // Each pick: its times, then "Anything else?" again (answered by the next pick, by "No, that's all", or still open).
+  // "¿A qué más…?" takes several picks at once; then one short time question per pick (DIRECTION §4).
   screens.push('more')
-  for (const [index, key] of (more ?? []).entries()) screens.push(`extra:${key}`, `more:${index + 1}` as ScreenId)
+  for (const key of more ?? []) screens.push(`extra:${key}`)
   screens.push('summary')
   return screens
 }
@@ -69,7 +69,7 @@ describe('the screen sequence (A1)', () => {
     expect(sequence(state)).toContain('study')
     // The person goes back and says "neither": work, study and the trip leave the sequence, their answers stay.
     setAnswer(state, 'workStudy', 'neither')
-    expect(sequence(state)).toEqual(['sleep', 'workStudy', 'exercise', 'exerciseRanges', 'more', 'extra:family', 'more:1', 'summary'])
+    expect(sequence(state)).toEqual(['sleep', 'workStudy', 'exercise', 'exerciseRanges', 'more', 'extra:family', 'summary'])
     expect(state.answers.commute).toBe('yes')
     // From a screen that vanished, Atrás and Siguiente still land on the neighbours in the new sequence.
     expect(previousScreen(state, 'commuteRanges')).toBe('workStudy')
@@ -82,9 +82,37 @@ describe('the screen sequence (A1)', () => {
   })
 })
 
-describe('the rounds of "Anything else?"', () => {
+// Setup asks "¿A qué más…?" once, with several picks; each pick then asks its times, and nothing asks "¿Algo más?".
+describe('several picks at once (setup)', () => {
+  it('toggles picks in place, keeps their order, and asks one time question per pick', () => {
+    const state = emptyState()
+    expect(moreOptions(state)).toEqual(['family', 'friends', 'me', 'learning'])
+    expect(togglePick(state, 'me', env)).toBe(true)
+    expect(togglePick(state, 'family', env)).toBe(true)
+    expect(state.answers.more).toEqual(['me', 'family'])
+    expect(moreOptions(state)).toEqual(['family', 'friends', 'me', 'learning'])
+    expect(togglePick(state, 'me', env)).toBe(true)
+    expect(state.answers.more).toEqual(['family'])
+    confirmPicks(state)
+    expect(state.answers.moreDone).toBe(true)
+    expect(sequence(state).slice(-3)).toEqual(['more', 'extra:family', 'summary'])
+    expect(isKnownScreen(state, 'more:1')).toBe(false)
+  })
+
+  it('"No, eso es todo" leaves nothing picked and goes to the summary', () => {
+    const state = emptyState()
+    togglePick(state, 'friends', env)
+    finishMore(state, 0)
+    expect(state.answers).toMatchObject({ more: [], moreDone: true })
+    expect(sequence(state).slice(-2)).toEqual(['more', 'summary'])
+  })
+})
+
+// One pick per round ("¿Algo más?") is how a routine is added; setup asks for several picks at once (above).
+describe('the rounds of "Anything else?" (adding a routine)', () => {
   function picked(count: number): SetupState {
     const state = emptyState()
+    state.add = { entry: 'routine', stored: [], fixed: [] }
     state.answers.more = Array.from({ length: count }, (_, index) => addOwnCategory(state, `Thing ${index}`).category.key)
     return state
   }
@@ -110,5 +138,19 @@ describe('the rounds of "Anything else?"', () => {
     ensureCategory(state, 'learning', 'learning', 'Learning')
     expect(nextScreen(state, 'extra:learning')).toBe('summary')
     expect(previousScreen(state, 'extra:learning')).toBe('more:1')
+  })
+})
+
+// The 168 h bar draws the hours counted once: with a 5 h overlap its parts add up to the assigned hours, not more.
+describe('the summary bar (weekBar)', () => {
+  it('scales each category to the hours counted once and leaves the rest free', () => {
+    const { shares, free } = weekBar([{ key: 'work', minutes: 50 * 60 }, { key: 'study', minutes: 51 * 60 }], { covered: 96 * 60, summed: 101 * 60, overlapping: true })
+    expect(shares.reduce((sum, share) => sum + share.minutes, 0)).toBeCloseTo(96 * 60)
+    expect(shares[0]!.minutes / shares[1]!.minutes).toBeCloseTo(50 / 51)
+    expect(free).toBe(72 * 60)
+  })
+
+  it('without overlaps draws each category as it is', () => {
+    expect(weekBar([{ key: 'sleep', minutes: 56 * 60 }], { covered: 56 * 60, summed: 56 * 60, overlapping: false })).toEqual({ shares: [{ key: 'sleep', minutes: 56 * 60 }], free: 112 * 60 })
   })
 })

@@ -5,6 +5,7 @@ import Button from '@/ui/Button.vue'
 import { prefersReducedMotion } from '@/ui/useMediaQuery'
 import type { Issue, ScreenId, SetupState } from '../setupModel'
 import AppMark from '@/ui/AppMark.vue'
+import Icon from '@/ui/Icon.vue'
 import { answer, hint, question, transcript, type Line } from './conversation'
 import SetupAnswer from './SetupAnswer.vue'
 import SetupSummary from './SetupSummary.vue'
@@ -62,7 +63,10 @@ async function reveal(arriving: boolean): Promise<void> {
   const element = scroller.value
   const current = element?.querySelector<HTMLElement>('.exchange.is-current')
   if (!element || !current) return
-  const top = Math.max(0, Math.min(element.scrollHeight - element.clientHeight, current.offsetTop - 16))
+  // Measured against the scroller itself (offsetTop counts from the frame), so on a short phone the question's first
+  // words, not its last, are what shows when the answers take most of the height.
+  const offset = current.getBoundingClientRect().top - element.getBoundingClientRect().top + element.scrollTop
+  const top = Math.max(0, Math.min(element.scrollHeight - element.clientHeight, offset - 16))
   element.scrollTo({ top, behavior: prefersReducedMotion() ? 'auto' : 'smooth' })
 }
 
@@ -97,7 +101,7 @@ function onFocusIn(event: FocusEvent): void {
           </li>
           <li :key="screen" class="exchange is-current" :data-exchange="screen">
             <div class="from-app">
-              <AppMark class="avatar" :size="36" />
+              <AppMark class="avatar" :size="32" />
               <div class="bubble question is-current">
                 <h3 :id="questionId" ref="heading" class="ask" tabindex="-1" data-setup-initial-focus>{{ now.question }}</h3>
                 <p v-if="now.hint" class="hint t-body">{{ now.hint }}</p>
@@ -110,19 +114,22 @@ function onFocusIn(event: FocusEvent): void {
           <p class="t-body" role="status">{{ t('onboarding.guided.resumed') }}</p>
           <Button variant="plain" data-testid="start-over" @click="emit('startOver')">{{ t('onboarding.guided.startOver') }}</Button>
         </div>
-        <p v-if="screen === 'sleep' && showTrust" class="trust t-body" data-testid="setup-trust">{{ t('onboarding.guided.trust') }}</p>
+        <p v-if="screen === 'sleep' && showTrust" class="trust t-footnote" data-testid="setup-trust"><Icon name="lock" :size="13" class="trust-icon" />{{ t('onboarding.guided.trust') }}</p>
         <Transition name="say" appear>
           <SetupSummary
-            v-if="summary" v-model:expanded="expanded" :state="state" :document="document" :reviewable="reviewable" :issues="issues" :message="message"
-            :show-trust="showTrust" @review="emit('review')" @edited="emit('edited')"
+            v-if="summary" v-model:expanded="expanded" :state="state" :document="document" :issues="issues" :message="message"
+            @edited="emit('edited')"
           />
         </Transition>
       </div>
     </div>
 
-    <footer v-if="summary" class="dock">
+    <footer v-if="summary" class="dock is-summary">
+      <!-- "Crear mi semana", then "Repasar las preguntas" and the trust line under it (R_InicioResumen). -->
       <div class="column actions">
         <Button data-primary data-dock-primary data-testid="setup-primary" block :disabled="busy" @click="emit('submit')">{{ state.add ? t('onboarding.summary.addSave') : first ? t('onboarding.summary.start') : t('onboarding.summary.save') }}</Button>
+        <Button v-if="reviewable" variant="plain" data-testid="summary-review" @click="emit('review')">{{ t('onboarding.summary.review') }}</Button>
+        <p v-if="showTrust" class="trust t-footnote" data-testid="setup-trust"><Icon name="lock" :size="13" class="trust-icon" />{{ t('onboarding.guided.trust') }}</p>
       </div>
     </footer>
     <SetupAnswer v-else ref="dock" :key="screen" :state="state" :busy="busy" :group-label="now.question" :question-id="questionId" @advance="emit('advance')" @edited="emit('edited')" />
@@ -132,7 +139,9 @@ function onFocusIn(event: FocusEvent): void {
 <style scoped>
 .screen { display: flex; flex: 1; flex-direction: column; min-height: 0; hyphens: auto; }
 .screen :deep(button) { hyphens: manual; }
-.setup-scroller { flex: 1 1 auto; min-height: 0; overflow-y: auto; overscroll-behavior: contain; }
+.setup-scroller { display: flex; flex: 1 1 auto; flex-direction: column; min-height: 0; overflow-y: auto; overscroll-behavior: contain; }
+/* The conversation rests on the dock like a chat; margin (not justify-content) keeps a tall one scrollable to its top. */
+.setup-scroller > .column { margin-top: auto; }
 /* With room to spare the answers follow their question instead of waiting at the bottom of a tall window; a long
    conversation still scrolls above them. On a phone they stay docked at the thumb, like a keyboard. */
 @media (min-width: 48rem) {
@@ -143,19 +152,23 @@ function onFocusIn(event: FocusEvent): void {
 .transcript { display: flex; flex-direction: column; gap: var(--space-2); margin: 0; padding: 0; list-style: none; }
 .exchange { display: flex; flex-direction: column; }
 .exchange.is-current { margin-block-start: var(--space-3); }
-.from-app { display: flex; align-items: center; gap: var(--space-3); }
+.from-app { display: flex; align-items: flex-end; gap: var(--space-3); }
 .avatar { margin-block-end: 2px; }
-/* Answered turns: a compact log, the question small and quiet, the answer bold; each one opens its question again. */
+/* Answered turns: the question small and quiet on the leading side, your answer as your bubble on the trailing side
+   (soft tint, like the check-in); each one opens its question again. */
 .turn {
-  display: flex; flex-direction: column; align-items: flex-start; gap: 2px; width: 100%; min-height: var(--tap-target); margin: 0; padding: var(--space-1) 0;
+  display: flex; flex-direction: column; align-items: stretch; gap: var(--space-2); width: 100%; min-height: var(--tap-target); margin: 0; padding: var(--space-1) 0;
   border: 0; border-radius: var(--radius-control); background: transparent; color: var(--label); text-align: start; touch-action: manipulation;
   transition: opacity 0.1s;
 }
-.turn:hover:not(:disabled) .turn-answer { color: var(--tint-label); }
+.turn:hover:not(:disabled) .turn-answer { box-shadow: inset 0 0 0 1.5px var(--tint); }
 .turn:active:not(:disabled) { opacity: 0.6; }
 .turn:focus-visible { outline-offset: -2px; }
-.turn-question { color: var(--label-2); overflow-wrap: anywhere; }
-.turn-answer { font-size: 1.1875rem; line-height: 1.3; font-weight: 700; white-space: pre-line; overflow-wrap: anywhere; }
+.turn-question { padding-inline-start: calc(32px + var(--space-3)); color: var(--label-2); overflow-wrap: anywhere; }
+.turn-answer {
+  align-self: flex-end; max-width: 85%; padding: 10px var(--space-4); border-radius: 20px 20px 6px 20px; background: var(--tint-soft);
+  font-size: 1.0625rem; line-height: 1.3; font-weight: 600; text-align: end; white-space: pre-line; overflow-wrap: anywhere;
+}
 .bubble { box-sizing: border-box; margin: 0; padding: var(--space-4) var(--space-5); overflow-wrap: anywhere; }
 /* Only the current question is a bubble, next to Weeklid's mark. */
 .question { flex: 1 1 auto; min-width: 0; border-radius: 22px 22px 22px 6px; background: var(--surface-2); color: var(--label); }
@@ -163,11 +176,17 @@ function onFocusIn(event: FocusEvent): void {
 .ask { margin: 0; font-size: 1.375rem; line-height: 1.27; font-weight: 700; letter-spacing: -0.01em; outline: none; }
 .hint { margin: var(--space-1) 0 0; color: var(--label-2); }
 .note, .trust { margin: 0; color: var(--label-2); }
-.trust { padding-inline-start: calc(36px + var(--space-3)); }
+.trust { display: flex; align-items: center; justify-content: flex-end; gap: var(--space-1); text-align: end; }
+.trust-icon { flex: none; }
 .resumed { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; column-gap: var(--space-3); text-align: center; }
 .resumed p { margin: 0; color: var(--label-2); }
-.dock { flex: none; border-top: 0.5px solid var(--separator); background: var(--surface); }
-.actions { display: flex; justify-content: center; padding-block: var(--group-gap) calc(var(--space-4) + var(--safe-bottom)); }
+/* The summary's own dock. A plain .dock here would also reach SetupAnswer's root (a scoped style reaches a child's
+   root element), which sizes its dock itself. */
+.dock.is-summary { flex: none; border-top: 0.5px solid var(--separator); background: var(--surface); }
+/* The primary keeps the group gap from the conversation above and from "Repasar las preguntas" under it. */
+.actions { display: flex; flex-direction: column; align-items: center; gap: var(--space-1); padding-block: var(--group-gap) calc(var(--space-4) + var(--safe-bottom)); }
+.actions > [data-testid=summary-review] { margin-block-start: calc(var(--group-gap) - var(--space-1)); }
+.actions > .trust { justify-content: center; text-align: center; }
 .actions :deep(.ui-button) { width: 100%; min-height: 52px; border-radius: 26px; overflow-wrap: anywhere; hyphens: auto; }
 
 /* A new message arrives calmly from just below; without motion it only fades in. */

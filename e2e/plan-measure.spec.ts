@@ -65,19 +65,20 @@ test.describe('plan and measure', () => {
     }
     // One question per screen, each answered with the control that fits it.
     await screen('sleep')
-    await setup.getByRole('button', { name: 'Send answer', exact: true }).click()
+    await setup.getByRole('button', { name: 'Next', exact: true }).click()
     await screen('workStudy')
     await setup.getByRole('button', { name: 'I work', exact: true }).click()
     await screen('work')
-    await setup.getByRole('button', { name: 'Send answer', exact: true }).click()
+    await setup.getByRole('button', { name: 'Next', exact: true }).click()
     await screen('commute')
     await setup.getByRole('button', { name: 'No', exact: true }).click()
     await screen('exercise')
     await setup.getByRole('button', { name: 'Yes', exact: true }).click()
     await screen('exerciseRanges')
-    await setup.getByRole('button', { name: 'Send answer', exact: true }).click()
+    await setup.getByRole('button', { name: 'Next', exact: true }).click()
     await screen('more')
-    await setup.getByRole('button', { name: 'Later', exact: true }).click()
+    // "What else…?" takes several picks; nothing picked here.
+    await setup.getByRole('button', { name: 'No, that\'s all', exact: true }).click()
     await screen('summary')
     await expect(page.getByTestId('week-counter')).toHaveText(/^99 h assigned · 69 h unassigned$/)
     // Everything is editable in the summary: rename Work.

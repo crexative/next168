@@ -2,12 +2,12 @@
 import { computed, nextTick, ref, useId, watch } from 'vue'
 import Icon from '@/ui/Icon.vue'
 import {
-  acceptRanges, addTyped, clearPending, nameKey, clearRanges, finishMore, pick, rangeProblem, roundIndex, setAnswer, setPendingInto, setPendingName, setSleepSplit,
+  acceptRanges, addTyped, clearPending, confirmPicks, MAX_PICKS, nameKey, clearRanges, finishMore, moreOptions, multiPick, pick, picksOf, rangeProblem, roundIndex, setAnswer, setPendingInto, setPendingName, setSleepSplit, togglePick,
   type ScreenId, type SetupState, type Tri, type WorkStudy,
 } from '../setupModel'
 import { TOPICS, type TopicId } from '../setupTopics'
 import ChoiceChips from './ChoiceChips.vue'
-import { categoryFor, extraReply, isRangeScreen, roundReplies } from './conversation'
+import { categoryFor, extraReply, isRangeScreen, pickLabel, roundReplies } from './conversation'
 import OtherThingField from './OtherThingField.vue'
 import QuickReplies from './QuickReplies.vue'
 import RangeList from './RangeList.vue'
@@ -27,8 +27,10 @@ const ranges = computed(() => isRangeScreen(props.state, screen.value))
 const quick = computed(() => ['workStudy', 'commute', 'exercise'].includes(screen.value))
 // A round of "Anything else?": its index, or undefined on every other screen.
 const round = computed(() => roundIndex(screen.value))
+// "¿A qué más…?" in setup: several picks with chips, then Siguiente (DIRECTION §4, improvement 2).
+const multi = computed(() => screen.value === 'more' && multiPick(props.state))
 // Questions whose replies answer on a tap have no Send.
-const answersOnTap = computed(() => quick.value || round.value !== undefined)
+const answersOnTap = computed(() => quick.value || (round.value !== undefined && !multi.value))
 
 const extra = computed(() => extraReply(props.state, screen.value))
 // The bar under the answers: the quiet skip and Send. Without it the answers keep the bar's bottom inset themselves.
@@ -46,7 +48,7 @@ const root = ref<HTMLElement | null>(null)
 
 // On arrival the answer is in reach: the current or first reply, or Send when the answer is ready.
 function focusAnswer(): boolean {
-  const order = quick.value ? ['.reply.is-current', '.reply'] : round.value !== undefined ? ['.is-current', '.reply', '[data-testid=more-other]'] : ['.send:not(:disabled)']
+  const order = quick.value ? ['.reply.is-current', '.reply'] : multi.value ? ['.chip'] : round.value !== undefined ? ['.is-current', '.reply', '[data-testid=more-other]'] : ['.send:not(:disabled)']
   const target = order.map((selector) => root.value?.querySelector<HTMLElement>(selector)).find((element) => element)
   target?.focus({ preventScroll: true })
   return target !== undefined
@@ -60,6 +62,15 @@ function done(): void {
 function onPrimary(): void {
   if (!canContinue.value) return
   if (screen.value === 'sleep') setAnswer(props.state, 'sleep', 'yes')
+  // A name typed in "Otra cosa" and not yet added goes in with the picks, as its own button adds it (fewer taps); one
+  // already picked is simply kept, and one past the limit keeps the question and says why.
+  if (multi.value && otherOpen.value && otherName.value.trim() !== '') {
+    if (pickTyped(otherName.value.trim()) === undefined && refusal.value !== 'duplicate') return
+    clearPending(props.state)
+    otherOpen.value = false
+    refusal.value = null
+  }
+  if (multi.value) confirmPicks(props.state)
   if (category.value) acceptRanges(category.value)
   done()
 }
@@ -68,7 +79,8 @@ function onPrimary(): void {
 defineExpose({ send: () => { if (!answersOnTap.value && !props.busy) onPrimary() }, focusAnswer: async () => { await nextTick(); return focusAnswer() } })
 
 function onSecondary(): void {
-  if (screen.value === 'more') {
+  if (multi.value) finishMore(props.state, 0)
+  else if (screen.value === 'more') {
     setAnswer(props.state, 'more', null)
     setAnswer(props.state, 'moreDone', false)
   } else if (category.value && ranges.value && screen.value !== 'sleep') clearRanges(category.value)
@@ -91,7 +103,14 @@ function answerQuick(value: string): void {
 // ---------- "Anything else?": one pick per round, "Something else" to name one, and the way out ----------
 const env = { topicName: (topic: TopicId) => t(`onboarding.templates.${TOPICS[topic].nameKey}`) }
 const speaker = { t: (key: string, params?: Record<string, unknown>) => t(key, params ?? {}), rangeLine }
-const replies = computed(() => (round.value === undefined ? undefined : roundReplies(props.state, round.value, speaker)))
+const replies = computed(() => (round.value === undefined || multi.value ? undefined : roundReplies(props.state, round.value, speaker)))
+const multiChips = computed(() => moreOptions(props.state).map((key) => ({ value: key, label: pickLabel(props.state, key, speaker) })))
+function toggleMore(key: string): void {
+  togglePick(props.state, key, env)
+  emit('edited')
+}
+// The ranges of a category other than sleep, whose own answer ("Sin horario fijo") sits in the bar beside "Siguiente".
+const rangesAnswer = computed(() => category.value !== undefined && category.value.topic !== 'sleep' && !quick.value && !multi.value && replies.value === undefined)
 const doneLabel = computed(() => (replies.value?.done.current ? `${replies.value.done.label} ${t('onboarding.guided.current')}` : undefined))
 
 // The name being typed lives in the draft: it is unsaved input, and a reload brings it back with its field open.
@@ -99,7 +118,7 @@ const otherName = computed({
   get: () => props.state.pending?.name ?? '',
   set: (name: string) => {
     setPendingName(props.state, name)
-    duplicate.value = false
+    refusal.value = null
   },
 })
 const otherOpen = ref(otherName.value !== '')
@@ -119,7 +138,8 @@ const intoId = useId()
 const storedId = useId()
 // The first question of an add session has no "nothing else": leaving is the frame's ‹.
 const showDone = computed(() => !(props.state.add && round.value === 0))
-const duplicate = ref(false)
+// Why a typed name was not added: already on the list, or the picks are at their limit.
+const refusal = ref<'duplicate' | 'limit' | null>(null)
 const otherForm = ref<HTMLFormElement | null>(null)
 const otherField = ref<InstanceType<typeof OtherThingField> | null>(null)
 
@@ -144,7 +164,7 @@ function openOther(): void {
 // Escape in the field puts it away (and what was typed), back to the button that opened it; the setup stays.
 function closeOther(): void {
   clearPending(props.state)
-  duplicate.value = false
+  refusal.value = null
   otherOpen.value = false
   void nextTick(() => root.value?.querySelector<HTMLElement>('[data-testid="more-other"]')?.focus({ preventScroll: true }))
 }
@@ -162,13 +182,36 @@ function createAnother(): void {
   addOther()
 }
 
+// Adds a typed name to the several picks and puts the field away; refused (already picked, or at the limit), it says
+// why and keeps the field. Returns the item's key when it is now picked.
+function pickTyped(name: string): string | undefined {
+  const named = addTyped(props.state, name)
+  if (picksOf(props.state).includes(named.key) || !togglePick(props.state, named.key, env)) {
+    refusal.value = picksOf(props.state).includes(named.key) ? 'duplicate' : 'limit'
+    emit('edited')
+    return undefined
+  }
+  clearPending(props.state)
+  otherOpen.value = false
+  emit('edited')
+  return named.key
+}
+
 function addOther(): void {
   const name = otherName.value.trim()
   if (name === '' || round.value === undefined) return
+  // Several picks: the named item joins the chips, picked, and the question stays for more.
+  if (multi.value) {
+    const key = pickTyped(name)
+    if (key === undefined) return
+    // The field is gone: focus goes to the chip just added, so it is neither lost nor left on the page behind.
+    void nextTick(() => root.value?.querySelector<HTMLElement>(`[data-chip="${CSS.escape(key)}"]`)?.focus({ preventScroll: true }))
+    return
+  }
   // A name already on the list picks that item when it is free; one picked in another round says so.
   const named = addTyped(props.state, name)
   if (!pick(props.state, round.value, named.key, env)) {
-    duplicate.value = true
+    refusal.value = 'duplicate'
     emit('edited')
     return
   }
@@ -202,9 +245,12 @@ const labels = computed(() => ({
           :group-label="groupLabel" @answer="answerQuick"
         />
 
-        <div v-else-if="replies" class="round" role="group" :aria-label="groupLabel">
-          <QuickReplies v-if="replies.options.length > 0" :options="replies.options" :current="replies.current" :current-label="t('onboarding.guided.current')" @answer="choose" />
-          <div v-if="replies.stored.length > 0" class="stored" role="group" :aria-labelledby="storedId" data-testid="add-stored">
+        <div v-else-if="multi || replies" class="round" role="group" :aria-label="groupLabel">
+          <ChoiceChips v-if="multi" :chips="multiChips" :selected="picksOf(state)" :group-label="groupLabel" data-testid="more-chips" @toggle="toggleMore" />
+          <!-- Owner decision (R_InicioMas): the picks so far and what they bring, "2 elegidas · una pregunta corta por cada una". -->
+          <p v-if="multi && picksOf(state).length > 0" class="picked t-footnote" role="status" data-testid="more-picked">{{ t('onboarding.guided.more.picked', { count: picksOf(state).length }, picksOf(state).length) }}</p>
+          <QuickReplies v-if="replies && replies.options.length > 0" :options="replies.options" :current="replies.current" :current-label="t('onboarding.guided.current')" @answer="choose" />
+          <div v-if="replies && replies.stored.length > 0" class="stored" role="group" :aria-labelledby="storedId" data-testid="add-stored">
             <p :id="storedId" class="stored-label t-footnote">{{ t('onboarding.guided.add.yours') }}</p>
             <QuickReplies :options="replies.stored" :current="replies.current" :current-label="t('onboarding.guided.current')" @answer="choose" />
           </div>
@@ -224,10 +270,10 @@ const labels = computed(() => ({
                 <p class="t-body note" role="status" data-testid="same-name-note">{{ t('onboarding.guided.add.sameName', { name: sameStored.name }) }}</p>
                 <button class="other t-body" type="button" data-testid="more-other-new" :disabled="busy" @click="createAnother">{{ t('onboarding.guided.add.createAnother') }}</button>
               </template>
-              <p v-if="duplicate" class="t-body note" role="status">{{ t('onboarding.guided.more.duplicate') }}</p>
+              <p v-if="refusal" class="t-body note" role="status" data-testid="more-refusal">{{ refusal === 'limit' ? t('onboarding.guided.more.limit', { max: MAX_PICKS }) : t('onboarding.guided.more.duplicate') }}</p>
             </form>
             <button
-              v-if="showDone" class="reply-chip done t-body" :class="{ 'is-current': replies.done.current }" type="button" data-testid="more-done" :aria-label="doneLabel"
+              v-if="showDone && replies" class="reply-chip done t-body" :class="{ 'is-current': replies.done.current }" type="button" data-testid="more-done" :aria-label="doneLabel"
               :disabled="busy" @click="finish"
             >
               {{ replies.done.label }}
@@ -236,17 +282,20 @@ const labels = computed(() => ({
         </div>
 
         <RangeList v-else-if="category" :state="state" :category="category" :labels="labels" />
-        <button v-if="extra?.kind === 'answer'" class="reply-chip t-body" type="button" data-testid="setup-secondary" :disabled="busy" @click="onSecondary">{{ t(extra.key) }}</button>
+        <button v-if="extra?.kind === 'answer' && !rangesAnswer" class="reply-chip t-body" type="button" data-testid="setup-secondary" :disabled="busy" @click="onSecondary">{{ t(extra.key) }}</button>
       </div>
     </div>
     <div v-if="hasActions" class="dock-actions">
       <div class="column actions">
         <button v-if="extra?.kind === 'skip'" class="skip t-body" type="button" data-testid="setup-secondary" :disabled="busy" @click="onSecondary">{{ t(extra.key) }}</button>
+        <!-- "Sin horario fijo" rides in the fixed bar beside "Siguiente", so it is never scrolled away under the times. -->
+        <button v-else-if="extra?.kind === 'answer' && rangesAnswer" class="reply-chip t-body" type="button" data-testid="setup-secondary" :disabled="busy" @click="onSecondary">{{ t(extra.key) }}</button>
         <button
-          v-if="!answersOnTap" class="send" type="button" data-primary data-dock-primary data-testid="setup-primary" :aria-label="t('onboarding.guided.send')"
+          v-if="!answersOnTap" class="send" type="button" data-primary data-dock-primary data-testid="setup-primary"
           :aria-describedby="blocked ? `${questionId} ${reasonId}` : questionId" :disabled="busy || !canContinue" @click="onPrimary"
         >
-          <span>{{ t('onboarding.guided.sendShort') }}</span>
+          <!-- "Siguiente", not "Enviar": nothing leaves the device (DIRECTION §4 improvement 5). -->
+          <span>{{ t('onboarding.guided.next') }}</span>
           <Icon name="send" :size="22" class="send-icon" />
         </button>
         <span v-if="blocked" :id="reasonId" class="visually-hidden" data-testid="send-reason">{{ t(`onboarding.guided.${blocked}`) }}</span>
@@ -256,28 +305,32 @@ const labels = computed(() => ({
 </template>
 
 <style scoped>
-/* Docked like a keyboard: the answer area scrolls on its own when it is taller than its share of the screen, and the
-   actions under it never move. */
+/* Docked like a keyboard: the dock keeps its size (its actions never shrink out of it) up to its share of the frame (the
+   screen, or the tablet modal: ConversationFrame's --frame-room); the answer area scrolls on its own inside it. */
 .dock {
-  flex: 0 1 auto; display: flex; flex-direction: column; min-height: 0; max-height: calc(min(var(--vv-height, 100dvh), 100dvh) * 0.62);
+  flex: none; display: flex; flex-direction: column; min-height: 0; max-height: calc(var(--frame-room, min(var(--vv-height, 100dvh), 100dvh)) * 0.66);
   border-top: 0.5px solid var(--separator); background: var(--surface);
+}
+/* A short phone (375 x 667) gives the answers a little more; the conversation shows the question from its start
+   (SetupConversation's reveal). */
+@media (max-height: 700px) {
+  .dock { max-height: calc(var(--frame-room, min(var(--vv-height, 100dvh), 100dvh)) * 0.72); }
 }
 .dock-answer { flex: 0 1 auto; min-height: 0; overflow-y: auto; overscroll-behavior: contain; }
 .dock-answer > .column { display: flex; flex-direction: column; gap: var(--space-3); padding-block: var(--space-3) var(--space-1); }
 .dock-answer > .column:empty { display: none; }
 .dock-actions { flex: none; }
 .column { box-sizing: border-box; width: 100%; max-width: var(--column); margin-inline: auto; padding-inline: max(var(--page-gutter), var(--safe-left)) max(var(--page-gutter), var(--safe-right)); }
-/* Send is the call to action: the group gap clears it of the answers above and of "Later" beside or above it, and the
-   bar keeps 16 px plus the safe area under it (docs/design/visual-design.md › Spacing). Below 480 px it spans the
-   column like the summary's button; from 480 px it hugs its label at the trailing edge, "Later" on the leading one. */
+/* "Siguiente" is the call to action: the group gap clears it of the answers above and of "Lo veo después" beside it,
+   and the bar keeps 16 px plus the safe area under it (docs/design/visual-design.md › Spacing). */
 .actions {
   display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--group-gap);
   padding-block: var(--group-gap) calc(var(--space-4) + var(--safe-bottom));
 }
 /* An answer that says "none": an outlined chip with the other answers. */
 .reply-chip {
-  align-self: flex-start; min-height: var(--tap-target); max-width: 100%; padding: var(--space-2) var(--space-4); border: 1.5px solid var(--field-border); border-radius: 999px;
-  background: transparent; color: var(--label); font-weight: 600; text-align: center; overflow-wrap: anywhere; hyphens: auto; touch-action: manipulation;
+  align-self: flex-start; min-height: var(--tap-target); max-width: 100%; padding: var(--space-2) var(--space-4); border: 1.5px solid transparent; border-radius: 999px;
+  background: var(--fill); color: var(--label); font-weight: 600; text-align: center; overflow-wrap: anywhere; hyphens: auto; touch-action: manipulation;
   transition: transform 0.1s var(--ease-out), opacity 0.1s;
 }
 .reply-chip:active:not(:disabled) { transform: scale(0.97); }
@@ -302,9 +355,17 @@ const labels = computed(() => ({
 .send:focus-visible { outline-offset: 3px; }
 .send-icon { flex: none; }
 .send-icon:dir(rtl) { transform: scaleX(-1); }
-@media (max-width: 479px) {
-  .send { flex: 1 0 100%; }
-}
+/* "Lo veo después" and "Siguiente" share the row (R_InicioSueno); Siguiente takes the room left, and wraps under it
+   only when the text is large. */
+.send { flex: 1 1 auto; max-width: 15rem; }
+/* On a phone it is the full-width call to action (DIRECTION §4, R_InicioHorario). */
+@media (max-width: 480px) { .send { max-width: none; } }
+/* At large text on a narrow phone the inset stays 20 px, so the button never runs past the column ("Siguiente" is
+   longer than the "Enviar" it replaces). It grows from its own width and never breaks its word. "Sin horario fijo"
+   beside it is a 15 px chip, so the two share one line on a 375 px phone with the 24 px the docked primary keeps
+   clear, also with Linux's wider fonts, and part only when the text is large. */
+.send { flex-basis: min-content; padding-inline: min(var(--space-5), 20px); }
+.actions > .reply-chip { padding-inline: var(--space-3); font-size: 0.9375rem; }
 .other, .add {
   align-self: flex-start; min-height: var(--tap-target); padding: var(--space-2) var(--space-4); border: 2px dashed var(--field-border);
   border-radius: 999px; background: transparent; color: var(--label); font-weight: 600; touch-action: manipulation;
@@ -325,6 +386,7 @@ const labels = computed(() => ({
 /* The round's answer when it is asked again, marked like a quick reply's. */
 .reply-chip.is-current { border-color: var(--tint); background: color-mix(in srgb, var(--tint) 12%, transparent); }
 .note { margin: 0; color: var(--label-2); }
+.picked { margin: 0; color: var(--label-2); }
 @media (prefers-reduced-motion: reduce) {
   .send:active:not(:disabled), .reply-chip:active:not(:disabled) { transform: none; opacity: 0.7; }
 }

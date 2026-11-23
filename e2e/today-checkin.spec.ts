@@ -2,6 +2,17 @@ import { expect, test, type Locator, type Page } from '@playwright/test'
 import { V2_KEY, seedKey } from './fixtures'
 import { storedPlanner } from './support/indexedDb'
 
+// A conversation (ConversationFrame) rises 24 px in as it opens. Vue puts its entry class on in one frame and starts
+// the transition in the next, so in between document.getAnimations() is empty while the frame is still low (CI of #61).
+// Measure the frame, or anything against the screen, after this. The same function lives in e2e/setup-guided.spec.ts;
+// they can become one shared helper once e2e/support/ counts as test code for the merge guard.
+async function frameSettled(page: Page): Promise<void> {
+  const frame = page.locator('.setup-frame')
+  await expect(frame).toBeVisible()
+  await expect(frame).not.toHaveClass(/setup-frame-enter/)
+  await page.waitForFunction(() => document.getAnimations().every((animation) => animation.playState !== 'running'))
+}
+
 // Slice B: Today and the nightly check-in, in Spanish (es-CO), at a phone and a desktop size, in both themes.
 // Wednesday 2026-10-21 10:15 UTC; the browser and the document both use UTC.
 test.use({ locale: 'es-CO' })
@@ -606,10 +617,7 @@ for (const { width, height, modal } of [{ width: 390, height: 844, modal: false 
     await seedKey(page, V2_KEY, JSON.stringify(plan))
     await page.goto('./#/checkin')
     const frame = page.locator('.setup-frame')
-    await expect(frame).toBeVisible()
-    // Measured once the frame has finished rising in (its entry starts a frame after it appears).
-    await expect(frame).not.toHaveClass(/setup-frame-enter/)
-    await page.waitForFunction(() => document.getAnimations().every((animation) => animation.playState !== 'running'))
+    await frameSettled(page)
     const box = (await frame.boundingBox())!
     if (modal) {
       expect(box.width).toBeLessThanOrEqual(560.5)
@@ -631,8 +639,7 @@ test('at 1024x600 with 200 % text the check-in stays full screen with its questi
   await seedKey(page, V2_KEY, JSON.stringify(plan))
   await page.goto('./#/checkin')
   const frame = page.locator('.setup-frame')
-  await expect(frame).toBeVisible()
-  await page.waitForFunction(() => document.getAnimations().every((animation) => animation.playState !== 'running'))
+  await frameSettled(page)
   const box = (await frame.boundingBox())!
   expect([box.x, box.y, box.width, box.height]).toEqual([0, 0, 1024, 600])
   const question = await page.locator('.setup-frame .is-current .ask').evaluate((element) => {

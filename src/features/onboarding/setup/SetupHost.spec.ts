@@ -13,7 +13,7 @@ import WeekView from '@/features/week/WeekView.vue'
 import CategorySettings from '@/features/settings/categories/CategorySettings.vue'
 import { draftOf, saveDraft } from '../draftStorage'
 import { openAdd, setupRequest } from '../reopen'
-import { addOwnCategory, clearRanges, createState, MAX_PICKS, pick } from '../setupModel'
+import { addOwnCategory, clearRanges, createState, MAX_PICKS, togglePick } from '../setupModel'
 import { block, category, documentWith, env } from '../setupFixtures'
 import legacyDrafts from '../__fixtures__/legacyDraftsV2.json'
 import { anyFullScreenOpen, droppedSheet, openSheet } from '@/ui/sheetStack'
@@ -416,11 +416,42 @@ describe('the conversation', () => {
   const turn = (screen: string) => turns().find((element) => element.dataset.answer === screen)!
   const quick = (value: string) => click(`[data-value=${value}]`)
 
+  // Fewer taps (DIRECTION §4): the first range opens on its start; a start picked opens the end; an end picked closes.
+  it('opens on the start time, moves on to the end once a start is picked, and closes once the end is picked', async () => {
+    await mount(firstRun())
+    const expanded = (field: string) => live(`[data-field=${field}]`)!.getAttribute('aria-expanded')
+    expect(expanded('start')).toBe('true')
+    expect(expanded('end')).toBe('false')
+    const start = live('[data-field=start]')!.closest('.field')!.querySelector<HTMLButtonElement>('[data-minute]:not([aria-pressed=true])')!
+    start.click()
+    await nextTick()
+    expect(expanded('start')).toBe('false')
+    expect(expanded('end')).toBe('true')
+    // The start's chips left the page with the focus: it moves to the end's row, whose Escape closes its times.
+    await vi.waitFor(() => expect(window.document.activeElement).toBe(live('[data-field=end]')))
+    live('[data-field=end]')!.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }))
+    await nextTick()
+    expect(expanded('end')).toBe('false')
+    expect(window.document.activeElement).toBe(live('[data-field=end]'))
+    live('[data-field=start]')!.click()
+    await nextTick()
+    live('[data-field=start]')!.closest('.field')!.querySelector<HTMLButtonElement>('[data-testid=other-time]')!.click()
+    await nextTick()
+    live('[data-testid=time-use]')!.click()
+    await nextTick()
+    expect(expanded('end')).toBe('true')
+    await vi.waitFor(() => expect(window.document.activeElement).toBe(live('[data-field=end]')))
+    live('[data-field=end]')!.closest('.field')!.querySelector<HTMLButtonElement>('[data-minute]')!.click()
+    await nextTick()
+    expect(expanded('end')).toBe('false')
+    expect(expanded('start')).toBe('false')
+  })
+
   it('shows English PM and AM in the other-time editor with a 12-hour clock', async () => {
     setHourCycle('h12')
     try {
       await mount(firstRun())
-      await click('[data-field=start]')
+      // The first range opens on its start, its times ready.
       await click('[data-testid=other-time]')
       const period = () => live('[data-testid=time-period]')!.textContent!.trim().replace(/\s/g, ' ')
 
@@ -432,6 +463,63 @@ describe('the conversation', () => {
     } finally {
       setHourCycle('auto')
     }
+  })
+
+  // On a short phone the answers take most of the height: the question's first words show, measured against the
+  // scroller itself (offsetTop counts from the frame, which would scroll past them).
+  it('shows the current question from its start, measured against its own scroller', async () => {
+    const rect = (top: number) => ({ top, bottom: top + 100, left: 0, right: 0, width: 0, height: 100, x: 0, y: top, toJSON: () => ({}) }) as DOMRect
+    vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockImplementation(function (this: HTMLElement) {
+      if (this.classList.contains('setup-scroller')) return rect(100)
+      if (this.classList.contains('is-current')) return rect(400)
+      return rect(0)
+    })
+    vi.spyOn(HTMLElement.prototype, 'offsetTop', 'get').mockReturnValue(900)
+    vi.spyOn(HTMLElement.prototype, 'scrollHeight', 'get').mockReturnValue(2000)
+    vi.spyOn(HTMLElement.prototype, 'clientHeight', 'get').mockReturnValue(500)
+    const original = HTMLElement.prototype.scrollTo
+    const scrollTo = vi.fn()
+    HTMLElement.prototype.scrollTo = scrollTo as unknown as typeof original
+    try {
+      await mount(firstRun())
+      await vi.waitFor(() => expect(scrollTo).toHaveBeenCalled())
+      // 400 - 100 from the scroller's top, 16 px above the question.
+      expect(scrollTo.mock.calls.at(-1)![0]).toMatchObject({ top: 284 })
+    } finally {
+      HTMLElement.prototype.scrollTo = original
+      vi.restoreAllMocks()
+    }
+  })
+
+  it('Escape with "Choose days" open puts the days away and keeps the setup open, focus back on "Choose days"', async () => {
+    await mount(firstRun())
+    await click('[data-testid=setup-primary]')
+    await quick('work')
+    await vi.waitFor(() => expect(screen()).toBe('work'))
+    await click('[data-preset=pick]')
+    const day = live('[data-day="1"]')!
+    day.focus()
+    day.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true }))
+    await nextTick()
+    await nextTick()
+    expect(setup()).not.toBeNull()
+    expect(live('[data-day="1"]')).toBeUndefined()
+    expect(window.document.activeElement).toBe(live('[data-preset=pick]'))
+  })
+
+  it('on a times question "No fixed hours" rides in the fixed bar beside Next, never under the times; on sleep it is not there', async () => {
+    await mount(firstRun())
+    const inBar = () => live('.dock-actions [data-testid=setup-secondary]')
+    const inAnswers = () => live('.dock-answer [data-testid=setup-secondary]')
+    expect(screen()).toBe('sleep')
+    expect(inAnswers()).toBeUndefined()
+    // Sleep has no "No fixed hours": its bar holds only "Later".
+    expect(inBar()?.textContent?.trim()).toBe('Later')
+    await click('[data-testid=setup-primary]')
+    await quick('work')
+    await vi.waitFor(() => expect(screen()).toBe('work'))
+    expect(inBar()).toBeDefined()
+    expect(inAnswers()).toBeUndefined()
   })
 
   it('returns from an earlier answer to the current question without reconfirming later answers', async () => {
@@ -480,20 +568,20 @@ describe('the conversation', () => {
     await click('[data-testid=time-use]')
     await click('[data-testid=setup-primary]')
     expect(screen()).toBe('work')
-    await click('[data-field=start]')
     await click('[data-minute="600"]')
     await click('[data-testid=setup-primary]')
     expect(screen()).toBe('summary')
     expect(JSON.parse(sessionStorage.getItem(DRAFT_KEY)!).answers).toMatchObject({ commute: 'no', exercise: 'no' })
   })
 
-  it.each(['en', 'es', 'fr', 'pt', 'de'] as const)('shows a visible send label and arrow in %s', async (locale) => {
+  // "Siguiente", not "Enviar": nothing leaves the device (DIRECTION §4 improvement 5).
+  it.each(['en', 'es', 'fr', 'pt', 'de'] as const)('shows a visible "Next" label and arrow in %s', async (locale) => {
     await mount(firstRun())
     i18n.global.locale.value = locale
     await nextTick()
     const send = live('[data-testid=setup-primary]')!
-    expect(send.textContent?.trim()).toBe(i18n.global.t('onboarding.guided.sendShort'))
-    expect(send.textContent?.trim()).not.toBe('onboarding.guided.sendShort')
+    expect(send.textContent?.trim()).toBe(i18n.global.t('onboarding.guided.next'))
+    expect(send.textContent?.trim()).not.toBe('onboarding.guided.next')
     expect(send.querySelector('svg')).not.toBeNull()
   })
 
@@ -507,7 +595,8 @@ describe('the conversation', () => {
     expect(icon?.getAttribute('width')).toBe('22')
     expect(icon?.getAttribute('height')).toBe('22')
     expect(icon?.getAttribute('aria-hidden')).toBe('true')
-    expect(send.getAttribute('aria-label')).toBe(i18n.global.t('onboarding.guided.send'))
+    // Its name is the visible word.
+    expect(send.hasAttribute('aria-label')).toBe(false)
   })
 
   it('keeps every answer above the question; changing an earlier one drops what no longer applies and brings it back with that answer', async () => {
@@ -598,22 +687,54 @@ describe('the conversation', () => {
     expect(live('[data-testid=week-card]')).toBeDefined()
   })
 
+  // R_InicioResumen: the week as one bar of its categories' hours and what is left, then the dock's actions.
+  async function openSummary(extra: Partial<PlannerDocument>, options: { withoutGuard?: boolean } = {}): Promise<void> {
+    await mount(firstRun({ settings: { ...testDocument().settings, onboardingDone: true }, ...extra }), options)
+    setupRequest.value += 1
+    await waitForSetup()
+    await vi.waitFor(() => expect(screen()).toBe('summary'))
+  }
+
+  it('the summary bar has one segment per category with hours, in proportion, then the hours left, and says so', async () => {
+    const STUDY = { id: 'c-study', name: 'Study', colorKey: 'orange' as const, icon: '📚', goal: { type: 'none' as const, hoursPerWeek: 0 } }
+    await openSummary({ categories: [WORK, STUDY], blocks: [WORK_BLOCK] })
+    const bar = live('[data-testid=summary-bar]')!
+    const segments = [...bar.querySelectorAll<HTMLElement>('[data-segment]')]
+    // Study has no hours: no segment. Work is 5 x 8 h = 2400 minutes of the week's 10080.
+    expect(segments.map((segment) => segment.dataset.segment)).toEqual(['work', 'free'])
+    expect(segments.map((segment) => Number(segment.style.flexGrow))).toEqual([2400, 7680])
+    expect(bar.getAttribute('aria-label')).toBe('Work 40 h, 128 h unassigned')
+  })
+
+  it('"Go through the questions" is offered only for a week with times, and the trust line only in the browser', async () => {
+    await openSummary({ categories: [WORK], blocks: [WORK_BLOCK] })
+    expect(live('[data-testid=summary-review]')).toBeDefined()
+    expect(live('[data-testid=setup-trust]')).toBeDefined()
+    app!.unmount()
+    window.document.body.innerHTML = ''
+    // A first week (nothing stored yet) reached by its questions, with the companion: neither is there.
+    await mount(firstRun(), { withoutGuard: true })
+    for (let guard = 0; guard < 8 && screen() !== 'summary'; guard++) await click(live('[data-testid=more-done]') ? '[data-testid=more-done]' : '[data-testid=setup-secondary]')
+    await vi.waitFor(() => expect(screen()).toBe('summary'))
+    expect(live('[data-testid=summary-review]')).toBeUndefined()
+    expect(live('[data-testid=setup-trust]')).toBeUndefined()
+  })
+
   it('Send is the validation: grey with its reason while there is nothing to send, in colour once there is', async () => {
     await mount(firstRun())
     await click('[data-testid=setup-secondary]')
     await click('[data-testid=setup-secondary]')
     await click('[data-testid=setup-secondary]')
     expect(screen()).toBe('more')
-    // "Anything else?" answers on a tap, like the other quick replies: it has no Send.
-    expect(live('[data-testid=setup-primary]')).toBeUndefined()
-    await click('[data-value=family]')
+    // "¿A qué más…?" takes several picks, so it has Siguiente.
+    await click('[data-chip=family]')
+    await click('[data-testid=setup-primary]')
     expect(screen()).toBe('extra:family')
     const send = () => live('[data-testid=setup-primary]')!
     expect(send().disabled).toBe(false)
     expect(send().getAttribute('aria-describedby')!.split(' ')).toHaveLength(1)
     const reason = () => window.document.getElementById(send().getAttribute('aria-describedby')!.split(' ')[1]!)
-    // A time with no days cannot be sent until it has one.
-    await click('[data-field=days]')
+    // A time with no days cannot be sent until it has one; the days are chips in the card.
     await click('[data-preset=pick]')
     await click('[data-day="6"][aria-pressed=true]')
     expect(send().disabled).toBe(true)
@@ -630,93 +751,138 @@ describe('the conversation', () => {
   })
 })
 
-describe('"Anything else?" asked again (S1-4, S1-9, N8)', () => {
-  const turn = (screen: string) => [...window.document.body.querySelectorAll<HTMLButtonElement>('[data-testid=setup] [data-answer]')].find((element) => element.dataset.answer === screen)!
-  const choose = (value: string) => click(`[data-value="${value}"]`)
+// "¿A qué más le dedicas tiempo?" takes several picks at once (DIRECTION §4, improvement 2): chips, then Siguiente,
+// then one short time question per pick. The owner kept "2 elegidas · una pregunta corta por cada una".
+describe('"¿A qué más…?" with several picks', () => {
+  const turn = (screen: string) => [...window.document.body.querySelectorAll<HTMLButtonElement>('[data-testid=setup] [data-answer]')].find((element) => element.dataset.answer === screen)
+  const chip = (value: string) => live(`[data-chip="${value}"]`)!
   const send = () => click('[data-testid=setup-primary]')
-  const replies = () => [...window.document.body.querySelectorAll<HTMLButtonElement>('[data-testid=setup] .reply')].map((element) => element.dataset.value)
 
   async function toMore(): Promise<void> {
     for (let guard = 0; guard < 3; guard++) await click('[data-testid=setup-secondary]')
     expect(screen()).toBe('more')
   }
 
-  async function reopen(screenId: string): Promise<void> {
-    turn(screenId).click()
-    await nextTick()
-    expect(screen()).toBe(screenId)
-  }
 
-  it('reopening the "No, that\'s all" turn and picking Friends asks its times, then the round after it, open', async () => {
+  it('Siguiente with nothing picked is an answer too: the conversation says "No, that\'s all", not "Later"', async () => {
+    await mount(firstRun())
+    for (let index = 0; index < 3; index++) await click('[data-testid=setup-secondary]')
+    expect(screen()).toBe('more')
+    await click('[data-testid=setup-primary]')
+    await vi.waitFor(() => expect(screen()).toBe('summary'))
+    expect(turn('more')!.textContent).toContain('No, that\'s all')
+  })
+  it('picks several with chips, then asks the times of each, then shows the summary', async () => {
     await mount(firstRun())
     await toMore()
-    await choose('family')
+    expect(live('[data-testid=setup-primary]')).toBeDefined()
+    await click('[data-chip="family"]')
+    await click('[data-chip="friends"]')
+    expect([chip('family'), chip('friends'), chip('me')].map((element) => element.getAttribute('aria-pressed'))).toEqual(['true', 'true', 'false'])
+    await click('[data-chip="friends"]')
+    await click('[data-chip="friends"]')
     await send()
-    expect(screen()).toBe('more:1')
-    await click('[data-testid=more-done]')
-    expect(screen()).toBe('summary')
-    await reopen('more:1')
-    expect(live('[data-testid=more-done]')!.getAttribute('aria-label')).toBe('No, that\'s all (current)')
-    await choose('friends')
+    expect(screen()).toBe('extra:family')
+    await send()
     expect(screen()).toBe('extra:friends')
     await send()
-    expect(screen()).toBe('more:2')
-    expect(live('[data-testid=more-done]')!.getAttribute('aria-label')).toBeNull()
-    expect(replies()).toEqual(['me', 'learning'])
-  })
-
-  it('replacing an earlier pick asks the new pick\'s times, then returns to the round the person was on', async () => {
-    await mount(firstRun())
-    await toMore()
-    await choose('family')
-    await send()
-    await choose('friends')
-    await send()
-    expect(screen()).toBe('more:2')
-    await reopen('more')
-    expect(live('.reply.is-current')!.dataset.value).toBe('family')
-    await choose('learning')
-    expect(screen()).toBe('extra:learning')
-    await send()
-    expect(screen()).toBe('more:2')
-    expect(turn('more').textContent).toContain('Learning')
-    expect(turn('more:1').textContent).toContain('Friends')
-  })
-
-  it('"No, that\'s all" at an earlier round, with picks after it, lands on the summary even when the screen left is gone', async () => {
-    await mount(firstRun())
-    await toMore()
-    await choose('family')
-    await send()
-    await choose('friends')
-    await send()
-    await choose('learning')
-    expect(screen()).toBe('extra:learning')
-    await reopen('more:1')
-    await click('[data-testid=more-done]')
     expect(screen()).toBe('summary')
-    await vi.waitFor(() => expect(turns()).toEqual(['sleep', 'workStudy', 'exercise', 'more', 'extra:family', 'more:1']))
+    expect(turn('more')!.textContent).toContain('Family, Friends')
+    expect(turn('more:1')).toBeUndefined()
   })
 
-  it('at MAX_PICKS picks no round is left open and the summary offers no other addition', async () => {
+  it('says how many are picked and what they bring, live under the chips (owner decision)', async () => {
+    await mount(firstRun())
+    await toMore()
+    const picked = () => live('[data-testid=more-picked]')
+    expect(picked()).toBeUndefined()
+    await click('[data-chip="family"]')
+    expect(picked()!.textContent).toBe('1 picked · one short question')
+    await click('[data-chip="friends"]')
+    expect(picked()!.textContent).toBe('2 picked · one short question for each')
+    expect(picked()!.getAttribute('role')).toBe('status')
+  })
+
+  it('a typed name past the limit of picks says so, not that it is already on the list', async () => {
+    await mount(firstRun())
+    await toMore()
+    const add = async (name: string) => {
+      if (!live('[data-testid=more-other-name]')) await click('[data-testid=more-other]')
+      const field = live('[data-testid=more-other-name]') as unknown as HTMLTextAreaElement
+      field.value = name
+      field.dispatchEvent(new Event('input'))
+      await nextTick()
+      await click('[data-testid=more-other-add]')
+    }
+    for (let index = 1; index <= 20; index++) await add(`Thing ${index}`)
+    expect(live('[data-testid=more-picked]')!.textContent).toBe('20 picked · one short question for each')
+    await add('One more')
+    expect(live('[data-testid=more-refusal]')!.textContent).toBe('You have 20 picked; remove one to add another.')
+  })
+
+  it('a name typed in "Other" and not yet added goes in with the picks on Siguiente', async () => {
+    await mount(firstRun())
+    await toMore()
+    await click('[data-chip="family"]')
+    await click('[data-testid=more-other]')
+    const field = live('[data-testid=more-other-name]') as unknown as HTMLTextAreaElement
+    field.value = 'Guitar'
+    field.dispatchEvent(new Event('input'))
+    await nextTick()
+    await send()
+    expect(screen()).toBe('extra:family')
+    await send()
+    expect(screen()).not.toBe('summary')
+    for (let guard = 0; guard < 3 && screen() !== 'summary'; guard++) await send()
+    expect(screen()).toBe('summary')
+    expect(turn('more')!.textContent).toContain('Family, Guitar')
+  })
+
+  it('"No, that\'s all" picks nothing and goes to the summary', async () => {
+    await mount(firstRun())
+    await toMore()
+    await click('[data-chip="family"]')
+    await click('[data-testid=setup-secondary]')
+    expect(screen()).toBe('summary')
+    expect(turn('more')!.textContent).toContain('No, that\'s all')
+  })
+
+  it('reopened, keeps its picks marked; one more pick asks its times too', async () => {
+    await mount(firstRun())
+    await toMore()
+    await click('[data-chip="family"]')
+    await send()
+    await send()
+    expect(screen()).toBe('summary')
+    turn('more')!.click()
+    await nextTick()
+    expect(chip('family').getAttribute('aria-pressed')).toBe('true')
+    await click('[data-chip="learning"]')
+    await send()
+    // Only the new pick has times to ask; then back to the summary.
+    expect(screen()).toBe('extra:learning')
+    await send()
+    expect(screen()).toBe('summary')
+  })
+
+  it('at MAX_PICKS picks the summary offers no other addition', async () => {
     const document = firstRun()
     const state = createState(document, env)
     for (let index = 0; index < MAX_PICKS; index++) {
       const { category: own } = addOwnCategory(state, `Thing ${index + 1}`)
       clearRanges(own)
-      pick(state, index, own.key, env)
+      togglePick(state, own.key, env)
     }
     state.screen = 'summary'
     saveDraft(draftOf(state, { kind: 'stored', workspaceId: document.workspaceId, fingerprint: await documentFingerprint(document) }, true))
     await mount(document)
     expect(screen()).toBe('summary')
-    expect(turn(`more:${MAX_PICKS - 1}`)).toBeDefined()
-    expect(turn(`more:${MAX_PICKS}`)).toBeUndefined()
+    expect(turn('more:1')).toBeUndefined()
     expect(live('[data-testid=summary-add]')).toBeUndefined()
     expect(live('[data-testid=summary-limit]')!.textContent).toBe('That\'s enough for now.')
   })
 
-  it('a version 2 draft reopened on "more" reaffirms both of its answers and reaches the open round (N8)', async () => {
+  it('a version 2 draft reopened on "more" keeps both of its picks marked and asks their times (N8)', async () => {
     const at = (hours: number) => hours * 60
     const document = documentWith(
       [category('c-work', 'Work', { icon: '💼' }), category('c-family', 'Family', { icon: '👨‍👩‍👧', colorKey: 'pink' }), category('c-chess', 'Chess', { colorKey: 'green' })],
@@ -732,22 +898,12 @@ describe('"Anything else?" asked again (S1-4, S1-9, N8)', () => {
     await mount(document)
     await waitForSetup()
     expect(screen()).toBe('more')
-    expect(live('.reply.is-current')!.dataset.value).toBe('friends')
-    await choose('friends')
+    expect([chip('friends'), chip('custom:6')].map((element) => element.getAttribute('aria-pressed'))).toEqual(['true', 'true'])
+    await send()
     expect(screen()).toBe('extra:friends')
     await send()
-    expect(screen()).toBe('more:1')
-    expect(live('.reply.is-current')!.dataset.value).toBe('custom:6')
-    await choose('custom:6')
-    await send()
-    expect(screen()).toBe('more:2')
-    expect(live('.reply.is-current')).toBeUndefined()
-    expect(live('[data-testid=more-done]')!.getAttribute('aria-label')).toBeNull()
+    expect(screen()).toBe('extra:custom:6')
   })
-
-  function turns(): string[] {
-    return [...window.document.body.querySelectorAll<HTMLButtonElement>('[data-testid=setup] [data-answer]')].map((element) => element.dataset.answer!)
-  }
 })
 
 describe('a name typed and not added (S1-13, N3)', () => {

@@ -10,7 +10,7 @@ import DayPicker from './DayPicker.vue'
 import TimeChips from './TimeChips.vue'
 import { useSetupFormat } from './useSetupFormat'
 
-export type Field = 'days' | 'start' | 'end'
+export type Field = 'start' | 'end'
 
 const props = defineProps<{
   state: SetupState
@@ -23,15 +23,21 @@ const props = defineProps<{
   title?: string
   // Hidden while the range is every night (sleep), which needs no question about days.
   hideDays?: boolean
+  // A category's only range has no "Quitar" in the conversation (R_InicioHorario, R_InicioSueno): "Sin horario fijo"
+  // or "Lo veo después" is that answer. The summary keeps it (RangeList's loneRemovable).
+  removable?: boolean
 }>()
 const emit = defineEmits<{
   toggle: [field: Field | null]
   change: [change: { days?: DayIndex[]; start?: number; end?: number }]
   remove: []
 }>()
-const { t, time, duration, rangeDays, slotLine } = useSetupFormat()
+const { t, time, duration, slotLine } = useSetupFormat()
 const rows = ref<Partial<Record<Field, HTMLElement>>>({})
 
+// Sleep's rows read "Me acuesto" (moon) and "Me levanto" (sunrise); every other range shows a clock.
+const startIcon = computed(() => (props.startLabel ? 'moon' : 'clock'))
+const endIcon = computed(() => (props.endLabel ? 'sunrise' : 'clock'))
 const lengths = computed(() => (props.category.topic ? TOPICS[props.category.topic].lengths : OWN_LENGTHS))
 const nextDay = computed(() => props.range.end <= props.range.start && props.range.start !== props.range.end)
 // The length beside the end time, so moving the start (which moves the end with it) shows what changed.
@@ -56,9 +62,14 @@ function close(field: Field): void {
   focusRow(field)
 }
 
+// Fewer taps (DIRECTION §4): picking the start opens the end with its times, focus on the end's row (the start's
+// chips leave the page); picking the end closes the card.
 function pick(field: 'start' | 'end', minute: number): void {
   emit('change', field === 'start' ? { start: minute } : { end: minute })
-  close(field)
+  if (field === 'start') {
+    emit('toggle', 'end')
+    focusRow('end')
+  } else close(field)
 }
 
 // Escape closes the open picker first; only then may the sheet itself.
@@ -74,26 +85,27 @@ function onEscape(event: KeyboardEvent): void {
   <section class="range" :data-range="range.key" :aria-label="title" @keydown.esc="onEscape">
     <h4 v-if="title" class="title t-body">{{ title }}</h4>
 
-    <button v-if="!hideDays" :ref="(element) => { rows.days = element as HTMLElement }" class="row t-body" type="button" data-field="days" data-one-line :aria-expanded="open === 'days'" @click="emit('toggle', open === 'days' ? null : 'days')">
-      <span class="label"><Icon name="calendar-days" :size="18" />{{ t('onboarding.guided.range.days') }}</span>
-      <span class="end"><span class="value"><span class="days-short" aria-hidden="true">{{ rangeDays(category, range, 'short') }}</span><span class="days-long">{{ rangeDays(category, range) }}</span></span><Icon name="chevron-right" :size="18" /></span>
-    </button>
-    <DayPicker v-if="open === 'days'" :days="range.days" @change="emit('change', { days: $event })" @done="close('days')" />
+    <!-- The days are preset chips in the card itself (R_InicioHorario), not a row to open. -->
+    <DayPicker v-if="!hideDays" :days="range.days" @change="emit('change', { days: $event })" @done="emit('toggle', 'start')" />
 
-    <button :ref="(element) => { rows.start = element as HTMLElement }" class="row t-body" type="button" data-field="start" data-one-line :aria-expanded="open === 'start'" @click="emit('toggle', open === 'start' ? null : 'start')">
-      <span class="label"><Icon name="clock" :size="18" />{{ startLabel ?? t('onboarding.guided.range.start') }}</span>
-      <span class="end"><span class="value">{{ time(range.start) }}</span><Icon name="chevron-right" :size="18" /></span>
-    </button>
-    <TimeChips v-if="open === 'start'" field="start" :value="range.start" :start="range.start" :lengths="lengths" @pick="pick('start', $event)" />
+    <div class="field" :class="{ 'is-open': open === 'start' }">
+      <button :ref="(element) => { rows.start = element as HTMLElement }" class="row t-body" type="button" data-field="start" data-one-line :aria-expanded="open === 'start'" @click="emit('toggle', open === 'start' ? null : 'start')">
+        <span class="label"><Icon :name="startIcon" :size="18" />{{ startLabel ?? t('onboarding.guided.range.start') }}</span>
+        <span class="end"><span class="value">{{ time(range.start) }}</span><Icon :name="open === 'start' ? 'chevron-up' : 'chevron-down'" :size="18" class="chevron" /></span>
+      </button>
+      <TimeChips v-if="open === 'start'" field="start" :value="range.start" :start="range.start" :lengths="lengths" @pick="pick('start', $event)" />
+    </div>
 
-    <button :ref="(element) => { rows.end = element as HTMLElement }" class="row t-body" type="button" data-field="end" data-one-line :aria-expanded="open === 'end'" @click="emit('toggle', open === 'end' ? null : 'end')">
-      <span class="label"><Icon name="clock" :size="18" />{{ endLabel ?? t('onboarding.guided.range.end') }}</span>
-      <span class="end"><span class="value">{{ time(range.end) }}<span v-if="nextDay" class="visually-hidden"> {{ t('onboarding.guided.range.nextDay') }}</span><span v-if="length > 0" class="length"> · {{ duration(length) }}</span></span><Icon name="chevron-right" :size="18" /></span>
-    </button>
-    <TimeChips v-if="open === 'end'" field="end" :value="range.end" :start="range.start" :lengths="lengths" @pick="pick('end', $event)" />
+    <div class="field" :class="{ 'is-open': open === 'end' }">
+      <button :ref="(element) => { rows.end = element as HTMLElement }" class="row t-body" type="button" data-field="end" data-one-line :aria-expanded="open === 'end'" @click="emit('toggle', open === 'end' ? null : 'end')">
+        <span class="label"><Icon :name="endIcon" :size="18" />{{ endLabel ?? t('onboarding.guided.range.end') }}</span>
+        <span class="end"><span class="value">{{ time(range.end) }}<span v-if="nextDay" class="visually-hidden"> {{ t('onboarding.guided.range.nextDay') }}</span><span v-if="length > 0" class="length"> · {{ duration(length) }}</span></span><Icon :name="open === 'end' ? 'chevron-up' : 'chevron-down'" :size="18" class="chevron" /></span>
+      </button>
+      <TimeChips v-if="open === 'end'" field="end" :value="range.end" :start="range.start" :lengths="lengths" @pick="pick('end', $event)" />
+    </div>
 
     <p class="message t-body" role="status" aria-live="polite" data-testid="range-message"><template v-if="message">⚠ {{ message }}</template></p>
-    <Button variant="plain" data-testid="range-remove" @click="emit('remove')">{{ t('onboarding.guided.range.remove') }}</Button>
+    <Button v-if="removable" variant="plain" data-testid="range-remove" @click="emit('remove')">{{ t('onboarding.guided.range.remove') }}</Button>
   </section>
 </template>
 
@@ -111,14 +123,13 @@ function onEscape(event: KeyboardEvent): void {
 .end { display: inline-flex; align-items: center; gap: var(--space-1); min-width: 0; max-width: 100%; margin-inline-start: auto; }
 /* Beside the chevron a long value ("Montag bis Freitag" at 200 %) may still need to break a word: it hyphenates. */
 .value { min-width: 0; text-align: end; font-weight: 600; font-variant-numeric: tabular-nums; overflow-wrap: break-word; hyphens: auto; }
-/* Beside "Days" a narrow card writes the days short ("lun–vie"), a wide one in words; screen readers always hear the words. */
-.days-long { position: absolute; width: 1px; height: 1px; margin: -1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
-@container range-card (min-width: 30rem) {
-  .days-short { display: none; }
-  .days-long { position: static; width: auto; height: auto; margin: 0; overflow: visible; clip: auto; white-space: normal; }
-}
 .length { color: var(--label-2); font-weight: 400; white-space: nowrap; }
-.row[aria-expanded='true'] { box-shadow: inset 0 0 0 2px var(--tint); }
+/* A time row and, while it is open, its times, framed together in the tint (R_InicioSueno). */
+.field { display: flex; flex-direction: column; gap: var(--space-2); border-radius: var(--radius-control); background: var(--surface); }
+.field.is-open { padding-block-end: var(--space-3); box-shadow: inset 0 0 0 1.5px var(--tint); }
+.field.is-open > :deep(.times) { padding-inline: min(var(--space-3), 12px); }
+.field.is-open > .row { background: transparent; }
+.chevron { color: var(--label-2); }
 .message { margin: 0; min-height: 0; color: var(--danger-label); overflow-wrap: anywhere; }
 .message:empty { display: none; }
 </style>

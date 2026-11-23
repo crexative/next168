@@ -197,6 +197,8 @@ export function categoryMinutes(state: SetupState, category: CategoryDraft): num
   return category.ranges.reduce((sum, range) => sum + slotMinutes(blockSlot(category, range)), 0)
 }
 
+const WEEK_MINUTES = 7 * 24 * 60
+
 export interface WeekTotals { covered: number; summed: number; overlapping: boolean }
 
 export function weekTotals(state: SetupState): WeekTotals {
@@ -204,6 +206,13 @@ export function weekTotals(state: SetupState): WeekTotals {
   const covered = coveredMinutes(slots)
   const summed = slots.reduce((sum, slot) => sum + slotMinutes(slot), 0)
   return { covered, summed, overlapping: summed > covered }
+}
+
+// The 168 h bar: each category's share of the hours counted once, so overlapping times are not drawn twice and the
+// bar agrees with "96 h asignadas · 72 h sin asignar"; the rest of the week is the free part.
+export function weekBar(parts: readonly { key: string; minutes: number }[], totals: WeekTotals): { shares: { key: string; minutes: number }[]; free: number } {
+  const scale = totals.summed > 0 ? totals.covered / totals.summed : 0
+  return { shares: parts.map((part) => ({ key: part.key, minutes: part.minutes * scale })), free: WEEK_MINUTES - totals.covered }
 }
 
 // ---------- Suggestions ----------
@@ -527,9 +536,14 @@ export function roundIndex(screen: string): number | undefined {
   return match ? Number(match[1]) : undefined
 }
 
+// In setup "¿A qué más le dedicas tiempo?" is one question with several picks, then one short time question per pick
+// (DIRECTION §4, improvement 2). Adding a routine keeps one pick per round ("¿Algo más?").
+export const multiPick = (state: SetupState): boolean => state.add === undefined
+
 // Every pick has its round, and one more round follows the last pick while there is room for another.
 export function roundExists(state: SetupState, index: number): boolean {
   if (index === 0) return true
+  if (multiPick(state)) return false
   const picks = state.answers.more
   return picks !== null && (index < picks.length || (index === picks.length && picks.length < MAX_PICKS))
 }
@@ -590,6 +604,33 @@ export function pick(state: SetupState, index: number, key: string, env: SetupEn
   state.answers.more = next
   if (index === picks.length) state.answers.moreDone = false
   return true
+}
+
+// The several-picks question: its options in a fixed order, picked or not, so a chip stays where it was when tapped.
+export function moreOptions(state: SetupState): string[] {
+  const own = state.categories.filter((category) => category.topic === undefined && !isIntoKey(category.key)).map((category) => category.key)
+  return [...offeredTopics(state), ...own].filter((key) => offerable(state, key))
+}
+
+// A chip of the several-picks question: on adds the pick (after the others), off removes it (its draft stays, dormant,
+// as for "No, that's all"). Refused past MAX_PICKS and for a key that cannot be offered.
+export function togglePick(state: SetupState, key: string, env: SetupEnv): boolean {
+  const picks = picksOf(state)
+  state.answers.moreDone = false
+  if (picks.includes(key)) {
+    state.answers.more = picks.filter((picked) => picked !== key)
+    return true
+  }
+  if (!offerable(state, key) || picks.length >= MAX_PICKS) return false
+  draftFor(state, key, env).removed = false
+  state.answers.more = [...picks, key]
+  return true
+}
+
+// "Siguiente" on the several-picks question: what is picked is the answer, and nothing more is asked about it.
+export function confirmPicks(state: SetupState): void {
+  state.answers.more = picksOf(state)
+  state.answers.moreDone = true
 }
 
 // "No, that's all" at round i: the picks after it are dropped (their drafts stay, dormant) and no round is left open.
