@@ -667,6 +667,13 @@ export function setPendingInto(state: SetupState, into: string | undefined): voi
 
 // "Add" in the name form. Adding a routine with a destination: time for that stored category under the typed title.
 // Otherwise the person's own item (an existing one of that name when there is one).
+// The setup's own category a typed name joins instead of making another: same name, not one filed into a stored
+// activity, and not removed.
+export function sameTypedName(state: SetupState, name: string): CategoryDraft | undefined {
+  const key = nameKey(name)
+  return state.categories.find((category) => category.into === undefined && nameKey(category.name) === key && statusOf(state, category) !== 'removed')
+}
+
 export function addTyped(state: SetupState, name: string): CategoryDraft {
   const into = state.add ? state.pending?.into : undefined
   if (into !== undefined && state.add!.stored.some((category) => category.id === into)) {
@@ -674,8 +681,7 @@ export function addTyped(state: SetupState, name: string): CategoryDraft {
     draft.into = into
     return draft
   }
-  const trimmed = nameKey(name)
-  const same = state.categories.find((category) => category.into === undefined && nameKey(category.name) === trimmed && statusOf(state, category) !== 'removed')
+  const same = sameTypedName(state, name)
   if (same) return same
   const created = ensureCategory(state, nextKey(state, 'custom:'), undefined, name.trim())
   // Chosen "On its own" (or "Create another activity") while a stored activity has this name: explicit, not a silent copy.

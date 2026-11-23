@@ -2,7 +2,7 @@
 import { computed, nextTick, ref, useId, watch } from 'vue'
 import Icon from '@/ui/Icon.vue'
 import {
-  acceptRanges, addTyped, clearPending, confirmPicks, MAX_PICKS, nameKey, clearRanges, finishMore, moreOptions, multiPick, pick, picksOf, rangeProblem, roundIndex, setAnswer, setPendingInto, setPendingName, setSleepSplit, statusOf, togglePick,
+  acceptRanges, addTyped, clearPending, confirmPicks, MAX_PICKS, nameKey, clearRanges, finishMore, moreOptions, multiPick, pick, picksOf, rangeProblem, roundIndex, setAnswer, setPendingInto, setPendingName, sameTypedName, setSleepSplit, togglePick,
   type ScreenId, type SetupState, type Tri, type WorkStudy,
 } from '../setupModel'
 import { TOPICS, type TopicId } from '../setupTopics'
@@ -186,8 +186,7 @@ function createAnother(): void {
 // why and keeps the field. Returns the item's key when it is now picked.
 function pickTyped(name: string): string | undefined {
   // At the limit a new name is refused before it becomes a category, so no unpicked chip is left behind.
-  const exists = props.state.categories.some((category) => category.into === undefined && nameKey(category.name) === nameKey(name) && statusOf(props.state, category) !== 'removed')
-  if (!exists && picksOf(props.state).length >= MAX_PICKS) {
+  if (!sameTypedName(props.state, name) && picksOf(props.state).length >= MAX_PICKS) {
     refusal.value = 'limit'
     return undefined
   }

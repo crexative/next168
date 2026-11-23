@@ -920,6 +920,9 @@ describe('"¿A qué más…?" with several picks', () => {
     expect(live('[data-testid=more-refusal]')!.textContent).toBe('You have 20 picked; remove one to add another.')
     // Refused, the name leaves no unpicked chip behind (review of #61).
     expect(chips()).toBe(before)
+    // A name already picked keeps its own answer at the limit: it is on the list, not past the limit.
+    await add('Thing 3')
+    expect(live('[data-testid=more-refusal]')!.textContent).toBe("It's already on your list.")
   })
 
   it('a name typed in "Other" and not yet added goes in with the picks on Siguiente', async () => {
