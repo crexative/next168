@@ -117,16 +117,19 @@ function onFocusIn(event: FocusEvent): void {
         <p v-if="screen === 'sleep' && showTrust" class="trust t-footnote" data-testid="setup-trust"><Icon name="lock" :size="13" class="trust-icon" />{{ t('onboarding.guided.trust') }}</p>
         <Transition name="say" appear>
           <SetupSummary
-            v-if="summary" v-model:expanded="expanded" :state="state" :document="document" :reviewable="reviewable" :issues="issues" :message="message"
-            :show-trust="showTrust" @review="emit('review')" @edited="emit('edited')"
+            v-if="summary" v-model:expanded="expanded" :state="state" :document="document" :issues="issues" :message="message"
+            @edited="emit('edited')"
           />
         </Transition>
       </div>
     </div>
 
     <footer v-if="summary" class="dock is-summary">
+      <!-- "Crear mi semana", then "Repasar las preguntas" and the trust line under it (R_InicioResumen). -->
       <div class="column actions">
         <Button data-primary data-dock-primary data-testid="setup-primary" block :disabled="busy" @click="emit('submit')">{{ state.add ? t('onboarding.summary.addSave') : first ? t('onboarding.summary.start') : t('onboarding.summary.save') }}</Button>
+        <Button v-if="reviewable" variant="plain" data-testid="summary-review" @click="emit('review')">{{ t('onboarding.summary.review') }}</Button>
+        <p v-if="showTrust" class="trust t-footnote" data-testid="setup-trust"><Icon name="lock" :size="13" class="trust-icon" />{{ t('onboarding.guided.trust') }}</p>
       </div>
     </footer>
     <SetupAnswer v-else ref="dock" :key="screen" :state="state" :busy="busy" :group-label="now.question" :question-id="questionId" @advance="emit('advance')" @edited="emit('edited')" />
@@ -180,7 +183,10 @@ function onFocusIn(event: FocusEvent): void {
 /* The summary's own dock. A plain .dock here would also reach SetupAnswer's root (a scoped style reaches a child's
    root element), which sizes its dock itself. */
 .dock.is-summary { flex: none; border-top: 0.5px solid var(--separator); background: var(--surface); }
-.actions { display: flex; justify-content: center; padding-block: var(--group-gap) calc(var(--space-4) + var(--safe-bottom)); }
+/* The primary keeps the group gap from the conversation above and from "Repasar las preguntas" under it. */
+.actions { display: flex; flex-direction: column; align-items: center; gap: var(--space-1); padding-block: var(--group-gap) calc(var(--space-4) + var(--safe-bottom)); }
+.actions > [data-testid=summary-review] { margin-block-start: calc(var(--group-gap) - var(--space-1)); }
+.actions > .trust { justify-content: center; text-align: center; }
 .actions :deep(.ui-button) { width: 100%; min-height: 52px; border-radius: 26px; overflow-wrap: anywhere; hyphens: auto; }
 
 /* A new message arrives calmly from just below; without motion it only fades in. */

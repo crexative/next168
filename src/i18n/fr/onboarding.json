@@ -81,7 +81,7 @@
     },
     "more": {
       "question": "À quoi d'autre donnes-tu du temps chaque semaine ?",
-      "hint": "Choisis-en une.",
+      "hint": "Choisis-en autant que tu veux.",
       "family": "Famille",
       "friends": "Amis",
       "me": "Temps pour toi",
@@ -90,7 +90,9 @@
       "otherLabel": "C'est quoi ?",
       "otherPlaceholder": "Par exemple : cours d'anglais",
       "add": "Ajouter",
-      "duplicate": "C'est déjà dans ta liste."
+      "duplicate": "C'est déjà dans ta liste.",
+      "picked": "{count} choisie · une question courte | {count} choisies · une question courte pour chacune",
+      "limit": "Tu en as déjà choisi {max} ; retires-en une pour en ajouter une autre."
     },
     "again": {
       "question": "Autre chose ?",
@@ -161,7 +163,7 @@
   },
   "summary": {
     "title": "Ta semaine type",
-    "bubble": "Voici ta semaine. Touche un élément pour le changer.",
+    "bubble": "Voici ta semaine.",
     "empty": "Rien pour l'instant. Ajoute quelque chose ou commence ainsi.",
     "assigned": "{hours} attribuées",
     "unassigned": "{hours} non attribuées",
@@ -189,6 +191,7 @@
     "addFailed": "Impossible d'ajouter. Réessaie.",
     "addBubble": "Ceci s'ajoute à ta semaine. Touche un élément pour le changer.",
     "addEmpty": "Rien à ajouter pour l'instant.",
-    "addTitle": "Ce que tu ajoutes"
+    "addTitle": "Ce que tu ajoutes",
+    "bubbleHint": "Touche un élément pour le changer."
   }
 }

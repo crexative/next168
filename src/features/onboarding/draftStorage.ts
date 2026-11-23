@@ -1,7 +1,7 @@
 import type { PlannerDocument } from '@/core/model'
 import { isKnownScreen } from './setupFlow'
 import type { Answers, CategoryDraft, RangeDraft, ScreenId, SetupState } from './setupModel'
-import { categoryOf, cloneState, MAX_NAME_LENGTH } from './setupModel'
+import { categoryOf, cloneState, MAX_NAME_LENGTH, multiPick, roundIndex } from './setupModel'
 import { EXTRA_TOPICS, TOPIC_IDS } from './setupTopics'
 
 // The unfinished setup survives a reload of the tab (sessionStorage). A draft belongs to the exact stored content it was
@@ -121,8 +121,15 @@ function parseFields(value: unknown, version: 2 | 3): SetupState | null {
 
 export function parseSetupState(value: unknown): SetupState | null {
   const state = parseFields(value, 3)
-  if (!state || !isObject(value) || typeof value.screen !== 'string' || !isKnownScreen(state, value.screen)) return null
-  state.screen = value.screen
+  if (!state || !isObject(value) || typeof value.screen !== 'string') return null
+  // A setup draft saved on a later round of "¿Algo más?" (before setup asked for several picks at once) reopens on the
+  // one question, every pick kept, so nothing answered is lost.
+  // Only a round that could exist then (one after each pick) is mapped; any other screen is checked as it is.
+  const round = roundIndex(value.screen)
+  const legacyRound = multiPick(state) && round !== undefined && round > 0 && round <= (state.answers.more?.length ?? -1)
+  const screen = legacyRound ? 'more' : value.screen
+  if (!isKnownScreen(state, screen)) return null
+  state.screen = screen
   return state
 }
 

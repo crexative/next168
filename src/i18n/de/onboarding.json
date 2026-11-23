@@ -81,7 +81,7 @@
     },
     "more": {
       "question": "Wofür nimmst du dir sonst jede Woche Zeit?",
-      "hint": "Wähle eins.",
+      "hint": "Wähle so viele du willst.",
       "family": "Familie",
       "friends": "Freunde",
       "me": "Zeit für dich",
@@ -90,7 +90,9 @@
       "otherLabel": "Was ist es?",
       "otherPlaceholder": "Zum Beispiel: Englischkurs",
       "add": "Hinzufügen",
-      "duplicate": "Das steht schon auf deiner Liste."
+      "duplicate": "Das steht schon auf deiner Liste.",
+      "picked": "{count} gewählt · eine kurze Frage | {count} gewählt · eine kurze Frage zu jeder",
+      "limit": "Du hast schon {max} gewählt; entferne eine, um eine weitere hinzuzufügen."
     },
     "again": {
       "question": "Sonst noch etwas?",
@@ -161,7 +163,7 @@
   },
   "summary": {
     "title": "Deine typische Woche",
-    "bubble": "So sieht deine Woche aus. Tippe etwas an, um es zu ändern.",
+    "bubble": "So sieht deine Woche aus.",
     "empty": "Noch nichts da. Füge etwas hinzu oder starte so.",
     "assigned": "{hours} zugewiesen",
     "unassigned": "{hours} nicht zugewiesen",
@@ -189,6 +191,7 @@
     "addFailed": "Hinzufügen hat nicht geklappt. Versuch es noch einmal.",
     "addBubble": "Das kommt zu deiner Woche dazu. Tippe etwas an, um es zu ändern.",
     "addEmpty": "Noch nichts zum Hinzufügen.",
-    "addTitle": "Was du hinzufügst"
+    "addTitle": "Was du hinzufügst",
+    "bubbleHint": "Tippe etwas an, um es zu ändern."
   }
 }

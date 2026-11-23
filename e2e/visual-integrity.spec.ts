@@ -218,17 +218,17 @@ for (const theme of THEMES) {
             await expect(setup.locator('section.screen[aria-hidden=true]')).toHaveCount(0)
           }
           await audit(page, `${theme}/${locale}/${width}/wider fonts/setup commute`)
-          // "Anything else?" one at a time: each extra, its times, and the question again.
-          for (const [index, topic] of ['family', 'friends', 'me', 'learning'].entries()) {
-            await live.locator(`[data-value=${topic}]`).click()
+          // "Anything else?" takes several picks at once, then one short time question for each.
+          const topics = ['family', 'friends', 'me', 'learning']
+          for (const topic of topics) await live.locator(`[data-chip=${topic}]`).click()
+          await expect(setup).toHaveAttribute('data-screen', 'more')
+          await audit(page, `${theme}/${locale}/${width}/wider fonts/setup more, four picks`)
+          for (const topic of topics) {
+            await live.getByTestId('setup-primary').click()
             await expect(setup).toHaveAttribute('data-screen', `extra:${topic}`)
             await expect(setup.locator('section.screen[aria-hidden=true]')).toHaveCount(0)
-            await live.getByTestId('setup-primary').click()
-            await expect(setup).toHaveAttribute('data-screen', `more:${index + 1}`)
-            await expect(setup.locator('section.screen[aria-hidden=true]')).toHaveCount(0)
-            if (index === 0) await audit(page, `${theme}/${locale}/${width}/wider fonts/setup more:1`)
           }
-          await live.getByTestId('more-done').click()
+          await live.getByTestId('setup-primary').click()
           await expect(setup).toHaveAttribute('data-screen', 'summary')
           if (locale === 'es') await expect(live.locator('[data-category] .name')).toContainText(['Sueño', 'Trabajo', 'Estudio', 'Desplazamientos'])
           await audit(page, `${theme}/${locale}/${width}/wider fonts/setup summary`)
@@ -336,16 +336,15 @@ for (const theme of THEMES) {
         }
         await live.getByTestId('setup-primary').click()
         await expect(setup).toHaveAttribute('data-screen', 'more')
-        for (const [index, topic] of ['family', 'friends', 'me', 'learning'].entries()) {
-          await settled()
-          await live.locator(`[data-value=${topic}]`).click()
+        await settled()
+        const topics = ['family', 'friends', 'me', 'learning']
+        for (const topic of topics) await live.locator(`[data-chip=${topic}]`).click()
+        for (const topic of topics) {
+          await live.getByTestId('setup-primary').click()
           await expect(setup).toHaveAttribute('data-screen', `extra:${topic}`)
           await settled()
-          await live.getByTestId('setup-primary').click()
-          await expect(setup).toHaveAttribute('data-screen', `more:${index + 1}`)
         }
-        await settled()
-        await live.getByTestId('more-done').click()
+        await live.getByTestId('setup-primary').click()
         await expect(setup).toHaveAttribute('data-screen', 'summary')
         await settled()
         await audit(page, `${theme}/${locale}/360/setup summary`)

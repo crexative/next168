@@ -81,7 +81,7 @@
     },
     "more": {
       "question": "Com o que mais você passa tempo toda semana?",
-      "hint": "Escolha uma.",
+      "hint": "Escolha quantas quiser.",
       "family": "Família",
       "friends": "Amigos",
       "me": "Tempo para você",
@@ -90,7 +90,9 @@
       "otherLabel": "O que é?",
       "otherPlaceholder": "Por exemplo: aula de inglês",
       "add": "Adicionar",
-      "duplicate": "Já está na sua lista."
+      "duplicate": "Já está na sua lista.",
+      "picked": "{count} escolhida · uma pergunta curta | {count} escolhidas · uma pergunta curta para cada uma",
+      "limit": "Você já escolheu {max}; tire uma para adicionar outra."
     },
     "again": {
       "question": "Mais alguma coisa?",
@@ -161,7 +163,7 @@
   },
   "summary": {
     "title": "Sua semana típica",
-    "bubble": "Assim fica sua semana. Toque em algo para mudar.",
+    "bubble": "Assim fica sua semana.",
     "empty": "Ainda não há nada. Adicione algo ou comece assim.",
     "assigned": "{hours} atribuídas",
     "unassigned": "{hours} sem atribuir",
@@ -189,6 +191,7 @@
     "addFailed": "Não foi possível adicionar. Tente de novo.",
     "addBubble": "Isto entra na sua semana. Toque em algo para mudar.",
     "addEmpty": "Ainda não há nada para adicionar.",
-    "addTitle": "O que você adiciona"
+    "addTitle": "O que você adiciona",
+    "bubbleHint": "Toque em algo para mudar."
   }
 }
