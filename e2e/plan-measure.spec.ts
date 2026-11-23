@@ -126,9 +126,6 @@ test.describe('plan and measure', () => {
     await pickWhen(sheet, 'Study')
     await add.click()
 
-    // One calm amber row; the reason is in its fixes.
-    await expect(page.getByTestId('warnings-toggle')).toHaveText('1 task does not fit in time')
-    await page.getByTestId('warnings-toggle').click()
     const warning = page.getByTestId('overflow-text')
     await expect(warning).toContainText('1 h missing in Study')
     await expect(page.getByTestId('placed-task')).toContainText('Write report')
@@ -152,7 +149,6 @@ test.describe('plan and measure', () => {
       tasks: [{ id: 't-late', title: 'Hand in form', categoryId: 'c-study', durationMin: 60, dueDate: '2026-10-25', priority: 1, createdAt: '2026-10-20T10:00:00.000Z' }],
     }))
     await openTab(page, 'tasks')
-    await page.getByTestId('warnings-toggle').click()
     await expect(page.getByTestId('late-text')).toContainText('after its due date')
     await expect(page.getByTestId('task-warnings').getByRole('button', { name: 'Do it today' })).toBeVisible()
   })

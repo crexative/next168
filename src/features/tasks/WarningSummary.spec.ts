@@ -45,23 +45,6 @@ const find = (selector: string) => mounted!.host.querySelector<HTMLElement>(sele
 const cards = () => [...mounted!.host.querySelectorAll<HTMLElement>('li.warning')]
 const text = (element: Element | null) => element?.textContent?.replace(/\s+/g, ' ').trim()
 
-// Calm by default (R_Tareas): one amber row with the count; its fixes open in place.
-it.each([
-  [1, '1 tarea no cabe a tiempo'],
-  [4, '4 tareas no caben a tiempo'],
-] as const)('says in one closed row that %i tasks do not fit, and opens their fixes there', async (count, expected) => {
-  mounted = await mountWithPlanner(TasksView, planner(count, 0), 'es')
-  const toggle = find('[data-testid=warnings-toggle]')!
-  expect(text(toggle)).toBe(expected)
-  expect(toggle.getAttribute('aria-expanded')).toBe('false')
-  expect(find('#task-warning-list')!.style.display).toBe('none')
-  toggle.click()
-  await nextTick()
-  expect(toggle.getAttribute('aria-expanded')).toBe('true')
-  expect(find('#task-warning-list')!.style.display).toBe('')
-  expect(cards()[0]!.querySelector('[data-testid=fix-edit]')).not.toBeNull()
-})
-
 it.each([
   [1, 'Y 1 más no cabe en los próximos 7 días.'],
   [2, 'Y 2 más no caben en los próximos 7 días.'],

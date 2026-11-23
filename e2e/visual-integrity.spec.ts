@@ -634,23 +634,21 @@ for (const theme of THEMES) {
         }
         await start(page, theme, doneDocument, 'es')
         await open(page, 'tasks')
-        await page.getByTestId('done-toggle').click()
         const row = page.getByTestId('done-task')
         const reopen = row.getByRole('button', { name: 'Reabrir', exact: true })
         await expect(reopen).toBeVisible()
         await audit(page, `${theme}/${width}/tasks recently done`)
-        // A plain list on the page (R_Tareas): the title and the button keep the page gutter on both sides.
         const insets = await row.evaluate((element) => {
-          const page = element.closest('.tasks')!.getBoundingClientRect()
+          const card = element.closest('.list-card')!.getBoundingClientRect()
           const button = element.querySelector('button')!.getBoundingClientRect()
           const range = document.createRange()
           range.selectNodeContents(element.querySelector('.t-body')!)
-          const gutter = Number.parseFloat(getComputedStyle(element).paddingLeft)
-          return { leading: range.getBoundingClientRect().left - page.left, trailing: page.right - button.right, gutter }
+          return { leading: range.getBoundingClientRect().left - card.left, trailing: card.right - button.right }
         })
-        expect(insets.gutter).toBeGreaterThanOrEqual(16)
-        expect(insets.leading).toBeCloseTo(insets.gutter, 0)
-        expect(insets.trailing).toBeCloseTo(insets.gutter, 0)
+        // The card padding token: 16 px on a phone, 20 px from 1024 px.
+        const cardPadding = width >= 1024 ? 20 : 16
+        expect(insets.leading).toBeCloseTo(cardPadding, 0)
+        expect(insets.trailing).toBeCloseTo(cardPadding, 0)
         await reopen.click()
         await expect(page.getByTestId('done-task')).toHaveCount(0)
         await expect(page.getByTestId('placed-task')).toContainText(title)
