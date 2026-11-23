@@ -155,3 +155,15 @@ it('"Ver todas" shows past the first ten undated tasks only when there are more,
   expect(mounted.host.querySelectorAll('[data-testid=undated-task]')).toHaveLength(11)
   expect(find('[data-testid=show-all-undated]')).toBeNull()
 })
+
+// Review of #69: a task partly placed keeps its own line (it has a time this week) in the warning colour; only a task
+// with no place at all says it does not fit. The warnings row says what is missing.
+it('a partly placed task keeps its line in the warning colour, without saying it does not fit at all', async () => {
+  const partly = { ...planner(0, 0), blocks: [{ ...FAMILY_BLOCK, start: 600, end: 630 }], tasks: [{ id: 't-partly', title: 'Visitar a la abuela', categoryId: FAMILY.id, durationMin: 60, priority: 2 as const, createdAt: '2026-10-01T00:00:00.000Z' }] }
+  mounted = await mountWithPlanner(TasksView, partly, 'es')
+  const row = mounted.host.querySelector<HTMLElement>('[data-testid=placed-task]')!
+  expect(text(row.querySelector('.meta'))).toContain('Familia · 1 h')
+  expect(text(row)).not.toContain('No cabe esta semana')
+  expect(row.querySelector('.meta')!.classList.contains('is-attention')).toBe(true)
+  expect(text(find('[data-testid=warnings-toggle]'))).toBe('1 tarea no cabe a tiempo')
+})
