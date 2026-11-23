@@ -181,6 +181,61 @@ describe('editing a task', () => {
   })
 })
 
+describe('Nueva tarea and Editar tarea, in detail', () => {
+  it('"During" shows a colour dot for each category (none for any free slot) and a check on the one chosen', async () => {
+    await open('t-1')
+    dialog().querySelector<HTMLButtonElement>('[data-testid=task-when-toggle]')!.click()
+    await nextTick()
+    const options = [...dialog().querySelectorAll<HTMLElement>('[data-testid=task-when] .when-option')]
+    expect(options.map((option) => option.querySelector('.dot') !== null)).toEqual([false, true, true])
+    expect(options.map((option) => option.querySelector('.when-check') !== null)).toEqual([false, false, true])
+  })
+
+  it('"More options" says what it holds while closed, and the notes show their links only when they have some', async () => {
+    await open(undefined, { tasks: [] })
+    const hint = () => dialog().querySelector('[data-testid=task-more] + p')
+    expect(hint()).not.toBeNull()
+    dialog().querySelector<HTMLButtonElement>('[data-testid=task-more]')!.click()
+    await nextTick()
+    expect(hint()).toBeNull()
+    expect(dialog().querySelector('[data-testid=task-note-links]')).toBeNull()
+    await set(dialog().querySelector<HTMLTextAreaElement>('[data-testid=task-notes]') as unknown as HTMLInputElement, 'See https://example.com/agenda')
+    expect(dialog().querySelector('[data-testid=task-note-links]')!.textContent).toContain('https://example.com/agenda')
+  })
+
+  it('Return while a word is being composed (an input method) does not save the edit', async () => {
+    const { store } = await open('t-1')
+    await set(titleField(), 'Read two chapters')
+    const enter = new KeyboardEvent('keydown', { key: 'Enter', bubbles: true, cancelable: true, isComposing: true })
+    titleField().dispatchEvent(enter)
+    await store.settled()
+    await nextTick()
+    expect(enter.defaultPrevented).toBe(false)
+    expect(store.document!.tasks[0]!.title).toBe('Read a chapter')
+  })
+
+  it('with nothing stored yet, a new task writes nothing into a workspace that replaced the one on screen', async () => {
+    const pinia = createPinia()
+    setActivePinia(pinia)
+    const repos = createTestRepositories()
+    configurePlannerStore({ repository: repos.planner, now: fixedNow, newId: newTestId, locale: () => 'en', timeZone: () => 'UTC' })
+    const store = usePlannerStore()
+    await store.load()
+    expect(store.stored).toBeFalsy()
+    i18n.global.locale.value = 'en'
+    host = document.createElement('div')
+    document.body.append(host)
+    app = createApp(defineComponent({ setup: () => () => h(TaskSheet, { open: true }) })).use(pinia).use(i18n)
+    app.mount(host)
+    await settle(store)
+    store.document = { ...store.document!, workspaceId: 'ws-other' }
+    await set(titleField(), 'Stale task')
+    save().click()
+    await settle(store)
+    expect(store.document!.tasks.map((task) => task.title)).not.toContain('Stale task')
+  })
+})
+
 describe('adding a task from the sheet', () => {
   it('adds one task when the button is pressed twice before the first save finishes', async () => {
     const { store } = await open(undefined, { tasks: [] })
